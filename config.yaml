@@ -1,0 +1,32 @@
+llm:
+  default: grok_3_mini
+  endpoints:
+    grok: https://api.x.ai/v1
+    openai: https://api.openai.com/v1
+  models:
+    grok_3_mini:
+      provider: xai
+      key_env: XAI_API_KEY
+      suited_modes: [presence, whisper]
+    gpt-4o:
+      provider: openai
+      key_env: OPENAI_API_KEY
+      suited_modes: [fire, tactical]
+
+memory:
+  path: data/memory.jsonl
+  heart_log: kortana.core/heart.log
+  soul_index: kortana.core/soul.index
+  lit_log: kortana.core/lit.log
+  reflections: kortana.core/reflections.log
+
+ui:
+  port: 7860
+  title: "Kor’tana: Sacred Companion"
+  default_mode: presence
+
+modes:
+  presence: presence.md
+  fire: fire.md
+  whisper: whisper.md
+  tactical: tactical.md
