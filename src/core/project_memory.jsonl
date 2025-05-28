@@ -1,0 +1,10 @@
+# This file will store Kor'tana's memory in JSON Lines format.
+# Each line will be a JSON object representing a piece of memory.
+
+# Example structure (can be refined):
+# {"type": "decision", "timestamp": "...", "content": "Key decision made: Persona should be poetic."}
+# {"type": "context_summary", "timestamp": "...", "content": "Summary of last session: Focused on initial prompt design."}
+# {"type": "user_preference", "timestamp": "...", "user_id": "...", "content": "User prefers concise answers."}
+{"type": "decision", "timestamp": "2023-10-27T10:00:00Z", "content": "Decided to prioritize the core persona/voice first."}
+{"type": "decision", "timestamp": "2023-10-27T10:05:00Z", "content": "Agreed that all output should be filtered through the Sacred Trinity principles."}
+{"type": "decision", "timestamp": "2023-10-27T10:10:00Z", "content": "Will use a memory mechanism (memory.jsonl) to retain context across sessions."} 

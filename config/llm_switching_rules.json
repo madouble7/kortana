@@ -1,0 +1,9 @@
+{  "whisper": ["gemini-2.5-flash", "grok-3-mini-reasoning"],
+  "presence": ["grok-3-mini-reasoning", "gemini-2.5-flash"],
+  "fire": ["gpt-4.1-mini", "grok-3-mini-reasoning"],
+  "tactical": ["gpt-4.1-mini", "gemini-2.5-flash"],
+  "default": ["gemini-2.0", "gpt-4.1-mini"],
+  "memory-ingest": ["llama-4-maverick", "gpt-4.1-nano"],
+  "memory-recall": ["gpt-4.1-mini", "gemini-2.5-flash"],
+  "analysis": ["grok-3-mini-reasoning", "gemini-2.5-flash"]
+}

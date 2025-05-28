@@ -1,0 +1,33 @@
+{
+  "backend": "vector",
+  "vector_db": {
+    "type": "chroma",
+    "path": "data/vector_db/",
+    "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+    "persist": true,
+    "collection_name": "kortana_memories",
+    "distance_metric": "cosine",
+    "max_results": 20,
+    "auto_reindex": true
+  },
+  "tagging_rules": {
+    "sacred": ["never_delete", "always_surface"],
+    "intimacy": ["prioritize_in_intimacy_mode", "boost_recall", "protect_from_deletion"],
+    "fire": ["prioritize_in_fire_mode", "boost_recall"],
+    "tactical": ["prioritize_in_tactical_mode", "boost_recall"],
+    "whisper": ["prioritize_in_whisper_mode", "boost_recall"],
+    "default": ["normal_priority"]
+  },
+  "fallback": {
+    "backend": "jsonl",
+    "path": "data/memory.jsonl",
+    "max_size_mb": 50,
+    "auto_rotate": true
+  },
+  "maintenance": {
+    "auto_compact": true,
+    "archive_old": true,
+    "archive_path": "data/archived_memories/",
+    "integrity_check_on_startup": true
+  }
+}

@@ -1,0 +1,62 @@
+# filepath: c:\kortana\.gitignore
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv*/
+venv311/
+
+# VS Code settings
+.vscode/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Pytest cache
+.pytest_cache/
+
+# Data folders (tracked via .gitkeep if needed)
+data/raw/
+data/processed/
+data/sessions/
+data/sessions/chroma_db/
+data/sessions/qdrant_data/
+data/memory_snapshots/
+data/token_usage.csv
+
+# Logs and model outputs
+*.log
+*.out
+*.pt
+test_outputs/
+
+# Environment config
+.env
+.env.*
+
+# Gradio artifacts (from app_ui sessions)
+.gradio/
+
+# OS-specific
+desktop.ini
+Thumbs.db
+.DS_Store
+
+# Cache or temp artifacts
+*.tmp
+*.bak
+
+# Large model files
+models/*.bin
+models/*.pt
+models/*.pth
+models/*.ckpt
+models/*.safetensors
+
+# Local configuration
+*local_config*.json
+
+# Experiment notebooks (if needed)
+notebooks/experiments/

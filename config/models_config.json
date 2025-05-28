@@ -1,0 +1,295 @@
+{
+  "default_llm_id": "gpt-4.1-nano",
+  "version": "2.0",
+  "autonomous_repair_enabled": true,
+  "model_routing": {
+    "primary": "gemini-2.5-flash",
+    "autonomous_development": "x-ai/grok-3-mini-beta",
+    "intimate_conversations": "noromaid-20b-openrouter",
+    "memory_processing": "gemini-2.5-flash",
+    "code_generation": "deepseek-chat-v3-openrouter",
+    "reasoning_tasks": "x-ai/grok-3-mini-beta",
+    "verification": "gpt-4.1-nano",
+    "research": "gemini-2.5-flash",
+    "budget_workhorse": "gemini-2.0-flash-lite"
+  },
+  "models": {
+    "gemini-2.5-flash": {
+      "provider": "google",
+      "model_name": "gemini-2.5-flash-preview-05-20",
+      "api_key_env": "GOOGLE_API_KEY",
+      "base_url": "https://generativelanguage.googleapis.com/v1beta",
+      "enabled": true,
+      "priority": 1,
+      "aliases": ["gemini-flash", "gemini25-flash", "openrouter_gemini_flash_1_5"],
+      "use_cases": ["primary", "memory_processing", "bulk_analysis", "research", "budget_workhorse"],
+      "context_window": 1048576,
+      "cost_per_1m_input": 0.15,
+      "cost_per_1m_output": 0.6,
+      "performance_scores": {
+        "gpqa": 82.8,
+        "reasoning": "excellent",
+        "efficiency": "maximum"
+      },
+      "default_params": {
+        "temperature": 0.7,
+        "max_tokens": 4096,
+        "top_p": 0.9
+      },
+      "optimization": {
+        "massive_context": true,
+        "cost_effective": true,
+        "multimodal_ready": true
+      },
+      "repair_enabled": true,
+      "fallback_model": "gpt-4.1-nano"
+    },
+    "x-ai/grok-3-mini-beta": {
+      "provider": "xai",
+      "model_name": "grok-3-mini",
+      "api_key_env": "XAI_API_KEY",
+      "base_url": "https://api.x.ai/v1",
+      "enabled": true,
+      "priority": 2,
+      "aliases": ["grok-3-mini", "grok3-mini", "grok-reasoning"],
+      "use_cases": ["autonomous_development", "code_generation", "reasoning_tasks"],
+      "context_window": 128000,
+      "cost_per_1m_input": 0.3,
+      "cost_per_1m_output": 0.5,
+      "performance_scores": {
+        "gpqa": 84.6,
+        "reasoning": "exceptional",
+        "autonomous_capability": "optimized"
+      },
+      "default_params": {
+        "temperature": 0.5,
+        "max_tokens": 2048,
+        "top_p": 0.8
+      },
+      "optimization": {
+        "fast_reasoning": true,
+        "high_throughput": true
+      },
+      "repair_enabled": true,
+      "fallback_model": "gpt-4.1-nano"
+    },
+    "gpt-4.1-nano": {
+      "provider": "openai",
+      "model_name": "gpt-4.1-nano",
+      "api_key_env": "OPENAI_API_KEY",
+      "base_url": "https://api.openai.com/v1",
+      "enabled": true,
+      "priority": 4,
+      "aliases": ["gpt41-nano", "gpt-4-nano", "nano"],
+      "use_cases": ["fallback", "testing", "legacy_support", "verification"],
+      "context_window": 4096,
+      "cost_per_1m_input": 0.1,
+      "cost_per_1m_output": 0.4,
+      "performance_scores": {
+        "gpqa": 78.5,
+        "reasoning": "good",
+        "reliability": "excellent"
+      },
+      "default_params": {}
+    },
+    "claude-3-haiku-openrouter": {
+      "provider": "openrouter",
+      "model_name": "anthropic/claude-3-haiku",
+      "api_key_env": "OPENROUTER_API_KEY",
+      "base_url": "https://openrouter.ai/api/v1",
+      "enabled": true,
+      "priority": 5,
+      "aliases": ["haiku"],
+      "use_cases": ["swift_response", "light_creative", "quick_analysis"],
+      "context_window": 200000,
+      "cost_per_1m_input": 0.25,
+      "cost_per_1m_output": 1.25,
+      "performance_scores": {
+        "gpqa": 75.0,
+        "speed": "high",
+        "cost_efficiency": "high"
+      },
+      "default_params": {}
+    },
+    "gpt-4o-mini-openai": {
+      "provider": "openai",
+      "model_name": "gpt-4o-mini",
+      "api_key_env": "OPENAI_API_KEY",
+      "base_url": "https://api.openai.com/v1",
+      "enabled": true,
+      "priority": 6,
+      "aliases": ["4o-mini"],
+      "use_cases": ["general", "coding", "creative"],
+      "context_window": 128000,
+      "cost_per_1m_input": 0.15,
+      "cost_per_1m_output": 0.60,
+      "performance_scores": {
+        "gpqa": 80.0,
+        "aider_polyglot_percent_correct": 72.0,
+        "vision": "yes"
+      },
+      "default_params": {}
+    },
+    "deepseek-chat-v3-openrouter": {
+      "provider": "openrouter",
+      "model_name": "deepseek/deepseek-chat-v3-0324",
+      "api_key_env": "OPENROUTER_API_KEY",
+      "base_url": "https://openrouter.ai/api/v1",
+      "enabled": true,
+      "priority": 4,
+      "aliases": ["deepseek-chat"],
+      "use_cases": ["code_generation"],
+      "context_window": 128000,
+      "cost_per_1m_input": 0.55,
+      "cost_per_1m_output": 2.19,
+      "performance_scores": {},
+      "default_params": {},
+      "optimization": {},
+      "repair_enabled": false
+    },
+    "noromaid-20b-openrouter": {
+      "provider": "openrouter",
+      "model_name": "neversleep/noromaid-20b",
+      "api_key_env": "OPENROUTER_API_KEY",
+      "enabled": true,
+      "priority": 5,
+      "aliases": ["noromaid"],
+      "use_cases": ["intimate_conversations"],
+      "context_window": 8192,
+      "cost_per_1m_input": 0,
+      "cost_per_1m_output": 0,
+      "performance_scores": {},
+      "default_params": {},
+      "optimization": {},
+      "repair_enabled": false
+    },
+    "llama-4-scout-openrouter": {
+      "provider": "openrouter",
+      "model_name": "meta-llama/llama-4-scout",
+      "api_key_env": "OPENROUTER_API_KEY",
+      "base_url": "https://openrouter.ai/api/v1",
+      "enabled": true,
+      "priority": 11,
+      "aliases": ["llama-scout"],
+      "use_cases": ["research", "summarization", "analysis"],
+      "context_window": 131072,
+      "cost_per_1m_input": 0.20,
+      "cost_per_1m_output": 0.80,
+      "performance_scores": {
+        "context_handling": "high",
+        "summarization_quality": "high"
+      },
+      "default_params": {}
+    },
+    "llama-4-maverick-openrouter": {
+      "provider": "openrouter",
+      "model_name": "meta-llama/llama-4-maverick",
+      "api_key_env": "OPENROUTER_API_KEY",
+      "base_url": "https://openrouter.ai/api/v1",
+      "enabled": true,
+      "priority": 12,
+      "aliases": ["llama-maverick"],
+      "use_cases": ["general", "coding", "reasoning"],
+      "context_window": 131072,
+      "cost_per_1m_input": 0.25,
+      "cost_per_1m_output": 1.00,
+      "performance_scores": {
+        "coding_bench": 85.0,
+        "reasoning": "high"
+      },
+      "default_params": {}
+    },
+    "qwen3-235b-openrouter": {
+      "provider": "openrouter",
+      "model_name": "qwen/qwen1.5-110b-chat",
+      "api_key_env": "OPENROUTER_API_KEY",
+      "base_url": "https://openrouter.ai/api/v1",
+      "enabled": true,
+      "priority": 13,
+      "aliases": ["qwen-235b"],
+      "use_cases": ["general", "creative_writing", "world_knowledge"], 
+      "context_window": 131072, 
+      "cost_per_1m_input": 0.50,
+      "cost_per_1m_output": 0.50,
+      "performance_scores": {
+        "world_knowledge": "high",
+        "creativity": "high"
+      },
+      "default_params": {}
+    },
+    "gemini-2.0-flash-lite": {
+      "provider": "google",
+      "model_name": "gemini-2.0-flash-lite",
+      "api_key_env": "GOOGLE_API_KEY",
+      "base_url": "https://generativelanguage.googleapis.com/v1beta",
+      "enabled": true,
+      "priority": 3,
+      "aliases": ["flash-lite", "gemini-lite"],
+      "use_cases": ["budget_workhorse", "swift_response"],
+      "context_window": 128000,
+      "cost_per_1m_input": 0.15,
+      "cost_per_1m_output": 0.60,
+      "performance_scores": {
+        "speed": "high",
+        "cost_efficiency": "maximum",
+        "reasoning": "good"
+      },
+      "default_params": {
+        "temperature": 0.6,
+        "max_tokens": 2048
+      },
+      "optimization": {
+        "cost_effective": true,
+        "low_latency": true
+      },
+      "repair_enabled": true,
+      "fallback_model": "gpt-4.1-nano"
+    }
+  },
+  "model_aliases": {
+    "gemini-flash": "gemini-2.5-flash",
+    "gemini25-flash": "gemini-2.5-flash", 
+    "openrouter_gemini_flash_1_5": "gemini-2.5-flash",
+    "grok-3-mini": "x-ai/grok-3-mini-beta",
+    "grok3-mini": "x-ai/grok-3-mini-beta",
+    "grok-reasoning": "x-ai/grok-3-mini-beta",
+    "gpt41-nano": "gpt-4.1-nano",
+    "gpt-4-nano": "gpt-4.1-nano",
+    "nano": "gpt-4.1-nano"
+  },
+  "cost_optimization": {
+    "daily_budget_usd": 35,
+    "primary_model_percentage": 70,
+    "specialized_model_percentage": 30,
+    "estimated_daily_conversations": 1000,
+    "cost_per_conversation_target": 0.035
+  },
+  "routing_rules": {
+    "memory_analysis": {
+      "model": "gemini-2.5-flash",
+      "reason": "1M+ context for full history processing"
+    },
+    "autonomous_repair": {
+      "model": "x-ai/grok-3-mini-beta",
+      "reason": "Optimized for reasoning and code generation"
+    },
+    "intimate_mode": {
+      "model": "noromaid-20b-openrouter",
+      "reason": "Superior empathy and nuanced responses"
+    },
+    "bulk_processing": {
+      "model": "gemini-2.5-flash",
+      "reason": "Massive context + cost efficiency"
+    },
+    "code_review": {
+      "model": "x-ai/grok-3-mini-beta",
+      "reason": "Specialized autonomous development capabilities"
+    }
+  },
+  "performance_targets": {
+    "response_time_ms": 2000,
+    "cost_per_response_usd": 0.035,
+    "context_utilization": 0.85,
+    "user_satisfaction": 0.95
+  }
+}
