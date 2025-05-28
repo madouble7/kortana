@@ -355,9 +355,11 @@ class ChatEngine:
             logging.warning("No context provided for summarization.")
             return None
 
-        # Get an LLM client suitable for summarization (can be optimized later)
-        # For now, use the default or a specific summarization model if available
-        summarization_model_id = self.sacred_router.get_model_for_task(TaskCategory.RESEARCH) # Use RESEARCH category for summarization
+        # Use SacredModelRouter to select a model for summarization
+        summarization_model_id = self.sacred_router.select_model_with_sacred_guidance(
+            task_category=TaskCategory.RESEARCH,
+            constraints={"priority": "quality"}
+        )
         llm_client = self._get_llm_client_for_model(summarization_model_id)
 
         if not llm_client:
@@ -448,47 +450,32 @@ class ChatEngine:
 
     def _get_llm_client_for_model(self, model_id: str):
         # i listen for the model's provider and returns the right client
-        # This method might need slight adjustment or can be kept if useful elsewhere,
-        # but the primary getting of clients based on router choice happens in get_response now.
-        # Ensure it uses the config loaded by the router
-        return self.llm_client_factory.get_client(model_id, self.sacred_router.loaded_models_config)
+        return self.llm_client_factory.create_client(model_id, self.sacred_router.loaded_models_config)
 
     def _get_llm_client_for_mode(self, mode: str) -> Optional[Any]:
         """Enhanced client selection with ADE task-aware routing."""
-        # Check if this is an ADE task requiring specific capabilities
-        if hasattr(self, '_current_request_type'):
-            if self._current_request_type == "ade_task":
-                return self.llm_client_factory.get_ade_client(self.models_config, "primary")
-            elif self._current_request_type == "function_calling":
-                # Ensure we get a client with function calling support
-                client = self.llm_clients.get(self.default_model_id)
-                if client and getattr(client, 'get_capabilities', lambda: {})().get('supports_function_calling', False):
-                    return client
-        
         # Standard mode-based selection
-        model_preferences = self.sacred_router.get_model_preferences(mode)
-        if not model_preferences:
-            model_preferences = [self.default_model_id]
-
-        for model_id in model_preferences:
-            if not model_id:
-                continue
-            if model_id in self.llm_clients and self.llm_clients[model_id] is not None:
-                logging.debug(f"Using existing client for model_id: {model_id}")
-                return self.llm_clients[model_id]
-            
-            logging.info(f"Attempting to initialize client for model_id: {model_id} for mode: {mode}")
-            client = self.llm_client_factory.create_client(model_id, self.models_config)
+        # Use SacredModelRouter to select model for mode
+        selected_model_id = self.sacred_router.select_model_with_sacred_guidance(
+            task_category=self._classify_task("", mode),
+            constraints={"priority": "quality"}
+        )
+        if selected_model_id:
+            if selected_model_id in self.llm_clients and self.llm_clients[selected_model_id] is not None:
+                logging.debug(f"Using existing client for model_id: {selected_model_id}")
+                return self.llm_clients[selected_model_id]
+            logging.info(f"Attempting to initialize client for model_id: {selected_model_id} for mode: {mode}")
+            client = self.llm_client_factory.create_client(selected_model_id, self.models_config)
             if client:
-                self.llm_clients[model_id] = client
-                logging.info(f"Successfully initialized and selected client for model_id: {model_id}")
+                self.llm_clients[selected_model_id] = client
+                logging.info(f"Successfully initialized and selected client for model_id: {selected_model_id}")
                 return client
             else:
-                logging.warning(f"Failed to initialize LLM client for model_id: {model_id}. Trying next preference.")
-
+                logging.warning(f"Failed to initialize LLM client for model_id: {selected_model_id}.")
+        
         # Enhanced fallback strategy
         logging.error(f"Failed to obtain any LLM client for mode: {mode}")
-        return self.llm_client_factory.get_default_client(self.models_config)
+        return self.llm_client_factory.create_client(self.default_model_id, self.models_config)
 
     def _classify_task(self, user_input: str, current_mode: str) -> TaskCategory:
         """
@@ -559,14 +546,14 @@ class ChatEngine:
         metrics = PerformanceMetric(
             model_used=model_id,
             task_category=task_category,
-            latency_sec=latency_sec,
+            latency=start_time,  # Should be latency, not latency_sec
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
-            cost_effectiveness_usd=cost_effectiveness,
-            success_rate=success_rate, # Placeholder
-            quality_score=quality_score, # Placeholder
-            sacred_alignment_score=sacred_alignment_score, # Placeholder
-            human_validation=human_validation # Placeholder
+            cost_effectiveness=cost_effectiveness,
+            success_rate=success_rate,
+            quality_score=quality_score,
+            sacred_alignment_score=sacred_alignment_score,
+            human_validation=human_validation
         )
 
         logging.info(f"Captured performance for {model_id} ({task_category.value}): Latency={latency_sec:.2f}s, Cost=${cost_effectiveness:.6f}")
@@ -608,9 +595,9 @@ class ChatEngine:
 
         # Get the LLM client using the selected model ID
         # Ensure LLMClientFactory can handle fetching config based on model_id
-        llm_client = self.llm_client_factory.create_client(  # Fix: use create_client instead of get_client
+        llm_client = self.llm_client_factory.create_client(
             selected_model_id,
-            self.sacred_router.loaded_models_config # Pass the config loaded by router
+            self.sacred_router.loaded_models_config
         )
 
         if not llm_client:
@@ -627,35 +614,35 @@ class ChatEngine:
         # Call the selected LLM
         try:
             logging.info(f"Calling LLM API with model: {selected_model_id}")
-            # The actual API call will depend on your LLMClientFactory implementation
-            # Assuming llm_client.get_completion or similar exists
-            raw_response = llm_client.get_completion(messages, temperature=0.7, max_tokens=500) # Example call
-
+            # Use generate_response instead of get_completion
+            raw_response = llm_client.generate_response(
+                system_prompt=system_prompt,
+                messages=messages,
+                temperature=0.7,
+                max_tokens=500
+            )
             # Extract response text and potential reasoning/tool calls
-            # This part needs to be adapted based on the actual LLM client response structure
-            response_text = raw_response.choices[0].message.content.strip() if raw_response and raw_response.choices else "i am silent."
-            tool_calls = raw_response.choices[0].message.tool_calls if raw_response and raw_response.choices and hasattr(raw_response.choices[0].message, 'tool_calls') else []
-            reasoning_content = getattr(raw_response, 'reasoning', None) # Assuming reasoning might be in a specific field
+            response_text = raw_response['choices'][0]['message']['content'].strip() if raw_response and raw_response.get('choices') else "i am silent."
+            tool_calls = raw_response['choices'][0]['message'].get('tool_calls', []) if raw_response and raw_response.get('choices') else []
+            reasoning_content = raw_response.get('reasoning', None)
 
             logging.info(f"Received response from {selected_model_id}. Length: {len(response_text)} chars.")
-            # ... existing code ...
         except Exception as e:
             logging.error(f"Error during LLM call for model {selected_model_id}: {e} — the fire falters.")
             response_text = "i encountered an obstacle. the path is unclear."
-            raw_response = None # Ensure raw_response is None on error
+            raw_response = None
             tool_calls = []
             reasoning_content = None
             # ... existing code ...
 
         # Placeholder: Measure and package performance
-        if raw_response: # Only capture metrics if a response was received
+        if raw_response:
             performance_metrics = self._measure_and_package_performance(
                 model_id=selected_model_id,
                 task_category=task_category,
                 raw_response=raw_response,
-                start_time=start_time # Use the start time captured earlier
+                start_time=start_time
             )
-            # Feed performance data back to the SacredConfig via the Router
             self.sacred_router.sacred_config.update_performance_data(performance_metrics)
             logging.debug("Performance data sent to SacredConfig.")
 
@@ -930,50 +917,45 @@ class ChatEngine:
             # 2. CovenantEnforcer checks the task
             approved = self.covenant_enforcer.verify_action({"task": task}, task)
             if not approved:
-                # Assuming a store_memory like function exists to log ADE actions
                 self.store_memory(
                     text=f"Task blocked by CovenantEnforcer: {task}",
                     role="ade_covenant",
                     custom_metadata={"ade_task": task, "status": "blocked"}
                 )
-                continue            # 3. CodingAgent executes the task (DevAgent functionality merged into CodingAgent)
-            dev_result = self.ade_coder.run(task["description"])
-            # Assuming a store_memory like function exists to log ADE actions
+                continue
+            # Use ade_planner for development (no ade_coder)
+            dev_result = self.ade_planner.run(task["description"])
             self.store_memory(
                 text=f"CodingAgent result for task: {task['description']}",
                 role="ade_coding",
                 custom_metadata={"ade_task": task, "dev_result": dev_result}
             )
-        # 4. TestingAgent runs tests
         test_result = self.ade_tester.run_tests()
-        # Assuming a store_memory like function exists to log ADE actions
         self.store_memory(
             text="TestingAgent completed test run.",
             role="ade_tester",
             custom_metadata={"test_result": test_result}
         )
-        # 5. If tests fail, create a new task for PlanningAgent
         if not test_result.get('success', True):
             fail_task = {"description": f"Fix failing tests: {test_result.get('details', '')}"}
-            # Assuming a store_memory like function exists to log ADE actions
             self.store_memory(
                 text="TestingAgent detected test failure, creating new task for PlanningAgent.",
                 role="ade_tester",
                 custom_metadata={"ade_task": fail_task}
             )
-            # Optionally, add to a task queue or memory
+        # ...existing code...
 
     def _run_periodic_monitoring(self):
         """
         ADE periodic monitoring: check system health and log.
         """
         health_status = self.ade_monitor.run()
-        # Assuming a store_memory like function exists to log ADE actions
         self.store_memory(
             text="MonitoringAgent completed periodic health check.",
             role="ade_monitor",
             custom_metadata={"health_status": health_status}
         )
+        # ...existing code...
 
     def start_autonomous_scheduler(self, test_mode_interval_minutes: int = None):
         """
@@ -983,10 +965,11 @@ class ChatEngine:
             logging.info("Autonomous scheduler already running.")
             return
         self.scheduler = BackgroundScheduler()
+        interval = test_mode_interval_minutes if test_mode_interval_minutes is not None else 15
         if test_mode_interval_minutes:
-            self.scheduler.add_job(self._run_daily_planning_cycle, 'interval', minutes=test_mode_interval_minutes, id='ade_daily_planning')
-            self.scheduler.add_job(self._run_periodic_monitoring, 'interval', minutes=test_mode_interval_minutes, id='ade_periodic_monitoring')
-            logging.info(f"Autonomous scheduler started in TEST MODE: every {test_mode_interval_minutes} minutes.")
+            self.scheduler.add_job(self._run_daily_planning_cycle, 'interval', minutes=interval, id='ade_daily_planning')
+            self.scheduler.add_job(self._run_periodic_monitoring, 'interval', minutes=interval, id='ade_periodic_monitoring')
+            logging.info(f"Autonomous scheduler started in TEST MODE: every {interval} minutes.")
         else:
             self.scheduler.add_job(self._run_daily_planning_cycle, 'cron', hour=0, id='ade_daily_planning')
             self.scheduler.add_job(self._run_periodic_monitoring, 'interval', minutes=15, id='ade_periodic_monitoring')
@@ -1056,7 +1039,7 @@ class ChatEngine:
         
     def save_project_insight(self, content: str, impact: str = "medium") -> bool:
         """Save a high-level insight about the project."""
-        return self.store_project_memory("project_insight", content, impact=impact)
+        return bool(self.store_project_memory("project_insight", content, impact=impact))
     
 if __name__ == "__main__":
     import time

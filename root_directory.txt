@@ -1,5 +1,5 @@
 # Root Directory Listing for /kortana/
-# Last Updated: 2025-05-26 10:53:04
+# Last Updated: 2025-05-28 11:54:44
 
 .env
 .env.example
@@ -15,9 +15,12 @@ deploy_lobechat.cmd
 /discord/
 fix_configs.py
 fix_persona.py
+fix_syntax_errors.py
+Kortana_Project_State.md
 KORTANA_PROJECT_SUMMARY.md
+kortana.code-workspace
 /kortana.core/
-/kortona.network/
+/kortana.network/
 /lobechat-frontend/
 /notebooks/
 package-lock.json
@@ -31,14 +34,27 @@ rename-tests.ps1
 requirements.lock
 requirements.txt
 root_directory.ps1
+root_directory.txt
 /scripts/
 /src/
 summary.md
 switch_to_python311.bat
+test_ade.py
+test_agents_sdk.py
+test_autonomous_consciousness.py
+test_autonomous_repair.py
 test_fire.py
+test_fixed_google_client.py
+test_google_genai_integration.py
+test_live_consciousness.py
+test_openai_setup.py
 /test_outputs/
+test_sanity.py
+test_ws.py
 /test-results/
 /tests/
+validate_router.py
+validate_sacred_architecture.py
 /venv/
 /venv311/
 vitest.config.ts

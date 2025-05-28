@@ -1,6 +1,6 @@
 ## Project Kor'tana: Directory & File Structure
 ## Root Directory: /kortana/
-# Last Updated: 2025-05-27 18:01:29
+# Last Updated: 2025-05-28 11:54:30
 
 --- Root Level Files ---
 |-- .env
@@ -11,7 +11,10 @@
 |-- deploy_lobechat.cmd
 |-- fix_configs.py
 |-- fix_persona.py
+|-- fix_syntax_errors.py
+|-- Kortana_Project_State.md
 |-- KORTANA_PROJECT_SUMMARY.md
+|-- kortana.code-workspace
 |-- package-lock.json
 |-- package.json
 |-- playwright.config.ts
@@ -26,8 +29,19 @@
 |-- root_directory.txt
 |-- summary.md
 |-- switch_to_python311.bat
+|-- test_ade.py
+|-- test_agents_sdk.py
+|-- test_autonomous_consciousness.py
+|-- test_autonomous_repair.py
 |-- test_fire.py
+|-- test_fixed_google_client.py
+|-- test_google_genai_integration.py
+|-- test_live_consciousness.py
+|-- test_openai_setup.py
 |-- test_sanity.py
+|-- test_ws.py
+|-- validate_router.py
+|-- validate_sacred_architecture.py
 |-- vitest.config.ts
 |-- vscode-extensions.txt
 
@@ -44,6 +58,7 @@
 |-- covenant_audit.jsonl
 |-- memory.json
 |-- memory.jsonl
+|-- performance_history.jsonl
 |-- reasoning.json
 |-- reasoning.jsonl
 |-- token_usage.csv
@@ -63,11 +78,14 @@
 
 --- Subdirectory: src/ --- (Source code for Kor'tana)
 |-- __init__.py
+|-- ade_coordinator.py
 |-- ade_tools.py
 |-- agent_manager.py
+|-- agents_sdk_integration.py
 |-- api_server.py
 |-- app_ui.py
 |-- autonomous_agents.py
+|-- autonomous_development_engine.py
 |-- brain.py
 |-- coding_agent.py
 |-- covenant_enforcer.py
@@ -80,44 +98,44 @@
 |-- memory_manager.py
 |-- memory_store.py
 |-- memory.py
+|-- model_optimizer.py
+|-- model_resolver.py
+|-- model_router.py
 |-- monitoring_agent.py
 |-- planning_agent.py
 |-- scheduler.py
+|-- strategic_config.py
 |-- test_modes.py
 |-- testing_agent.py
 |-- utils.py
 |-- __pycache__/ (Python bytecode cache - NORMALLY GITIGNORED)
 |-- agents/
-|   |-- __pycache__/
-|   |   \\-- memory_agent.cpython-311.pyc
 |   \\-- memory_agent.py
+|-- core/
+|   |-- __pycache__/
+|   |   \\-- memory.cpython-311.pyc
+|   |-- memory.py
+|   \\-- project_memory.jsonl
 |-- llm_clients/
 |   |-- __pycache__/
 |   |   |-- __init__.cpython-311.pyc
-|   |   |-- __init__.cpython-313.pyc
 |   |   |-- base_client.cpython-311.pyc
-|   |   |-- base_client.cpython-313.pyc
-|   |   |-- factory.cpython-311.pyc
-|   |   |-- factory.cpython-313.pyc
-|   |   |-- gemini_client.cpython-311.pyc
-|   |   |-- gemini_client.cpython-313.pyc
-|   |   |-- genai_client.cpython-311.pyc
-|   |   |-- grok_client.cpython-311.pyc
-|   |   |-- grok_client.cpython-313.pyc
-|   |   |-- llama_client.cpython-311.pyc
-|   |   |-- openai_client.cpython-311.pyc
-|   |   |-- openai_client.cpython-313.pyc
-|   |   |-- openrouter_client.cpython-311.pyc
-|   |   \\-- openrouter_client.cpython-313.pyc
+|   |   \\-- openai_client.cpython-311.pyc
 |   |-- __init__.py
 |   |-- base_client.py
 |   |-- factory.py
 |   |-- gemini_client.py
 |   |-- genai_client.py
+|   |-- google_client.py
+|   |-- google_genai_client.py
 |   |-- grok_client.py
 |   |-- llama_client.py
 |   |-- openai_client.py
-|   \\-- openrouter_client.py
+|   |-- openrouter_client.py
+|   |-- xai_client.py
+|   \\-- xai_grok_client.py
+|-- tools/
+|   \\-- memory_cli.py
 
 --- Subdirectory: test_outputs/ --- (Directory for outputs from test_modes.py)
 |-- mode_tests/
@@ -147,6 +165,9 @@
 |-- data_exploration.ipynb
 |-- fire_threshold.ipynb
 |-- ritual_log.txt
+|-- sacred_consciousness_gemini_integration.ipynb
+|-- .ipynb_checkpoints/
+|   \\-- sacred_consciousness_gemini_integration-checkpoint.ipynb
 
 --- Directory (Contents Not Listed): venv/ --- (Python virtual environment directory - NOT COMMITTED TO GIT)
 \\-- ... (contents not listed)
