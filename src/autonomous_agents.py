@@ -1,6 +1,6 @@
 import logging
 import subprocess
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import psutil
 
 logger_planning = logging.getLogger(__name__ + ".PlanningAgent")
@@ -20,7 +20,7 @@ class PlanningAgent:
         self.covenant_enforcer = covenant_enforcer
         logger_planning.info("PlanningAgent initialized.")
 
-    def run(self, goal: str = None) -> List[Dict[str, Any]]:
+    def run(self, goal: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Generate a plan (list of tasks) for a given high-level goal or from ADE goals in memory.
         """
@@ -141,6 +141,7 @@ class TestingAgent:
         self.chat_engine = chat_engine_instance
         self.llm_client = llm_client
         self.covenant_enforcer = covenant_enforcer
+        self.project_root_path: Optional[str] = None
         logger_testing.info("TestingAgent initialized.")
 
     def run_tests(self) -> Dict[str, Any]:

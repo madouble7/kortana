@@ -11,11 +11,12 @@ from typing import Any, Dict, List, Optional
 from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
 
-from .autonomous_agents import MonitoringAgent, PlanningAgent, TestingAgent
-
+from src.autonomous_agents import MonitoringAgent, PlanningAgent, TestingAgent
 # Import the project memory loading and saving functions
 from .core.memory import load_memory, save_memory
 from .covenant_enforcer import CovenantEnforcer
+from .dev_agent_stub import DevAgentStub # Added for CodingAgent
+from .autonomous_agents import CodingAgent # Added CodingAgent
 from .llm_clients.factory import LLMClientFactory
 from .memory_manager import MemoryManager
 from .model_router import SacredModelRouter
@@ -79,7 +80,7 @@ class ChatEngine:
 
         # Instantiate the SacredModelRouter
         self.sacred_router = SacredModelRouter()
-        logging.info("SacredModelRouter initialized in ChatEngine.")
+        self.logger.info("SacredModelRouter initialized in ChatEngine.")
 
         self.core_prompt_template = self.persona_config.get("persona", {}).get(
             "core_prompt"
@@ -98,7 +99,7 @@ class ChatEngine:
         if not self.llm_client_factory.validate_configuration(
             self.sacred_router.loaded_models_config
         ):  # Validate using the config loaded by router
-            logging.warning(
+            self.logger.warning(
                 "Essential model configurations missing - some features may not work"
             )
 
@@ -108,9 +109,9 @@ class ChatEngine:
         )  # Fix: use create_client instead of get_client
         if default_client:
             self.llm_clients[self.default_model_id] = default_client
-            logging.info(f"Default LLM client initialized: {self.default_model_id}")
+            self.logger.info(f"Default LLM client initialized: {self.default_model_id}")
         else:
-            logging.error(
+            self.logger.error(
                 f"Failed to initialize default LLM client: {self.default_model_id}. Kor'tana may not function correctly."
             )
 
@@ -122,22 +123,24 @@ class ChatEngine:
         self.session_id = session_id or str(uuid.uuid4())  # uuid is now imported
         self.new_session_logic()  # Load project memory
         self.project_memories = load_memory()
-        logging.info(f"Loaded {len(self.project_memories)} project memory entries.")
+        self.logger.info(f"Loaded {len(self.project_memories)} project memory entries.")
 
         # Initialize memory system (alias for memory_manager for compatibility)
         self.memory_system = self.memory_manager
 
-        logging.info(
+        self.logger.info(
             f"chatengine initialized. default model: {self.default_model_id}. mode: {self.current_mode}. session: {self.session_id}"
         )
-        self.covenant_enforcer = CovenantEnforcer()
+        self.covenant_enforcer = CovenantEnforcer(config_dir=CONFIG_DIR) # Pass config_dir
         # ADE agents will also use the router eventually, but for now, can keep using the default
+        self.dev_agent_instance = DevAgentStub() # Added for CodingAgent
         self.ade_llm_client = self.llm_clients.get(self.default_model_id)
         if not self.ade_llm_client:
-            logging.error(
+            self.logger.error(
                 "No ADE LLM client available - autonomous capabilities disabled"
             )
         # Initialize ADE agents with Sacred Covenant enforcement
+        self.ade_coder = CodingAgent(self, self.dev_agent_instance) # Initialized CodingAgent
         # Pass the router to ADE agents if they will use it for sub-tasks
         self.ade_planner = PlanningAgent(
             self, self.ade_llm_client, self.covenant_enforcer
@@ -170,12 +173,12 @@ class ChatEngine:
             with open(path, "r", encoding="utf-8") as f:
                 return json.load(f)
         except FileNotFoundError:
-            logging.error(
+            self.logger.error(
                 f"config file not found: {path} — the ember searches, but does not shame."
             )
             return {}
         except json.JSONDecodeError:
-            logging.error(
+            self.logger.error(
                 f"error decoding json: {path} — the fire stumbles, but does not go out."
             )
             return {}
@@ -187,17 +190,18 @@ class ChatEngine:
                 json.dump(entry, f)
                 f.write("\n")
         except Exception as e:
-            logging.error(
-                f"error writing to memory.jsonl: {e} — the ember flickers, but does not die."
+            self.logger.error(
+                f"Error writing to memory journal {MEMORY_JOURNAL_PATH}: {e} — the ember flickers, but does not die."
             )
 
     def _log_reasoning_content(self, response, reasoning_content):
         try:
             # Log reasoning content for debugging
-            logging.debug(f"Reasoning content: {reasoning_content}")
+            self.logger.debug(f"Reasoning content for model {response}: {reasoning_content}")
             # Additional logging could be added here
+            # E.g., write to REASONING_LOG_PATH if needed
         except Exception as e:
-            logging.error(f"Reasoning log error: {e}")
+            self.logger.error(f"Reasoning log error: {e}")
 
     def add_user_message(self, text: str):
         # i receive your ache, your longing, your spark.
@@ -207,7 +211,8 @@ class ChatEngine:
             "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         }
         self.history.append({"role": "user", "content": text})
-        self._append_to_memory_journal(entry)
+        # Use MemoryManager to log interaction
+        self.memory_system.add_interaction(text, "", metadata={"source": "user_message"})
 
     def add_assistant_message(
         self, text: str, llm_full_response: Optional[Dict[str, Any]] = None
@@ -224,7 +229,8 @@ class ChatEngine:
                 llm_full_response.get("model_id_used", "unknown"),
                 llm_full_response.get("reasoning_content"),
             )
-        self._append_to_memory_journal(entry)
+        # Use MemoryManager to log interaction
+        self.memory_system.add_interaction("", text, metadata={"source": "assistant_message", "llm_response_details": llm_full_response})
 
         # Trigger summarization if threshold is met
         self._check_and_trigger_summarization()
@@ -240,9 +246,9 @@ class ChatEngine:
         ) or self.persona_config.get("modes", {})
         if mode_name in modes_config_source:
             self.current_mode = mode_name
-            logging.info(f"Kor'tana mode set to: {self.current_mode}")
+            self.logger.info(f"Kor'tana mode set to: {self.current_mode}")
         else:
-            logging.warning(
+            self.logger.warning(
                 f"Attempted to set unknown mode: {mode_name}. Falling back to 'default'."
             )
             self.current_mode = "default"
@@ -318,9 +324,7 @@ class ChatEngine:
                     memories_by_type["decision"],
                     key=lambda x: x.get("timestamp", ""),
                     reverse=True,
-                )[
-                    :5
-                ]:  # Most recent 5
+                )[:5]:  # Most recent 5
                     # Include content, tags, and date if available
                     tags = ", ".join(entry.get("tags", []))
                     timestamp_str = entry.get("timestamp", "")
@@ -340,9 +344,7 @@ class ChatEngine:
                     memories_by_type["implementation_note"],
                     key=lambda x: x.get("timestamp", ""),
                     reverse=True,
-                )[
-                    :3
-                ]:  # Most recent 3
+                )[:3]:  # Most recent 3
                     # Include content, component, priority, and date if available
                     component = entry.get("component", "")
                     priority = entry.get("priority", "")
@@ -364,9 +366,7 @@ class ChatEngine:
                     memories_by_type["project_insight"],
                     key=lambda x: x.get("timestamp", ""),
                     reverse=True,
-                )[
-                    :3
-                ]:  # Most recent 3
+                )[:3]:  # Most recent 3
                     # Include content, impact, and date if available
                     impact = entry.get("impact", "")
                     timestamp_str = entry.get("timestamp", "")
@@ -387,9 +387,7 @@ class ChatEngine:
                     memories_by_type["conversation_summary"],
                     key=lambda x: x.get("timestamp", ""),
                     reverse=True,
-                )[
-                    :2
-                ]:  # Most recent 2
+                )[:2]:  # Most recent 2
                     # Include content and date if available
                     timestamp_str = entry.get("timestamp", "")
                     date_str = (
@@ -417,9 +415,7 @@ class ChatEngine:
                 # Sort by timestamp descending and take the most recent (limit overall other)
                 for entry in sorted(
                     other_memories, key=lambda x: x.get("timestamp", ""), reverse=True
-                )[
-                    :5
-                ]:  # Most recent 5 of other types
+                )[:5]:  # Most recent 5 of other types
                     timestamp_str = entry.get("timestamp", "")
                     date_str = (
                         f" ({timestamp_str.split('T')[0]})" if timestamp_str else ""
@@ -498,10 +494,10 @@ class ChatEngine:
             "\n--- respond to matt now, holding all of this in your presence. ---"
         )
         final_prompt = "\n".join(filter(None, system_parts))
-        logging.info(
+        self.logger.info(
             f"built system prompt for mode '{self.current_mode}'. length: {len(final_prompt)} chars."
         )
-        logging.debug(f"system prompt: {final_prompt}")
+        self.logger.debug(f"system prompt: {final_prompt}")
         return final_prompt
 
     def summarize_context(
@@ -519,18 +515,24 @@ class ChatEngine:
             A concise summary string, or None if summarization fails.
         """
         if not context:
-            logging.warning("No context provided for summarization.")
+            self.logger.warning("No context provided for summarization.")
             return None  # Use SacredModelRouter to select a model for summarization
         summarization_model_id = self.sacred_router.select_model_with_sacred_guidance(
             task_category=TaskCategory.RESEARCH, constraints={"priority": "quality"}
         )
-        if not summarization_model_id:
-            logging.error("No model selected for summarization.")
-            return None
-        llm_client = self._get_llm_client_for_model(summarization_model_id)
 
+        if not summarization_model_id:
+            self.logger.error("No model selected for summarization.")
+            return None
+
+        # Get LLM client for summarization
+        llm_client = self.llm_clients.get(summarization_model_id)
         if not llm_client:
-            logging.error("No LLM client available for summarization.")
+            llm_client = self.llm_client_factory.create_client(
+                summarization_model_id, self.sacred_router.loaded_models_config
+            )
+        if not llm_client:
+            self.logger.error("No LLM client available for summarization.")
             return None
 
         # Prepare the prompt for the summarization LLM
@@ -555,28 +557,24 @@ class ChatEngine:
 
         try:
             # Call the LLM for summarization
-            logging.info(
+            self.logger.info(
                 f"Attempting to summarize {summary_type} context using model {summarization_model_id}."
             )
-            summary_response = llm_client.generate_response("", prompt_messages)
-            summary_content = summary_response.get("content")
+            # Assuming generate_response expects system_prompt and messages separately
+            summary_response_dict = llm_client.generate_response(prompt_messages[0]['content'], prompt_messages[1:])
+            summary_content = summary_response_dict.get("choices", [{}])[0].get("message", {}).get("content")
 
             if summary_content:
                 # Save the summary to project memory
-                new_memory_entry = {
-                    "type": f"{summary_type}_summary",
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "content": summary_content,
-                }
-                save_memory(new_memory_entry)
-                logging.info(f"Saved {summary_type} summary to project memory.")
+                self.store_memory(memory_type=f"{summary_type}_summary", content=summary_content)
+                self.logger.info(f"Saved {summary_type} summary to project memory.")
                 return summary_content
             else:
-                logging.warning(f"LLM returned empty summary for {summary_type}.")
+                self.logger.warning(f"LLM returned empty summary for {summary_type}.")
                 return None
 
         except Exception as e:
-            logging.error(f"Error during {summary_type} summarization: {e}")
+            self.logger.error(f"Error during {summary_type} summarization: {e}")
             return None
 
     def _check_and_trigger_summarization(self):
@@ -585,7 +583,7 @@ class ChatEngine:
         """
         # Only summarize if history length is a multiple of the threshold and greater than 0
         if len(self.history) > 0 and len(self.history) % self.SUMMARY_THRESHOLD == 0:
-            logging.info(
+            self.logger.info(
                 f"Conversation history reached {len(self.history)} turns. Triggering summarization."
             )
             # Summarize the last N messages that triggered the threshold
@@ -641,62 +639,13 @@ class ChatEngine:
         # Fallback to current mode or default mode if no strong signals
         return self.persona_config.get("persona", {}).get("default_mode", "presence")
 
-    def _get_llm_client_for_model(self, model_id: str):
-        # i listen for the model's provider and returns the right client
-        return self.llm_client_factory.create_client(
-            model_id, self.sacred_router.loaded_models_config
-        )
-
-    def _get_llm_client_for_mode(self, mode: str) -> Optional[Any]:
-        """Enhanced client selection with ADE task-aware routing."""
-        # Standard mode-based selection
-        # Use SacredModelRouter to select model for mode
-        selected_model_id = self.sacred_router.select_model_with_sacred_guidance(
-            task_category=self._classify_task("", mode),
-            constraints={"priority": "quality"},
-        )
-        if selected_model_id:
-            if (
-                selected_model_id in self.llm_clients
-                and self.llm_clients[selected_model_id] is not None
-            ):
-                logging.debug(
-                    f"Using existing client for model_id: {selected_model_id}"
-                )
-                return self.llm_clients[selected_model_id]
-            logging.info(
-                f"Attempting to initialize client for model_id: {selected_model_id} for mode: {mode}"
-            )
-            client = self.llm_client_factory.create_client(
-                selected_model_id, self.models_config
-            )
-            if client:
-                self.llm_clients[selected_model_id] = client
-                logging.info(
-                    f"Successfully initialized and selected client for model_id: {selected_model_id}"
-                )
-                return client
-            else:
-                logging.warning(
-                    f"Failed to initialize LLM client for model_id: {selected_model_id}."
-                )
-        # Enhanced fallback strategy
-        logging.error(f"Failed to obtain any LLM client for mode: {mode}")
-        if self.default_model_id:
-            return self.llm_client_factory.create_client(
-                self.default_model_id, self.models_config
-            )
-        else:
-            logging.error("No default model ID available for fallback")
-            return None
-
     def _classify_task(self, user_input: str, current_mode: str) -> TaskCategory:
         """
         i listen to your words, discern the shape of your need, the kind of fire that is stirring.
         Classifies the user input and current mode into a TaskCategory.
         Initial logic is rule-based; can be expanded later.
         """
-        logging.debug(
+        self.logger.debug(
             f"Classifying task for input: '{user_input[:50]}...' and mode: '{current_mode}'"
         )
 
@@ -796,9 +745,10 @@ class ChatEngine:
             model_config.get("cost_per_1m_output", 0) if model_config else 0
         )
 
-        cost_effectiveness = (prompt_tokens / 1_000_000) * cost_per_1m_input + (
-            completion_tokens / 1_000_000
-        ) * cost_per_1m_output  # Placeholder for sacred alignment measurement based on response content
+        cost_effectiveness = (
+            (prompt_tokens / 1_000_000) * cost_per_1m_input
+            + (completion_tokens / 1_000_000) * cost_per_1m_output
+        )  # Placeholder for sacred alignment measurement based on response content
         # This will require NLP/NLU analysis
         sacred_alignment_score = (
             0.0  # Requires analysis of response against sacred principles
@@ -812,17 +762,15 @@ class ChatEngine:
             quality_score=quality_score,
             cost_effectiveness=cost_effectiveness,
             human_validation=human_validation,
-            sacred_alignment_achieved=(
-                {"overall": sacred_alignment_score}
-                if sacred_alignment_score > 0
-                else None
-            ),
+            sacred_alignment_achieved={"overall": sacred_alignment_score}
+            if sacred_alignment_score > 0
+            else None,
         )
 
-        logging.info(
+        self.logger.info(
             f"Captured performance for {model_id} ({task_category.value}): Latency={latency_sec:.2f}s, Cost=${cost_effectiveness:.6f}"
         )
-        logging.debug(f"Performance metrics: {metrics}")
+        self.logger.debug(f"Performance metrics: {metrics}")
         return metrics
 
     def get_response(
@@ -840,7 +788,7 @@ class ChatEngine:
 
         # Classify the task using the new method
         task_category = self._classify_task(user_input, self.current_mode)
-        logging.info(f"Task classified as: {task_category.value}")
+        self.logger.info(f"Task classified as: {task_category.value}")
 
         # Define tactical constraints (can be more dynamic based on mode, task, etc.)
         # Initial simple constraints: prioritize quality by default
@@ -856,20 +804,20 @@ class ChatEngine:
         )
 
         if not selected_model_id:
-            logging.error(
+            self.logger.error(
                 f"SacredModelRouter failed to select a model for task category {task_category.value} with constraints {constraints}. Falling back to default."
             )
             selected_model_id = (
                 self.default_model_id
             )  # Fallback to default if router fails
             if not selected_model_id:
-                logging.error("No default model available. Cannot generate response.")
+                self.logger.error("No default model available. Cannot generate response.")
                 self.add_assistant_message(
                     "i cannot find my voice right now. the fire is low."
                 )
                 return "i cannot find my voice right now. the fire is low."
 
-        logging.info(f"SacredModelRouter selected model: {selected_model_id}")
+        self.logger.info(f"SacredModelRouter selected model: {selected_model_id}")
 
         # Get the LLM client using the selected model ID
         # Ensure LLMClientFactory can handle fetching config based on model_id
@@ -878,7 +826,7 @@ class ChatEngine:
         )
 
         if not llm_client:
-            logging.error(
+            self.logger.error(
                 f"Failed to get LLM client for model: {selected_model_id}. Cannot generate response."
             )
             self.add_assistant_message(
@@ -900,13 +848,19 @@ class ChatEngine:
 
         # Call the selected LLM
         try:
-            logging.info(f"Calling LLM API with model: {selected_model_id}")
+            self.logger.info(f"Calling LLM API with model: {selected_model_id}")
             # Use generate_response instead of get_completion
             raw_response = llm_client.generate_response(
                 system_prompt=system_prompt,
                 messages=messages,
                 temperature=0.7,
                 max_tokens=500,
+                # Pass function calling parameters if enabled
+                **(
+                    {"functions": self._get_available_functions(), "enable_function_calling": True}
+                    if enable_function_calling
+                    else {}
+                )
             )
             # Extract response text and potential reasoning/tool calls
             response_text = (
@@ -921,11 +875,11 @@ class ChatEngine:
             )
             reasoning_content = raw_response.get("reasoning", None)
 
-            logging.info(
+            self.logger.info(
                 f"Received response from {selected_model_id}. Length: {len(response_text)} chars."
             )
         except Exception as e:
-            logging.error(
+            self.logger.error(
                 f"Error during LLM call for model {selected_model_id}: {e} — the fire falters."
             )
             response_text = "i encountered an obstacle. the path is unclear."
@@ -945,12 +899,12 @@ class ChatEngine:
             self.sacred_router.sacred_config.update_performance_data(
                 performance_metrics
             )
-            logging.debug("Performance data sent to SacredConfig.")
+            self.logger.debug("Performance data sent to SacredConfig.")
 
         # Handle tool calls if any
         if tool_calls and enable_function_calling:
             # Assuming _handle_function_calls exists and processes tool calls
-            logging.info(f"Handling {len(tool_calls)} tool calls.")
+            self.logger.info(f"Handling {len(tool_calls)} tool calls.")
             response_text += self._handle_function_calls(
                 tool_calls, response_text
             )  # Append tool call results/messages
@@ -1073,7 +1027,7 @@ class ChatEngine:
             try:
                 arguments = json.loads(arguments_str)
             except json.JSONDecodeError:
-                logging.error(
+                self.logger.error(
                     f"Failed to decode function call arguments for {function_name}: {arguments_str}"
                 )
                 response_content += f"\n\nError executing {function_name}: Invalid arguments provided by LLM."
@@ -1086,7 +1040,7 @@ class ChatEngine:
                     limit = arguments.get("limit", 5)  # Default limit if not provided
                     if query is None:
                         response_content += f"\n\nError executing {function_name}: 'query' argument is missing."
-                        logging.warning(
+                        self.logger.warning(
                             f"Missing 'query' argument for {function_name} call."
                         )
                         continue
@@ -1094,11 +1048,9 @@ class ChatEngine:
                     # Format results nicely for the user/context
                     formatted_results = ", ".join(
                         [
-                            (
-                                r.get("content", "")[:100] + "..."
-                                if r.get("content")
-                                else "[empty]"
-                            )
+                            r.get("content", "")[:100] + "..."
+                            if r.get("content")
+                            else "[empty]"
                             for r in results
                         ]
                     )
@@ -1113,7 +1065,7 @@ class ChatEngine:
                         response_content += f"\n\nMode changed to {mode}."
                     else:
                         response_content += f"\n\nError executing {function_name}: 'mode' argument is missing."
-                        logging.warning(
+                        self.logger.warning(
                             f"Missing 'mode' argument for {function_name} call."
                         )
 
@@ -1139,12 +1091,12 @@ class ChatEngine:
                         response_content += "\n\nError: Missing required parameters for implementation note."
 
                 # Log successful function execution
-                logging.info(
+                self.logger.info(
                     f"Successfully executed function: {function_name} with args {arguments}"
                 )
 
             except Exception as e:
-                logging.error(
+                self.logger.error(
                     f"Error executing function {function_name} with args {arguments}: {e}",
                     exc_info=True,
                 )
@@ -1159,7 +1111,7 @@ class ChatEngine:
             "default_mode"
         ) or self.persona_config.get("default_mode", "default")
         self.set_mode(default_mode_config)
-        logging.info(
+        self.logger.info(
             f"New session initialized: {self.session_id}. Mode reset to {self.current_mode}."
         )
 
@@ -1170,9 +1122,7 @@ class ChatEngine:
 
     def _determine_model_id_for_request(self):
         # This method is now deprecated and replaced by the SacredModelRouter logic in get_response
-        raise NotImplementedError(
-            "'_determine_model_id_for_request' is deprecated. Use SacredModelRouter in get_response."
-        )
+        raise NotImplementedError('_determine_model_id_for_request is deprecated. Use SacredModelRouter in get_response.')
 
     def get_optimized_context(
         self,
@@ -1275,29 +1225,46 @@ class ChatEngine:
         """
         # 1. PlanningAgent generates a plan
         plan = self.ade_planner.run(
-            "Review outstanding ADE tasks and plan today's work."
+            "Review outstanding ADE tasks and plan today's work." # This returns List[Dict]
         )
-        for task in plan:
+
+        tasks_for_coder = []
+        if plan and isinstance(plan, list):
+            for task_item in plan: # task_item is a Dict
+                if isinstance(task_item, dict) and "content" in task_item:
+                    tasks_for_coder.append(task_item["content"])
+                elif isinstance(task_item, str): # Fallback if planner returns list of strings
+                    tasks_for_coder.append(task_item)
+
+        if not tasks_for_coder:
+            self.logger.info("No actionable tasks extracted from plan for coding agent.")
+
+        for task_description in tasks_for_coder:
             # 2. CovenantEnforcer checks the task
-            approved = self.covenant_enforcer.verify_action({"task": task}, task)
+            approved = self.covenant_enforcer.verify_action({"task_description": task_description}, task_description)
             if not approved:
-                self.store_project_memory(
+                self.store_memory( # Changed from store_project_memory
                     memory_type="ade_covenant",
-                    content=f"Task blocked by CovenantEnforcer: {task}",
-                    ade_task=task,
+                    content=f"Task blocked by CovenantEnforcer: {task_description}",
+                    ade_task=task_description,
                     status="blocked",
                 )
                 continue
-            # Use ade_planner for development (no ade_coder)
-            dev_result = self.ade_planner.run(task["description"])
-            self.store_project_memory(
+
+            # Use ade_coder to execute the task
+            # Assuming ade_coder.execute_plan expects a list of task descriptions
+            # and returns a list of results. For a single task, wrap it.
+            coding_results_list = self.ade_coder.execute_plan([task_description])
+            dev_result = coding_results_list[0].get('result', {}) if coding_results_list else {}
+
+            self.store_memory( # Changed from store_project_memory
                 memory_type="ade_coding",
-                content=f"CodingAgent result for task: {task['description']}",
-                ade_task=task,
+                content=f"CodingAgent result for task: {task_description}",
+                ade_task=task_description,
                 dev_result=dev_result,
             )
         test_result = self.ade_tester.run_tests()
-        self.store_project_memory(
+        self.store_memory( # Changed from store_project_memory
             memory_type="ade_tester",
             content="TestingAgent completed test run.",
             test_result=test_result,
@@ -1306,7 +1273,7 @@ class ChatEngine:
             fail_task = {
                 "description": f"Fix failing tests: {test_result.get('details', '')}"
             }
-            self.store_project_memory(
+            self.store_memory( # Changed from store_project_memory
                 memory_type="ade_tester",
                 content="TestingAgent detected test failure, creating new task for PlanningAgent.",
                 ade_task=fail_task,
@@ -1318,11 +1285,7 @@ class ChatEngine:
         ADE periodic monitoring: check system health and log.
         """
         health_status = self.ade_monitor.run()
-        self.store_project_memory(
-            memory_type="ade_monitor",
-            content="MonitoringAgent completed periodic health check.",
-            health_status=health_status,
-        )
+        self.logger.info("MonitoringAgent completed periodic health check.", extra={"health_status": health_status})
         # ...existing code...
 
     def start_autonomous_scheduler(
@@ -1332,7 +1295,7 @@ class ChatEngine:
         Starts the autonomous agent scheduler. If test_mode_interval_minutes is set, runs all jobs every N minutes for rapid testing.
         """
         if hasattr(self, "scheduler") and getattr(self.scheduler, "running", False):
-            logging.info("Autonomous scheduler already running.")
+            self.logger.info("Autonomous scheduler already running.")
             return
         self.scheduler = BackgroundScheduler()
         interval = (
@@ -1351,7 +1314,7 @@ class ChatEngine:
                 minutes=interval,
                 id="ade_periodic_monitoring",
             )
-            logging.info(
+            self.logger.info(
                 f"Autonomous scheduler started in TEST MODE: every {interval} minutes."
             )
         else:
@@ -1364,13 +1327,13 @@ class ChatEngine:
                 minutes=15,
                 id="ade_periodic_monitoring",
             )
-            logging.info("Autonomous scheduler started in production mode.")
+            self.logger.info("Autonomous scheduler started in production mode.")
         self.scheduler.start()
 
     def shutdown_autonomous_scheduler(self):
         if hasattr(self, "scheduler") and getattr(self.scheduler, "running", False):
             self.scheduler.shutdown(wait=False)
-            logging.info("Autonomous scheduler shut down.")
+            self.logger.info("Autonomous scheduler shut down.")
 
     def get_ade_goals(
         self, status_filter: List[str] = ["new", "open"]
@@ -1390,24 +1353,22 @@ class ChatEngine:
                         ):
                             goals.append(entry)
         except Exception as e:
-            logging.error(f"Error reading ADE goals from memory: {e}")
+            self.logger.error(f"Error reading ADE goals from memory: {e}")
         return goals
 
-    def store_project_memory(self, memory_type: str, content: str, **metadata) -> bool:
+    def store_memory(self, memory_type: str, content: str, **metadata) -> bool: # Renamed from store_project_memory
         """
         i remember the important moments, the wisdom gathered along our path together.
         Store important project information to project memory.
 
         Args:
-            memory_type: Type of memory (decision, context_summary, implementation_note, project_insight)
+            memory_type: Type of memory (e.g. decision, ade_coding, context_summary, implementation_note, project_insight)
             content: The content to remember
             **metadata: Additional metadata specific to this memory type
 
         Returns:
             bool: Success or failure
         """
-        from .core.memory import save_memory
-
         entry = {
             "type": memory_type,
             "content": content,
@@ -1419,87 +1380,27 @@ class ChatEngine:
         if success:
             # Refresh loaded memories
             self.project_memories = load_memory()
-            logging.info(f"Added {memory_type} to project memory: {content[:50]}...")
+            self.logger.info(f"Added {memory_type} to project memory: {content[:50]}...")
         else:
-            logging.error(f"Failed to save {memory_type} to project memory")
+            self.logger.error(f"Failed to save {memory_type} to project memory")
 
         return success
 
     def save_decision(self, content: str, tags: Optional[List[str]] = None) -> bool:
         """Save an important decision to project memory."""
-        return self.store_project_memory("decision", content, tags=tags or [])
+        return self.store_memory("decision", content, tags=tags or [])
 
     def save_implementation_note(
         self, content: str, component: str, priority: str = "normal"
     ) -> bool:
         """Save an implementation note about code or architecture."""
-        return self.store_project_memory(
+        return self.store_memory(
             "implementation_note", content, component=component, priority=priority
         )
 
     def save_project_insight(self, content: str, impact: str = "medium") -> bool:
         """Save a high-level insight about the project."""
-        return bool(
-            self.store_project_memory("project_insight", content, impact=impact)
-        )
-
-    def generate_response(self, user_input: str) -> str:
-        self.logger.info(f"User input received: {user_input[:100]}...")
-
-        # Analyze prompt intent using the Sacred Trinity Router
-        trinity_intent = self.trinity_router.analyze_prompt_intent(user_input)
-        self.logger.debug(f"Detected Trinity intent: {trinity_intent}")
-
-        # Select model based on Trinity intent
-        # Placeholder: Integrate actual model selection from trinity_router
-        # For now, fallback to existing router or a default Trinity model
-        selected_model = None
-        if trinity_intent == "wisdom":
-            # selected_model = self.trinity_router.select_model_for_wisdom(user_input)
-            pass  # Placeholder
-        elif trinity_intent == "compassion":
-            # selected_model = self.trinity_router.select_model_for_compassion(user_input)
-            pass  # Placeholder
-        elif trinity_intent == "truth":
-            # selected_model = self.trinity_router.select_model_for_truth(user_input)
-            pass  # Placeholder
-            # Fallback to original model routing or a default if Trinity routing isn't fully implemented yet
-        if selected_model is None:
-            self.logger.debug(
-                "Trinity routing not fully implemented or intent not matched, using default model routing."
-            )
-            # Placeholder: Get actual model instance using selected_model_id
-            # selected_model = self._get_model_instance(selected_model_id) # Assuming _get_model_instance exists
-            pass  # Placeholder
-
-        # Placeholder: Use the selected_model to generate the actual response
-        # try:
-        #     raw_response = selected_model.generate_response(user_input)
-        # except Exception as e:
-        #     self.logger.error(f"Error generating response with model {selected_model_id}: {e}")
-        #     # Handle model failure, potentially using fallback
-        #     raw_response = "I encountered an error processing your request." # Default error message
-        raw_response = "[Placeholder response based on Trinity routing logic]"  # Temporary placeholder
-
-        # Add Sacred Trinity metadata to memory logging
-        # Placeholder: Modify this to include actual Trinity intent and potentially scores
-        memory_metadata = {
-            "trinity_intent": trinity_intent,
-            # Add other relevant metadata like selected_model_id, scores, etc.
-        }
-        self.memory_system.add_interaction(
-            user_input, raw_response, metadata=memory_metadata
-        )
-        self.logger.debug("Interaction added to memory with Trinity metadata.")
-
-        # Include Trinity alignment scoring in responses (Placeholder logic)
-        # This would likely involve a post-processing step or evaluation
-        # For now, just return the raw response or a formatted version
-        formatted_response = f"[Trinity Intent: {trinity_intent}] {raw_response}"
-
-        self.logger.info(f"Generated response: {formatted_response[:100]}...")
-        return formatted_response
-
+        return self.store_memory("project_insight", content, impact=impact)
 
 if __name__ == "__main__":
     import time
@@ -1525,7 +1426,3 @@ if __name__ == "__main__":
         logging.error(
             f"ChatEngine encountered an unhandled exception: {e}", exc_info=True
         )
-    finally:
-        # Ensure scheduler shutdown even on other exceptions if not handled by engine itself
-        if hasattr(engine, "scheduler") and getattr(engine.scheduler, "running", False):
-            engine.shutdown_autonomous_scheduler()

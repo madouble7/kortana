@@ -1,29 +1,38 @@
+#!/usr/bin/env python3
 """
-Relay Script with Gemini Integration
-===================================
+Enhanced Kor'tana Relay with Chain Routing & Pass the Torch Protocol
+====================================================================
 
-Adapted from your existing autonomous_relay.py to include:
-- Gemini 2.0 Flash summarization
-- Context package creation
-- Token monitoring and handoff management
-- Database persistence
+Integrated multi-stage AI chain with:
+- Gemini 2.0 Flash for initialization and summarization
+- Multiple AI providers (OpenAI, Anthropic, XAI, OpenRouter)
+- Pass the Torch protocol for living memory handoffs
+- Dashboard logging and token monitoring
+- Context package management
 
 Usage:
-    python relay.py                    # Single cycle
-    python relay.py --loop             # Continuous monitoring
-    python relay.py --summarize        # Force summarization
-    python relay.py --handoff AGENT    # Trigger agent handoff
+    python relay.py --status        # System status
+    python relay.py --route         # Test chain routing
+    python relay.py --torch         # Create torch package
+    python relay.py --dashboard     # Monitoring dashboard
+    python relay.py --demo          # Demo chain handoff
 """
 
+import argparse
 import json
 import os
 import sqlite3
-import time
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import requests
 import tiktoken
+
+# Import torch protocol
+sys.path.append(str(Path(__file__).parent.parent))
+from torch_protocol import TorchProtocol
 
 # Try to load environment variables from .env file
 try:
@@ -31,82 +40,80 @@ try:
 
     load_dotenv()
 except ImportError:
-    # python-dotenv not installed, continue without it
     pass
 
-# Try to import Gemini (graceful fallback if not installed)
+# Try to import google.genai components
 try:
-    import google.generativeai as genai
+    from google.genai import Client, GenerativeModel, types
 
     GENAI_AVAILABLE = True
 except ImportError:
     GENAI_AVAILABLE = False
-    print("[WARNING] google-generativeai not installed. Using mock summarization.")
+    print("[WARNING] google-genai components not available. Using mock summarization.")
+
+# Load API keys
+GEMINI_API_KEY = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+GITHUB_API_KEY = os.getenv("GITHUB_TOKEN")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 
-class KortanaRelay:
-    """Enhanced relay with Gemini integration and context management"""
+class EnhancedKortanaRelay:
+    """Enhanced relay with chain routing capabilities"""
 
-    def __init__(
-        self, project_root: Optional[str] = None, gemini_api_key: Optional[str] = None
-    ):
-        """Initialize relay with Gemini integration"""
+    def __init__(self, project_root: Optional[str] = None):
+        """Initialize enhanced relay"""
         self.project_root = (
             Path(project_root) if project_root else Path(__file__).parent.parent
         )
         self.logs_dir = self.project_root / "logs"
-        self.queues_dir = self.project_root / "queues"
-        self.relay_state_file = self.project_root / "data" / "relay_state.json"
         self.db_path = self.project_root / "kortana.db"
 
-        # Context window settings (Gemini 2.0 Flash has 1M+ tokens)
+        # Context window settings
         self.context_window = 128000  # Conservative 128K limit
         self.handoff_threshold = 0.8  # 80% of context window
 
         # Initialize database
-        self._init_database()  # Set up Gemini - check both GEMINI_API_KEY and GOOGLE_API_KEY
-        self.gemini_api_key = (
-            gemini_api_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-        )
+        self._init_database()
 
+        # Initialize torch protocol
+        self.torch_protocol = TorchProtocol(str(self.project_root))
+
+        # Set up Gemini using the new client approach
+        self.gemini_api_key = GEMINI_API_KEY
         if self.gemini_api_key and GENAI_AVAILABLE:
             try:
-                genai.configure(api_key=self.gemini_api_key)
-                self.model = genai.GenerativeModel("gemini-2.0-flash-exp")
+                # Use the new client-based initialization
+                self.client = Client(api_key=self.gemini_api_key)
+                # Create the GenerativeModel instance using the client
+                self.model = self.client.models.GenerativeModel("gemini-2.0-flash-exp")
                 print(
                     f"[AI] Gemini 2.0 Flash configured (key: {self.gemini_api_key[:10]}...)"
                 )
             except Exception as e:
-                print(f"[ERROR] Failed to configure Gemini: {e}")
+                print(f"[ERROR] Failed to configure Gemini client or model: {e}")
+                self.client = None  # Set client to None if setup fails
                 self.model = None
         else:
+            self.client = None  # Ensure client is None if not available
             self.model = None
-            if not self.gemini_api_key:
-                print("[WARNING] No Gemini API key found - using mock summarization")
-                print("[INFO] Set GOOGLE_API_KEY or GEMINI_API_KEY in .env file")
-            else:
-                print(
-                    "[WARNING] google-generativeai not available - using mock summarization"
-                )
+            print("[WARNING] Gemini not available - using mock responses")
 
-        # Load state and discover agents
-        self.relay_state = self._load_relay_state()
+        # Discover agents
         self.agents = self._discover_agents()
 
         print("[RELAY] Enhanced Kor'tana Relay initialized")
-        print(f"[LOGS] {self.logs_dir}")
-        print(f"[QUEUES] {self.queues_dir}")
         print(f"[DATABASE] {self.db_path}")
         print(f"[AGENTS] {list(self.agents.keys())}")
 
     def _init_database(self):
-        """Initialize SQLite database for context packages"""
+        """Initialize database tables"""
         self.db_path.parent.mkdir(exist_ok=True)
 
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        cursor.execute(
-            """
+
+        # Context packages table
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS context (
                 task_id TEXT PRIMARY KEY,
                 summary TEXT,
@@ -116,10 +123,48 @@ class KortanaRelay:
                 timestamp TEXT,
                 tokens INTEGER
             )
-        """
-        )
+        """)
+
+        # Token logging table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS token_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                task_id TEXT,
+                stage TEXT,
+                tokens INTEGER,
+                timestamp TEXT,
+                agent_name TEXT
+            )
+        """)
+
+        # Chain communication table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS chain_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                task_id TEXT,
+                stage TEXT,
+                tokens INTEGER,
+                timestamp TEXT,
+                agent_from TEXT,
+                agent_to TEXT
+            )
+        """)
+
         conn.commit()
         conn.close()
+
+    def _discover_agents(self) -> Dict[str, Any]:
+        """Discover available agents"""
+        agents = {}
+        if self.logs_dir.exists():
+            for log_file in self.logs_dir.glob("*.log"):
+                agents[log_file.stem] = {
+                    "log_file": log_file,
+                    "last_modified": log_file.stat().st_mtime
+                    if log_file.exists()
+                    else 0,
+                }
+        return agents
 
     def count_tokens(self, text: str, encoding_name: str = "cl100k_base") -> int:
         """Count tokens in text using tiktoken"""
@@ -127,27 +172,133 @@ class KortanaRelay:
             encoding = tiktoken.get_encoding(encoding_name)
             return len(encoding.encode(text))
         except Exception:
-            # Fallback: rough estimate (1 token ≈ 4 characters)
             return len(text) // 4
+
+    def log_token_usage(
+        self, task_id: str, stage: str, tokens: int, agent_name: str = "relay"
+    ):
+        """Log token usage to database"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO token_log (task_id, stage, tokens, timestamp, agent_name) VALUES (?, ?, ?, ?, ?)",
+                (task_id, stage, tokens, datetime.utcnow().isoformat(), agent_name),
+            )
+            conn.commit()
+            conn.close()
+            print(f"[TOKENS] {task_id}/{stage}: {tokens} tokens")
+        except Exception as e:
+            print(f"[WARNING] Token logging failed: {e}")
+
+    def log_chain_communication(
+        self, task_id: str, stage: str, tokens: int, agent_from: str, agent_to: str
+    ):
+        """Log agent-to-agent communication"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO chain_log (task_id, stage, tokens, timestamp, agent_from, agent_to) VALUES (?, ?, ?, ?, ?, ?)",
+                (
+                    task_id,
+                    stage,
+                    tokens,
+                    datetime.utcnow().isoformat(),
+                    agent_from,
+                    agent_to,
+                ),
+            )
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            print(f"[WARNING] Chain logging failed: {e}")
+
+    def call_gemini_flash(
+        self, task: Dict[str, Any], history: str, max_tokens: int = 2000
+    ) -> str:
+        """Call Gemini 2.0 Flash for task processing"""
+        if not self.model:
+            return f"[MOCK GEMINI] Processing task: {task.get('description', 'Unknown task')[:100]}..."
+
+        try:
+            prompt = f"""Task: {task.get("description", "")}
+
+Context History:
+{history}
+
+Instructions:
+- Analyze the task requirements
+- Consider the conversation history
+- Provide a focused response
+- Focus on actionable insights and next steps
+
+Response:"""
+
+            response = self.model.generate_content(prompt)
+            return response.text
+
+        except Exception as e:
+            print(f"[WARNING] Gemini Flash call failed: {e}")
+            return f"[ERROR] Failed to process with Gemini: {e}"
+
+    def call_github_models(
+        self, model: str, task: Dict[str, Any], history: str, max_tokens: int = 1000
+    ) -> str:
+        """Call GitHub Models API for testing and validation"""
+        if not GITHUB_API_KEY:
+            return f"[MOCK GITHUB] {model} processing: {task.get('description', '')[:100]}..."
+
+        try:
+            prompt = f"Task: {task.get('description', '')}\nHistory: {history}"
+
+            payload = {
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "You are an AI assistant helping with software development tasks.",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                "model": model,
+                "max_tokens": max_tokens,
+                "temperature": 0.7,
+            }
+
+            response = requests.post(
+                "https://models.inference.ai.azure.com/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {GITHUB_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json=payload,
+                timeout=30,
+            )
+
+            if response.status_code == 200:
+                result = response.json()
+                return (
+                    result.get("choices", [{}])[0].get("message", {}).get("content", "")
+                )
+            else:
+                return f"[FALLBACK] GitHub Models API error: {response.status_code}"
+
+        except Exception as e:
+            return f"[FALLBACK] GitHub Models error: {e}"
 
     def summarize_with_gemini(self, history: str, max_tokens: int = 1000) -> str:
         """Summarize text using Gemini 2.0 Flash"""
         if not self.model:
-            # Mock summarization for testing
-            return f"[MOCK SUMMARY] {history[:200]}... (original: {len(history)} chars, target: {max_tokens} tokens)"
+            return f"[MOCK SUMMARY] {history[:200]}... (target: {max_tokens} tokens)"
 
         try:
-            prompt = f"""Summarize the following agent conversation history to approximately {max_tokens} tokens.
-            Focus on:
-            - Key decisions and actions taken
-            - Current task status and progress
-            - Important context needed for handoff
-            - Unresolved issues or blockers
+            prompt = f"""Summarize the following conversation history to approximately {max_tokens} tokens.
+Focus on key decisions, current status, and important context for handoff.
 
-            History:
-            {history}
+History:
+{history}
 
-            Provide a concise summary suitable for agent handoff:"""
+Provide a concise summary:"""
 
             response = self.model.generate_content(prompt)
             return response.text
@@ -161,23 +312,20 @@ class KortanaRelay:
         task_id: str,
         summary: str,
         code: str = "",
-        issues: List[str] = None,
+        issues: Optional[List[str]] = None,
         commit_ref: str = "",
     ) -> int:
         """Save context package to database"""
         issues = issues or []
         package_data = {"summary": summary, "code": code, "issues": issues}
-
         tokens = self.count_tokens(json.dumps(package_data))
 
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         cursor.execute(
-            """
-            INSERT OR REPLACE INTO context
+            """INSERT OR REPLACE INTO context
             (task_id, summary, code, issues, commit_ref, timestamp, tokens)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """,
+            VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (
                 task_id,
                 summary,
@@ -194,292 +342,206 @@ class KortanaRelay:
         print(f"[SAVED] Context package '{task_id}' ({tokens} tokens)")
         return tokens
 
-    def relay_context(self, task: Dict[str, Any], history: str) -> str:
-        """Main context relay logic - checks if summarization needed"""
+    def route_task(
+        self, task: Dict[str, Any], history: str, context_window: Optional[int] = None
+    ) -> tuple[str, str]:
+        """Route task through the AI chain based on stage and context"""
+        context_window = context_window or self.context_window
         history_tokens = self.count_tokens(history)
-        threshold_tokens = int(self.context_window * self.handoff_threshold)
+        task_tokens = self.count_tokens(task.get("description", ""))
 
         print(
-            f"[TOKENS] Usage: {history_tokens}/{self.context_window} ({history_tokens / self.context_window * 100:.1f}%)"
+            f"[ROUTE] Task {task.get('id', 'unknown')} stage: {task.get('stage', 'init')}"
+        )
+        print(f"[TOKENS] History: {history_tokens}, Task: {task_tokens}")
+
+        self.log_token_usage(
+            task.get("id", "unknown"),
+            task.get("stage", "unknown"),
+            history_tokens + task_tokens,
         )
 
-        if history_tokens > threshold_tokens:
-            print("[ALERT] Token threshold exceeded! Triggering summarization...")
+        # Step 1: Task Initiation (Gemini 2.0 Flash)
+        if task.get("stage") == "init":
+            print("[STAGE] Initializing with Gemini 2.0 Flash...")
+            output = self.call_gemini_flash(task, history)
+            task["code"] = output
+            task["stage"] = "summarize"
 
-            # Summarize history
-            summary = self.summarize_with_gemini(history, max_tokens=1000)
-
-            # Save context package
-            tokens_saved = self.save_context_package(
-                task_id=task.get("id", f"task_{int(time.time())}"),
-                summary=summary,
-                code=task.get("code", ""),
-                issues=task.get("issues", []),
-                commit_ref=task.get("commit_ref", ""),
+            tokens = self.save_context_package(
+                task.get("id", "unknown"),
+                history,
+                output,
+                task.get("issues", []),
+                task.get("commit_ref", ""),
             )
+            self.log_token_usage(task.get("id", "unknown"), "init", tokens)
+            return output, history  # Step 2: Summarization & Handoff
+        if task.get("stage") == "summarize" and history_tokens > 0.4 * context_window:
+            print("[STAGE] Summarizing with Gemini for handoff...")
+            summary = self.summarize_with_gemini(history)
 
-            print(f"[OK] Context compressed: {history_tokens} -> {tokens_saved} tokens")
-            return summary
-
-        return history
-
-    def _discover_agents(self) -> Dict[str, Dict[str, Path]]:
-        """Auto-discover agents from log and queue files"""
-        agents = {}
-        log_files = list(self.logs_dir.glob("*.log"))
-
-        for log_file in log_files:
-            agent_name = log_file.stem
-            queue_file = self.queues_dir / f"{agent_name}_in.txt"
-
-            agents[agent_name] = {
-                "log": log_file,
-                "queue": queue_file,
-                "status": "discovered",
-            }
-
-            queue_file.parent.mkdir(exist_ok=True)
-            queue_file.touch(exist_ok=True)
-
-        return agents
-
-    def _load_relay_state(self) -> Dict[str, Any]:
-        """Load relay state"""
-        if self.relay_state_file.exists():
+            # TORCH PROTOCOL: Create torch package for agent handoff
+            print("[TORCH] Creating torch package for agent handoff...")
             try:
-                with open(self.relay_state_file, "r") as f:
-                    return json.load(f)
-            except (json.JSONDecodeError, FileNotFoundError):
-                pass
-        return {}
-
-    def _save_relay_state(self):
-        """Save relay state"""
-        self.relay_state_file.parent.mkdir(exist_ok=True)
-        with open(self.relay_state_file, "w") as f:
-            json.dump(self.relay_state, f, indent=2)
-
-    def _get_new_messages(self, agent_name: str) -> List[str]:
-        """Get new messages from agent log"""
-        log_file = self.agents[agent_name]["log"]
-        if not log_file.exists():
-            return []
-
-        agent_state = self.relay_state.get(agent_name, {})
-        last_line_count = agent_state.get("last_line_count", 0)
-
-        try:
-            with open(log_file, "r", encoding="utf-8") as f:
-                lines = f.readlines()
-        except Exception as e:
-            print(f"[WARNING] Error reading {log_file}: {e}")
-            return []
-
-        new_lines = lines[last_line_count:]
-        new_messages = [
-            line.strip()
-            for line in new_lines
-            if line.strip() and not line.startswith("//")
-        ]
-
-        if new_messages:
-            self.relay_state[agent_name] = {
-                "last_line_count": len(lines),
-                "last_processed_time": datetime.now().isoformat(),
-                "messages_processed": agent_state.get("messages_processed", 0)
-                + len(new_messages),
-            }
-
-        return new_messages
-
-    def _relay_to_all_other_agents(self, source_agent: str, messages: List[str]) -> int:
-        """Relay messages to other agents"""
-        if not messages:
-            return 0
-
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        relayed_count = 0
-
-        for target_agent, agent_info in self.agents.items():
-            if target_agent == source_agent:
-                continue
-
-            queue_file = agent_info["queue"]
-            try:
-                with open(queue_file, "a", encoding="utf-8") as f:
-                    for message in messages:
-                        relay_message = f"[{timestamp}] {source_agent}: {message}"
-                        f.write(relay_message + "\n")
-                        relayed_count += 1
-
-                print(
-                    f"[RELAY] {source_agent} -> {target_agent}: {len(messages)} messages"
+                torch_data = self.torch_protocol.prompt_torch_filler(
+                    agent_name="gemini-2.0-flash",
+                    context=f"{history}\n\nTask: {task.get('description', '')}",
+                    handoff_reason="Context window threshold reached, handing off to testing stage",
+                    task_id=task.get("id", "unknown"),
+                    auto_mode=True,
                 )
+                torch_id = self.torch_protocol.save_torch_package(
+                    torch_data, from_agent="gemini-2.0-flash", to_agent="github-models"
+                )
+                print(f"[TORCH] Torch package created: {torch_id}")
             except Exception as e:
-                print(f"[WARNING] Error writing to {queue_file}: {e}")
+                print(f"[TORCH] Warning: Failed to create torch package: {e}")
 
-        return relayed_count
-
-    def relay_cycle(self) -> Dict[str, int]:
-        """Single relay cycle with context management"""
-        cycle_stats = {
-            "agents_checked": 0,
-            "messages_found": 0,
-            "messages_relayed": 0,
-            "active_agents": 0,
-            "context_packages_created": 0,
-        }
-
-        print(f"[CYCLE] Enhanced relay cycle at {datetime.now().strftime('%H:%M:%S')}")
-
-        for agent_name in self.agents.keys():
-            cycle_stats["agents_checked"] += 1
-
-            # Get new messages
-            new_messages = self._get_new_messages(agent_name)
-
-            if new_messages:
-                cycle_stats["messages_found"] += len(new_messages)
-                print(f"[MESSAGES] {agent_name}: {len(new_messages)} new messages")
-
-                # Check if context relay needed
-                history = "\n".join(new_messages)
-                task = {
-                    "id": f"{agent_name}_{int(time.time())}",
-                    "code": "",
-                    "issues": [],
-                    "commit_ref": "",
-                }
-
-                processed_history = self.relay_context(task, history)
-                if processed_history != history:
-                    cycle_stats["context_packages_created"] += 1
-
-                # Relay to other agents
-                relayed = self._relay_to_all_other_agents(agent_name, new_messages)
-                cycle_stats["messages_relayed"] += relayed
-
-        self._save_relay_state()
-        return cycle_stats
-
-    def print_status(self):
-        """Print system status including database info"""
-        print("\n" + "=" * 60)
-        print("[STATUS] KOR'TANA ENHANCED RELAY STATUS")
-        print("=" * 60)
-
-        # Agent status
-        for agent_name, agent_info in self.agents.items():
-            status = agent_info.get("status", "unknown")
-            status_indicators = {
-                "active": "[ACTIVE]",
-                "idle": "[IDLE]",
-                "inactive": "[INACTIVE]",
-                "discovered": "[DISCOVERED]",
-            }
-            indicator = status_indicators.get(status, "[UNKNOWN]")
-
-            agent_state = self.relay_state.get(agent_name, {})
-            msg_count = agent_state.get("messages_processed", 0)
-            last_time = agent_state.get("last_processed_time", "never")
-
-            print(
-                f"{indicator} {agent_name:10} | {status:8} | {msg_count:3} msgs | {last_time}"
+            tokens = self.save_context_package(
+                task.get("id", "unknown"),
+                summary,
+                task.get("code", ""),
+                task.get("issues", []),
+                task.get("commit_ref", ""),
             )
+            task["stage"] = "test"
+            self.log_token_usage(task.get("id", "unknown"), "summarize", tokens)
+            return task.get("code", ""), summary
 
-        # Database status
-        print("\n[DATABASE] DATABASE STATUS")
-        try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            cursor.execute("SELECT COUNT(*), SUM(tokens) FROM context")
-            count, total_tokens = cursor.fetchone()
-            conn.close()
+        # Step 3: Testing & Validation (GitHub Models)
+        if task.get("stage") == "test":
+            print("[STAGE] Testing with GitHub Models...")
+            model = (
+                "claude-3-haiku"
+                if "dialogue" in task.get("description", "").lower()
+                else "gpt-4o-mini"
+            )
+            output = self.call_github_models(model, task, history)
+            task["stage"] = "production"
 
-            print(f"   Context packages: {count}")
-            print(f"   Total tokens saved: {total_tokens or 0}")
-        except Exception as e:
-            print(f"   Database error: {e}")
+            tokens = self.save_context_package(
+                task.get("id", "unknown"),
+                history,
+                task.get("code", ""),
+                task.get("issues", []),
+                task.get("commit_ref", ""),
+            )
+            self.log_token_usage(task.get("id", "unknown"), "test", tokens)
+            return output, history
 
-        print("=" * 60)
+        # Step 4: Production Scaling
+        if task.get("stage") == "production":
+            print("[STAGE] Production scaling (OpenRouter integration planned)...")
+            return task.get("code", ""), history
 
-    def run_loop(self, interval: int = 5):
-        """Run continuous relay loop with context management"""
-        print(f"[START] Enhanced relay loop starting (interval: {interval}s)")
-        print("[INFO] Set GEMINI_API_KEY environment variable for AI summarization")
-        print("[INFO] Press Ctrl+C to stop")
+        return task.get("code", ""), history
 
-        cycle_count = 0
 
-        try:
-            while True:
-                cycle_count += 1
-                stats = self.relay_cycle()
+def print_dashboard():
+    """Print monitoring dashboard if available"""
+    try:
+        sys.path.append(str(Path(__file__).parent))
+        from monitor import KortanaEnhancedMonitor
 
-                if cycle_count % 10 == 0:
-                    self.print_status()
-
-                if stats["messages_found"] > 0:
-                    print(
-                        f"[OK] Cycle {cycle_count}: {stats['messages_found']} found, {stats['messages_relayed']} relayed, {stats['context_packages_created']} summarized"
-                    )
-                elif cycle_count % 30 == 0:
-                    print(
-                        f"[HEARTBEAT] Cycle {cycle_count}: Monitoring {stats['agents_checked']} agents"
-                    )
-
-                time.sleep(interval)
-
-        except KeyboardInterrupt:
-            print(f"\n[STOP] Enhanced relay stopped after {cycle_count} cycles")
-            self.print_status()
+        monitor = KortanaEnhancedMonitor()
+        monitor.print_dashboard()
+    except ImportError:
+        print("[INFO] Enhanced monitoring dashboard not available")
+        print("[INFO] Use: python relays/monitor.py --dashboard")
 
 
 def main():
-    """Main entry point"""
-    import argparse
-
+    """Main function for testing chain routing"""
     parser = argparse.ArgumentParser(
-        description="Enhanced Kor'tana Relay with Gemini Integration"
+        description="Enhanced Kor'tana Relay with Chain Routing"
     )
-    parser.add_argument("--loop", action="store_true", help="Run continuous relay loop")
+    parser.add_argument("--route", action="store_true", help="Test task routing")
     parser.add_argument(
-        "--interval", type=int, default=5, help="Loop interval in seconds"
-    )
-    parser.add_argument("--status", action="store_true", help="Show status and exit")
-    parser.add_argument(
-        "--summarize", action="store_true", help="Force summarization test"
+        "--task-id", default="dialogue_parser_001", help="Task ID for routing test"
     )
     parser.add_argument(
-        "--api-key", type=str, help="Gemini API key (or set GEMINI_API_KEY env var)"
+        "--dashboard", action="store_true", help="Show monitoring dashboard"
     )
+    parser.add_argument("--summarize", action="store_true", help="Force summarization")
+    parser.add_argument("--status", action="store_true", help="Show system status")
+    parser.add_argument("--torch", action="store_true", help="Create torch package")
 
     args = parser.parse_args()
 
-    # Initialize enhanced relay
-    relay = KortanaRelay(gemini_api_key=args.api_key)
+    # Initialize relay
+    relay = EnhancedKortanaRelay()
+
+    if args.dashboard:
+        print_dashboard()
+        return
+
+    if args.route:
+        print("[TEST] Testing chain routing functionality...")
+
+        task = {
+            "id": args.task_id,
+            "description": "Implement dialogue parser with regex and NLP integration",
+            "code": "",
+            "issues": ["Add NLP integration", "Optimize regex patterns"],
+            "commit_ref": "github.com/kortana/repo/commit/abc123",
+            "stage": "init",
+        }
+
+        history = "Starting dialogue parser implementation. Need to handle complex conversation patterns."
+
+        print(f"[TASK] Processing: {task['description']}")
+        print(f"[STAGE] Initial stage: {task['stage']}")
+
+        # Route through the chain
+        output, new_history = relay.route_task(task, history)
+
+        print(f"\n[OUTPUT] Result: {output[:200]}...")
+        print(f"[HISTORY] New history length: {len(new_history)} chars")
+        print(f"[STAGE] Final stage: {task['stage']}")
+
+        print_dashboard()
+        return
 
     if args.status:
-        relay.print_status()
-    elif args.summarize:
-        # Test summarization
-        test_history = "Agent claude analyzed the system. Agent flash provided quick insights. Agent weaver coordinated the workflow."
-        task = {
-            "id": "test_summarization",
-            "code": "def test(): pass",
-            "issues": ["Add tests"],
-        }
-        result = relay.relay_context(task, test_history)
-        print(f"[RESULT] Summarization test result:\n{result}")
-    elif args.loop:
-        relay.run_loop(args.interval)
-    else:
-        print("[INFO] Running single enhanced relay cycle...")
-        stats = relay.relay_cycle()
-        print(
-            f"[COMPLETE] {stats['messages_found']} found, {stats['messages_relayed']} relayed, {stats['context_packages_created']} summarized"
+        print("[STATUS] Enhanced Kor'tana Relay System")
+        print("=" * 50)
+        print(f"Database: {relay.db_path}")
+        print(f"Agents: {len(relay.agents)}")
+        print(f"Context Window: {relay.context_window:,} tokens")
+        print(f"Gemini API: {'Configured' if relay.model else 'Not available'}")
+        print(f"GitHub API: {'Configured' if GITHUB_API_KEY else 'Not configured'}")
+        return
+
+    if args.summarize:
+        test_text = """
+        Agent claude analyzed the dialogue parsing requirements.
+        Agent weaver coordinated the workflow between parsing and NLP components.
+        Agent flash provided quick insights on regex optimization.
+        The current implementation handles basic conversation patterns but needs enhancement for complex dialogues.
+        Token usage is at 50% of the context window.
+        """
+
+        summary = relay.summarize_with_gemini(test_text)
+        print(f"[SUMMARY] {summary}")
+        return
+
+    if args.torch:
+        print("[TORCH] Creating interactive torch package...")
+        torch_data = relay.torch_protocol.prompt_torch_filler(
+            agent_name="relay-user",
+            context="Interactive torch creation from relay system",
+            handoff_reason="Manual torch creation requested",
+            task_id=args.task_id,
         )
-        relay.print_status()
+        torch_id = relay.torch_protocol.save_torch_package(
+            torch_data, from_agent="relay-user", to_agent="next-agent"
+        )
+        print(f"[TORCH] Torch package created with ID: {torch_id}")
+        return
+
+    # Default: show help
+    parser.print_help()
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@ import os
 from typing import Any, Dict, Optional
 
 from .base_client import BaseLLMClient
-from .genai_client import GoogleGenAIClient
+from .google_client import GoogleGeminiClient # Changed to use the more robust GoogleGeminiClient
 from .openai_client import OpenAIClient
 from .openrouter_client import OpenRouterClient
 from .xai_client import XAIClient
@@ -23,8 +23,8 @@ class LLMClientFactory:
         "anthropic/claude-3-haiku": OpenRouterClient,
         "gpt-4.1-nano": OpenAIClient,
         "gpt-4o-mini-openai": OpenAIClient,
-        "gemini-2.5-flash": GoogleGenAIClient,
-        "gemini-2.0-flash-lite": GoogleGenAIClient,
+        "gemini-2.5-flash": GoogleGeminiClient, # Changed to GoogleGeminiClient
+        "gemini-2.0-flash-lite": GoogleGeminiClient, # Changed to GoogleGeminiClient
         "x-ai/grok-3-mini-beta": XAIClient,
         "deepseek/deepseek-chat-v3-0324": OpenRouterClient,
         "deepseek-chat-v3-openrouter": OpenRouterClient,
@@ -92,8 +92,8 @@ class LLMClientFactory:
                 client = XAIClient(
                     api_key=api_key,
                     base_url=model_conf.get("base_url", "https://api.x.ai/v1"),
-                )
-            elif client_class == GoogleGenAIClient:
+                ) # Ensure model_name is passed if XAIClient expects it
+            elif client_class == GoogleGeminiClient: # Changed to GoogleGeminiClient
                 client = GoogleGenAIClient(
                     api_key=api_key,
                     model_name=model_conf.get("model_name", model_id),

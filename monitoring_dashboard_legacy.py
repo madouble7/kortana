@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Kor'tana Monitoring Dashboard
-============================
+=============================
 Real-time monitoring of the autonomous agent system
 """
 
@@ -11,13 +11,13 @@ import sqlite3
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 
 class KortanaMonitor:
     """Real-time monitoring dashboard for Kor'tana system"""
 
-    def __init__(self, project_root: str = None):
+    def __init__(self, project_root: Optional[str] = None):
         self.project_root = (
             Path(project_root) if project_root else Path(__file__).parent
         )
@@ -50,9 +50,7 @@ class KortanaMonitor:
                         for line in lines
                         if line.strip() and not line.startswith("//")
                     ]
-                    message_count = len(messages)
-
-                    # Check if active (messages in last hour)
+                    message_count = len(messages)                    # Check if active (messages in last hour)
                     is_active = False
                     if lines:
                         try:
@@ -63,7 +61,7 @@ class KortanaMonitor:
                             is_active = (datetime.now() - modified_time) < timedelta(
                                 hours=1
                             )
-                        except:
+                        except Exception:
                             pass
 
                     stats["agents"][agent_name] = {
@@ -134,6 +132,115 @@ class KortanaMonitor:
 
         return stats
 
+    def get_torch_stats(self) -> Dict[str, Any]:
+        """Get torch protocol statistics"""
+        stats = {
+            "total_torches": 0,
+            "active_torches": 0,
+            "recent_handoffs": [],
+            "agent_lineage": [],
+            "torch_chains": {},
+            "error": None
+        }
+
+        try:
+            if not self.db_path.exists():
+                stats["error"] = "Database not found"
+                return stats
+
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            # Check if torch tables exist
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'torch_%'")
+            torch_tables = [row[0] for row in cursor.fetchall()]
+
+            if not torch_tables:
+                stats["error"] = "Torch tables not found - torch protocol not initialized"
+                conn.close()
+                return stats
+
+            # Get total torch packages
+            cursor.execute("SELECT COUNT(*) FROM torch_packages")
+            stats["total_torches"] = cursor.fetchone()[0]
+
+            # Get active torches
+            cursor.execute("SELECT COUNT(*) FROM torch_packages WHERE status = 'active'")
+            stats["active_torches"] = cursor.fetchone()[0]
+
+            # Get recent handoffs
+            cursor.execute("""
+                SELECT torch_id, task_title, from_agent, to_agent, handoff_reason,
+                       timestamp, tokens
+                FROM torch_packages
+                ORDER BY timestamp DESC
+                LIMIT 10
+            """)
+
+            for row in cursor.fetchall():
+                stats["recent_handoffs"].append({
+                    "torch_id": row[0],
+                    "task_title": row[1],
+                    "from_agent": row[2],
+                    "to_agent": row[3],
+                    "handoff_reason": row[4],
+                    "timestamp": row[5],
+                    "tokens": row[6]
+                })
+
+            # Get agent lineage data
+            cursor.execute("""
+                SELECT tl.torch_id, tp.task_title, tl.agent_name, tl.timestamp,
+                       tl.contribution_summary
+                FROM torch_lineage tl
+                JOIN torch_packages tp ON tl.torch_id = tp.torch_id
+                ORDER BY tl.timestamp DESC
+                LIMIT 20
+            """)
+
+            for row in cursor.fetchall():
+                stats["agent_lineage"].append({
+                    "torch_id": row[0],
+                    "task_title": row[1],
+                    "agent_name": row[2],
+                    "timestamp": row[3],
+                    "contribution": row[4]
+                })
+
+            # Analyze torch chains
+            cursor.execute("""
+                SELECT torch_id, COUNT(*) as chain_length
+                FROM torch_lineage
+                GROUP BY torch_id
+                ORDER BY chain_length DESC
+                LIMIT 5
+            """)
+
+            for row in cursor.fetchall():
+                torch_id = row[0]
+                chain_length = row[1]
+
+                # Get chain details
+                cursor.execute("""
+                    SELECT agent_name, timestamp
+                    FROM torch_lineage
+                    WHERE torch_id = ?
+                    ORDER BY sequence_number
+                """, (torch_id,))
+
+                chain_agents = [agent_row[0] for agent_row in cursor.fetchall()]
+                stats["torch_chains"][torch_id] = {
+                    "length": chain_length,
+                    "agents": chain_agents
+                }
+
+            conn.close()
+
+        except Exception as e:
+            stats["error"] = str(e)
+
+        return stats
+
     def get_system_health(self) -> Dict[str, Any]:
         """Get overall system health"""
         health = {
@@ -165,15 +272,14 @@ class KortanaMonitor:
                         last_time = datetime.fromisoformat(
                             most_recent.replace("Z", "+00:00")
                         )
-                        time_diff = datetime.now() - last_time.replace(tzinfo=None)
-                        if time_diff < timedelta(minutes=10):
+                        time_diff = datetime.now() - last_time.replace(tzinfo=None)                        if time_diff < timedelta(minutes=10):
                             health["status"] = "active"
                         elif time_diff < timedelta(hours=1):
                             health["status"] = "idle"
                         else:
                             health["status"] = "inactive"
                             health["issues"].append("No recent activity")
-                    except:
+                    except Exception:
                         health["status"] = "unknown"
                         health["issues"].append("Cannot parse timestamp")
 
@@ -253,7 +359,63 @@ class KortanaMonitor:
                     f"   📦 {activity['task_id'][:20]:20} | {activity['tokens']:4} tokens | {timestamp}"
                 )
 
+        # Torch Protocol Statistics
+        torch_stats = self.get_torch_stats()
+        if not torch_stats.get("error"):
+            print("\n🔥 TORCH PROTOCOL:")
+            print(f"   Total Torches: {torch_stats['total_torches']}")
+            print(f"   Active Torches: {torch_stats['active_torches']}")
+
+            if torch_stats["recent_handoffs"]:
+                print("\n   Recent Handoffs:")
+                for handoff in torch_stats["recent_handoffs"][:3]:
+                    timestamp = handoff["timestamp"][:19] if handoff["timestamp"] else "unknown"
+                    print(f"   🔥 {handoff['from_agent']} → {handoff['to_agent']} | {timestamp}")
+
         print("\n" + "=" * 70)
+
+    def print_torch_dashboard(self):
+        """Print torch protocol specific dashboard"""
+        print("\n🔥 TORCH PROTOCOL DASHBOARD")
+        print("=" * 50)
+
+        torch_stats = self.get_torch_stats()
+
+        if torch_stats["error"]:
+            print(f"❌ Error: {torch_stats['error']}")
+            return
+
+        print(f"🔥 Total Torch Packages: {torch_stats['total_torches']}")
+        print(f"🔥 Active Torches: {torch_stats['active_torches']}")
+
+        # Recent handoffs
+        if torch_stats["recent_handoffs"]:
+            print("\n📋 RECENT HANDOFFS:")
+            for handoff in torch_stats["recent_handoffs"][:5]:
+                timestamp = handoff["timestamp"][:19] if handoff["timestamp"] else "unknown"
+                print(f"  🔥 {handoff['torch_id'][:8]}... | {handoff['from_agent']} → {handoff['to_agent']}")
+                print(f"     Task: {handoff['task_title'][:40]}...")
+                print(f"     Reason: {handoff['handoff_reason'][:50]}...")
+                print(f"     Time: {timestamp} | Tokens: {handoff['tokens']:,}")
+                print()
+
+        # Torch chains
+        if torch_stats["torch_chains"]:
+            print("🔗 LONGEST TORCH CHAINS:")
+            for torch_id, chain_info in torch_stats["torch_chains"].items():
+                print(f"  🔥 {torch_id[:8]}... | Chain Length: {chain_info['length']}")
+                print(f"     Agent Flow: {' → '.join(chain_info['agents'])}")
+                print()
+
+        # Agent lineage
+        if torch_stats["agent_lineage"]:
+            print("👥 RECENT AGENT CONTRIBUTIONS:")
+            for contrib in torch_stats["agent_lineage"][:5]:
+                timestamp = contrib["timestamp"][:19] if contrib["timestamp"] else "unknown"
+                print(f"  📝 {contrib['agent_name']} | {timestamp}")
+                print(f"     Task: {contrib['task_title'][:40]}...")
+                print(f"     Contribution: {contrib['contribution'][:60]}...")
+                print()
 
     def monitor_loop(self, interval: int = 30):
         """Run continuous monitoring loop"""
@@ -287,9 +449,10 @@ def main():
     print("2. Continuous monitoring")
     print("3. Agent details")
     print("4. Database analysis")
+    print("5. Torch protocol analysis")
     print("0. Exit")
 
-    choice = input("\nEnter choice (0-4): ").strip()
+    choice = input("\nEnter choice (0-5): ").strip()
 
     if choice == "1":
         monitor.print_dashboard()
@@ -321,6 +484,8 @@ def main():
                 print(
                     f"  {activity['task_id']} | {activity['tokens']} tokens | {activity['timestamp']}"
                 )
+    elif choice == "5":
+        monitor.print_torch_dashboard()
     elif choice == "0":
         print("Monitoring session ended.")
     else:

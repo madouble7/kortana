@@ -20,8 +20,8 @@ class MemoryAgent:
         if not self.pc.has_index(index_name):
             self.pc.create_index_for_model(
                 name=index_name,
-                cloud="aws",
-                region=pinecone_env,  # e.g., "us-east-1"
+                cloud="gcp",
+                region=pinecone_env,
                 embed={
                     "model": "llama-text-embed-v2",
                     "field_map": {"text": "chunk_text"},
@@ -67,7 +67,10 @@ class MemoryAgent:
 
     def verify(self, query: str) -> List[Dict]:
         """Run a semantic search in Pinecone and return the top 3 matches."""
-        results = self.index.search(
-            namespace="default", query={"top_k": 3, "inputs": {"text": query}}
+        results = self.index.query(
+            namespace="default",
+            top_k=3,
+            include_metadata=True,
+            query={"inputs": {"text": query}},
         )
-        return results["result"]["hits"]
+        return results.get('matches', [])

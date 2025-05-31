@@ -15,13 +15,13 @@ from datetime import datetime
 # Add project root to path
 sys.path.append(str(Path(__file__).parent))
 
-from relays.relay import KortanaRelay
+from relays.relay import EnhancedKortanaRelay
 
 class AITestSuite:
     """Comprehensive AI testing for Gemini 2.0 Flash integration"""
 
     def __init__(self):
-        self.relay = KortanaRelay()
+        self.relay = EnhancedKortanaRelay()
         self.test_results = []
         self.token_usage = {
             "total_input": 0,
@@ -156,7 +156,7 @@ class AITestSuite:
         small_history = "Agent activity log with minimal content."
         small_task = {"id": "small_test", "code": "", "issues": []}
 
-        result_small = self.relay.relay_context(small_task, small_history)
+        output_small, result_small = self.relay.route_task(small_task, small_history)
 
         if result_small == small_history:
             self.log_test("Below Threshold", "PASS", "No summarization triggered")
@@ -170,7 +170,7 @@ class AITestSuite:
         large_history = "Large agent conversation history. " * 1000  # Force threshold
         large_task = {"id": "large_test", "code": "test_code", "issues": ["test_issue"]}
 
-        result_large = self.relay.relay_context(large_task, large_history)
+        output_large, result_large = self.relay.route_task(large_task, large_history)
 
         if result_large != large_history:
             self.log_test("Above Threshold", "PASS", "Summarization triggered correctly")
@@ -223,7 +223,8 @@ class AITestSuite:
                 self.log_test(f"Agent {agent_name}", "WARN", "No log file found")
 
     def run_full_test_suite(self):
-        """Run complete AI test suite"""        print("[TEST] KOR'TANA AI TEST SUITE - GEMINI 2.0 FLASH")
+        """Run complete AI test suite"""
+        print("[TEST] KOR'TANA AI TEST SUITE - GEMINI 2.0 FLASH")
         print("=" * 50)
         print(f"[TIME] Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"[KEY] API Key: {self.relay.gemini_api_key[:15]}..." if self.relay.gemini_api_key else "No API key")

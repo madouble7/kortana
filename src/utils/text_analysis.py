@@ -179,7 +179,17 @@ def detect_emphasis_all_caps(text: str, threshold_ratio: float = 0.6) -> bool:
 
 
 def detect_keywords(text: str, keyword_sets: Dict[str, List[str]]) -> List[str]:
-    """Detects which predefined keyword categories are present in the text."""
+    """
+    Detects which predefined keyword categories are present in the text.
+
+    Args:
+        text (str): The text to analyze.
+        keyword_sets (Dict[str, List[str]]): A dictionary where keys are category names
+                                            and values are lists of keywords.
+
+    Returns:
+        List[str]: A list of category names found in the text.
+    """
     detected = []
     text_lower = text.lower()
     for category, keywords in keyword_sets.items():
@@ -189,8 +199,16 @@ def detect_keywords(text: str, keyword_sets: Dict[str, List[str]]) -> List[str]:
 
 
 def identify_important_message_for_context(text: str) -> bool:
-    """Placeholder for logic to identify messages important for long-term context."""
-    # This could involve keyword matching, sentiment analysis, or a small classification model
+    """
+    Placeholder for logic to identify messages important for long-term context.
+    This could involve keyword matching, sentiment analysis, or a small classification model.
+
+    Args:
+        text (str): The message text to analyze.
+
+    Returns:
+        bool: True if the message is considered important for context, False otherwise.
+    """
     # Mock implementation:
     text_lower = text.lower()
     important_keywords = [
@@ -215,7 +233,16 @@ def identify_important_message_for_context(text: str) -> bool:
 
 
 def load_json_config(config_name: str, config_dir: str) -> Dict[str, Any]:
-    """Loads a specific JSON configuration file."""
+    """
+    Loads a specific JSON configuration file.
+
+    Args:
+        config_name (str): The name of the configuration file (without .json extension).
+        config_dir (str): The directory where configuration files are located.
+
+    Returns:
+        Dict[str, Any]: The loaded configuration data.
+    """
     config_path = os.path.join(config_dir, f"{config_name}.json")
     try:
         with open(config_path, "r", encoding="utf-8") as f:
@@ -229,7 +256,15 @@ def load_json_config(config_name: str, config_dir: str) -> Dict[str, Any]:
 
 
 def load_all_configs(config_dir: str) -> Dict[str, Any]:
-    """Loads all relevant JSON configuration files, including Sacred Trinity config."""
+    """
+    Loads all relevant JSON configuration files, including Sacred Trinity config.
+
+    Args:
+        config_dir (str): The directory where configuration files are located.
+
+    Returns:
+        Dict[str, Any]: A dictionary containing all loaded configuration data.
+    """
     configs: Dict[str, Any] = {}
     # List of config files to load
     config_files = [
@@ -246,56 +281,3 @@ def load_all_configs(config_dir: str) -> Dict[str, Any]:
 
     logger.info(f"Loaded configurations: {list(configs.keys())}")
     return configs
-
-
-if __name__ == "__main__":
-    # Example usage for testing utils.py directly
-    print("Testing utils.py...")
-
-    # Test format_timestamp
-    print(f"Formatted Timestamp (default): {format_timestamp()}")
-    print(f"Formatted Timestamp (compact): {format_timestamp(compact=True)}")
-    specific_time = datetime(2025, 1, 1, 10, 30, 0, tzinfo=timezone.utc)
-    print(
-        f"Formatted Timestamp (specific): {format_timestamp(dt_object=specific_time)}"
-    )
-
-    # Test validate_config
-    valid_persona_config = {
-        "persona": {},
-        "core_prompt": "test",
-        "modes": {},
-        "default_mode": "default",
-    }
-    invalid_persona_config = {"core_prompt": "test"}
-    print(f"Validating good persona config: {validate_config(valid_persona_config)}")
-    print(f"Validating bad persona config: {validate_config(invalid_persona_config)}")
-
-    # Test ensure_dir_exists and safe_write_jsonl
-    test_log_dir = os.path.join(os.path.dirname(__file__), "..", "data", "test_logs")
-    test_log_file = os.path.join(test_log_dir, "util_test.jsonl")
-
-    print(f"Attempting to ensure directory for: {test_log_file}")
-    ensure_dir_exists(test_log_file)  # Should create data/test_logs if not exists
-
-    test_data_entry = {
-        "event": "util_test",
-        "timestamp": format_timestamp(compact=True),
-        "message": "Testing safe_write_jsonl",
-    }
-    print(f"Attempting to write to: {test_log_file}")
-    safe_write_jsonl(test_log_file, test_data_entry)
-
-    # Test load_json_file (example with a dummy config it might create)
-    # This part is more for illustration as we'd typically load existing configs
-    dummy_config_path = os.path.join(
-        os.path.dirname(__file__), "..", "config", "dummy_test_config.json"
-    )
-    # ensure_dir_exists(dummy_config_path) # ensure config dir exists
-    # with open(dummy_config_path, 'w') as f_dummy:
-    #     json.dump({"sample_key": "sample_value"}, f_dummy)
-    # loaded_dummy_config = load_json_file(dummy_config_path)
-    # print(f"Loaded dummy config: {loaded_dummy_config}")
-    # if os.path.exists(dummy_config_path): os.remove(dummy_config_path) # Clean up
-
-    print("utils.py tests complete. Check data/test_logs/ for util_test.jsonl.")

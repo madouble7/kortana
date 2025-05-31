@@ -28,9 +28,9 @@ requests>=2.31.0
 websockets>=13.1
 
 # LangChain Ecosystem (Pinned compatible versions - resolved 2025-01-27)
-langchain
-langchain-core
-langchain-openai
+langchain>=0.1.0
+langchain-core>=0.1.0
+langchain-openai>=0.1.0
 
 # Security & Validation
 bleach>=6.1.0

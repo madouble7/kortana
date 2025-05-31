@@ -61,7 +61,7 @@ echo ============================================
 echo.
 echo A. Define Agent Personalities:
 echo   - Claude  = Strategic Architect
-echo   - Flash   = Rapid Prototyper  
+echo   - Flash   = Rapid Prototyper
 echo   - Weaver  = Integration Specialist
 echo   - Custom  = Your choice!
 echo.
@@ -102,13 +102,13 @@ echo This is the same foundation that powers enterprise AI systems.
 echo.
 echo What's your next vibe?
 echo   1. Configure real AI integration
-echo   2. Customize agent personalities  
+echo   2. Customize agent personalities
 echo   3. Add enterprise monitoring
 echo   4. Build creative applications
 echo.
 
 pause
 echo.
-echo Ready to launch your autonomous future? 
+echo Ready to launch your autonomous future?
 echo Run: automation_control.bat
 echo.

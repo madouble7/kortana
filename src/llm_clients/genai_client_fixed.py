@@ -37,10 +37,8 @@ class GoogleGenAIClient(BaseLLMClient):
         try:
             import google.generativeai as genai
 
-            # Configure the API
-            genai.configure(api_key=self.api_key)
-
-            # Initialize the model
+            # Initialize the model directly, relying on the environment variable or passed key
+            # genai.configure(api_key=self.api_key) # No longer needed with direct initialization
             self.model = genai.GenerativeModel(self.model_name)
 
             self.is_initialized = True

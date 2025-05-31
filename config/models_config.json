@@ -252,8 +252,8 @@
       "enabled": true,
       "priority": 13,
       "aliases": ["qwen-235b"],
-      "use_cases": ["general", "creative_writing", "world_knowledge"], 
-      "context_window": 131072, 
+      "use_cases": ["general", "creative_writing", "world_knowledge"],
+      "context_window": 131072,
       "cost_per_1m_input": 0.50,
       "cost_per_1m_output": 0.50,
       "performance_scores": {
@@ -303,7 +303,7 @@
   },
   "model_aliases": {
     "gemini-flash": "gemini-2.5-flash",
-    "gemini25-flash": "gemini-2.5-flash", 
+    "gemini25-flash": "gemini-2.5-flash",
     "openrouter_gemini_flash_1_5": "gemini-2.5-flash",
     "grok-3-mini": "x-ai/grok-3-mini-beta",
     "grok3-mini": "x-ai/grok-3-mini-beta",
@@ -355,5 +355,20 @@
     "cost_per_response_usd": 0.035,
     "context_utilization": 0.85,
     "user_satisfaction": 0.95
+  },
+  "wisdom_model": {
+    "description": "Placeholder for the Wisdom model configuration, guiding analytical and insightful responses.",
+    "endpoint": null,
+    "api_key_env_var": null
+  },
+  "compassion_model": {
+    "description": "Placeholder for the Compassion model configuration, fostering empathetic and supportive interactions.",
+    "endpoint": null,
+    "api_key_env_var": null
+  },
+  "truth_model": {
+    "description": "Placeholder for the Truth model configuration, ensuring factual accuracy and clarity.",
+    "endpoint": null,
+    "api_key_env_var": null
   }
 }

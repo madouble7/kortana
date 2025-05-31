@@ -4,7 +4,7 @@ Kor'tana Agent Personality System
 =================================
 Transform generic agents into specialized AI personalities
 """
-
+import logging # Added for better warnings/errors
 import json
 from pathlib import Path
 from typing import Dict, Any
@@ -12,6 +12,8 @@ from typing import Dict, Any
 
 class AgentPersonalityManager:
     """Manage agent personalities and roles"""
+
+    logger = logging.getLogger(__name__) # Class-level logger
 
     def __init__(self, project_root: str = None):
         self.project_root = (
@@ -112,15 +114,37 @@ class AgentPersonalityManager:
         return persona_file
 
     def load_persona(self, agent_name: str) -> Dict[str, Any]:
-        """Load persona configuration for an agent"""
+        """Load persona configuration for an agent.
+        Prioritizes loading from file, then falls back to default, then to empty dict.
+        """
         persona_file = self.personas_dir / f"{agent_name}_persona.json"
+        loaded_persona = None
 
         if persona_file.exists():
-            with open(persona_file, "r", encoding="utf-8") as f:
-                return json.load(f)
+            try:
+                with open(persona_file, "r", encoding="utf-8") as f:
+                    loaded_persona = json.load(f)
+                if not isinstance(loaded_persona, dict): # Ensure it's a dict
+                    self.logger.warning(f"Persona file {persona_file} does not contain a valid JSON object. Using default.")
+                    loaded_persona = None
+            except json.JSONDecodeError:
+                self.logger.warning(f"Error decoding JSON from {persona_file}. Using default.")
+            except Exception as e:
+                self.logger.error(f"Could not load persona file {persona_file}: {e}. Using default.")
+
+        if loaded_persona is not None:
+            return loaded_persona
         else:
-            # Return default if available
-            return self.default_personas.get(agent_name, {})
+            # Fallback to default persona if file loading failed or file didn't exist
+            default_persona = self.default_personas.get(agent_name)
+            if default_persona:
+                self.logger.info(f"Using default persona for {agent_name}.")
+                return default_persona.copy() # Return a copy to prevent modification of defaults
+            else:
+                # If no file and no default, return empty dict
+                if not persona_file.exists():
+                    self.logger.info(f"No persona file or default found for {agent_name}. Returning empty persona.")
+                return {}
 
     def setup_all_personas(self):
         """Create persona files for all default agents"""
@@ -193,20 +217,32 @@ AGENT PROFILE:
         return enhanced_prompt.strip()
 
     def print_all_personas(self):
-        """Display all configured personas"""
+        """Display all configured personas by scanning the personas directory."""
         print("\n" + "=" * 60)
         print("CONFIGURED AGENT PERSONAS")
         print("=" * 60)
 
-        for agent_name in self.default_personas.keys():
+        if not self.personas_dir.exists() or not any(self.personas_dir.iterdir()):
+            print(f"No persona files found in {self.personas_dir}.")
+            return
+
+        found_personas = False
+        for persona_file in self.personas_dir.glob("*_persona.json"):
+            agent_name = persona_file.stem.replace("_persona", "")
+            # Use self.load_persona to ensure consistent loading logic
             persona = self.load_persona(agent_name)
-            if persona:
-                print(f"\n🤖 {persona.get('name', agent_name.upper())}")
+            if persona: # Check if persona is not empty
+                found_personas = True
+                print(f"\n🤖 {persona.get('name', agent_name.upper())}") # Use agent_name as fallback for name
                 print(f"   Role: {persona.get('role', 'undefined')}")
                 print(f"   Personality: {persona.get('personality', 'undefined')}")
                 print(f"   Specialties: {', '.join(persona.get('specialties', []))}")
                 print(f"   Style: {persona.get('communication_style', 'adaptive')}")
+            else:
+                print(f"\n🤖 {agent_name.upper()} (Warning: Could not load details or persona is empty)")
 
+        if not found_personas:
+            print(f"No valid persona configurations found in {self.personas_dir}.")
 
 def main():
     """Main persona management interface"""
@@ -247,22 +283,26 @@ def main():
         elif choice == "5":
             # Export summary
             summary_file = manager.project_root / "agent_personas_summary.md"
-            with open(summary_file, "w") as f:
+            with open(summary_file, "w", encoding="utf-8") as f:
                 f.write("# Kor'tana Agent Personas\n\n")
-                for agent_name in manager.default_personas.keys():
-                    persona = manager.load_persona(agent_name)
-                    if persona:
-                        f.write(f"## {persona.get('name', agent_name.upper())}\n")
-                        f.write(f"- **Role**: {persona.get('role', 'undefined')}\n")
-                        f.write(
-                            f"- **Personality**: {persona.get('personality', 'undefined')}\n"
-                        )
-                        f.write(
-                            f"- **Specialties**: {', '.join(persona.get('specialties', []))}\n"
-                        )
-                        f.write(
-                            f"- **Communication Style**: {persona.get('communication_style', 'adaptive')}\n\n"
-                        )
+                if manager.personas_dir.exists():
+                    for persona_file in manager.personas_dir.glob("*_persona.json"):
+                        agent_name = persona_file.stem.replace("_persona", "")
+                        persona = manager.load_persona(agent_name)
+                        if persona:
+                            f.write(f"## {persona.get('name', agent_name.upper())}\n")
+                            f.write(f"- **Role**: {persona.get('role', 'undefined')}\n")
+                            f.write(
+                                f"- **Personality**: {persona.get('personality', 'undefined')}\n"
+                            )
+                            f.write(
+                                f"- **Specialties**: {', '.join(persona.get('specialties', []))}\n"
+                            )
+                            f.write(
+                                f"- **Communication Style**: {persona.get('communication_style', 'adaptive')}\n\n"
+                            )
+                else:
+                    f.write("No agent personas directory found.\n")
             print(f"[EXPORTED] Persona summary: {summary_file}")
         elif choice == "0":
             break

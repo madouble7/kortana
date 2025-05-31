@@ -11,7 +11,7 @@ sys.path.insert(
 
 # Import modules to be tested
 from core import memory
-from brain import ChatEngine
+from src.brain import ChatEngine
 
 # Define the path to the dummy project memory file for testing
 TEST_MEMORY_FILE = os.path.join(os.path.dirname(__file__), "temp_project_memory.jsonl")

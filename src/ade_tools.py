@@ -1,5 +1,5 @@
 import os
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import subprocess
 
 
@@ -43,7 +43,7 @@ def list_directory(path: str) -> List[str]:
     return os.listdir(path)
 
 
-def execute_python_script(script_path: str, args: List[str] = None) -> Dict[str, Any]:
+def execute_python_script(script_path: str, args: Optional[List[str]] = None) -> Dict[str, Any]:
     """
     Execute a Python script and capture its output and errors.
     Args:

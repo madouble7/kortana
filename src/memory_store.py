@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 
 class MemoryStore(ABC):
@@ -9,7 +9,7 @@ class MemoryStore(ABC):
 
     @abstractmethod
     def query_memories(
-        self, query: str, top_k: int = 5, tags: List[str] = None
+        self, query: str, top_k: int = 5, tags: Optional[List[str]] = None
     ) -> List[Dict[str, Any]]:
         pass
 

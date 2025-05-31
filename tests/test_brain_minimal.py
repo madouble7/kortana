@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from brain import ChatEngine
+from src.brain import ChatEngine
 
 
 @pytest.fixture
