@@ -1,5 +1,6 @@
 from dev_agent import execute_dev_task
 
+
 class CodingAgent:
     def __init__(self, planner):
         self.planner = planner
@@ -9,4 +10,4 @@ class CodingAgent:
         results = {}
         for task in plan["today"]:
             results[task] = execute_dev_task(task)
-        return results 
+        return results

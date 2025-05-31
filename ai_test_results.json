@@ -1,0 +1,115 @@
+{
+  "summary": {
+    "passed": 14,
+    "warned": 0,
+    "failed": 0,
+    "total": 14
+  },
+  "token_usage": {
+    "total_input": 353,
+    "total_output": 334,
+    "summarizations": 1,
+    "context_packages": 1
+  },
+  "detailed_results": [
+    {
+      "test": "API Connection",
+      "status": "PASS",
+      "details": "Gemini responding correctly",
+      "tokens": 0,
+      "timestamp": "2025-05-30T21:52:46.202748"
+    },
+    {
+      "test": "Token Count - Short text",
+      "status": "PASS",
+      "details": "Text: 11 chars",
+      "tokens": 2,
+      "timestamp": "2025-05-30T21:52:46.288440"
+    },
+    {
+      "test": "Token Count - Medium text",
+      "status": "PASS",
+      "details": "Text: 95 chars",
+      "tokens": 19,
+      "timestamp": "2025-05-30T21:52:46.289442"
+    },
+    {
+      "test": "Token Count - Long text",
+      "status": "PASS",
+      "details": "Text: 940 chars",
+      "tokens": 171,
+      "timestamp": "2025-05-30T21:52:46.289442"
+    },
+    {
+      "test": "Basic Summarization",
+      "status": "PASS",
+      "details": "Input: 161\u2192Output: 334 tokens",
+      "tokens": 0,
+      "timestamp": "2025-05-30T21:52:48.721675"
+    },
+    {
+      "test": "Context Package",
+      "status": "PASS",
+      "details": "Package saved: ai_test_1748659968",
+      "tokens": 55,
+      "timestamp": "2025-05-30T21:52:48.725674"
+    },
+    {
+      "test": "Below Threshold",
+      "status": "PASS",
+      "details": "No summarization triggered",
+      "tokens": 0,
+      "timestamp": "2025-05-30T21:52:48.725674"
+    },
+    {
+      "test": "Above Threshold",
+      "status": "PASS",
+      "details": "Summarization triggered correctly",
+      "tokens": 0,
+      "timestamp": "2025-05-30T21:52:53.437380"
+    },
+    {
+      "test": "Database Read",
+      "status": "PASS",
+      "details": "Total packages: 3, Test packages: 1",
+      "tokens": 0,
+      "timestamp": "2025-05-30T21:52:53.439382"
+    },
+    {
+      "test": "Agent Discovery",
+      "status": "PASS",
+      "details": "Found 4 agents, 4 active",
+      "tokens": 0,
+      "timestamp": "2025-05-30T21:52:53.439382"
+    },
+    {
+      "test": "Agent claude",
+      "status": "PASS",
+      "details": "Log file: 209 bytes",
+      "tokens": 0,
+      "timestamp": "2025-05-30T21:52:53.439382"
+    },
+    {
+      "test": "Agent flash",
+      "status": "PASS",
+      "details": "Log file: 110 bytes",
+      "tokens": 0,
+      "timestamp": "2025-05-30T21:52:53.439382"
+    },
+    {
+      "test": "Agent test_agent",
+      "status": "PASS",
+      "details": "Log file: 144 bytes",
+      "tokens": 0,
+      "timestamp": "2025-05-30T21:52:53.439382"
+    },
+    {
+      "test": "Agent weaver",
+      "status": "PASS",
+      "details": "Log file: 194 bytes",
+      "tokens": 0,
+      "timestamp": "2025-05-30T21:52:53.439382"
+    }
+  ],
+  "timestamp": "2025-05-30T21:52:53.440382"
+}

@@ -1,14 +1,13 @@
 import json
 import os
 import time
-import numpy as np
-from datetime import datetime
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, asdict
 from enum import Enum
 import logging
 
 logger = logging.getLogger(__name__)
+
 
 class TaskCategory(Enum):
     CREATIVE_WRITING = "creative_writing"
@@ -18,38 +17,47 @@ class TaskCategory(Enum):
     RESEARCH = "research"
     CODE_GENERATION = "code_generation"
     ETHICAL_REASONING = "ethical_reasoning"
-    ORACLE = "oracle" # General high-level reasoning
-    SWIFT_RESPONDER = "swift_responder" # Quick, low-latency responses
-    MEMORY_WEAVER = "memory_weaver" # Processing large contexts, summarization
-    DEV_AGENT = "dev_agent" # Code tasks, technical instructions
-    BUDGET_WORKHORSE = "budget_workhorse" # Cost-optimized tasks
-    MULTIMODAL_SEER = "multimodal_seer" # Image/audio processing
+    ORACLE = "oracle"  # General high-level reasoning
+    SWIFT_RESPONDER = "swift_responder"  # Quick, low-latency responses
+    MEMORY_WEAVER = "memory_weaver"  # Processing large contexts, summarization
+    DEV_AGENT = "dev_agent"  # Code tasks, technical instructions
+    BUDGET_WORKHORSE = "budget_workhorse"  # Cost-optimized tasks
+    MULTIMODAL_SEER = "multimodal_seer"  # Image/audio processing
+
 
 @dataclass
 class PerformanceMetric:
     """Represents performance data for a single task execution."""
+
     model_used: str
     task_category: TaskCategory
-    success_rate: float # E.g., 1.0 for success, 0.0 for failure (can be nuanced)
-    quality_score: float # E.g., 0.0 to 1.0 or based on specific rubrics
-    cost_effectiveness: float # E.g., normalized cost per task
-    time_efficiency: float # E.g., normalized latency or tokens/sec
-    human_validation: Optional[float] = None # Human feedback score
-    sacred_alignment_achieved: Optional[Dict[str, float]] = None # How well principles were embodied in this response
+    success_rate: float  # E.g., 1.0 for success, 0.0 for failure (can be nuanced)
+    quality_score: float  # E.g., 0.0 to 1.0 or based on specific rubrics
+    cost_effectiveness: float  # E.g., normalized cost per task
+    time_efficiency: float  # E.g., normalized latency or tokens/sec
+    human_validation: Optional[float] = None  # Human feedback score
+    sacred_alignment_achieved: Optional[Dict[str, float]] = (
+        None  # How well principles were embodied in this response
+    )
     timestamp: float = time.time()
     metadata: Optional[Dict] = None
 
     def to_dict(self) -> Dict[str, Any]:
         data = asdict(self)
-        data['task_category'] = self.task_category.value
+        data["task_category"] = self.task_category.value
         return data
+
 
 @dataclass
 class SacredPrinciple:
     """Represents a core Sacred Trinity principle."""
+
     weight: float
-    validation_score: float # Confidence/how well we understand this principle's application
+    validation_score: (
+        float  # Confidence/how well we understand this principle's application
+    )
     active: bool
+
 
 class UltimateLivingSacredConfig:
     """
@@ -57,47 +65,146 @@ class UltimateLivingSacredConfig:
     Manages Sacred Trinity optimization, task intelligence, and performance tracking.
     """
 
-    def __init__(self, performance_history_path: str = "data/performance_history.jsonl"):
+    def __init__(
+        self, performance_history_path: str = "data/performance_history.jsonl"
+    ):
         self.performance_history_path = performance_history_path
-        self.performance_history: List[PerformanceMetric] = self._load_performance_history()
+        self.performance_history: List[PerformanceMetric] = (
+            self._load_performance_history()
+        )
 
         # Sacred Trinity - Initially based on conceptual understanding, optimized by performance
         self.sacred_trinity: Dict[str, SacredPrinciple] = {
             "wisdom": SacredPrinciple(weight=0.95, validation_score=0.90, active=True),
-            "compassion": SacredPrinciple(weight=0.92, validation_score=0.93, active=True),
+            "compassion": SacredPrinciple(
+                weight=0.92, validation_score=0.93, active=True
+            ),
             "truth": SacredPrinciple(weight=0.93, validation_score=0.91, active=True),
         }
 
         # Initial strategic scores - Will be augmented by real performance data over time
         # Stored internally initially due to file edit issues with models_config.json
         self.initial_sacred_alignment_scores: Dict[str, Dict[str, float]] = {
-            "gpt-4.1-nano": { "wisdom": 0.8, "truth": 0.8, "compassion": 0.6 },
-            "x-ai/grok-3-mini-beta": { "wisdom": 0.7, "compassion": 0.75, "truth": 0.8 },
-            "gemini-2.5-flash": { "wisdom": 0.7, "compassion": 0.75, "truth": 0.8 },
-            "deepseek-chat-v3-openrouter": { "wisdom": 0.7, "compassion": 0.6, "truth": 0.7 },
-            "noromaid-20b-openrouter": { "wisdom": 0.6, "compassion": 0.9, "truth": 0.7 },
-            "meta-llama/llama-4-scout-openrouter": { "wisdom": 0.7, "compassion": 0.7, "truth": 0.9 },
-            "meta-llama/llama-4-maverick-openrouter": { "wisdom": 0.8, "compassion": 0.6, "truth": 0.85 },
-            "qwen3-235b-openrouter": { "wisdom": 0.6, "compassion": 0.7, "truth": 0.8 },
-            "gpt-4o-mini-openai": { "wisdom": 0.75, "compassion": 0.7, "truth": 0.75 },
-            "claude-3-haiku-openrouter": { "wisdom": 0.7, "compassion": 0.8, "truth": 0.75 },
-            "gemini-2.0-flash-lite": { "wisdom": 0.65, "compassion": 0.7, "truth": 0.68 }
+            "gpt-4.1-nano": {"wisdom": 0.8, "truth": 0.8, "compassion": 0.6},
+            "x-ai/grok-3-mini-beta": {"wisdom": 0.7, "compassion": 0.75, "truth": 0.8},
+            "gemini-2.5-flash": {"wisdom": 0.7, "compassion": 0.75, "truth": 0.8},
+            "deepseek-chat-v3-openrouter": {
+                "wisdom": 0.7,
+                "compassion": 0.6,
+                "truth": 0.7,
+            },
+            "noromaid-20b-openrouter": {"wisdom": 0.6, "compassion": 0.9, "truth": 0.7},
+            "meta-llama/llama-4-scout-openrouter": {
+                "wisdom": 0.7,
+                "compassion": 0.7,
+                "truth": 0.9,
+            },
+            "meta-llama/llama-4-maverick-openrouter": {
+                "wisdom": 0.8,
+                "compassion": 0.6,
+                "truth": 0.85,
+            },
+            "qwen3-235b-openrouter": {"wisdom": 0.6, "compassion": 0.7, "truth": 0.8},
+            "gpt-4o-mini-openai": {"wisdom": 0.75, "compassion": 0.7, "truth": 0.75},
+            "claude-3-haiku-openrouter": {
+                "wisdom": 0.7,
+                "compassion": 0.8,
+                "truth": 0.75,
+            },
+            "gemini-2.0-flash-lite": {"wisdom": 0.65, "compassion": 0.7, "truth": 0.68},
         }
 
         self.initial_archetype_fits: Dict[str, Dict[str, float]] = {
             # Scores from 0 to 1, higher is better fit
             # Archetypes: oracle, swift_responder, memory_weaver, dev_agent, budget_workhorse, multimodal_seer
-            "gpt-4.1-nano": { "oracle": 0.7, "swift_responder": 0.8, "memory_weaver": 0.7, "dev_agent": 0.8, "budget_workhorse": 0.7, "multimodal_seer": 0.6 },
-            "x-ai/grok-3-mini-beta": { "oracle": 0.8, "swift_responder": 0.7, "memory_weaver": 0.6, "dev_agent": 0.9, "budget_workhorse": 0.75, "multimodal_seer": 0.7 },
-            "gemini-2.5-flash": { "oracle": 0.6, "swift_responder": 0.9, "memory_weaver": 0.8, "dev_agent": 0.5, "budget_workhorse": 0.85, "multimodal_seer": 0.6 },
-            "deepseek-chat-v3-openrouter": { "oracle": 0.6, "swift_responder": 0.7, "memory_weaver": 0.6, "dev_agent": 0.9, "budget_workhorse": 0.7, "multimodal_seer": 0.5 },
-            "noromaid-20b-openrouter": { "oracle": 0.8, "swift_responder": 0.6, "memory_weaver": 0.7, "dev_agent": 0.4, "budget_workhorse": 0.6, "multimodal_seer": 0.5 },
-            "meta-llama/llama-4-scout-openrouter": { "oracle": 0.7, "swift_responder": 0.8, "memory_weaver": 0.9, "dev_agent": 0.7, "budget_workhorse": 0.75, "multimodal_seer": 0.8 },
-            "meta-llama/llama-4-maverick-openrouter": { "oracle": 0.75, "swift_responder": 0.7, "memory_weaver": 0.75, "dev_agent": 0.85, "budget_workhorse": 0.7, "multimodal_seer": 0.75 },
-            "qwen3-235b-openrouter": { "oracle": 0.65, "swift_responder": 0.75, "memory_weaver": 0.7, "dev_agent": 0.7, "budget_workhorse": 0.65, "multimodal_seer": 0.7 },
-            "gpt-4o-mini-openai": { "oracle": 0.7, "swift_responder": 0.85, "memory_weaver": 0.7, "dev_agent": 0.8, "budget_workhorse": 0.75, "multimodal_seer": 0.85 },
-            "claude-3-haiku-openrouter": { "oracle": 0.75, "swift_responder": 0.8, "memory_weaver": 0.7, "dev_agent": 0.7, "budget_workhorse": 0.7, "multimodal_seer": 0.75 },
-            "gemini-2.0-flash-lite": { "oracle": 0.6, "swift_responder": 0.9, "memory_weaver": 0.65, "dev_agent": 0.5, "budget_workhorse": 0.9, "multimodal_seer": 0.6 }
+            "gpt-4.1-nano": {
+                "oracle": 0.7,
+                "swift_responder": 0.8,
+                "memory_weaver": 0.7,
+                "dev_agent": 0.8,
+                "budget_workhorse": 0.7,
+                "multimodal_seer": 0.6,
+            },
+            "x-ai/grok-3-mini-beta": {
+                "oracle": 0.8,
+                "swift_responder": 0.7,
+                "memory_weaver": 0.6,
+                "dev_agent": 0.9,
+                "budget_workhorse": 0.75,
+                "multimodal_seer": 0.7,
+            },
+            "gemini-2.5-flash": {
+                "oracle": 0.6,
+                "swift_responder": 0.9,
+                "memory_weaver": 0.8,
+                "dev_agent": 0.5,
+                "budget_workhorse": 0.85,
+                "multimodal_seer": 0.6,
+            },
+            "deepseek-chat-v3-openrouter": {
+                "oracle": 0.6,
+                "swift_responder": 0.7,
+                "memory_weaver": 0.6,
+                "dev_agent": 0.9,
+                "budget_workhorse": 0.7,
+                "multimodal_seer": 0.5,
+            },
+            "noromaid-20b-openrouter": {
+                "oracle": 0.8,
+                "swift_responder": 0.6,
+                "memory_weaver": 0.7,
+                "dev_agent": 0.4,
+                "budget_workhorse": 0.6,
+                "multimodal_seer": 0.5,
+            },
+            "meta-llama/llama-4-scout-openrouter": {
+                "oracle": 0.7,
+                "swift_responder": 0.8,
+                "memory_weaver": 0.9,
+                "dev_agent": 0.7,
+                "budget_workhorse": 0.75,
+                "multimodal_seer": 0.8,
+            },
+            "meta-llama/llama-4-maverick-openrouter": {
+                "oracle": 0.75,
+                "swift_responder": 0.7,
+                "memory_weaver": 0.75,
+                "dev_agent": 0.85,
+                "budget_workhorse": 0.7,
+                "multimodal_seer": 0.75,
+            },
+            "qwen3-235b-openrouter": {
+                "oracle": 0.65,
+                "swift_responder": 0.75,
+                "memory_weaver": 0.7,
+                "dev_agent": 0.7,
+                "budget_workhorse": 0.65,
+                "multimodal_seer": 0.7,
+            },
+            "gpt-4o-mini-openai": {
+                "oracle": 0.7,
+                "swift_responder": 0.85,
+                "memory_weaver": 0.7,
+                "dev_agent": 0.8,
+                "budget_workhorse": 0.75,
+                "multimodal_seer": 0.85,
+            },
+            "claude-3-haiku-openrouter": {
+                "oracle": 0.75,
+                "swift_responder": 0.8,
+                "memory_weaver": 0.7,
+                "dev_agent": 0.7,
+                "budget_workhorse": 0.7,
+                "multimodal_seer": 0.75,
+            },
+            "gemini-2.0-flash-lite": {
+                "oracle": 0.6,
+                "swift_responder": 0.9,
+                "memory_weaver": 0.65,
+                "dev_agent": 0.5,
+                "budget_workhorse": 0.9,
+                "multimodal_seer": 0.6,
+            },
         }
 
         # Performance thresholds and adaptive settings (placeholders for now)
@@ -119,29 +226,35 @@ class UltimateLivingSacredConfig:
         """Loads performance history from a JSONL file."""
         history = []
         if os.path.exists(self.performance_history_path):
-            with open(self.performance_history_path, 'r') as f:
+            with open(self.performance_history_path, "r") as f:
                 for line in f:
                     try:
                         data = json.loads(line)
                         # Convert task_category string back to Enum member
-                        data['task_category'] = TaskCategory(data['task_category'])
+                        data["task_category"] = TaskCategory(data["task_category"])
                         # Convert SacredPrinciple dicts back to objects if they were saved as dicts
-                        if data.get('sacred_alignment_achieved') and isinstance(data['sacred_alignment_achieved'], dict):
-                             # Assuming principles are just names mapped to scores
-                             pass # Keep as dict of scores
+                        if data.get("sacred_alignment_achieved") and isinstance(
+                            data["sacred_alignment_achieved"], dict
+                        ):
+                            # Assuming principles are just names mapped to scores
+                            pass  # Keep as dict of scores
                         history.append(PerformanceMetric(**data))
                     except json.JSONDecodeError as e:
-                        logger.error(f"Error decoding performance history line: {line.strip()} - {e}")
+                        logger.error(
+                            f"Error decoding performance history line: {line.strip()} - {e}"
+                        )
                     except ValueError as e:
-                        logger.error(f"Error parsing performance history data: {line.strip()} - {e}")
+                        logger.error(
+                            f"Error parsing performance history data: {line.strip()} - {e}"
+                        )
         return history
 
     def _save_performance_history(self):
         """Saves performance history to a JSONL file."""
         os.makedirs(os.path.dirname(self.performance_history_path), exist_ok=True)
-        with open(self.performance_history_path, 'w') as f:
+        with open(self.performance_history_path, "w") as f:
             for metric in self.performance_history:
-                f.write(json.dumps(metric.to_dict()) + '\n')
+                f.write(json.dumps(metric.to_dict()) + "\n")
 
     def update_performance_data(self, performance_metric: PerformanceMetric):
         """Adds new performance data and saves history."""
@@ -149,7 +262,9 @@ class UltimateLivingSacredConfig:
         # Keep history window limited if needed
         # self.performance_history = self.performance_history[-self.adaptive_settings["performance_window"]:]
         self._save_performance_history()
-        logger.info(f"Logged performance for model {performance_metric.model_used} on task category {performance_metric.task_category.value}")
+        logger.info(
+            f"Logged performance for model {performance_metric.model_used} on task category {performance_metric.task_category.value}"
+        )
 
     def optimize_sacred_trinity(self):
         """Optimizes Sacred Trinity weights based on performance history."""
@@ -187,18 +302,28 @@ class UltimateLivingSacredConfig:
             TaskCategory.ETHICAL_REASONING: ["truth", "compassion", "wisdom"],
             TaskCategory.CODE_GENERATION: ["wisdom", "truth"],
             TaskCategory.ORACLE: ["wisdom", "truth", "compassion"],
-            TaskCategory.SWIFT_RESPONDER: [], # Speed is primary, principles less critical for selection
-            TaskCategory.MEMORY_WEAVER: ["wisdom"], # Focus on accurate recall/summarization
-            TaskCategory.DEV_AGENT: ["wisdom", "truth"], # Logic, accuracy
-            TaskCategory.BUDGET_WORKHORSE: [], # Cost is primary
-            TaskCategory.MULTIMODAL_SEER: ["truth", "wisdom"], # Accurate interpretation
+            TaskCategory.SWIFT_RESPONDER: [],  # Speed is primary, principles less critical for selection
+            TaskCategory.MEMORY_WEAVER: [
+                "wisdom"
+            ],  # Focus on accurate recall/summarization
+            TaskCategory.DEV_AGENT: ["wisdom", "truth"],  # Logic, accuracy
+            TaskCategory.BUDGET_WORKHORSE: [],  # Cost is primary
+            TaskCategory.MULTIMODAL_SEER: [
+                "truth",
+                "wisdom",
+            ],  # Accurate interpretation
             # Add more mappings as needed
         }
 
         prioritized_principles = principle_priority_map.get(task_category, [])
 
         # Sort prioritized principles by their current optimized weight
-        prioritized_principles.sort(key=lambda p: self.sacred_trinity.get(p, SacredPrinciple(0,0,False)).weight, reverse=True)
+        prioritized_principles.sort(
+            key=lambda p: self.sacred_trinity.get(
+                p, SacredPrinciple(0, 0, False)
+            ).weight,
+            reverse=True,
+        )
 
         guidance["prioritize_principles"] = prioritized_principles
 
@@ -212,9 +337,10 @@ class UltimateLivingSacredConfig:
         return self.initial_sacred_alignment_scores.get(model_id, {})
 
     def get_model_archetype_fits(self, model_id: str) -> Dict[str, float]:
-         """Retrieves the initial archetype fit scores for a model."""
-         # In a truly living system, these might also be influenced by performance data
-         return self.initial_archetype_fits.get(model_id, {})
+        """Retrieves the initial archetype fit scores for a model."""
+        # In a truly living system, these might also be influenced by performance data
+        return self.initial_archetype_fits.get(model_id, {})
+
 
 # Example usage (for testing the class independently)
 if __name__ == "__main__":
@@ -230,10 +356,7 @@ if __name__ == "__main__":
         cost_effectiveness=0.80,
         time_efficiency=0.88,
         human_validation=0.92,
-        sacred_alignment_achieved={
-            "wisdom": 0.9,
-            "truth": 0.85
-        }
+        sacred_alignment_achieved={"wisdom": 0.9, "truth": 0.85},
     )
     config_system.update_performance_data(sample_metric)
 

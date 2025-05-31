@@ -15,9 +15,12 @@ from fastapi_csrf_protect import CsrfProtect
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from pydantic_settings import BaseSettings
 
 # Configure basic logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # Ensure src is in sys.path for imports
@@ -27,11 +30,7 @@ from .brain import ChatEngine
 app = FastAPI()
 
 # Allow CORS for local dev/testing and LobeChat
-origins = [
-    "http://localhost",
-    "http://localhost:3000",
-    "*"
-]
+origins = ["http://localhost", "http://localhost:3000", "*"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -43,46 +42,63 @@ app.add_middleware(
 # Singleton ChatEngine instance (for demo; in prod, use session/user management)
 engine = ChatEngine()
 
+
 class MessageRequest(BaseModel):
     message: str
     manual_mode: Optional[str] = None
+
 
 class MessageResponse(BaseModel):
     response: str
     mode: str
 
-class CsrfSettings:
+
+class CsrfSettings(BaseSettings):
     secret_key: str = os.getenv("CSRF_SECRET_KEY", "supersecret")
+
 
 @CsrfProtect.load_config
 def get_csrf_config():
     return CsrfSettings()
 
+
 @app.post("/chat", response_model=MessageResponse)
 async def chat_endpoint(request: Request, csrf_protect: CsrfProtect = Depends()):
-    csrf_protect.validate_csrf_in_cookies(request)
+    await csrf_protect.validate_csrf(request)
     try:
         request_body_bytes = await request.body()
         logger.info(f"Received request to /chat. Headers: {dict(request.headers)}")
         logger.info(f"Raw request body: {request_body_bytes.decode()}")
-        logger.info(f"Parsed payload: {req.json()}")
-        user_input = bleach.clean(req.message)
-        response = engine.get_response(user_input, manual_mode=req.manual_mode)
+        payload = await request.json()
+        logger.info(f"Parsed payload: {json.dumps(payload, indent=2)}")
+        # Validate payload against the MessageRequest model
+        message_request = MessageRequest(**payload)
+        user_input = bleach.clean(message_request.message)
+        response = engine.get_response(
+            user_input, manual_mode=message_request.manual_mode
+        )
         logger.info(f"Kor'tana's brain generated response: '{response}'")
         return MessageResponse(response=response, mode=engine.current_mode)
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error processing message in Kor'tana's brain: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error in Kor'tana: {str(e)}")
+        logger.error(
+            f"Error processing message in Kor'tana's brain: {e}", exc_info=True
+        )
+        raise HTTPException(
+            status_code=500, detail=f"Internal server error in Kor'tana: {str(e)}"
+        )
+
 
 # Alias for LobeChat or alternate frontend
 @app.post("/kortana-chat")
 async def kortana_chat_alias(request: Request, csrf_protect: CsrfProtect = Depends()):
-    csrf_protect.validate_csrf_in_cookies(request)
+    await csrf_protect.validate_csrf(request)
     try:
         request_body_bytes = await request.body()
-        logger.info(f"Received request to /kortana-chat. Headers: {dict(request.headers)}")
+        logger.info(
+            f"Received request to /kortana-chat. Headers: {dict(request.headers)}"
+        )
         logger.info(f"Raw request body: {request_body_bytes.decode()}")
         payload = await request.json()
         logger.info(f"Parsed payload: {json.dumps(payload, indent=2)}")
@@ -90,25 +106,36 @@ async def kortana_chat_alias(request: Request, csrf_protect: CsrfProtect = Depen
         manual_mode = payload.get("manual_mode")
         if not user_input:
             logger.warning("Missing 'message' in payload")
-            raise HTTPException(status_code=400, detail="Payload must include a 'message' field.")
+            raise HTTPException(
+                status_code=400, detail="Payload must include a 'message' field."
+            )
         response = engine.get_response(user_input, manual_mode=manual_mode)
         logger.info(f"Kor'tana's brain generated response: '{response}'")
         response_payload = {"reply": response, "mode": engine.current_mode}
-        logger.info(f"Sending response payload: {json.dumps(response_payload, indent=2)}")
+        logger.info(
+            f"Sending response payload: {json.dumps(response_payload, indent=2)}"
+        )
         return response_payload
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error processing message in Kor'tana's brain: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error in Kor'tana: {str(e)}")
+        logger.error(
+            f"Error processing message in Kor'tana's brain: {e}", exc_info=True
+        )
+        raise HTTPException(
+            status_code=500, detail=f"Internal server error in Kor'tana: {str(e)}"
+        )
+
 
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
 
+
 @app.get("/mode")
 def get_mode():
     return {"mode": engine.current_mode}
+
 
 @app.post("/mode")
 def set_mode(data: dict):
@@ -117,6 +144,7 @@ def set_mode(data: dict):
         engine.set_mode(mode)
         return {"mode": engine.current_mode, "status": "ok"}
     return {"error": "No mode provided"}
+
 
 @app.post("/v1/chat/completions")
 async def openai_compatible_chat(request: Request):
@@ -137,15 +165,13 @@ async def openai_compatible_chat(request: Request):
         "choices": [
             {
                 "index": 0,
-                "message": {
-                    "role": "assistant",
-                    "content": response
-                },
-                "finish_reason": "stop"
+                "message": {"role": "assistant", "content": response},
+                "finish_reason": "stop",
             }
         ],
-        "usage": {}
+        "usage": {},
     }
+
 
 @app.get("/chat")
 async def chat_sse(topic: str):
@@ -153,6 +179,7 @@ async def chat_sse(topic: str):
     Basic SSE stub for LobeChat.
     Listens for GET /chat?topic=<id> and streams back events.
     """
+
     async def event_generator():
         # initial handshake
         yield f"event: connected\ndata: topic {topic} opened\n\n"
@@ -164,6 +191,7 @@ async def chat_sse(topic: str):
 
     return EventSourceResponse(event_generator())
 
+
 @app.post("/trigger-ade")
 async def trigger_ade():
     try:
@@ -171,11 +199,20 @@ async def trigger_ade():
         return JSONResponse(content={"status": "ADE cycle triggered"}, status_code=200)
     except Exception as e:
         logger.error(f"Error triggering ADE cycle: {e}", exc_info=True)
-        return JSONResponse(content={"status": "error", "detail": str(e)}, status_code=500)
+        return JSONResponse(
+            content={"status": "error", "detail": str(e)}, status_code=500
+        )
+
 
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, lambda request, exc: JSONResponse(status_code=429, content={"detail": "Rate limit exceeded"}))
+app.add_exception_handler(
+    RateLimitExceeded,
+    lambda request, exc: JSONResponse(
+        status_code=429, content={"detail": "Rate limit exceeded"}
+    ),
+)
+
 
 @app.post("/login")
 @limiter.limit("5/minute")
@@ -183,6 +220,7 @@ async def login(username: str = Form(...), password: str = Form(...)):
     # Dummy authentication logic (replace with real logic in production)
     if username == "admin" and password == "secret":
         import uuid
+
         session_id = str(uuid.uuid4())
         response = JSONResponse(content={"status": "success"})
         response.set_cookie(
@@ -190,12 +228,13 @@ async def login(username: str = Form(...), password: str = Form(...)):
             value=session_id,
             httponly=True,
             secure=True,
-            max_age=60*60*24,  # 1 day
-            samesite="lax"
+            max_age=60 * 60 * 24,  # 1 day
+            samesite="lax",
         )
         return response
     else:
         raise HTTPException(status_code=401, detail="Invalid credentials")
+
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -218,6 +257,7 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception as e:
         logger.error(f"WebSocket connection error: {e}")
         await websocket.close()
+
 
 if __name__ == "__main__":
     uvicorn.run("api_server:app", host="0.0.0.0", port=7777, reload=True)

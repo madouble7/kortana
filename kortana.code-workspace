@@ -5,6 +5,10 @@
         }
     ],
     "settings": {
+        "python.defaultInterpreterPath": "c:\\kortana\\venv311\\Scripts\\python.exe",
+        "python.pythonPath": "c:\\kortana\\venv311\\Scripts\\python.exe",
+        "python.terminal.activateEnvironment": true,
+        "python.terminal.activateEnvInCurrentTerminal": true,
         "files.exclude": {
             "**/__pycache__": true,
             "**/.pytest_cache": true

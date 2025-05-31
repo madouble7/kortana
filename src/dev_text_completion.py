@@ -30,26 +30,18 @@ if mode == "2":
         {"role": "user", "content": user_prompt},
         {
             "role": "user",
-            "content": [
-                {
-                    "type": "image_url",
-                    "image_url": {"url": image_url}
-                }
-            ]
-        }
+            "content": [{"type": "image_url", "image_url": {"url": image_url}}],
+        },
     ]
 else:
-    user_prompt = input("Enter a prompt (or leave blank for a unicorn bedtime story): ").strip()
+    user_prompt = input(
+        "Enter a prompt (or leave blank for a unicorn bedtime story): "
+    ).strip()
     if not user_prompt:
         user_prompt = "write a one-sentence bedtime story about a unicorn."
-    messages = [
-        {"role": "user", "content": user_prompt}
-    ]
+    messages = [{"role": "user", "content": user_prompt}]
 
-response = client.generate_response(
-    system_prompt=system_prompt,
-    messages=messages
-)
+response = client.generate_response(system_prompt=system_prompt, messages=messages)
 
 print("\nKor'tana says:")
-print(response["content"]) 
+print(response["content"])

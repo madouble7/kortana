@@ -4,9 +4,10 @@ from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 
+
 class XAIGrokClient:
     """XAI Grok client implementation"""
-    
+
     def __init__(self, api_key: str, base_url: str = "https://api.x.ai/v1", **kwargs):
         self.api_key = api_key
         self.base_url = base_url
@@ -18,7 +19,9 @@ class XAIGrokClient:
         try:
             if len(self.api_key) >= 32:
                 self.session_id = f"grok_session_{int(time.time())}"
-                logger.info(f"✅ Authentication successful. Session ID: {self.session_id}")
+                logger.info(
+                    f"✅ Authentication successful. Session ID: {self.session_id}"
+                )
                 return True
             else:
                 logger.error("❌ Authentication failed: Invalid API key format")
@@ -43,7 +46,7 @@ class XAIGrokClient:
             response = self.client.chat.completions.create(
                 model="grok-beta",  # or whatever the correct model name is
                 messages=messages,
-                **kwargs
+                **kwargs,
             )
             return response
         except Exception as e:

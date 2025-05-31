@@ -1,9 +1,10 @@
 """Base client abstraction for all LLM providers used in Kor'tana."""
 
-from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional
-import time
 import logging
+import time
+from abc import ABC, abstractmethod
+from typing import Any, Dict, List
+
 
 class BaseLLMClient(ABC):
     """Abstract base class defining the contract for all LLM clients.
@@ -14,7 +15,7 @@ class BaseLLMClient(ABC):
 
     def __init__(self, api_key: str, model_name: str, **kwargs):
         """Initialize the base LLM client.
-        
+
         Args:
             api_key: API key for the LLM provider
             model_name: Name/identifier of the specific model
@@ -25,12 +26,15 @@ class BaseLLMClient(ABC):
         self.config = kwargs
 
     @abstractmethod
-    def generate_response(self, system_prompt: str, messages: List) -> Dict[str, Any]:
+    def generate_response(
+        self, system_prompt: str, messages: List, **kwargs
+    ) -> Dict[str, Any]:
         """Generate a response from the LLM.
 
         Args:
             system_prompt: The system instructions for the LLM
             messages: List of conversation messages in standard format
+            **kwargs: Additional parameters like temperature, max_tokens, etc.
 
         Returns:
             Dict containing:
@@ -46,7 +50,7 @@ class BaseLLMClient(ABC):
     def get_capabilities(self) -> Dict[str, Any]:
         """
         Get the capabilities of this LLM client
-        
+
         Returns:
             Dictionary describing client capabilities
         """
@@ -56,7 +60,7 @@ class BaseLLMClient(ABC):
     def test_connection(self) -> bool:
         """
         Test the connection to the LLM service
-        
+
         Returns:
             True if connection successful, False otherwise
         """
@@ -66,18 +70,23 @@ class BaseLLMClient(ABC):
     def estimate_cost(self, prompt_tokens: int, completion_tokens: int) -> float:
         """
         Estimate the cost of a request
-        
+
         Args:
             prompt_tokens: Number of input tokens
             completion_tokens: Number of output tokens
-        
+
         Returns:
             Estimated cost in USD
         """
         pass
 
-    def generate_response_with_retry(self, system_prompt: str, messages: List, 
-                                    max_retries: int = 3, backoff_factor: float = 2.0) -> Dict[str, Any]:
+    def generate_response_with_retry(
+        self,
+        system_prompt: str,
+        messages: List,
+        max_retries: int = 3,
+        backoff_factor: float = 2.0,
+    ) -> Dict[str, Any]:
         """Generate response with automatic retry on transient failures.
 
         Implements exponential backoff strategy for resilience.
@@ -90,8 +99,10 @@ class BaseLLMClient(ABC):
                 last_error = e
                 # Skip wait on last attempt
                 if attempt < max_retries - 1:
-                    backoff_time = backoff_factor ** attempt
-                    logging.warning(f"LLM call failed (attempt {attempt+1}/{max_retries}): {e}. Retrying in {backoff_time}s...")
+                    backoff_time = backoff_factor**attempt
+                    logging.warning(
+                        f"LLM call failed (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {backoff_time}s..."
+                    )
                     time.sleep(backoff_time)
                 else:
                     logging.error(f"All {max_retries} LLM call attempts failed: {e}")
@@ -102,7 +113,7 @@ class BaseLLMClient(ABC):
             "reasoning_content": None,
             "usage": {},
             "error": str(last_error),
-            "model_id_used": getattr(self, 'model_name', 'unknown')
+            "model_id_used": getattr(self, "model_name", "unknown"),
         }
 
     # Optional methods with default implementations
@@ -116,7 +127,4 @@ class BaseLLMClient(ABC):
 
     def get_model_info(self) -> Dict[str, Any]:
         """Get information about the current model"""
-        return {
-            "name": self.model_name,
-            "provider": "unknown"
-        }
+        return {"name": self.model_name, "provider": "unknown"}

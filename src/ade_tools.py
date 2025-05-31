@@ -11,7 +11,7 @@ def read_file(file_path: str) -> str:
     Returns:
         The file contents as a string.
     """
-    with open(file_path, 'r', encoding='utf-8') as f:
+    with open(file_path, "r", encoding="utf-8") as f:
         return f.read()
 
 
@@ -25,7 +25,7 @@ def write_file(file_path: str, content: str) -> str:
         Success or error message.
     """
     try:
-        with open(file_path, 'w', encoding='utf-8') as f:
+        with open(file_path, "w", encoding="utf-8") as f:
             f.write(content)
         return f"Successfully wrote to {file_path}"
     except Exception as e:
@@ -54,17 +54,17 @@ def execute_python_script(script_path: str, args: List[str] = None) -> Dict[str,
     """
     if args is None:
         args = []
-    result = subprocess.run([
-        'python', script_path, *args
-    ], capture_output=True, text=True)
+    result = subprocess.run(
+        ["python", script_path, *args], capture_output=True, text=True
+    )
     return {
-        'stdout': result.stdout,
-        'stderr': result.stderr,
-        'returncode': result.returncode
+        "stdout": result.stdout,
+        "stderr": result.stderr,
+        "returncode": result.returncode,
     }
 
 
-def run_pytest(target: str = '.') -> Dict[str, Any]:
+def run_pytest(target: str = ".") -> Dict[str, Any]:
     """
     Run pytest on the given target and return structured results.
     Args:
@@ -72,11 +72,13 @@ def run_pytest(target: str = '.') -> Dict[str, Any]:
     Returns:
         Dictionary with 'success', 'output', and 'errors'.
     """
-    result = subprocess.run([
-        'pytest', target, '--maxfail=1', '--disable-warnings', '-q'
-    ], capture_output=True, text=True)
+    result = subprocess.run(
+        ["pytest", target, "--maxfail=1", "--disable-warnings", "-q"],
+        capture_output=True,
+        text=True,
+    )
     return {
-        'success': result.returncode == 0,
-        'output': result.stdout,
-        'errors': result.stderr
-    } 
+        "success": result.returncode == 0,
+        "output": result.stdout,
+        "errors": result.stderr,
+    }

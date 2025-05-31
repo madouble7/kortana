@@ -1,13 +1,16 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any
 
+
 class MemoryStore(ABC):
     @abstractmethod
     def add_memory(self, memory: Dict[str, Any]) -> None:
         pass
 
     @abstractmethod
-    def query_memories(self, query: str, top_k: int = 5, tags: List[str] = None) -> List[Dict[str, Any]]:
+    def query_memories(
+        self, query: str, top_k: int = 5, tags: List[str] = None
+    ) -> List[Dict[str, Any]]:
         pass
 
     @abstractmethod

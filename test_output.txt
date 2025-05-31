@@ -1,0 +1,17 @@
+[AI] Gemini 2.0 Flash configured (key: AIzaSyBrUA...)
+[RELAY] Enhanced Kor'tana Relay initialized
+[LOGS] c:\kortana\logs
+[QUEUES] c:\kortana\queues
+[DATABASE] c:\kortana\kortana.db
+[AGENTS] ['claude', 'flash', 'test_agent', 'weaver']
+Traceback (most recent call last):
+  File "c:\kortana\test_ai_integration.py", line 301, in <module>
+    main()
+  File "c:\kortana\test_ai_integration.py", line 298, in main
+    test_suite.run_full_test_suite()
+  File "c:\kortana\test_ai_integration.py", line 230, in run_full_test_suite
+    print("\U0001f9ea KOR'TANA AI TEST SUITE - GEMINI 2.0 FLASH")
+  File "C:\Program Files\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\U0001f9ea' in position 0: character maps to <undefined>

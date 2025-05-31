@@ -31,6 +31,11 @@
         "reasoning": "excellent",
         "efficiency": "maximum"
       },
+      "trinity_alignment": {
+        "wisdom": "good",
+        "compassion": "moderate",
+        "truth": "excellent"
+      },
       "default_params": {
         "temperature": 0.7,
         "max_tokens": 4096,
@@ -61,6 +66,11 @@
         "reasoning": "exceptional",
         "autonomous_capability": "optimized"
       },
+      "trinity_alignment": {
+        "wisdom": "excellent",
+        "compassion": "basic",
+        "truth": "excellent"
+      },
       "default_params": {
         "temperature": 0.5,
         "max_tokens": 2048,
@@ -90,6 +100,11 @@
         "reasoning": "good",
         "reliability": "excellent"
       },
+      "trinity_alignment": {
+        "wisdom": "good",
+        "compassion": "moderate",
+        "truth": "good"
+      },
       "default_params": {}
     },
     "claude-3-haiku-openrouter": {
@@ -108,6 +123,11 @@
         "gpqa": 75.0,
         "speed": "high",
         "cost_efficiency": "high"
+      },
+      "trinity_alignment": {
+        "wisdom": "moderate",
+        "compassion": "good",
+        "truth": "good"
       },
       "default_params": {}
     },
@@ -128,6 +148,11 @@
         "aider_polyglot_percent_correct": 72.0,
         "vision": "yes"
       },
+      "trinity_alignment": {
+        "wisdom": "good",
+        "compassion": "good",
+        "truth": "good"
+      },
       "default_params": {}
     },
     "deepseek-chat-v3-openrouter": {
@@ -143,6 +168,11 @@
       "cost_per_1m_input": 0.55,
       "cost_per_1m_output": 2.19,
       "performance_scores": {},
+      "trinity_alignment": {
+        "wisdom": "excellent",
+        "compassion": "basic",
+        "truth": "excellent"
+      },
       "default_params": {},
       "optimization": {},
       "repair_enabled": false
@@ -159,6 +189,11 @@
       "cost_per_1m_input": 0,
       "cost_per_1m_output": 0,
       "performance_scores": {},
+      "trinity_alignment": {
+        "wisdom": "basic",
+        "compassion": "excellent",
+        "truth": "basic"
+      },
       "default_params": {},
       "optimization": {},
       "repair_enabled": false
@@ -179,6 +214,11 @@
         "context_handling": "high",
         "summarization_quality": "high"
       },
+      "trinity_alignment": {
+        "wisdom": "good",
+        "compassion": "moderate",
+        "truth": "good"
+      },
       "default_params": {}
     },
     "llama-4-maverick-openrouter": {
@@ -196,6 +236,11 @@
       "performance_scores": {
         "coding_bench": 85.0,
         "reasoning": "high"
+      },
+      "trinity_alignment": {
+        "wisdom": "excellent",
+        "compassion": "basic",
+        "truth": "good"
       },
       "default_params": {}
     },
@@ -215,6 +260,11 @@
         "world_knowledge": "high",
         "creativity": "high"
       },
+      "trinity_alignment": {
+        "wisdom": "moderate",
+        "compassion": "good",
+        "truth": "good"
+      },
       "default_params": {}
     },
     "gemini-2.0-flash-lite": {
@@ -233,6 +283,11 @@
         "speed": "high",
         "cost_efficiency": "maximum",
         "reasoning": "good"
+      },
+      "trinity_alignment": {
+        "wisdom": "good",
+        "compassion": "moderate",
+        "truth": "good"
       },
       "default_params": {
         "temperature": 0.6,
@@ -255,7 +310,16 @@
     "grok-reasoning": "x-ai/grok-3-mini-beta",
     "gpt41-nano": "gpt-4.1-nano",
     "gpt-4-nano": "gpt-4.1-nano",
-    "nano": "gpt-4.1-nano"
+    "nano": "gpt-4.1-nano",
+    "haiku": "claude-3-haiku-openrouter",
+    "4o-mini": "gpt-4o-mini-openai",
+    "deepseek-chat": "deepseek-chat-v3-openrouter",
+    "noromaid": "noromaid-20b-openrouter",
+    "llama-scout": "llama-4-scout-openrouter",
+    "llama-maverick": "llama-4-maverick-openrouter",
+    "qwen-235b": "qwen3-235b-openrouter",
+    "flash-lite": "gemini-2.0-flash-lite",
+    "gemini-lite": "gemini-2.0-flash-lite"
   },
   "cost_optimization": {
     "daily_budget_usd": 35,

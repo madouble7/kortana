@@ -1,12 +1,19 @@
 from typing import List, Dict
 from datetime import datetime
 from pinecone import Pinecone
-import os
+
 
 class MemoryAgent:
-    def __init__(self, pinecone_api_key: str, pinecone_env: str, index_name: str = "kortana-memories"):
+    def __init__(
+        self,
+        pinecone_api_key: str,
+        pinecone_env: str,
+        index_name: str = "kortana-memories",
+    ):
         if not pinecone_api_key or not pinecone_env:
-            raise ValueError("Pinecone API key and environment must be set. Please set PINECONE_API_KEY and PINECONE_ENV in your .env file.")
+            raise ValueError(
+                "Pinecone API key and environment must be set. Please set PINECONE_API_KEY and PINECONE_ENV in your .env file."
+            )
         self.pc = Pinecone(api_key=pinecone_api_key)
         self.index_name = index_name
         # Use integrated embedding model
@@ -17,8 +24,8 @@ class MemoryAgent:
                 region=pinecone_env,  # e.g., "us-east-1"
                 embed={
                     "model": "llama-text-embed-v2",
-                    "field_map": {"text": "chunk_text"}
-                }
+                    "field_map": {"text": "chunk_text"},
+                },
             )
         self.index = self.pc.Index(index_name)
 
@@ -34,12 +41,14 @@ class MemoryAgent:
             # If you want to use an LLM for summary/meta, add that logic here
             summary = chunk[:100]  # Placeholder: first 100 chars as summary
             meta = ""
-            plans.append({
-                "chunk": chunk,
-                "summary": summary,
-                "meta": meta,
-                "created_at": datetime.utcnow().isoformat()
-            })
+            plans.append(
+                {
+                    "chunk": chunk,
+                    "summary": summary,
+                    "meta": meta,
+                    "created_at": datetime.utcnow().isoformat(),
+                }
+            )
         return plans
 
     def execute(self, plans: List[Dict]):
@@ -50,7 +59,7 @@ class MemoryAgent:
                 "chunk_text": p["chunk"],
                 "summary": p["summary"],
                 "meta": p["meta"],
-                "created_at": p["created_at"]
+                "created_at": p["created_at"],
             }
             for i, p in enumerate(plans)
         ]
@@ -59,10 +68,6 @@ class MemoryAgent:
     def verify(self, query: str) -> List[Dict]:
         """Run a semantic search in Pinecone and return the top 3 matches."""
         results = self.index.search(
-            namespace="default",
-            query={
-                "top_k": 3,
-                "inputs": {"text": query}
-            }
+            namespace="default", query={"top_k": 3, "inputs": {"text": query}}
         )
-        return results['result']['hits']
+        return results["result"]["hits"]

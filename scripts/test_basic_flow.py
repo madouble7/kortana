@@ -3,6 +3,7 @@ import time
 
 BASE = "http://localhost:7777"
 
+
 def get_mode():
     r = requests.get(f"{BASE}/mode")
     print("GET /mode →", r.status_code)
@@ -11,6 +12,7 @@ def get_mode():
     except ValueError:
         print("Non-JSON response:", r.text)
 
+
 def set_mode(mode):
     r = requests.post(f"{BASE}/mode", json={"mode": mode})
     print(f"POST /mode {{mode:{mode}}} →", r.status_code)
@@ -18,6 +20,7 @@ def set_mode(mode):
         print(r.json())
     except ValueError:
         print("Non-JSON response:", r.text)
+
 
 def chat(message, manual_mode=None):
     payload = {"message": message}
@@ -29,6 +32,7 @@ def chat(message, manual_mode=None):
         print(r.json())
     except ValueError:
         print("Non-JSON response:", r.text)
+
 
 if __name__ == "__main__":
     print("\n⏱  waiting 1s for server to settle…\n")

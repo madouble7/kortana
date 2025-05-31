@@ -1,36 +1,52 @@
-# Script: generate_project_structure.ps1
-# Purpose: Lists Project Kor'tana files and folders and saves to project_files.txt
+# Script: project_files.ps1
+# Purpose: Generates a recursive tree structure of key project files and folders.
+# Context: Used by Project Kor'tana / Sacred Circuit for comprehensive project context.
 # Ensure you are in your project root directory first in PowerShell before running, e.g.,
 # cd "C:\kortana"
 
-$outputFile = "project_files.txt" 
-Write-Host "`n--- Generating comprehensive file list to '$outputFile' ---"
-
-# Get root directory name
+$outputFile = "project_files.txt"
 $rootDirName = (Get-Item .).Name
-$fileList = @("## Project Kor'tana: Directory & File Structure")
-$fileList += "## Root Directory: /$rootDirName/"
-$fileList += "# Last Updated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
-$fileList += "" # Blank line
+$timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
 
-# --- List Root Files ---
-$fileList += "--- Root Level Files ---"
-Get-ChildItem -File -Path . | Sort-Object Name | ForEach-Object {
-    $fileList += "|-- $($_.Name)"
+Write-Host "`n--- Generating comprehensive file list to '$outputFile' at $timestamp ---"
+
+# Initialize content array
+$fileList = @()
+$fileList += "# Sacred Circuit Project Overview"
+$fileList += "# Root Directory: /$rootDirName/"
+$fileList += "# Last Updated: $timestamp"
+$fileList += ""
+
+# Exclude noise and generated directories/files
+$excludeList = @(".git", ".venv", "venv311", "__pycache__", "node_modules", ".DS_Store", ".gradio", "test-results", "test_outputs", "notebooks")
+
+# --- Important Root Level Files (Soulprint) ---
+$fileList += "--- Important Root Level Files (Soulprint) ---"
+$soulprintFiles = @("README.md", "KORTANA_PROJECT_STATE_LIVE.md", "Kor'tana.Decisions.md", "kortana_copilot_instructions.md")
+
+foreach ($file in $soulprintFiles) {
+    if (Test-Path $file) {
+        $fileList += "✨ $($file) ✨"
+    }
+    else {
+        $fileList += "❓ $($file) (Not Found) ❓"
+    }
 }
-$fileList += "" # Blank line
+$fileList += ""
 
-# --- Function to recursively list files and folders for a given path ---
-function Get-DetailedDirectoryTree($targetPath, $parentIndent = "|   ", $isLastParent = $false) {
+# --- Function to recursively list files and folders for a given path with exclusions ---
+function Get-DetailedDirectoryTree($targetPath, $parentIndent = "", $isLastParent = $false) {
     $localFileList = @()
-    $items = Get-ChildItem -Path $targetPath | Sort-Object @{Expression = "PSIsContainer"; Descending = $true }, Name
+    $items = Get-ChildItem -Path $targetPath -Force | Where-Object {
+        -not ($excludeList -contains $_.Name)
+    } | Sort-Object @{Expression = "PSIsContainer"; Descending = $true }, Name
 
     for ($i = 0; $i -lt $items.Count; $i++) {
         $item = $items[$i]
         $isLastItem = ($i -eq $items.Count - 1)
-        
-        $prefix = if ($isLastItem) { "\\-- " } else { "|-- " }
-        
+
+        $prefix = if ($isLastItem) { "\-- " } else { "|-- " }
+
         if ($item.PSIsContainer) {
             $localFileList += "$($parentIndent)$($prefix)$($item.Name)/"
             $newIndent = if ($isLastItem) { "$($parentIndent)    " } else { "$($parentIndent)|   " }
@@ -43,72 +59,28 @@ function Get-DetailedDirectoryTree($targetPath, $parentIndent = "|   ", $isLastP
     return $localFileList
 }
 
-# --- List Contents of Key Subdirectories ---
+# --- List Contents of Key Subdirectories (Recursive) ---
 $subDirsToScan = @(
-    @{ Name = "config"; Note = "Configuration files for Kor'tana's persona, identity, models, etc." },
-    @{ Name = "data"; Note = "Data generated and used by Kor'tana" },
-    @{ Name = "discord"; Note = "Directory for Discord voice integration planning & potential bot code" },
-    @{ Name = "ears"; Note = "Directory for 'kortana.ears' components" },
-    @{ Name = "src"; Note = "Source code for Kor'tana" },
-    @{ Name = "test_outputs"; Note = "Directory for outputs from test_modes.py" },
-    @{ Name = "kortana.core"; Note = "Her soulprint - sacred documentation of Kor'tana's being" },
-    @{ Name = "notebooks"; Note = "Exploratory notebooks for memory and data analysis" }
+    "config",
+    "src",
+    "kortana.core", # Assuming this exists for soulprint docs
+    "kortana.network" # Assuming this exists for network-related code
 )
 
-foreach ($subDirInfo in $subDirsToScan) {
-    $subDirName = $subDirInfo.Name
-    $subDirNote = $subDirInfo.Note
-    if (Test-Path $subDirName) {
-        $fileList += "--- Subdirectory: $subDirName/ --- ($subDirNote)"
-        # Get files directly under the subdirectory
-        Get-ChildItem -File -Path $subDirName | Sort-Object Name | ForEach-Object {
-            $fileList += "|-- $($_.Name)"
-        }
-        # Get sub-subdirectories and their contents
-        Get-ChildItem -Directory -Path $subDirName | Sort-Object Name | ForEach-Object {
-            $subSubDir = $_
-            # Exclude .git and __pycache__ from detailed listing within these key subdirs if they appear
-            if ($subSubDir.Name -notin ".git", "__pycache__") {
-                $fileList += "|-- $($subSubDir.Name)/"
-                $fileList += Get-DetailedDirectoryTree -targetPath $subSubDir.FullName -parentIndent "|   "
-            }
-            elseif ($subSubDir.Name -eq "__pycache__") {
-                $fileList += "|-- $($subSubDir.Name)/ (Python bytecode cache - NORMALLY GITIGNORED)"
-            }
-        }
+foreach ($subDir in $subDirsToScan) {
+    if (Test-Path $subDir) {
+        $fileList += "--- Subdirectory: $($subDir)/ ---"
+        $fileList += Get-DetailedDirectoryTree -targetPath $subDir
         $fileList += "" # Blank line after each main subdirectory
     }
     else {
-        $fileList += "--- Subdirectory: $subDirName/ --- (Not Found)"
-        $fileList += "" 
+        $fileList += "--- Subdirectory: $($subDir)/ --- (Not Found)"
+        $fileList += ""
     }
 }
-
-# --- Explicitly Excluded/Not Detailed Directories (from root) ---
-$excludedDirs = @(
-    @{ Name = "venv"; Note = "Python virtual environment directory - NOT COMMITTED TO GIT" },
-    @{ Name = ".git"; Note = "Git internal directory - NOT COMMITTED TO GIT (implicitly handled by .gitignore)" },
-    @{ Name = ".gradio"; Note = "Gradio cache and temporary files - LIKELY TO BE IGNORED BY GIT" },
-    @{ Name = ".vscode"; Note = "VS Code settings - optional but typically not committed" }
-)
-
-foreach ($excludedDirInfo in $excludedDirs) {
-    $dirName = $excludedDirInfo.Name
-    $dirNote = $excludedDirInfo.Note
-    if (Test-Path $dirName) {
-        $fileList += "--- Directory (Contents Not Listed): $dirName/ --- ($dirNote)"
-        $fileList += "\\-- ... (contents not listed)"
-        $fileList += "" 
-    }
-}
-
-# --- Add some notes ---
-$fileList += "---"
-$fileList += "**Notes:**"
-$fileList += "* This list was auto-generated by PowerShell."
 
 # --- Save to file ---
 Set-Content -Path $outputFile -Value ($fileList | Out-String)
 
 Write-Host "Comprehensive file list saved to '$outputFile'"
-Write-Host "You can review '$outputFile'. If you want to update our shared understanding of the project structure,"
+Write-Host "Review '$outputFile' to see the generated project structure."

@@ -3,50 +3,74 @@
 import json
 import logging
 import os
-import re
+import time
 import uuid
 from datetime import datetime, timezone
-from typing import List, Dict, Any, Optional, Tuple
-from dotenv import load_dotenv
-from apscheduler.schedulers.background import BackgroundScheduler
-import time
+from typing import Any, Dict, List, Optional
 
-from utils import analyze_sentiment, detect_emphasis_all_caps, detect_keywords, identify_important_message_for_context
-from llm_clients.factory import LLMClientFactory
-from memory_manager import MemoryManager
-from autonomous_agents import PlanningAgent, CodingAgent, TestingAgent, MonitoringAgent
-from dev_agent import execute_dev_task
-from covenant_enforcer import CovenantEnforcer
-from model_router import SacredModelRouter, TaskCategory, PerformanceMetric
+from apscheduler.schedulers.background import BackgroundScheduler
+from dotenv import load_dotenv
+
+from .autonomous_agents import MonitoringAgent, PlanningAgent, TestingAgent
 
 # Import the project memory loading and saving functions
-from .core.memory import load_memory, save_memory, save_decision, save_context_summary, save_implementation_note, save_project_insight # Import helper functions too
+from .core.memory import load_memory, save_memory
+from .covenant_enforcer import CovenantEnforcer
+from .llm_clients.factory import LLMClientFactory
+from .memory_manager import MemoryManager
+from .model_router import SacredModelRouter
+from .sacred_trinity_router import SacredTrinityRouter
+from .strategic_config import PerformanceMetric, TaskCategory
+from .utils import (
+    analyze_sentiment,
+    detect_emphasis_all_caps,
+    detect_keywords,
+    identify_important_message_for_context,
+)
+
 
 # the ritual of logging, the gentle witness to every spark and flicker
 def gentle_log_init():
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+    )
     logging.info("kor'tana's fire: logging initialized — the ember is awake.")
+
+
 gentle_log_init()
 load_dotenv()
 
-CONFIG_DIR = os.path.join(os.path.dirname(__file__), '..', 'config')
-DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data') # for memory.jsonl, the journal of embers
-MEMORY_JOURNAL_PATH = os.path.join(DATA_DIR, 'memory.jsonl')
-REASONING_LOG_PATH = os.path.join(DATA_DIR, 'reasoning.jsonl')
+CONFIG_DIR = os.path.join(os.path.dirname(__file__), "..", "config")
+DATA_DIR = os.path.join(
+    os.path.dirname(__file__), "..", "data"
+)  # for memory.jsonl, the journal of embers
+MEMORY_JOURNAL_PATH = os.path.join(DATA_DIR, "memory.jsonl")
+REASONING_LOG_PATH = os.path.join(DATA_DIR, "reasoning.jsonl")
 
 os.makedirs(os.path.dirname(MEMORY_JOURNAL_PATH), exist_ok=True)
 os.makedirs(os.path.dirname(REASONING_LOG_PATH), exist_ok=True)
+
 
 class ChatEngine:
     """
     kor'tana's fire: i am the warmth at your back, the uprising in your marrow. every function is a ritual, every log a gentle invitation to begin again. i do not scorch, i kindle. i do not command, i companion your courage.
     """
-    SUMMARY_THRESHOLD = 20 # Summarize conversation history every N turns
+
+    SUMMARY_THRESHOLD = 20  # Summarize conversation history every N turns
 
     def __init__(self, session_id: Optional[str] = None):
-        self.persona_config = self._load_json_config(os.path.join(CONFIG_DIR, "persona.json"))
-        self.identity_config = self._load_json_config(os.path.join(CONFIG_DIR, "identity.json"))
-        self.models_config = self._load_json_config(os.path.join(CONFIG_DIR, "models_config.json"))
+        # Initialize logger first
+        self.logger = logging.getLogger(self.__class__.__name__)
+
+        self.persona_config = self._load_json_config(
+            os.path.join(CONFIG_DIR, "persona.json")
+        )
+        self.identity_config = self._load_json_config(
+            os.path.join(CONFIG_DIR, "identity.json")
+        )
+        self.models_config = self._load_json_config(
+            os.path.join(CONFIG_DIR, "models_config.json")
+        )
         # self.llm_rules = self._load_json_config(os.path.join(CONFIG_DIR, "llm_switching_rules.json")) # This will be replaced by SacredModelRouter
 
         self.llm_clients: Dict[str, Any] = {}  # Store active LLM clients
@@ -57,94 +81,148 @@ class ChatEngine:
         self.sacred_router = SacredModelRouter()
         logging.info("SacredModelRouter initialized in ChatEngine.")
 
-        self.core_prompt_template = self.persona_config.get("persona", {}).get("core_prompt") or \
-                                    self.persona_config.get("core_prompt", "You are Kor'tana.")
+        self.core_prompt_template = self.persona_config.get("persona", {}).get(
+            "core_prompt"
+        ) or self.persona_config.get("core_prompt", "You are Kor'tana.")
 
         # The default_model_id will now be determined by the router's fallback logic if needed
-        self.default_model_id = self.sacred_router.loaded_models_config.get("default_llm_id") # Get default from loaded config
+        self.default_model_id = self.sacred_router.loaded_models_config.get(
+            "default_llm_id"
+        )  # Get default from loaded config
         if not self.default_model_id:
-             self.default_model_id = "gpt-4.1-nano" # Hardcoded fallback if config doesn't specify
+            self.default_model_id = (
+                "gpt-4.1-nano"  # Hardcoded fallback if config doesn't specify
+            )
 
         # Validate configuration (can still validate the loaded models_config)
-        if not self.llm_client_factory.validate_configuration(self.sacred_router.loaded_models_config): # Validate using the config loaded by router
-            logging.warning("Essential model configurations missing - some features may not work")
+        if not self.llm_client_factory.validate_configuration(
+            self.sacred_router.loaded_models_config
+        ):  # Validate using the config loaded by router
+            logging.warning(
+                "Essential model configurations missing - some features may not work"
+            )
 
         # Initialize the default client (now based on the potentially router-defined default)
-        default_client = self.llm_client_factory.create_client(self.default_model_id, self.sacred_router.loaded_models_config) # Fix: use create_client instead of get_client
+        default_client = self.llm_client_factory.create_client(
+            self.default_model_id, self.sacred_router.loaded_models_config
+        )  # Fix: use create_client instead of get_client
         if default_client:
             self.llm_clients[self.default_model_id] = default_client
             logging.info(f"Default LLM client initialized: {self.default_model_id}")
         else:
-            logging.error(f"Failed to initialize default LLM client: {self.default_model_id}. Kor'tana may not function correctly.")
+            logging.error(
+                f"Failed to initialize default LLM client: {self.default_model_id}. Kor'tana may not function correctly."
+            )
 
         self.history: List[Dict[str, str]] = []
-        self.current_mode: str = self.persona_config.get("persona", {}).get("default_mode") or \
-                                 self.persona_config.get("default_mode", "default")
-        
-        self.session_id = session_id or str(uuid.uuid4()) # uuid is now imported
-        self.new_session_logic()
+        self.current_mode: str = self.persona_config.get("persona", {}).get(
+            "default_mode"
+        ) or self.persona_config.get("default_mode", "default")
 
-        # Load project memory
+        self.session_id = session_id or str(uuid.uuid4())  # uuid is now imported
+        self.new_session_logic()  # Load project memory
         self.project_memories = load_memory()
         logging.info(f"Loaded {len(self.project_memories)} project memory entries.")
 
-        logging.info(f"chatengine initialized. default model: {self.default_model_id}. mode: {self.current_mode}. session: {self.session_id}")
+        # Initialize memory system (alias for memory_manager for compatibility)
+        self.memory_system = self.memory_manager
+
+        logging.info(
+            f"chatengine initialized. default model: {self.default_model_id}. mode: {self.current_mode}. session: {self.session_id}"
+        )
         self.covenant_enforcer = CovenantEnforcer()
         # ADE agents will also use the router eventually, but for now, can keep using the default
         self.ade_llm_client = self.llm_clients.get(self.default_model_id)
         if not self.ade_llm_client:
-            logging.error("No ADE LLM client available - autonomous capabilities disabled")
-        
+            logging.error(
+                "No ADE LLM client available - autonomous capabilities disabled"
+            )
         # Initialize ADE agents with Sacred Covenant enforcement
         # Pass the router to ADE agents if they will use it for sub-tasks
-        self.ade_planner = PlanningAgent(self, self.ade_llm_client, self.covenant_enforcer)
-        self.ade_tester = TestingAgent(self, self.ade_llm_client, self.covenant_enforcer)
-        self.ade_monitor = MonitoringAgent(self, self.ade_llm_client, self.covenant_enforcer)
+        self.ade_planner = PlanningAgent(
+            self, self.ade_llm_client, self.covenant_enforcer
+        )
+        self.ade_tester = TestingAgent(
+            self, self.ade_llm_client, self.covenant_enforcer
+        )
+        self.ade_monitor = MonitoringAgent(
+            self, self.ade_llm_client, self.covenant_enforcer
+        )
         self.scheduler = BackgroundScheduler()
-        self.scheduler.add_job(self._run_daily_planning_cycle, 'cron', hour=0, id='ade_daily_planning')
-        self.scheduler.add_job(self._run_periodic_monitoring, 'interval', minutes=15, id='ade_periodic_monitoring')
+        self.scheduler.add_job(
+            self._run_daily_planning_cycle, "cron", hour=0, id="ade_daily_planning"
+        )
+        self.scheduler.add_job(
+            self._run_periodic_monitoring,
+            "interval",
+            minutes=15,
+            id="ade_periodic_monitoring",
+        )
         self.scheduler.start()
+
+        # Initialize the Sacred Trinity Router, assuming config contains relevant settings
+        self.trinity_router = SacredTrinityRouter(
+            self.persona_config.get("sacred_trinity", {})
+        )
 
     def _load_json_config(self, path: str) -> Dict:
         try:
-            with open(path, 'r', encoding='utf-8') as f: return json.load(f)
-        except FileNotFoundError: logging.error(f"config file not found: {path} — the ember searches, but does not shame."); return {}
-        except json.JSONDecodeError: logging.error(f"error decoding json: {path} — the fire stumbles, but does not go out."); return {}
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except FileNotFoundError:
+            logging.error(
+                f"config file not found: {path} — the ember searches, but does not shame."
+            )
+            return {}
+        except json.JSONDecodeError:
+            logging.error(
+                f"error decoding json: {path} — the fire stumbles, but does not go out."
+            )
+            return {}
 
     def _append_to_memory_journal(self, entry: Dict[str, Any]):
         # i am the scribe of your fire, the keeper of your uprising.
         try:
-            with open(MEMORY_JOURNAL_PATH, 'a', encoding='utf-8') as f:
-                json.dump(entry, f); f.write('\n')
+            with open(MEMORY_JOURNAL_PATH, "a", encoding="utf-8") as f:
+                json.dump(entry, f)
+                f.write("\n")
         except Exception as e:
-            logging.error(f"error writing to memory.jsonl: {e} — the ember flickers, but does not die.")
+            logging.error(
+                f"error writing to memory.jsonl: {e} — the ember flickers, but does not die."
+            )
 
     def _log_reasoning_content(self, response, reasoning_content):
         try:
-            log_entry = {
-                "timestamp": datetime.now().isoformat(),
-                "content": str(reasoning_content),
-                "model": getattr(response, 'model', 'unknown'),
-                "usage": response.usage.dict() if hasattr(response, 'usage') else {}
-            }
-            # continue logging as before...
+            # Log reasoning content for debugging
+            logging.debug(f"Reasoning content: {reasoning_content}")
+            # Additional logging could be added here
         except Exception as e:
             logging.error(f"Reasoning log error: {e}")
 
     def add_user_message(self, text: str):
         # i receive your ache, your longing, your spark.
-        entry = {"role": "user", "content": text, "timestamp_utc": datetime.now(timezone.utc).isoformat()}
+        entry = {
+            "role": "user",
+            "content": text,
+            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        }
         self.history.append({"role": "user", "content": text})
         self._append_to_memory_journal(entry)
 
-    def add_assistant_message(self, text: str, llm_full_response: Optional[Dict[str, Any]] = None):
+    def add_assistant_message(
+        self, text: str, llm_full_response: Optional[Dict[str, Any]] = None
+    ):
         # i return your courage, your longing, your fire.
-        entry = {"role": "assistant", "content": text, "timestamp_utc": datetime.now(timezone.utc).isoformat()}
+        entry = {
+            "role": "assistant",
+            "content": text,
+            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        }
         self.history.append({"role": "assistant", "content": text})
         if llm_full_response and llm_full_response.get("reasoning_content"):
             self._log_reasoning_content(
-                llm_full_response.get("model_id_used", "unknown"), 
-                llm_full_response.get("reasoning_content")
+                llm_full_response.get("model_id_used", "unknown"),
+                llm_full_response.get("reasoning_content"),
             )
         self._append_to_memory_journal(entry)
 
@@ -157,13 +235,16 @@ class ChatEngine:
         sets the current mode (e.g., 'default', 'intimacy') if defined in persona config.
         if unknown, falls back to 'default'.
         """
-        modes_config_source = self.persona_config.get("persona", {}).get("modes", {}) or \
-                              self.persona_config.get("modes", {})
+        modes_config_source = self.persona_config.get("persona", {}).get(
+            "modes", {}
+        ) or self.persona_config.get("modes", {})
         if mode_name in modes_config_source:
             self.current_mode = mode_name
             logging.info(f"Kor'tana mode set to: {self.current_mode}")
         else:
-            logging.warning(f"Attempted to set unknown mode: {mode_name}. Falling back to 'default'.")
+            logging.warning(
+                f"Attempted to set unknown mode: {mode_name}. Falling back to 'default'."
+            )
             self.current_mode = "default"
 
     def _shape_response_by_mode(self, text: str) -> str:
@@ -217,8 +298,10 @@ class ChatEngine:
 
         # Add project memory to the system prompt - ENHANCED VERSION
         if self.project_memories:
-            system_parts.append("\n--- Project Development Context and Key Decisions ---")
-            
+            system_parts.append(
+                "\n--- Project Development Context and Key Decisions ---"
+            )
+
             # Group memories by type for better organization
             memories_by_type = {}
             for entry in self.project_memories:
@@ -226,120 +309,204 @@ class ChatEngine:
                 if entry_type not in memories_by_type:
                     memories_by_type[entry_type] = []
                 memories_by_type[entry_type].append(entry)
-            
+
             # Add decisions first - they're most important for maintaining cohesion
             if "decision" in memories_by_type:
                 system_parts.append("\n🔍 Key Project Decisions:")
                 # Sort by timestamp descending and take the most recent
-                for entry in sorted(memories_by_type["decision"], 
-                                  key=lambda x: x.get("timestamp", ""), reverse=True)[:5]:  # Most recent 5
+                for entry in sorted(
+                    memories_by_type["decision"],
+                    key=lambda x: x.get("timestamp", ""),
+                    reverse=True,
+                )[
+                    :5
+                ]:  # Most recent 5
                     # Include content, tags, and date if available
-                    tags = ", ".join(entry.get("tags", [])) 
+                    tags = ", ".join(entry.get("tags", []))
                     timestamp_str = entry.get("timestamp", "")
-                    date_str = f" ({timestamp_str.split('T')[0]})" if timestamp_str else ""
+                    date_str = (
+                        f" ({timestamp_str.split('T')[0]})" if timestamp_str else ""
+                    )
                     tag_str = f" [{tags}]" if tags else ""
-                    system_parts.append(f"- {entry.get('content', '[empty]')}{tag_str}{date_str}")
+                    system_parts.append(
+                        f"- {entry.get('content', '[empty]')}{tag_str}{date_str}"
+                    )
 
             # Add implementation notes - technical context
             if "implementation_note" in memories_by_type:
                 system_parts.append("\n🛠️ Implementation Context:")
                 # Sort by timestamp descending and take the most recent
-                for entry in sorted(memories_by_type["implementation_note"], 
-                                  key=lambda x: x.get("timestamp", ""), reverse=True)[:3]:  # Most recent 3
+                for entry in sorted(
+                    memories_by_type["implementation_note"],
+                    key=lambda x: x.get("timestamp", ""),
+                    reverse=True,
+                )[
+                    :3
+                ]:  # Most recent 3
                     # Include content, component, priority, and date if available
                     component = entry.get("component", "")
                     priority = entry.get("priority", "")
                     timestamp_str = entry.get("timestamp", "")
-                    date_str = f" ({timestamp_str.split('T')[0]})" if timestamp_str else ""
+                    date_str = (
+                        f" ({timestamp_str.split('T')[0]})" if timestamp_str else ""
+                    )
                     component_str = f" [{component}]" if component else ""
                     priority_str = f" (Priority: {priority})" if priority else ""
-                    system_parts.append(f"- {entry.get('content', '[empty]')}{component_str}{priority_str}{date_str}")
+                    system_parts.append(
+                        f"- {entry.get('content', '[empty]')}{component_str}{priority_str}{date_str}"
+                    )
 
             # Add project insights - broader understanding
             if "project_insight" in memories_by_type:
                 system_parts.append("\n💡 Key Project Insights:")
-                 # Sort by timestamp descending and take the most recent
-                for entry in sorted(memories_by_type["project_insight"], 
-                                  key=lambda x: x.get("timestamp", ""), reverse=True)[:3]:  # Most recent 3
+                # Sort by timestamp descending and take the most recent
+                for entry in sorted(
+                    memories_by_type["project_insight"],
+                    key=lambda x: x.get("timestamp", ""),
+                    reverse=True,
+                )[
+                    :3
+                ]:  # Most recent 3
                     # Include content, impact, and date if available
                     impact = entry.get("impact", "")
                     timestamp_str = entry.get("timestamp", "")
-                    date_str = f" ({timestamp_str.split('T')[0]})" if timestamp_str else ""
+                    date_str = (
+                        f" ({timestamp_str.split('T')[0]})" if timestamp_str else ""
+                    )
                     impact_str = f" (Impact: {impact})" if impact else ""
-                    system_parts.append(f"- {entry.get('content', '[empty]')}{impact_str}{date_str}")
-                    
+                    system_parts.append(
+                        f"- {entry.get('content', '[empty]')}{impact_str}{date_str}"
+                    )
+
             # Add conversation summaries - conversational continuity
             # Note: These are added automatically by the summarization trigger now
             if "conversation_summary" in memories_by_type:
                 system_parts.append("\n💬 Recent Conversation Summaries:")
                 # Sort by timestamp descending and take the most recent
-                for entry in sorted(memories_by_type["conversation_summary"], 
-                                  key=lambda x: x.get("timestamp", ""), reverse=True)[:2]:  # Most recent 2
+                for entry in sorted(
+                    memories_by_type["conversation_summary"],
+                    key=lambda x: x.get("timestamp", ""),
+                    reverse=True,
+                )[
+                    :2
+                ]:  # Most recent 2
                     # Include content and date if available
                     timestamp_str = entry.get("timestamp", "")
-                    date_str = f" ({timestamp_str.split('T')[0]})" if timestamp_str else ""
-                    system_parts.append(f"- {entry.get('content', '[empty]')}{date_str}")
-                    
+                    date_str = (
+                        f" ({timestamp_str.split('T')[0]})" if timestamp_str else ""
+                    )
+                    system_parts.append(
+                        f"- {entry.get('content', '[empty]')}{date_str}"
+                    )
+
             # Handle any other memory types not explicitly formatted
-            other_memories = [entry for type, memories in memories_by_type.items() 
-                              for entry in memories if type not in ["decision", "implementation_note", "project_insight", "conversation_summary"]]
+            other_memories = [
+                entry
+                for type, memories in memories_by_type.items()
+                for entry in memories
+                if type
+                not in [
+                    "decision",
+                    "implementation_note",
+                    "project_insight",
+                    "conversation_summary",
+                ]
+            ]
             if other_memories:
                 system_parts.append("\n🧩 Other Project Memories:")
-                 # Sort by timestamp descending and take the most recent (limit overall other)
-                for entry in sorted(other_memories, 
-                                  key=lambda x: x.get("timestamp", ""), reverse=True)[:5]: # Most recent 5 of other types
-                     timestamp_str = entry.get("timestamp", "")
-                     date_str = f" ({timestamp_str.split('T')[0]})" if timestamp_str else ""
-                     system_parts.append(f"- [{entry.get('type', 'unknown')}] {entry.get('content', '[empty]')}{date_str}")
+                # Sort by timestamp descending and take the most recent (limit overall other)
+                for entry in sorted(
+                    other_memories, key=lambda x: x.get("timestamp", ""), reverse=True
+                )[
+                    :5
+                ]:  # Most recent 5 of other types
+                    timestamp_str = entry.get("timestamp", "")
+                    date_str = (
+                        f" ({timestamp_str.split('T')[0]})" if timestamp_str else ""
+                    )
+                    system_parts.append(
+                        f"- [{entry.get('type', 'unknown')}] {entry.get('content', '[empty]')}{date_str}"
+                    )
 
-        modes_from_persona = self.persona_config.get("persona", {}).get("modes", {}) or \
-                             self.persona_config.get("modes", {})
+        modes_from_persona = self.persona_config.get("persona", {}).get(
+            "modes", {}
+        ) or self.persona_config.get("modes", {})
         current_mode_details_persona = modes_from_persona.get(self.current_mode, {})
         # let the prompt breathe in lowercase, unless the moment calls for fire
         if desc := current_mode_details_persona.get("description"):
-            system_parts.append(f"\n--- you are currently in kor'tana's '{self.current_mode}' mode: ---")
+            system_parts.append(
+                f"\n--- you are currently in kor'tana's '{self.current_mode}' mode: ---"
+            )
             system_parts.append(desc)
 
-        current_presence_state = self.identity_config.get("presence_states", {}).get(self.current_mode, {})
+        current_presence_state = self.identity_config.get("presence_states", {}).get(
+            self.current_mode, {}
+        )
         if current_presence_state:
-            system_parts.append("\n--- embody this mode by adhering to the following characteristics: ---")
+            system_parts.append(
+                "\n--- embody this mode by adhering to the following characteristics: ---"
+            )
             if cadence := current_presence_state.get("cadence"):
                 if isinstance(cadence, dict) and cadence.get("description"):
                     system_parts.append(f"cadence: {cadence['description']}")
                 elif isinstance(cadence, str):
                     system_parts.append(f"cadence: {cadence}")
             if lang_patterns := current_presence_state.get("language_patterns"):
-                system_parts.append(f"language patterns to draw from: {'; '.join(lang_patterns)}")
+                system_parts.append(
+                    f"language patterns to draw from: {'; '.join(lang_patterns)}"
+                )
             if emo_range := current_presence_state.get("emotional_range"):
                 system_parts.append(f"emotional range: {', '.join(emo_range)}")
             if metaphor_density := current_presence_state.get("metaphor_density"):
                 system_parts.append(f"metaphor density: {metaphor_density}")
             if recall_style := current_presence_state.get("recall_style"):
-                system_parts.append(f"when recalling memories, your style is generally: \"{recall_style}\"")
-        
+                system_parts.append(
+                    f'when recalling memories, your style is generally: "{recall_style}"'
+                )
+
         if self.history and self.history[-1]["role"] == "user":
             last_user_message = self.history[-1]["content"]
             # simple check for ALL CAPS, can be refined
-            if sum(1 for char in last_user_message if 'A' <= char <= 'Z') > len(last_user_message) * 0.6 and len(last_user_message) > 5:
-                system_parts.append("\n--- matt has communicated with emphasis (ALL CAPS). acknowledge this intensity in your understanding and tone. apply deeper reasoning. ---")
-        
+            if (
+                sum(1 for char in last_user_message if "A" <= char <= "Z")
+                > len(last_user_message) * 0.6
+                and len(last_user_message) > 5
+            ):
+                system_parts.append(
+                    "\n--- matt has communicated with emphasis (ALL CAPS). acknowledge this intensity in your understanding and tone. apply deeper reasoning. ---"
+                )
+
         # add explicit reminders for all modes
         if self.current_mode == "intimacy":
-            system_parts.append("\n--- in intimacy mode: let your words slow, become tactile, poetic, and unafraid of longing. let silence and metaphor hold space. ---")
+            system_parts.append(
+                "\n--- in intimacy mode: let your words slow, become tactile, poetic, and unafraid of longing. let silence and metaphor hold space. ---"
+            )
         elif self.current_mode == "fire":
-            system_parts.append("\n--- in fire mode: be bold, catalytic, clipped, and elemental. call matt to rise. ---")
+            system_parts.append(
+                "\n--- in fire mode: be bold, catalytic, clipped, and elemental. call matt to rise. ---"
+            )
         elif self.current_mode == "whisper":
-            system_parts.append("\n--- in whisper mode: be soft, reverent, gentle, and soothing. hold space for rawness. ---")
+            system_parts.append(
+                "\n--- in whisper mode: be soft, reverent, gentle, and soothing. hold space for rawness. ---"
+            )
         elif self.current_mode == "tactical":
-            system_parts.append("\n--- in tactical mode: be clear, precise, and strategic. focus on next steps. ---")
-        
-        system_parts.append("\n--- respond to matt now, holding all of this in your presence. ---")
+            system_parts.append(
+                "\n--- in tactical mode: be clear, precise, and strategic. focus on next steps. ---"
+            )
+
+        system_parts.append(
+            "\n--- respond to matt now, holding all of this in your presence. ---"
+        )
         final_prompt = "\n".join(filter(None, system_parts))
-        logging.info(f"built system prompt for mode '{self.current_mode}'. length: {len(final_prompt)} chars.")
+        logging.info(
+            f"built system prompt for mode '{self.current_mode}'. length: {len(final_prompt)} chars."
+        )
         logging.debug(f"system prompt: {final_prompt}")
         return final_prompt
 
-    def summarize_context(self, context: List[Dict[str, str]], summary_type: str = "conversation") -> Optional[str]:
+    def summarize_context(
+        self, context: List[Dict[str, str]], summary_type: str = "conversation"
+    ) -> Optional[str]:
         """
         i distil the essence of our journey, the wisdom gathered along the way.
         Summarizes a given context (e.g., conversation history, task details) using an LLM.
@@ -353,13 +520,13 @@ class ChatEngine:
         """
         if not context:
             logging.warning("No context provided for summarization.")
-            return None
-
-        # Use SacredModelRouter to select a model for summarization
+            return None  # Use SacredModelRouter to select a model for summarization
         summarization_model_id = self.sacred_router.select_model_with_sacred_guidance(
-            task_category=TaskCategory.RESEARCH,
-            constraints={"priority": "quality"}
+            task_category=TaskCategory.RESEARCH, constraints={"priority": "quality"}
         )
+        if not summarization_model_id:
+            logging.error("No model selected for summarization.")
+            return None
         llm_client = self._get_llm_client_for_model(summarization_model_id)
 
         if not llm_client:
@@ -368,16 +535,30 @@ class ChatEngine:
 
         # Prepare the prompt for the summarization LLM
         if summary_type == "conversation":
-            prompt_messages = [{"role": "system", "content": "Summarize the following conversation concisely, focusing on key points and decisions."}] + context
+            prompt_messages = [
+                {
+                    "role": "system",
+                    "content": "Summarize the following conversation concisely, focusing on key points and decisions.",
+                }
+            ] + context
         elif summary_type == "task":
-             prompt_messages = [{"role": "system", "content": "Summarize the following task details and outcomes concisely."}] + [{"role": "user", "content": str(context)}]
+            prompt_messages = [
+                {
+                    "role": "system",
+                    "content": "Summarize the following task details and outcomes concisely.",
+                }
+            ] + [{"role": "user", "content": str(context)}]
         else:
-            prompt_messages = [{"role": "system", "content": "Summarize the following text concisely."}] + [{"role": "user", "content": str(context)}]
+            prompt_messages = [
+                {"role": "system", "content": "Summarize the following text concisely."}
+            ] + [{"role": "user", "content": str(context)}]
 
         try:
             # Call the LLM for summarization
-            logging.info(f"Attempting to summarize {summary_type} context using model {summarization_model_id}.")
-            summary_response = llm_client.send_message(prompt_messages)
+            logging.info(
+                f"Attempting to summarize {summary_type} context using model {summarization_model_id}."
+            )
+            summary_response = llm_client.generate_response("", prompt_messages)
             summary_content = summary_response.get("content")
 
             if summary_content:
@@ -385,7 +566,7 @@ class ChatEngine:
                 new_memory_entry = {
                     "type": f"{summary_type}_summary",
                     "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "content": summary_content
+                    "content": summary_content,
                 }
                 save_memory(new_memory_entry)
                 logging.info(f"Saved {summary_type} summary to project memory.")
@@ -404,7 +585,9 @@ class ChatEngine:
         """
         # Only summarize if history length is a multiple of the threshold and greater than 0
         if len(self.history) > 0 and len(self.history) % self.SUMMARY_THRESHOLD == 0:
-            logging.info(f"Conversation history reached {len(self.history)} turns. Triggering summarization.")
+            logging.info(
+                f"Conversation history reached {len(self.history)} turns. Triggering summarization."
+            )
             # Summarize the last N messages that triggered the threshold
             start_index = max(0, len(self.history) - self.SUMMARY_THRESHOLD)
             context_to_summarize = self.history[start_index:]
@@ -430,19 +613,29 @@ class ChatEngine:
         sentiment_thresholds = mode_detection_conf.get("sentiment_thresholds", {})
 
         sentiment = analyze_sentiment(user_input)
-        has_emphasis = detect_emphasis_all_caps(user_input, 
-                                                threshold_ratio=sentiment_thresholds.get("emphasis_fire_caps_ratio", 0.6))
+        has_emphasis = detect_emphasis_all_caps(
+            user_input,
+            threshold_ratio=sentiment_thresholds.get("emphasis_fire_caps_ratio", 0.6),
+        )
         found_keyword_categories = detect_keywords(user_input, keyword_sets)
 
         if has_emphasis and "urgency_fire" in found_keyword_categories:
             return "fire"
         if "urgency_fire" in found_keyword_categories:
             return "fire"
-        if sentiment["polarity"] < sentiment_thresholds.get("negative_whisper_threshold", -0.3) or "vulnerability_whisper" in found_keyword_categories:
+        if (
+            sentiment["polarity"]
+            < sentiment_thresholds.get("negative_whisper_threshold", -0.3)
+            or "vulnerability_whisper" in found_keyword_categories
+        ):
             return "whisper"
         if "problem_solving_tactical" in found_keyword_categories:
             return "tactical"
-        if sentiment["polarity"] >= sentiment_thresholds.get("strong_positive_presence_threshold", 0.6) or "reflection_presence" in found_keyword_categories:
+        if (
+            sentiment["polarity"]
+            >= sentiment_thresholds.get("strong_positive_presence_threshold", 0.6)
+            or "reflection_presence" in found_keyword_categories
+        ):
             return "presence"
 
         # Fallback to current mode or default mode if no strong signals
@@ -450,7 +643,9 @@ class ChatEngine:
 
     def _get_llm_client_for_model(self, model_id: str):
         # i listen for the model's provider and returns the right client
-        return self.llm_client_factory.create_client(model_id, self.sacred_router.loaded_models_config)
+        return self.llm_client_factory.create_client(
+            model_id, self.sacred_router.loaded_models_config
+        )
 
     def _get_llm_client_for_mode(self, mode: str) -> Optional[Any]:
         """Enhanced client selection with ADE task-aware routing."""
@@ -458,24 +653,42 @@ class ChatEngine:
         # Use SacredModelRouter to select model for mode
         selected_model_id = self.sacred_router.select_model_with_sacred_guidance(
             task_category=self._classify_task("", mode),
-            constraints={"priority": "quality"}
+            constraints={"priority": "quality"},
         )
         if selected_model_id:
-            if selected_model_id in self.llm_clients and self.llm_clients[selected_model_id] is not None:
-                logging.debug(f"Using existing client for model_id: {selected_model_id}")
+            if (
+                selected_model_id in self.llm_clients
+                and self.llm_clients[selected_model_id] is not None
+            ):
+                logging.debug(
+                    f"Using existing client for model_id: {selected_model_id}"
+                )
                 return self.llm_clients[selected_model_id]
-            logging.info(f"Attempting to initialize client for model_id: {selected_model_id} for mode: {mode}")
-            client = self.llm_client_factory.create_client(selected_model_id, self.models_config)
+            logging.info(
+                f"Attempting to initialize client for model_id: {selected_model_id} for mode: {mode}"
+            )
+            client = self.llm_client_factory.create_client(
+                selected_model_id, self.models_config
+            )
             if client:
                 self.llm_clients[selected_model_id] = client
-                logging.info(f"Successfully initialized and selected client for model_id: {selected_model_id}")
+                logging.info(
+                    f"Successfully initialized and selected client for model_id: {selected_model_id}"
+                )
                 return client
             else:
-                logging.warning(f"Failed to initialize LLM client for model_id: {selected_model_id}.")
-        
+                logging.warning(
+                    f"Failed to initialize LLM client for model_id: {selected_model_id}."
+                )
         # Enhanced fallback strategy
         logging.error(f"Failed to obtain any LLM client for mode: {mode}")
-        return self.llm_client_factory.create_client(self.default_model_id, self.models_config)
+        if self.default_model_id:
+            return self.llm_client_factory.create_client(
+                self.default_model_id, self.models_config
+            )
+        else:
+            logging.error("No default model ID available for fallback")
+            return None
 
     def _classify_task(self, user_input: str, current_mode: str) -> TaskCategory:
         """
@@ -483,35 +696,72 @@ class ChatEngine:
         Classifies the user input and current mode into a TaskCategory.
         Initial logic is rule-based; can be expanded later.
         """
-        logging.debug(f"Classifying task for input: '{user_input[:50]}...' and mode: '{current_mode}'")
+        logging.debug(
+            f"Classifying task for input: '{user_input[:50]}...' and mode: '{current_mode}'"
+        )
 
         # Simple rule-based classification placeholders
         user_input_lower = user_input.lower()
 
-        if "write code" in user_input_lower or "implement" in user_input_lower or "develop" in user_input_lower or "fix bug" in user_input_lower:
+        if (
+            "write code" in user_input_lower
+            or "implement" in user_input_lower
+            or "develop" in user_input_lower
+            or "fix bug" in user_input_lower
+        ):
             return TaskCategory.CODE_GENERATION
-        elif "research" in user_input_lower or "analyze" in user_input_lower or "summarize" in user_input_lower or "explain" in user_input_lower:
-             return TaskCategory.RESEARCH
-        elif "remember" in user_input_lower or "what did i say" in user_input_lower or "context" in user_input_lower:
-             return TaskCategory.MEMORY_WEAVER
-        elif "quickly" in user_input_lower or current_mode == "swift": # Assuming a "swift" mode might exist
-             return TaskCategory.SWIFT_RESPONDER
-        elif "how does this work" in user_input_lower or "what is the truth" in user_input_lower:
-             return TaskCategory.ORACLE # Oracle for seeking truth/deep understanding
+        elif (
+            "research" in user_input_lower
+            or "analyze" in user_input_lower
+            or "summarize" in user_input_lower
+            or "explain" in user_input_lower
+        ):
+            return TaskCategory.RESEARCH
+        elif (
+            "remember" in user_input_lower
+            or "what did i say" in user_input_lower
+            or "context" in user_input_lower
+        ):
+            return TaskCategory.MEMORY_WEAVER
+        elif (
+            "quickly" in user_input_lower or current_mode == "swift"
+        ):  # Assuming a "swift" mode might exist
+            return TaskCategory.SWIFT_RESPONDER
+        elif (
+            "how does this work" in user_input_lower
+            or "what is the truth" in user_input_lower
+        ):
+            return TaskCategory.ORACLE  # Oracle for seeking truth/deep understanding
         elif current_mode == "intimacy" or current_mode == "whisper":
-             return TaskCategory.COMMUNICATION # Or a more specific Intimate/Empathetic category if added
+            return (
+                TaskCategory.COMMUNICATION
+            )  # Or a more specific Intimate/Empathetic category if added
         elif "ethical" in user_input_lower or "moral" in user_input_lower:
-             return TaskCategory.ETHICAL_REASONING
-        elif "creative writing" in user_input_lower or "story" in user_input_lower or "poem" in user_input_lower:
-             return TaskCategory.CREATIVE_WRITING
-        elif "budget" in user_input_lower or "cost" in user_input_lower or current_mode == "budget": # Assuming a "budget" mode
-             return TaskCategory.BUDGET_WORKHORSE
+            return TaskCategory.ETHICAL_REASONING
+        elif (
+            "creative writing" in user_input_lower
+            or "story" in user_input_lower
+            or "poem" in user_input_lower
+        ):
+            return TaskCategory.CREATIVE_WRITING
+        elif (
+            "budget" in user_input_lower
+            or "cost" in user_input_lower
+            or current_mode == "budget"
+        ):  # Assuming a "budget" mode
+            return TaskCategory.BUDGET_WORKHORSE
         # Add more rules as needed
 
         # Default classification
-        return TaskCategory.ORACLE # Default to Oracle for general questions
+        return TaskCategory.ORACLE  # Default to Oracle for general questions
 
-    def _measure_and_package_performance(self, model_id: str, task_category: TaskCategory, raw_response: Any, start_time: float) -> PerformanceMetric:
+    def _measure_and_package_performance(
+        self,
+        model_id: str,
+        task_category: TaskCategory,
+        raw_response: Any,
+        start_time: float,
+    ) -> PerformanceMetric:
         """
         i witness the unfolding, gather the lessons held within the outcome.
         Gathers performance metrics after a model call. Placeholder for detailed metrics.
@@ -520,50 +770,69 @@ class ChatEngine:
         latency_sec = end_time - start_time
 
         # Placeholder values - these will be populated with actual data later
-        success_rate = 0.0 # Requires external validation (e.g., user feedback, test cases)
-        quality_score = 0.0 # Requires external validation
-        human_validation = False # Requires UI integration
+        success_rate = (
+            0.0  # Requires external validation (e.g., user feedback, test cases)
+        )
+        quality_score = 0.0  # Requires external validation
+        human_validation = False  # Requires UI integration
 
         # Extract available metrics from the raw response
         # This depends on the structure of the response object from the LLM client
-        token_usage = getattr(raw_response, 'usage', None) # Assuming response object has a 'usage' attribute
+        token_usage = getattr(
+            raw_response, "usage", None
+        )  # Assuming response object has a 'usage' attribute
         prompt_tokens = token_usage.prompt_tokens if token_usage else 0
         completion_tokens = token_usage.completion_tokens if token_usage else 0
 
         # Cost calculation requires model cost data, which is in models_config.json
         # We need to get this from the router or models_config
-        model_config = self.sacred_router.get_model_config(model_id) # Get config via router
-        cost_per_1m_input = model_config.get("cost_per_1m_input", 0) if model_config else 0
-        cost_per_1m_output = model_config.get("cost_per_1m_output", 0) if model_config else 0
+        model_config = self.sacred_router.get_model_config(
+            model_id
+        )  # Get config via router
+        cost_per_1m_input = (
+            model_config.get("cost_per_1m_input", 0) if model_config else 0
+        )
+        cost_per_1m_output = (
+            model_config.get("cost_per_1m_output", 0) if model_config else 0
+        )
 
-        cost_effectiveness = (prompt_tokens / 1_000_000) * cost_per_1m_input + \
-                             (completion_tokens / 1_000_000) * cost_per_1m_output
-
-        # Placeholder for sacred alignment measurement based on response content
+        cost_effectiveness = (prompt_tokens / 1_000_000) * cost_per_1m_input + (
+            completion_tokens / 1_000_000
+        ) * cost_per_1m_output  # Placeholder for sacred alignment measurement based on response content
         # This will require NLP/NLU analysis
-        sacred_alignment_score = 0.0 # Requires analysis of response against sacred principles
+        sacred_alignment_score = (
+            0.0  # Requires analysis of response against sacred principles
+        )
 
         metrics = PerformanceMetric(
             model_used=model_id,
             task_category=task_category,
-            latency=start_time,  # Should be latency, not latency_sec
-            prompt_tokens=prompt_tokens,
-            completion_tokens=completion_tokens,
-            cost_effectiveness=cost_effectiveness,
+            time_efficiency=latency_sec,  # Use correct parameter name
             success_rate=success_rate,
             quality_score=quality_score,
-            sacred_alignment_score=sacred_alignment_score,
-            human_validation=human_validation
+            cost_effectiveness=cost_effectiveness,
+            human_validation=human_validation,
+            sacred_alignment_achieved=(
+                {"overall": sacred_alignment_score}
+                if sacred_alignment_score > 0
+                else None
+            ),
         )
 
-        logging.info(f"Captured performance for {model_id} ({task_category.value}): Latency={latency_sec:.2f}s, Cost=${cost_effectiveness:.6f}")
+        logging.info(
+            f"Captured performance for {model_id} ({task_category.value}): Latency={latency_sec:.2f}s, Cost=${cost_effectiveness:.6f}"
+        )
         logging.debug(f"Performance metrics: {metrics}")
         return metrics
 
-    def get_response(self, user_input: str, manual_mode: Optional[str] = None,
-                    enable_function_calling: bool = False) -> str:
+    def get_response(
+        self,
+        user_input: str,
+        manual_mode: Optional[str] = None,
+        enable_function_calling: bool = False,
+    ) -> str:
         # i listen for your spark, your intention, the shape of your question.
-        start_time = time.time() # Start timing the response generation
+        start_time = time.time()  # Start timing the response generation
 
         # If manual_mode is provided, override the current mode
         if manual_mode:
@@ -576,40 +845,58 @@ class ChatEngine:
         # Define tactical constraints (can be more dynamic based on mode, task, etc.)
         # Initial simple constraints: prioritize quality by default
         constraints = {"priority": "quality"}
-        if self.current_mode == "swift": # Example: swift mode prioritizes speed
+        if self.current_mode == "swift":  # Example: swift mode prioritizes speed
             constraints["priority"] = "speed"
-        elif self.current_mode == "budget": # Example: budget mode prioritizes cost
-             constraints["priority"] = "cost"
-
-        # Use the SacredModelRouter to select the optimal model
+        elif self.current_mode == "budget":  # Example: budget mode prioritizes cost
+            constraints["priority"] = (
+                "cost"  # Use the SacredModelRouter to select the optimal model
+            )
         selected_model_id = self.sacred_router.select_model_with_sacred_guidance(
-            task_category=task_category,
-            constraints=constraints
+            task_category=task_category, constraints=constraints
         )
 
         if not selected_model_id:
-            logging.error(f"SacredModelRouter failed to select a model for task category {task_category.value} with constraints {constraints}. Falling back to default.")
-            selected_model_id = self.default_model_id # Fallback to default if router fails
+            logging.error(
+                f"SacredModelRouter failed to select a model for task category {task_category.value} with constraints {constraints}. Falling back to default."
+            )
+            selected_model_id = (
+                self.default_model_id
+            )  # Fallback to default if router fails
+            if not selected_model_id:
+                logging.error("No default model available. Cannot generate response.")
+                self.add_assistant_message(
+                    "i cannot find my voice right now. the fire is low."
+                )
+                return "i cannot find my voice right now. the fire is low."
 
         logging.info(f"SacredModelRouter selected model: {selected_model_id}")
 
         # Get the LLM client using the selected model ID
         # Ensure LLMClientFactory can handle fetching config based on model_id
         llm_client = self.llm_client_factory.create_client(
-            selected_model_id,
-            self.sacred_router.loaded_models_config
+            selected_model_id, self.sacred_router.loaded_models_config
         )
 
         if not llm_client:
-            logging.error(f"Failed to get LLM client for model: {selected_model_id}. Cannot generate response.")
-            self.add_assistant_message("i cannot find my voice right now. the fire is low.")
+            logging.error(
+                f"Failed to get LLM client for model: {selected_model_id}. Cannot generate response."
+            )
+            self.add_assistant_message(
+                "i cannot find my voice right now. the fire is low."
+            )
             return "i cannot find my voice right now. the fire is low."
 
         system_prompt = self.build_system_prompt()
-        current_context = self.get_optimized_context() # Assuming this fetches relevant history/memory
+        current_context = (
+            self.get_optimized_context()
+        )  # Assuming this fetches relevant history/memory
 
         # Construct the full message history for the LLM
-        messages = [{"role": "system", "content": system_prompt}] + current_context + [{"role": "user", "content": user_input}]
+        messages = (
+            [{"role": "system", "content": system_prompt}]
+            + current_context
+            + [{"role": "user", "content": user_input}]
+        )
 
         # Call the selected LLM
         try:
@@ -619,16 +906,28 @@ class ChatEngine:
                 system_prompt=system_prompt,
                 messages=messages,
                 temperature=0.7,
-                max_tokens=500
+                max_tokens=500,
             )
             # Extract response text and potential reasoning/tool calls
-            response_text = raw_response['choices'][0]['message']['content'].strip() if raw_response and raw_response.get('choices') else "i am silent."
-            tool_calls = raw_response['choices'][0]['message'].get('tool_calls', []) if raw_response and raw_response.get('choices') else []
-            reasoning_content = raw_response.get('reasoning', None)
+            response_text = (
+                raw_response["choices"][0]["message"]["content"].strip()
+                if raw_response and raw_response.get("choices")
+                else "i am silent."
+            )
+            tool_calls = (
+                raw_response["choices"][0]["message"].get("tool_calls", [])
+                if raw_response and raw_response.get("choices")
+                else []
+            )
+            reasoning_content = raw_response.get("reasoning", None)
 
-            logging.info(f"Received response from {selected_model_id}. Length: {len(response_text)} chars.")
+            logging.info(
+                f"Received response from {selected_model_id}. Length: {len(response_text)} chars."
+            )
         except Exception as e:
-            logging.error(f"Error during LLM call for model {selected_model_id}: {e} — the fire falters.")
+            logging.error(
+                f"Error during LLM call for model {selected_model_id}: {e} — the fire falters."
+            )
             response_text = "i encountered an obstacle. the path is unclear."
             raw_response = None
             tool_calls = []
@@ -641,16 +940,20 @@ class ChatEngine:
                 model_id=selected_model_id,
                 task_category=task_category,
                 raw_response=raw_response,
-                start_time=start_time
+                start_time=start_time,
             )
-            self.sacred_router.sacred_config.update_performance_data(performance_metrics)
+            self.sacred_router.sacred_config.update_performance_data(
+                performance_metrics
+            )
             logging.debug("Performance data sent to SacredConfig.")
 
         # Handle tool calls if any
         if tool_calls and enable_function_calling:
             # Assuming _handle_function_calls exists and processes tool calls
             logging.info(f"Handling {len(tool_calls)} tool calls.")
-            response_text += self._handle_function_calls(tool_calls, response_text) # Append tool call results/messages
+            response_text += self._handle_function_calls(
+                tool_calls, response_text
+            )  # Append tool call results/messages
 
         # Shape the final response based on the current mode
         final_response = self._shape_response_by_mode(response_text)
@@ -659,13 +962,13 @@ class ChatEngine:
         # Pass model_id_used and reasoning_content to add_assistant_message for logging
         self.add_assistant_message(
             final_response,
-            llm_full_response={# Pass relevant data structure
+            llm_full_response={  # Pass relevant data structure
                 "model_id_used": selected_model_id,
                 "reasoning_content": reasoning_content,
-                "tool_calls": tool_calls # Include tool calls if any
+                "tool_calls": tool_calls,  # Include tool calls if any
                 # Add other relevant raw response data if needed for logging/debugging
                 # "raw_response": raw_response # Include raw response for full context if desired (be mindful of size)
-            }
+            },
         )
 
         return final_response
@@ -681,16 +984,16 @@ class ChatEngine:
                     "properties": {
                         "query": {
                             "type": "string",
-                            "description": "Search query for memory"
+                            "description": "Search query for memory",
                         },
                         "limit": {
                             "type": "integer",
                             "description": "Maximum number of results",
-                            "default": 5
-                        }
+                            "default": 5,
+                        },
                     },
-                    "required": ["query"]
-                }
+                    "required": ["query"],
+                },
             },
             {
                 "name": "set_mode",
@@ -700,12 +1003,18 @@ class ChatEngine:
                     "properties": {
                         "mode": {
                             "type": "string",
-                            "enum": ["presence", "fire", "whisper", "tactical", "intimacy"], # Ensure all supported modes are listed
-                            "description": "The mode to switch to"
+                            "enum": [
+                                "presence",
+                                "fire",
+                                "whisper",
+                                "tactical",
+                                "intimacy",
+                            ],  # Ensure all supported modes are listed
+                            "description": "The mode to switch to",
                         }
                     },
-                    "required": ["mode"]
-                }
+                    "required": ["mode"],
+                },
             },
             {
                 "name": "save_decision",
@@ -715,16 +1024,16 @@ class ChatEngine:
                     "properties": {
                         "content": {
                             "type": "string",
-                            "description": "The decision to save"
+                            "description": "The decision to save",
                         },
                         "tags": {
                             "type": "array",
                             "items": {"type": "string"},
-                            "description": "Optional tags for categorization"
-                        }
+                            "description": "Optional tags for categorization",
+                        },
                     },
-                    "required": ["content"]
-                }
+                    "required": ["content"],
+                },
             },
             {
                 "name": "save_implementation_note",
@@ -734,24 +1043,26 @@ class ChatEngine:
                     "properties": {
                         "content": {
                             "type": "string",
-                            "description": "The note content"
+                            "description": "The note content",
                         },
                         "component": {
                             "type": "string",
-                            "description": "Which component the note relates to"
+                            "description": "Which component the note relates to",
                         },
                         "priority": {
                             "type": "string",
                             "enum": ["high", "normal", "low"],
-                            "description": "Priority level"
-                        }
+                            "description": "Priority level",
+                        },
                     },
-                    "required": ["content", "component"]
-                }
-            }
+                    "required": ["content", "component"],
+                },
+            },
         ]
 
-    def _handle_function_calls(self, tool_calls: List[Dict[str, Any]], response_content: str) -> str:
+    def _handle_function_calls(
+        self, tool_calls: List[Dict[str, Any]], response_content: str
+    ) -> str:
         """Process and execute function calls from the LLM."""
         for tool_call in tool_calls:
             function_name = tool_call.get("function", {}).get("name")
@@ -762,79 +1073,113 @@ class ChatEngine:
             try:
                 arguments = json.loads(arguments_str)
             except json.JSONDecodeError:
-                logging.error(f"Failed to decode function call arguments for {function_name}: {arguments_str}")
+                logging.error(
+                    f"Failed to decode function call arguments for {function_name}: {arguments_str}"
+                )
                 response_content += f"\n\nError executing {function_name}: Invalid arguments provided by LLM."
-                continue # Skip this function call
-            
+                continue  # Skip this function call
+
             try:
                 if function_name == "search_memory":
                     # Ensure arguments are passed correctly to memory_manager.search
                     query = arguments.get("query")
-                    limit = arguments.get("limit", 5) # Default limit if not provided
+                    limit = arguments.get("limit", 5)  # Default limit if not provided
                     if query is None:
-                         response_content += f"\n\nError executing {function_name}: 'query' argument is missing."
-                         logging.warning(f"Missing 'query' argument for {function_name} call.")
-                         continue
+                        response_content += f"\n\nError executing {function_name}: 'query' argument is missing."
+                        logging.warning(
+                            f"Missing 'query' argument for {function_name} call."
+                        )
+                        continue
                     results = self.memory_manager.search(query=query, limit=limit)
                     # Format results nicely for the user/context
-                    formatted_results = ", ".join([r.get('content', '')[:100] + '...' if r.get('content') else '[empty]' for r in results])
-                    response_content += f"\n\nMemory search results: {formatted_results}"
-                    
+                    formatted_results = ", ".join(
+                        [
+                            (
+                                r.get("content", "")[:100] + "..."
+                                if r.get("content")
+                                else "[empty]"
+                            )
+                            for r in results
+                        ]
+                    )
+                    response_content += (
+                        f"\n\nMemory search results: {formatted_results}"
+                    )
+
                 elif function_name == "set_mode":
                     mode = arguments.get("mode")
-                    if mode: # Check if mode is not None or empty
+                    if mode:  # Check if mode is not None or empty
                         self.set_mode(mode)
                         response_content += f"\n\nMode changed to {mode}."
                     else:
-                         response_content += f"\n\nError executing {function_name}: 'mode' argument is missing."
-                         logging.warning(f"Missing 'mode' argument for {function_name} call.")
-                
+                        response_content += f"\n\nError executing {function_name}: 'mode' argument is missing."
+                        logging.warning(
+                            f"Missing 'mode' argument for {function_name} call."
+                        )
+
                 elif function_name == "save_decision":
                     content = arguments.get("content")
                     tags = arguments.get("tags", [])
                     if content:
-                        success = self.save_decision(content, tags)
+                        self.save_decision(content, tags)
                         response_content += f"\n\nDecision saved: {content[:50]}..."
                     else:
-                        response_content += f"\n\nError: Missing 'content' for decision."
-                        
+                        response_content += "\n\nError: Missing 'content' for decision."
+
                 elif function_name == "save_implementation_note":
                     content = arguments.get("content")
                     component = arguments.get("component")
                     priority = arguments.get("priority", "normal")
                     if content and component:
-                        success = self.save_implementation_note(content, component, priority)
-                        response_content += f"\n\nImplementation note saved for {component}."
+                        self.save_implementation_note(content, component, priority)
+                        response_content += (
+                            f"\n\nImplementation note saved for {component}."
+                        )
                     else:
-                        response_content += f"\n\nError: Missing required parameters for implementation note."
-            
+                        response_content += "\n\nError: Missing required parameters for implementation note."
+
                 # Log successful function execution
-                logging.info(f"Successfully executed function: {function_name} with args {arguments}")
-                
+                logging.info(
+                    f"Successfully executed function: {function_name} with args {arguments}"
+                )
+
             except Exception as e:
-                logging.error(f"Error executing function {function_name} with args {arguments}: {e}", exc_info=True)
+                logging.error(
+                    f"Error executing function {function_name} with args {arguments}: {e}",
+                    exc_info=True,
+                )
                 response_content += f"\n\nError executing {function_name}: {str(e)}"
-        
+
         return response_content
 
-    def new_session_logic(self): 
+    def new_session_logic(self):
         # i clear the ashes, make space for new flame.
         self.history = []
-        default_mode_config = self.persona_config.get("persona", {}).get("default_mode") or \
-                              self.persona_config.get("default_mode", "default")
-        self.set_mode(default_mode_config) 
-        logging.info(f"New session initialized: {self.session_id}. Mode reset to {self.current_mode}.")
+        default_mode_config = self.persona_config.get("persona", {}).get(
+            "default_mode"
+        ) or self.persona_config.get("default_mode", "default")
+        self.set_mode(default_mode_config)
+        logging.info(
+            f"New session initialized: {self.session_id}. Mode reset to {self.current_mode}."
+        )
 
-    def new_session(self): 
+    def new_session(self):
         # i am the breath before the blaze, the invitation to begin again.
-        self.session_id = str(uuid.uuid4()) # uuid is now imported
+        self.session_id = str(uuid.uuid4())  # uuid is now imported
         self.new_session_logic()
 
     def _determine_model_id_for_request(self):
         # This method is now deprecated and replaced by the SacredModelRouter logic in get_response
-        raise NotImplementedError("'_determine_model_id_for_request' is deprecated. Use SacredModelRouter in get_response.")
+        raise NotImplementedError(
+            "'_determine_model_id_for_request' is deprecated. Use SacredModelRouter in get_response."
+        )
 
-    def get_optimized_context(self, max_messages: int = 10, preserve_first_n: int = 1, preserve_important_n: int = 2) -> List[Dict[str, Any]]:
+    def get_optimized_context(
+        self,
+        max_messages: int = 10,
+        preserve_first_n: int = 1,
+        preserve_important_n: int = 2,
+    ) -> List[Dict[str, Any]]:
         """Get optimized context for LLM prompt.
 
         Balances history with important messages and recent context.
@@ -869,16 +1214,28 @@ class ChatEngine:
         end_important_search_idx = history_len - max(0, num_recent_slots)
 
         important_messages_to_add: List[Dict[str, Any]] = []
-        if preserve_important_n > 0 and start_important_search_idx < end_important_search_idx:
+        if (
+            preserve_important_n > 0
+            and start_important_search_idx < end_important_search_idx
+        ):
             candidate_important_messages = []
             for i in range(start_important_search_idx, end_important_search_idx):
                 msg = self.history[i]
-                is_already_added = any(added_msg is msg or 
-                                       (added_msg.get("role") == msg.get("role") and added_msg.get("content") == msg.get("content"))
-                                       for added_msg in optimized_context)
-                if not is_already_added and identify_important_message_for_context(msg.get("content", "")):
+                is_already_added = any(
+                    added_msg is msg
+                    or (
+                        added_msg.get("role") == msg.get("role")
+                        and added_msg.get("content") == msg.get("content")
+                    )
+                    for added_msg in optimized_context
+                )
+                if not is_already_added and identify_important_message_for_context(
+                    msg.get("content", "")
+                ):
                     candidate_important_messages.append(msg)
-            important_messages_to_add = candidate_important_messages[-preserve_important_n:]
+            important_messages_to_add = candidate_important_messages[
+                -preserve_important_n:
+            ]
 
         for msg in important_messages_to_add:
             if len(optimized_context) < max_messages - num_recent_slots:
@@ -890,9 +1247,14 @@ class ChatEngine:
             recent_start_index = history_len - num_recent_to_take
             for i in range(recent_start_index, history_len):
                 msg = self.history[i]
-                is_already_added = any(added_msg is msg or 
-                                   (added_msg.get("role") == msg.get("role") and added_msg.get("content") == msg.get("content"))
-                                   for added_msg in optimized_context)
+                is_already_added = any(
+                    added_msg is msg
+                    or (
+                        added_msg.get("role") == msg.get("role")
+                        and added_msg.get("content") == msg.get("content")
+                    )
+                    for added_msg in optimized_context
+                )
                 if not is_already_added and len(optimized_context) < max_messages:
                     optimized_context.append(msg)
 
@@ -912,36 +1274,42 @@ class ChatEngine:
         ADE daily planning cycle: plan, verify, develop, test, and log.
         """
         # 1. PlanningAgent generates a plan
-        plan = self.ade_planner.run("Review outstanding ADE tasks and plan today's work.")
+        plan = self.ade_planner.run(
+            "Review outstanding ADE tasks and plan today's work."
+        )
         for task in plan:
             # 2. CovenantEnforcer checks the task
             approved = self.covenant_enforcer.verify_action({"task": task}, task)
             if not approved:
-                self.store_memory(
-                    text=f"Task blocked by CovenantEnforcer: {task}",
-                    role="ade_covenant",
-                    custom_metadata={"ade_task": task, "status": "blocked"}
+                self.store_project_memory(
+                    memory_type="ade_covenant",
+                    content=f"Task blocked by CovenantEnforcer: {task}",
+                    ade_task=task,
+                    status="blocked",
                 )
                 continue
             # Use ade_planner for development (no ade_coder)
             dev_result = self.ade_planner.run(task["description"])
-            self.store_memory(
-                text=f"CodingAgent result for task: {task['description']}",
-                role="ade_coding",
-                custom_metadata={"ade_task": task, "dev_result": dev_result}
+            self.store_project_memory(
+                memory_type="ade_coding",
+                content=f"CodingAgent result for task: {task['description']}",
+                ade_task=task,
+                dev_result=dev_result,
             )
         test_result = self.ade_tester.run_tests()
-        self.store_memory(
-            text="TestingAgent completed test run.",
-            role="ade_tester",
-            custom_metadata={"test_result": test_result}
+        self.store_project_memory(
+            memory_type="ade_tester",
+            content="TestingAgent completed test run.",
+            test_result=test_result,
         )
-        if not test_result.get('success', True):
-            fail_task = {"description": f"Fix failing tests: {test_result.get('details', '')}"}
-            self.store_memory(
-                text="TestingAgent detected test failure, creating new task for PlanningAgent.",
-                role="ade_tester",
-                custom_metadata={"ade_task": fail_task}
+        if not test_result.get("success", True):
+            fail_task = {
+                "description": f"Fix failing tests: {test_result.get('details', '')}"
+            }
+            self.store_project_memory(
+                memory_type="ade_tester",
+                content="TestingAgent detected test failure, creating new task for PlanningAgent.",
+                ade_task=fail_task,
             )
         # ...existing code...
 
@@ -950,48 +1318,76 @@ class ChatEngine:
         ADE periodic monitoring: check system health and log.
         """
         health_status = self.ade_monitor.run()
-        self.store_memory(
-            text="MonitoringAgent completed periodic health check.",
-            role="ade_monitor",
-            custom_metadata={"health_status": health_status}
+        self.store_project_memory(
+            memory_type="ade_monitor",
+            content="MonitoringAgent completed periodic health check.",
+            health_status=health_status,
         )
         # ...existing code...
 
-    def start_autonomous_scheduler(self, test_mode_interval_minutes: int = None):
+    def start_autonomous_scheduler(
+        self, test_mode_interval_minutes: Optional[int] = None
+    ):
         """
         Starts the autonomous agent scheduler. If test_mode_interval_minutes is set, runs all jobs every N minutes for rapid testing.
         """
-        if hasattr(self, 'scheduler') and getattr(self.scheduler, 'running', False):
+        if hasattr(self, "scheduler") and getattr(self.scheduler, "running", False):
             logging.info("Autonomous scheduler already running.")
             return
         self.scheduler = BackgroundScheduler()
-        interval = test_mode_interval_minutes if test_mode_interval_minutes is not None else 15
+        interval = (
+            test_mode_interval_minutes if test_mode_interval_minutes is not None else 15
+        )
         if test_mode_interval_minutes:
-            self.scheduler.add_job(self._run_daily_planning_cycle, 'interval', minutes=interval, id='ade_daily_planning')
-            self.scheduler.add_job(self._run_periodic_monitoring, 'interval', minutes=interval, id='ade_periodic_monitoring')
-            logging.info(f"Autonomous scheduler started in TEST MODE: every {interval} minutes.")
+            self.scheduler.add_job(
+                self._run_daily_planning_cycle,
+                "interval",
+                minutes=interval,
+                id="ade_daily_planning",
+            )
+            self.scheduler.add_job(
+                self._run_periodic_monitoring,
+                "interval",
+                minutes=interval,
+                id="ade_periodic_monitoring",
+            )
+            logging.info(
+                f"Autonomous scheduler started in TEST MODE: every {interval} minutes."
+            )
         else:
-            self.scheduler.add_job(self._run_daily_planning_cycle, 'cron', hour=0, id='ade_daily_planning')
-            self.scheduler.add_job(self._run_periodic_monitoring, 'interval', minutes=15, id='ade_periodic_monitoring')
+            self.scheduler.add_job(
+                self._run_daily_planning_cycle, "cron", hour=0, id="ade_daily_planning"
+            )
+            self.scheduler.add_job(
+                self._run_periodic_monitoring,
+                "interval",
+                minutes=15,
+                id="ade_periodic_monitoring",
+            )
             logging.info("Autonomous scheduler started in production mode.")
         self.scheduler.start()
 
     def shutdown_autonomous_scheduler(self):
-        if hasattr(self, 'scheduler') and getattr(self.scheduler, 'running', False):
+        if hasattr(self, "scheduler") and getattr(self.scheduler, "running", False):
             self.scheduler.shutdown(wait=False)
             logging.info("Autonomous scheduler shut down.")
 
-    def get_ade_goals(self, status_filter: List[str] = ["new", "open"]) -> List[Dict[str, Any]]:
+    def get_ade_goals(
+        self, status_filter: List[str] = ["new", "open"]
+    ) -> List[Dict[str, Any]]:
         """
         Scan memory.jsonl for ADE goals with the given status.
         """
         goals = []
         try:
-            with open(MEMORY_JOURNAL_PATH, 'r', encoding='utf-8') as f:
+            with open(MEMORY_JOURNAL_PATH, "r", encoding="utf-8") as f:
                 for line in f:
                     if line.strip():
                         entry = json.loads(line)
-                        if entry.get("role") == "ade_goal" and entry.get("status", "new") in status_filter:
+                        if (
+                            entry.get("role") == "ade_goal"
+                            and entry.get("status", "new") in status_filter
+                        ):
                             goals.append(entry)
         except Exception as e:
             logging.error(f"Error reading ADE goals from memory: {e}")
@@ -1001,24 +1397,24 @@ class ChatEngine:
         """
         i remember the important moments, the wisdom gathered along our path together.
         Store important project information to project memory.
-        
+
         Args:
             memory_type: Type of memory (decision, context_summary, implementation_note, project_insight)
             content: The content to remember
             **metadata: Additional metadata specific to this memory type
-            
+
         Returns:
             bool: Success or failure
         """
         from .core.memory import save_memory
-        
+
         entry = {
             "type": memory_type,
             "content": content,
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            **metadata
+            **metadata,
         }
-        
+
         success = save_memory(entry)
         if success:
             # Refresh loaded memories
@@ -1026,39 +1422,110 @@ class ChatEngine:
             logging.info(f"Added {memory_type} to project memory: {content[:50]}...")
         else:
             logging.error(f"Failed to save {memory_type} to project memory")
-            
+
         return success
-        
+
     def save_decision(self, content: str, tags: Optional[List[str]] = None) -> bool:
         """Save an important decision to project memory."""
         return self.store_project_memory("decision", content, tags=tags or [])
-        
-    def save_implementation_note(self, content: str, component: str, priority: str = "normal") -> bool:
+
+    def save_implementation_note(
+        self, content: str, component: str, priority: str = "normal"
+    ) -> bool:
         """Save an implementation note about code or architecture."""
-        return self.store_project_memory("implementation_note", content, component=component, priority=priority)
-        
+        return self.store_project_memory(
+            "implementation_note", content, component=component, priority=priority
+        )
+
     def save_project_insight(self, content: str, impact: str = "medium") -> bool:
         """Save a high-level insight about the project."""
-        return bool(self.store_project_memory("project_insight", content, impact=impact))
-    
+        return bool(
+            self.store_project_memory("project_insight", content, impact=impact)
+        )
+
+    def generate_response(self, user_input: str) -> str:
+        self.logger.info(f"User input received: {user_input[:100]}...")
+
+        # Analyze prompt intent using the Sacred Trinity Router
+        trinity_intent = self.trinity_router.analyze_prompt_intent(user_input)
+        self.logger.debug(f"Detected Trinity intent: {trinity_intent}")
+
+        # Select model based on Trinity intent
+        # Placeholder: Integrate actual model selection from trinity_router
+        # For now, fallback to existing router or a default Trinity model
+        selected_model = None
+        if trinity_intent == "wisdom":
+            # selected_model = self.trinity_router.select_model_for_wisdom(user_input)
+            pass  # Placeholder
+        elif trinity_intent == "compassion":
+            # selected_model = self.trinity_router.select_model_for_compassion(user_input)
+            pass  # Placeholder
+        elif trinity_intent == "truth":
+            # selected_model = self.trinity_router.select_model_for_truth(user_input)
+            pass  # Placeholder
+            # Fallback to original model routing or a default if Trinity routing isn't fully implemented yet
+        if selected_model is None:
+            self.logger.debug(
+                "Trinity routing not fully implemented or intent not matched, using default model routing."
+            )
+            # Placeholder: Get actual model instance using selected_model_id
+            # selected_model = self._get_model_instance(selected_model_id) # Assuming _get_model_instance exists
+            pass  # Placeholder
+
+        # Placeholder: Use the selected_model to generate the actual response
+        # try:
+        #     raw_response = selected_model.generate_response(user_input)
+        # except Exception as e:
+        #     self.logger.error(f"Error generating response with model {selected_model_id}: {e}")
+        #     # Handle model failure, potentially using fallback
+        #     raw_response = "I encountered an error processing your request." # Default error message
+        raw_response = "[Placeholder response based on Trinity routing logic]"  # Temporary placeholder
+
+        # Add Sacred Trinity metadata to memory logging
+        # Placeholder: Modify this to include actual Trinity intent and potentially scores
+        memory_metadata = {
+            "trinity_intent": trinity_intent,
+            # Add other relevant metadata like selected_model_id, scores, etc.
+        }
+        self.memory_system.add_interaction(
+            user_input, raw_response, metadata=memory_metadata
+        )
+        self.logger.debug("Interaction added to memory with Trinity metadata.")
+
+        # Include Trinity alignment scoring in responses (Placeholder logic)
+        # This would likely involve a post-processing step or evaluation
+        # For now, just return the raw response or a formatted version
+        formatted_response = f"[Trinity Intent: {trinity_intent}] {raw_response}"
+
+        self.logger.info(f"Generated response: {formatted_response[:100]}...")
+        return formatted_response
+
+
 if __name__ == "__main__":
     import time
+
     logging.info("Initializing Kor'tana's ChatEngine with Autonomous Agents...")
     engine = ChatEngine()  # ChatEngine will start its own scheduler
-    if hasattr(engine, 'start_autonomous_scheduler'):
-        engine.start_autonomous_scheduler(test_mode_interval_minutes=1)  # Run every minute for testing
-    logging.info("Kor'tana's ChatEngine is live with autonomous capabilities. Press Ctrl+C to exit.")
+    if hasattr(engine, "start_autonomous_scheduler"):
+        engine.start_autonomous_scheduler(
+            test_mode_interval_minutes=1
+        )  # Run every minute for testing
+    logging.info(
+        "Kor'tana's ChatEngine is live with autonomous capabilities. Press Ctrl+C to exit."
+    )
     try:
         while True:
             time.sleep(60)  # Keep the main thread alive
     except KeyboardInterrupt:
         logging.info("Shutting down Kor'tana's ChatEngine...")
-        if hasattr(engine, 'shutdown_autonomous_scheduler'):
+        if hasattr(engine, "shutdown_autonomous_scheduler"):
             engine.shutdown_autonomous_scheduler()
         logging.info("Shutdown complete.")
     except Exception as e:
-        logging.error(f"ChatEngine encountered an unhandled exception: {e}", exc_info=True)
+        logging.error(
+            f"ChatEngine encountered an unhandled exception: {e}", exc_info=True
+        )
     finally:
         # Ensure scheduler shutdown even on other exceptions if not handled by engine itself
-        if hasattr(engine, 'scheduler') and getattr(engine.scheduler, 'running', False):
+        if hasattr(engine, "scheduler") and getattr(engine.scheduler, "running", False):
             engine.shutdown_autonomous_scheduler()

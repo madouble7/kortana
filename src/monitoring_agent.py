@@ -1,5 +1,5 @@
-import psutil, traceback
-from datetime import datetime
+import psutil
+
 
 class MonitoringAgent:
     def check_health(self):
@@ -16,4 +16,4 @@ class MonitoringAgent:
             if "memory" in e:
                 fixes.append("Restarting vector store connector")
                 # pseudo-code: self.restart_vector_store()
-        return fixes 
+        return fixes

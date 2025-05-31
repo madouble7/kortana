@@ -1,0 +1,44 @@
+# Kor'tana Directory Hygiene Log
+
+---
+
+- Moved `root_directory.txt` to `archive_2025_05_30` (obsolete file listing).
+- Moved `project_files.txt` to `archive_2025_05_30` (auto-generated file listing).
+- Flagged `workflow.md` for decision: Appears superseded by `workflow_formatted.md`.
+- Moved `genai_validation.log` to `archive_2025_05_30` (obsolete temporary log file).
+- Moved `workflow.md` to `archive_2025_05_30` (superseded workflow draft).
+- Reviewed `validate_genai_setup.py`: Kept (GenAI setup validation script).
+- Reviewed `trinity_activation.py`: Kept (Sacred Trinity activation script, contains placeholder code).
+- Reviewed `validate_sacred_trinity.py`: Kept (Sacred Trinity validation script, contains placeholder code).
+- Reviewed `covenant.yaml`: Kept (Sacred Covenant configuration).
+- Flagged `sacred_trinity_model_recommendations.md` for decision: Appears to be an unfilled template.
+- Flagged `sacred_trinity_test_results.md` for decision: Appears to be an unfilled template for manual test results.
+- Moved `Kor'tana.State.md` to `archive_2025_05_30` (obsolete project state document).
+- Moved `trinity_activation.py` to `archive_2025_05_30/tests_legacy/` (individual script).
+- Moved `validate_sacred_trinity.py` to `archive_2025_05_30/tests_legacy/` (individual test script).
+- Moved `test-venv.py` to `archive_2025_05_30/tests_legacy/` (individual test script).
+- Moved `test_fixed_google_client.py` to `archive_2025_05_30/tests_legacy/` (individual test script).
+- Moved `test_google_genai_integration.py` to `archive_2025_05_30/tests_legacy/` (individual test script).
+- Moved `test_autonomous_repair.py` to `archive_2025_05_30/tests_legacy/` (individual test script).
+- Moved `test_live_consciousness.py` to `archive_2025_05_30/tests_legacy/` (individual test script).
+- Moved `validate_router.py` to `archive_2025_05_30/tests_legacy/` (individual test script).
+- Moved `test_openai_setup.py` to `archive_2025_05_30/tests_legacy/` (individual test script).
+- Moved `test_agents_sdk.py` to `archive_2025_05_30/tests_legacy/` (individual test script).
+- Moved `test_ws.py` to `archive_2025_05_30/tests_legacy/` (individual test script).
+- Moved `fix_syntax_errors.py` to `archive_2025_05_30/tests_legacy/` (individual script).
+- Moved `test_ade.py` to `archive_2025_05_30/tests_legacy/` (individual test script).
+- Moved `test_sanity.py` to `archive_2025_05_30/tests_legacy/` (individual test script).
+- Moved `project_files.ps1` to `archive_2025_05_30/scripts/` (utility script).
+- Moved `root_directory.ps1` to `archive_2025_05_30/scripts/` (utility script).
+- Moved `validate_sacred_architecture.py` to `archive_2025_05_30/tests_legacy/` (individual test script).
+- Moved `persona_template.json` to `archive_2025_05_30/docs/` (unused template).
+- Moved `sacred_trinity_model_recommendations.md` to `archive_2025_05_30/docs/` (unfilled template).
+- Moved `sacred_trinity_test_results.md` to `archive_2025_05_30/docs/` (unfilled manual test results template).
+- Moved `vscode-extensions.txt` to `archive_2025_05_30/docs/` (VS Code setup list).
+- Moved `Kor'tana.Vision.md` to `archive_2025_05_30/docs/` (obsolete meta doc).
+- Moved `Kor'tana.Decisions.md` to `archive_2025_05_30/docs/` (obsolete meta doc).
+- Moved `Kortana_Project_State.md` to `archive_2025_05_30/docs/` (obsolete project state doc).
+- Moved `KORTANA_PROJECT_SUMMARY.md` to `archive_2025_05_30/docs/` (obsolete project summary doc).
+- Moved `PYTHON311_MIGRATION.md` to `archive_2025_05_30/docs/` (obsolete migration doc).
+- Moved `test_summary.json` to `archive_2025_05_30/logs/` (test output log).
+- Moved `.venv` and `venv` directories to `archive_2025_05_30/old_envs/` (old virtual environments).
