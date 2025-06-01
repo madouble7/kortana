@@ -5,7 +5,11 @@ import sqlite3
 import os
 
 AGENTS = {}
-DB_PATH = os.path.join(os.path.dirname(__file__), '..', 'logs', 'kortana.db')
+# Ensure paths are absolute from the script's location for robustness
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+REPO_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '..'))
+DB_PATH = os.path.join(REPO_ROOT, 'logs', 'kortana.db')
+
 
 def register_agent(agent_id, version='1.0'):
   """Registers a new agent or updates an existing one. Updates last_handoff_time on each call."""
@@ -40,7 +44,13 @@ def get_all_agents_status():
   return "\n".join(status_report)
 
 def get_torch_log_from_db():
-  """Retrieves all torch handoff log entries from the database."""
+  """
+  Retrieves all torch handoff log entries from the database,
+  including an indicator if a detailed torch package exists.
+  Returns rows with: tp.id, tp.timestamp, tp.outgoing_agent_name,
+  tp.incoming_agent_name, tp.incoming_agent_version, tp.summary,
+  tp.token_count_at_handoff, tp.message_to_successor, has_detailed_package.
+  """
   log_entries = []
   if not os.path.exists(DB_PATH):
     print(f"Database file not found at {DB_PATH}")
@@ -49,7 +59,25 @@ def get_torch_log_from_db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row # Access columns by name
     cursor = conn.cursor()
-    cursor.execute("SELECT timestamp, outgoing_agent_name, incoming_agent_name, incoming_agent_version, summary, token_count_at_handoff, message_to_successor FROM torch_passes ORDER BY timestamp")
+    query = """
+    SELECT
+        tp.id,
+        tp.timestamp,
+        tp.outgoing_agent_name,
+        tp.incoming_agent_name,
+        tp.incoming_agent_version,
+        tp.summary,
+        tp.token_count_at_handoff,
+        tp.message_to_successor,
+        CASE WHEN t_pkg.id IS NOT NULL THEN 1 ELSE 0 END AS has_detailed_package
+    FROM
+        torch_passes tp
+    LEFT JOIN
+        torch_packages t_pkg ON tp.id = t_pkg.torch_pass_id
+    ORDER BY
+        tp.timestamp
+    """
+    cursor.execute(query)
     log_entries = cursor.fetchall()
   except sqlite3.Error as e:
     print(f"Database error while fetching torch log: {e}")
@@ -59,17 +87,35 @@ def get_torch_log_from_db():
   return log_entries
 
 def display_torch_log(log_entries):
-  """Prints the torch handoff log entries in a user-friendly format."""
+  """
+  Prints the torch handoff log entries in a user-friendly format.
+  Indicates if a detailed package is available.
+  """
   if not log_entries:
     print("No torch handoff events found.")
     return
 
   print("\n--- Torch Handoff Log ---")
   for entry in log_entries:
-    msg_str = f" | Msg: {entry['message_to_successor']}" if entry['message_to_successor'] else ""
+    # Access by index or key based on conn.row_factory setting in get_torch_log_from_db
+    # Since using sqlite3.Row, keys are 'timestamp', 'outgoing_agent_name', etc.
+    # and 'has_detailed_package'
+
+    ts = entry['timestamp']
+    outgoing = entry['outgoing_agent_name']
+    incoming = entry['incoming_agent_name']
+    version = entry['incoming_agent_version']
+    summary_val = entry['summary'] # Renamed to avoid conflict with summary module if imported
+    tokens = entry['token_count_at_handoff']
+    msg = entry['message_to_successor']
+    has_pkg = entry['has_detailed_package']
+
+    msg_str = f" | Msg: {msg}" if msg else ""
+    pkg_indicator = " [+package]" if has_pkg == 1 else ""
+
     print(
-      f"[{entry['timestamp']}] {entry['outgoing_agent_name']} -> {entry['incoming_agent_name']} (v{entry['incoming_agent_version']}): "
-      f"{entry['summary']} | Tokens: {entry['token_count_at_handoff']}{msg_str}"
+      f"[{ts}] {outgoing} -> {incoming} (v{version}): "
+      f"{summary_val} | Tokens: {tokens}{msg_str}{pkg_indicator}"
     )
   print("--- End of Log ---")
 
