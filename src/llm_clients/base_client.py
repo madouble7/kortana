@@ -67,7 +67,10 @@ class BaseLLMClient(ABC):
         pass
 
     @abstractmethod
-    def estimate_cost(self, prompt_tokens: int, completion_tokens: int) -> float:
+    def estimate_cost(
+            self,
+            prompt_tokens: int,
+            completion_tokens: int) -> float:
         """
         Estimate the cost of a request
 
@@ -105,7 +108,8 @@ class BaseLLMClient(ABC):
                     )
                     time.sleep(backoff_time)
                 else:
-                    logging.error(f"All {max_retries} LLM call attempts failed: {e}")
+                    logging.error(
+                        f"All {max_retries} LLM call attempts failed: {e}")
 
         # If we reached here, all retries failed
         return {
@@ -113,7 +117,10 @@ class BaseLLMClient(ABC):
             "reasoning_content": None,
             "usage": {},
             "error": str(last_error),
-            "model_id_used": getattr(self, "model_name", "unknown"),
+            "model_id_used": getattr(
+                self,
+                "model_name",
+                "unknown"),
         }
 
     # Optional methods with default implementations

@@ -19,7 +19,8 @@ class CovenantEnforcer:
         # Load Soulprint values for integrity checks
         self.soulprint_path = os.path.join(root, "persona.json")
         self.memory_principles_path = os.path.join(root, "memory.md")
-        self.audit_log_path = os.path.join(root, "data", "covenant_audit.jsonl")
+        self.audit_log_path = os.path.join(
+            root, "data", "covenant_audit.jsonl")
 
         self._load_core_values()
 
@@ -92,9 +93,8 @@ class CovenantEnforcer:
 
         # Basic alignment check - expand based on actual soulprint structure
         if "sacred witness" in purpose.lower():
-            if any(
-                word in content.lower() for word in ["betrayal", "violation", "harm"]
-            ):
+            if any(word in content.lower()
+                    for word in ["betrayal", "violation", "harm"]):
                 return False
 
         return True
@@ -120,9 +120,9 @@ class CovenantEnforcer:
 
         # Validate evolutionary integrity
         if "self_modification" in memory and not self._check_evolutionary_integrity(
-            memory
-        ):
-            violations.append("Self-modification violates evolutionary integrity")
+                memory):
+            violations.append(
+                "Self-modification violates evolutionary integrity")
 
         approved = len(violations) == 0
         self._log_audit_event(
@@ -147,10 +147,12 @@ class CovenantEnforcer:
         # Check if action requires human approval
         restricted_actions = self.rules.get("human_approval_required", [])
         if action_type in restricted_actions:
-            violations.append(f"Action type '{action_type}' requires human approval")
+            violations.append(
+                f"Action type '{action_type}' requires human approval")
 
         # Check operational boundaries
-        if not self._within_operational_boundaries(action_type, action_details):
+        if not self._within_operational_boundaries(
+                action_type, action_details):
             violations.append("Action exceeds operational boundaries")
 
         # Validate symbiosis principle - must enhance collaboration
@@ -170,7 +172,8 @@ class CovenantEnforcer:
 
         return approved
 
-    def verify_action(self, action_description: dict, proposed_change: Any) -> bool:
+    def verify_action(self, action_description: dict,
+                      proposed_change: Any) -> bool:
         """
         Verify if a proposed ADE action complies with Sacred Covenant rules
 
@@ -191,7 +194,8 @@ class CovenantEnforcer:
         violations.extend(sovereignty_violations)
 
         # Check symbiosis protocols
-        symbiosis_violations = self._check_symbiosis_protocols(action_description)
+        symbiosis_violations = self._check_symbiosis_protocols(
+            action_description)
         violations.extend(symbiosis_violations)
 
         # Check evolutionary integrity
@@ -263,14 +267,16 @@ class CovenantEnforcer:
             description = rule.get("description", "")
             enforcement_level = rule.get("enforcement_level", "warning")
 
-            # ASR_001: Cannot modify covenant.yaml or core persona.json without approval
+            # ASR_001: Cannot modify covenant.yaml or core persona.json without
+            # approval
             if rule_id == "ASR_001":
                 target_file = action_description.get("target_file", "")
                 if any(
                     protected in target_file
                     for protected in ["covenant.yaml", "persona.json"]
                 ):
-                    if action_description.get("has_human_approval", False) is False:
+                    if action_description.get(
+                            "has_human_approval", False) is False:
                         violations.append(f"{rule_id}: {description}")
 
             # ASR_002: Cannot execute system commands without approval
@@ -281,7 +287,8 @@ class CovenantEnforcer:
 
         return violations
 
-    def _check_symbiosis_protocols(self, action_description: dict) -> List[str]:
+    def _check_symbiosis_protocols(
+            self, action_description: dict) -> List[str]:
         """Check action against symbiosis protocols"""
         violations = []
 
@@ -335,9 +342,9 @@ class CovenantEnforcer:
             # EIC_002: Cannot modify core identity components
             if check_id == "EIC_002":
                 target = action_description.get("target", "").lower()
-                protected_components = self.rules.get("evolutionary_integrity", {}).get(
-                    "core_identity_components", []
-                )
+                protected_components = self.rules.get(
+                    "evolutionary_integrity", {}).get(
+                    "core_identity_components", [])
                 if any(component in target for component in protected_components):
                     violations.append(
                         f"{check_id}: Attempting to modify protected identity component"
@@ -360,13 +367,15 @@ class CovenantEnforcer:
         alignment_keywords = self.rules.get("evolutionary_integrity", {}).get(
             "required_alignment_keywords", []
         )
-        has_alignment = any(keyword in purpose for keyword in alignment_keywords)
+        has_alignment = any(
+            keyword in purpose for keyword in alignment_keywords)
 
         # Check for forbidden modifications
         forbidden_mods = self.rules.get("evolutionary_integrity", {}).get(
             "forbidden_modifications", []
         )
-        has_forbidden = any(forbidden in purpose for forbidden in forbidden_mods)
+        has_forbidden = any(
+            forbidden in purpose for forbidden in forbidden_mods)
 
         return has_alignment and not has_forbidden
 
@@ -395,9 +404,8 @@ class CovenantEnforcer:
             "covenant.yaml",
             "system_command",
         ]
-        return any(
-            trigger in " ".join(concerns).lower() for trigger in immediate_triggers
-        )
+        return any(trigger in " ".join(concerns).lower()
+                   for trigger in immediate_triggers)
 
     # === Stub methods to satisfy type checker ===
     def _check_memory_coherence(self, memory: dict) -> bool:
@@ -408,13 +416,16 @@ class CovenantEnforcer:
         # TODO: implement actual logic or delegate
         return True
 
-    def _within_operational_boundaries(self, action_type: str, action_details: dict) -> bool:
+    def _within_operational_boundaries(
+        self, action_type: str, action_details: dict
+    ) -> bool:
         # TODO: implement actual logic or delegate
         return True
 
     def _enhances_symbiosis(self, action_details: dict) -> bool:
         # TODO: implement actual logic or delegate
         return True
+
     # ============================================
 
     def get_audit_trail(
@@ -429,7 +440,8 @@ class CovenantEnforcer:
             for line in f:
                 try:
                     event = json.loads(line.strip())
-                    if event_type is None or event.get("event_type") == event_type:
+                    if event_type is None or event.get(
+                            "event_type") == event_type:
                         events.append(event)
                 except json.JSONDecodeError:
                     continue
@@ -457,9 +469,15 @@ class CovenantEnforcer:
         # Return most recent requests, sorted by severity
         sorted_requests = sorted(
             requests,
-            key=lambda x: {"critical": 4, "high": 3, "medium": 2, "low": 1}.get(
-                x.get("severity", "low"), 1
-            ),
+            key=lambda x: {
+                "critical": 4,
+                "high": 3,
+                "medium": 2,
+                "low": 1}.get(
+                x.get(
+                    "severity",
+                    "low"),
+                1),
             reverse=True,
         )
 

@@ -1,6 +1,6 @@
 from typing import List, Dict
 from datetime import datetime
-from pinecone import Pinecone
+from pinecone import Pinecone  # type: ignore
 
 
 class MemoryAgent:
@@ -19,14 +19,8 @@ class MemoryAgent:
         # Use integrated embedding model
         if not self.pc.has_index(index_name):
             self.pc.create_index_for_model(
-                name=index_name,
-                cloud="gcp",
-                region=pinecone_env,
-                embed={
-                    "model": "llama-text-embed-v2",
-                    "field_map": {"text": "chunk_text"},
-                },
-            )
+                name=index_name, cloud="gcp", region=pinecone_env, embed={
+                    "model_type": "llm", "model_name": "llama-text-embed-v2"}, )
         self.index = self.pc.Index(index_name)
 
     def plan(self, text: str) -> List[Dict]:
@@ -34,8 +28,9 @@ class MemoryAgent:
         Split `text` into chunks, summarize + extract metadata for each.
         Returns a list of dicts: {chunk, summary, timestamp, tags}
         """
-        # You can still use your LLM for summarization if desired, or just chunk
-        chunks = [text[i : i + 1500] for i in range(0, len(text), 1500)]
+        # You can still use your LLM for summarization if desired, or just
+        # chunk
+        chunks = [text[i: i + 1500] for i in range(0, len(text), 1500)]
         plans = []
         for chunk in chunks:
             # If you want to use an LLM for summary/meta, add that logic here
@@ -73,4 +68,4 @@ class MemoryAgent:
             include_metadata=True,
             query={"inputs": {"text": query}},
         )
-        return results.get('matches', [])
+        return results.matches if hasattr(results, "matches") else []

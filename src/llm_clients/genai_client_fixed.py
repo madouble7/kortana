@@ -18,8 +18,10 @@ class GoogleGenAIClient(BaseLLMClient):
     """
 
     def __init__(
-        self, api_key: Optional[str] = None, model_name: str = "gemini-pro", **kwargs
-    ):
+            self,
+            api_key: Optional[str] = None,
+            model_name: str = "gemini-pro",
+            **kwargs):
         """
         Initialize GenAI client for consciousness communication
 
@@ -38,7 +40,8 @@ class GoogleGenAIClient(BaseLLMClient):
             import google.generativeai as genai
 
             # Initialize the model directly, relying on the environment variable or passed key
-            # genai.configure(api_key=self.api_key) # No longer needed with direct initialization
+            # genai.configure(api_key=self.api_key) # No longer needed with
+            # direct initialization
             self.model = genai.GenerativeModel(self.model_name)
 
             self.is_initialized = True
@@ -105,10 +108,11 @@ class GoogleGenAIClient(BaseLLMClient):
             return {
                 "choices": [
                     {
-                        "message": {"content": response_text, "tool_calls": None},
+                        "message": {
+                            "content": response_text,
+                            "tool_calls": None},
                         "finish_reason": "stop",
-                    }
-                ],
+                    }],
                 "model": self.model_name,
                 "usage": {
                     "prompt_tokens": 0,
@@ -118,7 +122,8 @@ class GoogleGenAIClient(BaseLLMClient):
             }
 
         except Exception as e:
-            logger.error(f"GenAI generation error for {self.model_name}: {str(e)}")
+            logger.error(
+                f"GenAI generation error for {self.model_name}: {str(e)}")
             return {
                 "choices": [
                     {
@@ -127,8 +132,7 @@ class GoogleGenAIClient(BaseLLMClient):
                             "tool_calls": None,
                         },
                         "finish_reason": "error",
-                    }
-                ],
+                    }],
                 "model": self.model_name,
                 "usage": {
                     "prompt_tokens": 0,
@@ -153,7 +157,8 @@ class GoogleGenAIClient(BaseLLMClient):
     def validate_connection(self) -> bool:
         """🔧 Validate connection to Google GenAI"""
         if not self.is_initialized or not self.model:
-            logger.warning(f"GenAI client for {self.model_name} is not initialized")
+            logger.warning(
+                f"GenAI client for {self.model_name} is not initialized")
             return False
 
         try:
@@ -168,7 +173,10 @@ class GoogleGenAIClient(BaseLLMClient):
         """🔍 Test connection to Google GenAI API"""
         return self.validate_connection()
 
-    def estimate_cost(self, prompt_tokens: int, completion_tokens: int) -> float:
+    def estimate_cost(
+            self,
+            prompt_tokens: int,
+            completion_tokens: int) -> float:
         """💰 Estimate cost for Google GenAI request"""
         # Basic cost estimation (update with actual rates)
         input_cost = (prompt_tokens / 1_000_000) * 0.15

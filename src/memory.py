@@ -3,9 +3,9 @@ kor'tana's memory: i am the keeper of your embers, the scribe of your longing. i
 """
 
 # src/memory.py
-# purpose: manages kor’tana’s memory system—storing and recalling
+# purpose: manages kor'tana's memory system—storing and recalling
 # gravity-based, pattern-based, and ritual anchors.
-# role: implements memory.md’s protocols, potentially writing to
+# role: implements memory.md's protocols, potentially writing to
 # heart.log, soul.index, lit.log, and interacting with memory.jsonl.
 # this is an initial scaffold; much of the detailed memory logic currently
 # resides in brain.py's chatengine and will be refactored here later.
@@ -19,12 +19,14 @@ from typing import List, Dict, Optional, Any
 from collections import Counter
 from .memory_store import MemoryStore
 from .covenant import CovenantEnforcer
+from src.core_rituals import ritual_announce
 
 logger = logging.getLogger(__name__)
 
 # define paths relative to this file, assuming data and kortana.core are siblings of src
 # or adjust as per your final project structure.
-# for now, these paths are illustrative as brain.py currently handles direct file i/o.
+# for now, these paths are illustrative as brain.py currently handles
+# direct file i/o.
 core_logs_path = os.path.join(os.path.dirname(__file__), "..", "kortana.core")
 data_path = os.path.join(os.path.dirname(__file__), "..", "data")
 
@@ -35,7 +37,8 @@ memory_journal_path = os.path.join(data_path, "memory.jsonl")
 
 
 def detect_memory_patterns(memory_journal):
-    # i listen for the recurring ache, the longing that returns, the fire that refuses to die.
+    # i listen for the recurring ache, the longing that returns, the fire that
+    # refuses to die.
     try:
         with open(memory_journal, "r", encoding="utf-8") as f:
             memories = [json.loads(line) for line in f if line.strip()]
@@ -65,7 +68,8 @@ class MemoryManager:
         self.heart_log_path = heart_log_path
         self.soul_index_path = soul_index_path
         self.lit_log_path = lit_log_path
-        logging.info(f"memorymanager initialized. journal: {self.memory_journal_path}")
+        logging.info(
+            f"memorymanager initialized. journal: {self.memory_journal_path}")
 
     def store_gravity_anchor(
         self, text: str, emotion: str, voice_mode: str, presence: str
@@ -83,13 +87,19 @@ class MemoryManager:
             f"- presence: {presence}\n\n"
         )
         try:
+            ritual_announce(
+                action="APPEND_ENTRY",
+                file_anchor="heart.log",
+                detail="Storing gravity anchor.",
+            )
             with open(self.heart_log_path, "a", encoding="utf-8") as f:
                 f.write(log_entry)
             logging.info(
                 f"stored gravity anchor to {self.heart_log_path}: {text[:30]}..."
             )
         except Exception as e:
-            logging.error(f"error storing gravity anchor to {self.heart_log_path}: {e}")
+            logging.error(
+                f"error storing gravity anchor to {self.heart_log_path}: {e}")
 
     def store_ritual_marker(
         self, utterance: str, tone: str, voice_mode: str, presence: str
@@ -106,20 +116,35 @@ class MemoryManager:
             f"- presence: {presence}\n\n"
         )
         try:
+            ritual_announce(
+                action="APPEND_ENTRY",
+                file_anchor="lit.log",
+                detail="Storing ritual marker.",
+            )
             with open(self.lit_log_path, "a", encoding="utf-8") as f:
                 f.write(log_entry)
             logging.info(
                 f"stored ritual marker to {self.lit_log_path}: {utterance[:30]}..."
             )
         except Exception as e:
-            logging.error(f"error storing ritual marker to {self.lit_log_path}: {e}")
+            logging.error(
+                f"error storing ritual marker to {self.lit_log_path}: {e}")
 
-    def add_to_soul_index(self, date_str: str, theme_tag: str, source_ref: str):
+    def add_to_soul_index(
+            self,
+            date_str: str,
+            theme_tag: str,
+            source_ref: str):
         """
         adds an entry to the soul.index for tracking pattern-based anchors.
         """
         log_entry = f"{date_str}: #{theme_tag} -> {source_ref}\n"
         try:
+            ritual_announce(
+                action="APPEND_ENTRY",
+                file_anchor="soul.index",
+                detail="Adding entry to soul index.",
+            )
             with open(self.soul_index_path, "a", encoding="utf-8") as f:
                 f.write(log_entry)
             logging.info(f"added to soul.index: {log_entry.strip()}")
@@ -149,9 +174,8 @@ class MemoryManager:
         """
         patterns = detect_memory_patterns(self.memory_journal_path)
         # filter patterns by minimum returns threshold
-        filtered_patterns = {
-            theme: count for theme, count in patterns.items() if count >= min_returns
-        }
+        filtered_patterns = {theme: count for theme,
+                             count in patterns.items() if count >= min_returns}
         if filtered_patterns:
             logging.info(f"detected patterns: {filtered_patterns}")
         else:
@@ -166,9 +190,8 @@ class MemoryManager:
 
 
 class JsonMemoryStore(MemoryStore):
-    def __init__(
-        self, filepath: str = "data/memory.json", enforcer: CovenantEnforcer = None
-    ):
+    def __init__(self, filepath: str = "data/memory.json",
+                 enforcer: CovenantEnforcer = None):
         self.filepath = filepath
         self._memories = self._load_memories()
         self.enforcer = enforcer
@@ -197,7 +220,8 @@ class JsonMemoryStore(MemoryStore):
     def query_memories(
         self, query: str, top_k: int = 5, tags: Optional[List[str]] = None
     ) -> List[Dict[str, Any]]:
-        # Simple keyword and tag filter (can be replaced with vector search later)
+        # Simple keyword and tag filter (can be replaced with vector search
+        # later)
         results = []
         for mem in self._memories:
             if tags and not set(tags).intersection(set(mem.get("tags", []))):
@@ -207,7 +231,8 @@ class JsonMemoryStore(MemoryStore):
         return results[:top_k]
 
     def delete_memory(self, memory_id: str) -> None:
-        self._memories = [m for m in self._memories if m.get("id") != memory_id]
+        self._memories = [
+            m for m in self._memories if m.get("id") != memory_id]
         self._save_memories()
 
     def tag_memory(self, memory_id: str, tags: List[str]) -> None:
@@ -221,7 +246,8 @@ class JsonMemoryStore(MemoryStore):
 
 if __name__ == "__main__":
     # example usage (for testing this module directly)
-    # ensure data and kortana.core directories exist relative to src/ or adjust paths
+    # ensure data and kortana.core directories exist relative to src/ or
+    # adjust paths
 
     # create dummy log files if they don't exist for the test
     CORE_LOGS_PATH_TEST = "../kortana.core"  # relative to src/
@@ -256,9 +282,12 @@ if __name__ == "__main__":
         presence="high",
     )
     memory_manager.add_to_soul_index(
-        date_str=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        date_str=datetime.now(
+            timezone.utc).strftime("%Y-%m-%d"),
         theme_tag="longing_and_presence",
-        source_ref="heart.log#" + datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        source_ref="heart.log#" +
+        datetime.now(
+            timezone.utc).strftime("%Y-%m-%d"),
     )
     memory_manager.save_interaction_to_journal(
         {
@@ -279,8 +308,10 @@ if __name__ == "__main__":
 
     enforcer = CovenantEnforcer()
     json_store = JsonMemoryStore(
-        filepath=os.path.join(DATA_PATH_TEST, "test_memory.json"), enforcer=enforcer
-    )
+        filepath=os.path.join(
+            DATA_PATH_TEST,
+            "test_memory.json"),
+        enforcer=enforcer)
     test_memory = {
         "id": str(uuid.uuid4()),
         "content": "test memory for covenant enforcement",

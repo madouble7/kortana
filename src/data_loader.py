@@ -1,6 +1,7 @@
 # C:\kortana\src\data_loader.py
 # Purpose: Loads data (e.g., memory.jsonl) for memory seeding or analysis.
-# Role: Supports memory.py and brain.py in building pattern-based anchors or RAG systems.
+# Role: Supports memory.py and brain.py in building pattern-based anchors
+# or RAG systems.
 
 import json
 import os
@@ -17,7 +18,8 @@ class MemoryLoader:
         self.data_path = os.path.abspath(
             os.path.join(os.path.dirname(__file__), data_path)
         )
-        logging.info(f"MemoryLoader initialized with data_path: {self.data_path}")
+        logging.info(
+            f"MemoryLoader initialized with data_path: {self.data_path}")
         if not os.path.isdir(self.data_path):
             logging.warning(
                 f"Data path does not exist: {self.data_path}. Please ensure it's created."
@@ -54,7 +56,9 @@ class MemoryLoader:
                 f"Successfully loaded {len(memories)} entries from {full_path}"
             )
         except Exception as e:
-            logging.error(f"Failed to load or process {full_path}: {e}", exc_info=True)
+            logging.error(
+                f"Failed to load or process {full_path}: {e}",
+                exc_info=True)
             # Return what was loaded so far, or an empty list
         return memories
 
@@ -99,13 +103,15 @@ class MemoryLoader:
 
         return entries[-count:]
 
-    def detect_pattern_tags(self, entries: List[Dict[str, Any]]) -> Optional[List[str]]:
+    def detect_pattern_tags(
+            self, entries: List[Dict[str, Any]]) -> Optional[List[str]]:
         """
         Placeholder: Detects recurring themes or patterns from memory entries.
         This will eventually involve comparing text, emotion tags, keywords, and timestamps.
         """
         # TODO: Integrate proper pattern detection based on themes, keywords, embeddings,
-        #       and the principles outlined in memory.md (e.g., 3+ returns of a theme).
+        # and the principles outlined in memory.md (e.g., 3+ returns of a
+        # theme).
         logging.info(
             "detect_pattern_tags: Placeholder function called. Full implementation pending."
         )
@@ -177,11 +183,13 @@ if __name__ == "__main__":
                 json.dump(entry, f)
                 f.write("\n")
 
-        loader = MemoryLoader(data_path=test_data_dir)  # Point to test data directory
+        # Point to test data directory
+        loader = MemoryLoader(data_path=test_data_dir)
 
         # Test load_jsonl
         all_memories = loader.load_jsonl(file_name="test_memory.jsonl")
-        print(f"\nLoaded {len(all_memories)} entries from {dummy_memory_file}:")
+        print(
+            f"\nLoaded {len(all_memories)} entries from {dummy_memory_file}:")
         for mem in all_memories[:2]:  # Print first 2
             print(mem)
 
@@ -190,13 +198,16 @@ if __name__ == "__main__":
         print(f"\nMost recent 2 entries: {recent}")
 
         # Test get_entries_by_mode
-        intimate_memories = loader.get_entries_by_mode(all_memories, mode="intimacy")
+        intimate_memories = loader.get_entries_by_mode(
+            all_memories, mode="intimacy")
         print(
             f"\nIntimacy mode entries ({len(intimate_memories)}): {intimate_memories}"
         )
 
-        default_memories = loader.get_entries_by_mode(all_memories, mode="default")
-        print(f"\nDefault mode entries ({len(default_memories)}): {default_memories}")
+        default_memories = loader.get_entries_by_mode(
+            all_memories, mode="default")
+        print(
+            f"\nDefault mode entries ({len(default_memories)}): {default_memories}")
 
         # Test detect_pattern_tags (will be placeholder)
         patterns = loader.detect_pattern_tags(all_memories)
@@ -213,6 +224,7 @@ if __name__ == "__main__":
         ):  # Remove if empty
             os.rmdir(test_data_dir)
         elif os.path.exists(test_data_dir):
-            logging.info(f"Test data directory {test_data_dir} not empty, not removed.")
+            logging.info(
+                f"Test data directory {test_data_dir} not empty, not removed.")
 
     print("\nMemoryLoader tests complete.")

@@ -62,7 +62,8 @@ class GoogleGenAIClient(BaseLLMClient):
             genai.configure(api_key=self.api_key)  # type: ignore
 
             # Initialize the model
-            self.model = genai.GenerativeModel(self.model_name_for_api)  # type: ignore
+            self.model = genai.GenerativeModel(
+                self.model_name_for_api)  # type: ignore
 
             logger.info(
                 f"GoogleGenAIClient for model '{self.model_name_for_api}' initialized successfully."
@@ -104,7 +105,8 @@ class GoogleGenAIClient(BaseLLMClient):
             # Prepare messages for Google API format
             formatted_messages = []
 
-            # Handle system prompt by prepending to first user message or adding as instruction
+            # Handle system prompt by prepending to first user message or
+            # adding as instruction
             if system_prompt:
                 if messages and messages[0]["role"] == "user":
                     # Prepend system prompt to first user message
@@ -112,7 +114,8 @@ class GoogleGenAIClient(BaseLLMClient):
                         system_prompt + "\n\n" + messages[0]["content"]
                     )
                 else:
-                    # Add system prompt as initial user message with model acknowledgment
+                    # Add system prompt as initial user message with model
+                    # acknowledgment
                     formatted_messages.append(
                         {"role": "user", "parts": [{"text": system_prompt}]}
                     )
@@ -208,7 +211,8 @@ class GoogleGenAIClient(BaseLLMClient):
         """Test if the client can connect to Google's API."""
         try:
             # Make a simple test call
-            test_response = self.model.generate_content("Hello")  # type: ignore
+            test_response = self.model.generate_content(
+                "Hello")  # type: ignore
             return True
         except Exception as e:
             logger.error(f"Google Gemini connection test failed: {e}")

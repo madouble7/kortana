@@ -19,8 +19,10 @@ class XAIClient(BaseLLMClient):
     """
 
     def __init__(
-        self, api_key: Optional[str] = None, model_name: str = "grok-3-mini", **kwargs
-    ):
+            self,
+            api_key: Optional[str] = None,
+            model_name: str = "grok-3-mini",
+            **kwargs):
         """
         Initialize XAI client
 
@@ -86,7 +88,8 @@ class XAIClient(BaseLLMClient):
             "usage": usage,
         }
         # Add logging for the standardized response being returned
-        logger.debug(f"_standardize_response returning: {standardized_response}")
+        logger.debug(
+            f"_standardize_response returning: {standardized_response}")
         return standardized_response
 
     def generate_response(
@@ -114,7 +117,8 @@ class XAIClient(BaseLLMClient):
             # Prepare messages with system prompt
             full_messages = []
             if system_prompt:
-                full_messages.append({"role": "system", "content": system_prompt})
+                full_messages.append(
+                    {"role": "system", "content": system_prompt})
             full_messages.extend(messages)  # Add existing messages
 
             # Prepare completion arguments optimized for reasoning
@@ -131,7 +135,8 @@ class XAIClient(BaseLLMClient):
 
             # Add function calling if enabled and functions are provided
             if enable_function_calling and functions:
-                # The underlying OpenAI client expects 'tools' and 'tool_choice'
+                # The underlying OpenAI client expects 'tools' and
+                # 'tool_choice'
                 completion_args["tools"] = [
                     {"type": "function", "function": func} for func in functions
                 ]
@@ -152,8 +157,11 @@ class XAIClient(BaseLLMClient):
 
                 # Handle function calls - extract from message if present
                 tool_calls_from_response = None
-                if hasattr(choice.message, "tool_calls") and choice.message.tool_calls:
-                    # Assuming tool_calls is a list of objects with 'function' attribute
+                if hasattr(
+                        choice.message,
+                        "tool_calls") and choice.message.tool_calls:
+                    # Assuming tool_calls is a list of objects with 'function'
+                    # attribute
                     tool_calls_from_response = [
                         {
                             "name": tc.function.name,
@@ -199,7 +207,9 @@ class XAIClient(BaseLLMClient):
                 )
 
         except Exception as e:
-            logger.error(f"XAI API error: {e}", exc_info=True)  # Log exception details
+            logger.error(
+                f"XAI API error: {e}",
+                exc_info=True)  # Log exception details
             # Ensure standardized error response is always returned
             # Add logging for error before standardizing
             logger.debug(f"Error details before standardizing: {e}")
@@ -243,7 +253,10 @@ class XAIClient(BaseLLMClient):
             logger.error(f"XAI connection validation failed: {e}")
             return False
 
-    def estimate_cost(self, prompt_tokens: int, completion_tokens: int) -> float:
+    def estimate_cost(
+            self,
+            prompt_tokens: int,
+            completion_tokens: int) -> float:
         """
         Estimate the cost of a request for Grok-3-mini-beta.
         Pricing: Input $0.30 / 1M tokens, Output $0.50 / 1M tokens (based on OpenRouter).

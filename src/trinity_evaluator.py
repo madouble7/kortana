@@ -25,7 +25,8 @@ class SacredTrinityEvaluator:
     def wisdom_score(self, response_text: str) -> float:
         """Placeholder: Calculate wisdom score for a response."""
         # Implement actual scoring logic based on content analysis
-        self.logger.debug(f"Scoring wisdom for response: {response_text[:50]}...")
+        self.logger.debug(
+            f"Scoring wisdom for response: {response_text[:50]}...")
         # Example placeholder: check for keywords
         lower_response = response_text.lower()
         score = 0.0
@@ -42,7 +43,8 @@ class SacredTrinityEvaluator:
     def compassion_score(self, response_text: str) -> float:
         """Placeholder: Calculate compassion score for a response."""
         # Implement actual scoring logic based on content analysis
-        self.logger.debug(f"Scoring compassion for response: {response_text[:50]}...")
+        self.logger.debug(
+            f"Scoring compassion for response: {response_text[:50]}...")
         lower_response = response_text.lower()
         score = 0.0
         if (
@@ -62,7 +64,8 @@ class SacredTrinityEvaluator:
     def truth_score(self, response_text: str) -> float:
         """Placeholder: Calculate truth score for a response."""
         # Implement actual scoring logic based on content analysis
-        self.logger.debug(f"Scoring truth for response: {response_text[:50]}...")
+        self.logger.debug(
+            f"Scoring truth for response: {response_text[:50]}...")
         lower_response = response_text.lower()
         score = 0.0
         if (
@@ -111,7 +114,8 @@ class SacredTrinityEvaluator:
             }
 
             for response_entry in responses:
-                scores = self.evaluate_response(response_entry.get("response", ""))
+                scores = self.evaluate_response(
+                    response_entry.get("response", ""))
                 model_scores["wisdom"].append(scores["wisdom"])
                 model_scores["compassion"].append(scores["compassion"])
                 model_scores["truth"].append(scores["truth"])
@@ -136,7 +140,8 @@ class SacredTrinityEvaluator:
             }
             evaluation_results["model_scores"][model_id] = avg_scores
 
-            # Generate performance baselines (placeholder, integrate actual performance metrics later)
+            # Generate performance baselines (placeholder, integrate actual
+            # performance metrics later)
             evaluation_results["model_baselines"][model_id] = {
                 "wisdom": avg_scores["wisdom"],
                 "compassion": avg_scores["compassion"],
@@ -233,13 +238,15 @@ class SacredTrinityEvaluator:
 
             self.logger.info("Configuration file updated successfully.")
         except Exception as e:
-            self.logger.error(f"Error updating configuration file {config_path}: {e}")
+            self.logger.error(
+                f"Error updating configuration file {config_path}: {e}")
 
 
 # Example usage (for potential direct script execution or testing)
 if __name__ == "__main__":
     # This block would be for testing the evaluator in isolation if needed
-    # In the actual workflow, test_trinity_models.py will instantiate and use this class.
+    # In the actual workflow, test_trinity_models.py will instantiate and use
+    # this class.
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
     )
@@ -280,5 +287,6 @@ if __name__ == "__main__":
     evaluator.export_results(
         results, "temp_sacred_trinity_results.json"
     )  # Export to a temporary file
-    # evaluator.update_config(results["recommendations"], results["model_baselines"]) # Would update actual config
+    # evaluator.update_config(results["recommendations"],
+    # results["model_baselines"]) # Would update actual config
     logger.info("Example evaluation complete.")

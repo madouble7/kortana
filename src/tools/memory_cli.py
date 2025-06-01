@@ -5,6 +5,12 @@ Kor'tana Memory CLI Tool
 A command line interface for adding entries to project memory.
 """
 
+from core.memory import (
+    save_decision,
+    save_context_summary,
+    save_implementation_note,
+    save_project_insight,
+)
 import sys
 import os
 import argparse
@@ -13,12 +19,6 @@ import argparse
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 
 # Import the memory helper functions
-from core.memory import (
-    save_decision,
-    save_context_summary,
-    save_implementation_note,
-    save_project_insight,
-)
 
 
 def main():
@@ -27,7 +27,8 @@ def main():
         formatter_class=argparse.RawTextHelpFormatter,  # Preserve newlines in help
     )
 
-    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+    subparsers = parser.add_subparsers(
+        dest="command", help="Available commands")
 
     # --- Add command ---
     add_parser = subparsers.add_parser("add", help="Add a new memory entry")
@@ -87,7 +88,8 @@ def main():
     #             return
     #         print(f'-- Recent {args.type.capitalize()} Entries (--limit {args.limit}) --')
     #         for entry in recent_memories:
-    #              print(f"[{entry.get('timestamp', 'N/A')}] {entry.get('content', '[empty]')[:100]}...") # Truncate for display
+    # print(f"[{entry.get('timestamp', 'N/A')}] {entry.get('content',
+    # '[empty]')[:100]}...") # Truncate for display
 
     else:
         parser.print_help()

@@ -1,6 +1,7 @@
 # C:\kortana\src\llm_clients\openai_client.py
 # Purpose: Implements a client for direct OpenAI API calls.
-# Role: Enables Kor'tana to use OpenAI models (e.g., for tactical or fire modes).
+# Role: Enables Kor'tana to use OpenAI models (e.g., for tactical or fire
+# modes).
 
 """
 Official OpenAI SDK-compatible client implementation for Kor'tana
@@ -28,8 +29,10 @@ class OpenAIClient(BaseLLMClient):
     """
 
     def __init__(
-        self, api_key: Optional[str] = None, model_name: str = "gpt-4.1-nano", **kwargs
-    ):
+            self,
+            api_key: Optional[str] = None,
+            model_name: str = "gpt-4.1-nano",
+            **kwargs):
         """
         Initialize OpenAI client using official SDK structure
 
@@ -65,7 +68,8 @@ class OpenAIClient(BaseLLMClient):
             # Ensure function_call is a list of tool_calls as expected by ChatEngine
             # The OpenAI SDK returns a list of ToolCall objects
             # We need to convert this to a list of dicts if function_call here is the raw SDK object
-            # Assuming function_call passed here is already processed into a dict if needed
+            # Assuming function_call passed here is already processed into a
+            # dict if needed
             message["tool_calls"] = [
                 {
                     "function": {
@@ -96,7 +100,8 @@ class OpenAIClient(BaseLLMClient):
             # Prepare messages with system prompt
             full_messages = []
             if system_prompt:
-                full_messages.append({"role": "system", "content": system_prompt})
+                full_messages.append(
+                    {"role": "system", "content": system_prompt})
             full_messages.extend(messages)
 
             # Prepare arguments for chat completion
@@ -110,11 +115,13 @@ class OpenAIClient(BaseLLMClient):
 
             # Add function calling if enabled and functions are provided
             if enable_function_calling and functions:
-                # The underlying OpenAI client expects 'tools' and 'tool_choice'
+                # The underlying OpenAI client expects 'tools' and
+                # 'tool_choice'
                 completion_args["tools"] = [
                     {"type": "function", "function": func} for func in functions
                 ]
-                completion_args["tool_choice"] = kwargs.get("tool_choice", "auto")
+                completion_args["tool_choice"] = kwargs.get(
+                    "tool_choice", "auto")
 
             # ✅ Use official OpenAI SDK structure
             response = self.client.chat.completions.create(**completion_args)
@@ -126,7 +133,9 @@ class OpenAIClient(BaseLLMClient):
 
                 # Handle function calls - extract from message if present
                 tool_calls_from_response = None
-                if hasattr(choice.message, "tool_calls") and choice.message.tool_calls:
+                if hasattr(
+                        choice.message,
+                        "tool_calls") and choice.message.tool_calls:
                     # The OpenAI SDK returns ToolCall objects, convert to dicts
                     tool_calls_from_response = [
                         {
@@ -237,14 +246,18 @@ class OpenAIClient(BaseLLMClient):
                 params["tool_choice"] = kwargs["tool_choice"]
 
             response = self.client.chat.completions.create(**params)
-            logger.debug(f"OpenAI API call successful for model: {self.model_name}")
+            logger.debug(
+                f"OpenAI API call successful for model: {self.model_name}")
             return response
 
         except Exception as e:
             logger.error(f"OpenAI API call failed: {e}")
             raise
 
-    def estimate_cost(self, prompt_tokens: int, completion_tokens: int) -> float:
+    def estimate_cost(
+            self,
+            prompt_tokens: int,
+            completion_tokens: int) -> float:
         """Estimate cost based on token usage"""
         # OpenAI pricing (approximate, update with current rates)
         pricing = {
@@ -252,14 +265,18 @@ class OpenAIClient(BaseLLMClient):
             "gpt-4o-mini": {"input": 0.15, "output": 0.60},
             "gpt-4-turbo": {"input": 10.00, "output": 30.00},
             "gpt-3.5-turbo": {"input": 0.50, "output": 1.50},
-            "gpt-4.1-nano": {"input": 0.10, "output": 0.40},  # Estimated pricing
+            # Estimated pricing
+            "gpt-4.1-nano": {"input": 0.10, "output": 0.40},
         }  # Default pricing if model not found
-        model_pricing = pricing.get(self.model_name, {"input": 1.00, "output": 3.00})
+        model_pricing = pricing.get(
+            self.model_name, {
+                "input": 1.00, "output": 3.00})
 
         input_cost = (prompt_tokens / 1_000_000) * model_pricing["input"]
         output_cost = (completion_tokens / 1_000_000) * model_pricing["output"]
         total_cost = input_cost + output_cost
-        logger.debug(f"Estimated cost for {self.model_name}: ${total_cost:.6f}")
+        logger.debug(
+            f"Estimated cost for {self.model_name}: ${total_cost:.6f}")
         return total_cost
 
     def test_connection(self) -> bool:
@@ -277,7 +294,8 @@ class OpenAIClient(BaseLLMClient):
             )
 
             if response and response.choices:
-                logger.info(f"OpenAI connection test successful for {self.model_name}")
+                logger.info(
+                    f"OpenAI connection test successful for {self.model_name}")
                 return True
             else:
                 logger.error("OpenAI connection test failed: No response")

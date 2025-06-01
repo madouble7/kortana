@@ -13,8 +13,8 @@ import gradio.themes as gr_themes  # Import themes separately
 
 # Setup basic logging for the UI
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -60,15 +60,21 @@ except ImportError:
         logger.error(
             f"CRITICAL ERROR: Could not import ChatEngine from brain.py. Original error: {e}"
         )
-        logger.error("Please ensure brain.py is in src/ and src/ is accessible.")
+        logger.error(
+            "Please ensure brain.py is in src/ and src/ is accessible.")
         logger.error(f"Current sys.path: {sys.path}")
-        # Define a DummyEngine if ChatEngine cannot be imported, so UI can still launch with an error message.
-        ChatEngine = DummyEngine  # Assign DummyEngine to ChatEngine so the rest of the script doesn't break
-        # This is a fallback for UI launch, actual functionality will be broken.
+        # Define a DummyEngine if ChatEngine cannot be imported, so UI can
+        # still launch with an error message.
+        # Assign DummyEngine to ChatEngine so the rest of the script doesn't
+        # break
+        ChatEngine = DummyEngine
+        # This is a fallback for UI launch, actual functionality will be
+        # broken.
 
 
 # --- Configuration & Setup ---
-# Path to config, assuming app_ui.py is in 'src' and config is in 'project_root/config'
+# Path to config, assuming app_ui.py is in 'src' and config is in
+# 'project_root/config'
 CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
 
 
@@ -79,7 +85,8 @@ def load_modes_from_persona():
         with open(persona_path, "r", encoding="utf-8") as f:
             persona_data = json.load(f)
 
-        # Accommodate both nested "persona": {"modes": {}} and top-level "modes": {}
+        # Accommodate both nested "persona": {"modes": {}} and top-level
+        # "modes": {}
         modes_dict = persona_data.get("persona", {}).get(
             "modes", {}
         ) or persona_data.get("modes", {})
@@ -119,11 +126,13 @@ except Exception:
 # For multi-user or persistent sessions across UI reloads without losing state,
 # Gradio's session state or a more complex backend with session management would be needed.
 # ChatEngine itself has session_id logic, but Gradio needs to manage which engine instance a user gets.
-# For now, this single global engine is for local development and testing by Matt.
+# For now, this single global engine is for local development and testing
+# by Matt.
 try:
     # Use the potentially replaced ChatEngine (either real or Dummy type)
     engine = ChatEngine()
-    # engine.new_session() # ChatEngine's __init__ now calls new_session or load_session
+    # engine.new_session() # ChatEngine's __init__ now calls new_session or
+    # load_session
     logger.info(
         f"ChatEngine initialized for Gradio UI. Session ID: {engine.session_id}, Mode: {engine.current_mode}"
     )
@@ -146,7 +155,8 @@ def kortana_chat_interface_fn(
     if not user_message.strip():
         # Returning an empty string or None for ChatInterface means no new bot message is added.
         # To avoid an empty user bubble, we might just return and let Gradio handle it,
-        # or if we want to give feedback: raise gr.Error("Message cannot be empty.")
+        # or if we want to give feedback: raise gr.Error("Message cannot be
+        # empty.")
         return  # Or handle as per Gradio's expectation for no action
 
     if not engine or isinstance(engine, DummyEngine):
@@ -157,7 +167,8 @@ def kortana_chat_interface_fn(
         if hasattr(engine, "get_response"):
             return engine.get_response()
         else:
-            # Fallback if even the dummy engine doesn't have get_response (shouldn't happen with my DummyEngine fix)
+            # Fallback if even the dummy engine doesn't have get_response
+            # (shouldn't happen with my DummyEngine fix)
             return "FATAL: Kor'tana engine could not start and fallback is incomplete."
 
     try:
@@ -168,7 +179,8 @@ def kortana_chat_interface_fn(
                 f"UI: Mode changed to: {selected_mode}. Session: {engine.session_id}"
             )
             # Optionally, add a system message to chat_display_history for mode change visibility
-            # chat_display_history.append((None, f"[Kor'tana's mode is now {selected_mode}]")) # This format is for gr.Chatbot
+            # chat_display_history.append((None, f"[Kor'tana's mode is now
+            # {selected_mode}]")) # This format is for gr.Chatbot
 
         # 2. Add user message to ChatEngine (handles journaling)
         engine.add_user_message(user_message)
@@ -236,14 +248,16 @@ with gr.Blocks(
             elem_id="chatbox",
             layout="bubble",
             show_copy_button=True,
-            avatar_images=(None, "https://placehold.co/100x100/D8BFD8/4A0E6B?text=K"),
+            avatar_images=(
+                None, "https://placehold.co/100x100/D8BFD8/4A0E6B?text=K"),
         ),
         textbox=gr.Textbox(
             placeholder="Speak to Kor'tana...",
             lines=2,
             show_label=False,
             autofocus=True,
-            # container=False # Removed as ChatInterface handles textbox container
+            # container=False # Removed as ChatInterface handles textbox
+            # container
         ),
         submit_btn="▶️ Send",
     )
@@ -254,11 +268,13 @@ with gr.Blocks(
     with gr.Row():
         input_text = gr.Textbox(label="Speak to Kor'tana")
         mode = gr.Dropdown(
-            choices=["Auto"] + AVAILABLE_MODES, label="Mode (Auto for natural flow)"
-        )
+            choices=["Auto"] + AVAILABLE_MODES,
+            label="Mode (Auto for natural flow)")
         submit_quick = gr.Button("Speak")
     with gr.Row():
-        output_text = gr.Textbox(label="Kor'tana's Response", interactive=False)
+        output_text = gr.Textbox(
+            label="Kor'tana's Response",
+            interactive=False)
 
     # Define the interaction function for the quick manual/auto mode UI
     def interact(input_text, mode):
@@ -266,7 +282,8 @@ with gr.Blocks(
             return ""  # Or handle as needed
 
         # Instantiate ChatEngine (or DummyEngine fallback)
-        # Note: This creates a new session each time, which might not be desired for a real app
+        # Note: This creates a new session each time, which might not be
+        # desired for a real app
         kortana = ChatEngine()  # or engine, as per your code context
 
         if isinstance(kortana, DummyEngine):
@@ -278,7 +295,12 @@ with gr.Blocks(
             return kortana.get_response(input_text, manual_mode=manual_mode)
 
     # Wire up the quick interaction button
-    submit_quick.click(interact, inputs=[input_text, mode], outputs=output_text)
+    submit_quick.click(
+        interact,
+        inputs=[
+            input_text,
+            mode],
+        outputs=output_text)
 
 # --- Launch the Interface ---
 if __name__ == "__main__":

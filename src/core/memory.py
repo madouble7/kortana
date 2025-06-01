@@ -10,7 +10,11 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # Adjust the MEMORY_FILE path to be relative to the project root
 # assuming this file is in src/core/
 PROJECT_MEMORY_PATH = os.path.join(
-    os.path.dirname(__file__), "..", "..", "data", "project_memory.jsonl" # Corrected path
+    os.path.dirname(__file__),
+    "..",
+    "..",
+    "data",
+    "project_memory.jsonl",  # Corrected path
 )
 
 
@@ -20,8 +24,9 @@ def load_memory() -> List[Dict[str, Any]]:
     # Construct the absolute path to the memory file
     abs_memory_path = os.path.abspath(PROJECT_MEMORY_PATH)
 
-    if not os.path.exists(abs_memory_path): # pragma: no cover
-        # print(f"Project memory file not found: {abs_memory_path}") # Avoid printing in library function
+    if not os.path.exists(abs_memory_path):  # pragma: no cover
+        # print(f"Project memory file not found: {abs_memory_path}") # Avoid
+        # printing in library function
         return memory_entries
 
     try:
@@ -37,9 +42,10 @@ def load_memory() -> List[Dict[str, Any]]:
                     print(
                         f"Error decoding JSON in {abs_memory_path}: {e} - Line: {line[:100]}..."
                     )  # Keep error printing for file issues
-                    # Decide how to handle errors - skip line, log, etc. # pragma: no cover
+                    # Decide how to handle errors - skip line, log, etc. #
+                    # pragma: no cover
                     pass  # For now, just skip the problematic line # pragma: no cover
-    except IOError as e: # pragma: no cover
+    except IOError as e:  # pragma: no cover
         print(f"Error reading project memory file {abs_memory_path}: {e}")
 
     return memory_entries
@@ -55,7 +61,7 @@ def save_memory(entry: dict) -> bool:
         with open(abs_memory_path, "a", encoding="utf-8") as f:
             json.dump(entry, f)
             f.write("\n")
-        return True # pragma: no cover
+        return True  # pragma: no cover
     except IOError as e:
         print(
             f"Error writing to project memory file {abs_memory_path}: {e}"
@@ -113,7 +119,8 @@ def get_memory_by_type(memory_type: str) -> List[Dict[str, Any]]:
     """Retrieves all memory entries of a specific type."""
     all_memories = load_memory()
     # Filter by type and return a new list
-    return [entry for entry in all_memories if entry.get("type") == memory_type]
+    return [entry for entry in all_memories if entry.get(
+        "type") == memory_type]
 
 
 def get_recent_memories_by_type(

@@ -27,7 +27,10 @@ xai_client = XAIClient(model_name="grok-3-mini")
 # We will keep the LangChain agent structure but potentially wrap the XAIClient
 # or ensure XAIClient can be used directly if it has a compatible interface.
 # For now, keep the LangChain ChatOpenAI wrapper pointing to XAI API.
-dev_agent = initialize_agent(tools, grok_llm, agent_type="zero-shot-react-description", verbose=True)
+dev_agent = initialize_agent(
+    tools, grok_llm, agent_type="zero-shot-react-description", verbose=True
+)
+
 
 def execute_dev_task(desc: str) -> str:
     prompt = (

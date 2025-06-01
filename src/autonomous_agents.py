@@ -30,7 +30,8 @@ class PlanningAgent:
         if hasattr(self.chat_engine, "get_ade_goals"):
             ade_goals = self.chat_engine.get_ade_goals()
         if not ade_goals:
-            logger_planning.warning("No ADE goals found in memory. Using dummy tasks.")
+            logger_planning.warning(
+                "No ADE goals found in memory. Using dummy tasks.")
             ade_goals = [
                 {
                     "content": "Review PR #123",
@@ -48,7 +49,8 @@ class PlanningAgent:
         logger_planning.info(
             f"Planning input goals: {[g['content'] for g in ade_goals]}"
         )
-        # 2. Rank tasks (simple ranking for now, could use an LLM later for complex prioritization)
+        # 2. Rank tasks (simple ranking for now, could use an LLM later for
+        # complex prioritization)
         ranked_tasks = sorted(
             ade_goals, key=lambda t: t.get("metadata", {}).get("priority", 99)
         )
@@ -56,7 +58,8 @@ class PlanningAgent:
         todays_plan_tasks_content = [
             task["content"] for task in ranked_tasks[:5]
         ]  # Top 5
-        logger_planning.info(f"Today's prioritized plan: {todays_plan_tasks_content}")
+        logger_planning.info(
+            f"Today's prioritized plan: {todays_plan_tasks_content}")
         # 4. Write out a top-N "today's plan" memory
         plan_content = f"Autonomous plan for today: {todays_plan_tasks_content}"
         if hasattr(self.chat_engine, "store_memory"):
@@ -78,6 +81,13 @@ class PlanningAgent:
 
 
 class CodingAgent:
+    """
+    The CodingAgent translates plans into executable development tasks using a DevAgentStub or real agent.
+    It logs results and can create new tasks for PlanningAgent based on outcomes.
+    """
+
+    print(f"--- TRACE: Loading CodingAgent class from: {__file__} ---")
+
     def __init__(self, memory_accessor: Any, dev_agent_instance: Any):
         self.memory_accessor = memory_accessor
         self.dev_agent = (
@@ -96,7 +106,8 @@ class CodingAgent:
             logger_coding.info(f"Executing dev task: {task_description}")
             try:
                 dev_result = self.dev_agent.execute_dev_task(task_description)
-                results.append({"task": task_description, "result": dev_result})
+                results.append(
+                    {"task": task_description, "result": dev_result})
 
                 self.memory_accessor.store_memory(
                     text=f"CodingAgent result for task '{task_description}': {dev_result.get('status', 'unknown')}. Details: {dev_result.get('log', '')[:500]}",
@@ -104,15 +115,20 @@ class CodingAgent:
                     custom_metadata={
                         "anchor_type": "auto_code_result",
                         "task_description": task_description,
-                        "status": dev_result.get("status", "unknown"),
-                        "code_snippet": dev_result.get("code_generated", None),
+                        "status": dev_result.get(
+                            "status",
+                            "unknown"),
+                        "code_snippet": dev_result.get(
+                            "code_generated",
+                            None),
                     },
                 )
-                logger_coding.info(f"Result for task '{task_description}' logged.")
+                logger_coding.info(
+                    f"Result for task '{task_description}' logged.")
             except Exception as e:
                 logger_coding.error(
-                    f"Error executing dev task '{task_description}': {e}", exc_info=True
-                )
+                    f"Error executing dev task '{task_description}': {e}",
+                    exc_info=True)
                 results.append(
                     {
                         "task": task_description,
@@ -149,7 +165,10 @@ class TestingAgent:
         Run tests and return structured results.
         """
         logger_testing.info("Running tests...")
-        report = {"success": False, "summary": "Tests not executed.", "full_output": ""}
+        report = {
+            "success": False,
+            "summary": "Tests not executed.",
+            "full_output": ""}
 
         test_command = ["python", "-m", "pytest", "-q"]  # Basic quiet pytest
 
@@ -261,7 +280,8 @@ class MonitoringAgent:
             )
             self._attempt_healing("ram_usage")
 
-        # Check Disk Usage (for the partition where the app is running or a specified path)
+        # Check Disk Usage (for the partition where the app is running or a
+        # specified path)
         disk_usage = psutil.disk_usage("/").percent
         if disk_usage > self.disk_threshold:
             alert_msg = f"High Disk usage detected: {disk_usage:.2f}% (Threshold: {self.disk_threshold}%)"
@@ -281,18 +301,23 @@ class MonitoringAgent:
             self.chat_engine.store_memory(
                 text=f"MonitoringAgent Health Alert: {len(alerts)} issues detected. First: {alerts[0]['message']}",
                 role="ade_monitor",
-                custom_metadata={"anchor_type": "health_alert", "alerts": alerts},
+                custom_metadata={
+                    "anchor_type": "health_alert",
+                    "alerts": alerts},
             )
         else:
             logger_monitoring.info("System health normal.")
         return alerts
 
     def _attempt_healing(self, issue_type: str):
-        logger_monitoring.info(f"Attempting to apply healing routine for: {issue_type}")
+        logger_monitoring.info(
+            f"Attempting to apply healing routine for: {issue_type}")
         # Placeholder for actual healing routines
         self.chat_engine.store_memory(
             text=f"MonitoringAgent: Attempted healing for {issue_type}.",
             role="ade_monitor",
-            custom_metadata={"anchor_type": "healing_attempt", "issue": issue_type},
+            custom_metadata={
+                "anchor_type": "healing_attempt",
+                "issue": issue_type},
         )
         logger_monitoring.info(f"Healing attempt logged for {issue_type}.")

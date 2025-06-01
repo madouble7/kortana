@@ -55,7 +55,8 @@ class ModelOptimizer:
             logger.error(f"Failed to load config: {e}")
             return {}
 
-    def select_optimal_model(self, context: ConversationContext) -> Tuple[str, str]:
+    def select_optimal_model(
+            self, context: ConversationContext) -> Tuple[str, str]:
         """
         Select the optimal model based on conversation context and cost efficiency
         Returns: (model_id, reason)
@@ -110,7 +111,8 @@ class ModelOptimizer:
         daily_budget = self.config.get("cost_optimization", {}).get(
             "daily_budget_usd", 35
         )
-        return self.cost_tracker["daily_spend"] >= daily_budget * 0.9  # 90% threshold
+        # 90% threshold
+        return self.cost_tracker["daily_spend"] >= daily_budget * 0.9
 
     def _get_budget_model(self) -> str:
         """Get most cost-effective model for budget constraints"""
@@ -132,7 +134,8 @@ class ModelOptimizer:
         stats["total_calls"] += 1
         stats["total_cost"] += cost
         stats["total_tokens"] += input_tokens + output_tokens
-        stats["average_cost_per_call"] = stats["total_cost"] / stats["total_calls"]
+        stats["average_cost_per_call"] = stats["total_cost"] / \
+            stats["total_calls"]
 
         # Update daily tracker
         self.cost_tracker["daily_spend"] += cost
@@ -154,7 +157,8 @@ class ModelOptimizer:
             )
 
         # Analyze model distribution
-        total_calls = sum(stats["total_calls"] for stats in self.usage_stats.values())
+        total_calls = sum(stats["total_calls"]
+                          for stats in self.usage_stats.values())
         if total_calls > 0:
             for model_id, stats in self.usage_stats.items():
                 percentage = (stats["total_calls"] / total_calls) * 100
@@ -171,16 +175,20 @@ class ModelOptimizer:
             "total_spend": self.cost_tracker["daily_spend"],
             "total_conversations": self.cost_tracker["conversation_count"],
             "average_cost_per_conversation": (
-                self.cost_tracker["daily_spend"]
-                / max(self.cost_tracker["conversation_count"], 1)
-            ),
+                self.cost_tracker["daily_spend"] /
+                max(
+                    self.cost_tracker["conversation_count"],
+                    1)),
             "model_usage": self.usage_stats,
             "optimization_recommendations": self.get_optimization_recommendations(),
             "budget_utilization": (
-                self.cost_tracker["daily_spend"]
-                / self.config.get("cost_optimization", {}).get("daily_budget_usd", 35)
-            )
-            * 100,
+                self.cost_tracker["daily_spend"] /
+                self.config.get(
+                    "cost_optimization",
+                    {}).get(
+                        "daily_budget_usd",
+                        35)) *
+            100,
         }
 
 

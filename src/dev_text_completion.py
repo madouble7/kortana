@@ -41,7 +41,9 @@ else:
         user_prompt = "write a one-sentence bedtime story about a unicorn."
     messages = [{"role": "user", "content": user_prompt}]
 
-response = client.generate_response(system_prompt=system_prompt, messages=messages)
+response = client.generate_response(
+    system_prompt=system_prompt,
+    messages=messages)
 
 print("\nKor'tana says:")
 print(response["content"])

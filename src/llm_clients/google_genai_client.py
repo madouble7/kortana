@@ -14,8 +14,9 @@ class GenAIClient(LLMClient):
     """
 
     def __init__(
-        self, model_name: str = "gemini-2.5-flash", api_key: Optional[str] = None
-    ):
+            self,
+            model_name: str = "gemini-2.5-flash",
+            api_key: Optional[str] = None):
         super().__init__(model_name)
 
         # Configure API key
@@ -29,7 +30,8 @@ class GenAIClient(LLMClient):
 
         try:
             self.model = genai.GenerativeModel(model_name)
-            logger.info(f"✅ Google GenAI client initialized with model: {model_name}")
+            logger.info(
+                f"✅ Google GenAI client initialized with model: {model_name}")
         except Exception as e:
             logger.error(
                 f"❌ Failed to initialize Google GenAI model {model_name}: {e}"
@@ -60,8 +62,7 @@ class GenAIClient(LLMClient):
 
             # Configure generation parameters
             generation_config = genai.GenerationConfig(
-                temperature=temperature, max_output_tokens=max_tokens, top_p=top_p
-            )
+                temperature=temperature, max_output_tokens=max_tokens, top_p=top_p)
 
             # Generate response
             response = self.model.generate_content(
@@ -136,7 +137,8 @@ class GenAIClient(LLMClient):
 
         return MockResponse(response_dict)
 
-    def _convert_messages_to_prompt(self, messages: List[Dict[str, str]]) -> str:
+    def _convert_messages_to_prompt(
+            self, messages: List[Dict[str, str]]) -> str:
         """
         Convert OpenAI-style messages to Google GenAI prompt format
 
@@ -169,7 +171,8 @@ class GenAIClient(LLMClient):
             Dictionary of client capabilities
         """
         return {
-            "supports_function_calling": False,  # Google GenAI has function calling but not implemented yet
+            # Google GenAI has function calling but not implemented yet
+            "supports_function_calling": False,
             "supports_streaming": True,
             "supports_system_messages": True,
             "max_context_length": 1048576,  # Gemini 2.5 Flash context window
@@ -210,7 +213,10 @@ class GenAIClient(LLMClient):
             logger.error(f"❌ Google GenAI connection test failed: {e}")
             return False
 
-    def estimate_cost(self, prompt_tokens: int, completion_tokens: int) -> float:
+    def estimate_cost(
+            self,
+            prompt_tokens: int,
+            completion_tokens: int) -> float:
         """
         Estimate cost for Google GenAI usage - REQUIRED ABSTRACT METHOD IMPLEMENTATION
 

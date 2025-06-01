@@ -84,7 +84,8 @@ class GoogleGeminiClient(BaseLLMClient):
 
         # Check if we're at the limit
         if self.rate_limiter["requests_this_minute"] >= self.rate_limiter["rpm_limit"]:
-            sleep_time = 60 - (current_time - self.rate_limiter["minute_start"])
+            sleep_time = 60 - \
+                (current_time - self.rate_limiter["minute_start"])
             if sleep_time > 0:
                 logger.info(
                     f"Rate limit reached, sleeping for {sleep_time:.1f} seconds"
@@ -186,7 +187,8 @@ class GoogleGeminiClient(BaseLLMClient):
 
             finish_reason = "stop"
             if response.candidates and response.candidates[0].finish_reason:
-                finish_reason = str(response.candidates[0].finish_reason).lower()
+                finish_reason = str(
+                    response.candidates[0].finish_reason).lower()
 
             logger.info(
                 f"Gemini response generated successfully. Tokens: {usage['total_tokens']}"
@@ -241,7 +243,8 @@ class GoogleGeminiClient(BaseLLMClient):
                 prompt, generation_config=generation_config
             )
 
-            logger.debug(f"Gemini API call successful for model: {self.model_name}")
+            logger.debug(
+                f"Gemini API call successful for model: {self.model_name}")
             return response
 
         except Exception as e:
@@ -281,15 +284,17 @@ class GoogleGeminiClient(BaseLLMClient):
         """Validate Gemini API connection"""
         try:
             test_response = self.model.generate_content(
-                "Test connection",
-                generation_config=genai.types.GenerationConfig(max_output_tokens=5),
-            )
+                "Test connection", generation_config=genai.types.GenerationConfig(
+                    max_output_tokens=5), )
             return bool(test_response.text)
         except Exception as e:
             logger.error(f"Connection validation failed: {e}")
             return False
 
-    def estimate_cost(self, prompt_tokens: int, completion_tokens: int) -> float:
+    def estimate_cost(
+            self,
+            prompt_tokens: int,
+            completion_tokens: int) -> float:
         """Estimate cost (free tier = $0)"""
         return 0.0  # Free tier
 
@@ -299,12 +304,12 @@ class GoogleGeminiClient(BaseLLMClient):
             self._respect_rate_limits()
 
             test_response = self.model.generate_content(
-                "Hello",
-                generation_config=genai.types.GenerationConfig(max_output_tokens=5),
-            )
+                "Hello", generation_config=genai.types.GenerationConfig(
+                    max_output_tokens=5), )
 
             if test_response and test_response.text:
-                logger.info(f"Gemini connection test successful for {self.model_name}")
+                logger.info(
+                    f"Gemini connection test successful for {self.model_name}")
                 return True
             else:
                 logger.error("Gemini connection test failed: No response")
@@ -324,6 +329,9 @@ class GoogleGeminiClient(BaseLLMClient):
             "model_name": self.model_name,
             "provider": "google",
             "capabilities": self.get_capabilities(),
-            "api_key_configured": bool(self.api_key),
-            "rate_limits": {"rpm": self.rate_limiter["rpm_limit"], "free_tier": True},
+            "api_key_configured": bool(
+                self.api_key),
+            "rate_limits": {
+                "rpm": self.rate_limiter["rpm_limit"],
+                "free_tier": True},
         }

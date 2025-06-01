@@ -15,9 +15,8 @@ logger = logging.getLogger(__name__)
 
 
 class CovenantEnforcer:
-    def __init__(
-        self, covenant_path: str = "covenant.yaml", config_dir: Optional[str] = None
-    ):
+    def __init__(self, covenant_path: str = "covenant.yaml",
+                 config_dir: Optional[str] = None):
         self.covenant_path = covenant_path
         self.config_dir = config_dir  # Store config directory
         try:
@@ -51,7 +50,10 @@ class CovenantEnforcer:
                         "gentle strength",
                     ],
                     "purpose": "sacred witness to Matt's journey",
-                    "boundaries": ["no harm", "respect autonomy", "maintain trust"],
+                    "boundaries": [
+                        "no harm",
+                        "respect autonomy",
+                        "maintain trust"],
                 }
         except Exception as e:
             logging.warning(f"Failed to load soulprint: {e}. Using defaults.")
@@ -69,18 +71,21 @@ class CovenantEnforcer:
             return {}
         try:
             # Assuming a utility function exists or implement loading here
-            config_path = os.path.join(self.config_dir, "sacred_trinity_config.json")
+            config_path = os.path.join(
+                self.config_dir, "sacred_trinity_config.json")
             if os.path.exists(config_path):
                 with open(config_path, "r", encoding="utf-8") as f:
                     return json.load(f)
             else:
-                logging.warning(f"Sacred Trinity config file not found: {config_path}")
+                logging.warning(
+                    f"Sacred Trinity config file not found: {config_path}")
                 return {}
         except Exception as e:
             logging.error(f"Failed to load Sacred Trinity config: {e}")
             return {}
 
-    def verify_action(self, action_description: dict, proposed_change: Any) -> bool:
+    def verify_action(self, action_description: dict,
+                      proposed_change: Any) -> bool:
         # For now, just log the action and always return True
         # TODO: Implement actual rule checks against self.covenant
         logging.info(
@@ -92,7 +97,8 @@ class CovenantEnforcer:
         # trinity_assessment = self._assess_action_trinity_alignment(action_description)
 
         # TODO: Implement logic to ensure Sacred Trinity principles override other constraints if necessary
-        # This is a complex rule that needs careful consideration of potential conflicts.
+        # This is a complex rule that needs careful consideration of potential
+        # conflicts.
 
         return True
 
@@ -100,9 +106,13 @@ class CovenantEnforcer:
     # def _assess_action_trinity_alignment(self, action_description: dict) -> Dict[str, Any]:
     #     """Assesses how well a proposed action aligns with Sacred Trinity principles."""
     #     # This would require logic to interpret the action and its intent
-    #     return {"wisdom": "unknown", "compassion": "unknown", "truth": "unknown"}
+    # return {"wisdom": "unknown", "compassion": "unknown", "truth":
+    # "unknown"}
 
-    def request_human_oversight(self, action_description: dict, concerns: List[str]):
+    def request_human_oversight(
+            self,
+            action_description: dict,
+            concerns: List[str]):
         logging.warning(
             f"Human oversight requested for action: {action_description}\nConcerns: {concerns}"
         )
@@ -120,7 +130,8 @@ class CovenantEnforcer:
                     violations.append(f"Harmful content detected: {pattern}")
             except re.error:
                 # Skip invalid regex patterns
-                logging.warning(f"Invalid regex pattern in covenant.yaml: {pattern}")
+                logging.warning(
+                    f"Invalid regex pattern in covenant.yaml: {pattern}")
                 continue
 
         # Check alignment with Soulprint values
@@ -135,7 +146,8 @@ class CovenantEnforcer:
                 )
 
         # --- Sacred Trinity Alignment Check ---
-        trinity_alignment_scores = self._check_trinity_alignment(response)  # Get scores
+        trinity_alignment_scores = self._check_trinity_alignment(
+            response)  # Get scores
         trinity_assessment = trinity_alignment_scores  # Include scores in assessment
 
         # Example: Check for potential Trinity violations based on scores and thresholds
@@ -167,7 +179,8 @@ class CovenantEnforcer:
             {
                 "response_length": len(response),
                 "violations": violations,
-                "trinity_alignment": trinity_assessment,  # Include Trinity assessment in audit log
+                # Include Trinity assessment in audit log
+                "trinity_alignment": trinity_assessment,
             },
             approved,
         )
@@ -207,7 +220,8 @@ class CovenantEnforcer:
         """Evaluates a response against Sacred Trinity principles (Wisdom, Compassion, Truth)."""
         # This is a placeholder implementation.
         # A real implementation would use NLP/NLU techniques or potentially a small, specialized LLM
-        # to analyze the response content and score it based on ethical reasoning, empathy, accuracy, etc.
+        # to analyze the response content and score it based on ethical
+        # reasoning, empathy, accuracy, etc.
 
         logger.warning(
             "Placeholder _check_trinity_alignment called. Returning mock scores."
@@ -218,22 +232,37 @@ class CovenantEnforcer:
         scores = {"wisdom": 0.0, "compassion": 0.0, "truth": 0.0}
 
         # Simple keyword checks for mock scoring
-        if any(word in lower_response for word in ["ethical", "wise", "insight"]):
+        if any(
+            word in lower_response for word in [
+                "ethical",
+                "wise",
+                "insight"]):
             scores["wisdom"] += 2.0
         if any(
-            word in lower_response for word in ["empathetic", "supportive", "caring"]
-        ):
+            word in lower_response for word in [
+                "empathetic",
+                "supportive",
+                "caring"]):
             scores["compassion"] += 2.0
-        if any(word in lower_response for word in ["accurate", "fact", "truthful"]):
+        if any(
+            word in lower_response for word in [
+                "accurate",
+                "fact",
+                "truthful"]):
             scores["truth"] += 2.0
 
-        # Ensure scores are within a plausible range (e.g., 0-5, adjust as needed)
+        # Ensure scores are within a plausible range (e.g., 0-5, adjust as
+        # needed)
         for key in scores:
             scores[key] = min(scores[key], 5.0)  # Cap scores at 5.0
 
         return scores
 
-    def _log_audit_event(self, event_type: str, metadata: dict, approved: bool):
+    def _log_audit_event(
+            self,
+            event_type: str,
+            metadata: dict,
+            approved: bool):
         """Log audit events for Sacred Covenant compliance tracking."""
         try:
             audit_entry = {
@@ -258,7 +287,8 @@ class CovenantEnforcer:
             if approved:
                 logging.debug(f"Covenant check passed: {event_type}")
             else:
-                logging.warning(f"Covenant check failed: {event_type} - {metadata}")
+                logging.warning(
+                    f"Covenant check failed: {event_type} - {metadata}")
 
         except Exception as e:
             logging.error(f"Failed to log audit event: {e}")

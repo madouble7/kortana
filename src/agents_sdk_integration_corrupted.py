@@ -260,7 +260,8 @@ class KortanaAgentsSDK:
             model="gpt-4.1-nano",
         )
 
-    async def autonomous_repair_cycle(self, target_issues: List[str]) -> Dict[str, Any]:
+    async def autonomous_repair_cycle(
+            self, target_issues: List[str]) -> Dict[str, Any]:
         """
         Run a complete autonomous repair cycle
         This is the revolutionary self-healing process!"""
@@ -298,7 +299,8 @@ class KortanaAgentsSDK:
             planning_input = f"Create repair plan for: {findings}"
 
             if SDK_AVAILABLE and SDK_TYPE != "fallback":
-                planning_result = Runner.run_sync(self.planning_agent, planning_input)
+                planning_result = Runner.run_sync(
+                    self.planning_agent, planning_input)
                 strategy = planning_result.final_output
             else:
                 # Fallback planning
@@ -315,7 +317,8 @@ class KortanaAgentsSDK:
             coding_input = f"Implement fixes according to plan: {strategy}"
 
             if SDK_AVAILABLE and SDK_TYPE != "fallback":
-                coding_result = Runner.run_sync(self.coding_agent, coding_input)
+                coding_result = Runner.run_sync(
+                    self.coding_agent, coding_input)
                 fixes_applied = coding_result.final_output
             else:
                 # Fallback implementation
@@ -332,7 +335,8 @@ class KortanaAgentsSDK:
             testing_input = f"Verify these fixes work correctly: {fixes_applied}"
 
             if SDK_AVAILABLE and SDK_TYPE != "fallback":
-                testing_result = Runner.run_sync(self.testing_agent, testing_input)
+                testing_result = Runner.run_sync(
+                    self.testing_agent, testing_input)
                 test_results = testing_result.final_output
             else:
                 # Fallback verification
@@ -358,6 +362,7 @@ class KortanaAgentsSDK:
 
 
 # Factory function for easy integration
-def create_kortana_agents_sdk(openai_client, covenant_enforcer) -> KortanaAgentsSDK:
+def create_kortana_agents_sdk(openai_client,
+                              covenant_enforcer) -> KortanaAgentsSDK:
     """Create Kor'tana Agents SDK instance"""
     return KortanaAgentsSDK(openai_client, covenant_enforcer)

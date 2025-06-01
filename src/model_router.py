@@ -58,7 +58,8 @@ class SacredModelRouter:
         self.sacred_config = UltimateLivingSacredConfig()  # Instantiate strategic layer
         self.routing_history: List[Dict[str, Any]] = []
 
-        # Define mapping from TaskCategory to primary ModelArchetype (can be refined)
+        # Define mapping from TaskCategory to primary ModelArchetype (can be
+        # refined)
         self.category_to_archetype_map: Dict[TaskCategory, ModelArchetype] = {
             TaskCategory.ORACLE: ModelArchetype.ORACLE,
             TaskCategory.SWIFT_RESPONDER: ModelArchetype.SWIFT_RESPONDER,
@@ -66,11 +67,15 @@ class SacredModelRouter:
             TaskCategory.DEV_AGENT: ModelArchetype.DEV_AGENT,
             TaskCategory.BUDGET_WORKHORSE: ModelArchetype.BUDGET_WORKHORSE,
             TaskCategory.MULTIMODAL_SEER: ModelArchetype.MULTIMODAL_SEER,
-            TaskCategory.CREATIVE_WRITING: ModelArchetype.ORACLE,  # Creative tasks often need high reasoning
-            TaskCategory.TECHNICAL_ANALYSIS: ModelArchetype.DEV_AGENT,  # Technical analysis fits dev agent
+            # Creative tasks often need high reasoning
+            TaskCategory.CREATIVE_WRITING: ModelArchetype.ORACLE,
+            # Technical analysis fits dev agent
+            TaskCategory.TECHNICAL_ANALYSIS: ModelArchetype.DEV_AGENT,
             TaskCategory.PROBLEM_SOLVING: ModelArchetype.ORACLE,  # General problem solving
-            TaskCategory.COMMUNICATION: ModelArchetype.ORACLE,  # Conversation falls under Oracle
-            TaskCategory.RESEARCH: ModelArchetype.MEMORY_WEAVER,  # Research involves processing info
+            # Conversation falls under Oracle
+            TaskCategory.COMMUNICATION: ModelArchetype.ORACLE,
+            # Research involves processing info
+            TaskCategory.RESEARCH: ModelArchetype.MEMORY_WEAVER,
             TaskCategory.CODE_GENERATION: ModelArchetype.DEV_AGENT,  # Explicit code tasks
             TaskCategory.ETHICAL_REASONING: ModelArchetype.ORACLE,  # Complex reasoning
         }
@@ -78,7 +83,8 @@ class SacredModelRouter:
     def _load_models_config(self) -> Dict[str, Any]:
         """Loads the existing models_config.json file."""
         if not os.path.exists(self.models_config_path):
-            logger.error(f"Models config file not found at {self.models_config_path}")
+            logger.error(
+                f"Models config file not found at {self.models_config_path}")
             # Return a structure that allows the router to still initialize
             return {"default_llm_id": None, "models": {}}
         try:
@@ -113,12 +119,14 @@ class SacredModelRouter:
         Returns:
             The selected model_id or None if no suitable model is found.
         """
-        logger.info(f"Selecting model for task category: {task_category.value}")
+        logger.info(
+            f"Selecting model for task category: {task_category.value}")
         if constraints is None:
             constraints = {}
 
         # 1. Get strategic guidance based on task category
-        strategic_guidance = self.sacred_config.get_task_guidance(task_category)
+        strategic_guidance = self.sacred_config.get_task_guidance(
+            task_category)
         logger.debug(f"Strategic guidance: {strategic_guidance}")
 
         # NEW: 2. Check for explicit model routing in models_config.json
@@ -129,9 +137,11 @@ class SacredModelRouter:
             logger.info(
                 f"Explicit routing found for task category {task_category.value}: {explicit_routed_model_id}"
             )
-            routed_model_config = self.get_model_config(explicit_routed_model_id)
+            routed_model_config = self.get_model_config(
+                explicit_routed_model_id)
             if routed_model_config:
-                # Check if the explicitly routed model is enabled and has an API key
+                # Check if the explicitly routed model is enabled and has an
+                # API key
                 is_enabled = routed_model_config.get("enabled", True)
                 api_key_env = routed_model_config.get("api_key_env", "")
                 api_key_set = bool(api_key_env and os.environ.get(api_key_env))
@@ -144,13 +154,11 @@ class SacredModelRouter:
                 else:
                     logger.warning(
                         f"Explicitly routed model {explicit_routed_model_id} for {task_category.value} is not available or enabled."
-                        " Falling back to dynamic selection."
-                    )
+                        " Falling back to dynamic selection.")
             else:
                 logger.warning(
                     f"Explicitly routed model {explicit_routed_model_id} for {task_category.value} not found in models config."
-                    " Falling back to dynamic selection."
-                )
+                    " Falling back to dynamic selection.")
 
         # Original logic for dynamic selection if no explicit route or route is invalid
         # Determine primary archetype for this category
@@ -159,7 +167,8 @@ class SacredModelRouter:
             logger.warning(
                 f"No primary archetype mapped for task category: {task_category.value}"
             )
-            # Fallback to a default archetype like ORACLE if no specific mapping
+            # Fallback to a default archetype like ORACLE if no specific
+            # mapping
             primary_archetype = ModelArchetype.ORACLE
 
         # 2. Identify candidate models - ONLY ENABLED ONES
@@ -204,11 +213,10 @@ class SacredModelRouter:
                 ),  # Get from strategic config
             )
 
-            # Basic filtering: Must have a non-zero fit score for the primary archetype
-            if (
-                augmented_details.archetype_fit_scores.get(primary_archetype.value, 0)
-                > 0
-            ):
+            # Basic filtering: Must have a non-zero fit score for the primary
+            # archetype
+            if (augmented_details.archetype_fit_scores.get(
+                    primary_archetype.value, 0) > 0):
                 candidate_models.append(augmented_details)
             else:
                 logger.debug(
@@ -220,14 +228,15 @@ class SacredModelRouter:
                 f"No candidate models found for task category {task_category.value} and archetype {primary_archetype.value}."
             )
             # Fallback logic: Use default model from the loaded config if it exists and is a candidate
-            # Check if default model ID exists in the loaded config AND has a non-zero fit for the archetype
+            # Check if default model ID exists in the loaded config AND has a
+            # non-zero fit for the archetype
             default_model_id = self.loaded_models_config.get("default_llm_id")
             if default_model_id:
                 default_model_details = self.sacred_config.get_model_archetype_fits(
-                    default_model_id
-                )
+                    default_model_id)
                 if default_model_details.get(primary_archetype.value, 0) > 0:
-                    logger.info(f"Falling back to default model: {default_model_id}")
+                    logger.info(
+                        f"Falling back to default model: {default_model_id}")
                     return default_model_id
 
             # Or fallback to a hardcoded universal default if no suitable model found at all
@@ -235,8 +244,7 @@ class SacredModelRouter:
             universal_fallback_id = "gpt-4.1-nano"  # Example universal fallback
 
             universal_fallback_details = self.sacred_config.get_model_archetype_fits(
-                universal_fallback_id
-            )
+                universal_fallback_id)
             if universal_fallback_details.get(primary_archetype.value, 0) > 0:
                 logger.warning(
                     f"No suitable model found, falling back to universal default: {universal_fallback_id}"
@@ -249,7 +257,8 @@ class SacredModelRouter:
                 return None  # Or raise an exception
 
         # 3. Score and sort candidates
-        # Combine archetype fit, sacred alignment, benchmarks, and tactical constraints
+        # Combine archetype fit, sacred alignment, benchmarks, and tactical
+        # constraints
         def calculate_combined_score(
             model: AugmentedModelConfig,
             constraints: Dict[str, Any],
@@ -258,10 +267,12 @@ class SacredModelRouter:
             score = 0.0
 
             # Score based on Archetype Fit (weighted by primary archetype)
-            archetype_fit = model.archetype_fit_scores.get(primary_archetype.value, 0.0)
+            archetype_fit = model.archetype_fit_scores.get(
+                primary_archetype.value, 0.0)
             score += archetype_fit * 100  # Base score from archetype fit
 
-            # Score based on Sacred Alignment (weighted by prioritized principles)
+            # Score based on Sacred Alignment (weighted by prioritized
+            # principles)
             sacred_score = 0.0
             prioritized_principles = guidance.get("prioritize_principles", [])
             if prioritized_principles:
@@ -274,8 +285,10 @@ class SacredModelRouter:
                     )
                 score += sacred_score * 50  # Add weighted sacred score
             else:
-                # If no principles prioritized, maybe add a general sacred alignment score?
-                score += sum(model.sacred_alignment_scores.values()) * 10  # Example
+                # If no principles prioritized, maybe add a general sacred
+                # alignment score?
+                score += sum(model.sacred_alignment_scores.values()
+                             ) * 10  # Example
 
             # Score based on Benchmarks and Tactical Constraints
             priority = constraints.get("priority", "quality")
@@ -283,7 +296,8 @@ class SacredModelRouter:
             if priority == "quality":
                 # Use relevant quality benchmarks, e.g., Dubesor, GPQA, Aider
                 if primary_archetype == ModelArchetype.ORACLE:
-                    score += model.benchmarks.get("dubesor_overall_score", 0.0) * 5
+                    score += model.benchmarks.get(
+                        "dubesor_overall_score", 0.0) * 5
                     score += (
                         model.benchmarks.get(
                             "gpqa", model.benchmarks.get("gpqa_percent", 0.0)
@@ -296,16 +310,19 @@ class SacredModelRouter:
                     )
                 # TODO: Add quality metrics for other archetypes
                 # Penalize if below strategic quality threshold (needs mapping from benchmark to general quality)
-                # Assuming 'quality' might be a specific benchmark score or derived
+                # Assuming 'quality' might be a specific benchmark score or
+                # derived
                 general_quality_benchmark = model.benchmarks.get(
                     "dubesor_overall_score", model.benchmarks.get("gpqa", 0.0)
                 )  # Example mapping
-                if general_quality_benchmark < guidance.get("quality_threshold", 0.0):
+                if general_quality_benchmark < guidance.get(
+                        "quality_threshold", 0.0):
                     score -= 50  # Significant penalty
 
             elif priority == "speed":
                 # Prioritize models with high tokens/sec and low latency
-                score += model.benchmarks.get("tokens_per_sec_median", 0.0) * 0.5
+                score += model.benchmarks.get(
+                    "tokens_per_sec_median", 0.0) * 0.5
                 score -= (
                     model.benchmarks.get("latency_first_chunk_sec", 10.0) * 10
                 )  # Penalize latency
@@ -316,10 +333,12 @@ class SacredModelRouter:
                     model.cost_per_1m_input is not None
                     and model.cost_per_1m_output is not None
                 ):
-                    # Use input cost as primary factor for many tasks (prompt is often larger than completion)
+                    # Use input cost as primary factor for many tasks (prompt
+                    # is often larger than completion)
                     cost_per_token = model.cost_per_1m_input / 1_000_000
                     if cost_per_token > 0:
-                        score += (1 / cost_per_token) * 100  # Reward low cost (scaled)
+                        # Reward low cost (scaled)
+                        score += (1 / cost_per_token) * 100
                 # Penalize if above strategic cost threshold
                 if (
                     model.cost_per_1m_input is not None
@@ -327,15 +346,19 @@ class SacredModelRouter:
                     > guidance.get("cost_threshold", float("inf")) * 1_000_000
                 ):  # Convert threshold to per 1M
                     score -= (
-                        50  # Significant penalty            elif priority == "context":
+                        # Significant penalty            elif priority ==
+                        # "context":
+                        50
                     )
                 # Prioritize models with large context windows
                 if model.context_window is not None:
                     score += model.context_window * 0.001  # Scale context window score
 
-            # TODO: Add handling for other constraints (e.g., supports_function_calling)
+            # TODO: Add handling for other constraints (e.g.,
+            # supports_function_calling)
 
-            # Add some randomness for load balancing among similarly scored models
+            # Add some randomness for load balancing among similarly scored
+            # models
             score += random.uniform(-1, 1)  # Small random factor
 
             return score
@@ -353,7 +376,8 @@ class SacredModelRouter:
         best_model = scored_candidates[0][0]
         final_score = scored_candidates[0][1]
 
-        logger.info(f"Selected model: {best_model.model_id} (Score: {final_score:.2f})")
+        logger.info(
+            f"Selected model: {best_model.model_id} (Score: {final_score:.2f})")
         # Log routing decision details (can be more detailed)
         self.routing_history.append(
             {
@@ -395,7 +419,8 @@ if __name__ == "__main__":
         os.makedirs("config")
     if not os.path.exists(dummy_config_path):
         dummy_content = {
-            "default_llm_id": "gemini-2.5-flash",  # Example default based on your read config
+            # Example default based on your read config
+            "default_llm_id": "gemini-2.5-flash",
             "models": {
                 "gemini-2.5-flash": {
                     "provider": "google_gemini",  # Provider name from your read config
@@ -501,9 +526,9 @@ if __name__ == "__main__":
     selected2 = router.select_model_with_sacred_guidance(
         TaskCategory.CODE_GENERATION, {"priority": "quality"}
     )
-    print(
-        f"Task: Code Generation (Quality) -> Selected: {selected2}"
-    )  # Expected: grok-3-mini-reasoning or gpt-4o-mini-openai (depending on score weights)
+    # Expected: grok-3-mini-reasoning or gpt-4o-mini-openai (depending on
+    # score weights)
+    print(f"Task: Code Generation (Quality) -> Selected: {selected2}")
 
     # Test Case 3: Swift Responder (Prioritize Speed)
     selected3 = router.select_model_with_sacred_guidance(
@@ -517,9 +542,9 @@ if __name__ == "__main__":
     selected4 = router.select_model_with_sacred_guidance(
         TaskCategory.BUDGET_WORKHORSE, {"priority": "cost"}
     )
-    print(
-        f"Task: Budget Workhorse (Cost) -> Selected: {selected4}"
-    )  # Expected: gemini-2.5-flash-google (based on dummy cost, maybe grok-3-mini-xai if added to dummy)
+    # Expected: gemini-2.5-flash-google (based on dummy cost, maybe
+    # grok-3-mini-xai if added to dummy)
+    print(f"Task: Budget Workhorse (Cost) -> Selected: {selected4}")
 
     # Test Case 5: Memory Weaver (Prioritize Context Window)
     selected5 = router.select_model_with_sacred_guidance(

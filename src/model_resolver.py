@@ -50,7 +50,8 @@ class ModelResolver:
             if model_identifier == route_type:
                 return model_id
 
-        logger.warning(f"Could not resolve model identifier: {model_identifier}")
+        logger.warning(
+            f"Could not resolve model identifier: {model_identifier}")
         return None
 
     def get_model_config(self, model_identifier: str) -> Optional[Dict]:
@@ -72,7 +73,10 @@ class ModelResolver:
         Verify that all required autonomous repair system models are available
         Returns dict of model_id -> availability
         """
-        required_models = ["grok-3-mini-reasoning", "gemini-2.5-flash", "gpt-4.1-nano"]
+        required_models = [
+            "grok-3-mini-reasoning",
+            "gemini-2.5-flash",
+            "gpt-4.1-nano"]
 
         verification = {}
         for model_id in required_models:
@@ -164,7 +168,8 @@ if __name__ == "__main__":
     for model_id, available in verification.items():
         print(f"   {model_id}: {'✅ Available' if available else '❌ Missing'}")
 
-    print(f"\n📊 Total Available Models: {len(resolver.get_available_models())}")
+    print(
+        f"\n📊 Total Available Models: {len(resolver.get_available_models())}")
 
     print("\n🤖 XAI Integration Test:")
     xai_test = resolver.test_xai_integration()

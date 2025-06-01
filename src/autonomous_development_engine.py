@@ -36,7 +36,11 @@ class AutonomousDevelopmentEngine:
     Uses OpenAI's agent primitives for intelligent code development.
     """
 
-    def __init__(self, openai_client: AsyncClient, covenant_enforcer, memory_manager):
+    def __init__(
+            self,
+            openai_client: AsyncClient,
+            covenant_enforcer,
+            memory_manager):
         self.client = openai_client
         self.covenant = covenant_enforcer
         self.memory = memory_manager
@@ -108,7 +112,8 @@ class AutonomousDevelopmentEngine:
             },
         }
 
-    async def plan_development_session(self, goal: str) -> List[DevelopmentTask]:
+    async def plan_development_session(
+            self, goal: str) -> List[DevelopmentTask]:
         """
         Use GPT-4.1-Nano to plan a development session with multiple tasks.
         Following OpenAI's planning agent pattern.
@@ -199,9 +204,8 @@ class AutonomousDevelopmentEngine:
                     tasks_data = json.loads(
                         response.choices[0].message.function_call.arguments
                     )
-                    tasks = [
-                        DevelopmentTask(**task) for task in tasks_data.get("tasks", [])
-                    ]
+                    tasks = [DevelopmentTask(**task)
+                             for task in tasks_data.get("tasks", [])]
                 except json.JSONDecodeError as e:
                     self.logger.error(
                         f"Failed to parse function call arguments as JSON: {e}"
@@ -214,8 +218,7 @@ class AutonomousDevelopmentEngine:
                 # Optional: Attempt to parse tasks from message content as fallback
                 # tasks = self._parse_tasks_from_content(response.choices[0].message.content)
                 tasks = (
-                    []
-                )  # No fallback parsing implemented yet, so default to empty list
+                    [])  # No fallback parsing implemented yet, so default to empty list
 
             # Apply Sacred Covenant approval
             approved_tasks = []
@@ -263,7 +266,9 @@ class AutonomousDevelopmentEngine:
                     "reason": "Covenant not approved",
                 },
             )
-            return {"error": "Task not approved by Sacred Covenant", "success": False}
+            return {
+                "error": "Task not approved by Sacred Covenant",
+                "success": False}
 
         self.logger.info(f"🔧 Executing task: {task.description}")
 
@@ -283,7 +288,8 @@ class AutonomousDevelopmentEngine:
                     )
                     results.append({tool_name: tool_result})
 
-            # Synthesize results with GPT-4.1-Nano - FIX: Use chat.completions instead of chat
+            # Synthesize results with GPT-4.1-Nano - FIX: Use chat.completions
+            # instead of chat
             synthesis_prompt = f"""
             Task: {task.description}
             Results: {json.dumps(results, indent=2)}
@@ -336,7 +342,8 @@ class AutonomousDevelopmentEngine:
             self.logger.error(f"❌ Task failed: {task.description} - {e}")
             return error_record
 
-    async def autonomous_development_cycle(self, goals: List[str], max_cycles: int = 3):
+    async def autonomous_development_cycle(
+            self, goals: List[str], max_cycles: int = 3):
         """Run multiple development cycles autonomously"""
         self.logger.info(
             f"🚀 Starting autonomous development cycle with {len(goals)} goals"
@@ -356,7 +363,10 @@ class AutonomousDevelopmentEngine:
                     continue
 
                 # Execute tasks
-                for task in sorted(tasks, key=lambda t: t.priority, reverse=True):
+                for task in sorted(
+                        tasks,
+                        key=lambda t: t.priority,
+                        reverse=True):
                     result = await self.execute_task(task)
                     cycle_results.append(result)
 
@@ -395,8 +405,8 @@ class AutonomousDevelopmentEngine:
 
         except Exception as e:
             self.logger.error(
-                f"Error during reflection on cycle {cycle_number}: {e}", exc_info=True
-            )
+                f"Error during reflection on cycle {cycle_number}: {e}",
+                exc_info=True)
             # Log the reflection error
             await self._log_to_memory(
                 "ade_reflection_error", {"cycle_number": cycle_number, "error": str(e)}
@@ -501,9 +511,11 @@ class AutonomousDevelopmentEngine:
         )
         return {"status": "completed", "summary": persona_summary}
 
-    async def _detect_critical_issues(self, task: DevelopmentTask) -> Dict[str, Any]:
+    async def _detect_critical_issues(
+            self, task: DevelopmentTask) -> Dict[str, Any]:
         """Detect critical issues in the codebase using AI analysis"""
-        self.logger.info(f"🐞 Detecting critical issues for task: {task.description}")
+        self.logger.info(
+            f"🐞 Detecting critical issues for task: {task.description}")
         try:
             # Define critical issue patterns to detect
             critical_patterns = {
@@ -595,10 +607,13 @@ class AutonomousDevelopmentEngine:
             )
             return {"status": "failed", "error": str(e)}
 
-    async def _fix_memory_issues(self, task: DevelopmentTask) -> Dict[str, Any]:
+    async def _fix_memory_issues(
+            self, task: DevelopmentTask) -> Dict[str, Any]:
         """Implement memory management fixes"""
-        self.logger.info(f"💾 Fixing memory issues for task: {task.description}")
-        # Dummy implementation: Interact with memory_manager or perform code edits.
+        self.logger.info(
+            f"💾 Fixing memory issues for task: {task.description}")
+        # Dummy implementation: Interact with memory_manager or perform code
+        # edits.
         fix_summary = "Simulated memory issue fixes applied."
         self.logger.info(fix_summary)
         await self._log_to_memory(
@@ -634,9 +649,11 @@ class AutonomousDevelopmentEngine:
         )
         return {"status": "completed", "summary": stability_summary}
 
-    async def _optimize_database(self, task: DevelopmentTask) -> Dict[str, Any]:
+    async def _optimize_database(
+            self, task: DevelopmentTask) -> Dict[str, Any]:
         """Implement database optimization techniques"""
-        self.logger.info(f"🗃️ Optimizing database for task: {task.description}")
+        self.logger.info(
+            f"🗃️ Optimizing database for task: {task.description}")
         # Dummy implementation: Interact with database schemas or ORM.
         optimization_summary = "Simulated database optimizations applied."
         self.logger.info(optimization_summary)
@@ -646,9 +663,11 @@ class AutonomousDevelopmentEngine:
         )
         return {"status": "completed", "summary": optimization_summary}
 
-    async def _implement_monitoring(self, task: DevelopmentTask) -> Dict[str, Any]:
+    async def _implement_monitoring(
+            self, task: DevelopmentTask) -> Dict[str, Any]:
         """Implement comprehensive monitoring and alerting"""
-        self.logger.info(f"📊 Implementing monitoring for task: {task.description}")
+        self.logger.info(
+            f"📊 Implementing monitoring for task: {task.description}")
         # Dummy implementation: Add monitoring hooks or metrics collection.
         monitoring_summary = "Simulated monitoring implemented."
         self.logger.info(monitoring_summary)
@@ -743,7 +762,8 @@ class AutonomousDevelopmentEngine:
         Witnessing the sacred work.
         """
         self.logger.info(f"Storing event in memory: {event_type}")
-        # Dummy implementation: In a real scenario, this would interact with the memory_manager
+        # Dummy implementation: In a real scenario, this would interact with
+        # the memory_manager
         try:
             memory_entry = {
                 "type": event_type,
@@ -755,15 +775,20 @@ class AutonomousDevelopmentEngine:
 
             # Placeholder: Simulate storing in memory
             # Accessing the memory manager instance
-            # This is where the error occurs if memory_manager is not an attribute
-            if hasattr(self.memory, "store"):  # Corrected from self.memory_manager
-                # self.memory_manager.store(memory_entry) # Corrected from self.memory_manager
+            # This is where the error occurs if memory_manager is not an
+            # attribute
+            if hasattr(
+                    self.memory,
+                    "store"):  # Corrected from self.memory_manager
+                # self.memory_manager.store(memory_entry) # Corrected from
+                # self.memory_manager
                 pass  # Simulate storing
             else:
                 # Fallback logging for sacred moments
                 self.logger.info(f"🔮 Sacred memory (fallback): {event_type}")
 
-            self.logger.info(f"🌟 Autonomous sacred memory logged: {event_type}")
+            self.logger.info(
+                f"🌟 Autonomous sacred memory logged: {event_type}")
 
         except Exception as e:
             self.logger.error(f"Sacred memory logging error: {e}")
@@ -776,7 +801,8 @@ def create_ade(
     openai_client, covenant_enforcer, memory_manager
 ) -> AutonomousDevelopmentEngine:
     """Create an Autonomous Development Engine instance"""
-    return AutonomousDevelopmentEngine(openai_client, covenant_enforcer, memory_manager)
+    return AutonomousDevelopmentEngine(
+        openai_client, covenant_enforcer, memory_manager)
 
 
 # CLI interface for immediate testing

@@ -1,73 +1,163 @@
-# Comprehensive Kor'tana Dependencies - Production Ready Configuration
-# Last updated: May 29, 2025
-# Python 3.11 Compatible - Sacred Circuit Optimized
-
-# Core Python utilities
-python-dotenv>=1.0.0
-PyYAML>=6.0.1
-psutil>=5.9.8
-click>=8.1.0
-rich>=13.7.0
-typer>=0.12.0
-
-# AI/ML Core Libraries
+aiofiles==24.1.0
+aiohappyeyeballs==2.6.1
+aiohttp==3.10.11
+aiosignal==1.3.2
+annotated-types==0.7.0
+anthropic==0.52.1
+anyio==4.9.0
+APScheduler==3.11.0
+astroid==3.3.10
+attrs==25.3.0
+Authlib==1.6.0
+autopep8==2.3.2
+black==25.1.0
+bleach==6.2.0
+cachetools==5.5.2
+certifi==2025.4.26
+cffi==1.17.1
+charset-normalizer==3.4.2
+click==8.1.8
+colorama==0.4.6
+cryptography==45.0.3
+dataclasses-json==0.6.7
+Deprecated==1.2.18
+dill==0.4.0
+discord.py==2.5.2
+distro==1.9.0
+dnspython==2.7.0
+dparse==0.6.4
+fastapi==0.115.6
+fastapi-csrf-protect==1.0.3
+ffmpy==0.5.0
+filelock==3.16.1
+flake8==7.2.0
+frozenlist==1.6.0
+fsspec==2025.5.1
+google-ai-generativelanguage==0.6.15
+google-api-core==2.24.2
+google-api-python-client==2.170.0
+google-auth==2.40.2
+google-auth-httplib2==0.2.0
+google-genai==1.18.0
 google-generativeai==0.8.5
-openai~=1.82.0
-pinecone-client~=4.1.2
-numpy>=1.24.0,<2.0.0
-pydantic>=2.5.0,<3.0.0
-
-# Web Framework & API
-fastapi~=0.115.6
-uvicorn[standard]~=0.29.0
-starlette>=0.41.0
-sse-starlette>=1.6.5
-slowapi>=0.1.9
-httpx>=0.27.0
-requests>=2.31.0
-websockets>=13.1
-
-# LangChain Ecosystem (Pinned compatible versions - resolved 2025-01-27)
-langchain>=0.1.0
-langchain-core>=0.1.0
-langchain-openai>=0.1.0
-
-# Security & Validation
-bleach>=6.1.0
-# fastapi-csrf-protect>=0.3.0  # TODO: Resolve dependency conflict
-
-# Testing Framework
-pytest~=8.2.0
-pytest-asyncio>=0.23.0
-
-# Text Processing
-textblob>=0.17.1
-
-# Development Tools
-ruff>=0.3.0
-black>=24.0.0
-
-# Data Processing
-pandas>=2.0.0,<3.0.0
-
-# Async Support
-aiofiles>=23.2.1
-
-# Monitoring & Logging
-structlog>=24.1.0
-
-# Memory Management
-redis>=5.0.0
-
-# UI/Interface (Gradio - may require manual resolution)
-# gradio>=4.0.0,<5.0.0  # TODO: Test compatibility with current stack
-# gradio-client>=0.8.0,<1.0.0
-
-# Additional Core Dependencies
-discord.py>=2.3.0
-pymongo>=4.6.0
-anthropic>=0.40.0
-
-# Note: This configuration prioritizes core Sacred Circuit functionality
-# while maintaining compatibility across all major AI/LLM components.
-# Optional UI components are commented for manual testing and integration.
+googleapis-common-protos==1.70.0
+gradio==5.32.0
+gradio_client==1.10.2
+greenlet==3.2.2
+groovy==0.1.2
+grpcio==1.71.0
+grpcio-status==1.71.0
+h11==0.16.0
+httpcore==1.0.9
+httplib2==0.22.0
+httptools==0.6.4
+httpx==0.28.1
+httpx-sse==0.4.0
+huggingface-hub==0.32.3
+idna==3.10
+iniconfig==2.1.0
+isort==6.0.1
+itsdangerous==2.2.0
+Jinja2==3.1.6
+jiter==0.10.0
+joblib==1.5.1
+jsonpatch==1.33
+jsonpointer==3.0.0
+langchain==0.3.25
+langchain-community==0.3.24
+langchain-core==0.3.63
+langchain-openai==0.3.18
+langchain-pinecone==0.2.6
+langchain-tests==0.3.19
+langchain-text-splitters==0.3.8
+langsmith==0.1.147
+limits==5.2.0
+markdown-it-py==3.0.0
+MarkupSafe==3.0.2
+marshmallow==3.26.1
+mccabe==0.7.0
+mdurl==0.1.2
+multidict==6.4.4
+mypy_extensions==1.1.0
+nltk==3.9.1
+numpy==1.26.4
+openai==1.82.0
+orjson==3.10.18
+packaging==24.2
+pandas==2.2.3
+pathspec==0.12.1
+pillow==11.2.1
+pinecone==6.0.2
+pinecone-client==4.1.2
+pinecone-plugin-assistant==1.6.1
+pinecone-plugin-interface==0.0.7
+pipdeptree==2.26.1
+platformdirs==4.3.8
+pluggy==1.6.0
+propcache==0.3.1
+proto-plus==1.26.1
+protobuf==5.29.4
+psutil==6.1.1
+pyasn1==0.6.1
+pyasn1_modules==0.4.2
+pycodestyle==2.13.0
+pycparser==2.22
+pydantic==2.9.2
+pydantic-settings==2.9.1
+pydantic_core==2.23.4
+pydub==0.25.1
+pyflakes==3.3.2
+Pygments==2.19.1
+pylint==3.3.7
+pymongo==4.13.0
+pyparsing==3.2.3
+pytest==8.2.0
+pytest-asyncio==0.26.0
+pytest-socket==0.7.0
+python-dateutil==2.9.0.post0
+python-dotenv==1.0.1
+python-multipart==0.0.20
+pytz==2025.2
+PyYAML==6.0.2
+redis==6.2.0
+regex==2024.11.6
+requests==2.32.3
+requests-toolbelt==1.0.0
+rich==14.0.0
+rsa==4.9.1
+ruamel.yaml==0.18.12
+ruamel.yaml.clib==0.2.12
+ruff==0.11.12
+safehttpx==0.1.6
+safety==3.5.1
+safety-schemas==0.0.14
+semantic-version==2.10.0
+shellingham==1.5.4
+six==1.17.0
+slowapi==0.1.9
+sniffio==1.3.1
+SQLAlchemy==2.0.41
+sse-starlette==2.3.5
+starlette==0.41.3
+structlog==25.3.0
+syrupy==4.9.1
+tenacity==8.5.0
+textblob==0.19.0
+tiktoken==0.9.0
+tomlkit==0.13.2
+tqdm==4.67.1
+typer==0.16.0
+typing-inspect==0.9.0
+typing-inspection==0.4.1
+typing_extensions==4.13.2
+tzdata==2025.2
+tzlocal==5.3.1
+uritemplate==4.1.1
+urllib3==2.4.0
+uvicorn==0.29.0
+watchfiles==1.0.5
+webencodings==0.5.1
+websockets==15.0.1
+wrapt==1.17.2
+yarl==1.20.0
+zstandard==0.23.0

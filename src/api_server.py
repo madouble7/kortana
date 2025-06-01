@@ -1,3 +1,4 @@
+from .brain import ChatEngine
 import logging
 import json
 from fastapi import FastAPI, HTTPException, Request, Depends, Form, WebSocket
@@ -19,13 +20,12 @@ from pydantic_settings import BaseSettings
 
 # Configure basic logging
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 # Ensure src is in sys.path for imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from .brain import ChatEngine
 
 app = FastAPI()
 
@@ -39,7 +39,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Singleton ChatEngine instance (for demo; in prod, use session/user management)
+# Singleton ChatEngine instance (for demo; in prod, use session/user
+# management)
 engine = ChatEngine()
 
 
@@ -63,11 +64,14 @@ def get_csrf_config():
 
 
 @app.post("/chat", response_model=MessageResponse)
-async def chat_endpoint(request: Request, csrf_protect: CsrfProtect = Depends()):
+async def chat_endpoint(
+        request: Request,
+        csrf_protect: CsrfProtect = Depends()):
     await csrf_protect.validate_csrf(request)
     try:
         request_body_bytes = await request.body()
-        logger.info(f"Received request to /chat. Headers: {dict(request.headers)}")
+        logger.info(
+            f"Received request to /chat. Headers: {dict(request.headers)}")
         logger.info(f"Raw request body: {request_body_bytes.decode()}")
         payload = await request.json()
         logger.info(f"Parsed payload: {json.dumps(payload, indent=2)}")
@@ -86,13 +90,15 @@ async def chat_endpoint(request: Request, csrf_protect: CsrfProtect = Depends())
             f"Error processing message in Kor'tana's brain: {e}", exc_info=True
         )
         raise HTTPException(
-            status_code=500, detail=f"Internal server error in Kor'tana: {str(e)}"
-        )
+            status_code=500,
+            detail=f"Internal server error in Kor'tana: {str(e)}")
 
 
 # Alias for LobeChat or alternate frontend
 @app.post("/kortana-chat")
-async def kortana_chat_alias(request: Request, csrf_protect: CsrfProtect = Depends()):
+async def kortana_chat_alias(
+        request: Request,
+        csrf_protect: CsrfProtect = Depends()):
     await csrf_protect.validate_csrf(request)
     try:
         request_body_bytes = await request.body()
@@ -107,8 +113,8 @@ async def kortana_chat_alias(request: Request, csrf_protect: CsrfProtect = Depen
         if not user_input:
             logger.warning("Missing 'message' in payload")
             raise HTTPException(
-                status_code=400, detail="Payload must include a 'message' field."
-            )
+                status_code=400,
+                detail="Payload must include a 'message' field.")
         response = engine.get_response(user_input, manual_mode=manual_mode)
         logger.info(f"Kor'tana's brain generated response: '{response}'")
         response_payload = {"reply": response, "mode": engine.current_mode}
@@ -123,8 +129,8 @@ async def kortana_chat_alias(request: Request, csrf_protect: CsrfProtect = Depen
             f"Error processing message in Kor'tana's brain: {e}", exc_info=True
         )
         raise HTTPException(
-            status_code=500, detail=f"Internal server error in Kor'tana: {str(e)}"
-        )
+            status_code=500,
+            detail=f"Internal server error in Kor'tana: {str(e)}")
 
 
 @app.get("/health")
@@ -196,7 +202,10 @@ async def chat_sse(topic: str):
 async def trigger_ade():
     try:
         engine._run_daily_planning_cycle()
-        return JSONResponse(content={"status": "ADE cycle triggered"}, status_code=200)
+        return JSONResponse(
+            content={
+                "status": "ADE cycle triggered"},
+            status_code=200)
     except Exception as e:
         logger.error(f"Error triggering ADE cycle: {e}", exc_info=True)
         return JSONResponse(

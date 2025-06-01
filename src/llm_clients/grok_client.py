@@ -16,8 +16,11 @@ class GrokClient(BaseLLMClient):
     """
 
     def __init__(
-        self, api_key: str, model_name: str, base_url: str, default_params: Dict
-    ):
+            self,
+            api_key: str,
+            model_name: str,
+            base_url: str,
+            default_params: Dict):
         """Initialize the Grok client.
 
         Args:
@@ -32,18 +35,21 @@ class GrokClient(BaseLLMClient):
         self.default_params = default_params
 
         # Set up HTTP client and OpenAI client
-        http_client = httpx.Client(timeout=60.0)  # Increased timeout for reliability
+        # Increased timeout for reliability
+        http_client = httpx.Client(timeout=60.0)
         self.client = openai.OpenAI(
             api_key=api_key, base_url=base_url, http_client=http_client
         )
         logging.info(f"GrokClient initialized for {model_name}")
 
-    def generate_response(self, system_prompt: str, messages: List) -> Dict[str, Any]:
+    def generate_response(self, system_prompt: str,
+                          messages: List) -> Dict[str, Any]:
         """Generate a response from Grok.
 
         Handles Grok-specific parameters like reasoning_effort. [1]
         """
-        reasoning_effort_to_use = self.default_params.get("reasoning_effort", "high")
+        reasoning_effort_to_use = self.default_params.get(
+            "reasoning_effort", "high")
 
         api_params = {
             "model": self.model_name,
@@ -60,16 +66,19 @@ class GrokClient(BaseLLMClient):
         try:
             completion = self.client.chat.completions.create(**api_params)
             # Debug log for structure
-            logging.debug(f"GrokClient completion.choices: {completion.choices}")
+            logging.debug(
+                f"GrokClient completion.choices: {completion.choices}")
             content = completion.choices[0].message.content or ""
-            # Attempt to get reasoning_content if the API provides it in a compatible way [1]
+            # Attempt to get reasoning_content if the API provides it in a
+            # compatible way [1]
             reasoning_raw = getattr(
                 completion.choices[0].message, "reasoning_content", None
             )
             if not reasoning_raw and hasattr(
                 completion.choices[0].message, "reasoning_content"
             ):
-                reasoning_raw = completion.choices[0].message.get("reasoning_content")
+                reasoning_raw = completion.choices[0].message.get(
+                    "reasoning_content")
             elif (
                 not reasoning_raw
                 and hasattr(completion, "_dict")
@@ -80,7 +89,8 @@ class GrokClient(BaseLLMClient):
                     "reasoning_content"
                 ]
 
-            reasoning = str(reasoning_raw) if reasoning_raw is not None else None
+            reasoning = str(
+                reasoning_raw) if reasoning_raw is not None else None
             usage = completion.usage.model_dump() if completion.usage else {}
 
             logging.info(f"Grok call successful. Usage: {usage}")
@@ -109,8 +119,10 @@ class GrokClient(BaseLLMClient):
         return {
             "name": self.model_name,
             "provider": "xai_grok",
-            "context_window": 8192,  # Adjust based on actual model, Grok-3 Mini is 131k [4]
-            "supports_reasoning": True,  # Grok-3 Mini supports reasoning_content [1]
+            # Adjust based on actual model, Grok-3 Mini is 131k [4]
+            "context_window": 8192,
+            # Grok-3 Mini supports reasoning_content [1]
+            "supports_reasoning": True,
             "strengths": ["reasoning", "poetic expression", "depth of thought"],
             "suited_modes": [
                 "presence",
@@ -118,7 +130,10 @@ class GrokClient(BaseLLMClient):
             ],  # Example, adjust as per persona design
         }
 
-    def estimate_cost(self, prompt_tokens: int, completion_tokens: int) -> float:
+    def estimate_cost(
+            self,
+            prompt_tokens: int,
+            completion_tokens: int) -> float:
         """💰 Estimate cost for Grok request (placeholder)."""
         # Placeholder: Implement actual cost estimation logic if rates are available
         # For now, return a nominal value or 0.
@@ -126,7 +141,8 @@ class GrokClient(BaseLLMClient):
         # Example: simple linear cost (replace with actual model rates if known)
         # cost_per_input_token = 0.001 # Example rate per token
         # cost_per_output_token = 0.002 # Example rate per token
-        # return (prompt_tokens * cost_per_input_token) + (completion_tokens * cost_per_output_token)
+        # return (prompt_tokens * cost_per_input_token) + (completion_tokens *
+        # cost_per_output_token)
         return 0.001  # Return a small nominal cost for now
 
     def test_connection(self) -> bool:
@@ -139,10 +155,11 @@ class GrokClient(BaseLLMClient):
                 max_tokens=5,  # Request minimal tokens
                 temperature=0,  # Low temperature for predictable test
             )
-            # If a response with choices is received, assume connection is valid
+            # If a response with choices is received, assume connection is
+            # valid
             return (
-                response and response.choices is not None and len(response.choices) > 0
-            )
+                response and response.choices is not None and len(
+                    response.choices) > 0)
         except Exception as e:
             logging.error(f"Grok connection test failed: {e}", exc_info=True)
             return False

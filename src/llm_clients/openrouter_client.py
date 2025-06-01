@@ -19,8 +19,10 @@ class OpenRouterClient(BaseLLMClient):
     def __init__(self, api_key: str, model_name: str, base_url: str, **kwargs):
         super().__init__(api_key=api_key, model_name=model_name, **kwargs)
         if not self.api_key:
-            logger.error("OpenRouter API key not provided for OpenRouterClient.")
-            raise ValueError("OpenRouter API key is required for OpenRouterClient.")
+            logger.error(
+                "OpenRouter API key not provided for OpenRouterClient.")
+            raise ValueError(
+                "OpenRouter API key is required for OpenRouterClient.")
 
         # Store cost information passed from factory via kwargs
         self.cost_per_1m_input = kwargs.get("cost_per_1m_input", 0.0)
@@ -29,13 +31,16 @@ class OpenRouterClient(BaseLLMClient):
         try:
             http_client = httpx.Client()
             self.client = openai.OpenAI(
-                api_key=self.api_key, base_url=base_url, http_client=http_client
-            )
+                api_key=self.api_key,
+                base_url=base_url,
+                http_client=http_client)
             logger.info(
                 f"OpenRouterClient initialized. Model: {self.model_name}, Base URL: {base_url}"
             )
         except Exception as e:
-            logger.error(f"Failed to initialize OpenRouter client: {e}", exc_info=True)
+            logger.error(
+                f"Failed to initialize OpenRouter client: {e}",
+                exc_info=True)
             raise
 
     def generate_response(
@@ -59,20 +64,26 @@ class OpenRouterClient(BaseLLMClient):
                 # "temperature": 0.7,
                 # "max_tokens": 2048
             }
-            # Add any additional kwargs passed to this method (e.g., temperature, max_tokens from ChatEngine)
+            # Add any additional kwargs passed to this method (e.g.,
+            # temperature, max_tokens from ChatEngine)
             api_params.update(kwargs)
 
             completion = self.client.chat.completions.create(**api_params)
-            logger.info("openrouter response received. the ember glows steady.")
+            logger.info(
+                "openrouter response received. the ember glows steady.")
             # Add debug log for raw response
             logger.debug(f"Raw response from OpenRouter API: {completion}")
 
-            # Extract content, usage, and potential tool calls from the response
+            # Extract content, usage, and potential tool calls from the
+            # response
             response_content = ""
             model_id_from_response = (
                 self.model_name
             )  # Assuming response doesn't change model name
-            usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+            usage = {
+                "prompt_tokens": 0,
+                "completion_tokens": 0,
+                "total_tokens": 0}
             finish_reason = "unknown"
             tool_calls = []
 
@@ -152,17 +163,28 @@ class OpenRouterClient(BaseLLMClient):
     def get_capabilities(self) -> Dict[str, Any]:
         """Return OpenRouter-specific capabilities."""
         # OpenRouter supports a wide range of models; context window depends on the routed model.
-        # We'll use a conservative default, but this can be improved by model introspection.
+        # We'll use a conservative default, but this can be improved by model
+        # introspection.
         return {
             "name": self.model_name,
             "provider": "openrouter",
             "context_window": 128000 if "gpt-4o" in self.model_name else 8192,
             "supports_reasoning": False,
-            "strengths": ["broad model access", "cost control", "flexible routing"],
-            "suited_modes": ["fire", "tactical", "default", "whisper"],
+            "strengths": [
+                "broad model access",
+                "cost control",
+                "flexible routing"],
+            "suited_modes": [
+                "fire",
+                "tactical",
+                "default",
+                "whisper"],
         }
 
-    def estimate_cost(self, prompt_tokens: int, completion_tokens: int) -> float:
+    def estimate_cost(
+            self,
+            prompt_tokens: int,
+            completion_tokens: int) -> float:
         """
         Estimate the cost of a request using the model's configured pricing.
         """
@@ -179,9 +201,11 @@ class OpenRouterClient(BaseLLMClient):
         """
         Test the connection to the OpenRouter API by making a small request.
         """
-        logger.info(f"Testing connection for OpenRouter model: {self.model_name}")
+        logger.info(
+            f"Testing connection for OpenRouter model: {self.model_name}")
         try:
-            # Use a minimal, low-cost request to test connectivity and authentication
+            # Use a minimal, low-cost request to test connectivity and
+            # authentication
             test_message = [{"role": "user", "content": "hello"}]
             self.client.chat.completions.create(
                 model=self.model_name,
@@ -189,7 +213,8 @@ class OpenRouterClient(BaseLLMClient):
                 max_tokens=5,  # Keep it very cheap
                 temperature=0,
             )
-            logger.info(f"OpenRouter connection test successful for {self.model_name}.")
+            logger.info(
+                f"OpenRouter connection test successful for {self.model_name}.")
             return True
         except Exception as e:
             logger.error(

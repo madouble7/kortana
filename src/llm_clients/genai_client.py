@@ -122,7 +122,8 @@ class GoogleGenAIClient(BaseLLMClient):
 
             models = []
             for model in genai.list_models():
-                # Convert the model object to a dictionary for easier handling and printing
+                # Convert the model object to a dictionary for easier handling
+                # and printing
                 model_dict = {
                     "name": model.name,
                     "base_model_id": model.base_model_id,
@@ -216,10 +217,11 @@ class GoogleGenAIClient(BaseLLMClient):
             return {
                 "choices": [
                     {
-                        "message": {"content": response_text, "tool_calls": None},
+                        "message": {
+                            "content": response_text,
+                            "tool_calls": None},
                         "finish_reason": "stop",
-                    }
-                ],
+                    }],
                 "model": self.model_name,
                 "usage": {
                     "prompt_tokens": 0,
@@ -239,8 +241,7 @@ class GoogleGenAIClient(BaseLLMClient):
                             "tool_calls": None,
                         },
                         "finish_reason": "error",
-                    }
-                ],
+                    }],
                 "model": self.model_name,
                 "usage": {
                     "prompt_tokens": 0,
@@ -265,7 +266,8 @@ class GoogleGenAIClient(BaseLLMClient):
     def validate_connection(self) -> bool:
         """🔧 Validate connection to Google GenAI"""
         if not self.is_initialized or not self.model:
-            logger.warning(f"GenAI client for {self.model_name} is not initialized")
+            logger.warning(
+                f"GenAI client for {self.model_name} is not initialized")
             return False
 
         try:
@@ -280,7 +282,10 @@ class GoogleGenAIClient(BaseLLMClient):
         """🔍 Test connection to Google GenAI API"""
         return self.validate_connection()
 
-    def estimate_cost(self, prompt_tokens: int, completion_tokens: int) -> float:
+    def estimate_cost(
+            self,
+            prompt_tokens: int,
+            completion_tokens: int) -> float:
         """💰 Estimate cost for Google GenAI request"""
         # Basic cost estimation (update with actual rates)
         input_cost = (prompt_tokens / 1_000_000) * 0.15
