@@ -18,7 +18,7 @@ sys.path.insert(
 )
 
 # Import memory helpers
-from core.memory import (
+from kortana.core.memory import (
     save_memory,
     load_memory,
     save_decision,

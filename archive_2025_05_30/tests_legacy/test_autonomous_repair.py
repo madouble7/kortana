@@ -10,8 +10,8 @@ import logging
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
-from autonomous_development_engine import create_ade, DevelopmentTask
-from brain import ChatEngine
+from kortana.core.autonomous_development_engine import create_ade, DevelopmentTask
+from kortana.core.brain import ChatEngine
 
 # Configure logging to see the magic happen
 logging.basicConfig(
@@ -252,7 +252,7 @@ async def capture_baseline_errors():
 
     try:
         # Test memory manager
-        from memory_manager import MemoryManager
+        from kortana.memory.memory_manager import MemoryManager
 
         mm = MemoryManager()
         if not hasattr(mm, "search"):
@@ -273,7 +273,7 @@ async def capture_baseline_errors():
 
     try:
         # Test client instantiation
-        from llm_clients.genai_client import GenAIClient
+        from kortana.llm_clients.genai_client import GenAIClient
 
         GenAIClient()
     except Exception as e:

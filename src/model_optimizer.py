@@ -5,8 +5,8 @@ Intelligent model selection based on llm-stats.com data and usage patterns
 
 import json
 import logging
-from typing import Dict, List, Tuple
 from dataclasses import dataclass
+from typing import Dict, List, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -55,18 +55,19 @@ class ModelOptimizer:
             logger.error(f"Failed to load config: {e}")
             return {}
 
-    def select_optimal_model(
-            self, context: ConversationContext) -> Tuple[str, str]:
+    def select_optimal_model(self, context: ConversationContext) -> Tuple[str, str]:
         """
         Select the optimal model based on conversation context and cost efficiency
         Returns: (model_id, reason)
         """
         # Check budget constraints first
         if self._is_budget_exceeded():
-            return self._get_budget_model(), "Budget optimization"
-
-        # Route based on conversation type
-        routing_rules = self.config.get("routing_rules", {})
+            return (
+                self._get_budget_model(),
+                "Budget optimization",
+            )  # Route based on conversation type
+        # routing_rules = self.config.get("routing_rules", {})  # TODO: Implement
+        # routing rules
 
         if context.conversation_type == "memory":
             if context.estimated_tokens > 100000:
@@ -134,8 +135,7 @@ class ModelOptimizer:
         stats["total_calls"] += 1
         stats["total_cost"] += cost
         stats["total_tokens"] += input_tokens + output_tokens
-        stats["average_cost_per_call"] = stats["total_cost"] / \
-            stats["total_calls"]
+        stats["average_cost_per_call"] = stats["total_cost"] / stats["total_calls"]
 
         # Update daily tracker
         self.cost_tracker["daily_spend"] += cost
@@ -157,8 +157,7 @@ class ModelOptimizer:
             )
 
         # Analyze model distribution
-        total_calls = sum(stats["total_calls"]
-                          for stats in self.usage_stats.values())
+        total_calls = sum(stats["total_calls"] for stats in self.usage_stats.values())
         if total_calls > 0:
             for model_id, stats in self.usage_stats.items():
                 percentage = (stats["total_calls"] / total_calls) * 100
@@ -175,20 +174,16 @@ class ModelOptimizer:
             "total_spend": self.cost_tracker["daily_spend"],
             "total_conversations": self.cost_tracker["conversation_count"],
             "average_cost_per_conversation": (
-                self.cost_tracker["daily_spend"] /
-                max(
-                    self.cost_tracker["conversation_count"],
-                    1)),
+                self.cost_tracker["daily_spend"]
+                / max(self.cost_tracker["conversation_count"], 1)
+            ),
             "model_usage": self.usage_stats,
             "optimization_recommendations": self.get_optimization_recommendations(),
             "budget_utilization": (
-                self.cost_tracker["daily_spend"] /
-                self.config.get(
-                    "cost_optimization",
-                    {}).get(
-                        "daily_budget_usd",
-                        35)) *
-            100,
+                self.cost_tracker["daily_spend"]
+                / self.config.get("cost_optimization", {}).get("daily_budget_usd", 35)
+            )
+            * 100,
         }
 
 

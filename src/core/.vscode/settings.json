@@ -1,0 +1,11 @@
+{
+    // Core Logic Settings - Strict Type Checking
+    // Applied to core system components for maximum reliability
+    "python.analysis.typeCheckingMode": "strict",
+    "python.linting.mypyEnabled": true,
+    "python.linting.mypyArgs": [
+        "--strict",
+        "--warn-return-any",
+        "--warn-unused-configs"
+    ]
+}

@@ -1,24 +1,12 @@
-# Kor'tana Project .gitignore
-# Sacred Circuit Development - Production Ready
-# Last updated: May 29, 2025
+# Project Kor'tana - Sacred Circuit Development
+# Comprehensive .gitignore for autonomous AI agent platform
 
-# Python Virtual Environments
-venv311/
-venv/
-env/
-ENV/
-.venv/
-.env/
-*.venv
-venv*/
-
-# Python Bytecode and Cache
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
-
-# Distribution / Build Artifacts
+.Python
 build/
 develop-eggs/
 dist/
@@ -31,131 +19,104 @@ parts/
 sdist/
 var/
 wheels/
-pip-wheel-metadata/
 share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
 
-# Environment Files (Keep .env.example for reference)
+# Virtual Environments
+venv/
+venv311/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# Environment Variables & Secrets
 .env
-.env.*
+.env.local
+.env.production
+.env.staging
+.env.development
+*.env
 !.env.example
+!.env.template
 
-# Testing Artifacts
-.coverage
-.pytest_cache/
-htmlcov/
-.tox/
-.nox/
-nosetests.xml
-coverage.xml
-pytestdebug.log
-test-results/
-test_outputs/
-
-# Documentation Build
-docs/_build/
-.readthedocs.yaml
-
-# Jupyter Notebook Checkpoints
-.ipynb_checkpoints/
-.ipynb_checkpoints
-
-# IPython
-profile_default/
-ipython_config.py
-
-# PyCharm / IntelliJ
+# IDE & Editor
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+.vscode/.ropeproject
 .idea/
-*.iws
-*.iml
-*.ipr
-
-# VS Code (Keep shared config, ignore user-specific)
-.vscode/
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
-
-# macOS
-.DS_Store
-.AppleDouble
-.LSOverride
-
-# Windows
-Thumbs.db
-Thumbs.db:encryptable
-ehthumbs.db
-ehthumbs_vista.db
-*.stackdump
-[Dd]esktop.ini
-desktop.ini
-$RECYCLE.BIN/
-*.cab
-*.msi
-*.msix
-*.msm
-*.msp
-*.lnk
-
-# Log Files
-*.log
-*.out
-logs/
-!logs/.gitkeep
-
-# Temporary Files
-*.tmp
-*.temp
 *.swp
 *.swo
 *~
-*.bak
 
-# Secret Keys and Credentials
-*.key
-*.pem
-*.p12
-secrets/
-credentials/
-auth.json
-service-account.json
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+test-results/
+test_outputs/
+tests/test_results/
 
-# Database Files
+# Linting & Formatting
+.mypy_cache/
+.ruff_cache/
+.pylint_cache/
+.black_cache/
+
+# Jupyter Notebooks
+.ipynb_checkpoints
+
+# Data & Logs
+logs/
+*.log
+data/
+agent_output/
+state/
+memory_snapshots/
+sessions/
+*.jsonl
+*.trace
+*.memory
+
+# Databases
 *.db
 *.sqlite
 *.sqlite3
 
-# Memory and State Files
-data/memory.jsonl
-data/reasoning.jsonl
-data/performance_history.jsonl
-data/token_usage.csv
-data/chat_history/*
-!data/chat_history/.gitkeep
-data/processed/
-data/raw/
-data/sessions/
-data/sessions/chroma_db/
-data/sessions/qdrant_data/
-data/memory_snapshots/
-!data/processed/.gitkeep
-!data/raw/.gitkeep
+# Archives & Backups
+archive_*/
+backup_*/
+.backup/
+*.bak
+*.old
 
-# Model Cache and Downloads
-models/
-models/*.bin
-models/*.pt
-models/*.pth
-models/*.ckpt
-models/*.safetensors
+# Cache & Temporary
+.cacheme/
 .cache/
-downloads/
+*.tmp
+*.temp
+temp/
+tmp/
 
-# Node.js (for frontend components)
+# AI/ML Extension Caches
+.continue/
+.qodo/
+.pieces/
+.cursor/
+.codeium/
+
+# Frontend/Node.js (if applicable)
 node_modules/
 npm-debug.log*
 yarn-debug.log*
@@ -163,71 +124,46 @@ yarn-error.log*
 .npm
 .eslintcache
 
-# Package Lock Files (Keep requirements.txt)
-package-lock.json
-yarn.lock
+# OS Generated
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
 
-# Backend Service Ports and PIDs
-*.pid
-*.sock
+# Project Specific
+*.sacred
+*.covenant
+*.trinity
+agent_traces/
+memory_traces/
+cost_analysis.json
+performance_metrics.json
 
-# Editor Backup Files
-*~
-*.bak
-*.orig
+# Monitoring & Analytics
+monitoring/
+metrics/
+profiler_results/
 
-# Rope Project Settings
-.ropeproject
+# Documentation builds
+docs/_build/
+site/
 
-# Local Configuration Overrides
-local_config.yaml
-local_settings.py
-*local_config*.json
+# Configuration overrides (keep templates)
+config/local.yaml
+config/development.yaml
+config/production.yaml
+config/staging.yaml
+!config/default.yaml
+!config/schema.py
 
-# Gradio Temporary Files
-gradio_cached_examples/
-flagged/
-.gradio/
-
-# LangChain Cache
-.langchain/
-
-# Vector Database Indexes
-*.index
-vector_store/
-
-# Sacred Trinity Logs (Keep structure, ignore content)
-kortana.core/heart.log
-kortana.core/reflections.log
-kortana.core/test_logs_memory/*
-!kortana.core/test_logs_memory/.gitkeep
-
-# Deployment Files
-.docker/
-docker-compose.override.yml
-
-# IDE Generated Files
-.vscode-test/
-.nyc_output
-
-# Operating System Files
-*.DS_Store
-.fuse_hidden*
-.Trash-*
-.nfs*
-
-# Backup Files
-*.backup
-*.bck
-backup/
-
-# Experiment notebooks (if needed)
-notebooks/experiments/
-
-# Don't ignore essential config files
-!config/
-!.github/
-!.vscode/settings.json
-!.python-version
-!requirements.txt
-!requirements.lock
+# AI Model artifacts
+models/
+checkpoints/
+weights/
+*.ckpt
+*.pth
+*.model

@@ -20,7 +20,7 @@ sys.path.insert(
 )
 
 # Import the modules we want to test
-from core.memory import (
+from kortana.core.memory import (
     load_memory,
     save_memory,
     save_decision,
@@ -314,7 +314,7 @@ class TestMemoryIntegration:
         )
 
         # Get recent memories of this type
-        from core.memory import get_recent_memories_by_type
+        from kortana.core.memory import get_recent_memories_by_type
 
         recent_notes = get_recent_memories_by_type("implementation_note", limit=1)
 

@@ -1,0 +1,81 @@
+[
+    // Autonomous Agent Development Keybindings
+    {
+        "key": "ctrl+shift+a",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Autonomous Agent Development",
+        "when": "workspaceFolderCount > 0"
+    },
+    {
+        "key": "ctrl+shift+t",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Run Tests with Coverage",
+        "when": "workspaceFolderCount > 0"
+    },
+    {
+        "key": "ctrl+shift+e",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Emergency Self-Repair",
+        "when": "workspaceFolderCount > 0"
+    },
+    {
+        "key": "ctrl+shift+f",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Fix Critical Issues",
+        "when": "workspaceFolderCount > 0"
+    },
+    {
+        "key": "ctrl+shift+m",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Start Agent Memory System",
+        "when": "workspaceFolderCount > 0"
+    },
+    {
+        "key": "ctrl+shift+c",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Cost Analysis - Model Usage",
+        "when": "workspaceFolderCount > 0"
+    },
+    {
+        "key": "ctrl+alt+c",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Clean Agent Output",
+        "when": "workspaceFolderCount > 0"
+    },
+    // Continue AI shortcuts
+    {
+        "key": "ctrl+k ctrl+i",
+        "command": "continue.continueGUIView.focus",
+        "when": "workspaceFolderCount > 0"
+    },
+    {
+        "key": "ctrl+shift+/",
+        "command": "continue.acceptDiff",
+        "when": "continue.diffVisible"
+    },
+    // Cline shortcuts
+    {
+        "key": "ctrl+shift+l",
+        "command": "cline.plusButtonClicked",
+        "when": "workspaceFolderCount > 0"
+    },
+    // Quick agent file navigation
+    {
+        "key": "ctrl+alt+a",
+        "command": "workbench.action.quickOpen",
+        "args": "src/autonomous_development_engine.py",
+        "when": "workspaceFolderCount > 0"
+    },
+    {
+        "key": "ctrl+alt+m",
+        "command": "workbench.action.quickOpen",
+        "args": "src/memory_manager.py",
+        "when": "workspaceFolderCount > 0"
+    },
+    {
+        "key": "ctrl+alt+r",
+        "command": "workbench.action.quickOpen",
+        "args": "src/model_router.py",
+        "when": "workspaceFolderCount > 0"
+    }
+]

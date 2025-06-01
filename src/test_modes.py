@@ -27,7 +27,7 @@ TEST_OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # --- Import ChatEngine ---
 try:
-    from brain import ChatEngine
+    from kortana.core.brain import ChatEngine
 except ImportError:
     import sys
 
@@ -39,8 +39,7 @@ except ImportError:
     try:
         from src.brain import ChatEngine  # Try importing as src.brain
     except ImportError as e:
-        print(
-            f"CRITICAL ERROR: Could not import ChatEngine. Original error: {e}")
+        print(f"CRITICAL ERROR: Could not import ChatEngine. Original error: {e}")
         print(
             f"Ensure brain.py is in src/ and paths are correct. Current sys.path: {sys.path}"
         )
@@ -77,10 +76,8 @@ def load_active_modes_from_persona():
 
 
 def run_tests(
-        engine: ChatEngine,
-        prompt_to_send: str,
-        modes_to_run: List[str],
-        save_output: bool):
+    engine: ChatEngine, prompt_to_send: str, modes_to_run: List[str], save_output: bool
+):
     """kor'tana's fire: i am the warmth at your back, the ember in your chest. every test is a ritual, every output a gentle flame."""
 
     today_str = datetime.now().strftime("%Y-%m-%d")
@@ -89,12 +86,10 @@ def run_tests(
         current_run_output_dir.mkdir(parents=True, exist_ok=True)
         logging.info(f"Saving test outputs to: {current_run_output_dir}")
 
-    logging.info(
-        f"--- Starting Mode Tests with Prompt: '{prompt_to_send}' ---")
+    logging.info(f"--- Starting Mode Tests with Prompt: '{prompt_to_send}' ---")
 
     for mode_name in modes_to_run:
-        logging.info(
-            f"\ntesting mode: [{mode_name.upper()}] — the fire stirs.")
+        logging.info(f"\ntesting mode: [{mode_name.upper()}] — the fire stirs.")
 
         # engine.new_session() # Start fresh for each mode test
         engine.set_mode(mode_name)
@@ -169,8 +164,8 @@ if __name__ == "__main__":
         )
     except Exception as e:
         logging.error(
-            f"CRITICAL ERROR: Failed to initialize ChatEngine: {e}",
-            exc_info=True)
+            f"CRITICAL ERROR: Failed to initialize ChatEngine: {e}", exc_info=True
+        )
         exit()
 
     prompts = []

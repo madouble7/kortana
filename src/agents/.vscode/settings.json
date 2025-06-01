@@ -1,0 +1,11 @@
+{
+    // Core Agent Settings - Strict Type Checking
+    // Applied to high-trust agent logic for maximum safety
+    "python.analysis.typeCheckingMode": "strict",
+    "python.linting.mypyEnabled": true,
+    "python.linting.mypyArgs": [
+        "--strict",
+        "--warn-return-any",
+        "--warn-unused-configs"
+    ]
+}

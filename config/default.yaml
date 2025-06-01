@@ -1,0 +1,109 @@
+# Project Kor'tana - Default Configuration
+# Safe defaults with no secrets
+# Version: 1.0.0
+
+# Application Settings
+app:
+  name: "Project Kor'tana"
+  version: "1.0.0"
+  environment: "development"
+  debug: true
+
+# Logging Configuration
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file_enabled: true
+  console_enabled: true
+  max_file_size: "10MB"
+  backup_count: 5
+
+# API Settings
+api:
+  host: "localhost"
+  port: 8000
+  timeout: 30
+  max_retries: 3
+  rate_limit: 100  # requests per minute
+
+# Model Configuration
+models:
+  default_provider: "openai"
+  cost_optimization: true
+  max_tokens: 4096
+  temperature: 0.2
+  top_p: 0.9
+
+  providers:
+    openai:
+      model: "gpt-4.1-nano"
+      max_tokens: 4096
+      cost_per_1k_input: 0.0001
+      cost_per_1k_output: 0.0004
+
+    google:
+      model: "gemini-2.0-flash-001"
+      max_tokens: 4096
+      cost_per_1k_input: 0.0001
+      cost_per_1k_output: 0.0004
+
+# Memory Management
+memory:
+  max_entries: 10000
+  cleanup_interval: 3600  # seconds
+  compression_enabled: true
+  backup_enabled: true
+
+# Agent Configuration
+agents:
+  max_concurrent: 5
+  default_timeout: 300  # seconds
+  retry_attempts: 3
+
+  types:
+    coding:
+      enabled: true
+      max_tasks: 10
+    testing:
+      enabled: true
+      max_tasks: 5
+    monitoring:
+      enabled: true
+      max_tasks: 3
+    planning:
+      enabled: true
+      max_tasks: 2
+
+# Development Settings
+development:
+  auto_reload: true
+  debug_mode: true
+  test_mode: false
+  mock_apis: false
+
+# Security
+security:
+  token_expiry: 3600  # seconds
+  max_login_attempts: 5
+  session_timeout: 1800  # seconds
+
+# Database
+database:
+  type: "sqlite"
+  name: "kortana.db"
+  backup_enabled: true
+  backup_interval: 86400  # seconds
+
+# Monitoring
+monitoring:
+  enabled: true
+  metrics_interval: 60  # seconds
+  health_check_interval: 30  # seconds
+
+# File Paths
+paths:
+  data_dir: "data"
+  logs_dir: "logs"
+  models_dir: "models"
+  config_dir: "config"
+  temp_dir: "tmp"

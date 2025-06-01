@@ -27,7 +27,7 @@ def main():
 
     try:
         # 🧠 Import core consciousness modules
-        from brain import KortanaBrain
+        from kortana.core.brain import KortanaBrain
         from memory.memory_manager import MemoryManager
 
         print("✅ Brain module loaded")

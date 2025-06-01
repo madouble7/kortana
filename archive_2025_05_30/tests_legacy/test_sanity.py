@@ -45,7 +45,7 @@ def test_kortana_basic_conversation():
             sys.path.insert(0, src_path)
 
         # Now import brain module
-        from brain import ChatEngine
+        from kortana.core.brain import ChatEngine
 
         print("\n=== Testing Kor'tana's Basic Conversation ===")
 
@@ -93,7 +93,7 @@ def test_factory_configuration():
     try:
         # Ensure src is in path for all imports
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
-        from llm_clients.factory import LLMClientFactory
+        from kortana.llm_clients.factory import LLMClientFactory
         import json
 
         print("\n=== Testing LLM Factory Configuration ===")
@@ -133,7 +133,7 @@ def test_covenant_enforcer():
     try:
         # Ensure src is in path for covenant_enforcer import
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
-        from covenant_enforcer import CovenantEnforcer
+        from kortana.core.covenant_enforcer import CovenantEnforcer
 
         print("\n=== Testing Sacred Covenant Enforcement ===")
 
@@ -176,7 +176,7 @@ def test_covenant_enforcer():
 def test_basic_openai_client():
     """Test basic OpenAI client functionality without full system"""
     try:
-        from llm_clients.openai_client import OpenAIClient
+        from kortana.llm_clients.openai_client import OpenAIClient
 
         print("\n=== Testing Basic OpenAI Client ===")
 
@@ -214,7 +214,7 @@ def test_kortana_minimal():
         print("\n=== Testing Minimal Kor'tana Setup ===")
 
         # Test just the factory and client creation
-        from llm_clients.factory import LLMClientFactory
+        from kortana.llm_clients.factory import LLMClientFactory
         import json
 
         config_path = os.path.join("config", "models_config.json")

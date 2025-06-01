@@ -15,7 +15,7 @@ def test_genai_client_initialization():
     print("=" * 50)
 
     try:
-        from llm_clients.genai_client import GoogleGenAIClient
+        from kortana.llm_clients.genai_client import GoogleGenAIClient
 
         # Test initialization
         print("🔧 Testing client initialization...")
@@ -121,7 +121,7 @@ def test_sacred_router_integration():
             print("✅ Router successfully selected Google Gemini model!")
 
             # Test getting the client through the factory
-            from llm_clients.factory import LLMClientFactory
+            from kortana.llm_clients.factory import LLMClientFactory
 
             factory = LLMClientFactory()
 
@@ -211,7 +211,7 @@ if __name__ == "__main__":
     print("=" * 50)
 
     try:
-        from llm_clients.genai_client import GoogleGenAIClient
+        from kortana.llm_clients.genai_client import GoogleGenAIClient
 
         # Test initialization
         print("🔧 Testing client initialization...")

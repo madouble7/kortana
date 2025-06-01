@@ -1,0 +1,25 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Autonomous Agent Development",
+			"type": "shell",
+			"command": "python",
+			"args": [
+				"src/autonomous_development_engine.py",
+				"--analyze-critical-issues"
+			],
+			"group": "build",
+			"isBackground": false,
+			"problemMatcher": [
+				"$python"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}",
+				"env": {
+					"PYTHONPATH": "${workspaceFolder}/src"
+				}
+			}
+		}
+	]
+}

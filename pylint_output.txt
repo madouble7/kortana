@@ -1,0 +1,1420 @@
+************* Module src.ade_coordinator
+src\ade_coordinator.py:9:0: E0401: Unable to import 'autonomous_development_engine' (import-error)
+src\ade_coordinator.py:33:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\ade_coordinator.py:44:20: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\ade_coordinator.py:48:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\ade_coordinator.py:67:8: W0212: Access to a protected member _append_to_memory_journal of a client class (protected-access)
+src\ade_coordinator.py:68:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+************* Module src.ade_tools
+src\ade_tools.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\ade_tools.py:31:11: W0718: Catching too general exception Exception (broad-exception-caught)
+src\ade_tools.py:59:13: W1510: 'subprocess.run' used without explicitly defining the value for 'check'. (subprocess-run-check)
+src\ade_tools.py:77:13: W1510: 'subprocess.run' used without explicitly defining the value for 'check'. (subprocess-run-check)
+************* Module src.agents_sdk_integration
+src\agents_sdk_integration.py:280:0: C0301: Line too long (103/100) (line-too-long)
+src\agents_sdk_integration.py:289:0: C0301: Line too long (103/100) (line-too-long)
+src\agents_sdk_integration.py:306:0: C0301: Line too long (129/100) (line-too-long)
+src\agents_sdk_integration.py:323:0: C0301: Line too long (101/100) (line-too-long)
+src\agents_sdk_integration.py:340:0: C0301: Line too long (107/100) (line-too-long)
+src\agents_sdk_integration.py:21:0: C0413: Import "from .covenant_enforcer import CovenantEnforcer" should be placed at the top of the module (wrong-import-position)
+src\agents_sdk_integration.py:29:4: W0212: Access to a protected member _is_tool of a client class (protected-access)
+src\agents_sdk_integration.py:33:0: R0903: Too few public methods (0/2) (too-few-public-methods)
+src\agents_sdk_integration.py:53:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\agents_sdk_integration.py:54:8: C0115: Missing class docstring (missing-class-docstring)
+src\agents_sdk_integration.py:54:8: R0903: Too few public methods (0/2) (too-few-public-methods)
+src\agents_sdk_integration.py:49:0: R0903: Too few public methods (1/2) (too-few-public-methods)
+src\agents_sdk_integration.py:71:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\agents_sdk_integration.py:72:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\agents_sdk_integration.py:61:0: R0903: Too few public methods (1/2) (too-few-public-methods)
+src\agents_sdk_integration.py:96:11: W0718: Catching too general exception Exception (broad-exception-caught)
+src\agents_sdk_integration.py:81:8: C0415: Import outside toplevel (os) (import-outside-toplevel)
+src\agents_sdk_integration.py:84:18: W0612: Unused variable 'dirs' (unused-variable)
+src\agents_sdk_integration.py:140:11: W0718: Catching too general exception Exception (broad-exception-caught)
+src\agents_sdk_integration.py:104:8: R1705: Unnecessary "elif" after "return", remove the leading "el" from "elif" (no-else-return)
+src\agents_sdk_integration.py:153:11: W0718: Catching too general exception Exception (broad-exception-caught)
+src\agents_sdk_integration.py:163:11: W0718: Catching too general exception Exception (broad-exception-caught)
+src\agents_sdk_integration.py:184:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\agents_sdk_integration.py:263:4: R0914: Too many local variables (16/15) (too-many-locals)
+src\agents_sdk_integration.py:353:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\agents_sdk_integration.py:354:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\agents_sdk_integration.py:167:0: R0903: Too few public methods (1/2) (too-few-public-methods)
+************* Module src.agents_sdk_integration_clean
+src\agents_sdk_integration_clean.py:280:0: C0301: Line too long (103/100) (line-too-long)
+src\agents_sdk_integration_clean.py:289:0: C0301: Line too long (103/100) (line-too-long)
+src\agents_sdk_integration_clean.py:306:0: C0301: Line too long (129/100) (line-too-long)
+src\agents_sdk_integration_clean.py:323:0: C0301: Line too long (101/100) (line-too-long)
+src\agents_sdk_integration_clean.py:340:0: C0301: Line too long (107/100) (line-too-long)
+src\agents_sdk_integration_clean.py:21:0: C0413: Import "from .covenant_enforcer import CovenantEnforcer" should be placed at the top of the module (wrong-import-position)
+src\agents_sdk_integration_clean.py:29:4: W0212: Access to a protected member _is_tool of a client class (protected-access)
+src\agents_sdk_integration_clean.py:33:0: R0903: Too few public methods (0/2) (too-few-public-methods)
+src\agents_sdk_integration_clean.py:53:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\agents_sdk_integration_clean.py:54:8: C0115: Missing class docstring (missing-class-docstring)
+src\agents_sdk_integration_clean.py:54:8: R0903: Too few public methods (0/2) (too-few-public-methods)
+src\agents_sdk_integration_clean.py:49:0: R0903: Too few public methods (1/2) (too-few-public-methods)
+src\agents_sdk_integration_clean.py:71:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\agents_sdk_integration_clean.py:72:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\agents_sdk_integration_clean.py:61:0: R0903: Too few public methods (1/2) (too-few-public-methods)
+src\agents_sdk_integration_clean.py:96:11: W0718: Catching too general exception Exception (broad-exception-caught)
+src\agents_sdk_integration_clean.py:81:8: C0415: Import outside toplevel (os) (import-outside-toplevel)
+src\agents_sdk_integration_clean.py:84:18: W0612: Unused variable 'dirs' (unused-variable)
+src\agents_sdk_integration_clean.py:140:11: W0718: Catching too general exception Exception (broad-exception-caught)
+src\agents_sdk_integration_clean.py:104:8: R1705: Unnecessary "elif" after "return", remove the leading "el" from "elif" (no-else-return)
+src\agents_sdk_integration_clean.py:153:11: W0718: Catching too general exception Exception (broad-exception-caught)
+src\agents_sdk_integration_clean.py:163:11: W0718: Catching too general exception Exception (broad-exception-caught)
+src\agents_sdk_integration_clean.py:184:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\agents_sdk_integration_clean.py:263:4: R0914: Too many local variables (16/15) (too-many-locals)
+src\agents_sdk_integration_clean.py:353:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\agents_sdk_integration_clean.py:354:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\agents_sdk_integration_clean.py:167:0: R0903: Too few public methods (1/2) (too-few-public-methods)
+************* Module src.agents_sdk_integration_corrupted
+src\agents_sdk_integration_corrupted.py:279:0: C0301: Line too long (103/100) (line-too-long)
+src\agents_sdk_integration_corrupted.py:288:0: C0301: Line too long (103/100) (line-too-long)
+src\agents_sdk_integration_corrupted.py:305:0: C0301: Line too long (129/100) (line-too-long)
+src\agents_sdk_integration_corrupted.py:322:0: C0301: Line too long (101/100) (line-too-long)
+src\agents_sdk_integration_corrupted.py:339:0: C0301: Line too long (107/100) (line-too-long)
+src\agents_sdk_integration_corrupted.py:21:0: C0413: Import "from .covenant_enforcer import CovenantEnforcer" should be placed at the top of the module (wrong-import-position)
+src\agents_sdk_integration_corrupted.py:29:4: W0212: Access to a protected member _is_tool of a client class (protected-access)
+src\agents_sdk_integration_corrupted.py:33:0: R0903: Too few public methods (0/2) (too-few-public-methods)
+src\agents_sdk_integration_corrupted.py:53:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\agents_sdk_integration_corrupted.py:54:8: C0115: Missing class docstring (missing-class-docstring)
+src\agents_sdk_integration_corrupted.py:54:8: R0903: Too few public methods (0/2) (too-few-public-methods)
+src\agents_sdk_integration_corrupted.py:49:0: R0903: Too few public methods (1/2) (too-few-public-methods)
+src\agents_sdk_integration_corrupted.py:71:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\agents_sdk_integration_corrupted.py:72:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\agents_sdk_integration_corrupted.py:61:0: R0903: Too few public methods (1/2) (too-few-public-methods)
+src\agents_sdk_integration_corrupted.py:96:11: W0718: Catching too general exception Exception (broad-exception-caught)
+src\agents_sdk_integration_corrupted.py:81:8: C0415: Import outside toplevel (os) (import-outside-toplevel)
+src\agents_sdk_integration_corrupted.py:84:18: W0612: Unused variable 'dirs' (unused-variable)
+src\agents_sdk_integration_corrupted.py:140:11: W0718: Catching too general exception Exception (broad-exception-caught)
+src\agents_sdk_integration_corrupted.py:104:8: R1705: Unnecessary "elif" after "return", remove the leading "el" from "elif" (no-else-return)
+src\agents_sdk_integration_corrupted.py:153:11: W0718: Catching too general exception Exception (broad-exception-caught)
+src\agents_sdk_integration_corrupted.py:163:11: W0718: Catching too general exception Exception (broad-exception-caught)
+src\agents_sdk_integration_corrupted.py:184:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\agents_sdk_integration_corrupted.py:263:4: R0914: Too many local variables (16/15) (too-many-locals)
+src\agents_sdk_integration_corrupted.py:352:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\agents_sdk_integration_corrupted.py:353:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\agents_sdk_integration_corrupted.py:167:0: R0903: Too few public methods (1/2) (too-few-public-methods)
+************* Module src.agent_manager
+src\agent_manager.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\agent_manager.py:3:0: E0401: Unable to import 'agents.memory_agent' (import-error)
+src\agent_manager.py:6:0: C0115: Missing class docstring (missing-class-docstring)
+src\agent_manager.py:23:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\agent_manager.py:6:0: R0903: Too few public methods (1/2) (too-few-public-methods)
+************* Module src.api_server
+src\api_server.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\api_server.py:47:0: C0115: Missing class docstring (missing-class-docstring)
+src\api_server.py:52:0: C0115: Missing class docstring (missing-class-docstring)
+src\api_server.py:57:0: C0115: Missing class docstring (missing-class-docstring)
+src\api_server.py:62:0: C0116: Missing function or method docstring (missing-function-docstring)
+src\api_server.py:67:0: C0116: Missing function or method docstring (missing-function-docstring)
+src\api_server.py:71:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\api_server.py:72:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\api_server.py:74:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\api_server.py:81:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\api_server.py:86:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\api_server.py:89:8: W0707: Consider explicitly re-raising using 'raise HTTPException(status_code=500, detail=f"Internal server error in Kor'tana: {str(e)}") from e' (raise-missing-from)
+src\api_server.py:96:0: C0116: Missing function or method docstring (missing-function-docstring)
+src\api_server.py:100:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\api_server.py:103:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\api_server.py:105:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\api_server.py:114:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\api_server.py:116:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\api_server.py:123:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\api_server.py:126:8: W0707: Consider explicitly re-raising using 'raise HTTPException(status_code=500, detail=f"Internal server error in Kor'tana: {str(e)}") from e' (raise-missing-from)
+src\api_server.py:132:0: C0116: Missing function or method docstring (missing-function-docstring)
+src\api_server.py:137:0: C0116: Missing function or method docstring (missing-function-docstring)
+src\api_server.py:142:0: C0116: Missing function or method docstring (missing-function-docstring)
+src\api_server.py:151:0: C0116: Missing function or method docstring (missing-function-docstring)
+src\api_server.py:197:0: C0116: Missing function or method docstring (missing-function-docstring)
+src\api_server.py:201:11: W0718: Catching too general exception Exception (broad-exception-caught)
+src\api_server.py:199:8: W0212: Access to a protected member _run_daily_planning_cycle of a client class (protected-access)
+src\api_server.py:202:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\api_server.py:220:0: C0116: Missing function or method docstring (missing-function-docstring)
+src\api_server.py:222:4: R1705: Unnecessary "else" after "return", remove the "else" and de-indent the code inside it (no-else-return)
+src\api_server.py:223:8: C0415: Import outside toplevel (uuid) (import-outside-toplevel)
+src\api_server.py:241:0: C0116: Missing function or method docstring (missing-function-docstring)
+src\api_server.py:258:11: W0718: Catching too general exception Exception (broad-exception-caught)
+src\api_server.py:248:19: W0718: Catching too general exception Exception (broad-exception-caught)
+src\api_server.py:259:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\api_server.py:2:0: C0411: standard import "logging" should be placed before local import "brain.ChatEngine" (wrong-import-order)
+src\api_server.py:3:0: C0411: standard import "json" should be placed before local import "brain.ChatEngine" (wrong-import-order)
+src\api_server.py:4:0: C0411: third party import "fastapi.FastAPI" should be placed before local import "brain.ChatEngine" (wrong-import-order)
+src\api_server.py:5:0: C0411: third party import "fastapi.middleware.cors.CORSMiddleware" should be placed before local import "brain.ChatEngine" (wrong-import-order)
+src\api_server.py:6:0: C0411: third party import "pydantic.BaseModel" should be placed before local import "brain.ChatEngine" (wrong-import-order)
+src\api_server.py:7:0: C0411: standard import "typing.Optional" should be placed before third party imports "fastapi.FastAPI", "fastapi.middleware.cors.CORSMiddleware", "pydantic.BaseModel" and local import "brain.ChatEngine" (wrong-import-order)
+src\api_server.py:8:0: C0411: third party import "uvicorn" should be placed before local import "brain.ChatEngine" (wrong-import-order)
+src\api_server.py:9:0: C0411: standard import "os" should be placed before third party imports "fastapi.FastAPI", "fastapi.middleware.cors.CORSMiddleware", "pydantic.BaseModel", "uvicorn" and local import "brain.ChatEngine" (wrong-import-order)
+src\api_server.py:10:0: C0411: standard import "sys" should be placed before third party imports "fastapi.FastAPI", "fastapi.middleware.cors.CORSMiddleware", "pydantic.BaseModel", "uvicorn" and local import "brain.ChatEngine" (wrong-import-order)
+src\api_server.py:11:0: C0411: standard import "datetime.datetime" should be placed before third party imports "fastapi.FastAPI", "fastapi.middleware.cors.CORSMiddleware", "pydantic.BaseModel", "uvicorn" and local import "brain.ChatEngine" (wrong-import-order)
+src\api_server.py:12:0: C0411: third party import "sse_starlette.sse.EventSourceResponse" should be placed before local import "brain.ChatEngine" (wrong-import-order)
+src\api_server.py:13:0: C0411: third party import "fastapi.responses.JSONResponse" should be placed before local import "brain.ChatEngine" (wrong-import-order)
+src\api_server.py:14:0: C0411: third party import "bleach" should be placed before local import "brain.ChatEngine" (wrong-import-order)
+src\api_server.py:15:0: C0411: third party import "fastapi_csrf_protect.CsrfProtect" should be placed before local import "brain.ChatEngine" (wrong-import-order)
+src\api_server.py:16:0: C0411: third party import "slowapi.Limiter" should be placed before local import "brain.ChatEngine" (wrong-import-order)
+src\api_server.py:17:0: C0411: third party import "slowapi.util.get_remote_address" should be placed before local import "brain.ChatEngine" (wrong-import-order)
+src\api_server.py:18:0: C0411: third party import "slowapi.errors.RateLimitExceeded" should be placed before local import "brain.ChatEngine" (wrong-import-order)
+src\api_server.py:19:0: C0411: third party import "pydantic_settings.BaseSettings" should be placed before local import "brain.ChatEngine" (wrong-import-order)
+src\api_server.py:13:0: C0412: Imports from package fastapi are not grouped (ungrouped-imports)
+************* Module src.app_ui
+src\app_ui.py:5:0: C0301: Line too long (188/100) (line-too-long)
+src\app_ui.py:93:0: C0301: Line too long (105/100) (line-too-long)
+src\app_ui.py:127:0: C0301: Line too long (103/100) (line-too-long)
+src\app_ui.py:136:0: C0301: Line too long (109/100) (line-too-long)
+src\app_ui.py:163:0: C0301: Line too long (121/100) (line-too-long)
+src\app_ui.py:187:0: C0301: Line too long (109/100) (line-too-long)
+src\app_ui.py:195:0: C0301: Line too long (114/100) (line-too-long)
+src\app_ui.py:303:0: C0301: Line too long (113/100) (line-too-long)
+src\app_ui.py:313:0: C0301: Line too long (141/100) (line-too-long)
+src\app_ui.py:22:0: C0115: Missing class docstring (missing-class-docstring)
+src\app_ui.py:27:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\app_ui.py:27:23: W0621: Redefining name 'mode' from outer scope (line 268) (redefined-outer-name)
+src\app_ui.py:30:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\app_ui.py:33:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\app_ui.py:36:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\app_ui.py:60:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\app_ui.py:64:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\app_ui.py:83:8: W0621: Redefining name 'persona_path' from outer scope (line 111) (redefined-outer-name)
+src\app_ui.py:84:58: W0621: Redefining name 'f' from outer scope (line 112) (redefined-outer-name)
+src\app_ui.py:85:12: W0621: Redefining name 'persona_data' from outer scope (line 113) (redefined-outer-name)
+src\app_ui.py:103:11: W0718: Catching too general exception Exception (broad-exception-caught)
+src\app_ui.py:104:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\app_ui.py:119:7: W0718: Catching too general exception Exception (broad-exception-caught)
+src\app_ui.py:138:7: W0718: Catching too general exception Exception (broad-exception-caught)
+src\app_ui.py:135:4: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\app_ui.py:139:4: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\app_ui.py:166:8: R1705: Unnecessary "else" after "return", remove the "else" and de-indent the code inside it (no-else-return)
+src\app_ui.py:202:11: W0718: Catching too general exception Exception (broad-exception-caught)
+src\app_ui.py:177:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\app_ui.py:186:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\app_ui.py:194:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\app_ui.py:203:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\app_ui.py:148:0: R1710: Either all return statements in a function should return an expression, or none of them should. (inconsistent-return-statements)
+src\app_ui.py:149:23: W0613: Unused argument 'chat_display_history' (unused-argument)
+src\app_ui.py:208:0: C0103: Constant name "custom_css" doesn't conform to UPPER_CASE naming style (invalid-name)
+src\app_ui.py:276:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\app_ui.py:276:17: W0621: Redefining name 'input_text' from outer scope (line 267) (redefined-outer-name)
+src\app_ui.py:276:29: W0621: Redefining name 'mode' from outer scope (line 268) (redefined-outer-name)
+src\app_ui.py:285:8: R1705: Unnecessary "else" after "return", remove the "else" and de-indent the code inside it (no-else-return)
+src\app_ui.py:294:4: E1101: Instance of 'Button' has no 'click' member (no-member)
+src\app_ui.py:299:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\app_ui.py:306:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\app_ui.py:309:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\app_ui.py:9:0: C0411: standard import "json" should be placed before third party import "gradio" (wrong-import-order)
+src\app_ui.py:10:0: C0411: standard import "pathlib.Path" should be placed before third party import "gradio" (wrong-import-order)
+src\app_ui.py:11:0: C0411: standard import "logging" should be placed before third party import "gradio" (wrong-import-order)
+************* Module src.autonomous_agents
+src\autonomous_agents.py:35:0: C0301: Line too long (203/100) (line-too-long)
+src\autonomous_agents.py:104:0: C0301: Line too long (106/100) (line-too-long)
+src\autonomous_agents.py:138:0: C0301: Line too long (160/100) (line-too-long)
+src\autonomous_agents.py:173:0: C0301: Line too long (136/100) (line-too-long)
+src\autonomous_agents.py:237:0: C0301: Line too long (105/100) (line-too-long)
+src\autonomous_agents.py:266:0: C0301: Line too long (126/100) (line-too-long)
+src\autonomous_agents.py:280:0: C0301: Line too long (121/100) (line-too-long)
+src\autonomous_agents.py:293:0: C0301: Line too long (105/100) (line-too-long)
+src\autonomous_agents.py:304:0: C0301: Line too long (106/100) (line-too-long)
+src\autonomous_agents.py:314:0: C0301: Line too long (142/100) (line-too-long)
+src\autonomous_agents.py:319:0: C0301: Line too long (115/100) (line-too-long)
+src\autonomous_agents.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\autonomous_agents.py:16:7: W0718: Catching too general exception Exception (broad-exception-caught)
+src\autonomous_agents.py:23:0: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_agents.py:24:0: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_agents.py:25:0: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_agents.py:69:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_agents.py:81:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_agents.py:44:18: W0613: Unused argument 'goal' (unused-argument)
+src\autonomous_agents.py:33:0: R0903: Too few public methods (1/2) (too-few-public-methods)
+src\autonomous_agents.py:110:4: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_agents.py:115:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_agents.py:124:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\autonomous_agents.py:125:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_agents.py:132:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_agents.py:148:19: W0718: Catching too general exception Exception (broad-exception-caught)
+src\autonomous_agents.py:147:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_agents.py:149:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_agents.py:102:0: R0903: Too few public methods (1/2) (too-few-public-methods)
+src\autonomous_agents.py:231:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\autonomous_agents.py:193:22: W1510: 'subprocess.run' used without explicitly defining the value for 'check'. (subprocess-run-check)
+src\autonomous_agents.py:217:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_agents.py:171:0: R0903: Too few public methods (1/2) (too-few-public-methods)
+src\autonomous_agents.py:279:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_agents.py:328:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_agents.py:335:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_agents.py:264:0: R0903: Too few public methods (1/2) (too-few-public-methods)
+src\autonomous_agents.py:5:0: C0411: standard import "sys" should be placed before third party import "psutil" (wrong-import-order)
+src\autonomous_agents.py:6:0: C0411: standard import "os" should be placed before third party import "psutil" (wrong-import-order)
+************* Module src.autonomous_development_engine
+src\autonomous_development_engine.py:51:0: C0301: Line too long (108/100) (line-too-long)
+src\autonomous_development_engine.py:56:0: C0301: Line too long (129/100) (line-too-long)
+src\autonomous_development_engine.py:66:0: C0301: Line too long (105/100) (line-too-long)
+src\autonomous_development_engine.py:76:0: C0301: Line too long (107/100) (line-too-long)
+src\autonomous_development_engine.py:144:0: C0301: Line too long (112/100) (line-too-long)
+src\autonomous_development_engine.py:301:0: C0301: Line too long (116/100) (line-too-long)
+src\autonomous_development_engine.py:387:0: C0301: Line too long (105/100) (line-too-long)
+src\autonomous_development_engine.py:394:0: C0301: Line too long (109/100) (line-too-long)
+src\autonomous_development_engine.py:425:0: C0301: Line too long (118/100) (line-too-long)
+src\autonomous_development_engine.py:574:0: C0301: Line too long (115/100) (line-too-long)
+src\autonomous_development_engine.py:733:0: C0301: Line too long (101/100) (line-too-long)
+src\autonomous_development_engine.py:276:13: W0511: ]  # TODO: Implement tool function usage (fixme)
+src\autonomous_development_engine.py:511:13: W0511: critical_patterns = {  # TODO: Implement critical patterns usage (fixme)
+src\autonomous_development_engine.py:540:13: W0511: }  # TODO: Implement critical patterns usage (fixme)
+src\autonomous_development_engine.py:752:13: W0511: TODO: Unused variable - memory_entry - review if needed (fixme)
+src\autonomous_development_engine.py:247:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\autonomous_development_engine.py:207:20: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_development_engine.py:228:20: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_development_engine.py:230:20: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_development_engine.py:248:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_development_engine.py:269:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_development_engine.py:328:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\autonomous_development_engine.py:325:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_development_engine.py:337:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_development_engine.py:342:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_development_engine.py:349:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_development_engine.py:356:20: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_development_engine.py:386:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_development_engine.py:397:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\autonomous_development_engine.py:393:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_development_engine.py:398:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_development_engine.py:409:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_development_engine.py:438:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\autonomous_development_engine.py:439:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_development_engine.py:451:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_development_engine.py:462:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_development_engine.py:474:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_development_engine.py:485:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_development_engine.py:496:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_development_engine.py:507:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_development_engine.py:588:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\autonomous_development_engine.py:589:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_development_engine.py:601:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_development_engine.py:613:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_development_engine.py:627:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_development_engine.py:641:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_development_engine.py:653:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_development_engine.py:725:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_development_engine.py:747:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_development_engine.py:775:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\autonomous_development_engine.py:771:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_development_engine.py:773:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_development_engine.py:776:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_development_engine.py:778:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\autonomous_development_engine.py:742:47: W0613: Unused argument 'content' (unused-argument)
+src\autonomous_development_engine.py:825:8: E0401: Unable to import 'covenant_enforcer' (import-error)
+src\autonomous_development_engine.py:826:8: E0401: Unable to import 'llm_clients.factory' (import-error)
+src\autonomous_development_engine.py:884:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\autonomous_development_engine.py:833:17: W1514: Using open without explicitly specifying an encoding (unspecified-encoding)
+src\autonomous_development_engine.py:842:12: C0115: Missing class docstring (missing-class-docstring)
+src\autonomous_development_engine.py:843:16: C0116: Missing function or method docstring (missing-function-docstring)
+src\autonomous_development_engine.py:842:12: R0903: Too few public methods (1/2) (too-few-public-methods)
+src\autonomous_development_engine.py:851:12: C0116: Missing function or method docstring (missing-function-docstring)
+************* Module src.brain
+src\brain.py:86:0: C0301: Line too long (224/100) (line-too-long)
+src\brain.py:148:0: C0301: Line too long (121/100) (line-too-long)
+src\brain.py:165:0: C0301: Line too long (132/100) (line-too-long)
+src\brain.py:180:0: C0301: Line too long (255/100) (line-too-long)
+src\brain.py:248:0: C0301: Line too long (117/100) (line-too-long)
+src\brain.py:313:0: C0301: Line too long (137/100) (line-too-long)
+src\brain.py:417:0: C0301: Line too long (101/100) (line-too-long)
+src\brain.py:490:0: C0301: Line too long (105/100) (line-too-long)
+src\brain.py:538:0: C0301: Line too long (162/100) (line-too-long)
+src\brain.py:544:0: C0301: Line too long (152/100) (line-too-long)
+src\brain.py:548:0: C0301: Line too long (104/100) (line-too-long)
+src\brain.py:552:0: C0301: Line too long (109/100) (line-too-long)
+src\brain.py:564:0: C0301: Line too long (101/100) (line-too-long)
+src\brain.py:609:0: C0301: Line too long (119/100) (line-too-long)
+src\brain.py:627:0: C0301: Line too long (103/100) (line-too-long)
+src\brain.py:656:0: C0301: Line too long (114/100) (line-too-long)
+src\brain.py:825:0: C0301: Line too long (104/100) (line-too-long)
+src\brain.py:847:0: C0301: Line too long (134/100) (line-too-long)
+src\brain.py:884:0: C0301: Line too long (158/100) (line-too-long)
+src\brain.py:908:0: C0301: Line too long (101/100) (line-too-long)
+src\brain.py:1004:0: C0301: Line too long (118/100) (line-too-long)
+src\brain.py:1103:0: C0301: Line too long (122/100) (line-too-long)
+src\brain.py:1104:0: C0301: Line too long (120/100) (line-too-long)
+src\brain.py:1113:0: C0301: Line too long (110/100) (line-too-long)
+src\brain.py:1122:0: C0301: Line too long (112/100) (line-too-long)
+src\brain.py:1149:0: C0301: Line too long (111/100) (line-too-long)
+src\brain.py:1173:0: C0301: Line too long (109/100) (line-too-long)
+src\brain.py:1229:0: C0301: Line too long (102/100) (line-too-long)
+src\brain.py:1390:0: C0301: Line too long (133/100) (line-too-long)
+src\brain.py:1462:0: C0301: Line too long (122/100) (line-too-long)
+src\brain.py:1:0: C0302: Too many lines in module (1539/1000) (too-many-lines)
+src\brain.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\brain.py:31:0: W0404: Reimport 'analyze_sentiment' (imported line 1) (reimported)
+src\brain.py:31:0: W0404: Reimport 'detect_keywords' (imported line 1) (reimported)
+src\brain.py:31:0: W0404: Reimport 'detect_emphasis_all_caps' (imported line 1) (reimported)
+src\brain.py:42:0: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:43:0: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:44:0: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:61:0: C0116: Missing function or method docstring (missing-function-docstring)
+src\brain.py:84:0: R0902: Too many instance attributes (24/7) (too-many-instance-attributes)
+src\brain.py:145:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:147:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:159:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:164:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:91:4: R0915: Too many statements (53/50) (too-many-statements)
+src\brain.py:230:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:235:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:246:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\brain.py:247:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:251:37: W0621: Redefining name 'response' from outer scope (line 1524) (redefined-outer-name)
+src\brain.py:259:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\brain.py:254:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:260:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:262:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\brain.py:270:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\brain.py:304:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:306:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:311:4: R0912: Too many branches (14/12) (too-many-branches)
+src\brain.py:356:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\brain.py:356:4: R0914: Too many local variables (27/15) (too-many-locals)
+src\brain.py:563:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:566:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:356:4: R0912: Too many branches (28/12) (too-many-branches)
+src\brain.py:356:4: R0915: Too many statements (80/50) (too-many-statements)
+src\brain.py:650:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\brain.py:626:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:639:12: R1705: Unnecessary "else" after "return", remove the "else" and de-indent the code inside it (no-else-return)
+src\brain.py:644:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:647:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:651:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:661:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:669:26: W0621: Redefining name 'user_input' from outer scope (line 1517) (redefined-outer-name)
+src\brain.py:669:4: R0911: Too many return statements (7/6) (too-many-return-statements)
+src\brain.py:717:29: W0621: Redefining name 'user_input' from outer scope (line 1517) (redefined-outer-name)
+src\brain.py:723:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:730:8: R1705: Unnecessary "elif" after "return", remove the leading "el" from "elif" (no-else-return)
+src\brain.py:759:13: R1714: Consider merging these comparisons with 'in' by using 'current_mode in ('intimacy', 'whisper')'. Use a set instead if elements are hashable. (consider-using-in)
+src\brain.py:717:4: R0911: Too many return statements (10/6) (too-many-return-statements)
+src\brain.py:782:4: R0914: Too many local variables (19/15) (too-many-locals)
+src\brain.py:846:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:849:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:852:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\brain.py:852:4: R0914: Too many local variables (19/15) (too-many-locals)
+src\brain.py:854:8: W0621: Redefining name 'user_input' from outer scope (line 1517) (redefined-outer-name)
+src\brain.py:867:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:883:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:898:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:907:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:962:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\brain.py:929:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:959:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:963:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:987:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:1097:4: R0914: Too many local variables (17/15) (too-many-locals)
+src\brain.py:1110:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:1180:19: W0718: Catching too general exception Exception (broad-exception-caught)
+src\brain.py:1123:24: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:1150:24: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:1176:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:1181:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:1097:4: R0912: Too many branches (14/12) (too-many-branches)
+src\brain.py:1189:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\brain.py:1196:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:1200:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\brain.py:1212:4: R0914: Too many local variables (19/15) (too-many-locals)
+src\brain.py:1412:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:1428:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\brain.py:1433:4: W0102: Dangerous default value [] as argument (dangerous-default-value)
+src\brain.py:1450:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\brain.py:1451:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:1480:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:1484:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:1535:11: W0718: Catching too general exception Exception (broad-exception-caught)
+src\brain.py:1526:19: W0718: Catching too general exception Exception (broad-exception-caught)
+src\brain.py:1527:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:1528:22: W1309: Using an f-string that does not have any interpolated variables (f-string-without-interpolation)
+src\brain.py:1536:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\brain.py:21:0: C0411: third party import "dotenv.load_dotenv" should be placed before first party imports "src.utils.analyze_sentiment", "src.strategic_config.PerformanceMetric", "src.sacred_trinity_router.SacredTrinityRouter" (...) "src.covenant_enforcer.CovenantEnforcer", "src.core.memory.load_memory", "src.autonomous_agents.CodingAgent"  (wrong-import-order)
+src\brain.py:22:0: C0411: third party import "apscheduler.schedulers.background.BackgroundScheduler" should be placed before first party imports "src.utils.analyze_sentiment", "src.strategic_config.PerformanceMetric", "src.sacred_trinity_router.SacredTrinityRouter" (...) "src.covenant_enforcer.CovenantEnforcer", "src.core.memory.load_memory", "src.autonomous_agents.CodingAgent"  (wrong-import-order)
+src\brain.py:23:0: C0411: standard import "typing.Any" should be placed before third party imports "dotenv.load_dotenv", "apscheduler.schedulers.background.BackgroundScheduler" and first party imports "src.utils.analyze_sentiment", "src.strategic_config.PerformanceMetric", "src.sacred_trinity_router.SacredTrinityRouter" (...) "src.covenant_enforcer.CovenantEnforcer", "src.core.memory.load_memory", "src.autonomous_agents.CodingAgent"  (wrong-import-order)
+src\brain.py:24:0: C0411: standard import "datetime.datetime" should be placed before third party imports "dotenv.load_dotenv", "apscheduler.schedulers.background.BackgroundScheduler" and first party imports "src.utils.analyze_sentiment", "src.strategic_config.PerformanceMetric", "src.sacred_trinity_router.SacredTrinityRouter" (...) "src.covenant_enforcer.CovenantEnforcer", "src.core.memory.load_memory", "src.autonomous_agents.CodingAgent"  (wrong-import-order)
+src\brain.py:25:0: C0411: standard import "uuid" should be placed before third party imports "dotenv.load_dotenv", "apscheduler.schedulers.background.BackgroundScheduler" and first party imports "src.utils.analyze_sentiment", "src.strategic_config.PerformanceMetric", "src.sacred_trinity_router.SacredTrinityRouter" (...) "src.covenant_enforcer.CovenantEnforcer", "src.core.memory.load_memory", "src.autonomous_agents.CodingAgent"  (wrong-import-order)
+src\brain.py:26:0: C0411: standard import "time" should be placed before third party imports "dotenv.load_dotenv", "apscheduler.schedulers.background.BackgroundScheduler" and first party imports "src.utils.analyze_sentiment", "src.strategic_config.PerformanceMetric", "src.sacred_trinity_router.SacredTrinityRouter" (...) "src.covenant_enforcer.CovenantEnforcer", "src.core.memory.load_memory", "src.autonomous_agents.CodingAgent"  (wrong-import-order)
+src\brain.py:27:0: C0411: standard import "json" should be placed before third party imports "dotenv.load_dotenv", "apscheduler.schedulers.background.BackgroundScheduler" and first party imports "src.utils.analyze_sentiment", "src.strategic_config.PerformanceMetric", "src.sacred_trinity_router.SacredTrinityRouter" (...) "src.covenant_enforcer.CovenantEnforcer", "src.core.memory.load_memory", "src.autonomous_agents.CodingAgent"  (wrong-import-order)
+src\brain.py:28:0: C0411: standard import "logging" should be placed before third party imports "dotenv.load_dotenv", "apscheduler.schedulers.background.BackgroundScheduler" and first party imports "src.utils.analyze_sentiment", "src.strategic_config.PerformanceMetric", "src.sacred_trinity_router.SacredTrinityRouter" (...) "src.covenant_enforcer.CovenantEnforcer", "src.core.memory.load_memory", "src.autonomous_agents.CodingAgent"  (wrong-import-order)
+src\brain.py:29:0: C0411: standard import "os" should be placed before third party imports "dotenv.load_dotenv", "apscheduler.schedulers.background.BackgroundScheduler" and first party imports "src.utils.analyze_sentiment", "src.strategic_config.PerformanceMetric", "src.sacred_trinity_router.SacredTrinityRouter" (...) "src.covenant_enforcer.CovenantEnforcer", "src.core.memory.load_memory", "src.autonomous_agents.CodingAgent"  (wrong-import-order)
+src\brain.py:30:0: C0411: standard import "sys" should be placed before third party imports "dotenv.load_dotenv", "apscheduler.schedulers.background.BackgroundScheduler" and first party imports "src.utils.analyze_sentiment", "src.strategic_config.PerformanceMetric", "src.sacred_trinity_router.SacredTrinityRouter" (...) "src.covenant_enforcer.CovenantEnforcer", "src.core.memory.load_memory", "src.autonomous_agents.CodingAgent"  (wrong-import-order)
+src\brain.py:31:0: C0412: Imports from package src are not grouped (ungrouped-imports)
+************* Module src.coding_agent
+src\coding_agent.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\coding_agent.py:1:0: E0401: Unable to import 'dev_agent' (import-error)
+src\coding_agent.py:4:0: C0115: Missing class docstring (missing-class-docstring)
+src\coding_agent.py:8:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\coding_agent.py:4:0: R0903: Too few public methods (1/2) (too-few-public-methods)
+************* Module src.core_rituals
+src\core_rituals.py:30:0: C0301: Line too long (115/100) (line-too-long)
+src\core_rituals.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\core_rituals.py:9:4: C0103: Constant name "_timestamp_source" doesn't conform to UPPER_CASE naming style (invalid-name)
+src\core_rituals.py:17:4: C0103: Constant name "_timestamp_source" doesn't conform to UPPER_CASE naming style (invalid-name)
+************* Module src.covenant
+src\covenant.py:360:0: C0301: Line too long (115/100) (line-too-long)
+src\covenant.py:91:9: W0511: core_values = self.soulprint.get("core_values", [])  # TODO: Implement (fixme)
+src\covenant.py:264:13: W0511: enforcement_level = rule.get("enforcement_level", "warning")  # TODO: (fixme)
+src\covenant.py:360:20: W0511: core_purpose = self.soulprint.get("purpose", "").lower()  # TODO: Implement core purpose usage (fixme)
+src\covenant.py:407:9: W0511: TODO: implement actual logic or delegate (fixme)
+src\covenant.py:411:9: W0511: TODO: implement actual logic or delegate (fixme)
+src\covenant.py:417:9: W0511: TODO: implement actual logic or delegate (fixme)
+src\covenant.py:421:9: W0511: TODO: implement actual logic or delegate (fixme)
+src\covenant.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\covenant.py:10:0: C0115: Missing class docstring (missing-class-docstring)
+src\covenant.py:17:13: W1514: Using open without explicitly specifying an encoding (unspecified-encoding)
+src\covenant.py:30:17: W1514: Using open without explicitly specifying an encoding (unspecified-encoding)
+src\covenant.py:36:17: W1514: Using open without explicitly specifying an encoding (unspecified-encoding)
+src\covenant.py:53:13: W1514: Using open without explicitly specifying an encoding (unspecified-encoding)
+src\covenant.py:251:13: W1514: Using open without explicitly specifying an encoding (unspecified-encoding)
+src\covenant.py:255:40: W0613: Unused argument 'proposed_change' (unused-argument)
+src\covenant.py:351:40: W0613: Unused argument 'proposed_change' (unused-argument)
+src\covenant.py:378:8: R1705: Unnecessary "elif" after "return", remove the leading "el" from "elif" (no-else-return)
+src\covenant.py:406:38: W0613: Unused argument 'memory' (unused-argument)
+src\covenant.py:410:44: W0613: Unused argument 'memory' (unused-argument)
+src\covenant.py:415:14: W0613: Unused argument 'action_type' (unused-argument)
+src\covenant.py:415:32: W0613: Unused argument 'action_details' (unused-argument)
+src\covenant.py:420:34: W0613: Unused argument 'action_details' (unused-argument)
+src\covenant.py:434:13: W1514: Using open without explicitly specifying an encoding (unspecified-encoding)
+src\covenant.py:455:13: W1514: Using open without explicitly specifying an encoding (unspecified-encoding)
+************* Module src.covenant_enforcer
+src\covenant_enforcer.py:95:0: C0301: Line too long (107/100) (line-too-long)
+src\covenant_enforcer.py:86:9: W0511: TODO: Implement actual rule checks against self.covenant (fixme)
+src\covenant_enforcer.py:95:9: W0511: TODO: Implement logic to ensure Sacred Trinity principles override other constraints if necessary (fixme)
+src\covenant_enforcer.py:185:9: W0511: core_values = self.soulprint.get("core_values", [])  # TODO: Implement (fixme)
+src\covenant_enforcer.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\covenant_enforcer.py:18:0: C0115: Missing class docstring (missing-class-docstring)
+src\covenant_enforcer.py:28:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\covenant_enforcer.py:27:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\covenant_enforcer.py:29:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\covenant_enforcer.py:57:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\covenant_enforcer.py:58:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\covenant_enforcer.py:80:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\covenant_enforcer.py:78:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\covenant_enforcer.py:81:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\covenant_enforcer.py:84:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\covenant_enforcer.py:87:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\covenant_enforcer.py:108:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\covenant_enforcer.py:109:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\covenant_enforcer.py:126:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\covenant_enforcer.py:268:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\covenant_enforcer.py:264:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\covenant_enforcer.py:266:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\covenant_enforcer.py:269:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+************* Module src.data_loader
+src\data_loader.py:108:9: W0511: TODO: Integrate proper pattern detection based on themes, keywords, embeddings, (fixme)
+src\data_loader.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\data_loader.py:14:0: C0115: Missing class docstring (missing-class-docstring)
+src\data_loader.py:21:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\data_loader.py:23:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\data_loader.py:44:59: W0621: Redefining name 'f' from outer scope (line 177) (redefined-outer-name)
+src\data_loader.py:38:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\data_loader.py:57:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\data_loader.py:50:28: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\data_loader.py:54:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\data_loader.py:58:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\data_loader.py:74:12: W0621: Redefining name 'entry' from outer scope (line 178) (redefined-outer-name)
+src\data_loader.py:81:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\data_loader.py:96:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\data_loader.py:103:4: R1711: Useless return at end of function or method (useless-return)
+src\data_loader.py:103:34: W0613: Unused argument 'entries' (unused-argument)
+src\data_loader.py:208:11: W0718: Catching too general exception Exception (broad-exception-caught)
+src\data_loader.py:205:8: E1128: Assigning result of a function call, where the function returns None (assignment-from-none)
+src\data_loader.py:205:8: C0103: Constant name "patterns" doesn't conform to UPPER_CASE naming style (invalid-name)
+src\data_loader.py:209:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\data_loader.py:219:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+************* Module src.dev_agent
+src\dev_agent.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\dev_agent.py:35:0: C0116: Missing function or method docstring (missing-function-docstring)
+************* Module src.dev_agent_stub
+src\dev_agent_stub.py:16:0: C0301: Line too long (111/100) (line-too-long)
+src\dev_agent_stub.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\dev_agent_stub.py:1:0: C0115: Missing class docstring (missing-class-docstring)
+src\dev_agent_stub.py:1:0: R0903: Too few public methods (1/2) (too-few-public-methods)
+************* Module src.dev_chat_simple
+src\dev_chat_simple.py:90:0: C0301: Line too long (106/100) (line-too-long)
+src\dev_chat_simple.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\dev_chat_simple.py:2:0: E0401: Unable to import 'brain' (import-error)
+src\dev_chat_simple.py:6:0: C0115: Missing class docstring (missing-class-docstring)
+src\dev_chat_simple.py:12:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\dev_chat_simple.py:28:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\dev_chat_simple.py:35:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\dev_chat_simple.py:48:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\dev_chat_simple.py:51:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\dev_chat_simple.py:81:23: W0718: Catching too general exception Exception (broad-exception-caught)
+src\dev_chat_simple.py:92:27: W0718: Catching too general exception Exception (broad-exception-caught)
+src\dev_chat_simple.py:88:24: W0212: Access to a protected member _run_daily_planning_cycle of a client class (protected-access)
+src\dev_chat_simple.py:122:19: W0718: Catching too general exception Exception (broad-exception-caught)
+src\dev_chat_simple.py:51:4: R0912: Too many branches (15/12) (too-many-branches)
+src\dev_chat_simple.py:51:4: R0915: Too many statements (51/50) (too-many-statements)
+src\dev_chat_simple.py:3:0: C0411: standard import "json" should be placed before first party import "brain.ChatEngine"  (wrong-import-order)
+************* Module src.dev_text_completion
+src\dev_text_completion.py:28:0: C0301: Line too long (129/100) (line-too-long)
+src\dev_text_completion.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\dev_text_completion.py:2:0: E0401: Unable to import 'llm_clients.openai_client' (import-error)
+src\dev_text_completion.py:8:0: C0103: Constant name "model_name" doesn't conform to UPPER_CASE naming style (invalid-name)
+src\dev_text_completion.py:12:4: R1722: Consider using 'sys.exit' instead (consider-using-sys-exit)
+src\dev_text_completion.py:16:0: C0103: Constant name "system_prompt" doesn't conform to UPPER_CASE naming style (invalid-name)
+src\dev_text_completion.py:25:8: C0103: Constant name "user_prompt" doesn't conform to UPPER_CASE naming style (invalid-name)
+src\dev_text_completion.py:28:8: C0103: Constant name "image_url" doesn't conform to UPPER_CASE naming style (invalid-name)
+src\dev_text_completion.py:41:8: C0103: Constant name "user_prompt" doesn't conform to UPPER_CASE naming style (invalid-name)
+src\dev_text_completion.py:3:0: C0411: third party import "dotenv.load_dotenv" should be placed before first party import "llm_clients.openai_client.OpenAIClient"  (wrong-import-order)
+************* Module src.memory
+src\memory.py:2:0: C0301: Line too long (192/100) (line-too-long)
+src\memory.py:57:0: C0301: Line too long (199/100) (line-too-long)
+src\memory.py:157:0: C0301: Line too long (137/100) (line-too-long)
+src\memory.py:39:0: C0116: Missing function or method docstring (missing-function-docstring)
+src\memory.py:51:4: W0621: Redefining name 'patterns' from outer scope (line 292) (redefined-outer-name)
+src\memory.py:47:11: W0718: Catching too general exception Exception (broad-exception-caught)
+src\memory.py:48:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\memory.py:62:8: W0621: Redefining name 'memory_journal_path' from outer scope (line 36) (redefined-outer-name)
+src\memory.py:63:8: W0621: Redefining name 'heart_log_path' from outer scope (line 33) (redefined-outer-name)
+src\memory.py:64:8: W0621: Redefining name 'soul_index_path' from outer scope (line 34) (redefined-outer-name)
+src\memory.py:65:8: W0621: Redefining name 'lit_log_path' from outer scope (line 35) (redefined-outer-name)
+src\memory.py:71:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\memory.py:99:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\memory.py:96:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\memory.py:100:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\memory.py:127:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\memory.py:124:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\memory.py:128:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\memory.py:144:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\memory.py:143:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\memory.py:145:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\memory.py:159:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\memory.py:156:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\memory.py:160:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\memory.py:168:8: W0621: Redefining name 'patterns' from outer scope (line 292) (redefined-outer-name)
+src\memory.py:174:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\memory.py:186:0: C0115: Missing class docstring (missing-class-docstring)
+src\memory.py:188:50: W0621: Redefining name 'enforcer' from outer scope (line 300) (redefined-outer-name)
+src\memory.py:298:4: W0404: Reimport 'CovenantEnforcer' (imported line 21) (reimported)
+src\memory.py:22:0: C0411: first party import "src.core_rituals.ritual_announce" should be placed before local imports "memory_store.MemoryStore", "covenant.CovenantEnforcer" (wrong-import-order)
+************* Module src.memory_manager
+src\memory_manager.py:139:0: C0301: Line too long (114/100) (line-too-long)
+src\memory_manager.py:226:0: C0301: Line too long (112/100) (line-too-long)
+src\memory_manager.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\memory_manager.py:43:0: C0115: Missing class docstring (missing-class-docstring)
+src\memory_manager.py:62:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\memory_manager.py:59:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\memory_manager.py:63:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\memory_manager.py:73:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\memory_manager.py:72:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\memory_manager.py:74:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\memory_manager.py:106:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\memory_manager.py:108:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\memory_manager.py:108:18: W0622: Redefining built-in 'id' (redefined-builtin)
+src\memory_manager.py:120:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\memory_manager.py:119:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\memory_manager.py:121:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\memory_manager.py:134:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\memory_manager.py:132:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\memory_manager.py:135:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\memory_manager.py:140:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\memory_manager.py:156:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\memory_manager.py:152:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\memory_manager.py:157:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\memory_manager.py:162:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\memory_manager.py:164:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\memory_manager.py:212:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\memory_manager.py:204:20: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\memory_manager.py:213:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\memory_manager.py:22:4: C0412: Imports from package langchain_community are not grouped (ungrouped-imports)
+************* Module src.memory_store
+src\memory_store.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\memory_store.py:5:0: C0115: Missing class docstring (missing-class-docstring)
+src\memory_store.py:7:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\memory_store.py:11:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\memory_store.py:17:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\memory_store.py:21:4: C0116: Missing function or method docstring (missing-function-docstring)
+************* Module src.model_optimizer
+src\model_optimizer.py:156:0: C0301: Line too long (108/100) (line-too-long)
+src\model_optimizer.py:166:0: C0301: Line too long (126/100) (line-too-long)
+src\model_optimizer.py:69:9: W0511: routing_rules = self.config.get("routing_rules", {})  # TODO: Implement (fixme)
+src\model_optimizer.py:54:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\model_optimizer.py:52:17: W1514: Using open without explicitly specifying an encoding (unspecified-encoding)
+src\model_optimizer.py:55:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\model_optimizer.py:58:35: W0621: Redefining name 'context' from outer scope (line 205) (redefined-outer-name)
+src\model_optimizer.py:84:12: R1705: Unnecessary "else" after "return", remove the "else" and de-indent the code inside it (no-else-return)
+src\model_optimizer.py:58:4: R0911: Too many return statements (7/6) (too-many-return-statements)
+src\model_optimizer.py:96:14: W0621: Redefining name 'model_id' from outer scope (line 206) (redefined-outer-name)
+src\model_optimizer.py:123:14: W0621: Redefining name 'model_id' from outer scope (line 206) (redefined-outer-name)
+src\model_optimizer.py:162:16: W0621: Redefining name 'model_id' from outer scope (line 206) (redefined-outer-name)
+************* Module src.model_resolver
+src\model_resolver.py:29:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\model_resolver.py:27:17: W1514: Using open without explicitly specifying an encoding (unspecified-encoding)
+src\model_resolver.py:30:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\model_resolver.py:43:8: W0621: Redefining name 'resolved' from outer scope (line 156) (redefined-outer-name)
+src\model_resolver.py:49:24: W0621: Redefining name 'model_id' from outer scope (line 164) (redefined-outer-name)
+src\model_resolver.py:53:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\model_resolver.py:77:8: W0621: Redefining name 'verification' from outer scope (line 163) (redefined-outer-name)
+src\model_resolver.py:78:12: W0621: Redefining name 'model_id' from outer scope (line 164) (redefined-outer-name)
+src\model_resolver.py:79:12: W0621: Redefining name 'config' from outer scope (line 157) (redefined-outer-name)
+src\model_resolver.py:86:20: C0415: Import outside toplevel (os) (import-outside-toplevel)
+src\model_resolver.py:91:24: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\model_resolver.py:132:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\model_resolver.py:104:12: E0401: Unable to import 'llm_clients.xai_client' (import-error)
+src\model_resolver.py:104:12: C0415: Import outside toplevel (llm_clients.xai_client.XAIClient) (import-outside-toplevel)
+src\model_resolver.py:117:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\model_resolver.py:126:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\model_resolver.py:133:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+************* Module src.model_router
+src\model_router.py:116:0: C0301: Line too long (109/100) (line-too-long)
+src\model_router.py:135:0: C0301: Line too long (109/100) (line-too-long)
+src\model_router.py:147:0: C0301: Line too long (124/100) (line-too-long)
+src\model_router.py:152:0: C0301: Line too long (132/100) (line-too-long)
+src\model_router.py:157:0: C0301: Line too long (127/100) (line-too-long)
+src\model_router.py:223:0: C0301: Line too long (101/100) (line-too-long)
+src\model_router.py:228:0: C0301: Line too long (125/100) (line-too-long)
+src\model_router.py:230:0: C0301: Line too long (102/100) (line-too-long)
+src\model_router.py:251:0: C0301: Line too long (106/100) (line-too-long)
+src\model_router.py:256:0: C0301: Line too long (136/100) (line-too-long)
+src\model_router.py:310:0: C0301: Line too long (113/100) (line-too-long)
+src\model_router.py:309:17: W0511: TODO: Add quality metrics for other archetypes (fixme)
+src\model_router.py:353:13: W0511: TODO: Add handling for other constraints (e.g., (fixme)
+src\model_router.py:392:9: W0511: TODO: Implement detailed routing statistics analysis (fixme)
+src\model_router.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\model_router.py:21:0: C0115: Missing class docstring (missing-class-docstring)
+src\model_router.py:31:0: R0902: Too many instance attributes (12/7) (too-many-instance-attributes)
+src\model_router.py:90:55: W0621: Redefining name 'f' from outer scope (line 498) (redefined-outer-name)
+src\model_router.py:86:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\model_router.py:97:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\model_router.py:90:17: W1514: Using open without explicitly specifying an encoding (unspecified-encoding)
+src\model_router.py:93:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\model_router.py:98:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\model_router.py:107:4: R0914: Too many local variables (23/15) (too-many-locals)
+src\model_router.py:121:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\model_router.py:127:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\model_router.py:134:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\model_router.py:145:16: R1705: Unnecessary "else" after "return", remove the "else" and de-indent the code inside it (no-else-return)
+src\model_router.py:146:20: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\model_router.py:151:20: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\model_router.py:156:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\model_router.py:165:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\model_router.py:181:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\model_router.py:187:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\model_router.py:222:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\model_router.py:227:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\model_router.py:239:20: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\model_router.py:249:12: R1705: Unnecessary "else" after "return", remove the "else" and de-indent the code inside it (no-else-return)
+src\model_router.py:250:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\model_router.py:255:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\model_router.py:263:8: R0912: Too many branches (13/12) (too-many-branches)
+src\model_router.py:375:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\model_router.py:107:4: R0912: Too many branches (17/12) (too-many-branches)
+src\model_router.py:107:4: R0915: Too many statements (90/50) (too-many-statements)
+src\model_router.py:412:4: C0103: Constant name "dummy_config_path" doesn't conform to UPPER_CASE naming style (invalid-name)
+src\model_router.py:498:13: W1514: Using open without explicitly specifying an encoding (unspecified-encoding)
+************* Module src.monitoring_agent
+src\monitoring_agent.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\monitoring_agent.py:4:0: C0115: Missing class docstring (missing-class-docstring)
+src\monitoring_agent.py:5:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\monitoring_agent.py:13:4: C0116: Missing function or method docstring (missing-function-docstring)
+************* Module src.planning_agent
+src\planning_agent.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\planning_agent.py:2:0: E0401: Unable to import 'memory_manager' (import-error)
+src\planning_agent.py:5:0: C0115: Missing class docstring (missing-class-docstring)
+src\planning_agent.py:9:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\planning_agent.py:5:0: R0903: Too few public methods (1/2) (too-few-public-methods)
+************* Module src.sacred_trinity_router
+src\sacred_trinity_router.py:13:0: C0301: Line too long (122/100) (line-too-long)
+src\sacred_trinity_router.py:119:9: W0511: TODO: Implement or refine task classification logic (fixme)
+src\sacred_trinity_router.py:123:9: W0511: TODO: Implement or refine sacred alignment scoring (fixme)
+src\sacred_trinity_router.py:127:9: W0511: TODO: Implement or refine archetype fit scoring (fixme)
+src\sacred_trinity_router.py:136:9: W0511: TODO: Implement or refine optimal model selection logic (fixme)
+src\sacred_trinity_router.py:140:9: W0511: TODO: Implement or refine logic to get models by principle (fixme)
+src\sacred_trinity_router.py:144:9: W0511: TODO: Implement or refine model availability check (fixme)
+src\sacred_trinity_router.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\sacred_trinity_router.py:36:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\sacred_trinity_router.py:39:8: R1705: Unnecessary "elif" after "return", remove the leading "el" from "elif" (no-else-return)
+src\sacred_trinity_router.py:63:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\sacred_trinity_router.py:66:8: W0107: Unnecessary pass statement (unnecessary-pass)
+src\sacred_trinity_router.py:60:38: W0613: Unused argument 'prompt' (unused-argument)
+src\sacred_trinity_router.py:71:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\sacred_trinity_router.py:74:8: W0107: Unnecessary pass statement (unnecessary-pass)
+src\sacred_trinity_router.py:68:42: W0613: Unused argument 'prompt' (unused-argument)
+src\sacred_trinity_router.py:79:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\sacred_trinity_router.py:82:8: W0107: Unnecessary pass statement (unnecessary-pass)
+src\sacred_trinity_router.py:76:37: W0613: Unused argument 'prompt' (unused-argument)
+src\sacred_trinity_router.py:122:48: W0613: Unused argument 'model_id' (unused-argument)
+src\sacred_trinity_router.py:122:63: W0613: Unused argument 'principle' (unused-argument)
+src\sacred_trinity_router.py:126:45: W0613: Unused argument 'model_id' (unused-argument)
+src\sacred_trinity_router.py:126:60: W0613: Unused argument 'archetype' (unused-argument)
+src\sacred_trinity_router.py:130:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\sacred_trinity_router.py:132:8: W0613: Unused argument 'task_category' (unused-argument)
+src\sacred_trinity_router.py:133:8: W0613: Unused argument 'principles' (unused-argument)
+src\sacred_trinity_router.py:134:8: W0613: Unused argument 'constraints' (unused-argument)
+src\sacred_trinity_router.py:139:39: W0613: Unused argument 'principle' (unused-argument)
+src\sacred_trinity_router.py:143:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\sacred_trinity_router.py:143:33: W0613: Unused argument 'model_id' (unused-argument)
+************* Module src.scheduler
+src\scheduler.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\scheduler.py:1:0: C0115: Missing class docstring (missing-class-docstring)
+src\scheduler.py:5:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\scheduler.py:1:0: R0903: Too few public methods (1/2) (too-few-public-methods)
+************* Module src.strategic_config
+src\strategic_config.py:269:0: C0301: Line too long (109/100) (line-too-long)
+src\strategic_config.py:272:0: C0301: Line too long (133/100) (line-too-long)
+src\strategic_config.py:279:0: C0301: Line too long (119/100) (line-too-long)
+src\strategic_config.py:285:0: C0301: Line too long (114/100) (line-too-long)
+src\strategic_config.py:338:9: W0511: TODO: Add logic to adjust thresholds based on historical performance (fixme)
+src\strategic_config.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\strategic_config.py:12:0: C0115: Missing class docstring (missing-class-docstring)
+src\strategic_config.py:29:0: R0902: Too many instance attributes (10/7) (too-many-instance-attributes)
+src\strategic_config.py:46:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\strategic_config.py:233:17: W1514: Using open without explicitly specifying an encoding (unspecified-encoding)
+src\strategic_config.py:249:24: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\strategic_config.py:253:24: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\strategic_config.py:261:13: W1514: Using open without explicitly specifying an encoding (unspecified-encoding)
+src\strategic_config.py:271:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\strategic_config.py:290:8: W0107: Unnecessary pass statement (unnecessary-pass)
+src\strategic_config.py:297:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\strategic_config.py:343:38: W0621: Redefining name 'model_id' from outer scope (line 384) (redefined-outer-name)
+src\strategic_config.py:349:39: W0621: Redefining name 'model_id' from outer scope (line 384) (redefined-outer-name)
+src\strategic_config.py:384:4: C0103: Constant name "model_id" doesn't conform to UPPER_CASE naming style (invalid-name)
+************* Module src.testing_agent
+src\testing_agent.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\testing_agent.py:4:0: C0115: Missing class docstring (missing-class-docstring)
+src\testing_agent.py:5:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\testing_agent.py:6:14: W1510: 'subprocess.run' used without explicitly defining the value for 'check'. (subprocess-run-check)
+src\testing_agent.py:4:0: R0903: Too few public methods (1/2) (too-few-public-methods)
+************* Module src.test_modes
+src\test_modes.py:2:0: C0301: Line too long (299/100) (line-too-long)
+src\test_modes.py:6:0: C0301: Line too long (106/100) (line-too-long)
+src\test_modes.py:81:0: C0301: Line too long (134/100) (line-too-long)
+src\test_modes.py:98:0: C0301: Line too long (120/100) (line-too-long)
+src\test_modes.py:109:0: C0301: Line too long (125/100) (line-too-long)
+src\test_modes.py:112:0: C0301: Line too long (103/100) (line-too-long)
+src\test_modes.py:131:0: C0301: Line too long (125/100) (line-too-long)
+src\test_modes.py:163:0: C0301: Line too long (112/100) (line-too-long)
+src\test_modes.py:46:8: R1722: Consider using 'sys.exit' instead (consider-using-sys-exit)
+src\test_modes.py:56:58: W0621: Redefining name 'f' from outer scope (line 173) (redefined-outer-name)
+src\test_modes.py:73:11: W0718: Catching too general exception Exception (broad-exception-caught)
+src\test_modes.py:74:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\test_modes.py:79:45: W0621: Redefining name 'modes_to_run' from outer scope (line 183) (redefined-outer-name)
+src\test_modes.py:120:70: W0621: Redefining name 'f' from outer scope (line 173) (redefined-outer-name)
+src\test_modes.py:87:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\test_modes.py:89:4: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\test_modes.py:92:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\test_modes.py:97:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\test_modes.py:102:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\test_modes.py:108:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\test_modes.py:129:19: W0718: Catching too general exception Exception (broad-exception-caught)
+src\test_modes.py:126:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\test_modes.py:130:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\test_modes.py:165:11: W0718: Catching too general exception Exception (broad-exception-caught)
+src\test_modes.py:162:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\test_modes.py:166:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\test_modes.py:169:8: R1722: Consider using 'sys.exit' instead (consider-using-sys-exit)
+src\test_modes.py:179:8: R1722: Consider using 'sys.exit' instead (consider-using-sys-exit)
+************* Module src.trinity_evaluator
+src\trinity_evaluator.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\trinity_evaluator.py:28:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\trinity_evaluator.py:45:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\trinity_evaluator.py:65:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\trinity_evaluator.py:106:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\trinity_evaluator.py:194:8: W0621: Redefining name 'results' from outer scope (line 281) (redefined-outer-name)
+src\trinity_evaluator.py:198:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\trinity_evaluator.py:204:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\trinity_evaluator.py:205:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\trinity_evaluator.py:212:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\trinity_evaluator.py:236:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\trinity_evaluator.py:237:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+************* Module src.autonomous_agents_pkg_alt.coding_agent
+src\autonomous_agents_pkg_alt\coding_agent.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\autonomous_agents_pkg_alt\coding_agent.py:7:4: W0107: Unnecessary pass statement (unnecessary-pass)
+src\autonomous_agents_pkg_alt\coding_agent.py:4:0: R0903: Too few public methods (0/2) (too-few-public-methods)
+************* Module src.autonomous_agents_pkg_alt.monitoring_agent
+src\autonomous_agents_pkg_alt\monitoring_agent.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\autonomous_agents_pkg_alt\monitoring_agent.py:7:4: W0107: Unnecessary pass statement (unnecessary-pass)
+src\autonomous_agents_pkg_alt\monitoring_agent.py:4:0: R0903: Too few public methods (0/2) (too-few-public-methods)
+************* Module src.autonomous_agents_pkg_alt.planning_agent
+src\autonomous_agents_pkg_alt\planning_agent.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\autonomous_agents_pkg_alt\planning_agent.py:7:4: W0107: Unnecessary pass statement (unnecessary-pass)
+src\autonomous_agents_pkg_alt\planning_agent.py:4:0: R0903: Too few public methods (0/2) (too-few-public-methods)
+************* Module src.autonomous_agents_pkg_alt.testing_agent
+src\autonomous_agents_pkg_alt\testing_agent.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\autonomous_agents_pkg_alt\testing_agent.py:7:4: W0107: Unnecessary pass statement (unnecessary-pass)
+src\autonomous_agents_pkg_alt\testing_agent.py:4:0: R0903: Too few public methods (0/2) (too-few-public-methods)
+************* Module src.autonomous_agents_pkg_alt
+src\autonomous_agents_pkg_alt\__init__.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+************* Module src.core.memory
+src\core\memory.py:51:0: C0301: Line too long (123/100) (line-too-long)
+src\core\memory.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\core\memory.py:55:20: W0107: Unnecessary pass statement (unnecessary-pass)
+************* Module src.llm_clients.base_client
+src\llm_clients\base_client.py:104:0: C0301: Line too long (117/100) (line-too-long)
+src\llm_clients\base_client.py:112:0: C0301: Line too long (109/100) (line-too-long)
+src\llm_clients\base_client.py:47:8: W0107: Unnecessary pass statement (unnecessary-pass)
+src\llm_clients\base_client.py:57:8: W0107: Unnecessary pass statement (unnecessary-pass)
+src\llm_clients\base_client.py:67:8: W0107: Unnecessary pass statement (unnecessary-pass)
+src\llm_clients\base_client.py:81:8: W0107: Unnecessary pass statement (unnecessary-pass)
+src\llm_clients\base_client.py:98:19: W0718: Catching too general exception Exception (broad-exception-caught)
+src\llm_clients\base_client.py:103:20: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\base_client.py:108:20: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+************* Module src.llm_clients.factory
+src\llm_clients\factory.py:71:0: C0301: Line too long (119/100) (line-too-long)
+src\llm_clients\factory.py:117:0: C0301: Line too long (103/100) (line-too-long)
+src\llm_clients\factory.py:176:0: C0301: Line too long (113/100) (line-too-long)
+src\llm_clients\factory.py:60:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\factory.py:70:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\factory.py:131:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\llm_clients\factory.py:81:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\factory.py:116:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\factory.py:121:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\factory.py:122:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\factory.py:127:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\factory.py:132:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\factory.py:41:4: R0911: Too many return statements (7/6) (too-many-return-statements)
+src\llm_clients\factory.py:155:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\llm_clients\factory.py:151:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\factory.py:156:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\factory.py:175:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\factory.py:187:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\llm_clients\factory.py:183:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\factory.py:188:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\factory.py:225:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+************* Module src.llm_clients.gemini_client
+src\llm_clients\gemini_client.py:54:0: C0301: Line too long (106/100) (line-too-long)
+src\llm_clients\gemini_client.py:196:0: C0301: Line too long (104/100) (line-too-long)
+src\llm_clients\gemini_client.py:37:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\gemini_client.py:67:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\gemini_client.py:72:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\gemini_client.py:89:4: R0914: Too many local variables (18/15) (too-many-locals)
+src\llm_clients\gemini_client.py:194:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\llm_clients\gemini_client.py:189:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\gemini_client.py:195:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\gemini_client.py:215:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\llm_clients\gemini_client.py:216:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\gemini_client.py:282:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\llm_clients\gemini_client.py:283:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+************* Module src.llm_clients.gemini_client_fixed
+src\llm_clients\gemini_client_fixed.py:54:0: C0301: Line too long (106/100) (line-too-long)
+src\llm_clients\gemini_client_fixed.py:196:0: C0301: Line too long (104/100) (line-too-long)
+src\llm_clients\gemini_client_fixed.py:37:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\gemini_client_fixed.py:67:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\gemini_client_fixed.py:72:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\gemini_client_fixed.py:89:4: R0914: Too many local variables (18/15) (too-many-locals)
+src\llm_clients\gemini_client_fixed.py:194:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\llm_clients\gemini_client_fixed.py:189:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\gemini_client_fixed.py:195:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\gemini_client_fixed.py:215:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\llm_clients\gemini_client_fixed.py:216:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\gemini_client_fixed.py:282:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\llm_clients\gemini_client_fixed.py:283:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+************* Module src.llm_clients.genai_client
+src\llm_clients\genai_client.py:39:0: C0301: Line too long (110/100) (line-too-long)
+src\llm_clients\genai_client.py:46:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\genai_client.py:64:12: C0415: Import outside toplevel (google.generativeai) (import-outside-toplevel)
+src\llm_clients\genai_client.py:71:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\genai_client.py:89:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\genai_client.py:99:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\genai_client.py:102:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\genai_client.py:115:12: W0707: Consider explicitly re-raising using 'raise RuntimeError(f'Model validation failed: {str(e)}') from e' (raise-missing-from)
+src\llm_clients\genai_client.py:142:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\llm_clients\genai_client.py:121:12: C0415: Import outside toplevel (google.generativeai) (import-outside-toplevel)
+src\llm_clients\genai_client.py:143:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\genai_client.py:232:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\llm_clients\genai_client.py:173:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\genai_client.py:203:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\genai_client.py:269:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\genai_client.py:276:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\llm_clients\genai_client.py:277:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+************* Module src.llm_clients.genai_client_fixed
+src\llm_clients\genai_client_fixed.py:20:4: W0231: __init__ method from base class 'BaseLLMClient' is not called (super-init-not-called)
+src\llm_clients\genai_client_fixed.py:56:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\llm_clients\genai_client_fixed.py:38:12: C0415: Import outside toplevel (google.generativeai) (import-outside-toplevel)
+src\llm_clients\genai_client_fixed.py:46:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\genai_client_fixed.py:57:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\genai_client_fixed.py:121:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\llm_clients\genai_client_fixed.py:88:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\genai_client_fixed.py:122:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\genai_client_fixed.py:157:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\genai_client_fixed.py:164:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\llm_clients\genai_client_fixed.py:165:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+************* Module src.llm_clients.google_client
+src\llm_clients\google_client.py:24:4: W0231: __init__ method from base class 'BaseLLMClient' is not called (super-init-not-called)
+src\llm_clients\google_client.py:63:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\google_client.py:89:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\google_client.py:120:4: R0914: Too many local variables (16/15) (too-many-locals)
+src\llm_clients\google_client.py:202:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\llm_clients\google_client.py:191:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\google_client.py:203:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\google_client.py:124:8: W0613: Unused argument 'enable_function_calling' (unused-argument)
+src\llm_clients\google_client.py:125:8: W0613: Unused argument 'functions' (unused-argument)
+src\llm_clients\google_client.py:244:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\google_client.py:248:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\google_client.py:288:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\llm_clients\google_client.py:289:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\google_client.py:313:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\llm_clients\google_client.py:306:12: R1705: Unnecessary "else" after "return", remove the "else" and de-indent the code inside it (no-else-return)
+src\llm_clients\google_client.py:307:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\google_client.py:314:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+************* Module src.llm_clients.google_genai_client
+src\llm_clients\google_genai_client.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\llm_clients\google_genai_client.py:5:0: E0611: No name 'LLMClient' in module 'src.llm_clients.base_client' (no-name-in-module)
+src\llm_clients\google_genai_client.py:32:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\google_genai_client.py:34:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\google_genai_client.py:98:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\llm_clients\google_genai_client.py:99:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\google_genai_client.py:116:8: C0115: Missing class docstring (missing-class-docstring)
+src\llm_clients\google_genai_client.py:116:8: R0903: Too few public methods (0/2) (too-few-public-methods)
+src\llm_clients\google_genai_client.py:122:8: C0115: Missing class docstring (missing-class-docstring)
+src\llm_clients\google_genai_client.py:122:8: R0903: Too few public methods (0/2) (too-few-public-methods)
+src\llm_clients\google_genai_client.py:126:8: C0115: Missing class docstring (missing-class-docstring)
+src\llm_clients\google_genai_client.py:126:8: R0903: Too few public methods (0/2) (too-few-public-methods)
+src\llm_clients\google_genai_client.py:131:8: C0115: Missing class docstring (missing-class-docstring)
+src\llm_clients\google_genai_client.py:131:8: R0903: Too few public methods (0/2) (too-few-public-methods)
+src\llm_clients\google_genai_client.py:210:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\llm_clients\google_genai_client.py:211:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\google_genai_client.py:2:0: C0411: standard import "os" should be placed before third party import "google.generativeai" (wrong-import-order)
+src\llm_clients\google_genai_client.py:3:0: C0411: standard import "logging" should be placed before third party import "google.generativeai" (wrong-import-order)
+src\llm_clients\google_genai_client.py:4:0: C0411: standard import "typing.Dict" should be placed before third party import "google.generativeai" (wrong-import-order)
+************* Module src.llm_clients.grok_client
+src\llm_clients\grok_client.py:18:4: W0231: __init__ method from base class 'BaseLLMClient' is not called (super-init-not-called)
+src\llm_clients\grok_client.py:40:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\grok_client.py:42:4: W0221: Variadics removed in overriding 'GrokClient.generate_response' method (arguments-differ)
+src\llm_clients\grok_client.py:99:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\llm_clients\grok_client.py:64:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\grok_client.py:79:19: W0212: Access to a protected member _dict of a client class (protected-access)
+src\llm_clients\grok_client.py:81:32: W0212: Access to a protected member _dict of a client class (protected-access)
+src\llm_clients\grok_client.py:88:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\grok_client.py:90:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\grok_client.py:100:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\grok_client.py:152:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\llm_clients\grok_client.py:153:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\grok_client.py:5:0: C0411: third party import "openai" should be placed before local import "base_client.BaseLLMClient" (wrong-import-order)
+src\llm_clients\grok_client.py:6:0: C0411: third party import "httpx" should be placed before local import "base_client.BaseLLMClient" (wrong-import-order)
+src\llm_clients\grok_client.py:7:0: C0411: standard import "logging" should be placed before third party imports "openai", "httpx" and local import "base_client.BaseLLMClient" (wrong-import-order)
+src\llm_clients\grok_client.py:8:0: C0411: standard import "typing.List" should be placed before third party imports "openai", "httpx" and local import "base_client.BaseLLMClient" (wrong-import-order)
+************* Module src.llm_clients.llama_client
+src\llm_clients\llama_client.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\llm_clients\llama_client.py:8:4: W0246: Useless parent or super() delegation in method '__init__' (useless-parent-delegation)
+src\llm_clients\llama_client.py:9:8: E1121: Too many positional arguments for method call (too-many-function-args)
+************* Module src.llm_clients.openai_client
+src\llm_clients\openai_client.py:31:4: W0231: __init__ method from base class 'BaseLLMClient' is not called (super-init-not-called)
+src\llm_clients\openai_client.py:52:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\openai_client.py:56:4: R0913: Too many arguments (6/5) (too-many-arguments)
+src\llm_clients\openai_client.py:56:4: R0917: Too many positional arguments (6/5) (too-many-positional-arguments)
+src\llm_clients\openai_client.py:176:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\llm_clients\openai_client.py:125:12: R1705: Unnecessary "else" after "return", remove the "else" and de-indent the code inside it (no-else-return)
+src\llm_clients\openai_client.py:177:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\openai_client.py:213:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\llm_clients\openai_client.py:214:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\openai_client.py:242:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\openai_client.py:246:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\openai_client.py:267:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\openai_client.py:291:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\llm_clients\openai_client.py:284:12: R1705: Unnecessary "else" after "return", remove the "else" and de-indent the code inside it (no-else-return)
+src\llm_clients\openai_client.py:285:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\openai_client.py:292:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\openai_client.py:310:0: R0903: Too few public methods (0/2) (too-few-public-methods)
+src\llm_clients\openai_client.py:321:0: R0903: Too few public methods (1/2) (too-few-public-methods)
+************* Module src.llm_clients.openrouter_client
+src\llm_clients\openrouter_client.py:16:0: C0301: Line too long (201/100) (line-too-long)
+src\llm_clients\openrouter_client.py:49:0: C0301: Line too long (121/100) (line-too-long)
+src\llm_clients\openrouter_client.py:131:0: C0301: Line too long (133/100) (line-too-long)
+src\llm_clients\openrouter_client.py:143:0: C0301: Line too long (118/100) (line-too-long)
+src\llm_clients\openrouter_client.py:150:0: C0301: Line too long (118/100) (line-too-long)
+src\llm_clients\openrouter_client.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\llm_clients\openrouter_client.py:34:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\openrouter_client.py:38:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\openrouter_client.py:141:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\llm_clients\openrouter_client.py:48:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\openrouter_client.py:52:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\openrouter_client.py:69:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\openrouter_client.py:130:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\openrouter_client.py:131:48: E1101: Instance of 'APIError' has no 'status_code' member (no-member)
+src\llm_clients\openrouter_client.py:142:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\openrouter_client.py:185:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\openrouter_client.py:198:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\llm_clients\openrouter_client.py:196:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\openrouter_client.py:199:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\openrouter_client.py:7:0: C0411: standard import "logging" should be placed before third party imports "openai", "httpx" (wrong-import-order)
+src\llm_clients\openrouter_client.py:8:0: C0411: standard import "typing.List" should be placed before third party imports "openai", "httpx" (wrong-import-order)
+************* Module src.llm_clients.xai_client
+src\llm_clients\xai_client.py:67:0: C0301: Line too long (172/100) (line-too-long)
+src\llm_clients\xai_client.py:21:4: W0231: __init__ method from base class 'BaseLLMClient' is not called (super-init-not-called)
+src\llm_clients\xai_client.py:50:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\llm_clients\xai_client.py:39:12: C0415: Import outside toplevel (openai.OpenAI) (import-outside-toplevel)
+src\llm_clients\xai_client.py:43:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\xai_client.py:51:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\xai_client.py:57:4: R0913: Too many arguments (6/5) (too-many-arguments)
+src\llm_clients\xai_client.py:57:4: R0917: Too many positional arguments (6/5) (too-many-positional-arguments)
+src\llm_clients\xai_client.py:66:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\xai_client.py:89:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\xai_client.py:203:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\llm_clients\xai_client.py:147:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\xai_client.py:150:12: R1705: Unnecessary "else" after "return", remove the "else" and de-indent the code inside it (no-else-return)
+src\llm_clients\xai_client.py:204:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\xai_client.py:207:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\xai_client.py:244:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\llm_clients\xai_client.py:245:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\xai_client.py:266:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+************* Module src.llm_clients.xai_grok_client
+src\llm_clients\xai_grok_client.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\llm_clients\xai_grok_client.py:11:0: W0613: Unused argument 'kwargs' (unused-argument)
+src\llm_clients\xai_grok_client.py:29:15: W0718: Catching too general exception Exception (broad-exception-caught)
+src\llm_clients\xai_grok_client.py:20:12: R1705: Unnecessary "else" after "return", remove the "else" and de-indent the code inside it (no-else-return)
+src\llm_clients\xai_grok_client.py:22:16: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\xai_grok_client.py:30:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\xai_grok_client.py:37:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\llm_clients\xai_grok_client.py:46:23: E1101: Instance of 'XAIGrokClient' has no 'client' member (no-member)
+src\llm_clients\xai_grok_client.py:53:12: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+************* Module src.tools.memory_cli
+src\tools\memory_cli.py:82:0: C0301: Line too long (161/100) (line-too-long)
+src\tools\memory_cli.py:8:0: E0401: Unable to import 'core.memory' (import-error)
+src\tools\memory_cli.py:8:0: E0611: No name 'memory' in module 'core' (no-name-in-module)
+src\tools\memory_cli.py:24:0: C0116: Missing function or method docstring (missing-function-docstring)
+src\tools\memory_cli.py:14:0: C0411: standard import "sys" should be placed before first party import "core.memory.save_decision"  (wrong-import-order)
+src\tools\memory_cli.py:15:0: C0411: standard import "os" should be placed before first party import "core.memory.save_decision"  (wrong-import-order)
+src\tools\memory_cli.py:16:0: C0411: standard import "argparse" should be placed before first party import "core.memory.save_decision"  (wrong-import-order)
+************* Module src.utils.text_analysis
+src\utils\text_analysis.py:298:5: W0511: TODO: Implement actual token counting logic (e.g., using tiktoken or a similar library) (fixme)
+src\utils\text_analysis.py:314:5: W0511: TODO: Implement actual text summarization logic (fixme)
+src\utils\text_analysis.py:329:5: W0511: TODO: Implement actual keyword extraction logic (fixme)
+src\utils\text_analysis.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\utils\text_analysis.py:35:4: R1705: Unnecessary "else" after "return", remove the "else" and de-indent the code inside it (no-else-return)
+src\utils\text_analysis.py:62:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\utils\text_analysis.py:94:11: W0718: Catching too general exception Exception (broad-exception-caught)
+src\utils\text_analysis.py:95:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\utils\text_analysis.py:126:11: W0718: Catching too general exception Exception (broad-exception-caught)
+src\utils\text_analysis.py:119:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\utils\text_analysis.py:122:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\utils\text_analysis.py:127:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\utils\text_analysis.py:145:11: W0718: Catching too general exception Exception (broad-exception-caught)
+src\utils\text_analysis.py:146:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\utils\text_analysis.py:253:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\utils\text_analysis.py:256:8: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\utils\text_analysis.py:284:4: W1203: Use lazy % formatting in logging functions (logging-fstring-interpolation)
+src\utils\text_analysis.py:303:30: W0613: Unused argument 'max_tokens' (unused-argument)
+src\utils\text_analysis.py:319:21: W0613: Unused argument 'text' (unused-argument)
+************* Module src.utils.text_encoding
+src\utils\text_encoding.py:39:8: W0707: Consider explicitly re-raising using 'raise ValueError(f'Failed to encode text to base64: {str(e)}') from e' (raise-missing-from)
+src\utils\text_encoding.py:70:8: W0707: Consider explicitly re-raising using 'raise ValueError(f'Failed to decode base64 to text: {str(e)}') from e' (raise-missing-from)
+src\utils\text_encoding.py:94:8: W0707: Consider explicitly re-raising using 'raise ValueError(f'Failed to encode file to base64: {str(e)}') from e' (raise-missing-from)
+src\utils\text_encoding.py:100:4: C0103: Constant name "test_text" doesn't conform to UPPER_CASE naming style (invalid-name)
+src\utils\text_encoding.py:110:4: C0103: Constant name "unicode_text" doesn't conform to UPPER_CASE naming style (invalid-name)
+************* Module src.utils.timestamp_utils
+src\utils\timestamp_utils.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+************* Module src.utils
+src\utils\__init__.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\utils\__init__.py:25:0: W0107: Unnecessary pass statement (unnecessary-pass)
+************* Module src.utils.__init__
+src\utils\__init__.py:1:0: R0801: Similar lines in 2 files
+==src.llm_clients.gemini_client:[7:293]
+==src.llm_clients.gemini_client_fixed:[7:293]
+try:
+    import google.generativeai as genai  # type: ignore
+
+    GENAI_AVAILABLE = True
+except ImportError:
+    GENAI_AVAILABLE = False
+    genai = None  # type: ignore
+
+from .base_client import BaseLLMClient
+
+logger = logging.getLogger(__name__)
+
+
+class GoogleGenAIClient(BaseLLMClient):
+    """
+    Google Gemini client using the google.generativeai library.
+    Handles multi-turn conversations and system prompts for Kor'tana.
+    """
+
+    def __init__(
+        self,
+        model_id: str,
+        api_key_env: str = "GOOGLE_API_KEY",
+        model_name: str = "gemini-pro",
+        **kwargs,
+    ):
+        # Get API key first
+        api_key = os.getenv(api_key_env)
+        if not api_key:
+            logger.error(
+                f"API key environment variable {api_key_env} not found for GoogleGenAIClient."
+            )
+            raise ValueError(
+                f"API key for {model_id} not found in environment variable {api_key_env}"
+            )
+
+        # Initialize base class
+        super().__init__(api_key, model_name, **kwargs)
+
+        self.model_name_for_api = (
+            model_name  # e.g., "gemini-1.5-flash-latest", "gemini-pro"
+        )
+        self.model_id = model_id
+
+        if not GENAI_AVAILABLE or genai is None:
+            logger.error(
+                "google.generativeai library not available. Install with: pip install google-generativeai"
+            )
+            raise ImportError(
+                "google.generativeai library required for GoogleGenAIClient"
+            )
+
+        try:
+            # Configure the library with API key
+            genai.configure(api_key=self.api_key)  # type: ignore
+
+            # Initialize the model
+            self.model = genai.GenerativeModel(self.model_name_for_api)  # type: ignore
+
+            logger.info(
+                f"GoogleGenAIClient for model '{self.model_name_for_api}' initialized successfully."
+            )
+
+        except Exception as e:
+            logger.error(
+                f"Failed to initialize GoogleGenAIClient for model '{self.model_name_for_api}': {e}"
+            )
+            raise
+
+    def get_capabilities(self) -> Dict[str, Any]:
+        """Return capabilities of the Google Gemini client."""
+        return {
+            "supports_system_prompt": True,
+            "supports_function_calling": False,  # Update based on model capabilities
+            "supports_streaming": True,
+            "max_context_length": (
+                1048576 if "flash" in self.model_name_for_api else 32768
+            ),
+            "supports_multimodal": True,
+        }
+
+    def generate_response(
+        self, system_prompt: str, messages: List[Dict[str, str]], **kwargs
+    ) -> Tuple[str, Dict[str, Any]]:
+        """
+        Generate response using Google Gemini API.
+
+        Args:
+            system_prompt: System instructions for the model
+            messages: List of conversation messages with 'role' and 'content'
+            **kwargs: Additional parameters like temperature, max_tokens
+
+        Returns:
+            Tuple of (response_text, usage_data)
+        """
+        try:
+            # Prepare messages for Google API format
+            formatted_messages = []
+
+            # Handle system prompt by prepending to first user message or
+            # adding as instruction
+            if system_prompt:
+                if messages and messages[0]["role"] == "user":
+                    # Prepend system prompt to first user message
+                    messages[0]["content"] = (
+                        system_prompt + "\n\n" + messages[0]["content"]
+                    )
+                else:
+                    # Add system prompt as initial user message with model
+                    # acknowledgment
+                    formatted_messages.append(
+                        {"role": "user", "parts": [{"text": system_prompt}]}
+                    )
+                    formatted_messages.append(
+                        {
+                            "role": "model",
+                            "parts": [
+                                {
+                                    "text": "I understand. I'll follow these instructions."
+                                }
+                            ],
+                        }
+                    )
+
+            # Convert messages to Google API format
+            for msg in messages:
+                role = msg["role"]
+                content = msg["content"]
+
+                # Map roles: 'assistant' -> 'model', 'user' -> 'user'
+                api_role = "model" if role == "assistant" else "user"
+                formatted_messages.append(
+                    {"role": api_role, "parts": [{"text": content}]}
+                )
+
+            # Extract generation parameters with proper typing
+            generation_config: Dict[str, Any] = {}
+            if "temperature" in kwargs:
+                generation_config["temperature"] = kwargs["temperature"]
+            if "max_tokens" in kwargs:
+                generation_config["max_output_tokens"] = kwargs["max_tokens"]
+            if "top_p" in kwargs:
+                generation_config["top_p"] = kwargs["top_p"]
+
+            # Make the API call
+            start_time = time.time()
+
+            if formatted_messages:
+                # Multi-turn conversation
+                api_response = self.model.generate_content(  # type: ignore
+                    formatted_messages,
+                    generation_config=generation_config or None,  # type: ignore
+                )
+            else:
+                # Single prompt (fallback)
+                api_response = self.model.generate_content(  # type: ignore
+                    system_prompt or "Hello",
+                    generation_config=generation_config or None,  # type: ignore
+                )
+
+            end_time = time.time()
+
+            # Extract response text
+            response_text = (
+                api_response.text  # type: ignore
+                if hasattr(api_response, "text")
+                else str(api_response)
+            )
+
+            # Extract usage data (Google API might have different structure)
+            usage_data = {
+                "prompt_tokens": getattr(api_response, "prompt_token_count", 0),
+                "completion_tokens": (
+                    getattr(api_response, "candidates_token_count", 0)
+                    if hasattr(api_response, "candidates_token_count")
+                    else len(response_text.split())
+                ),
+                "total_tokens": getattr(api_response, "total_token_count", 0),
+                "latency_sec": end_time - start_time,
+            }
+
+            logger.debug(
+                f"Google Gemini response generated successfully. Length: {len(response_text)} chars"
+            )
+            return response_text, usage_data
+
+        except Exception as e:
+            logger.error(
+                f"Error in GoogleGenAIClient.generate_response for model {self.model_name_for_api}: {e}"
+            )
+            error_response = (
+                f"I encountered an issue while processing your request: {str(e)}"
+            )
+            error_usage = {
+                "prompt_tokens": 0,
+                "completion_tokens": 0,
+                "total_tokens": 0,
+                "latency_sec": 0.0,
+            }
+            return error_response, error_usage
+
+    def test_connection(self) -> bool:
+        """Test if the client can connect to Google's API."""
+        try:
+            # Make a simple test call
+            self.model.generate_content("Hello")  # type: ignore
+            return True
+        except Exception as e:
+            logger.error(f"Google Gemini connection test failed: {e}")
+            return False
+
+    def stream_response(
+        self, system_prompt: str, messages: List[Dict[str, str]], **kwargs
+    ) -> Any:
+        """
+        Stream response from Google Gemini API.
+
+        Args:
+            system_prompt: System instructions for the model
+            messages: List of conversation messages with 'role' and 'content'
+            **kwargs: Additional parameters
+
+        Yields:
+            Response chunks from the streaming API
+        """
+        try:
+            # Prepare messages (similar to generate_response)
+            formatted_messages = []
+
+            if system_prompt:
+                if messages and messages[0]["role"] == "user":
+                    messages[0]["content"] = (
+                        system_prompt + "\n\n" + messages[0]["content"]
+                    )
+                else:
+                    formatted_messages.append(
+                        {"role": "user", "parts": [{"text": system_prompt}]}
+                    )
+
+            for msg in messages:
+                role = msg["role"]
+                content = msg["content"]
+                api_role = "model" if role == "assistant" else "user"
+                formatted_messages.append(
+                    {"role": api_role, "parts": [{"text": content}]}
+                )
+
+            # Extract generation config
+            generation_config: Dict[str, Any] = {}
+            if "temperature" in kwargs:
+                generation_config["temperature"] = kwargs["temperature"]
+            if "max_tokens" in kwargs:
+                generation_config["max_output_tokens"] = kwargs["max_tokens"]
+
+            # Stream the response
+            if formatted_messages:
+                response_stream = self.model.generate_content(  # type: ignore
+                    formatted_messages,
+                    generation_config=generation_config or None,  # type: ignore
+                    stream=True,  # type: ignore
+                )
+            else:
+                response_stream = self.model.generate_content(  # type: ignore
+                    system_prompt or "Hello",
+                    generation_config=generation_config or None,  # type: ignore
+                    stream=True,  # type: ignore
+                )
+
+            for chunk in response_stream:  # type: ignore
+                if hasattr(chunk, "text"):
+                    yield chunk.text  # type: ignore
+                else:
+                    yield str(chunk)
+
+        except Exception as e:
+            logger.error(f"Error in streaming response: {e}")
+            yield f"Error: {str(e)}"
+
+    def get_model_info(self) -> Dict[str, Any]:
+        """Get information about the current model."""
+        return {
+            "model_id": self.model_id,
+            "model_name": self.model_name_for_api,
+            "provider": "google",
+            "capabilities": self.get_capabilities(),
+        } (duplicate-code)Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\kortana\venv311\Lib\site-packages\pylint\__main__.py", line 10, in <module>
+    pylint.run_pylint()
+  File "C:\kortana\venv311\Lib\site-packages\pylint\__init__.py", line 34, in run_pylint
+    PylintRun(argv or sys.argv[1:])
+  File "C:\kortana\venv311\Lib\site-packages\pylint\lint\run.py", line 240, in __init__
+    linter.check(args)
+  File "C:\kortana\venv311\Lib\site-packages\pylint\lint\pylinter.py", line 699, in check
+    with self._astroid_module_checker() as check_astroid_module:
+  File "C:\Program Files\Python311\Lib\contextlib.py", line 144, in __exit__
+    next(self.gen)
+  File "C:\kortana\venv311\Lib\site-packages\pylint\lint\pylinter.py", line 963, in _astroid_module_checker
+    checker.close()
+  File "C:\kortana\venv311\Lib\site-packages\pylint\checkers\symilar.py", line 859, in close
+    self.add_message("R0801", args=(len(couples), "\n".join(msg)))
+  File "C:\kortana\venv311\Lib\site-packages\pylint\checkers\base_checker.py", line 153, in add_message
+    self.linter.add_message(
+  File "C:\kortana\venv311\Lib\site-packages\pylint\lint\pylinter.py", line 1272, in add_message
+    self._add_one_message(
+  File "C:\kortana\venv311\Lib\site-packages\pylint\lint\pylinter.py", line 1230, in _add_one_message
+    self.reporter.handle_message(
+  File "C:\kortana\venv311\Lib\site-packages\pylint\reporters\text.py", line 161, in handle_message
+    self.write_message(msg)
+  File "C:\kortana\venv311\Lib\site-packages\pylint\reporters\text.py", line 154, in write_message
+    self.writeln(self._fixed_template.format(**self_dict))
+  File "C:\kortana\venv311\Lib\site-packages\pylint\reporters\base_reporter.py", line 45, in writeln
+    print(string, file=self.out)
+  File "C:\Program Files\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 280-281: character maps to <undefined>
+

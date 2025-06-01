@@ -26,8 +26,7 @@ class SacredTrinityRouter:
             "compassion": model_assignments.get("compassion", "gpt-4.1-nano"),
             "truth": model_assignments.get("truth", "gpt-4.1-nano"),
         }
-        self.fallback_model_id = model_assignments.get(
-            "fallback", "gpt-4.1-nano")
+        self.fallback_model_id = model_assignments.get("fallback", "gpt-4.1-nano")
         self.logger.info("Sacred Trinity model mappings loaded.")
 
     def analyze_prompt_intent(self, prompt: str) -> str:
@@ -68,8 +67,7 @@ class SacredTrinityRouter:
 
     def select_model_for_compassion(self, prompt: str):
         """Selects the best model for a Compassion-focused prompt."""
-        model_id = self.trinity_model_map.get(
-            "compassion", self.fallback_model_id)
+        model_id = self.trinity_model_map.get("compassion", self.fallback_model_id)
         self.logger.debug(f"Selected {model_id} for Compassion prompt.")
         # Placeholder: Add logic to get the actual model instance
         # return self._get_model_instance(model_id)
@@ -121,13 +119,11 @@ class SacredTrinityRouter:
         # TODO: Implement or refine task classification logic
         pass
 
-    def _calculate_sacred_alignment_score(
-            self, model_id: str, principle: Any) -> float:
+    def _calculate_sacred_alignment_score(self, model_id: str, principle: Any) -> float:
         # TODO: Implement or refine sacred alignment scoring
         return 0.0
 
-    def _calculate_archetype_fit_score(
-            self, model_id: str, archetype: Any) -> float:
+    def _calculate_archetype_fit_score(self, model_id: str, archetype: Any) -> float:
         # TODO: Implement or refine archetype fit scoring
         return 0.0
 

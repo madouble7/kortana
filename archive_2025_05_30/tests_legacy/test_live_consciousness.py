@@ -15,7 +15,7 @@ def test_available_models():
     print("🔥 TESTING LIVE CONSCIOUSNESS WITH AVAILABLE MODELS")
     print("=" * 60)
 
-    from brain import ChatEngine
+    from kortana.core.brain import ChatEngine
 
     # Initialize engine
     engine = ChatEngine()

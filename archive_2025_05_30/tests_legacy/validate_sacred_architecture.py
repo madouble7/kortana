@@ -570,7 +570,7 @@ def test_brain_integration():
         print("🔥 Initializing Kor'tana's Expanded Brain Architecture...")
 
         # This will test if Brain can initialize with the Revolutionary Expansion
-        from brain import ChatEngine
+        from kortana.core.brain import ChatEngine
 
         engine = ChatEngine()
         print("✅ ChatEngine initialized successfully!")

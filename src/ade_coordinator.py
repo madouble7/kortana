@@ -6,7 +6,7 @@ import logging
 from datetime import datetime, timezone
 from typing import List
 
-from autonomous_development_engine import create_ade
+from kortana.core.autonomous_development_engine import create_ade
 
 
 class ADECoordinator:

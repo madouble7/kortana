@@ -13,8 +13,8 @@ import gradio.themes as gr_themes  # Import themes separately
 
 # Setup basic logging for the UI
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -41,7 +41,7 @@ class DummyEngine:
 # This import structure tries to be flexible.
 # It assumes app_ui.py is in 'src/' and brain.py is also in 'src/'.
 try:
-    from brain import ChatEngine
+    from kortana.core.brain import ChatEngine
 except ImportError:
     # Fallback if running from a different structure, or if 'src' is not in PYTHONPATH
     # when running from project root.
@@ -60,8 +60,7 @@ except ImportError:
         logger.error(
             f"CRITICAL ERROR: Could not import ChatEngine from brain.py. Original error: {e}"
         )
-        logger.error(
-            "Please ensure brain.py is in src/ and src/ is accessible.")
+        logger.error("Please ensure brain.py is in src/ and src/ is accessible.")
         logger.error(f"Current sys.path: {sys.path}")
         # Define a DummyEngine if ChatEngine cannot be imported, so UI can
         # still launch with an error message.
@@ -248,8 +247,7 @@ with gr.Blocks(
             elem_id="chatbox",
             layout="bubble",
             show_copy_button=True,
-            avatar_images=(
-                None, "https://placehold.co/100x100/D8BFD8/4A0E6B?text=K"),
+            avatar_images=(None, "https://placehold.co/100x100/D8BFD8/4A0E6B?text=K"),
         ),
         textbox=gr.Textbox(
             placeholder="Speak to Kor'tana...",
@@ -268,13 +266,11 @@ with gr.Blocks(
     with gr.Row():
         input_text = gr.Textbox(label="Speak to Kor'tana")
         mode = gr.Dropdown(
-            choices=["Auto"] + AVAILABLE_MODES,
-            label="Mode (Auto for natural flow)")
+            choices=["Auto"] + AVAILABLE_MODES, label="Mode (Auto for natural flow)"
+        )
         submit_quick = gr.Button("Speak")
     with gr.Row():
-        output_text = gr.Textbox(
-            label="Kor'tana's Response",
-            interactive=False)
+        output_text = gr.Textbox(label="Kor'tana's Response", interactive=False)
 
     # Define the interaction function for the quick manual/auto mode UI
     def interact(input_text, mode):
@@ -295,12 +291,7 @@ with gr.Blocks(
             return kortana.get_response(input_text, manual_mode=manual_mode)
 
     # Wire up the quick interaction button
-    submit_quick.click(
-        interact,
-        inputs=[
-            input_text,
-            mode],
-        outputs=output_text)
+    submit_quick.click(interact, inputs=[input_text, mode], outputs=output_text)
 
 # --- Launch the Interface ---
 if __name__ == "__main__":

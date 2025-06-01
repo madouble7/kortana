@@ -19,8 +19,11 @@ class MemoryAgent:
         # Use integrated embedding model
         if not self.pc.has_index(index_name):
             self.pc.create_index_for_model(
-                name=index_name, cloud="gcp", region=pinecone_env, embed={
-                    "model_type": "llm", "model_name": "llama-text-embed-v2"}, )
+                name=index_name,
+                cloud="gcp",
+                region=pinecone_env,
+                embed={"model_type": "llm", "model_name": "llama-text-embed-v2"},
+            )
         self.index = self.pc.Index(index_name)
 
     def plan(self, text: str) -> List[Dict]:

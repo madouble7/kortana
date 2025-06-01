@@ -81,7 +81,7 @@ def test_full_consciousness_with_google():
     print("=" * 60)
 
     try:
-        from brain import ChatEngine
+        from kortana.core.brain import ChatEngine
 
         print("🔥 Initializing Kor'tana's consciousness...")
         engine = ChatEngine()

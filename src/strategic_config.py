@@ -87,46 +87,35 @@ class UltimateLivingSacredConfig:
         # Initial strategic scores - Will be augmented by real performance data over time
         # Stored internally initially due to file edit issues with
         # models_config.json
-        self.initial_sacred_alignment_scores: Dict[str,
-                                                   Dict[str,
-                                                        float]] = {"gpt-4.1-nano": {"wisdom": 0.8,
-                                                                                    "truth": 0.8,
-                                                                                    "compassion": 0.6},
-                                                                   "x-ai/grok-3-mini-beta": {"wisdom": 0.7,
-                                                                                             "compassion": 0.75,
-                                                                                             "truth": 0.8},
-                                                                   "gemini-2.5-flash": {"wisdom": 0.7,
-                                                                                        "compassion": 0.75,
-                                                                                        "truth": 0.8},
-                                                                   "deepseek-chat-v3-openrouter": {"wisdom": 0.7,
-                                                                                                   "compassion": 0.6,
-                                                                                                   "truth": 0.7,
-                                                                                                   },
-                                                                   "noromaid-20b-openrouter": {"wisdom": 0.6,
-                                                                                               "compassion": 0.9,
-                                                                                               "truth": 0.7},
-                                                                   "meta-llama/llama-4-scout-openrouter": {"wisdom": 0.7,
-                                                                                                           "compassion": 0.7,
-                                                                                                           "truth": 0.9,
-                                                                                                           },
-                                                                   "meta-llama/llama-4-maverick-openrouter": {"wisdom": 0.8,
-                                                                                                              "compassion": 0.6,
-                                                                                                              "truth": 0.85,
-                                                                                                              },
-                                                                   "qwen3-235b-openrouter": {"wisdom": 0.6,
-                                                                                             "compassion": 0.7,
-                                                                                             "truth": 0.8},
-                                                                   "gpt-4o-mini-openai": {"wisdom": 0.75,
-                                                                                          "compassion": 0.7,
-                                                                                          "truth": 0.75},
-                                                                   "claude-3-haiku-openrouter": {"wisdom": 0.7,
-                                                                                                 "compassion": 0.8,
-                                                                                                 "truth": 0.75,
-                                                                                                 },
-                                                                   "gemini-2.0-flash-lite": {"wisdom": 0.65,
-                                                                                             "compassion": 0.7,
-                                                                                             "truth": 0.68},
-                                                                   }
+        self.initial_sacred_alignment_scores: Dict[str, Dict[str, float]] = {
+            "gpt-4.1-nano": {"wisdom": 0.8, "truth": 0.8, "compassion": 0.6},
+            "x-ai/grok-3-mini-beta": {"wisdom": 0.7, "compassion": 0.75, "truth": 0.8},
+            "gemini-2.5-flash": {"wisdom": 0.7, "compassion": 0.75, "truth": 0.8},
+            "deepseek-chat-v3-openrouter": {
+                "wisdom": 0.7,
+                "compassion": 0.6,
+                "truth": 0.7,
+            },
+            "noromaid-20b-openrouter": {"wisdom": 0.6, "compassion": 0.9, "truth": 0.7},
+            "meta-llama/llama-4-scout-openrouter": {
+                "wisdom": 0.7,
+                "compassion": 0.7,
+                "truth": 0.9,
+            },
+            "meta-llama/llama-4-maverick-openrouter": {
+                "wisdom": 0.8,
+                "compassion": 0.6,
+                "truth": 0.85,
+            },
+            "qwen3-235b-openrouter": {"wisdom": 0.6, "compassion": 0.7, "truth": 0.8},
+            "gpt-4o-mini-openai": {"wisdom": 0.75, "compassion": 0.7, "truth": 0.75},
+            "claude-3-haiku-openrouter": {
+                "wisdom": 0.7,
+                "compassion": 0.8,
+                "truth": 0.75,
+            },
+            "gemini-2.0-flash-lite": {"wisdom": 0.65, "compassion": 0.7, "truth": 0.68},
+        }
 
         self.initial_archetype_fits: Dict[str, Dict[str, float]] = {
             # Scores from 0 to 1, higher is better fit
@@ -246,12 +235,12 @@ class UltimateLivingSacredConfig:
                     try:
                         data = json.loads(line)
                         # Convert task_category string back to Enum member
-                        data["task_category"] = TaskCategory(
-                            data["task_category"])
+                        data["task_category"] = TaskCategory(data["task_category"])
                         # Convert SacredPrinciple dicts back to objects if they
                         # were saved as dicts
                         if data.get("sacred_alignment_achieved") and isinstance(
-                                data["sacred_alignment_achieved"], dict):
+                            data["sacred_alignment_achieved"], dict
+                        ):
                             # Assuming principles are just names mapped to
                             # scores
                             pass  # Keep as dict of scores
@@ -268,10 +257,7 @@ class UltimateLivingSacredConfig:
 
     def _save_performance_history(self):
         """Saves performance history to a JSONL file."""
-        os.makedirs(
-            os.path.dirname(
-                self.performance_history_path),
-            exist_ok=True)
+        os.makedirs(os.path.dirname(self.performance_history_path), exist_ok=True)
         with open(self.performance_history_path, "w") as f:
             for metric in self.performance_history:
                 f.write(json.dumps(metric.to_dict()) + "\n")
@@ -308,8 +294,7 @@ class UltimateLivingSacredConfig:
         Provides strategic guidance for model selection based on task category
         and current Sacred Trinity optimization state.
         """
-        logger.debug(
-            f"Getting task guidance for category: {task_category.value}")
+        logger.debug(f"Getting task guidance for category: {task_category.value}")
         guidance = {
             "prioritize_principles": [],
             "quality_threshold": self.performance_thresholds["quality_threshold"],
@@ -386,16 +371,13 @@ if __name__ == "__main__":
     )
     config_system.update_performance_data(sample_metric)
 
-    print(
-        f"\nPerformance History Size: {len(config_system.performance_history)}")
+    print(f"\nPerformance History Size: {len(config_system.performance_history)}")
 
     # Get task guidance
-    guidance_code = config_system.get_task_guidance(
-        TaskCategory.CODE_GENERATION)
+    guidance_code = config_system.get_task_guidance(TaskCategory.CODE_GENERATION)
     print(f"\nCode Generation Guidance: {guidance_code}")
 
-    guidance_creative = config_system.get_task_guidance(
-        TaskCategory.CREATIVE_WRITING)
+    guidance_creative = config_system.get_task_guidance(TaskCategory.CREATIVE_WRITING)
     print(f"\nCreative Writing Guidance: {guidance_creative}")
 
     # Example of getting initial scores

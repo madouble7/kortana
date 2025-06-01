@@ -1,3 +1,27 @@
+import logging
+import sys
+import os
+
+# Configure logging for this diagnostic burst (basic console output). This should happen first.
+# Note: basicConfig should ideally be called only once at the application entry point.
+# Calling it here might not reconfigure logging if it was already set up by unittest.
+# However, we include it here for self-containment of this diagnostic step.
+try:
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(name)s - %(message)s'
+    )
+except Exception:
+    # logging might already be configured
+    pass
+
+logger = logging.getLogger(__name__)
+_module_file_path = os.path.abspath(__file__)
+
+logger.info(f"[FLASH_DIAG] Test discovery: Loading test module: {__name__} from {_module_file_path}")
+logger.info(f"[FLASH_DIAG] sys.path at {__name__} import: {sys.path}")
+logger.info(f"[FLASH_DIAG] CWD at {__name__} import: {os.getcwd()}")
+
 import sys
 import os # For absolute paths
 print(f"--- TRACE (tests/test_project_memory_integration.py): sys.path ---")

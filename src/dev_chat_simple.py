@@ -1,5 +1,5 @@
 from datetime import datetime
-from brain import ChatEngine
+from kortana.core.brain import ChatEngine
 import json
 
 

@@ -73,7 +73,7 @@ def test_memory_manager_basic():
         if src_path not in sys.path:
             sys.path.insert(0, src_path)
 
-        from memory_manager import MemoryManager
+        from kortana.memory.memory_manager import MemoryManager
 
         assert MemoryManager is not None
 

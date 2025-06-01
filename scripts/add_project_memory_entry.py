@@ -18,7 +18,7 @@ import argparse
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
 
 # Import the memory helper functions
-from core.memory import (
+from kortana.core.memory import (
     save_decision,
     save_context_summary,
     save_implementation_note,

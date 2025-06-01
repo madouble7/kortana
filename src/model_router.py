@@ -83,8 +83,7 @@ class SacredModelRouter:
     def _load_models_config(self) -> Dict[str, Any]:
         """Loads the existing models_config.json file."""
         if not os.path.exists(self.models_config_path):
-            logger.error(
-                f"Models config file not found at {self.models_config_path}")
+            logger.error(f"Models config file not found at {self.models_config_path}")
             # Return a structure that allows the router to still initialize
             return {"default_llm_id": None, "models": {}}
         try:
@@ -119,15 +118,16 @@ class SacredModelRouter:
         Returns:
             The selected model_id or None if no suitable model is found.
         """
-        logger.info(
-            f"Selecting model for task category: {task_category.value}")
+        logger.info(f"Selecting model for task category: {task_category.value}")
         if constraints is None:
             constraints = {}
 
         # 1. Get strategic guidance based on task category
-        strategic_guidance = self.sacred_config.get_task_guidance(
-            task_category)
+        strategic_guidance = self.sacred_config.get_task_guidance(task_category)
         logger.debug(f"Strategic guidance: {strategic_guidance}")
+
+        selected_model_id = None
+        selection_reason = "dynamic"
 
         # NEW: 2. Check for explicit model routing in models_config.json
         explicit_routed_model_id = self.loaded_models_config.get(
@@ -137,260 +137,154 @@ class SacredModelRouter:
             logger.info(
                 f"Explicit routing found for task category {task_category.value}: {explicit_routed_model_id}"
             )
-            routed_model_config = self.get_model_config(
-                explicit_routed_model_id)
+            routed_model_config = self.get_model_config(explicit_routed_model_id)
             if routed_model_config:
                 # Check if the explicitly routed model is enabled and has an
-                # API key
+                # API key and is one of the approved models
                 is_enabled = routed_model_config.get("enabled", True)
                 api_key_env = routed_model_config.get("api_key_env", "")
                 api_key_set = bool(api_key_env and os.environ.get(api_key_env))
+                is_approved = explicit_routed_model_id in ["gemini-2.5-flash", "gpt-4.1-nano"]
 
-                if is_enabled and api_key_set:
+                if is_enabled and api_key_set and is_approved:
                     logger.info(
-                        f"Using explicitly routed model: {explicit_routed_model_id} for task category {task_category.value}"
+                        f"Using explicitly routed and approved model: {explicit_routed_model_id} for task category {task_category.value}"
                     )
-                    return explicit_routed_model_id
+                    selected_model_id = explicit_routed_model_id
+                    selection_reason = "explicit_route"
                 else:
+                    reason = "not available" if not (is_enabled and api_key_set) else "not approved"
                     logger.warning(
-                        f"Explicitly routed model {explicit_routed_model_id} for {task_category.value} is not available or enabled."
-                        " Falling back to dynamic selection.")
+                        f"Explicitly routed model {explicit_routed_model_id} for {task_category.value} is {reason}."
+                        " Falling back to approved dynamic selection."
+                    )
             else:
                 logger.warning(
                     f"Explicitly routed model {explicit_routed_model_id} for {task_category.value} not found in models config."
-                    " Falling back to dynamic selection.")
+                    " Falling back to approved dynamic selection."
+                )
 
-        # Original logic for dynamic selection if no explicit route or route is invalid
-        # Determine primary archetype for this category
-        primary_archetype = self.category_to_archetype_map.get(task_category)
-        if not primary_archetype:
-            logger.warning(
-                f"No primary archetype mapped for task category: {task_category.value}"
-            )
-            # Fallback to a default archetype like ORACLE if no specific
-            # mapping
-            primary_archetype = ModelArchetype.ORACLE
-
-        # 2. Identify candidate models - ONLY ENABLED ONES
-        candidate_models: List[AugmentedModelConfig] = []
-        for model_id, core_details in self.loaded_models_config.get(
-            "models", {}
-        ).items():
-            # NEW: Check if model is enabled
-            if not core_details.get(
-                "enabled", True
-            ):  # Default to True if not specified
-                logger.debug(f"Model {model_id} is disabled, skipping")
-                continue
-
-            # Check API key availability
-            api_key_env = core_details.get("api_key_env", "")
-            if api_key_env and not os.environ.get(api_key_env):
+        # Original logic for dynamic selection if no explicit route or route is invalid/not approved
+        if selected_model_id is None:
+            # Determine primary archetype for this category
+            primary_archetype = self.category_to_archetype_map.get(task_category)
+            if not primary_archetype:
                 logger.warning(
-                    f"Model {model_id} missing API key {api_key_env}, skipping"
+                    f"No primary archetype mapped for task category: {task_category.value}"
                 )
-                continue
+                # Fallback to a default archetype like ORACLE if no specific
+                # mapping
+                primary_archetype = ModelArchetype.ORACLE
 
-            # Augment core_details with strategic data (from internal dicts in SacredConfig)
-            # Safely access nested keys
-            performance_scores = core_details.get("performance_scores", {})
-            augmented_details = AugmentedModelConfig(
-                model_id=model_id,
-                provider=core_details.get("provider", "unknown"),
-                model_name=core_details.get("model_name", model_id),
-                api_key_env=core_details.get("api_key_env", ""),
-                base_url=core_details.get("base_url"),
-                default_params=core_details.get("default_params", {}),
-                benchmarks=performance_scores,  # Use the mapped existing field
-                cost_per_1m_input=core_details.get("cost_per_1m_input"),
-                cost_per_1m_output=core_details.get("cost_per_1m_output"),
-                context_window=core_details.get("context_window"),
-                sacred_alignment_scores=self.sacred_config.get_model_sacred_scores(
-                    model_id
-                ),  # Get from strategic config
-                archetype_fit_scores=self.sacred_config.get_model_archetype_fits(
-                    model_id
-                ),  # Get from strategic config
-            )
+            # 2. Identify candidate models - ONLY ENABLED AND APPROVED ONES
+            candidate_models: List[AugmentedModelConfig] = []
+            approved_model_ids = ["gemini-2.5-flash", "gpt-4.1-nano"]
 
-            # Basic filtering: Must have a non-zero fit score for the primary
-            # archetype
-            if (augmented_details.archetype_fit_scores.get(
-                    primary_archetype.value, 0) > 0):
-                candidate_models.append(augmented_details)
-            else:
-                logger.debug(
-                    f"Model {model_id} filtered out: Low fit for archetype {primary_archetype.value}"
-                )
+            for model_id, core_details in self.loaded_models_config.get(
+                "models", {}
+            ).items():
+                # NEW: Check if model is enabled AND is one of the approved models
+                if not core_details.get("enabled", True) or model_id not in approved_model_ids:
+                    logger.debug(f"Model {model_id} is disabled or not approved, skipping dynamic selection")
+                    continue
 
-        if not candidate_models:
-            logger.warning(
-                f"No candidate models found for task category {task_category.value} and archetype {primary_archetype.value}."
-            )
-            # Fallback logic: Use default model from the loaded config if it exists and is a candidate
-            # Check if default model ID exists in the loaded config AND has a
-            # non-zero fit for the archetype
-            default_model_id = self.loaded_models_config.get("default_llm_id")
-            if default_model_id:
-                default_model_details = self.sacred_config.get_model_archetype_fits(
-                    default_model_id)
-                if default_model_details.get(primary_archetype.value, 0) > 0:
-                    logger.info(
-                        f"Falling back to default model: {default_model_id}")
-                    return default_model_id
-
-            # Or fallback to a hardcoded universal default if no suitable model found at all
-            # This requires a model ID that's expected to *always* be available
-            universal_fallback_id = "gpt-4.1-nano"  # Example universal fallback
-
-            universal_fallback_details = self.sacred_config.get_model_archetype_fits(
-                universal_fallback_id)
-            if universal_fallback_details.get(primary_archetype.value, 0) > 0:
-                logger.warning(
-                    f"No suitable model found, falling back to universal default: {universal_fallback_id}"
-                )
-                return universal_fallback_id
-            else:
-                logger.error(
-                    f"No suitable model, default fallback, or universal fallback found for {task_category.value}. System halt possible."
-                )
-                return None  # Or raise an exception
-
-        # 3. Score and sort candidates
-        # Combine archetype fit, sacred alignment, benchmarks, and tactical
-        # constraints
-        def calculate_combined_score(
-            model: AugmentedModelConfig,
-            constraints: Dict[str, Any],
-            guidance: Dict[str, Any],
-        ) -> float:
-            score = 0.0
-
-            # Score based on Archetype Fit (weighted by primary archetype)
-            archetype_fit = model.archetype_fit_scores.get(
-                primary_archetype.value, 0.0)
-            score += archetype_fit * 100  # Base score from archetype fit
-
-            # Score based on Sacred Alignment (weighted by prioritized
-            # principles)
-            sacred_score = 0.0
-            prioritized_principles = guidance.get("prioritize_principles", [])
-            if prioritized_principles:
-                for principle in prioritized_principles:
-                    sacred_score += (
-                        model.sacred_alignment_scores.get(principle, 0.0)
-                        * self.sacred_config.sacred_trinity.get(
-                            principle, SacredPrinciple(0, 0, False)
-                        ).weight
+                # Check API key availability
+                api_key_env = core_details.get("api_key_env", "")
+                if api_key_env and not os.environ.get(api_key_env):
+                    logger.warning(
+                        f"Approved model {model_id} missing API key {api_key_env}, skipping dynamic selection"
                     )
-                score += sacred_score * 50  # Add weighted sacred score
-            else:
-                # If no principles prioritized, maybe add a general sacred
-                # alignment score?
-                score += sum(model.sacred_alignment_scores.values()
-                             ) * 10  # Example
+                    continue
 
-            # Score based on Benchmarks and Tactical Constraints
-            priority = constraints.get("priority", "quality")
+                # Augment core_details with strategic data (from internal dicts in SacredConfig)
+                # Safely access nested keys
+                performance_scores = core_details.get("performance_scores", {})
+                augmented_details = AugmentedModelConfig(
+                    model_id=model_id,
+                    provider=core_details.get("provider", "unknown"),
+                    model_name=core_details.get("model_name", model_id),
+                    api_key_env=core_details.get("api_key_env", ""),
+                    base_url=core_details.get("base_url"),
+                    default_params=core_details.get("default_params", {}),
+                    benchmarks=performance_scores,  # Use the mapped existing field
+                    cost_per_1m_input=core_details.get("cost_per_1m_input"),
+                    cost_per_1m_output=core_details.get("cost_per_1m_output"),
+                    context_window=core_details.get("context_window"),
+                    sacred_alignment_scores=self.sacred_config.get_model_sacred_scores(
+                        model_id
+                    ),  # Get from strategic config
+                    archetype_fit_scores=self.sacred_config.get_model_archetype_fits(
+                        model_id
+                    ),  # Get from strategic config
+                )
 
-            if priority == "quality":
-                # Use relevant quality benchmarks, e.g., Dubesor, GPQA, Aider
-                if primary_archetype == ModelArchetype.ORACLE:
-                    score += model.benchmarks.get(
-                        "dubesor_overall_score", 0.0) * 5
-                    score += (
-                        model.benchmarks.get(
-                            "gpqa", model.benchmarks.get("gpqa_percent", 0.0)
-                        )
-                        * 5
-                    )  # Handle variations
-                elif primary_archetype == ModelArchetype.DEV_AGENT:
-                    score += (
-                        model.benchmarks.get("aider_polyglot_percent_correct", 0.0) * 10
-                    )
-                # TODO: Add quality metrics for other archetypes
-                # Penalize if below strategic quality threshold (needs mapping from benchmark to general quality)
-                # Assuming 'quality' might be a specific benchmark score or
-                # derived
-                general_quality_benchmark = model.benchmarks.get(
-                    "dubesor_overall_score", model.benchmarks.get("gpqa", 0.0)
-                )  # Example mapping
-                if general_quality_benchmark < guidance.get(
-                        "quality_threshold", 0.0):
-                    score -= 50  # Significant penalty
-
-            elif priority == "speed":
-                # Prioritize models with high tokens/sec and low latency
-                score += model.benchmarks.get(
-                    "tokens_per_sec_median", 0.0) * 0.5
-                score -= (
-                    model.benchmarks.get("latency_first_chunk_sec", 10.0) * 10
-                )  # Penalize latency
-
-            elif priority == "cost":
-                # Prioritize models with low cost per token
+                # Basic filtering: Must have a non-zero fit score for the primary
+                # archetype (within the approved list)
                 if (
-                    model.cost_per_1m_input is not None
-                    and model.cost_per_1m_output is not None
+                    augmented_details.archetype_fit_scores.get(primary_archetype.value, 0)
+                    > 0
                 ):
-                    # Use input cost as primary factor for many tasks (prompt
-                    # is often larger than completion)
-                    cost_per_token = model.cost_per_1m_input / 1_000_000
-                    if cost_per_token > 0:
-                        # Reward low cost (scaled)
-                        score += (1 / cost_per_token) * 100
-                # Penalize if above strategic cost threshold
-                if (
-                    model.cost_per_1m_input is not None
-                    and model.cost_per_1m_input
-                    > guidance.get("cost_threshold", float("inf")) * 1_000_000
-                ):  # Convert threshold to per 1M
-                    score -= (
-                        # Significant penalty            elif priority ==
-                        # "context":
-                        50
+                    candidate_models.append(augmented_details)
+                else:
+                    logger.debug(
+                        f"Approved model {model_id} filtered out during dynamic selection: Low fit for archetype {primary_archetype.value}"
                     )
-                # Prioritize models with large context windows
-                if model.context_window is not None:
-                    score += model.context_window * 0.001  # Scale context window score
 
-            # TODO: Add handling for other constraints (e.g.,
-            # supports_function_calling)
+            if not candidate_models:
+                logger.warning(
+                    f"No approved candidate models found for task category {task_category.value} and archetype {primary_archetype.value}."
+                )
+                # Fallback logic: Use default model from the loaded config if it exists and is a candidate
+                # Check if default model ID exists in the loaded config AND has a
+                # non-zero fit for the archetype AND is approved
+                default_model_id = self.loaded_models_config.get("default_llm_id")
+                if default_model_id in approved_model_ids:
+                    default_model_details = self.sacred_config.get_model_archetype_fits(
+                        default_model_id
+                    )
+                    if default_model_details.get(primary_archetype.value, 0) > 0:
+                        logger.info(f"Falling back to approved default model: {default_model_id}")
+                        selected_model_id = default_model_id
+                        selection_reason = "fallback_default"
+                    else:
+                        logger.warning(
+                            f"Approved default model {default_model_id} has low fit for archetype {primary_archetype.value}."
+                            " Attempting universal fallback (gpt-4.1-nano) if approved."
+                        )
 
-            # Add some randomness for load balancing among similarly scored
-            # models
-            score += random.uniform(-1, 1)  # Small random factor
+                # Or fallback to a hardcoded universal default if no suitable model found at all
+                # This requires a model ID that's expected to *always* be available and is approved
+                universal_fallback_id: str = "gpt-4.1-nano"  # Example universal fallback
 
-            return score
+                if universal_fallback_id in approved_model_ids:
+                    if universal_fallback_id is not None:
+                        assert isinstance(universal_fallback_id, str)
+                        universal_fallback_details = self.sacred_config.get_model_archetype_fits(
+                            universal_fallback_id # type: ignore [arg-type]
+                        )
+                        if universal_fallback_details.get(primary_archetype.value, 0) > 0:
+                            logger.warning(
+                                f"Falling back to approved universal fallback model: {universal_fallback_id}"
+                            )
+                            selected_model_id = universal_fallback_id
+                            selection_reason = "universal_fallback"
 
-        # Calculate scores for all candidates
-        scored_candidates = [
-            (model, calculate_combined_score(model, constraints, strategic_guidance))
-            for model in candidate_models
-        ]
 
-        # Sort candidates by score in descending order
-        scored_candidates.sort(key=lambda item: item[1], reverse=True)
+        # Final check and logging
+        if selected_model_id:
+            logger.info(f"Selected model: {selected_model_id} (Reason: {selection_reason})")
+        else:
+            logger.error("Failed to select any approved model.")
 
-        # Select the top model
-        best_model = scored_candidates[0][0]
-        final_score = scored_candidates[0][1]
+        # Log details if dynamic selection occurred from approved list
+        if selection_reason == "dynamic" and selected_model_id:
+             logger.info(f"Dynamic selection from approved models: {selected_model_id}")
+        elif selected_model_id == "gpt-4.1-nano":
+             logger.info(f"Prioritizing GPT-4.1 Nano as per directive.")
+        elif selected_model_id == "google/gemini-2.0-flash-001":
+             logger.info(f"Using Gemini 2.0 Flash as selected from approved models.")
 
-        logger.info(
-            f"Selected model: {best_model.model_id} (Score: {final_score:.2f})")
-        # Log routing decision details (can be more detailed)
-        self.routing_history.append(
-            {
-                "task_category": task_category.value,
-                "constraints": constraints,
-                "strategic_guidance": strategic_guidance,
-                "selected_model": best_model.model_id,
-                "final_score": final_score,
-                "timestamp": time.time(),
-            }
-        )
-
-        return best_model.model_id
+        return selected_model_id
 
     def get_routing_stats(self) -> Dict[str, Any]:
         """Provides statistics on routing decisions."""

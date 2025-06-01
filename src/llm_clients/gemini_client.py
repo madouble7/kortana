@@ -1,3 +1,6 @@
+# TODO: R0801 (Pylint) - Code duplication.
+# Similar to code found in: src\llm_clients\gemini_client_fixed.py:[7:293]
+# Consider refactoring into a shared function, method, or utility.
 """Fixed Gemini client implementation for Kor'tana."""
 
 import logging
@@ -62,8 +65,7 @@ class GoogleGenAIClient(BaseLLMClient):
             genai.configure(api_key=self.api_key)  # type: ignore
 
             # Initialize the model
-            self.model = genai.GenerativeModel(
-                self.model_name_for_api)  # type: ignore
+            self.model = genai.GenerativeModel(self.model_name_for_api)  # type: ignore
 
             logger.info(
                 f"GoogleGenAIClient for model '{self.model_name_for_api}' initialized successfully."

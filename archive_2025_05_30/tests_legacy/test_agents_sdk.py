@@ -11,7 +11,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
 from agents_sdk_integration import create_kortana_agents_sdk, SDK_AVAILABLE
-from brain import ChatEngine
+from kortana.core.brain import ChatEngine
 
 
 async def test_agents_sdk_integration():
