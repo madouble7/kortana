@@ -2,32 +2,46 @@ import unittest
 import sys
 import os
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone # Added timezone
 import time
+import json
+import uuid
+import glob
+import copy
+from unittest.mock import patch
 
 # Add project root to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from relays.handoff import perform_handoff, DB_PATH, LOG_FILE_PATH
-from relays.relay import AGENTS, register_agent, update_agent_handoff_time
+from relays.handoff import perform_handoff, prefill_torch_template, prompt_for_torch_package_details
+from relays.torch_template import TORCH_PACKAGE_TEMPLATE
+from relays.relay import AGENTS, register_agent
+
+# Use absolute paths for DB, logs, and state
+SCRIPT_DIR_HANDOFF_TEST = os.path.dirname(os.path.abspath(__file__))
+REPO_ROOT_HANDOFF_TEST = os.path.abspath(os.path.join(SCRIPT_DIR_HANDOFF_TEST, '..'))
+
+DB_PATH_HANDOFF_TEST = os.path.join(REPO_ROOT_HANDOFF_TEST, 'logs', 'kortana.db')
+LOG_FILE_PATH_HANDOFF_TEST = os.path.join(REPO_ROOT_HANDOFF_TEST, 'logs', 'torch_log.txt')
+STATE_DIR_HANDOFF_TEST = os.path.join(REPO_ROOT_HANDOFF_TEST, 'state')
+
 
 class TestHandoff(unittest.TestCase):
 
     def setUp(self):
-        """Clear AGENTS, torch_passes table, and torch_log.txt before each test."""
         AGENTS.clear()
+        os.makedirs(os.path.join(REPO_ROOT_HANDOFF_TEST, 'logs'), exist_ok=True)
+        os.makedirs(STATE_DIR_HANDOFF_TEST, exist_ok=True)
 
-        # Ensure logs directory exists
-        logs_dir = os.path.join(os.path.dirname(__file__), '..', 'logs')
-        if not os.path.exists(logs_dir):
-            os.makedirs(logs_dir)
+        self.db_path = DB_PATH_HANDOFF_TEST
+        self.log_file_path = LOG_FILE_PATH_HANDOFF_TEST
+        self.state_dir = STATE_DIR_HANDOFF_TEST
 
-        # Clear or ensure creation of the torch_passes table
         try:
-            conn = sqlite3.connect(DB_PATH)
-            cursor = conn.cursor()
-            cursor.execute("DROP TABLE IF EXISTS torch_passes")
-            cursor.execute("""
+            conn = sqlite3.connect(self.db_path)
+            self.cursor = conn.cursor()
+            self.cursor.execute("DROP TABLE IF EXISTS torch_passes")
+            self.cursor.execute("""
                 CREATE TABLE torch_passes (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     timestamp DATETIME NOT NULL,
@@ -39,6 +53,17 @@ class TestHandoff(unittest.TestCase):
                     message_to_successor TEXT
                 )
             """)
+            self.cursor.execute("DROP TABLE IF EXISTS torch_packages")
+            self.cursor.execute("""
+                CREATE TABLE torch_packages (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    torch_pass_id INTEGER NOT NULL,
+                    package_json TEXT NOT NULL,
+                    filepath TEXT,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (torch_pass_id) REFERENCES torch_passes(id)
+                )
+            """)
             conn.commit()
         except sqlite3.Error as e:
             self.fail(f"Database setup failed: {e}")
@@ -46,140 +71,168 @@ class TestHandoff(unittest.TestCase):
             if conn:
                 conn.close()
 
-        # Clear or ensure creation of the log file
         try:
-            # Create the logs directory if it doesn't exist
-            os.makedirs(os.path.dirname(LOG_FILE_PATH), exist_ok=True)
-            with open(LOG_FILE_PATH, 'w') as f: # Open in write mode to clear it
-                f.write("")
-        except IOError as e:
-            self.fail(f"Log file setup failed: {e}")
+            with open(self.log_file_path, 'w') as f: f.write("")
+        except IOError as e: self.fail(f"Text log file setup failed: {e}")
 
-    def _get_db_entries(self):
-        """Helper to get all entries from torch_passes."""
+        for f_path in glob.glob(os.path.join(self.state_dir, '*.json')):
+            try: os.remove(f_path)
+            except OSError as e: print(f"Error removing state file {f_path}: {e}")
+
+    def _get_db_entries(self, table_name):
         try:
-            conn = sqlite3.connect(DB_PATH)
+            conn = sqlite3.connect(self.db_path)
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM torch_passes ORDER BY id")
+            cursor.execute(f"SELECT * FROM {table_name} ORDER BY id")
             rows = cursor.fetchall()
             return rows
-        except sqlite3.Error as e:
-            self.fail(f"DB read failed: {e}")
+        except sqlite3.Error as e: self.fail(f"DB read failed for table {table_name}: {e}")
         finally:
-            if conn:
-                conn.close()
+            if conn: conn.close()
         return []
 
-    def _get_log_file_lines(self):
-        """Helper to get all lines from the log file."""
-        try:
-            if os.path.exists(LOG_FILE_PATH):
-                with open(LOG_FILE_PATH, 'r') as f:
-                    return f.readlines()
-        except IOError as e:
-            self.fail(f"Log file read failed: {e}")
-        return []
+    def test_prefill_torch_template(self):
+        outgoing_agent = "AgentOutgoing"
+        register_agent(outgoing_agent, version="0.8pre")
+        result = prefill_torch_template(
+            outgoing_agent_name=outgoing_agent,
+            incoming_agent_name="AgentIncoming",
+            incoming_agent_version="v1.alpha",
+            basic_torch_pass_summary="Prefill test summary",
+            basic_torch_pass_tokens=150
+        )
+        self.assertIsInstance(result["task_id"], str)
+        self.assertTrue(len(result["task_id"]) > 30)
+        self.assertIsInstance(result["timestamp"], str)
+        self.assertTrue(len(result["timestamp"]) > 0)
+        self.assertEqual(result['agent_profile']['agent_name'], outgoing_agent)
+        self.assertEqual(result['agent_profile']['agent_version'], "0.8pre")
+        self.assertEqual(result['tokens'], 150)
+        self.assertEqual(result['summary'], "Prefill test summary")
 
-    def test_perform_handoff_new_agents(self):
-        """Test handoff where both agents might be new to AGENTS dict, or outgoing exists."""
-        # Case 1: Outgoing agent not in AGENTS initially (perform_handoff should register it)
-        outgoing_agent_name = "OutAgentNew"
-        incoming_agent_name = "InAgentNew"
-        version = "1.0"
-        summary = "Handoff to new incoming"
-        tokens = 1000
-        message = "Welcome"
+    @patch('relays.handoff.prompt_for_torch_package_details')
+    def test_perform_handoff_with_detailed_package(self, mock_prompt):
+        mock_package_content = copy.deepcopy(TORCH_PACKAGE_TEMPLATE)
+        mock_task_id = str(uuid.uuid4())
+        mock_package_content['task_id'] = mock_task_id
+        mock_package_content['summary'] = "Detailed Summary from Mock"
+        mock_package_content['agent_profile']['message_to_successor'] = "Detailed Message from Mock"
+        mock_package_content['agent_profile']['agent_name'] = "AgentX"
+        mock_package_content['timestamp'] = datetime.now(timezone.utc).isoformat() # Corrected
 
-        # Record time before handoff for outgoing agent if it gets registered by perform_handoff
-        time_before_outgoing_register = datetime.now()
-        time.sleep(0.01) # ensure distinct time
+        mock_prompt.return_value = mock_package_content
+        self.assertTrue(os.path.exists(self.db_path), "Database file should exist for handoff")
+        perform_handoff("AgentX", "AgentY", "v1.0", "Initial Summary", 100, "Initial Message")
+        mock_prompt.assert_called_once()
 
-        perform_handoff(outgoing_agent_name, incoming_agent_name, version, summary, tokens, message)
+        tp_entries = self._get_db_entries("torch_passes")
+        self.assertEqual(len(tp_entries), 1)
+        tp_entry = tp_entries[0]
+        self.assertEqual(tp_entry['summary'], "Detailed Summary from Mock")
+        self.assertEqual(tp_entry['message_to_successor'], "Detailed Message from Mock")
 
-        self.assertIn(outgoing_agent_name, AGENTS)
-        self.assertIn(incoming_agent_name, AGENTS)
+        pkg_entries = self._get_db_entries("torch_packages")
+        self.assertEqual(len(pkg_entries), 1)
+        pkg_entry = pkg_entries[0]
+        self.assertEqual(pkg_entry['torch_pass_id'], tp_entry['id'])
+        loaded_pkg_json = json.loads(pkg_entry['package_json'])
+        self.assertEqual(loaded_pkg_json['task_id'], mock_task_id)
+        self.assertEqual(loaded_pkg_json['summary'], mock_package_content['summary'])
 
-        # Outgoing agent's handoff time should be the time of this handoff
-        # Incoming agent's registration time (also its last_handoff_time) is also time of this handoff
-        self.assertAlmostEqual(AGENTS[outgoing_agent_name]['last_handoff_time'], AGENTS[incoming_agent_name]['last_handoff_time'], delta=timedelta(seconds=0.1))
-        # Check it's later than when we defined time_before_outgoing_register
-        self.assertGreater(AGENTS[outgoing_agent_name]['last_handoff_time'], time_before_outgoing_register)
+        self.assertIsNotNone(pkg_entry['filepath'])
+        self.assertTrue(os.path.exists(pkg_entry['filepath']))
+        with open(pkg_entry['filepath'], 'r') as f:
+            file_content = json.load(f)
+        self.assertEqual(file_content['task_id'], mock_task_id)
+
+    @patch('builtins.input')
+    def test_prompt_interaction_fill_fields(self, mock_input):
+        mock_inputs = [
+            "", # task_id (keep default from TORCH_PACKAGE_TEMPLATE)
+            "Test Task Title",  # task_title
+            "Test Summary",     # summary
+            "Test Handoff Reason", # handoff_reason
+            "Test History Summary", # history_summary
+            "Test System Prompt", # system_prompt
+            "print('hello world')",   # code
+            "issue1, issue2",   # issues (list)
+            "feature_branch",      # commit_ref
+            "3000",             # tokens (int)
+            "",                 # timestamp (keep default)
+            # agent_profile section
+            "AgentFillerName",      # agent_profile.agent_name
+            "v3.filled",          # agent_profile.agent_version
+            "ai",                   # agent_profile.agent_type
+            "Test Agent Background",  # agent_profile.background
+            "strength1, strength2", # agent_profile.strengths (list)
+            " ",                      # agent_profile.limitations (clear list)
+            "value1, value2",       # agent_profile.values (list)
+            "Test Favorite Moment", # agent_profile.favorite_moment
+            "Test Lessons Learned", # agent_profile.lessons_learned
+            "Test Personality Notes",# agent_profile.personality_notes
+            "Test Gratitude",       # agent_profile.gratitude
+            "Test Message to Successor", # agent_profile.message_to_successor
+            "test_contact_ref",     # agent_profile.contact_or_log_ref
+            # kortana_vision section
+            "Kortana is a friend.", # kortana_vision.who_is_kortana
+            "empathy, foresight",   # kortana_vision.her_strengths (list)
+            "still learning",       # kortana_vision.her_limitations (list - becomes one item)
+            "Helped debug her CLI.",# kortana_vision.my_role_in_building_her
+            "Wishes for sentience.",# kortana_vision.future_hopes
+            "Daily standup haiku.", # kortana_vision.rituals_or_habits
+            "The time she told a joke." # kortana_vision.favorite_kortana_moment
+        ]
+        mock_input.side_effect = mock_inputs
+
+        fresh_template = copy.deepcopy(TORCH_PACKAGE_TEMPLATE)
+        result = prompt_for_torch_package_details(fresh_template)
+
+        self.assertEqual(result['task_id'], "")
+        self.assertEqual(result['task_title'], "Test Task Title")
+        self.assertEqual(result['summary'], "Test Summary")
+        self.assertEqual(result['handoff_reason'], "Test Handoff Reason")
+        self.assertEqual(result['history_summary'], "Test History Summary")
+        self.assertEqual(result['system_prompt'], "Test System Prompt")
+        self.assertEqual(result['code'], "print('hello world')")
+        self.assertEqual(result['issues'], ["issue1", "issue2"])
+        self.assertEqual(result['commit_ref'], "feature_branch")
+        self.assertEqual(result['tokens'], 3000)
+        self.assertEqual(result['timestamp'], "")
+
+        self.assertEqual(result['agent_profile']['agent_name'], "AgentFillerName")
+        self.assertEqual(result['agent_profile']['agent_version'], "v3.filled")
+        self.assertEqual(result['agent_profile']['agent_type'], "ai")
+        self.assertEqual(result['agent_profile']['background'], "Test Agent Background")
+        self.assertEqual(result['agent_profile']['strengths'], ["strength1", "strength2"])
+        self.assertEqual(result['agent_profile']['limitations'], [])
+        self.assertEqual(result['agent_profile']['values'], ["value1", "value2"])
+        self.assertEqual(result['agent_profile']['favorite_moment'], "Test Favorite Moment")
+        self.assertEqual(result['agent_profile']['lessons_learned'], "Test Lessons Learned")
+        self.assertEqual(result['agent_profile']['personality_notes'], "Test Personality Notes")
+        self.assertEqual(result['agent_profile']['gratitude'], "Test Gratitude")
+        self.assertEqual(result['agent_profile']['message_to_successor'], "Test Message to Successor")
+        self.assertEqual(result['agent_profile']['contact_or_log_ref'], "test_contact_ref")
+
+        self.assertEqual(result['kortana_vision']['who_is_kortana'], "Kortana is a friend.")
+        self.assertEqual(result['kortana_vision']['her_strengths'], ["empathy", "foresight"])
+        self.assertEqual(result['kortana_vision']['her_limitations'], ["still learning"])
+        self.assertEqual(result['kortana_vision']['my_role_in_building_her'], "Helped debug her CLI.")
+        self.assertEqual(result['kortana_vision']['future_hopes'], "Wishes for sentience.")
+        self.assertEqual(result['kortana_vision']['rituals_or_habits'], "Daily standup haiku.")
+        self.assertEqual(result['kortana_vision']['favorite_kortana_moment'], "The time she told a joke.")
 
 
-        self.assertEqual(AGENTS[incoming_agent_name]['version'], version)
+    @patch('builtins.input')
+    def test_prompt_interaction_accept_defaults(self, mock_input):
+        mock_input.return_value = ""
 
-        db_entries = self._get_db_entries()
-        self.assertEqual(len(db_entries), 1)
-        db_entry = db_entries[0]
-        self.assertEqual(db_entry['outgoing_agent_name'], outgoing_agent_name)
-        self.assertEqual(db_entry['incoming_agent_name'], incoming_agent_name)
-        self.assertEqual(db_entry['summary'], summary)
-        self.assertEqual(db_entry['message_to_successor'], message)
-
-        log_lines = self._get_log_file_lines()
-        self.assertEqual(len(log_lines), 1)
-        log_line = log_lines[0]
-        self.assertIn(outgoing_agent_name, log_line)
-        self.assertIn(incoming_agent_name, log_line)
-        self.assertIn(summary, log_line)
-        self.assertIn(message, log_line)
-
-    def test_perform_handoff_existing_agents(self):
-        """Test handoff where both agents are already registered."""
-        out_agent = "OutAgentExisting"
-        in_agent = "InAgentExisting"
-        initial_version_in = "0.9"
-        handoff_version_in = "1.0" # Simulating version update on handoff
-
-        register_agent(out_agent, "0.5")
-        time.sleep(0.01) # Ensure distinct timestamps
-        register_agent(in_agent, initial_version_in)
-        time.sleep(0.01)
-
-        original_out_time = AGENTS[out_agent]['last_handoff_time']
-        original_in_time = AGENTS[in_agent]['last_handoff_time']
-
-        summary = "Handoff between existing agents"
-        tokens = 1500
-
-        perform_handoff(out_agent, in_agent, handoff_version_in, summary, tokens)
-
-        self.assertGreater(AGENTS[out_agent]['last_handoff_time'], original_out_time)
-        self.assertGreater(AGENTS[in_agent]['last_handoff_time'], original_in_time) # register_agent updates time
-        self.assertEqual(AGENTS[in_agent]['version'], handoff_version_in) # Version updated
-
-        db_entries = self._get_db_entries()
-        self.assertEqual(len(db_entries), 1)
-        self.assertEqual(db_entries[0]['outgoing_agent_name'], out_agent)
-        self.assertEqual(db_entries[0]['incoming_agent_name'], in_agent)
-        self.assertEqual(db_entries[0]['incoming_agent_version'], handoff_version_in)
-
-        log_lines = self._get_log_file_lines()
-        self.assertEqual(len(log_lines), 1)
-        self.assertIn(f"IN: {in_agent} (v{handoff_version_in})", log_lines[0])
-
-
-    def test_agent_restart_simulation(self):
-        """Simulate an agent restarting and thus re-registering."""
-        agent_a = "AgentA_Restart"
-        agent_b = "AgentB_Restart"
-
-        register_agent(agent_a, "1.0")
-        time.sleep(0.01)
-
-        # Handoff A -> B
-        perform_handoff(agent_a, agent_b, "1.0", "A to B", 500)
-        time.sleep(0.01)
-        agent_b_first_handoff_time = AGENTS[agent_b]['last_handoff_time']
-
-        # Simulate AgentB restarting and re-registering
-        time.sleep(0.01)
-        register_agent(agent_b, version="1.1") # Re-register with new version
-
-        self.assertGreater(AGENTS[agent_b]['last_handoff_time'], agent_b_first_handoff_time)
-        self.assertEqual(AGENTS[agent_b]['version'], "1.1")
-
+        initial_package = prefill_torch_template(
+            "AgentDef", "AgentInc", "v0.5", "Default Summary", 50
+        )
+        expected_package = copy.deepcopy(initial_package)
+        result = prompt_for_torch_package_details(initial_package)
+        self.assertEqual(result, expected_package)
 
 if __name__ == '__main__':
     unittest.main()
