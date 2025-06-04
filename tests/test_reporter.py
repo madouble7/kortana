@@ -263,7 +263,9 @@ class TestSummaryReporter:
             "project_status": (
                 "STABLE"
                 if broken_modules == 0 and issue_modules == 0
-                else "ISSUES" if broken_modules == 0 else "BROKEN"
+                else "ISSUES"
+                if broken_modules == 0
+                else "BROKEN"
             ),
             "modules": {
                 "total": total_modules,

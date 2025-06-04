@@ -3,10 +3,11 @@ XAI (Grok) Client Implementation for Kor'tana
 Specialized for autonomous development and reasoning tasks
 """
 
+import json
 import logging
 import os
-import json
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
+
 from .base_client import BaseLLMClient
 
 logger = logging.getLogger(__name__)
@@ -22,13 +23,15 @@ class XAIClient(BaseLLMClient):
         self, api_key: Optional[str] = None, model_name: str = "grok-3-mini", **kwargs
     ):
         """
-        Initialize XAI client
-
-        Args:
+        Initialize XAI client        Args:
             api_key: XAI API key (defaults to XAI_API_KEY env var)
             model_name: Model to use (defaults to grok-3-mini)
         """
         self.api_key = api_key or os.getenv("XAI_API_KEY")
+        if not self.api_key:
+            raise ValueError(
+                "XAI API key is required. Set XAI_API_KEY environment variable or pass api_key parameter."
+            )
         self.model_name = model_name
         self.base_url = "https://api.x.ai/v1"
         self.default_params = kwargs

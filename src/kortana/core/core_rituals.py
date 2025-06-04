@@ -1,10 +1,16 @@
+"""Core rituals module for Kortana's operational procedures.
+
+This module implements core rituals and operational procedures
+that govern Kortana's autonomous behavior and decision-making.
+"""
+
 # src/core_rituals.py
 
 import datetime
 
 # Attempt to import the standard timestamp utility
 try:
-    from src.utils.timestamp_utils import get_iso_timestamp as get_timestamp
+    from ..utils.timestamp_utils import get_iso_timestamp as get_timestamp
 
     _timestamp_source = "standard"
 except ImportError:

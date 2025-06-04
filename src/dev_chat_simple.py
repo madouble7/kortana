@@ -1,15 +1,29 @@
-from datetime import datetime
-from kortana.core.brain import ChatEngine
+"""Simple development chat interface for Kortana.
+
+This module provides a terminal-based chat interface for interacting
+with Kortana's brain engine during development and testing.
+"""
+
 import json
+from datetime import datetime
+
+from kortana.core.brain import ChatEngine
 
 
 class KortanaDevChat:
+    """Simple terminal-based chat interface for Kortana development.
+
+    This class provides a command-line interface for testing and
+    interacting with Kortana's core chat engine.
+    """
+
     def __init__(self):
         self.engine = ChatEngine()
         self.history = []  # List of dicts: {role, content, timestamp}
         self.running = True
 
-    def print_intro(self):
+    def print_intro(self) -> None:
+        """Print the introduction message and available commands."""
         print(
             """
 Welcome to Kor'tana Dev Chat (Simple Terminal Edition)
@@ -25,14 +39,16 @@ Commands:
 """
         )
 
-    def print_status(self):
+    def print_status(self) -> None:
+        """Print the current session status and statistics."""
         print("\nSession status:")
         print(f"  Messages exchanged: {len(self.history)}")
         print(f"  Current mode: {self.engine.current_mode}")
         print(f"  Session ID: {getattr(self.engine, 'session_id', 'N/A')}")
         print()
 
-    def export_session(self):
+    def export_session(self) -> None:
+        """Export the current chat session to a JSON file."""
         session_id = getattr(self.engine, "session_id", "N/A")
         export_time = datetime.now().strftime("%Y%m%d_%H%M%S")
         export_data = {
@@ -48,7 +64,8 @@ Commands:
         except Exception as e:
             print(f"[Error exporting session: {e}]\n")
 
-    def run(self):
+    def run(self) -> None:
+        """Start the interactive chat session."""
         self.print_intro()
         while self.running:
             try:

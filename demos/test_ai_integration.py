@@ -17,6 +17,7 @@ sys.path.append(str(Path(__file__).parent))
 
 from relays.relay import EnhancedKortanaRelay
 
+
 class AITestSuite:
     """Comprehensive AI testing for Gemini 2.0 Flash integration"""
 
@@ -27,7 +28,7 @@ class AITestSuite:
             "total_input": 0,
             "total_output": 0,
             "summarizations": 0,
-            "context_packages": 0
+            "context_packages": 0,
         }
 
     def log_test(self, test_name: str, status: str, details: str = "", tokens: int = 0):
@@ -37,7 +38,8 @@ class AITestSuite:
             "status": status,
             "details": details,
             "tokens": tokens,
-            "timestamp": datetime.now().isoformat()        }
+            "timestamp": datetime.now().isoformat(),
+        }
         self.test_results.append(result)
 
         status_emoji = {"PASS": "[PASS]", "FAIL": "[FAIL]", "WARN": "[WARN]"}
@@ -59,9 +61,15 @@ class AITestSuite:
                 response = self.relay.model.generate_content(test_prompt)
 
                 if "API connection successful" in response.text:
-                    self.log_test("API Connection", "PASS", "Gemini responding correctly")
+                    self.log_test(
+                        "API Connection", "PASS", "Gemini responding correctly"
+                    )
                 else:
-                    self.log_test("API Connection", "WARN", f"Unexpected response: {response.text[:50]}")
+                    self.log_test(
+                        "API Connection",
+                        "WARN",
+                        f"Unexpected response: {response.text[:50]}",
+                    )
 
             except Exception as e:
                 self.log_test("API Connection", "FAIL", f"API error: {e}")
@@ -75,13 +83,22 @@ class AITestSuite:
 
         test_texts = [
             ("Short text", "Hello world"),
-            ("Medium text", "This is a longer text with multiple sentences. It should count more tokens than the short text."),
-            ("Long text", "This is a very long text that spans multiple sentences and includes various types of content. " * 10)
+            (
+                "Medium text",
+                "This is a longer text with multiple sentences. It should count more tokens than the short text.",
+            ),
+            (
+                "Long text",
+                "This is a very long text that spans multiple sentences and includes various types of content. "
+                * 10,
+            ),
         ]
 
         for name, text in test_texts:
             tokens = self.relay.count_tokens(text)
-            self.log_test(f"Token Count - {name}", "PASS", f"Text: {len(text)} chars", tokens)
+            self.log_test(
+                f"Token Count - {name}", "PASS", f"Text: {len(text)} chars", tokens
+            )
             self.token_usage["total_input"] += tokens
 
     def test_basic_summarization(self):
@@ -108,7 +125,11 @@ class AITestSuite:
                 input_tokens = self.relay.count_tokens(test_history)
                 output_tokens = self.relay.count_tokens(summary)
 
-                self.log_test("Basic Summarization", "PASS", f"Input: {input_tokens}→Output: {output_tokens} tokens")
+                self.log_test(
+                    "Basic Summarization",
+                    "PASS",
+                    f"Input: {input_tokens}→Output: {output_tokens} tokens",
+                )
                 self.token_usage["total_input"] += input_tokens
                 self.token_usage["total_output"] += output_tokens
                 self.token_usage["summarizations"] += 1
@@ -127,7 +148,7 @@ class AITestSuite:
             "id": f"ai_test_{int(time.time())}",
             "code": "def authenticate(username, password):\n    return bcrypt.checkpw(password, hash)",
             "issues": ["Add rate limiting", "Implement 2FA"],
-            "commit_ref": "abc123"
+            "commit_ref": "abc123",
         }
 
         test_summary = "Authentication module updated with bcrypt hashing and security improvements. Tests passing, ready for deployment."
@@ -138,10 +159,15 @@ class AITestSuite:
                 summary=test_summary,
                 code=test_task["code"],
                 issues=test_task["issues"],
-                commit_ref=test_task["commit_ref"]
+                commit_ref=test_task["commit_ref"],
             )
 
-            self.log_test("Context Package", "PASS", f"Package saved: {test_task['id']}", tokens_saved)
+            self.log_test(
+                "Context Package",
+                "PASS",
+                f"Package saved: {test_task['id']}",
+                tokens_saved,
+            )
             self.token_usage["context_packages"] += 1
 
         except Exception as e:
@@ -173,7 +199,9 @@ class AITestSuite:
         output_large, result_large = self.relay.route_task(large_task, large_history)
 
         if result_large != large_history:
-            self.log_test("Above Threshold", "PASS", "Summarization triggered correctly")
+            self.log_test(
+                "Above Threshold", "PASS", "Summarization triggered correctly"
+            )
         else:
             self.log_test("Above Threshold", "FAIL", "Summarization not triggered")
 
@@ -194,12 +222,18 @@ class AITestSuite:
             context_count = cursor.fetchone()[0]
 
             # Check for our test packages
-            cursor.execute("SELECT COUNT(*) FROM context WHERE task_id LIKE 'ai_test_%'")
+            cursor.execute(
+                "SELECT COUNT(*) FROM context WHERE task_id LIKE 'ai_test_%'"
+            )
             test_count = cursor.fetchone()[0]
 
             conn.close()
 
-            self.log_test("Database Read", "PASS", f"Total packages: {context_count}, Test packages: {test_count}")
+            self.log_test(
+                "Database Read",
+                "PASS",
+                f"Total packages: {context_count}, Test packages: {test_count}",
+            )
 
         except Exception as e:
             self.log_test("Database Read", "FAIL", f"Database error: {e}")
@@ -210,9 +244,15 @@ class AITestSuite:
         print("=" * 26)
 
         agents = self.relay.agents
-        active_count = len([a for a in agents.values() if a.get("status") == "discovered"])
+        active_count = len(
+            [a for a in agents.values() if a.get("status") == "discovered"]
+        )
 
-        self.log_test("Agent Discovery", "PASS", f"Found {len(agents)} agents, {active_count} active")
+        self.log_test(
+            "Agent Discovery",
+            "PASS",
+            f"Found {len(agents)} agents, {active_count} active",
+        )
 
         for agent_name, agent_info in agents.items():
             log_file = agent_info.get("log")
@@ -227,8 +267,14 @@ class AITestSuite:
         print("[TEST] KOR'TANA AI TEST SUITE - GEMINI 2.0 FLASH")
         print("=" * 50)
         print(f"[TIME] Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        print(f"[KEY] API Key: {self.relay.gemini_api_key[:15]}..." if self.relay.gemini_api_key else "No API key")
-        print(f"[MODEL] Model: {'Gemini 2.0 Flash' if self.relay.model else 'Mock mode'}")
+        print(
+            f"[KEY] API Key: {self.relay.gemini_api_key[:15]}..."
+            if self.relay.gemini_api_key
+            else "No API key"
+        )
+        print(
+            f"[MODEL] Model: {'Gemini 2.0 Flash' if self.relay.model else 'Mock mode'}"
+        )
 
         # Run all tests
         self.test_api_connection()
@@ -253,7 +299,9 @@ class AITestSuite:
         failed = len([r for r in self.test_results if r["status"] == "FAIL"])
         total = len(self.test_results)
 
-        print(f"📊 SUMMARY: {passed}/{total} passed, {warned} warnings, {failed} failures")
+        print(
+            f"📊 SUMMARY: {passed}/{total} passed, {warned} warnings, {failed} failures"
+        )
         print("🔢 TOKEN USAGE:")
         print(f"   Input Tokens: {self.token_usage['total_input']:,}")
         print(f"   Output Tokens: {self.token_usage['total_output']:,}")
@@ -273,26 +321,32 @@ class AITestSuite:
 
         # Save detailed results
         report_file = Path(__file__).parent / "ai_test_results.json"
-        with open(report_file, 'w') as f:
-            json.dump({
-                "summary": {
-                    "passed": passed,
-                    "warned": warned,
-                    "failed": failed,
-                    "total": total
+        with open(report_file, "w") as f:
+            json.dump(
+                {
+                    "summary": {
+                        "passed": passed,
+                        "warned": warned,
+                        "failed": failed,
+                        "total": total,
+                    },
+                    "token_usage": self.token_usage,
+                    "detailed_results": self.test_results,
+                    "timestamp": datetime.now().isoformat(),
                 },
-                "token_usage": self.token_usage,
-                "detailed_results": self.test_results,
-                "timestamp": datetime.now().isoformat()
-            }, f, indent=2)
+                f,
+                indent=2,
+            )
 
         print(f"\n📄 Detailed results saved to: {report_file}")
         print("=" * 60)
+
 
 def main():
     """Main test runner"""
     test_suite = AITestSuite()
     test_suite.run_full_test_suite()
+
 
 if __name__ == "__main__":
     main()

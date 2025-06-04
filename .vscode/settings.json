@@ -1,0 +1,37 @@
+{
+    "python.defaultInterpreterPath": "C:\\\\project-kortana\\\\venv311\\\\Scripts\\\\python.exe",
+    "python.terminal.activateEnvironment": true,
+    "python.terminal.activateEnvInCurrentTerminal": true,
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/*.pyc": true,
+        "**/.pytest_cache": true,
+        "**/venv311": false,
+        "**/.venv": false
+    },
+    "search.exclude": {
+        "**/venv311": false,
+        "**/.venv": false
+    },
+    "python.analysis.extraPaths": [
+        ".",
+        "src"
+    ],
+    "python.testing.pytestEnabled": true,
+    "python.testing.pytestPath": "pytest",
+    "python.testing.pytestArgs": [
+        "tests"
+    ],
+    "terminal.integrated.profiles.windows": {
+        "Python venv311": {
+            "path": "cmd.exe",
+            "args": [
+                "/k",
+                "C:\\project-kortana\\venv311\\Scripts\\activate.bat && set PYTHONPATH=C:\\project-kortana;C:\\project-kortana\\src"
+            ],
+            "icon": "snake"
+        }
+    },
+    "terminal.integrated.defaultProfile.windows": "Python venv311",
+    "python.envFile": "${workspaceFolder}/.env"
+}

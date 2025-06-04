@@ -1,13 +1,18 @@
+"""Text analysis utilities for Kortana.
+
+This module provides text processing and analysis utilities
+for content evaluation and linguistic processing.
+"""
 # C:\kortana\src\utils.py
 # Purpose: Shared utility functions for Kor'tana project.
 # Role: Reduces code duplication and provides common helpers for
 #       timestamp formatting, configuration validation, file operations, etc.
 
-from datetime import datetime, timezone  # Added timezone for consistency
-import os
 import json
 import logging  # Added for logging within utils
-from typing import Optional, List, Dict, Any
+import os
+from datetime import datetime, timezone  # Added timezone for consistency
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 

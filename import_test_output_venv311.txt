@@ -1,0 +1,20 @@
+C:\project-kortana\venv311\Lib\site-packages\pydantic\_internal\_fields.py:132: UserWarning: Field "model_mapping" in AgentTypeConfig has conflict with protected namespace "model_".
+
+You may be able to resolve this warning by setting `model_config['protected_namespaces'] = ()`.
+  warnings.warn(
+2025-06-03 23:53:00,288 - INFO - src.kortana.agents.autonomous_agents - [FLASH_DIAG] sys.path at src.kortana.agents.autonomous_agents import: ['C:\\project-kortana', 'C:\\Program Files\\Python311\\python311.zip', 'C:\\Program Files\\Python311\\DLLs', 'C:\\Program Files\\Python311\\Lib', 'C:\\Program Files\\Python311', 'C:\\project-kortana\\venv311', 'C:\\project-kortana\\venv311\\Lib\\site-packages', 'C:\\project-kortana\\src']
+2025-06-03 23:53:00,288 - INFO - src.kortana.agents.autonomous_agents - [FLASH_DIAG] CWD at src.kortana.agents.autonomous_agents import: C:\project-kortana
+--- sys.path ---
+C:\project-kortana
+C:\Program Files\Python311\python311.zip
+C:\Program Files\Python311\DLLs
+C:\Program Files\Python311\Lib
+C:\Program Files\Python311
+C:\project-kortana\venv311
+C:\project-kortana\venv311\Lib\site-packages
+C:\project-kortana\src
+--- end sys.path ---
+Error importing kortana modules: cannot import name 'Memory' from 'src.kortana.memory.memory' (C:\project-kortana\src\kortana\memory\memory.py)
+Error importing kortana modules: cannot import name 'Brain' from 'kortana.core.brain' (C:\project-kortana\src\kortana\core\brain.py)
+
+Successfully imported load_config from kortana.config

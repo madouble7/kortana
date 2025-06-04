@@ -46,7 +46,7 @@ def main_app():
         # Simple interactive loop
         while True:
             user_input = input("kor'tana> ").strip()
-            if user_input.lower() in ['exit', 'quit']:
+            if user_input.lower() in ["exit", "quit"]:
                 break
             response = brain.think(user_input)
             print(f"Response: {response}")

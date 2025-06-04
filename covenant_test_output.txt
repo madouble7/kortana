@@ -1,0 +1,16 @@
+
+=== COVENANT RULES TEST ===
+Loading environment configuration: c:\kortana\config\development.yaml
+
+Covenant Rules:
+* Has covenant_rules attribute: True
+* covenant_rules is None: True
+* covenant_rules type: <class 'NoneType'>
+* covenant_rules empty: N/A (None)
+
+=== CONFIG PATHS ===
+covenant.yaml path: config/covenant.yaml
+Checking config\config\covenant.yaml (exists: False)
+Checking config\covenant.yaml (exists: True)
+Found covenant at: config\covenant.yaml
+Error directly accessing covenant file: [Errno 13] Permission denied: 'config\\covenant.yaml'

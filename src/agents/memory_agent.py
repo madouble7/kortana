@@ -33,7 +33,7 @@ class MemoryAgent:
         """
         # You can still use your LLM for summarization if desired, or just
         # chunk
-        chunks = [text[i: i + 1500] for i in range(0, len(text), 1500)]
+        chunks = [text[i : i + 1500] for i in range(0, len(text), 1500)]
         plans = []
         for chunk in chunks:
             # If you want to use an LLM for summary/meta, add that logic here

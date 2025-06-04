@@ -1,9 +1,13 @@
 import unittest
-from src.utils.text_analysis import (count_tokens, summarize_text,
-                                   extract_keywords, analyze_sentiment)
+from src.utils.text_analysis import (
+    count_tokens,
+    summarize_text,
+    extract_keywords,
+    analyze_sentiment,
+)
+
 
 class TestTextAnalysisUtils(unittest.TestCase):
-
     def test_count_tokens(self):
         """Test token counting."""
         text = "This is a test sentence."
@@ -48,8 +52,8 @@ class TestTextAnalysisUtils(unittest.TestCase):
         text = "This is a great day!"
         sentiment = analyze_sentiment(text)
         self.assertIsInstance(sentiment, dict)
-        self.assertIn('polarity', sentiment)
-        self.assertIn('subjectivity', sentiment)
+        self.assertIn("polarity", sentiment)
+        self.assertIn("subjectivity", sentiment)
 
     def test_analyze_sentiment_empty_string(self):
         """Test sentiment analysis with an empty string."""
@@ -57,5 +61,6 @@ class TestTextAnalysisUtils(unittest.TestCase):
         sentiment = analyze_sentiment(text)
         self.assertIsNotNone(sentiment)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

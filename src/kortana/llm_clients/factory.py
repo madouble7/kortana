@@ -7,8 +7,8 @@ from typing import Any, Dict, Optional
 from .base_client import BaseLLMClient
 from .genai_client import GoogleGenAIClient
 from .google_client import (
-    GoogleGeminiClient,
-)  # Changed to use the more robust GoogleGeminiClient
+    GoogleGeminiClient,  # Changed to use the more robust GoogleGeminiClient
+)
 from .openai_client import OpenAIClient
 from .openrouter_client import OpenRouterClient
 from .xai_client import XAIClient
@@ -83,6 +83,8 @@ class LLMClientFactory:
                 )
                 return None
 
+            client: Optional[BaseLLMClient] = None
+
             if client_class == OpenAIClient:
                 client = OpenAIClient(
                     api_key=api_key,
@@ -116,6 +118,10 @@ class LLMClientFactory:
                 logging.error(
                     f"Instantiating unknown client class for model {model_id}: {client_class.__name__}"
                 )
+                return None
+
+            if client is None:
+                logging.error(f"Failed to instantiate client for model {model_id}")
                 return None
 
             logging.info(f"Client initialized: {model_id} (provider: {provider})")
@@ -229,3 +235,22 @@ class LLMClientFactory:
 
         logger.info("All essential models properly configured for Sacred Covenant")
         return True
+
+    @staticmethod
+    def get_client(
+        model_id: str, models_config: Optional[Dict[str, Any]] = None
+    ) -> Optional[BaseLLMClient]:
+        """Get an LLM client for a specific model ID (backward compatibility method)."""
+        if models_config is None:
+            # Try to load default config - this is a fallback approach
+            try:
+                from kortana.config import load_config
+
+                config = load_config()
+                # Assume models_config is part of the config
+                models_config = getattr(config, "models", {})
+            except Exception as e:
+                logger.error(f"Failed to load models config: {e}")
+                return None
+
+        return LLMClientFactory.create_client(model_id, models_config)

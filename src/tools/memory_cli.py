@@ -5,15 +5,16 @@ Kor'tana Memory CLI Tool
 A command line interface for adding entries to project memory.
 """
 
+import argparse
+import os
+import sys
+
 from kortana.core.memory import (
-    save_decision,
     save_context_summary,
+    save_decision,
     save_implementation_note,
     save_project_insight,
 )
-import sys
-import os
-import argparse
 
 # Add the parent directory (src/) to sys.path to allow importing from core
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "src"))
@@ -21,7 +22,12 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 # Import the memory helper functions
 
 
-def main():
+def main() -> None:
+    """Main entry point for the memory CLI tool.
+
+    Provides command-line interface for memory management operations
+    including search, add, and status checking.
+    """
     parser = argparse.ArgumentParser(
         description="Kor'tana Project Memory CLI tool",
         formatter_class=argparse.RawTextHelpFormatter,  # Preserve newlines in help

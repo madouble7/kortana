@@ -1,0 +1,11 @@
+--- Starting check_covenant_rules.py ---
+Successfully imported load_config from config module.
+Loading environment configuration: c:\kortana\config\development.yaml
+load_config() executed. Type of settings object: <class 'config.schema.KortanaConfig'>
+
+--- Checking for covenant_rules attribute ---
+SUCCESS: Attribute 'covenant_rules' EXISTS on the settings object.
+Type of settings.covenant_rules: <class 'NoneType'>
+Content of settings.covenant_rules:
+None
+--- End of check_covenant_rules.py ---

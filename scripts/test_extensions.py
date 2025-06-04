@@ -7,10 +7,9 @@ Tests all configured extensions with actual API calls to verify functionality.
 import os
 import sys
 import json
-import asyncio
-import aiohttp
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Tuple
+
 
 class ExtensionTester:
     """Tests VS Code extensions for Kor'tana development."""
@@ -33,8 +32,10 @@ class ExtensionTester:
             # Test with a minimal request
             response = client.chat.completions.create(
                 model="gpt-4o-mini",  # Use cheaper model for testing
-                messages=[{"role": "user", "content": "Hello, this is a connection test."}],
-                max_tokens=10
+                messages=[
+                    {"role": "user", "content": "Hello, this is a connection test."}
+                ],
+                max_tokens=10,
             )
 
             return True, f"OpenAI connection successful. Model: {response.model}"
@@ -56,13 +57,16 @@ class ExtensionTester:
             genai.configure(api_key=api_key)
 
             # Test with a minimal request
-            model = genai.GenerativeModel('gemini-pro')
+            model = genai.GenerativeModel("gemini-pro")
             response = model.generate_content("Hello, this is a connection test.")
 
             return True, "Google Gemini connection successful"
 
         except ImportError:
-            return False, "Google AI package not installed (pip install google-generativeai)"
+            return (
+                False,
+                "Google AI package not installed (pip install google-generativeai)",
+            )
         except Exception as e:
             return False, f"Google Gemini connection failed: {str(e)}"
 
@@ -74,7 +78,7 @@ class ExtensionTester:
             if not config_file.exists():
                 return False, "Continue config file not found"
 
-            with open(config_file, 'r') as f:
+            with open(config_file, "r") as f:
                 config = json.load(f)
 
             # Check if models are configured
@@ -88,9 +92,15 @@ class ExtensionTester:
             env_var_usage = any("${" in str(model) for model in models)
 
             if env_var_usage:
-                return True, f"Continue configured with {model_count} models using environment variables"
+                return (
+                    True,
+                    f"Continue configured with {model_count} models using environment variables",
+                )
             else:
-                return False, "Continue models not configured to use environment variables"
+                return (
+                    False,
+                    "Continue models not configured to use environment variables",
+                )
 
         except Exception as e:
             return False, f"Continue config test failed: {str(e)}"
@@ -111,7 +121,7 @@ class ExtensionTester:
             if missing_paths:
                 return False, f"PYTHONPATH missing: {', '.join(missing_paths)}"
 
-            return True, f"Python environment configured correctly"
+            return True, "Python environment configured correctly"
 
         except Exception as e:
             return False, f"Python environment test failed: {str(e)}"
@@ -124,11 +134,15 @@ class ExtensionTester:
             if not tasks_file.exists():
                 return False, "VS Code tasks.json not found"
 
-            with open(tasks_file, 'r') as f:
+            with open(tasks_file, "r") as f:
                 content = f.read()
                 # Remove comments for parsing
-                lines = [line for line in content.split('\n') if not line.strip().startswith('//')]
-                clean_content = '\n'.join(lines)
+                lines = [
+                    line
+                    for line in content.split("\n")
+                    if not line.strip().startswith("//")
+                ]
+                clean_content = "\n".join(lines)
                 tasks_config = json.loads(clean_content)
 
             if "tasks" not in tasks_config:
@@ -158,7 +172,7 @@ class ExtensionTester:
             ("🔑 Google Gemini API Connection", self.test_google_connection),
             ("🔧 Continue AI Configuration", self.test_continue_config),
             ("🐍 Python Environment", self.test_python_environment),
-            ("⚙️  VS Code Tasks", self.test_vscode_tasks)
+            ("⚙️  VS Code Tasks", self.test_vscode_tasks),
         ]
 
         results = []
@@ -227,11 +241,11 @@ def main():
     # Load environment variables if .env exists
     env_file = Path(".env")
     if env_file.exists():
-        with open(env_file, 'r') as f:
+        with open(env_file, "r") as f:
             for line in f:
                 line = line.strip()
-                if line and not line.startswith('#') and '=' in line:
-                    key, value = line.split('=', 1)
+                if line and not line.startswith("#") and "=" in line:
+                    key, value = line.split("=", 1)
                     os.environ[key.strip()] = value.strip()
 
     tester = ExtensionTester()

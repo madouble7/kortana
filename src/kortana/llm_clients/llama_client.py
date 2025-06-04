@@ -1,4 +1,8 @@
-# llama_client.py
+"""
+Llama model client for Kortana.
+This module provides integration with Llama-based language models.
+"""
+
 from .base_client import BaseLLMClient
 
 

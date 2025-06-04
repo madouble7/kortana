@@ -1,3 +1,9 @@
+"""Timestamp utilities for Kortana.
+
+This module provides timestamp formatting and time-related
+utilities for logging and data management.
+"""
+
 import datetime
 
 

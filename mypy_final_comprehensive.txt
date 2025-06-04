@@ -1,0 +1,2 @@
+src\kortana\llm_clients\openrouter_client.py:208: error: unmatched ')'  [syntax]
+Found 1 error in 1 file (errors prevented further checking)

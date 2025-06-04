@@ -1,22 +1,28 @@
-from .brain import ChatEngine
-import logging
+"""
+FastAPI server for Kor'tana chat interface and API endpoints.
+"""
+
 import json
-from fastapi import FastAPI, HTTPException, Request, Depends, Form, WebSocket
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import Optional
-import uvicorn
+import logging
 import os
 import sys
 from datetime import datetime
-from sse_starlette.sse import EventSourceResponse
-from fastapi.responses import JSONResponse
+from typing import Optional
+
 import bleach
+import uvicorn
+from fastapi import Depends, FastAPI, Form, HTTPException, Request, WebSocket
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi_csrf_protect import CsrfProtect
-from slowapi import Limiter
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
+from pydantic import BaseModel
 from pydantic_settings import BaseSettings
+from slowapi import Limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
+from sse_starlette.sse import EventSourceResponse
+
+from .brain import ChatEngine
 
 # Configure basic logging
 logging.basicConfig(
@@ -45,26 +51,62 @@ engine = ChatEngine()
 
 
 class MessageRequest(BaseModel):
+    """Model for incoming chat messages.
+
+    Attributes:
+        message (str): The message content from the user.
+        manual_mode (Optional[str]): Optional manual mode for processing.
+    """
+
     message: str
     manual_mode: Optional[str] = None
 
 
 class MessageResponse(BaseModel):
+    """Model for outgoing chat responses.
+
+    Attributes:
+        response (str): The response content from the assistant.
+        mode (str): The mode used for generating the response.
+    """
+
     response: str
     mode: str
 
 
 class CsrfSettings(BaseSettings):
+    """Settings for CSRF protection.
+
+    Attributes:
+        secret_key (str): The secret key used for CSRF protection.
+    """
+
     secret_key: str = os.getenv("CSRF_SECRET_KEY", "supersecret")
 
 
 @CsrfProtect.load_config
-def get_csrf_config():
+def get_csrf_config() -> CsrfSettings:
+    """Load CSRF configuration settings.
+
+    Returns:
+        CsrfSettings: The CSRF settings object.
+    """
     return CsrfSettings()
 
 
 @app.post("/chat", response_model=MessageResponse)
-async def chat_endpoint(request: Request, csrf_protect: CsrfProtect = Depends()):
+async def chat_endpoint(
+    request: Request, csrf_protect: CsrfProtect = Depends()
+) -> MessageResponse:
+    """Endpoint for processing chat messages.
+
+    Args:
+        request (Request): The incoming HTTP request.
+        csrf_protect (CsrfProtect): CSRF protection dependency.
+
+    Returns:
+        MessageResponse: The response model containing the assistant's reply and mode.
+    """
     await csrf_protect.validate_csrf(request)
     try:
         request_body_bytes = await request.body()
@@ -94,6 +136,15 @@ async def chat_endpoint(request: Request, csrf_protect: CsrfProtect = Depends())
 # Alias for LobeChat or alternate frontend
 @app.post("/kortana-chat")
 async def kortana_chat_alias(request: Request, csrf_protect: CsrfProtect = Depends()):
+    """Alias endpoint for processing chat messages.
+
+    Args:
+        request (Request): The incoming HTTP request.
+        csrf_protect (CsrfProtect): CSRF protection dependency.
+
+    Returns:
+        dict: The response payload containing the assistant's reply and mode.
+    """
     await csrf_protect.validate_csrf(request)
     try:
         request_body_bytes = await request.body()
@@ -129,17 +180,35 @@ async def kortana_chat_alias(request: Request, csrf_protect: CsrfProtect = Depen
 
 
 @app.get("/health")
-def health_check():
+def health_check() -> dict:
+    """Health check endpoint.
+
+    Returns:
+        dict: A dictionary indicating the server status.
+    """
     return {"status": "ok"}
 
 
 @app.get("/mode")
-def get_mode():
+def get_mode() -> dict:
+    """Get the current mode of the chat engine.
+
+    Returns:
+        dict: A dictionary containing the current mode.
+    """
     return {"mode": engine.current_mode}
 
 
 @app.post("/mode")
-def set_mode(data: dict):
+def set_mode(data: dict) -> dict:
+    """Set the mode of the chat engine.
+
+    Args:
+        data (dict): A dictionary containing the mode to set.
+
+    Returns:
+        dict: A dictionary indicating the status and current mode.
+    """
     mode = data.get("mode")
     if mode:
         engine.set_mode(mode)
@@ -148,7 +217,15 @@ def set_mode(data: dict):
 
 
 @app.post("/v1/chat/completions")
-async def openai_compatible_chat(request: Request):
+async def openai_compatible_chat(request: Request) -> dict:
+    """OpenAI-compatible chat endpoint.
+
+    Args:
+        request (Request): The incoming HTTP request.
+
+    Returns:
+        dict: A dictionary containing the chat completion response.
+    """
     data = await request.json()
     messages = data.get("messages", [])
     user_message = ""
@@ -175,10 +252,14 @@ async def openai_compatible_chat(request: Request):
 
 
 @app.get("/chat")
-async def chat_sse(topic: str):
-    """
-    Basic SSE stub for LobeChat.
-    Listens for GET /chat?topic=<id> and streams back events.
+async def chat_sse(topic: str) -> EventSourceResponse:
+    """Basic SSE stub for LobeChat.
+
+    Args:
+        topic (str): The topic ID for the SSE connection.
+
+    Returns:
+        EventSourceResponse: The SSE response object.
     """
 
     async def event_generator():
@@ -194,7 +275,12 @@ async def chat_sse(topic: str):
 
 
 @app.post("/trigger-ade")
-async def trigger_ade():
+async def trigger_ade() -> JSONResponse:
+    """Trigger the ADE cycle.
+
+    Returns:
+        JSONResponse: A JSON response indicating the status of the operation.
+    """
     try:
         engine._run_daily_planning_cycle()
         return JSONResponse(content={"status": "ADE cycle triggered"}, status_code=200)
@@ -217,7 +303,16 @@ app.add_exception_handler(
 
 @app.post("/login")
 @limiter.limit("5/minute")
-async def login(username: str = Form(...), password: str = Form(...)):
+async def login(username: str = Form(...), password: str = Form(...)) -> JSONResponse:
+    """Login endpoint with rate limiting.
+
+    Args:
+        username (str): The username for authentication.
+        password (str): The password for authentication.
+
+    Returns:
+        JSONResponse: A JSON response indicating the login status.
+    """
     # Dummy authentication logic (replace with real logic in production)
     if username == "admin" and password == "secret":
         import uuid
@@ -239,6 +334,11 @@ async def login(username: str = Form(...), password: str = Form(...)):
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
+    """WebSocket endpoint for real-time communication.
+
+    Args:
+        websocket (WebSocket): The WebSocket connection object.
+    """
     await websocket.accept()
     try:
         while True:

@@ -1,1 +1,5 @@
-# Empty file to mark tests/ as a Python package
+"""
+Test Package
+
+Contains unit and integration tests for the Kor'tana project.
+"""

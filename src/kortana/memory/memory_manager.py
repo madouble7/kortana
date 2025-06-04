@@ -1,234 +1,198 @@
+"""
+Memory Manager (Pinecone)
+
+This module provides a memory system for Kor'tana using Pinecone as the vector database.
+"""
+
 import json
-import os
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import Any, Dict, List, Optional
-
-try:
-    from langchain_openai import OpenAIEmbeddings
-except ImportError:
-    import warnings
-
-    from langchain_community.embeddings import OpenAIEmbeddings
-
-    warnings.warn(
-        "OpenAIEmbeddings from langchain_community is deprecated. Please install langchain-openai."
-    )
-try:
-    from langchain_pinecone import Pinecone
-except ImportError:
-    import warnings
-
-    from langchain_community.vectorstores import Pinecone
-
-    warnings.warn(
-        "Pinecone from langchain_community is deprecated. Please install langchain-pinecone."
-    )
 import logging
+from typing import Any, Dict, List
 
-from pinecone import Pinecone as PineconeClient
-from pinecone import ServerlessSpec
+# Assuming these imports exist
+import pinecone
+
+from kortana.config.schema import KortanaConfig
+
+from .memory import MemoryEntry
 
 logger = logging.getLogger(__name__)
 
-# Adjust the MEMORY_JOURNAL_PATH to be relative to the project root
-MEMORY_JOURNAL_PATH = (
-    Path(__file__).parent.parent / "data" / "memory.jsonl"
-)  # Corrected path
-
-# Ensure the data directory exists
-os.makedirs(MEMORY_JOURNAL_PATH.parent, exist_ok=True)
-
 
 class MemoryManager:
-    def __init__(self):
-        self.pc = PineconeClient(api_key=os.getenv("PINECONE_API_KEY"))
-        # Use the correct region for your Pinecone project (free plan: us-east1-gcp)
-        # Use the existing 'quickstart' index to unblock development
-        index_name = "quickstart"  # Change to your preferred index name later
-        region = "us-east1-gcp"
-        try:
-            # Check if index exists, create if missing
-            if index_name not in [idx.name for idx in self.pc.list_indexes()]:
-                self.pc.create_index(
-                    name=index_name,
-                    dimension=1536,  # adjust if your embedding size is different
-                    metric="euclidean",
-                    spec=ServerlessSpec(cloud="gcp", region=region),
-                )
-                logger.info(
-                    f"Created Pinecone index '{index_name}' in region '{region}'."
-                )
-        except Exception as e:
-            logger.error(f"Failed to create or connect to Pinecone index: {e}")
-        try:
-            # Get the actual Index object (Pinecone v3+)
-            index = self.pc.Index(index_name)
-            self.index = Pinecone(
-                index=index,
-                embedding=OpenAIEmbeddings(model="text-embedding-ada-002"),
-                text_key="text",  # Required for latest LangChain Pinecone integration
-            )
-            logger.info(f"Pinecone vectorstore initialized with index '{index_name}'.")
-        except Exception as e:
-            logger.error(f"Failed to initialize Pinecone vectorstore: {e}")
-            self.index = None
+    """
+    Memory manager for Kor'tana using Pinecone as the vector database.
+    Also handles the memory journal for persistent storage.
+    """
 
-    def add_interaction(
-        self,
-        user_input: str,
-        assistant_response: str,
-        metadata: Optional[Dict[str, Any]] = None,
-    ):
-        """Logs a user-assistant interaction to the memory journal with metadata."""
-        timestamp = datetime.now(timezone.utc).isoformat()
-        user_entry = {
-            "role": "user",
-            "content": user_input,
-            "timestamp_utc": timestamp,
-            "metadata": metadata or {},
-        }
-        assistant_entry = {
-            "role": "assistant",
-            "content": assistant_response,
-            "timestamp_utc": timestamp,
-            "metadata": metadata or {},
-        }
+    def __init__(self, settings: KortanaConfig):
+        """
+        Initialize the memory manager.
 
-        try:
-            with open(MEMORY_JOURNAL_PATH, "a", encoding="utf-8") as f:
-                json.dump(user_entry, f)
-                f.write("\n")
-                json.dump(assistant_entry, f)
-                f.write("\n")
-            logger.debug("Interaction logged to memory journal with metadata.")
-        except IOError as e:
-            logger.error(f"Error writing to memory journal {MEMORY_JOURNAL_PATH}: {e}")
+        Args:
+            settings: The application configuration.
+        """
+        self.settings = settings
+        self.memory_journal_path = self.settings.paths.memory_journal_path
 
-    def add(self, id: str, text: str, metadata: dict):
-        if not self.index:
+        # Initialize Pinecone
+        pinecone_api_key = self.settings.get_api_key("pinecone")
+        if not pinecone_api_key:
             logger.warning(
-                "Pinecone index is not initialized. Skipping add (vector store). "
+                "Pinecone API key not found. Memory system will operate in limited mode."
             )
-            return
-        try:  # Ensure metadata is JSON serializable if necessary, though Pinecone handles dict
-            # Embeddings might need to be generated here or passed in
-            # Assuming text is the content to be embedded
-            # Note: Embedding generation removed as it was unused
-            self.index.add_texts([text], ids=[id], metadatas=[metadata])
-            logger.debug(f"Added text with ID {id} to Pinecone index.")
-        except Exception as e:
-            logger.error(f"Error adding text to Pinecone index: {e}")
+            self.pinecone_enabled = False
+        else:
+            try:
+                pinecone.init(
+                    api_key=pinecone_api_key,
+                    environment=self.settings.pinecone.environment,
+                )
 
-    def query(self, text: str, k: int = 5):
-        """Queries the vector database (Pinecone) for similar texts."""
-        if not self.index:
-            logger.warning(
-                "Pinecone index is not initialized. Returning empty result (vector store query)."
-            )
-            return []
-        try:
-            results = self.index.similarity_search_with_score(text, k=k)
-            logger.debug(f"Pinecone query returned {len(results)} results.")
-            return results
-        except Exception as e:
-            logger.error(f"Error querying Pinecone index: {e}")
-            return []
-
-    def search(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
-        """Search recent memories (from memory.jsonl) for those containing the query string (case-insensitive)."""
-        logger.debug(f"Searching recent memories for query: '{query}'")
-        try:
-            # Increased limit for internal search to find more potential
-            # matches before filtering
-            memories = self.get_recent_memories(limit=100)
-            relevant = [
-                m
-                for m in memories
-                if m.get("content") and query.lower() in m.get("content", "").lower()
-            ]
-            # Sort by relevance (simple string contains match, could be improved)
-            # For simplicity, just taking the first 'limit' matches found
-            logger.debug(
-                f"Found {len(relevant)} relevant memories, returning top {limit}."
-            )
-            return relevant[:limit]
-        except Exception as e:
-            logger.error(f"Memory search error: {e}")
-            return []
-
-    def get_recent_memories(self, limit: int = 50) -> List[Dict[str, Any]]:
-        """Read the last N user/assistant messages from memory.jsonl."""
-        logger.debug(f"Getting last {limit} memories from journal.")
-        if not MEMORY_JOURNAL_PATH.exists():
-            logger.warning(f"Memory journal file not found: {MEMORY_JOURNAL_PATH}")
-            return []
-
-        lines = []
-        try:
-            # Read lines efficiently from the end of a potentially large file
-            with open(MEMORY_JOURNAL_PATH, "rb") as f:
-                f.seek(0, os.SEEK_END)
-                file_size = f.tell()
-                read_size = min(file_size, 8192)  # Read last 8KB initially
-                f.seek(file_size - read_size, os.SEEK_SET)
-
-                data = f.read().decode("utf-8")
-                lines = data.splitlines()
-
-                # If we didn't read enough lines, read more
-                while len(lines) < limit * 2 and read_size < file_size:
-                    read_size = min(file_size, read_size * 2)  # Double read size
-                    f.seek(file_size - read_size, os.SEEK_SET)
-                    data = f.read().decode("utf-8")
-                    lines = data.splitlines()
-
-            # Process lines from the end
-            memories = []
-            # Iterate through lines in reverse to get the most recent
-            for line in reversed(lines):
-                line = line.strip()
-                if not line:  # Skip empty lines
-                    continue
-                try:
-                    entry = json.loads(line)
-                    # Filter for user/assistant roles for conversational
-                    # history
-                    if entry.get("role") in ("user", "assistant"):
-                        memories.append(entry)
-                    # Stop once we have the desired number of conversational
-                    # turns
-                    if len(memories) >= limit:
-                        break
-                except json.JSONDecodeError as e:
-                    logger.error(
-                        f"Error decoding JSON in {MEMORY_JOURNAL_PATH}: {e} - Line: {line[:100]}..."
+                # Check if index exists, if not create it
+                if self.settings.pinecone.index_name not in pinecone.list_indexes():
+                    logger.info(
+                        f"Creating Pinecone index: {self.settings.pinecone.index_name}"
                     )
-                    continue  # Skip problematic line
+                    pinecone.create_index(
+                        name=self.settings.pinecone.index_name,
+                        dimension=1536,  # OpenAI embedding dimension
+                        metric="cosine",
+                    )
 
-            # Reverse to get chronological order
-            return list(reversed(memories))
+                self.index = pinecone.Index(self.settings.pinecone.index_name)
+                self.pinecone_enabled = True
+                logger.info("Pinecone memory system initialized successfully")
 
-        except Exception as e:
-            logger.error(
-                f"Error reading memory journal file {MEMORY_JOURNAL_PATH}: {e}"
+            except Exception as e:
+                logger.error(f"Failed to initialize Pinecone: {e}")
+                self.pinecone_enabled = False
+
+    def load_project_memory(self) -> List[Dict[str, Any]]:
+        """
+        Load project memory from the memory journal.
+
+        Returns:
+            List of memory entries.
+        """
+        try:
+            with open(self.memory_journal_path, "r") as f:
+                memory_entries = [json.loads(line) for line in f.readlines()]
+            logger.info(
+                f"Loaded {len(memory_entries)} memory entries from {self.memory_journal_path}"
+            )
+            return memory_entries
+        except FileNotFoundError:
+            logger.warning(
+                f"Memory journal not found: {self.memory_journal_path}. Starting with empty memory."
             )
             return []
+        except Exception as e:
+            logger.error(f"Failed to load memory journal: {e}")
+            return []
 
+    def save_project_memory(self, memory_entries: List[Dict[str, Any]]) -> bool:
+        """
+        Save project memory to the memory journal.
 
-# Example usage (for testing):
-# if __name__ == "__main__":
-#     # Create a dummy memory manager
-#     # manager = MemoryManager()
+        Args:
+            memory_entries: List of memory entries.
 
-#     # Add a sample interaction with Trinity metadata
-#     # sample_metadata = {"trinity_intent": "wisdom", "selected_model": "gpt-4"}
-#     # manager.add_interaction("What is the meaning of life?", "That is a profound question.", sample_metadata)
+        Returns:
+            True if successful, False otherwise.
+        """
+        try:
+            with open(self.memory_journal_path, "w") as f:
+                for entry in memory_entries:
+                    f.write(json.dumps(entry) + "\n")
+            logger.info(
+                f"Saved {len(memory_entries)} memory entries to {self.memory_journal_path}"
+            )
+            return True
+        except Exception as e:
+            logger.error(f"Failed to save memory journal: {e}")
+            return False
 
-#     # Get recent memories
-#     # recent = manager.get_recent_memories(limit=10)
-#     # print("Recent Memories:", recent)
+    def add_memory(self, memory_entry: MemoryEntry) -> bool:
+        """
+        Add a memory entry to the system.
 
-#     # Search memories
-#     # search_results = manager.search("meaning of life")
-#     # print("Search Results:", search_results)
+        Args:
+            memory_entry: The memory entry to add.
+
+        Returns:
+            True if successful, False otherwise.
+        """
+        if not self.pinecone_enabled:
+            logger.warning(
+                "Pinecone not enabled. Memory will only be saved to journal."
+            )
+            return self._add_to_journal(memory_entry)
+
+        try:
+            # Add to Pinecone
+            vector_id = memory_entry.id
+            vector = memory_entry.embedding
+            metadata = {
+                "text": memory_entry.text,
+                "timestamp": str(memory_entry.timestamp),
+                "tags": memory_entry.tags,
+                "source": memory_entry.source,
+            }
+
+            self.index.upsert([(vector_id, vector, metadata)])
+
+            # Also add to journal for backup
+            self._add_to_journal(memory_entry)
+
+            return True
+        except Exception as e:
+            logger.error(f"Failed to add memory to Pinecone: {e}")
+            return False
+
+    def search_memory(
+        self, query_vector: List[float], top_k: int = 5
+    ) -> List[Dict[str, Any]]:
+        """
+        Search for similar memories.
+
+        Args:
+            query_vector: The query vector.
+            top_k: Number of results to return.
+
+        Returns:
+            List of matching memory entries.
+        """
+        if not self.pinecone_enabled:
+            logger.warning("Pinecone not enabled. Cannot perform vector search.")
+            return []
+
+        try:
+            results = self.index.query(
+                vector=query_vector, top_k=top_k, include_metadata=True
+            )
+
+            return [
+                {
+                    "id": match["id"],
+                    "score": match["score"],
+                    "text": match["metadata"]["text"],
+                    "timestamp": match["metadata"]["timestamp"],
+                    "tags": match["metadata"].get("tags", []),
+                    "source": match["metadata"].get("source", "unknown"),
+                }
+                for match in results.matches
+            ]
+        except Exception as e:
+            logger.error(f"Failed to search Pinecone: {e}")
+            return []
+
+    def _add_to_journal(self, memory_entry: MemoryEntry) -> bool:
+        """Add a memory entry to the journal file."""
+        try:
+            with open(self.memory_journal_path, "a") as f:
+                f.write(json.dumps(memory_entry.to_dict()) + "\n")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to add memory to journal: {e}")
+            return False
+            return False

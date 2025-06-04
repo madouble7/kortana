@@ -1,7 +1,14 @@
-import google.generativeai as genai
-import os
+"""
+Google Generative AI client for Kortana.
+This module provides integration with Google's Gemini models through the generativeai SDK.
+"""
+
 import logging
-from typing import Dict, List, Any, Optional
+import os
+from typing import Any, Dict, List, Optional
+
+import google.generativeai as genai
+
 from .base_client import LLMClient
 
 logger = logging.getLogger(__name__)

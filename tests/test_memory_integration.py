@@ -194,8 +194,14 @@ class TestMemoryIntegration:
         engine.add_assistant_message("Final assistant message")
 
         # Check if summarization was triggered
-        mock_get_llm_client.assert_called(), "LLM client should be called for summarization"
-        mock_llm_client.send_message.assert_called_once(), "send_message should be called once for summarization"
+        (
+            mock_get_llm_client.assert_called(),
+            "LLM client should be called for summarization",
+        )
+        (
+            mock_llm_client.send_message.assert_called_once(),
+            "send_message should be called once for summarization",
+        )
 
     @patch("brain.load_memory")
     def test_memory_integration_in_system_prompt(self, mock_load_memory):

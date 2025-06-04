@@ -1,13 +1,15 @@
-# C:\kortana\src\utils.py
-# Purpose: Shared utility functions for Kor'tana project.
-# Role: Reduces code duplication and provides common helpers for
-#       timestamp formatting, configuration validation, file operations, etc.
+"""
+Text analysis utilities for Kortana.
+This module provides functions for text processing, analysis, and manipulation
+to support Kor'tana's natural language understanding capabilities.
+"""
 
-from datetime import datetime, timezone  # Added timezone for consistency
-import os
 import json
-import logging  # Added for logging within utils
-from typing import Optional, List, Dict, Any
+import logging
+import os
+import re
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -146,87 +148,135 @@ def safe_write_jsonl(path: str, data: dict):
         logger.error(f"Error safely writing JSON line to {path}: {e}")
 
 
-def analyze_sentiment(text: str) -> Dict[str, float]:
-    """Placeholder for sentiment analysis."""
-    # This would involve an NLP library or model
-    # Mock implementation:
-    sentiment = {"polarity": 0.0, "subjectivity": 0.0}
-    text_lower = text.lower()
-    if any(
-        word in text_lower
-        for word in ["happy", "good", "great", "positive", "love", "joy"]
-    ):
-        sentiment["polarity"] += 0.5
-    if any(
-        word in text_lower
-        for word in ["sad", "bad", "terrible", "negative", "hate", "pain"]
-    ):
-        sentiment["polarity"] -= 0.5
-    if any(word in text_lower for word in ["think", "believe", "feel", "opinion"]):
-        sentiment["subjectivity"] += 0.5
-    return sentiment
-
-
-def detect_emphasis_all_caps(text: str, threshold_ratio: float = 0.6) -> bool:
-    """Detects if text is mostly in ALL CAPS (potential emphasis)."""
-    if not text or len(text) < 5:
-        return False
-    uppercase_count = sum(1 for char in text if "A" <= char <= "Z")
-    alphabetic_count = sum(
-        1 for char in text if "a" <= char <= "z" or "A" <= char <= "Z"
-    )
-    if alphabetic_count == 0:
-        return False  # Avoid division by zero
-    return uppercase_count / alphabetic_count >= threshold_ratio
-
-
-def detect_keywords(text: str, keyword_sets: Dict[str, List[str]]) -> List[str]:
+def analyze_sentiment(text: str) -> str:
     """
-    Detects which predefined keyword categories are present in the text.
+    Simple sentiment analysis of text.
 
     Args:
-        text (str): The text to analyze.
-        keyword_sets (Dict[str, List[str]]): A dictionary where keys are category names
-                                            and values are lists of keywords.
+        text: The text to analyze.
 
     Returns:
-        List[str]: A list of category names found in the text.
+        Sentiment assessment ("positive", "negative", or "neutral").
     """
-    detected = []
+    # This is a simplistic implementation
+    positive_words = [
+        "good",
+        "great",
+        "excellent",
+        "happy",
+        "joy",
+        "love",
+        "like",
+        "thanks",
+    ]
+    negative_words = [
+        "bad",
+        "awful",
+        "terrible",
+        "sad",
+        "hate",
+        "dislike",
+        "angry",
+        "annoyed",
+    ]
+
     text_lower = text.lower()
-    for category, keywords in keyword_sets.items():
-        if any(keyword in text_lower for keyword in keywords):
-            detected.append(category)
-    return detected
+
+    positive_count = sum(1 for word in positive_words if word in text_lower)
+    negative_count = sum(1 for word in negative_words if word in text_lower)
+
+    if positive_count > negative_count:
+        return "positive"
+    elif negative_count > positive_count:
+        return "negative"
+    else:
+        return "neutral"
+
+
+def detect_emphasis_all_caps(text: str) -> List[str]:
+    """
+    Detect words in ALL CAPS which indicate emphasis.
+
+    Args:
+        text: The text to analyze.
+
+    Returns:
+        List of words in all caps.
+    """
+    # Find words of 3+ characters in all caps
+    caps_words = re.findall(r"\b[A-Z]{3,}\b", text)
+    return caps_words
+
+
+def detect_keywords(text: str) -> List[str]:
+    """
+    Extract potential keywords from text.
+
+    Args:
+        text: The text to analyze.
+
+    Returns:
+        List of potential keywords.
+    """
+    # This is a simplistic implementation
+    # In a real system, this would use NLP techniques like TF-IDF
+    stop_words = [
+        "the",
+        "and",
+        "a",
+        "in",
+        "to",
+        "of",
+        "is",
+        "for",
+        "on",
+        "that",
+        "this",
+    ]
+
+    words = re.findall(r"\b[a-zA-Z]{3,}\b", text.lower())
+    keywords = [word for word in words if word not in stop_words]
+
+    # Return unique keywords
+    return list(set(keywords))
 
 
 def identify_important_message_for_context(text: str) -> bool:
     """
-    Placeholder for logic to identify messages important for long-term context.
-    This could involve keyword matching, sentiment analysis, or a small classification model.
+    Determine if a message is important to remember for future context.
 
     Args:
-        text (str): The message text to analyze.
+        text: The text to analyze.
 
     Returns:
-        bool: True if the message is considered important for context, False otherwise.
+        True if the message is deemed important, False otherwise.
     """
-    # Mock implementation:
-    text_lower = text.lower()
-    important_keywords = [
-        "decision",
-        "plan",
-        "goal",
+    # This is a simplistic implementation
+    # In a real system, this would use more sophisticated analysis
+    important_indicators = [
+        "remember this",
         "important",
-        "summary",
-        "insight",
-        "architecture",
+        "critical",
+        "key point",
+        "don't forget",
+        "note this",
     ]
-    if any(keyword in text_lower for keyword in important_keywords):
+
+    text_lower = text.lower()
+
+    # Check for indicators
+    for indicator in important_indicators:
+        if indicator in text_lower:
+            return True
+
+    # Length-based heuristic (longer messages might be more important)
+    if len(text) > 200:
         return True
-    if detect_emphasis_all_caps(text):  # Often indicates importance
+
+    # Consider question-like messages somewhat important
+    if "?" in text:
         return True
-    # Add logic based on sentiment or specific phrasing
+
     return False
 
 

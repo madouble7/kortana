@@ -1,11 +1,15 @@
-# C:\kortana\src\llm_clients\openrouter_client.py
-# Purpose: Implements a client for OpenRouter API (OpenAI-compatible proxy service).
-# Role: Enables Kor'tana to use OpenRouter for LLM access.
+"""
+OpenRouter API client for Kortana.
+This module implements a client for OpenRouter API (OpenAI-compatible proxy service)
+that enables Kor'tana to use a wide range of language models through a unified interface.
+"""
 
-import openai
-import httpx
 import logging
-from typing import List, Dict, Any
+from typing import Any, Dict, List
+
+import httpx
+import openai
+
 from .base_client import BaseLLMClient
 
 logger = logging.getLogger(__name__)

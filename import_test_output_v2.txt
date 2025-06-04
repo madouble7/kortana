@@ -1,0 +1,12 @@
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+ModuleNotFoundError: No module named 'kortana'
+--- sys.path ---
+
+C:\Program Files\Python311\python311.zip
+C:\Program Files\Python311\DLLs
+C:\Program Files\Python311\Lib
+C:\Program Files\Python311
+C:\project-kortana\.test_env
+C:\project-kortana\.test_env\Lib\site-packages
+--- end sys.path ---

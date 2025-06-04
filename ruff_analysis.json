@@ -1,0 +1,151 @@
+[
+  {
+    "cell": null,
+    "code": "F841",
+    "end_location": {
+      "column": 17,
+      "row": 99
+    },
+    "filename": "C:\\project-kortana\\src\\kortana\\agents\\autonomous_agents.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "",
+          "end_location": {
+            "column": 20,
+            "row": 99
+          },
+          "location": {
+            "column": 9,
+            "row": 99
+          }
+        }
+      ],
+      "message": "Remove assignment to unused variable `response`"
+    },
+    "location": {
+      "column": 9,
+      "row": 99
+    },
+    "message": "Local variable `response` is assigned to but never used",
+    "noqa_row": 99,
+    "url": "https://docs.astral.sh/ruff/rules/unused-variable"
+  },
+  {
+    "cell": null,
+    "code": "F541",
+    "end_location": {
+      "column": 63,
+      "row": 96
+    },
+    "filename": "C:\\project-kortana\\src\\kortana\\cli\\main.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "\"Starting Autonomous Development Engine...\"",
+          "end_location": {
+            "column": 63,
+            "row": 96
+          },
+          "location": {
+            "column": 19,
+            "row": 96
+          }
+        }
+      ],
+      "message": "Remove extraneous `f` prefix"
+    },
+    "location": {
+      "column": 19,
+      "row": 96
+    },
+    "message": "f-string without any placeholders",
+    "noqa_row": 96,
+    "url": "https://docs.astral.sh/ruff/rules/f-string-missing-placeholders"
+  },
+  {
+    "cell": null,
+    "code": "F541",
+    "end_location": {
+      "column": 32,
+      "row": 145
+    },
+    "filename": "C:\\project-kortana\\src\\kortana\\cli\\main.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "\"Version: 1.0.0\"",
+          "end_location": {
+            "column": 32,
+            "row": 145
+          },
+          "location": {
+            "column": 15,
+            "row": 145
+          }
+        }
+      ],
+      "message": "Remove extraneous `f` prefix"
+    },
+    "location": {
+      "column": 15,
+      "row": 145
+    },
+    "message": "f-string without any placeholders",
+    "noqa_row": 145,
+    "url": "https://docs.astral.sh/ruff/rules/f-string-missing-placeholders"
+  },
+  {
+    "cell": null,
+    "code": "F541",
+    "end_location": {
+      "column": 38,
+      "row": 150
+    },
+    "filename": "C:\\project-kortana\\src\\kortana\\cli\\main.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "\"\\nConfiguration:\"",
+          "end_location": {
+            "column": 38,
+            "row": 150
+          },
+          "location": {
+            "column": 19,
+            "row": 150
+          }
+        }
+      ],
+      "message": "Remove extraneous `f` prefix"
+    },
+    "location": {
+      "column": 19,
+      "row": 150
+    },
+    "message": "f-string without any placeholders",
+    "noqa_row": 150,
+    "url": "https://docs.astral.sh/ruff/rules/f-string-missing-placeholders"
+  },
+  {
+    "cell": null,
+    "code": "F821",
+    "end_location": {
+      "column": 47,
+      "row": 103
+    },
+    "filename": "C:\\project-kortana\\src\\kortana\\core\\brain.py",
+    "fix": null,
+    "location": {
+      "column": 35,
+      "row": 103
+    },
+    "message": "Undefined name `DevAgentStub`",
+    "noqa_row": 103,
+    "url": "https://docs.astral.sh/ruff/rules/undefined-name"
+  }
+]

@@ -29,15 +29,14 @@ TEST_OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
 try:
     from kortana.core.brain import ChatEngine
 except ImportError:
-    import sys
+    import sys  # If this script is in 'src', and brain.py is also in 'src', this direct import should work.
 
-    # If this script is in 'src', and brain.py is also in 'src', this direct import should work.
     # If running from project root, ensure 'src' is in PYTHONPATH or adjust
     # import.
     if str(PROJECT_ROOT) not in sys.path:
         sys.path.insert(0, str(PROJECT_ROOT))  # Add project root
     try:
-        from src.brain import ChatEngine  # Try importing as src.brain
+        from brain import ChatEngine  # Try importing as brain
     except ImportError as e:
         print(f"CRITICAL ERROR: Could not import ChatEngine. Original error: {e}")
         print(
@@ -59,9 +58,7 @@ def load_active_modes_from_persona():
         # Uses the simplified two-mode structure
         modes_dict = persona_data.get("persona", {}).get(
             "modes", {}
-        ) or persona_data.get(
-            "modes", {}
-        )  # Accommodate both structures
+        ) or persona_data.get("modes", {})  # Accommodate both structures
 
         active_modes = list(modes_dict.keys())
         if not active_modes:

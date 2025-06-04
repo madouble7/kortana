@@ -1,0 +1,3 @@
+"""
+Memory Core module initialization.
+"""

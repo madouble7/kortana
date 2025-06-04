@@ -1,0 +1,75 @@
+{
+  "models": [
+    {
+      "title": "OpenAI GPT-4.1 Nano",
+      "provider": "openai",
+      "model": "gpt-4.1-nano",
+      "apiKey": "${OPENAI_API_KEY}",
+      "contextLength": 1047576,
+      "maxTokens": 4096
+    },
+    {
+      "title": "Google Gemini 2.0 Flash",
+      "provider": "google",
+      "model": "gemini-2.0-flash-001",
+      "apiKey": "${GOOGLE_API_KEY}",
+      "contextLength": 1048576,
+      "maxTokens": 4096
+    }
+  ],
+  "tabAutocompleteModel": {
+    "title": "OpenAI GPT-4.1 Nano",
+    "provider": "openai",
+    "model": "gpt-4.1-nano",
+    "apiKey": "${OPENAI_API_KEY}",
+    "contextLength": 1047576,
+    "maxTokens": 500
+  },
+  "embeddingsProvider": {
+    "provider": "openai",
+    "model": "text-embedding-3-small",
+    "apiKey": "${OPENAI_API_KEY}"
+  },  "systemMessage": "You are an AI assistant helping with Project Kor'tana, an autonomous AI agent development platform. Follow Sacred Circuit principles and maintain high code quality. Focus on cost-effective solutions using GPT-4.1 Nano ($0.10/$0.40 per 1M tokens) and Gemini 2.0 Flash ($0.10/$0.40 per 1M tokens). Optimize for token efficiency while maintaining functionality.",
+  "completionOptions": {
+    "temperature": 0.2,
+    "topP": 0.9,
+    "maxTokens": 2048
+  },
+  "slashCommands": [
+    {
+      "name": "cost",
+      "description": "Analyze and optimize code for cost efficiency"
+    },
+    {
+      "name": "agent",
+      "description": "Generate autonomous agent code"
+    },
+    {
+      "name": "memory",
+      "description": "Help with memory management patterns"
+    },
+    {
+      "name": "test",
+      "description": "Generate comprehensive tests"
+    }
+  ],
+  "allowAnonymousTelemetry": false,
+  "docs": [],
+  "customCommands": [
+    {
+      "name": "agent-code-review",
+      "prompt": "Review this code for autonomous agent development best practices. Focus on memory management, error handling, and Sacred Circuit principles.",
+      "description": "Review code for agent development standards"
+    },
+    {
+      "name": "generate-tests",
+      "prompt": "Generate comprehensive unit tests for this code, including edge cases and error conditions. Use pytest and follow Project Kor'tana testing standards.",
+      "description": "Generate unit tests for the selected code"
+    },
+    {
+      "name": "optimize-cost",
+      "prompt": "Analyze this code and suggest optimizations to reduce API costs while maintaining functionality. Consider token usage and model selection.",
+      "description": "Optimize code for cost efficiency"
+    }
+  ]
+}

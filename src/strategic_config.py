@@ -1,10 +1,16 @@
+"""Strategic configuration system for Kortana's Sacred Trinity architecture.
+
+This module defines the strategic configuration layer that governs
+model selection, task categorization, and sacred principle alignment.
+"""
+
 import json
+import logging
 import os
 import time
-from typing import Dict, Any, List, Optional
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from enum import Enum
-import logging
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +50,11 @@ class PerformanceMetric:
     metadata: Optional[Dict] = None
 
     def to_dict(self) -> Dict[str, Any]:
+        """Convert the performance metric to a dictionary representation.
+
+        Returns:
+            Dictionary containing all performance metric data
+        """
         data = asdict(self)
         data["task_category"] = self.task_category.value
         return data
@@ -61,9 +72,10 @@ class SacredPrinciple:
 
 
 class UltimateLivingSacredConfig:
-    """
-    Ultimate living configuration system representing Kor'tana's strategic consciousness.
-    Manages Sacred Trinity optimization, task intelligence, and performance tracking.
+    """Ultimate living configuration system representing Kor'tana's strategic consciousness.
+
+    This class manages Sacred Trinity optimization, task intelligence, and
+    performance tracking for the entire Kortana system.
     """
 
     def __init__(

@@ -16,13 +16,11 @@ from typing import Any, Dict, List, Optional
 # Enhanced logging configuration
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('monitoring_dashboard.log'),
-        logging.StreamHandler()
-    ]
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.FileHandler("monitoring_dashboard.log"), logging.StreamHandler()],
 )
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class SystemMetrics:
@@ -38,16 +36,17 @@ class SystemMetrics:
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            'timestamp': self.timestamp.isoformat(),
-            'cpu_usage': self.cpu_usage,
-            'memory_usage': self.memory_usage,
-            'disk_usage': self.disk_usage,
-            'network_io': self.network_io,
-            'active_connections': self.active_connections,
-            'torch_packages_processed': self.torch_packages_processed,
-            'error_count': self.error_count,
-            'warning_count': self.warning_count
+            "timestamp": self.timestamp.isoformat(),
+            "cpu_usage": self.cpu_usage,
+            "memory_usage": self.memory_usage,
+            "disk_usage": self.disk_usage,
+            "network_io": self.network_io,
+            "active_connections": self.active_connections,
+            "torch_packages_processed": self.torch_packages_processed,
+            "error_count": self.error_count,
+            "warning_count": self.warning_count,
         }
+
 
 @dataclass
 class TorchMetrics:
@@ -61,13 +60,15 @@ class TorchMetrics:
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
 
+
 @dataclass
 class AlertConfig:
     metric_name: str
     threshold: float
     comparison: str  # 'gt', 'lt', 'eq'
-    severity: str    # 'low', 'medium', 'high', 'critical'
+    severity: str  # 'low', 'medium', 'high', 'critical'
     enabled: bool = True
+
 
 @dataclass
 class Alert:
@@ -78,6 +79,7 @@ class Alert:
     message: str
     acknowledged: bool = False
     resolved: bool = False
+
 
 class DatabaseManager:
     def __init__(self, db_path: str = "kortana.db"):
@@ -97,7 +99,7 @@ class DatabaseManager:
                 cursor = conn.cursor()
 
                 # System metrics table
-                cursor.execute('''
+                cursor.execute("""
                     CREATE TABLE IF NOT EXISTS system_metrics (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         timestamp TEXT NOT NULL,
@@ -110,10 +112,10 @@ class DatabaseManager:
                         error_count INTEGER,
                         warning_count INTEGER
                     )
-                ''')
+                """)
 
                 # Torch metrics table
-                cursor.execute('''
+                cursor.execute("""
                     CREATE TABLE IF NOT EXISTS torch_metrics (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         package_id TEXT NOT NULL,
@@ -124,10 +126,10 @@ class DatabaseManager:
                         throughput REAL,
                         error_details TEXT
                     )
-                ''')
+                """)
 
                 # Alerts table
-                cursor.execute('''
+                cursor.execute("""
                     CREATE TABLE IF NOT EXISTS alerts (
                         id TEXT PRIMARY KEY,
                         metric_name TEXT NOT NULL,
@@ -140,10 +142,10 @@ class DatabaseManager:
                         acknowledged BOOLEAN DEFAULT 0,
                         resolved BOOLEAN DEFAULT 0
                     )
-                ''')
+                """)
 
                 # Alert configurations table
-                cursor.execute('''
+                cursor.execute("""
                     CREATE TABLE IF NOT EXISTS alert_configs (
                         metric_name TEXT PRIMARY KEY,
                         threshold REAL,
@@ -151,7 +153,7 @@ class DatabaseManager:
                         severity TEXT,
                         enabled BOOLEAN DEFAULT 1
                     )
-                ''')
+                """)
 
                 conn.commit()
                 logger.info("Monitoring tables initialized successfully")
@@ -165,22 +167,25 @@ class DatabaseManager:
         try:
             with self.connect() as conn:
                 cursor = conn.cursor()
-                cursor.execute('''
+                cursor.execute(
+                    """
                     INSERT INTO system_metrics
                     (timestamp, cpu_usage, memory_usage, disk_usage, network_io,
                      active_connections, torch_packages_processed, error_count, warning_count)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (
-                    metrics.timestamp.isoformat(),
-                    metrics.cpu_usage,
-                    metrics.memory_usage,
-                    metrics.disk_usage,
-                    json.dumps(metrics.network_io),
-                    metrics.active_connections,
-                    metrics.torch_packages_processed,
-                    metrics.error_count,
-                    metrics.warning_count
-                ))
+                """,
+                    (
+                        metrics.timestamp.isoformat(),
+                        metrics.cpu_usage,
+                        metrics.memory_usage,
+                        metrics.disk_usage,
+                        json.dumps(metrics.network_io),
+                        metrics.active_connections,
+                        metrics.torch_packages_processed,
+                        metrics.error_count,
+                        metrics.warning_count,
+                    ),
+                )
                 conn.commit()
         except Exception as e:
             logger.error(f"Failed to store system metrics: {e}")
@@ -190,19 +195,22 @@ class DatabaseManager:
         try:
             with self.connect() as conn:
                 cursor = conn.cursor()
-                cursor.execute('''
+                cursor.execute(
+                    """
                     INSERT INTO torch_metrics
                     (package_id, timestamp, processing_time, status, relay_node, throughput, error_details)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
-                ''', (
-                    metrics.package_id,
-                    datetime.now().isoformat(),
-                    metrics.processing_time,
-                    metrics.status,
-                    metrics.relay_node,
-                    metrics.throughput,
-                    metrics.error_details
-                ))
+                """,
+                    (
+                        metrics.package_id,
+                        datetime.now().isoformat(),
+                        metrics.processing_time,
+                        metrics.status,
+                        metrics.relay_node,
+                        metrics.throughput,
+                        metrics.error_details,
+                    ),
+                )
                 conn.commit()
         except Exception as e:
             logger.error(f"Failed to store torch metrics: {e}")
@@ -212,22 +220,25 @@ class DatabaseManager:
         try:
             with self.connect() as conn:
                 cursor = conn.cursor()
-                cursor.execute('''
+                cursor.execute(
+                    """
                     INSERT OR REPLACE INTO alerts
                     (id, metric_name, threshold, comparison, severity, triggered_at, value, message, acknowledged, resolved)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (
-                    alert.id,
-                    alert.config.metric_name,
-                    alert.config.threshold,
-                    alert.config.comparison,
-                    alert.config.severity,
-                    alert.triggered_at.isoformat(),
-                    alert.value,
-                    alert.message,
-                    alert.acknowledged,
-                    alert.resolved
-                ))
+                """,
+                    (
+                        alert.id,
+                        alert.config.metric_name,
+                        alert.config.threshold,
+                        alert.config.comparison,
+                        alert.config.severity,
+                        alert.triggered_at.isoformat(),
+                        alert.value,
+                        alert.message,
+                        alert.acknowledged,
+                        alert.resolved,
+                    ),
+                )
                 conn.commit()
         except Exception as e:
             logger.error(f"Failed to store alert: {e}")
@@ -238,11 +249,14 @@ class DatabaseManager:
             with self.connect() as conn:
                 cursor = conn.cursor()
                 since = (datetime.now() - timedelta(hours=hours)).isoformat()
-                cursor.execute('''
+                cursor.execute(
+                    """
                     SELECT * FROM system_metrics
                     WHERE timestamp >= ?
                     ORDER BY timestamp DESC
-                ''', (since,))
+                """,
+                    (since,),
+                )
 
                 columns = [desc[0] for desc in cursor.description]
                 return [dict(zip(columns, row)) for row in cursor.fetchall()]
@@ -256,11 +270,14 @@ class DatabaseManager:
             with self.connect() as conn:
                 cursor = conn.cursor()
                 since = (datetime.now() - timedelta(hours=hours)).isoformat()
-                cursor.execute('''
+                cursor.execute(
+                    """
                     SELECT * FROM torch_metrics
                     WHERE timestamp >= ?
                     ORDER BY timestamp DESC
-                ''', (since,))
+                """,
+                    (since,),
+                )
 
                 columns = [desc[0] for desc in cursor.description]
                 return [dict(zip(columns, row)) for row in cursor.fetchall()]
@@ -273,17 +290,18 @@ class DatabaseManager:
         try:
             with self.connect() as conn:
                 cursor = conn.cursor()
-                cursor.execute('''
+                cursor.execute("""
                     SELECT * FROM alerts
                     WHERE resolved = 0
                     ORDER BY triggered_at DESC
-                ''')
+                """)
 
                 columns = [desc[0] for desc in cursor.description]
                 return [dict(zip(columns, row)) for row in cursor.fetchall()]
         except Exception as e:
             logger.error(f"Failed to get active alerts: {e}")
             return []
+
 
 class MetricsCollector:
     def __init__(self):
@@ -303,16 +321,16 @@ class MetricsCollector:
             memory_usage = memory.percent
 
             # Get disk usage
-            disk = psutil.disk_usage('/')
+            disk = psutil.disk_usage("/")
             disk_usage = (disk.used / disk.total) * 100
 
             # Get network I/O
             network = psutil.net_io_counters()
             network_io = {
-                'bytes_sent': network.bytes_sent,
-                'bytes_recv': network.bytes_recv,
-                'packets_sent': network.packets_sent,
-                'packets_recv': network.packets_recv
+                "bytes_sent": network.bytes_sent,
+                "bytes_recv": network.bytes_recv,
+                "packets_sent": network.packets_sent,
+                "packets_recv": network.packets_recv,
             }
 
             # Get connection count
@@ -332,7 +350,7 @@ class MetricsCollector:
                 active_connections=connections,
                 torch_packages_processed=torch_packages,
                 error_count=error_count,
-                warning_count=warning_count
+                warning_count=warning_count,
             )
 
             self.metrics_history.append(metrics)
@@ -348,16 +366,20 @@ class MetricsCollector:
     def _get_mock_metrics(self) -> SystemMetrics:
         """Generate mock metrics for testing."""
         import random
+
         return SystemMetrics(
             timestamp=datetime.now(),
             cpu_usage=random.uniform(10, 80),
             memory_usage=random.uniform(20, 70),
             disk_usage=random.uniform(15, 60),
-            network_io={'bytes_sent': random.randint(1000, 10000), 'bytes_recv': random.randint(1000, 10000)},
+            network_io={
+                "bytes_sent": random.randint(1000, 10000),
+                "bytes_recv": random.randint(1000, 10000),
+            },
             active_connections=random.randint(5, 50),
             torch_packages_processed=random.randint(0, 100),
             error_count=random.randint(0, 5),
-            warning_count=random.randint(0, 10)
+            warning_count=random.randint(0, 10),
         )
 
     def _get_torch_packages_count(self) -> int:
@@ -378,6 +400,7 @@ class MetricsCollector:
         # This would integrate with logging system
         return 0
 
+
 class AlertManager:
     def __init__(self, db_manager: DatabaseManager):
         self.db_manager = db_manager
@@ -390,7 +413,7 @@ class AlertManager:
         try:
             with self.db_manager.connect() as conn:
                 cursor = conn.cursor()
-                cursor.execute('SELECT * FROM alert_configs WHERE enabled = 1')
+                cursor.execute("SELECT * FROM alert_configs WHERE enabled = 1")
 
                 for row in cursor.fetchall():
                     config = AlertConfig(
@@ -398,7 +421,7 @@ class AlertManager:
                         threshold=row[1],
                         comparison=row[2],
                         severity=row[3],
-                        enabled=bool(row[4])
+                        enabled=bool(row[4]),
                     )
                     configs[config.metric_name] = config
         except Exception as e:
@@ -414,11 +437,13 @@ class AlertManager:
     def _get_default_alert_configs(self) -> Dict[str, AlertConfig]:
         """Get default alert configurations."""
         return {
-            'cpu_usage': AlertConfig('cpu_usage', 80.0, 'gt', 'high'),
-            'memory_usage': AlertConfig('memory_usage', 85.0, 'gt', 'high'),
-            'disk_usage': AlertConfig('disk_usage', 90.0, 'gt', 'critical'),
-            'error_count': AlertConfig('error_count', 5.0, 'gt', 'medium'),
-            'torch_packages_processed': AlertConfig('torch_packages_processed', 1000.0, 'gt', 'low')
+            "cpu_usage": AlertConfig("cpu_usage", 80.0, "gt", "high"),
+            "memory_usage": AlertConfig("memory_usage", 85.0, "gt", "high"),
+            "disk_usage": AlertConfig("disk_usage", 90.0, "gt", "critical"),
+            "error_count": AlertConfig("error_count", 5.0, "gt", "medium"),
+            "torch_packages_processed": AlertConfig(
+                "torch_packages_processed", 1000.0, "gt", "low"
+            ),
         }
 
     def _save_default_configs(self, configs: Dict[str, AlertConfig]):
@@ -427,11 +452,20 @@ class AlertManager:
             with self.db_manager.connect() as conn:
                 cursor = conn.cursor()
                 for config in configs.values():
-                    cursor.execute('''
+                    cursor.execute(
+                        """
                         INSERT OR REPLACE INTO alert_configs
                         (metric_name, threshold, comparison, severity, enabled)
                         VALUES (?, ?, ?, ?, ?)
-                    ''', (config.metric_name, config.threshold, config.comparison, config.severity, config.enabled))
+                    """,
+                        (
+                            config.metric_name,
+                            config.threshold,
+                            config.comparison,
+                            config.severity,
+                            config.enabled,
+                        ),
+                    )
                 conn.commit()
         except Exception as e:
             logger.error(f"Failed to save default alert configs: {e}")
@@ -456,7 +490,7 @@ class AlertManager:
                             config=config,
                             triggered_at=datetime.now(),
                             value=value,
-                            message=f"{metric_name} is {value} (threshold: {config.threshold})"
+                            message=f"{metric_name} is {value} (threshold: {config.threshold})",
                         )
 
                         self.active_alerts[alert_id] = alert
@@ -465,13 +499,14 @@ class AlertManager:
 
     def _evaluate_threshold(self, value: float, config: AlertConfig) -> bool:
         """Evaluate if value exceeds threshold based on comparison type."""
-        if config.comparison == 'gt':
+        if config.comparison == "gt":
             return value > config.threshold
-        elif config.comparison == 'lt':
+        elif config.comparison == "lt":
             return value < config.threshold
-        elif config.comparison == 'eq':
+        elif config.comparison == "eq":
             return abs(value - config.threshold) < 0.01
         return False
+
 
 class MonitoringDashboard:
     def __init__(self, db_path: str = "kortana.db"):
@@ -496,9 +531,7 @@ class MonitoringDashboard:
         self.running = True
         self._stop_event.clear()
         self.monitor_thread = threading.Thread(
-            target=self._monitoring_loop,
-            args=(interval,),
-            daemon=True
+            target=self._monitoring_loop, args=(interval,), daemon=True
         )
         self.monitor_thread.start()
         logger.info(f"Monitoring started with {interval}s interval")
@@ -532,9 +565,11 @@ class MonitoringDashboard:
                 self.alert_manager.check_alerts(metrics)
 
                 # Log current status
-                logger.info(f"Metrics collected - CPU: {metrics.cpu_usage:.1f}%, "
-                           f"Memory: {metrics.memory_usage:.1f}%, "
-                           f"Disk: {metrics.disk_usage:.1f}%")
+                logger.info(
+                    f"Metrics collected - CPU: {metrics.cpu_usage:.1f}%, "
+                    f"Memory: {metrics.memory_usage:.1f}%, "
+                    f"Disk: {metrics.disk_usage:.1f}%"
+                )
 
             except Exception as e:
                 logger.error(f"Error in monitoring loop: {e}")
@@ -558,20 +593,20 @@ class MonitoringDashboard:
             stats = self._calculate_stats(recent_metrics)
 
             return {
-                'timestamp': datetime.now().isoformat(),
-                'system_status': 'healthy' if len(active_alerts) == 0 else 'warning',
-                'recent_metrics': recent_metrics[-10:] if recent_metrics else [],
-                'torch_metrics': torch_metrics[-10:] if torch_metrics else [],
-                'active_alerts': active_alerts,
-                'stats': stats,
-                'monitoring_status': 'running' if self.running else 'stopped'
+                "timestamp": datetime.now().isoformat(),
+                "system_status": "healthy" if len(active_alerts) == 0 else "warning",
+                "recent_metrics": recent_metrics[-10:] if recent_metrics else [],
+                "torch_metrics": torch_metrics[-10:] if torch_metrics else [],
+                "active_alerts": active_alerts,
+                "stats": stats,
+                "monitoring_status": "running" if self.running else "stopped",
             }
         except Exception as e:
             logger.error(f"Failed to get dashboard data: {e}")
             return {
-                'timestamp': datetime.now().isoformat(),
-                'system_status': 'error',
-                'error': str(e)
+                "timestamp": datetime.now().isoformat(),
+                "system_status": "error",
+                "error": str(e),
             }
 
     def _calculate_stats(self, metrics_data: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -580,25 +615,31 @@ class MonitoringDashboard:
             return {}
 
         try:
-            cpu_values = [m['cpu_usage'] for m in metrics_data if m.get('cpu_usage') is not None]
-            memory_values = [m['memory_usage'] for m in metrics_data if m.get('memory_usage') is not None]
+            cpu_values = [
+                m["cpu_usage"] for m in metrics_data if m.get("cpu_usage") is not None
+            ]
+            memory_values = [
+                m["memory_usage"]
+                for m in metrics_data
+                if m.get("memory_usage") is not None
+            ]
 
             stats = {}
 
             if cpu_values:
-                stats['cpu'] = {
-                    'avg': sum(cpu_values) / len(cpu_values),
-                    'max': max(cpu_values),
-                    'min': min(cpu_values),
-                    'current': cpu_values[-1] if cpu_values else 0
+                stats["cpu"] = {
+                    "avg": sum(cpu_values) / len(cpu_values),
+                    "max": max(cpu_values),
+                    "min": min(cpu_values),
+                    "current": cpu_values[-1] if cpu_values else 0,
                 }
 
             if memory_values:
-                stats['memory'] = {
-                    'avg': sum(memory_values) / len(memory_values),
-                    'max': max(memory_values),
-                    'min': min(memory_values),
-                    'current': memory_values[-1] if memory_values else 0
+                stats["memory"] = {
+                    "avg": sum(memory_values) / len(memory_values),
+                    "max": max(memory_values),
+                    "min": min(memory_values),
+                    "current": memory_values[-1] if memory_values else 0,
                 }
 
             return stats
@@ -610,23 +651,29 @@ class MonitoringDashboard:
         """Generate a text report of system status."""
         try:
             data = self.get_dashboard_data()
-            stats = data.get('stats', {})
-            alerts = data.get('active_alerts', [])
+            stats = data.get("stats", {})
+            alerts = data.get("active_alerts", [])
 
             report = []
             report.append("=== KORTANA MONITORING REPORT ===")
             report.append(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-            report.append(f"System Status: {data.get('system_status', 'unknown').upper()}")
+            report.append(
+                f"System Status: {data.get('system_status', 'unknown').upper()}"
+            )
             report.append("")
 
             # System metrics summary
-            if stats.get('cpu'):
-                cpu = stats['cpu']
-                report.append(f"CPU Usage - Current: {cpu['current']:.1f}%, Avg: {cpu['avg']:.1f}%, Max: {cpu['max']:.1f}%")
+            if stats.get("cpu"):
+                cpu = stats["cpu"]
+                report.append(
+                    f"CPU Usage - Current: {cpu['current']:.1f}%, Avg: {cpu['avg']:.1f}%, Max: {cpu['max']:.1f}%"
+                )
 
-            if stats.get('memory'):
-                memory = stats['memory']
-                report.append(f"Memory Usage - Current: {memory['current']:.1f}%, Avg: {memory['avg']:.1f}%, Max: {memory['max']:.1f}%")
+            if stats.get("memory"):
+                memory = stats["memory"]
+                report.append(
+                    f"Memory Usage - Current: {memory['current']:.1f}%, Avg: {memory['avg']:.1f}%, Max: {memory['max']:.1f}%"
+                )
 
             report.append("")
 
@@ -647,10 +694,12 @@ class MonitoringDashboard:
             logger.error(f"Failed to generate report: {e}")
             return f"Error generating report: {e}"
 
+
 def signal_handler(sig, frame):
     """Handle shutdown signals."""
     logger.info("Received shutdown signal")
     sys.exit(0)
+
 
 def main():
     """Main entry point for the monitoring dashboard."""
@@ -688,11 +737,12 @@ def main():
 
     finally:
         # Clean shutdown
-        if 'dashboard' in locals():
+        if "dashboard" in locals():
             dashboard.stop_monitoring()
         logger.info("Monitoring dashboard stopped")
 
     return 0
+
 
 if __name__ == "__main__":
     exit_code = main()

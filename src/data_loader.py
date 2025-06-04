@@ -1,20 +1,32 @@
-# C:\kortana\src\data_loader.py
-# Purpose: Loads data (e.g., memory.jsonl) for memory seeding or analysis.
-# Role: Supports memory.py and brain.py in building pattern-based anchors
-# or RAG systems.
+"""Module for loading and managing project data structures.
+
+This module provides functionality for loading various types of data
+required by the Kortana autonomous development system.
+"""
 
 import json
-import os
 import logging  # Added for logging
-from typing import List, Dict, Optional, Any  # Added Any for flexibility
+import os
+from typing import Any, Dict, List, Optional  # Added Any for flexibility
 
 logger = logging.getLogger(__name__)
 
 
 class MemoryLoader:
-    def __init__(self, data_path: str = "../data"):  # Assumes data_loader.py is in src/
-        # Resolve the absolute path to the data directory
-        # This assumes 'data' is a sibling of 'src' at the project root
+    """
+    A class to load and manage memory data for Kortana.
+
+    Attributes:
+        data_path (str): The path to the data directory.
+    """
+
+    def __init__(self, data_path: str = "../data"):
+        """
+        Initializes the MemoryLoader with the specified data path.
+
+        Args:
+            data_path (str): Relative path to the data directory. Defaults to "../data".
+        """
         self.data_path = os.path.abspath(
             os.path.join(os.path.dirname(__file__), data_path)
         )
@@ -23,14 +35,16 @@ class MemoryLoader:
             logging.warning(
                 f"Data path does not exist: {self.data_path}. Please ensure it's created."
             )
-            # Consider creating it: os.makedirs(self.data_path, exist_ok=True)
 
-    def load_jsonl(
-        self, file_name: str = "memory.jsonl"
-    ) -> List[Dict[str, Any]]:  # Specified return type
+    def load_jsonl(self, file_name: str = "memory.jsonl") -> List[Dict[str, Any]]:
         """
         Loads a .jsonl file and returns a list of memory entries.
-        Each line in the file is expected to be a valid JSON object.
+
+        Args:
+            file_name (str): Name of the .jsonl file to load. Defaults to "memory.jsonl".
+
+        Returns:
+            List[Dict[str, Any]]: A list of memory entries.
         """
         full_path = os.path.join(self.data_path, file_name)
         memories: List[Dict[str, Any]] = []
@@ -43,20 +57,18 @@ class MemoryLoader:
         try:
             with open(full_path, "r", encoding="utf-8") as f:
                 for line_number, line in enumerate(f, 1):
-                    if line.strip():  # Ensure line is not empty
+                    if line.strip():
                         try:
                             memories.append(json.loads(line.strip()))
                         except json.JSONDecodeError as e:
                             logging.error(
                                 f"Error decoding JSON on line {line_number} in {full_path}: {e}"
                             )
-                            # Optionally, continue to next line or raise error
             logging.info(
                 f"Successfully loaded {len(memories)} entries from {full_path}"
             )
         except Exception as e:
             logging.error(f"Failed to load or process {full_path}: {e}", exc_info=True)
-            # Return what was loaded so far, or an empty list
         return memories
 
     def get_entries_by_mode(
@@ -64,7 +76,13 @@ class MemoryLoader:
     ) -> List[Dict[str, Any]]:
         """
         Filters memory entries by a specific mode.
-        Assumes entries have a 'metadata' dict with a 'mode_at_time' key.
+
+        Args:
+            entries (List[Dict[str, Any]]): List of memory entries.
+            mode (str): Mode to filter entries by.
+
+        Returns:
+            List[Dict[str, Any]]: Filtered list of memory entries.
         """
         if not isinstance(entries, list):
             logging.warning("get_entries_by_mode: 'entries' is not a list.")
@@ -88,6 +106,13 @@ class MemoryLoader:
     ) -> List[Dict[str, Any]]:
         """
         Returns the most recent N memory entries from a list.
+
+        Args:
+            entries (List[Dict[str, Any]]): List of memory entries.
+            count (int): Number of recent entries to return. Defaults to 5.
+
+        Returns:
+            List[Dict[str, Any]]: List of the most recent memory entries.
         """
         if not isinstance(entries, list):
             logging.warning("get_recent_entries: 'entries' is not a list.")
@@ -96,22 +121,24 @@ class MemoryLoader:
             logging.warning(
                 f"get_recent_entries: 'count' ({count}) is invalid. Returning all entries or empty."
             )
-            return entries  # Or empty list: return []
+            return entries
 
         return entries[-count:]
 
     def detect_pattern_tags(self, entries: List[Dict[str, Any]]) -> Optional[List[str]]:
         """
-        Placeholder: Detects recurring themes or patterns from memory entries.
-        This will eventually involve comparing text, emotion tags, keywords, and timestamps.
+        Detects recurring themes or patterns from memory entries.
+
+        Args:
+            entries (List[Dict[str, Any]]): List of memory entries.
+
+        Returns:
+            Optional[List[str]]: List of detected pattern tags, or None if not implemented.
         """
-        # TODO: Integrate proper pattern detection based on themes, keywords, embeddings,
-        # and the principles outlined in memory.md (e.g., 3+ returns of a
-        # theme).
         logging.info(
             "detect_pattern_tags: Placeholder function called. Full implementation pending."
         )
-        return None  # Reserved for future whispering intelligence
+        return None
 
 
 if __name__ == "__main__":

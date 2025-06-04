@@ -1,0 +1,114 @@
+************* Module src.agents_sdk_integration
+src\agents_sdk_integration.py:56:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\agents_sdk_integration.py:57:8: C0115: Missing class docstring (missing-class-docstring)
+************* Module src.agents_sdk_integration_clean
+src\agents_sdk_integration_clean.py:56:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\agents_sdk_integration_clean.py:57:8: C0115: Missing class docstring (missing-class-docstring)
+************* Module src.agents_sdk_integration_corrupted
+src\agents_sdk_integration_corrupted.py:57:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\agents_sdk_integration_corrupted.py:58:8: C0115: Missing class docstring (missing-class-docstring)
+************* Module src.app_ui
+src\app_ui.py:293:4: C0116: Missing function or method docstring (missing-function-docstring)
+************* Module src.brain
+src\brain.py:279:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\brain.py:287:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\brain.py:373:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\brain.py:860:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\brain.py:1197:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\brain.py:1208:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\brain.py:1436:4: C0116: Missing function or method docstring (missing-function-docstring)
+************* Module src.model_router
+src\model_router.py:26:0: C0115: Missing class docstring (missing-class-docstring)
+************* Module src.sacred_trinity_router
+src\sacred_trinity_router.py:153:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\sacred_trinity_router.py:166:4: C0116: Missing function or method docstring (missing-function-docstring)
+************* Module src.strategic_config
+src\strategic_config.py:17:0: C0115: Missing class docstring (missing-class-docstring)
+************* Module src.kortana.agents.autonomous_agents
+src\kortana\agents\autonomous_agents.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\kortana\agents\autonomous_agents.py:124:4: C0116: Missing function or method docstring (missing-function-docstring)
+************* Module src.kortana.agents.coding_agent
+src\kortana\agents\coding_agent.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\kortana\agents\coding_agent.py:4:0: C0115: Missing class docstring (missing-class-docstring)
+src\kortana\agents\coding_agent.py:8:4: C0116: Missing function or method docstring (missing-function-docstring)
+************* Module src.kortana.agents.monitoring_agent
+src\kortana\agents\monitoring_agent.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\kortana\agents\monitoring_agent.py:4:0: C0115: Missing class docstring (missing-class-docstring)
+src\kortana\agents\monitoring_agent.py:5:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\kortana\agents\monitoring_agent.py:13:4: C0116: Missing function or method docstring (missing-function-docstring)
+************* Module src.kortana.agents.planning_agent
+src\kortana\agents\planning_agent.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\kortana\agents\planning_agent.py:5:0: C0115: Missing class docstring (missing-class-docstring)
+src\kortana\agents\planning_agent.py:9:4: C0116: Missing function or method docstring (missing-function-docstring)
+************* Module src.kortana.agents.testing_agent
+src\kortana\agents\testing_agent.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\kortana\agents\testing_agent.py:4:0: C0115: Missing class docstring (missing-class-docstring)
+src\kortana\agents\testing_agent.py:5:4: C0116: Missing function or method docstring (missing-function-docstring)
+************* Module src.kortana.core.autonomous_development_engine
+src\kortana\core\autonomous_development_engine.py:842:12: C0115: Missing class docstring (missing-class-docstring)
+src\kortana\core\autonomous_development_engine.py:843:16: C0116: Missing function or method docstring (missing-function-docstring)
+src\kortana\core\autonomous_development_engine.py:851:12: C0116: Missing function or method docstring (missing-function-docstring)
+************* Module src.kortana.core.brain
+src\kortana\core\brain.py:62:0: C0116: Missing function or method docstring (missing-function-docstring)
+src\kortana\core\brain.py:271:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\kortana\core\brain.py:279:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\kortana\core\brain.py:365:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\kortana\core\brain.py:861:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\kortana\core\brain.py:1198:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\kortana\core\brain.py:1209:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\kortana\core\brain.py:1437:4: C0116: Missing function or method docstring (missing-function-docstring)
+************* Module src.kortana.core.core_rituals
+src\kortana\core\core_rituals.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+************* Module src.kortana.core.covenant
+src\kortana\core\covenant.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\kortana\core\covenant.py:10:0: C0115: Missing class docstring (missing-class-docstring)
+************* Module src.kortana.core.covenant_enforcer
+src\kortana\core\covenant_enforcer.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\kortana\core\covenant_enforcer.py:18:0: C0115: Missing class docstring (missing-class-docstring)
+src\kortana\core\covenant_enforcer.py:84:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\kortana\core\covenant_enforcer.py:108:4: C0116: Missing function or method docstring (missing-function-docstring)
+************* Module src.kortana.core.memory
+src\kortana\core\memory.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+************* Module src.kortana.llm_clients.google_genai_client
+src\kortana\llm_clients\google_genai_client.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\kortana\llm_clients\google_genai_client.py:116:8: C0115: Missing class docstring (missing-class-docstring)
+src\kortana\llm_clients\google_genai_client.py:122:8: C0115: Missing class docstring (missing-class-docstring)
+src\kortana\llm_clients\google_genai_client.py:126:8: C0115: Missing class docstring (missing-class-docstring)
+src\kortana\llm_clients\google_genai_client.py:131:8: C0115: Missing class docstring (missing-class-docstring)
+************* Module src.kortana.llm_clients.llama_client
+src\kortana\llm_clients\llama_client.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+************* Module src.kortana.llm_clients.openrouter_client
+src\kortana\llm_clients\openrouter_client.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+************* Module src.kortana.llm_clients.xai_grok_client
+src\kortana\llm_clients\xai_grok_client.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+************* Module src.kortana.memory.memory
+src\kortana\memory\memory.py:39:0: C0116: Missing function or method docstring (missing-function-docstring)
+src\kortana\memory\memory.py:186:0: C0115: Missing class docstring (missing-class-docstring)
+************* Module src.kortana.memory.memory_manager
+src\kortana\memory\memory_manager.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\kortana\memory\memory_manager.py:43:0: C0115: Missing class docstring (missing-class-docstring)
+src\kortana\memory\memory_manager.py:108:4: C0116: Missing function or method docstring (missing-function-docstring)
+************* Module src.kortana.memory.memory_store
+src\kortana\memory\memory_store.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+src\kortana\memory\memory_store.py:5:0: C0115: Missing class docstring (missing-class-docstring)
+src\kortana\memory\memory_store.py:7:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\kortana\memory\memory_store.py:11:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\kortana\memory\memory_store.py:17:4: C0116: Missing function or method docstring (missing-function-docstring)
+src\kortana\memory\memory_store.py:21:4: C0116: Missing function or method docstring (missing-function-docstring)
+************* Module src.kortana.tools.memory_cli
+src\kortana\tools\memory_cli.py:24:0: C0116: Missing function or method docstring (missing-function-docstring)
+************* Module src.kortana.utils.text_analysis
+src\kortana\utils\text_analysis.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+************* Module src.kortana.utils.timestamp_utils
+src\kortana\utils\timestamp_utils.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+************* Module src.kortana.utils
+src\kortana\utils\__init__.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+************* Module src.llm_clients.google_genai_client
+src\llm_clients\google_genai_client.py:121:8: C0115: Missing class docstring (missing-class-docstring)
+src\llm_clients\google_genai_client.py:127:8: C0115: Missing class docstring (missing-class-docstring)
+src\llm_clients\google_genai_client.py:131:8: C0115: Missing class docstring (missing-class-docstring)
+src\llm_clients\google_genai_client.py:136:8: C0115: Missing class docstring (missing-class-docstring)
+
+------------------------------------------------------------------
+Your code has been rated at 9.88/10 (previous run: 9.79/10, +0.09)
+

@@ -1,3 +1,9 @@
+"""Core memory management system for Kortana.
+
+This module implements the core memory functionality including
+storage, retrieval, and management of conversation history and context.
+"""
+
 import json
 import os
 import sys
@@ -27,7 +33,9 @@ def load_memory() -> List[Dict[str, Any]]:
     print(f"[DEBUG] Attempting to load memory from: {abs_memory_path}")
 
     if not os.path.exists(abs_memory_path):  # pragma: no cover
-        print(f"[DEBUG] Memory file not found at {abs_memory_path}. Returning empty list.")
+        print(
+            f"[DEBUG] Memory file not found at {abs_memory_path}. Returning empty list."
+        )
         # print(f"Project memory file not found: {abs_memory_path}") # Avoid
         # printing in library function
         return memory_entries

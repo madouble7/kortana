@@ -1,17 +1,13 @@
 """
-Kortana Agents Package
-Autonomous agent implementations for various development tasks
+Kor'tana Agents Package
+
+Contains autonomous agents for the Kor'tana system.
 """
 
-from .autonomous_agents import AutonomousAgents
-from .coding_agent import CodingAgent
-from .monitoring_agent import MonitoringAgent
-from .planning_agent import PlanningAgent
-from .testing_agent import TestingAgent
+from .autonomous_agents import CodingAgent, MonitoringAgent, PlanningAgent, TestingAgent
 
 __all__ = [
-    "AutonomousAgents",
-    "CodingAgent", 
+    "CodingAgent",
     "MonitoringAgent",
     "PlanningAgent",
     "TestingAgent",

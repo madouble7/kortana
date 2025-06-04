@@ -1,11 +1,20 @@
+"""Development text completion playground for Kortana.
+
+This module provides a simple interface for testing text completion
+functionality using various LLM clients during development.
+"""
+
 import os
-from kortana.llm_clients.openai_client import OpenAIClient
+from typing import Optional
+
 from dotenv import load_dotenv
+
+from kortana.llm_clients.openai_client import OpenAIClient
 
 load_dotenv()
 
-api_key = os.getenv("OPENAI_API_KEY")
-model_name = "gpt-4.1-nano-2025-04-14"
+api_key: Optional[str] = os.getenv("OPENAI_API_KEY")
+model_name: str = "gpt-4.1-nano-2025-04-14"
 
 if not api_key:
     print("Error: OPENAI_API_KEY not set in environment or .env file.")
@@ -13,17 +22,17 @@ if not api_key:
 
 client = OpenAIClient(api_key=api_key, model_name=model_name)
 
-system_prompt = "You are Kor'tana, a helpful, creative, and soulful assistant."
+system_prompt: str = "You are Kor'tana, a helpful, creative, and soulful assistant."
 
 print("Kor'tana Dev Playground\n=========================")
 print("1. Text prompt only\n2. Text + Image (image URL)")
-mode = input("Choose mode (1 or 2): ").strip()
+mode: str = input("Choose mode (1 or 2): ").strip()
 
 if mode == "2":
-    user_prompt = input("Enter your text prompt: ").strip()
+    user_prompt: str = input("Enter your text prompt: ").strip()
     if not user_prompt:
         user_prompt = "what teams are playing in this image?"
-    image_url = input("Enter image URL: ").strip()
+    image_url: str = input("Enter image URL: ").strip()
     if not image_url:
         image_url = "https://upload.wikimedia.org/wikipedia/commons/3/3b/LeBron_James_Layup_%28Cleveland_vs_Brooklyn_2018%29.jpg"
     messages = [

@@ -1,209 +1,117 @@
 """
-Configuration loading utility for Project Kor'tana
-Centralized configuration management with environment-based overrides
+Configuration Module
+
+This module provides functions for loading and managing the application configuration.
 """
 
 import os
-import yaml
 from pathlib import Path
-from typing import Optional, Dict, Any, Union
-from functools import lru_cache
+
+import yaml
 
 from .schema import KortanaConfig
 
 
-def _load_yaml_file(file_path: Union[str, Path]) -> Dict[str, Any]:
-    """Load a YAML configuration file"""
-    path = Path(file_path)
-    if not path.exists():
-        return {}
-
-    try:
-        with open(path, 'r', encoding='utf-8') as f:
-            content = yaml.safe_load(f) or {}
-        return content
-    except yaml.YAMLError as e:
-        raise ValueError(f"Invalid YAML in {file_path}: {e}")
-    except Exception as e:
-        raise ValueError(f"Cannot read config file {file_path}: {e}")
-
-
-def _merge_configs(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
-    """Deep merge two configuration dictionaries"""
-    result = base.copy()
-
-    for key, value in override.items():
-        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
-            result[key] = _merge_configs(result[key], value)
-        else:
-            result[key] = value
-
-    return result
-
-
-def _resolve_extends(config: Dict[str, Any], config_dir: Path) -> Dict[str, Any]:
-    """Resolve 'extends' directive in configuration"""
-    if 'extends' not in config:
-        return config
-
-    extends_file = config.pop('extends')
-    base_config = _load_yaml_file(config_dir / extends_file)
-
-    # Recursively resolve extends in base config
-    base_config = _resolve_extends(base_config, config_dir)
-
-    # Merge current config over base config
-    return _merge_configs(base_config, config)
-
-
-@lru_cache(maxsize=1)
-def load_config(
-    config_name: Optional[str] = None,
-    config_dir: Optional[Union[str, Path]] = None,
-    env_override: bool = True
-) -> KortanaConfig:
+def load_config() -> KortanaConfig:
     """
-    Load and validate configuration for Project Kor'tana
-
-    Args:
-        config_name: Name of config file (without .yaml extension).
-                    Defaults to environment-specific config or 'default'
-        config_dir: Directory containing config files. Defaults to './config'
-        env_override: Whether to allow environment variable overrides
+    Load configuration from YAML files and environment variables.
 
     Returns:
-        Validated KortanaConfig instance
-
-    Environment Variables:
-        KORTANA_CONFIG: Override config file name
-        KORTANA_CONFIG_DIR: Override config directory
-        KORTANA_ENV: Set environment (development/staging/production)
+        The application configuration.
     """
+    # Get the project root directory
+    project_root = Path(__file__).parent.parent
+    config_dir = project_root / "config"
 
-    # Determine config directory
-    if config_dir is None:
-        config_dir = Path(os.getenv('KORTANA_CONFIG_DIR', 'config'))
-    else:
-        config_dir = Path(config_dir)
+    # Default configuration file
+    default_yaml = config_dir / "default.yaml"
 
-    if not config_dir.exists():
-        raise ValueError(f"Config directory does not exist: {config_dir}")
+    # Load default configuration
+    with open(default_yaml, "r") as f:
+        config_dict = yaml.safe_load(f)
 
-    # Determine config file name
-    if config_name is None:
-        config_name = os.getenv('KORTANA_CONFIG')
+    # Check for environment-specific configuration
+    env = os.getenv("KORTANA_ENV", "development")
+    env_yaml = config_dir / f"{env}.yaml"
 
-    if config_name is None:
-        # Use environment-specific config if available
-        env = os.getenv('KORTANA_ENV', 'development')
-        env_config_file = config_dir / f"{env}.yaml"
-        if env_config_file.exists():
-            config_name = env
-        else:
-            config_name = 'default'
+    if env_yaml.exists():
+        print(f"Loading environment configuration: {env_yaml}")
+        with open(env_yaml, "r") as f:
+            env_dict = yaml.safe_load(f)
+            # Update configuration with environment-specific values
+            _update_dict(config_dict, env_dict)
 
-    config_file = config_dir / f"{config_name}.yaml"
+    # Override with environment variables
+    _apply_env_overrides(config_dict)
 
-    # Load base configuration
-    config_data = _load_yaml_file(config_file)
+    # Create Pydantic model
+    config = KortanaConfig(**config_dict)
 
-    # Resolve extends directive
-    config_data = _resolve_extends(config_data, config_dir)
-
-    # Apply environment variable overrides if enabled
-    if env_override:
-        # Override environment if KORTANA_ENV is set
-        kortana_env = os.getenv('KORTANA_ENV')
-        if kortana_env:
-            if 'app' not in config_data:
-                config_data['app'] = {}
-            config_data['app']['environment'] = kortana_env
-
-    # Validate and create config object
-    try:
-        return KortanaConfig(**config_data)
-    except Exception as e:
-        raise ValueError(f"Invalid configuration in {config_file}: {e}")
+    return config
 
 
-def get_config() -> KortanaConfig:
-    """Get the current configuration instance (cached)"""
-    return load_config()
-
-
-def reload_config() -> KortanaConfig:
-    """Reload configuration (clears cache)"""
-    load_config.cache_clear()
-    return load_config()
-
-
-def create_config_file(
-    config_name: str,
-    config_data: Dict[str, Any],
-    config_dir: Optional[Union[str, Path]] = None,
-    overwrite: bool = False
-) -> Path:
+def _update_dict(base_dict, update_dict):
     """
-    Create a new configuration file
+    Update a nested dictionary with values from another dictionary.
 
     Args:
-        config_name: Name of config file (without .yaml extension)
-        config_data: Configuration data to write
-        config_dir: Directory to write config file. Defaults to './config'
-        overwrite: Whether to overwrite existing file
-
-    Returns:
-        Path to created config file
+        base_dict: The dictionary to update.
+        update_dict: The dictionary with new values.
     """
-    if config_dir is None:
-        config_dir = Path('config')
-    else:
-        config_dir = Path(config_dir)
-
-    config_dir.mkdir(parents=True, exist_ok=True)
-    config_file = config_dir / f"{config_name}.yaml"
-
-    if config_file.exists() and not overwrite:
-        raise ValueError(f"Config file already exists: {config_file}")
-
-    try:
-        with open(config_file, 'w', encoding='utf-8') as f:
-            yaml.safe_dump(config_data, f, default_flow_style=False, indent=2)
-    except Exception as e:
-        raise ValueError(f"Cannot write config file {config_file}: {e}")
-
-    return config_file
+    for key, value in update_dict.items():
+        if (
+            isinstance(value, dict)
+            and key in base_dict
+            and isinstance(base_dict[key], dict)
+        ):
+            _update_dict(base_dict[key], value)
+        else:
+            base_dict[key] = value
 
 
-# Convenience functions for common operations
-def get_api_key(provider: str) -> Optional[str]:
-    """Get API key for a specific provider"""
-    config = get_config()
-    return config.get_api_key(provider)
+def _apply_env_overrides(config_dict):
+    """
+    Apply environment variable overrides to the configuration.
 
+    Args:
+        config_dict: The configuration dictionary to update.
+    """
+    # Example: KORTANA_API_HOST -> config_dict["api"]["host"]
+    for env_key, env_value in os.environ.items():
+        if env_key.startswith("KORTANA_"):
+            # Remove prefix and convert to lowercase
+            key_path = env_key[8:].lower()
 
-def is_production() -> bool:
-    """Check if running in production environment"""
-    config = get_config()
-    return config.is_production()
+            # If a path is provided, use it
+            if key_path == "config_dir":
+                continue
 
+            # Split by underscore to get nested keys
+            keys = key_path.split("_")
 
-def is_development() -> bool:
-    """Check if running in development environment"""
-    config = get_config()
-    return config.is_development()
+            # Navigate to the correct nested dictionary
+            current = config_dict
+            for key in keys[:-1]:
+                if key not in current or not isinstance(current[key], dict):
+                    current[key] = {}
+                current = current[key]
 
-
-def get_database_url() -> str:
-    """Get database connection URL"""
-    config = get_config()
-    db = config.database
-
-    if db.type == "sqlite":
-        return f"sqlite:///{db.name}"
-    elif db.type == "postgresql":
-        return f"postgresql://{db.user}:{db.password}@{db.host}:{db.port}/{db.name}"
-    elif db.type == "mysql":
-        return f"mysql://{db.user}:{db.password}@{db.host}:{db.port}/{db.name}"
-    else:
-        raise ValueError(f"Unsupported database type: {db.type}")
+            # Set the value
+            try:
+                # Try to convert to appropriate type
+                if env_value.lower() in ["true", "yes", "1"]:
+                    current[keys[-1]] = True
+                elif env_value.lower() in ["false", "no", "0"]:
+                    current[keys[-1]] = False
+                elif env_value.isdigit():
+                    current[keys[-1]] = int(env_value)
+                elif (
+                    env_value.replace(".", "", 1).isdigit()
+                    and env_value.count(".") == 1
+                ):
+                    current[keys[-1]] = float(env_value)
+                else:
+                    current[keys[-1]] = env_value
+            except Exception:
+                # Default to string if conversion fails
+                current[keys[-1]] = env_value

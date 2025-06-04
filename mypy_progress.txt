@@ -1,0 +1,2 @@
+src\kortana\llm_clients\openai_client.py:40: error: invalid syntax  [syntax]
+Found 1 error in 1 file (errors prevented further checking)

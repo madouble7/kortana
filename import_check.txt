@@ -1,0 +1,2 @@
+Error importing kortana: No module named 'kortana.config'
+sys.path: ['C:/kortana/src', 'C:\\kortana', 'C:\\Program Files\\Python311\\python311.zip', 'C:\\Program Files\\Python311\\DLLs', 'C:\\Program Files\\Python311\\Lib', 'C:\\Program Files\\Python311', 'C:\\kortana\\venv311', 'C:\\kortana\\venv311\\Lib\\site-packages']

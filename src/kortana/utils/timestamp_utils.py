@@ -1,3 +1,9 @@
+"""
+Timestamp utility functions for Kortana.
+This module provides standardized timestamp generation and formatting
+to ensure consistent datetime handling throughout the application.
+"""
+
 import datetime
 
 

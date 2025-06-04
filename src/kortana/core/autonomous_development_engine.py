@@ -214,9 +214,7 @@ class AutonomousDevelopmentEngine:
                 )
                 # Optional: Attempt to parse tasks from message content as fallback
                 # tasks = self._parse_tasks_from_content(response.choices[0].message.content)
-                tasks = (
-                    []
-                )  # No fallback parsing implemented yet, so default to empty list
+                tasks = []  # No fallback parsing implemented yet, so default to empty list
 
             # Apply Sacred Covenant approval
             approved_tasks = []
@@ -836,11 +834,21 @@ if __name__ == "__main__":
             # Create components
             factory = LLMClientFactory()
             client = factory.get_default_client(models_config)
-            covenant = CovenantEnforcer()
+            covenant = CovenantEnforcer()  # Mock memory manager for CLI
 
-            # Mock memory manager for CLI
             class MockMemoryManager:
-                def store_entry(self, entry):
+                """
+                Mock memory manager for CLI operations.
+                Provides a simplified interface compatible with the real MemoryManager.
+                """
+
+                def store_entry(self, entry) -> None:
+                    """
+                    Store a memory entry (no-op in mock implementation).
+
+                    Args:
+                        entry: The memory entry to store
+                    """
                     pass
 
             memory = MockMemoryManager()

@@ -1,3 +1,9 @@
+"""XAI Grok client for accessing Grok models through XAI API.
+
+This module implements the XAI client for accessing Grok language models
+within the Kortana system.
+"""
+
 import logging
 import time
 from typing import Any, Dict, List

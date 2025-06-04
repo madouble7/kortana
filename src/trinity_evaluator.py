@@ -1,7 +1,13 @@
-import logging
-from typing import Dict, Any, List
+"""Sacred Trinity evaluation system for model response assessment.
+
+This module implements the evaluation framework for assessing LLM responses
+based on Sacred Trinity principles of Wisdom, Compassion, and Truth.
+"""
+
 import json
+import logging
 import os
+from typing import Any, Dict, List
 
 # Setup logging
 logger = logging.getLogger(__name__)

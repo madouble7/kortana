@@ -9,7 +9,7 @@ import os
 try:
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(name)s - %(message)s'
+        format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
     )
 except Exception:
     # logging might already be configured
@@ -18,27 +18,38 @@ except Exception:
 logger = logging.getLogger(__name__)
 _module_file_path = os.path.abspath(__file__)
 
-logger.info(f"[FLASH_DIAG] Test discovery: Loading test module: {__name__} from {_module_file_path}")
+logger.info(
+    f"[FLASH_DIAG] Test discovery: Loading test module: {__name__} from {_module_file_path}"
+)
 logger.info(f"[FLASH_DIAG] sys.path at {__name__} import: {sys.path}")
 logger.info(f"[FLASH_DIAG] CWD at {__name__} import: {os.getcwd()}")
 
 import sys
-import os # For absolute paths
-print(f"--- TRACE (tests/test_project_memory_integration.py): sys.path ---")
+import os  # For absolute paths
+
+print("--- TRACE (tests/test_project_memory_integration.py): sys.path ---")
 for p in sys.path:
     print(p)
-print(f"--- TRACE (tests/test_project_memory_integration.py): sys.modules keys (first 20 + relevant) ---")
+print(
+    "--- TRACE (tests/test_project_memory_integration.py): sys.modules keys (first 20 + relevant) ---"
+)
 keys_to_print_test = list(sys.modules.keys())[:20]
-relevant_keys_test = [k for k in sys.modules.keys() if 'kortana' in k or 'autonomous_agents' in k or 'brain' in k or 'coding_agent' in k]
+relevant_keys_test = [
+    k
+    for k in sys.modules.keys()
+    if "kortana" in k or "autonomous_agents" in k or "brain" in k or "coding_agent" in k
+]
 for rk_test in relevant_keys_test:
     if rk_test not in keys_to_print_test:
         keys_to_print_test.append(rk_test)
 for key_test in sorted(list(set(keys_to_print_test))):
     try:
-        print(f"{key_test}: {sys.modules[key_test].__file__ if hasattr(sys.modules[key_test], '__file__') else 'Built-in or no __file__'}")
+        print(
+            f"{key_test}: {sys.modules[key_test].__file__ if hasattr(sys.modules[key_test], '__file__') else 'Built-in or no __file__'}"
+        )
     except Exception:
         print(f"{key_test}: Error accessing __file__ or built-in module")
-print(f"--- END TRACE (tests/test_project_memory_integration.py) ---")
+print("--- END TRACE (tests/test_project_memory_integration.py) ---")
 
 import unittest
 import os
@@ -63,7 +74,6 @@ memory.PROJECT_MEMORY_PATH = TEST_MEMORY_FILE
 
 
 class TestProjectMemoryIntegration(unittest.TestCase):
-
     def setUp(self):
         """Set up test environment: create a dummy memory file and ChatEngine."""
         # Ensure a clean test memory file for each test
@@ -108,38 +118,23 @@ class TestProjectMemoryIntegration(unittest.TestCase):
                     with patch("brain.BackgroundScheduler") as MockBackgroundScheduler:
                         with patch("brain.CovenantEnforcer") as MockCovenantEnforcer:
                             with patch("brain.PlanningAgent") as MockPlanningAgent:
-                                with patch(
-                                    "brain.TestingAgent"
-                                ) as MockTestingAgent:
+                                with patch("brain.TestingAgent") as MockTestingAgent:
                                     with patch(
                                         "brain.MonitoringAgent"
                                     ) as MockMonitoringAgent:
-
                                         # Configure mocks if necessary (e.g., return specific values)
-                                        MockLLMClientFactory.return_value.create_client.return_value = (
-                                            MagicMock()
-                                        )
+                                        MockLLMClientFactory.return_value.create_client.return_value = MagicMock()
                                         MockMemoryManager.return_value = MagicMock()
-                                        MockSacredModelRouter.return_value.loaded_models_config = (
-                                            {}
-                                        )
-                                        MockSacredModelRouter.return_value.get_model_for_task.return_value = (
-                                            "mock-model"
-                                        )
-                                        MockSacredModelRouter.return_value.select_model_with_sacred_guidance.return_value = (
-                                            "mock-model"
-                                        )
+                                        MockSacredModelRouter.return_value.loaded_models_config = {}
+                                        MockSacredModelRouter.return_value.get_model_for_task.return_value = "mock-model"
+                                        MockSacredModelRouter.return_value.select_model_with_sacred_guidance.return_value = "mock-model"
                                         MockBackgroundScheduler.return_value = (
                                             MagicMock()
                                         )
-                                        MockCovenantEnforcer.return_value = (
-                                            MagicMock()
-                                        )
+                                        MockCovenantEnforcer.return_value = MagicMock()
                                         MockPlanningAgent.return_value = MagicMock()
                                         MockTestingAgent.return_value = MagicMock()
-                                        MockMonitoringAgent.return_value = (
-                                            MagicMock()
-                                        )
+                                        MockMonitoringAgent.return_value = MagicMock()
 
                                         # Initialize ChatEngine - project memory should be loaded here
                                         self.engine = ChatEngine()
@@ -174,7 +169,7 @@ class TestProjectMemoryIntegration(unittest.TestCase):
 
         for mem in self.engine.project_memories:
             # self.assertEqual(mem["type"], "decision") # This test needs to handle mixed types now
-            self.assertIn("type", mem) # Check that type key exists
+            self.assertIn("type", mem)  # Check that type key exists
             self.assertIn("timestamp", mem)
 
     def test_save_decision_saves_to_file(self):
@@ -191,8 +186,8 @@ class TestProjectMemoryIntegration(unittest.TestCase):
         # For this test to be reliable in isolation or within a suite, the memory file should ideally be empty at the start of *this* test method.
         # A better pattern is to save in the test method itself if testing the save function.
         # Assuming for now we check the *last* line appended
-        self.assertGreater(len(lines), 0) # Ensure at least one line was written
-        entry = json.loads(lines[-1]) # Check the last line
+        self.assertGreater(len(lines), 0)  # Ensure at least one line was written
+        entry = json.loads(lines[-1])  # Check the last line
         self.assertEqual(entry["type"], "decision")
         self.assertEqual(entry["content"], decision_content)
         self.assertIn("timestamp", entry)
@@ -208,8 +203,8 @@ class TestProjectMemoryIntegration(unittest.TestCase):
             lines = f.readlines()
 
         # Assuming we check the *last* line appended
-        self.assertGreater(len(lines), 0) # Ensure at least one line was written
-        entry = json.loads(lines[-1]) # Check the last line
+        self.assertGreater(len(lines), 0)  # Ensure at least one line was written
+        entry = json.loads(lines[-1])  # Check the last line
         self.assertEqual(entry["type"], "context_summary")
         self.assertEqual(entry["content"], summary_content)
         self.assertIn("timestamp", entry)
@@ -224,8 +219,8 @@ class TestProjectMemoryIntegration(unittest.TestCase):
             lines = f.readlines()
 
         # Assuming we check the *last* line appended
-        self.assertGreater(len(lines), 0) # Ensure at least one line was written
-        entry = json.loads(lines[-1]) # Check the last line
+        self.assertGreater(len(lines), 0)  # Ensure at least one line was written
+        entry = json.loads(lines[-1])  # Check the last line
         self.assertEqual(entry["type"], "implementation_note")
         self.assertEqual(entry["content"], note_content)
         self.assertIn("timestamp", entry)
@@ -240,8 +235,8 @@ class TestProjectMemoryIntegration(unittest.TestCase):
             lines = f.readlines()
 
         # Assuming we check the *last* line appended
-        self.assertGreater(len(lines), 0) # Ensure at least one line was written
-        entry = json.loads(lines[-1]) # Check the last line
+        self.assertGreater(len(lines), 0)  # Ensure at least one line was written
+        entry = json.loads(lines[-1])  # Check the last line
         self.assertEqual(entry["type"], "project_insight")
         self.assertEqual(entry["content"], insight_content)
         self.assertIn("timestamp", entry)
@@ -255,7 +250,6 @@ class TestProjectMemoryIntegration(unittest.TestCase):
         # Mock the LLM client's create_client and generate_content methods
         with patch("brain.LLMClientFactory.create_client") as mock_create_client:
             with patch("brain.ChatEngine.summarize_context") as mock_summarize_context:
-
                 # Configure the mocked LLM client to return a dummy summary
                 mock_llm_client = MagicMock()
                 mock_create_client.return_value = mock_llm_client

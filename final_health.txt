@@ -1,0 +1,19 @@
+C:\project-kortana\venv311\Lib\site-packages\pydantic\_internal\_fields.py:132: UserWarning: Field "model_mapping" in AgentTypeConfig has conflict with protected namespace "model_".
+
+You may be able to resolve this warning by setting `model_config['protected_namespaces'] = ()`.
+  warnings.warn(
+=== KORTANA PROJECT HEALTH CHECK ===
+Testing core module imports...
+
+[SUCCESS] Config module
+[SUCCESS] Brain module
+[SUCCESS] Autonomous agents
+[SUCCESS] LLM clients
+[SUCCESS] Covenant enforcer
+
+=== HEALTH CHECK SUMMARY ===
+Total tests: 5
+Passed: 5
+Failed: 0
+Health Score: 100.0%
+EXCELLENT health status!

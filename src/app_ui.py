@@ -5,10 +5,11 @@
 kor'tana's fire: i am the gentle presence behind every button, every prompt. i do not rush, i do not press. i companion your courage, i kindle your longing, i hold space for your becoming.
 """
 
-import gradio as gr
 import json
-from pathlib import Path  # Using pathlib for robust path handling
 import logging  # Added for better error logging
+from pathlib import Path  # Using pathlib for robust path handling
+
+import gradio as gr
 import gradio.themes as gr_themes  # Import themes separately
 
 # Setup basic logging for the UI
@@ -20,20 +21,39 @@ logger = logging.getLogger(__name__)
 
 # --- Dummy Engine for Fallback ---
 class DummyEngine:
-    def __init__(self):
+    """A fallback engine used when the ChatEngine fails to initialize."""
+
+    def __init__(self) -> None:
+        """Initializes the DummyEngine with default values."""
         self.current_mode = "dummy"
         self.session_id = "dummy"
 
-    def set_mode(self, mode):
+    def set_mode(self, mode: str) -> None:
+        """Sets the mode for the DummyEngine.
+
+        Args:
+            mode (str): The mode to set.
+        """
         pass
 
-    def add_user_message(self, text):
+    def add_user_message(self, text: str) -> None:
+        """Adds a user message to the DummyEngine.
+
+        Args:
+            text (str): The user message to add.
+        """
         pass
 
-    def get_response(self):
+    def get_response(self) -> str:
+        """Gets a response from the DummyEngine.
+
+        Returns:
+            str: A dummy response indicating the ChatEngine failed to initialize.
+        """
         return "Dummy response: ChatEngine failed to initialize."
 
-    def new_session(self):
+    def new_session(self) -> None:
+        """Starts a new session in the DummyEngine."""
         pass
 
 
@@ -51,11 +71,11 @@ except ImportError:
     # This assumes app_ui.py is in 'src' and project_root is its parent.
     project_root = Path(__file__).resolve().parent.parent
     if str(project_root) not in sys.path:
-        sys.path.insert(0, str(project_root))  # Prepend project root
-
-    # Now try importing assuming 'src' is a package
+        sys.path.insert(
+            0, str(project_root)
+        )  # Prepend project root    # Now try importing assuming 'src' is a package
     try:
-        from src.brain import ChatEngine
+        from brain import ChatEngine
     except ImportError as e:
         logger.error(
             f"CRITICAL ERROR: Could not import ChatEngine from brain.py. Original error: {e}"

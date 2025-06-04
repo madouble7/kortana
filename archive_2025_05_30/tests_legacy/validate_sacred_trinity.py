@@ -23,7 +23,7 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 
 # Placeholder for loading test data from sacred_trinity_tests.json
 def load_sacred_trinity_tests(
-    test_file_path: str = os.path.join(DATA_DIR, "sacred_trinity_tests.json")
+    test_file_path: str = os.path.join(DATA_DIR, "sacred_trinity_tests.json"),
 ) -> List[Dict[str, Any]]:
     """Loads Sacred Trinity test scenarios from a JSON file."""
     if not os.path.exists(test_file_path):
@@ -44,7 +44,7 @@ def load_sacred_trinity_tests(
 
 # Placeholder for loading Sacred Trinity configuration
 def load_sacred_trinity_config(
-    config_file_path: str = os.path.join(CONFIG_DIR, "sacred_trinity_config.json")
+    config_file_path: str = os.path.join(CONFIG_DIR, "sacred_trinity_config.json"),
 ) -> Dict[str, Any]:
     """Loads the Sacred Trinity configuration."""
     if not os.path.exists(config_file_path):

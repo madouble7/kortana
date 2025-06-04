@@ -1,3 +1,9 @@
+"""Llama client for local LLM integration with Kortana.
+
+This module implements the Llama client for accessing local
+Llama models within the Kortana system.
+"""
+
 # llama_client.py
 from .base_client import BaseLLMClient
 

@@ -33,55 +33,55 @@ Examples:
 
 For more help on a specific command, use:
   kortana <command> --help
-        """
+        """,
+    )
+
+    parser.add_argument("--version", action="version", version="%(prog)s 1.0.0")
+
+    parser.add_argument(
+        "--config", type=str, help="Configuration file to use (default: auto-detect)"
     )
 
     parser.add_argument(
-        "--version",
-        action="version",
-        version="%(prog)s 1.0.0"
+        "--verbose", "-v", action="store_true", help="Enable verbose output"
     )
 
-    parser.add_argument(
-        "--config",
-        type=str,
-        help="Configuration file to use (default: auto-detect)"
-    )
-
-    parser.add_argument(
-        "--verbose", "-v",
-        action="store_true",
-        help="Enable verbose output"
-    )
-
-    parser.add_argument(
-        "--debug",
-        action="store_true",
-        help="Enable debug mode"
-    )
+    parser.add_argument("--debug", action="store_true", help="Enable debug mode")
 
     # Subcommands
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # Start command
-    start_parser = subparsers.add_parser("start", help="Start the autonomous development engine")
-    start_parser.add_argument("--analyze-critical-issues", action="store_true",
-                             help="Analyze critical issues on startup")
-    start_parser.add_argument("--background", action="store_true",
-                             help="Run in background mode")
+    start_parser = subparsers.add_parser(
+        "start", help="Start the autonomous development engine"
+    )
+    start_parser.add_argument(
+        "--analyze-critical-issues",
+        action="store_true",
+        help="Analyze critical issues on startup",
+    )
+    start_parser.add_argument(
+        "--background", action="store_true", help="Run in background mode"
+    )
 
     # Server command
     server_parser = subparsers.add_parser("server", help="Start the API server")
     server_parser.add_argument("--host", default="localhost", help="Host to bind to")
     server_parser.add_argument("--port", type=int, default=8000, help="Port to bind to")
-    server_parser.add_argument("--reload", action="store_true", help="Enable auto-reload")
+    server_parser.add_argument(
+        "--reload", action="store_true", help="Enable auto-reload"
+    )
 
     # Status command
     status_parser = subparsers.add_parser("status", help="Show system status")
-    status_parser.add_argument("--detailed", action="store_true", help="Show detailed status")
+    status_parser.add_argument(
+        "--detailed", action="store_true", help="Show detailed status"
+    )
 
     # Interactive command
-    interactive_parser = subparsers.add_parser("interactive", help="Start interactive mode")
+    interactive_parser = subparsers.add_parser(
+        "interactive", help="Start interactive mode"
+    )
     interactive_parser.add_argument("--model", help="Model to use for interaction")
 
     return parser
@@ -93,7 +93,7 @@ def cmd_start(args) -> int:
         config = load_config(args.config)
 
         if args.verbose:
-            print(f"Starting Autonomous Development Engine...")
+            print("Starting Autonomous Development Engine...")
             print(f"Environment: {config.app.environment}")
             print(f"Debug mode: {config.app.debug}")
 
@@ -142,12 +142,12 @@ def cmd_status(args) -> int:
         config = get_config()
 
         print("=== Project Kor'tana Status ===")
-        print(f"Version: 1.0.0")
+        print("Version: 1.0.0")
         print(f"Environment: {config.app.environment}")
         print(f"Debug mode: {config.app.debug}")
 
         if args.detailed:
-            print(f"\nConfiguration:")
+            print("\nConfiguration:")
             print(f"  - API Host: {config.api.host}:{config.api.port}")
             print(f"  - Default Model: {config.models.default_provider}")
             print(f"  - Memory Max Entries: {config.memory.max_entries}")
@@ -179,10 +179,10 @@ def cmd_interactive(args) -> int:
             try:
                 user_input = input("\nkor'tana> ").strip()
 
-                if user_input.lower() in ['exit', 'quit']:
+                if user_input.lower() in ["exit", "quit"]:
                     print("Goodbye!")
                     break
-                elif user_input.lower() == 'help':
+                elif user_input.lower() == "help":
                     print("""
 Available commands:
   status      - Show system status
@@ -191,16 +191,18 @@ Available commands:
   think <msg> - Ask the brain to think about something
   exit        - Exit interactive mode
                     """)
-                elif user_input.lower() == 'status':
+                elif user_input.lower() == "status":
                     health = brain.check_health()
-                    print(f"System Health: {'✓ Healthy' if health else '✗ Issues detected'}")
-                elif user_input.lower() == 'agents':
+                    print(
+                        f"System Health: {'✓ Healthy' if health else '✗ Issues detected'}"
+                    )
+                elif user_input.lower() == "agents":
                     # TODO: Implement agent listing
                     print("Agent listing not yet implemented")
-                elif user_input.lower() == 'memory':
+                elif user_input.lower() == "memory":
                     # TODO: Implement memory stats
                     print("Memory statistics not yet implemented")
-                elif user_input.startswith('think '):
+                elif user_input.startswith("think "):
                     thought = user_input[6:]
                     response = brain.think(thought)
                     print(f"Brain: {response}")
@@ -227,8 +229,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     # Set up logging based on verbosity
     if args.verbose or args.debug:
         import logging
+
         level = logging.DEBUG if args.debug else logging.INFO
-        logging.basicConfig(level=level, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        logging.basicConfig(
+            level=level, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
 
     # Handle commands
     if args.command == "start":

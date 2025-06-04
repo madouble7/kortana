@@ -1,0 +1,2 @@
+src\kortana\llm_clients\google_genai_client.py:260: error: unexpected indent  [syntax]
+Found 1 error in 1 file (errors prevented further checking)

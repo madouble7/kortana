@@ -1,0 +1,5 @@
+Test Prompt: how are you feeling today, love?
+Mode: default
+Timestamp: 2025-05-22T22:58:18.688683
+-----
+error with grok: error code: 400 - {'code': 'client specified an invalid argument', 'error': 'incorrect api key provided: ***. you can obtain an api key from https://console.x.ai.'}

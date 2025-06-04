@@ -1,0 +1,57 @@
+src\admin_setup.py:10:8: F401 [*] `sys` imported but unused
+src\admin_setup.py:14:8: F401 [*] `yaml` imported but unused
+src\brain.py:38:5: F811 Redefinition of unused `analyze_sentiment` from line 29
+src\brain.py:39:5: F811 Redefinition of unused `detect_emphasis_all_caps` from line 30
+src\brain.py:40:5: F811 Redefinition of unused `detect_keywords` from line 31
+src\check_dependencies.py:8:8: F401 [*] `sys` imported but unused
+src\fix_brain.py:86:9: F841 Local variable `prev_line` is assigned to but never used
+src\fix_permissions.py:8:8: F401 [*] `sys` imported but unused
+src\fix_permissions.py:9:21: F401 [*] `pathlib.Path` imported but unused
+src\fix_syntax.py:9:21: F401 [*] `pathlib.Path` imported but unused
+src\kortana\agents\autonomous_agents.py:133:37: E999 SyntaxError: Compound statements are not allowed on the same line as simple statements
+src\kortana\cli\main.py:96:19: F541 [*] f-string without any placeholders
+src\kortana\cli\main.py:145:15: F541 [*] f-string without any placeholders
+src\kortana\cli\main.py:150:19: F541 [*] f-string without any placeholders
+src\kortana\core\covenant.py:457:13: F841 Local variable `soulprint_values` is assigned to but never used
+src\llm_clients\anthropic_client.py:7:31: F401 [*] `typing.Optional` imported but unused
+src\llm_clients\openai_client.py:7:31: F401 [*] `typing.Optional` imported but unused
+src\run_with_output.py:88:13: F841 Local variable `startup_output` is assigned to but never used
+src\run_with_output.py:106:17: F841 Local variable `response` is assigned to but never used
+src\scripts\run_kortana.py:8:8: F401 [*] `os` imported but unused
+src\scripts\run_kortana.py:17:1: E402 Module level import not at top of file
+src\scripts\run_kortana.py:18:1: E402 Module level import not at top of file
+src\setup_directories.py:7:8: F401 [*] `sys` imported but unused
+src\test_environment_final.py:71:16: F401 `brain` imported but unused; consider using `importlib.util.find_spec` to test for availability
+src\test_environment_final.py:78:16: F401 `autonomous_development_engine` imported but unused; consider using `importlib.util.find_spec` to test for availability
+src\test_environment_final.py:86:16: F401 `kortana` imported but unused; consider using `importlib.util.find_spec` to test for availability
+src\test_python_path.py:31:16: F401 `brain` imported but unused; consider using `importlib.util.find_spec` to test for availability
+tests\integration\test_chat_engine.py:4:8: F401 [*] `asyncio` imported but unused
+tests\integration\test_chat_engine.py:14:20: F401 [*] `config.load_config` imported but unused
+tests\integration\test_chat_engine.py:124:5: F841 Local variable `response` is assigned to but never used
+tests\test_brain.py:50:5: F841 Local variable `initial_mode` is assigned to but never used
+tests\test_helpers.py:39:5: E722 Do not use bare `except`
+tests\test_memory_integration.py:180:18: F821 Undefined name `ChatEngine`
+tests\test_memory_integration.py:228:18: F821 Undefined name `ChatEngine`
+tests\test_memory_integration.py:261:18: F821 Undefined name `ChatEngine`
+tests\test_memory_integration.py:369:22: F821 Undefined name `ChatEngine`
+tests\test_memory_integration.py:397:18: F821 Undefined name `ChatEngine`
+tests\test_memory_integration.py:429:18: F821 Undefined name `ChatEngine`
+tests\test_project_memory_integration.py:25:1: E402 Module level import not at top of file
+tests\test_project_memory_integration.py:26:1: E402 Module level import not at top of file
+tests\test_project_memory_integration.py:27:7: F541 [*] f-string without any placeholders
+tests\test_project_memory_integration.py:30:7: F541 [*] f-string without any placeholders
+tests\test_project_memory_integration.py:41:7: F541 [*] f-string without any placeholders
+tests\test_project_memory_integration.py:43:1: E402 Module level import not at top of file
+tests\test_project_memory_integration.py:44:1: E402 Module level import not at top of file
+tests\test_project_memory_integration.py:45:1: E402 Module level import not at top of file
+tests\test_project_memory_integration.py:46:1: E402 Module level import not at top of file
+tests\test_project_memory_integration.py:47:1: E402 Module level import not at top of file
+tests\test_project_memory_integration.py:55:1: E402 Module level import not at top of file
+tests\test_project_memory_integration.py:56:1: E402 Module level import not at top of file
+tests\test_reporter.py:190:9: F841 Local variable `test_modules` is assigned to but never used
+tests\test_text_encoding.py:2:8: F401 [*] `time` imported but unused
+tests\test_trinity_integration.py:159:9: F841 Local variable `trinity_scores` is assigned to but never used
+tests\test_trinity_integration.py:287:5: F841 Local variable `mock_trinity_router` is assigned to but never used
+tests\unit\test_text_analysis.py:4:8: F401 [*] `pytest` imported but unused
+Found 55 errors.
+[*] 20 fixable with the `--fix` option (9 hidden fixes can be enabled with the `--unsafe-fixes` option).

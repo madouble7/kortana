@@ -1,0 +1,39 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "python": "C:\\project-kortana\\venv311\\Scripts\\python.exe",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder};C:\\project-kortana"
+            }
+        },        {
+            "name": "Python: Autonomous Development Engine",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/autonomous_development_engine.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "python": "C:\\project-kortana\\venv311\\Scripts\\python.exe",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder};C:\\project-kortana"
+            }
+        },        {
+            "name": "Python: Brain Module",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/brain.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "python": "C:\\project-kortana\\venv311\\Scripts\\python.exe",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder};C:\\project-kortana"
+            }
+        }
+    ]
+}

@@ -1,28 +1,19 @@
-import logging
-import subprocess
-from typing import List, Dict, Any, Optional
-import psutil
-import sys  # Import sys for path tracing
-import os  # Import os for path tracing
+"""
+Autonomous Agents
 
-# Configure logging for this diagnostic burst (basic console output).
-# Note: basicConfig should ideally be called only once at the application entry point.
-# Calling it here might not reconfigure logging if it was already set up.
-try:
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
-    )
-except Exception:
-    # logging might already be configured
-    pass
+This module defines the autonomous agents used by the Kor'tana system.
+These agents handle different specialized tasks like coding, planning,
+testing, and system monitoring.
+"""
+
+import logging
+from typing import Any, Dict, List, Optional
+
+from kortana.config.schema import KortanaConfig
 
 logger = logging.getLogger(__name__)
-_module_file_path = os.path.abspath(__file__)
 
-logger.info(f"[FLASH_DIAG] Loading module: {__name__} from {_module_file_path}")
-logger.info(f"[FLASH_DIAG] sys.path at {__name__} import: {sys.path}")
-logger.info(f"[FLASH_DIAG] CWD at {__name__} import: {os.getcwd()}")
+# Note: Diagnostic logging removed for cleaner imports
 
 logger_planning = logging.getLogger(__name__ + ".PlanningAgent")
 logger_coding = logging.getLogger(__name__ + ".CodingAgent")
@@ -30,306 +21,294 @@ logger_testing = logging.getLogger(__name__ + ".TestingAgent")
 logger_monitoring = logging.getLogger(__name__ + ".MonitoringAgent")
 
 
-class PlanningAgent:
+class CodingAgent:
     """
-    The PlanningAgent takes high-level goals or problem descriptions, uses the LLM to break them into smaller, actionable tasks with priorities, and stores this plan in memory.jsonl (tagged as ade_plan).
+    Agent responsible for code generation, analysis, and modification.
     """
 
-    def __init__(self, chat_engine_instance, llm_client, covenant_enforcer):
+    def __init__(
+        self,
+        memory_accessor: Any,
+        dev_agent_instance: Any,
+        settings: KortanaConfig,
+        llm_client: Any,
+    ):
+        """
+        Initialize the coding agent.
+
+        Args:
+            memory_accessor: Interface to the memory system.
+            dev_agent_instance: Instance of the development agent.
+            settings: Application configuration.
+            llm_client: LLM client for code generation and analysis.
+        """
+        self.memory_accessor = memory_accessor
+        self.dev_agent_instance = dev_agent_instance
+        self.settings = settings
+        self.llm_client = llm_client
+
+    async def generate_code(self, spec: Dict[str, Any]) -> str:
+        """
+        Generate code based on a specification.
+
+        Args:
+            spec: The code specification.
+
+        Returns:
+            The generated code.
+        """
+        # In a real implementation, this would use the LLM to generate code
+        logger.info(f"Generating code for specification: {spec}")
+
+        prompt = f"""
+Generate code according to the following specification:
+
+Requirements:
+{spec.get("requirements", "No specific requirements provided")}
+
+Language: {spec.get("language", "python")}
+"""
+        response = await self.llm_client.complete(prompt)
+        return response.get("content", "// Error generating code")
+
+    async def analyze_code(self, code: str) -> Dict[str, Any]:
+        """
+        Analyze code for quality, issues, and improvement opportunities.
+
+        Args:
+            code: The code to analyze.
+
+        Returns:
+            Analysis results.
+        """
+        logger.info(f"Analyzing code: {code[:50]}...")
+
+        prompt = f"""
+Analyze the following code for quality, issues, and improvement opportunities:
+
+```
+{code}
+```
+
+Provide:
+1. Overall quality assessment
+2. Potential issues or bugs
+3. Performance considerations
+4. Improvement suggestions
+"""
+        response = await self.llm_client.complete(prompt)
+
+        # In a real implementation, this would parse the response into a structured format
+        return {
+            "overall_quality": "good",  # Placeholder
+            "issues": ["None identified"],  # Placeholder
+            "suggestions": ["No suggestions"],  # Placeholder
+        }
+
+
+class PlanningAgent:
+    """
+    Agent responsible for strategic planning and task management.
+    """
+
+    def __init__(
+        self,
+        chat_engine_instance: Any,
+        llm_client: Any,
+        covenant_enforcer: Any,
+        settings: KortanaConfig,
+    ):
+        """
+        Initialize the planning agent.
+
+        Args:
+            chat_engine_instance: Reference to the main chat engine.
+            llm_client: LLM client for planning and analysis.
+            covenant_enforcer: Ensures plans adhere to covenant.
+            settings: Application configuration.
+        """
         self.chat_engine = chat_engine_instance
         self.llm_client = llm_client
         self.covenant_enforcer = covenant_enforcer
-        logger_planning.info("PlanningAgent initialized.")
+        self.settings = settings
 
-    def run(self, goal: Optional[str] = None) -> List[Dict[str, Any]]:
+    async def create_plan(
+        self, objective: str, constraints: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
         """
-        Generate a plan (list of tasks) for a given high-level goal or from ADE goals in memory.
+        Create a plan to achieve an objective.
+
+        Args:
+            objective: The goal to achieve.
+            constraints: Optional list of constraints.
+
+        Returns:
+            A structured plan.
         """
-        logger_planning.info("Running daily planning...")
-        # 1. Retrieve ADE goals from memory.jsonl
-        ade_goals = []
-        if hasattr(self.chat_engine, "get_ade_goals"):
-            ade_goals = self.chat_engine.get_ade_goals()
-        if not ade_goals:
-            logger_planning.warning("No ADE goals found in memory. Using dummy tasks.")
-            ade_goals = [
-                {
-                    "content": "Review PR #123",
-                    "metadata": {"priority": 1, "id": "task1"},
-                },
-                {
-                    "content": "Draft documentation for memory.md",
-                    "metadata": {"priority": 2, "id": "task2"},
-                },
-                {
-                    "content": "Investigate LobeChat integration",
-                    "metadata": {"priority": 1, "id": "task3"},
-                },
-            ]
-        logger_planning.info(
-            f"Planning input goals: {[g['content'] for g in ade_goals]}"
-        )
-        # 2. Rank tasks (simple ranking for now, could use an LLM later for
-        # complex prioritization)
-        ranked_tasks = sorted(
-            ade_goals, key=lambda t: t.get("metadata", {}).get("priority", 99)
-        )
-        # 3. Select top N tasks for today's plan
-        todays_plan_tasks_content = [
-            task["content"] for task in ranked_tasks[:5]
-        ]  # Top 5
-        logger_planning.info(f"Today's prioritized plan: {todays_plan_tasks_content}")
-        # 4. Write out a top-N "today's plan" memory
-        plan_content = f"Autonomous plan for today: {todays_plan_tasks_content}"
-        if hasattr(self.chat_engine, "store_memory"):
-            self.chat_engine.store_memory(
-                text=plan_content,
-                role="system_autonomous_planner",
-                custom_metadata={
-                    "anchor_type": "daily_plan",
-                    "plan_tasks": todays_plan_tasks_content,
-                    "status": "new",
-                },
-            )
-            logger_planning.info("Daily plan stored in memory.")
-        else:
-            logger_planning.warning(
-                "Memory accessor lacks 'store_memory'. Plan not stored."
-            )
-        return ranked_tasks[:5]
+        constraints = constraints or []
+        logger.info(f"Creating plan for objective: {objective}")
 
+        # Enforce covenant
+        is_compliant, explanation = self.covenant_enforcer.enforce(objective)
+        if not is_compliant:
+            logger.warning(f"Objective does not comply with covenant: {explanation}")
+            return {"status": "rejected", "reason": explanation}
 
-class CodingAgent:
-    """
-    The CodingAgent translates plans into executable development tasks using a DevAgentStub or real agent.
-    It logs results and can create new tasks for PlanningAgent based on outcomes.
-    """
+        prompt = f"""
+Create a structured plan to achieve the following objective:
 
-    # This log message will be emitted when the class 'CodingAgent' is defined
-    # (i.e., when the module is loaded and this part of the code is executed).
-    logger.info(
-        f"[FLASH_DIAG] Defining class: CodingAgent in module {__name__} ({_module_file_path})"
-    )
+Objective: {objective}
 
-    def __init__(self, memory_accessor: Any, dev_agent_instance: Any):
-        logger.info(
-            f"[FLASH_DIAG] Instantiating CodingAgent from module {__name__} ({_module_file_path})"
-        )
-        self.memory_accessor = memory_accessor
-        self.dev_agent = (
-            dev_agent_instance  # e.g., DevAgentStub() or a real LangChain agent
-        )
-        logger_coding.info("CodingAgent initialized.")
+Constraints:
+{chr(10).join([f"- {c}" for c in constraints])}
 
-    def execute_plan(self, tasks: List[str]) -> List[Dict[str, Any]]:
-        logger_coding.info(f"CodingAgent received plan: {tasks}")
-        results = []
-        if not tasks:
-            logger_coding.info("No tasks in the plan to execute.")
-            return results
+The plan should include:
+1. High-level strategy
+2. Key milestones
+3. Required resources
+4. Success criteria
+5. Timeline estimates
+"""
+        response = await self.llm_client.complete(prompt)
 
-        for task_description in tasks:
-            logger_coding.info(f"Executing dev task: {task_description}")
-            try:
-                dev_result = self.dev_agent.execute_dev_task(task_description)
-                results.append({"task": task_description, "result": dev_result})
-
-                self.memory_accessor.store_memory(
-                    text=f"CodingAgent result for task '{task_description}': {dev_result.get('status', 'unknown')}. Details: {dev_result.get('log', '')[:500]}",
-                    role="system_autonomous_coder",
-                    custom_metadata={
-                        "anchor_type": "auto_code_result",
-                        "task_description": task_description,
-                        "status": dev_result.get("status", "unknown"),
-                        "code_snippet": dev_result.get("code_generated", None),
-                    },
-                )
-                logger_coding.info(f"Result for task '{task_description}' logged.")
-            except Exception as e:
-                logger_coding.error(
-                    f"Error executing dev task '{task_description}': {e}", exc_info=True
-                )
-                results.append(
-                    {
-                        "task": task_description,
-                        "result": {"status": "error", "error": str(e)},
-                    }
-                )
-                self.memory_accessor.store_memory(
-                    text=f"CodingAgent ERROR for task '{task_description}': {str(e)}",
-                    role="system_autonomous_coder",
-                    custom_metadata={
-                        "anchor_type": "auto_code_error",
-                        "task_description": task_description,
-                    },
-                )
-
-        logger_coding.info("All planned coding tasks processed.")
-        return results
+        # In a real implementation, this would parse the response into a structured format
+        return {
+            "status": "success",
+            "plan": response.get("content", "Error creating plan"),
+        }
 
 
 class TestingAgent:
     """
-    The TestingAgent executes tests (e.g., pytest), parses results, logs them, and can create new tasks for PlanningAgent if tests fail.
+    Agent responsible for testing, quality assurance, and verification.
     """
 
-    def __init__(self, chat_engine_instance, llm_client, covenant_enforcer):
+    def __init__(
+        self,
+        chat_engine_instance: Any,
+        llm_client: Any,
+        covenant_enforcer: Any,
+        settings: KortanaConfig,
+    ):
+        """
+        Initialize the testing agent.
+
+        Args:
+            chat_engine_instance: Reference to the main chat engine.
+            llm_client: LLM client for test generation and analysis.
+            covenant_enforcer: Ensures testing adheres to covenant.
+            settings: Application configuration.
+        """
         self.chat_engine = chat_engine_instance
         self.llm_client = llm_client
         self.covenant_enforcer = covenant_enforcer
-        self.project_root_path: Optional[str] = None
-        logger_testing.info("TestingAgent initialized.")
+        self.settings = settings
 
-    def run_tests(self) -> Dict[str, Any]:
+    async def generate_tests(
+        self, code: str, requirements: Optional[List[str]] = None
+    ) -> str:
         """
-        Run tests and return structured results.
+        Generate tests for a given code.
+
+        Args:
+            code: The code to generate tests for.
+            requirements: Optional list of testing requirements.
+
+        Returns:
+            Generated test code.
         """
-        logger_testing.info("Running tests...")
-        report = {"success": False, "summary": "Tests not executed.", "full_output": ""}
+        requirements = requirements or []
+        logger.info(f"Generating tests for code: {code[:50]}...")
 
-        test_command = ["python", "-m", "pytest", "-q"]  # Basic quiet pytest
+        prompt = f"""
+Generate tests for the following code:
 
-        try:
-            process = subprocess.run(
-                test_command,
-                cwd=self.project_root_path,
-                capture_output=True,
-                text=True,
-                timeout=300,
-            )
-            report["full_output"] = process.stdout + "\n" + process.stderr
+```
+{code}
+```
 
-            if process.returncode == 0:
-                report["success"] = True
-                report["summary"] = "All tests passed."
-                logger_testing.info("Tests passed.")
-            elif process.returncode == 1:
-                report["summary"] = "Some tests failed."
-                logger_testing.warning("Tests failed.")
-            elif process.returncode == 5:
-                report["summary"] = "No tests were collected."
-                report["success"] = True
-                logger_testing.info("No tests collected.")
-            else:
-                report["summary"] = (
-                    f"Test execution error. Exit code: {process.returncode}."
-                )
-                logger_testing.error(
-                    f"Test execution error. Output: {report['full_output']}"
-                )
+Testing requirements:
+{chr(10).join([f"- {r}" for r in requirements])}
 
-        except subprocess.TimeoutExpired:
-            report["summary"] = "Test execution timed out."
-            report["full_output"] = "Timeout after 300 seconds."
-            logger_testing.error("Test execution timed out.")
-        except FileNotFoundError:
-            report["summary"] = (
-                "'pytest' command not found. Is it installed and in PATH?"
-            )
-            report["full_output"] = "pytest not found."
-            logger_testing.error(report["summary"])
-        except Exception as e:
-            report["summary"] = f"An error occurred during testing: {e}"
-            report["full_output"] = str(e)
-            logger_testing.error(report["summary"], exc_info=True)
-
-        self.chat_engine.store_memory(
-            text=f"TestingAgent Report: {report['summary']}. Output head: {report['full_output'][:500]}",
-            role="ade_tester",
-            custom_metadata={
-                "anchor_type": "test_report",
-                "success": report["success"],
-                "summary": report["summary"],
-            },
-        )
-
-        if not report["success"] and report["summary"] == "Some tests failed.":
-            logger_testing.info(
-                "Tests failed, creating a 'Fix failing tests' task for tomorrow."
-            )
-            self.chat_engine.store_memory(
-                text="Fix failing tests from previous run.",
-                role="system_autonomous_planner",
-                custom_metadata={
-                    "anchor_type": "task",
-                    "status": "unfinished",
-                    "priority": 0,
-                    "origin": "TestingAgent",
-                },
-            )
-        logger_testing.info("Test run and reporting complete.")
-        return report
+Include:
+- Unit tests for individual functions/methods
+- Integration tests if applicable
+- Edge case handling tests
+- Performance tests if relevant
+"""
+        response = await self.llm_client.complete(prompt)
+        return response.get("content", "# Error generating tests")
 
 
 class MonitoringAgent:
     """
-    The MonitoringAgent checks system health, logs status, and can attempt healing routines or create tasks for PlanningAgent.
+    Agent responsible for system monitoring, diagnostics, and health checks.
     """
 
     def __init__(
-        self, chat_engine_instance, llm_client, covenant_enforcer, config=None
+        self,
+        chat_engine_instance: Any,
+        llm_client: Any,
+        covenant_enforcer: Any,
+        config: Optional[Dict[str, Any]] = None,
+        settings: Optional[KortanaConfig] = None,
     ):
+        """
+        Initialize the monitoring agent.
+
+        Args:
+            chat_engine_instance: Reference to the main chat engine.
+            llm_client: LLM client for monitoring analysis.
+            covenant_enforcer: Ensures monitoring adheres to covenant.
+            config: Agent-specific configuration.
+            settings: Application configuration.
+        """
         self.chat_engine = chat_engine_instance
         self.llm_client = llm_client
         self.covenant_enforcer = covenant_enforcer
-        config = config or {}
-        self.ram_threshold = config.get("ram_threshold_percent", 80.0)
-        self.disk_threshold = config.get("disk_threshold_percent", 90.0)
-        self.log_file_path = config.get("error_log_path", "data/error.log")
-        logger_monitoring.info(
-            f"MonitoringAgent initialized. RAM Threshold: {self.ram_threshold}%, Disk Threshold: {self.disk_threshold}%."
+        self.config = config or {}
+        self.settings = settings
+
+        # Set default values from config or use defaults
+        self.interval_seconds = self.config.get("interval_seconds", 60)
+        self.enabled = self.config.get("enabled", True)
+
+    def start_monitoring(self):
+        """Start the monitoring process."""
+        if not self.enabled:
+            logger.info("Monitoring agent is disabled")
+            return
+
+        logger.info(
+            f"Starting monitoring with interval of {self.interval_seconds} seconds"
         )
+        # In a real implementation, this would start a background task or timer
+        # that periodically calls self.perform_health_check()
 
-    def run(self) -> Dict[str, Any]:
+    def stop_monitoring(self):
+        """Stop the monitoring process."""
+        logger.info("Stopping monitoring")
+        # In a real implementation, this would stop the background task or timer
+
+    async def perform_health_check(self) -> Dict[str, Any]:
         """
-        Check system health and log status.
+        Perform a system health check.
+
+        Returns:
+            Health check results.
         """
-        logger_monitoring.info("Performing system health check...")
-        alerts = []
+        logger.info("Performing health check")
 
-        # Check RAM Usage
-        ram_percent = psutil.virtual_memory().percent
-        if ram_percent > self.ram_threshold:
-            alert_msg = f"High RAM usage detected: {ram_percent:.2f}% (Threshold: {self.ram_threshold}%)"
-            logger_monitoring.warning(alert_msg)
-            alerts.append(
-                {"type": "ram_usage", "value": ram_percent, "message": alert_msg}
-            )
-            self._attempt_healing("ram_usage")
+        # In a real implementation, this would check various system metrics,
+        # memory usage, API rate limits, etc.
 
-        # Check Disk Usage (for the partition where the app is running or a
-        # specified path)
-        disk_usage = psutil.disk_usage("/").percent
-        if disk_usage > self.disk_threshold:
-            alert_msg = f"High Disk usage detected: {disk_usage:.2f}% (Threshold: {self.disk_threshold}%)"
-            logger_monitoring.warning(alert_msg)
-            alerts.append(
-                {"type": "disk_usage", "value": disk_usage, "message": alert_msg}
-            )
-            self._attempt_healing("disk_usage")
-
-        # Placeholder for error log checks
-        # recent_errors = self._check_error_logs()
-        # if recent_errors:
-        #     alerts.append({"type": "error_log", "count": len(recent_errors), "message": f"Found {len(recent_errors)} new critical errors."})
-        #     self._attempt_healing("error_log")
-
-        if alerts:
-            self.chat_engine.store_memory(
-                text=f"MonitoringAgent Health Alert: {len(alerts)} issues detected. First: {alerts[0]['message']}",
-                role="ade_monitor",
-                custom_metadata={"anchor_type": "health_alert", "alerts": alerts},
-            )
-        else:
-            logger_monitoring.info("System health normal.")
-        return alerts
-
-    def _attempt_healing(self, issue_type: str):
-        logger_monitoring.info(f"Attempting to apply healing routine for: {issue_type}")
-        # Placeholder for actual healing routines
-        self.chat_engine.store_memory(
-            text=f"MonitoringAgent: Attempted healing for {issue_type}.",
-            role="ade_monitor",
-            custom_metadata={"anchor_type": "healing_attempt", "issue": issue_type},
-        )
-        logger_monitoring.info(f"Healing attempt logged for {issue_type}.")
+        return {
+            "status": "healthy",
+            "checks": {
+                "memory_usage": "normal",
+                "api_rate_limits": "normal",
+                "response_time": "normal",
+            },
+            "warnings": [],
+            "timestamp": "2023-04-01T12:00:00Z",  # Placeholder
+        }

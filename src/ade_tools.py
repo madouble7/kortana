@@ -1,6 +1,11 @@
+"""
+TODO: Add a concise description of this module.
+ADE Tools module for autonomous development operations.
+"""
+
 import os
-from typing import List, Dict, Any, Optional
 import subprocess
+from typing import Any, Dict, List, Optional
 
 
 def read_file(file_path: str) -> str:

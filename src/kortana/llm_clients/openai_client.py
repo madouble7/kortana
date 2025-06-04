@@ -32,13 +32,15 @@ class OpenAIClient(BaseLLMClient):
         self, api_key: Optional[str] = None, model_name: str = "gpt-4.1-nano", **kwargs
     ):
         """
-        Initialize OpenAI client using official SDK structure
-
-        Args:
+        Initialize OpenAI client using official SDK structure        Args:
             api_key: OpenAI API key (defaults to OPENAI_API_KEY env var)
                         model_name: Model to use (defaults to gpt-4.1-nano)
         """
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+        if not self.api_key:
+            raise ValueError(
+                "OpenAI API key is required. Set OPENAI_API_KEY environment variable or pass api_key parameter."
+            )
         self.model_name = model_name
         self.default_params = kwargs
         self.base_url = kwargs.get("base_url", "https://api.openai.com/v1")

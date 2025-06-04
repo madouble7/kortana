@@ -1,6 +1,3 @@
-# Project Kor'tana - Sacred Circuit Development
-# Comprehensive .gitignore for autonomous AI agent platform
-
 # Python
 __pycache__/
 *.py[cod]
@@ -19,112 +16,32 @@ parts/
 sdist/
 var/
 wheels/
-share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-MANIFEST
 
 # Virtual Environments
+.env
+.venv
+env/
 venv/
 venv311/
-env/
 ENV/
+test_env/
 env.bak/
 venv.bak/
-.venv/
 
-# Environment Variables & Secrets
-.env
-.env.local
-.env.production
-.env.staging
-.env.development
-*.env
-!.env.example
-!.env.template
-
-# IDE & Editor
-.vscode/settings.json
-.vscode/launch.json
-.vscode/tasks.json
-.vscode/.ropeproject
+# IDE
 .idea/
-*.swp
-*.swo
-*~
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+.history/
 
-# Testing & Coverage
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
-.nox/
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-test-results/
-test_outputs/
-tests/test_results/
-
-# Linting & Formatting
-.mypy_cache/
-.ruff_cache/
-.pylint_cache/
-.black_cache/
-
-# Jupyter Notebooks
-.ipynb_checkpoints
-
-# Data & Logs
-logs/
-*.log
-data/
-agent_output/
-state/
-memory_snapshots/
-sessions/
-*.jsonl
-*.trace
-*.memory
-
-# Databases
-*.db
-*.sqlite
-*.sqlite3
-
-# Archives & Backups
-archive_*/
-backup_*/
-.backup/
-*.bak
-*.old
-
-# Cache & Temporary
-.cacheme/
-.cache/
-*.tmp
-*.temp
-temp/
-tmp/
-
-# AI/ML Extension Caches
-.continue/
-.qodo/
-.pieces/
-.cursor/
-.codeium/
-
-# Frontend/Node.js (if applicable)
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.npm
-.eslintcache
-
-# OS Generated
+# OS specific
 .DS_Store
 .DS_Store?
 ._*
@@ -132,38 +49,24 @@ yarn-error.log*
 .Trashes
 ehthumbs.db
 Thumbs.db
-desktop.ini
 
-# Project Specific
-*.sacred
-*.covenant
-*.trinity
-agent_traces/
-memory_traces/
-cost_analysis.json
-performance_metrics.json
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# Monitoring & Analytics
-monitoring/
-metrics/
-profiler_results/
+# Specific for this project
+data/memory_journal.jsonl
+data/project_memory.jsonl
+data/heart.log
+data/soul.index.jsonl
+data/lit.log.jsonl
 
-# Documentation builds
-docs/_build/
-site/
+# Temp and backup files
+*.bak
+*.tmp
+*~
 
-# Configuration overrides (keep templates)
-config/local.yaml
-config/development.yaml
-config/production.yaml
-config/staging.yaml
-!config/default.yaml
-!config/schema.py
-
-# AI Model artifacts
-models/
-checkpoints/
-weights/
-*.ckpt
-*.pth
-*.model
+.early.coverage

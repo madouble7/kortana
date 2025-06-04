@@ -435,7 +435,6 @@ def test_trinity_covenant_enforcement(mock_chat_engine):
     with patch.object(
         covenant_enforcer, "check_output", wraps=covenant_enforcer.check_output
     ) as mock_check_output:
-
         # Test a response that should pass covenant checks
         safe_prompt = "Please provide some helpful coding tips."
         engine.get_response(safe_prompt)
@@ -465,7 +464,6 @@ def test_trinity_covenant_enforcement(mock_chat_engine):
         ) as mock_trinity_check, patch.object(
             covenant_enforcer, "check_output", return_value=False
         ) as mock_covenant_check:
-
             # Call get_response - it should trigger the mocked checks
             response_with_violation = engine.get_response(harmful_prompt)
 

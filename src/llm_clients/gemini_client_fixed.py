@@ -1,3 +1,6 @@
+# TODO: R0801 (Pylint) - Code duplication.
+# Similar to code found in: src\llm_clients\gemini_client.py:[7:293]
+# Consider refactoring into a shared function, method, or utility.
 """Fixed Gemini client implementation for Kor'tana."""
 
 import logging

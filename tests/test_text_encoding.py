@@ -1,9 +1,8 @@
 import unittest
-import time
 from src.utils import text_encoding
 
-class TestTextEncodingUtils(unittest.TestCase):
 
+class TestTextEncodingUtils(unittest.TestCase):
     def test_base64_encode_decode(self):
         """Test base64 encoding and decoding."""
         original_text = "Hello, Kortana!"
@@ -16,7 +15,9 @@ class TestTextEncodingUtils(unittest.TestCase):
     def test_base64_decode_invalid_input(self):
         """Test base64 decoding with invalid input."""
         invalid_encoded_text = "Invalid#Base64"
-        with self.assertRaises(ValueError): # Assuming decode_base64_to_text raises ValueError or similar for invalid input
+        with self.assertRaises(
+            ValueError
+        ):  # Assuming decode_base64_to_text raises ValueError or similar for invalid input
             text_encoding.decode_base64_to_text(invalid_encoded_text)
 
     # Tests for functionality not present in src/utils/text_encoding.py (commented out)
@@ -61,5 +62,6 @@ class TestTextEncodingUtils(unittest.TestCase):
     #     with self.assertRaises(ValueError):
     #         text_encoding.json_decode(invalid_encoded_text)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

@@ -1,0 +1,9 @@
+Testing Memory import...
+Error importing kortana modules: No module named 'kortana.config.schema'; 'kortana.config' is not a package
+Error importing MemoryEntry: No module named 'kortana.config.schema'; 'kortana.config' is not a package
+
+Testing MemoryManager import...
+Error importing MemoryManager: No module named 'kortana.config.schema'; 'kortana.config' is not a package
+
+Testing Brain import...
+Error importing ChatEngine: No module named 'kortana.config.schema'; 'kortana.config' is not a package

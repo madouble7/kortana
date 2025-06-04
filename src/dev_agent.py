@@ -1,5 +1,12 @@
+"""Development agent module for autonomous development tasks.
+
+This module implements the development agent that handles coding tasks,
+testing, and project implementation using XAI's Grok model.
+"""
+
 import os
-from langchain.agents import initialize_agent, Tool
+
+from langchain.agents import Tool, initialize_agent
 from langchain_openai.chat_models import ChatOpenAI  # Use ChatOpenAI for agents
 
 # Use the XAIClient directly instead of LangChain's ChatOpenAI wrapper
@@ -33,6 +40,14 @@ dev_agent = initialize_agent(
 
 
 def execute_dev_task(desc: str) -> str:
+    """Execute a development task using the dev agent.
+
+    Args:
+        desc: Description of the development task to execute
+
+    Returns:
+        Result of the development task execution
+    """
     prompt = (
         f"You are Kor'tana's dev agent. Task: {desc}. Break it down, implement, test."
     )

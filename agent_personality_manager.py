@@ -4,7 +4,8 @@ Kor'tana Agent Personality System
 =================================
 Transform generic agents into specialized AI personalities
 """
-import logging # Added for better warnings/errors
+
+import logging  # Added for better warnings/errors
 import json
 from pathlib import Path
 from typing import Dict, Any
@@ -13,7 +14,7 @@ from typing import Dict, Any
 class AgentPersonalityManager:
     """Manage agent personalities and roles"""
 
-    logger = logging.getLogger(__name__) # Class-level logger
+    logger = logging.getLogger(__name__)  # Class-level logger
 
     def __init__(self, project_root: str = None):
         self.project_root = (
@@ -124,13 +125,19 @@ class AgentPersonalityManager:
             try:
                 with open(persona_file, "r", encoding="utf-8") as f:
                     loaded_persona = json.load(f)
-                if not isinstance(loaded_persona, dict): # Ensure it's a dict
-                    self.logger.warning(f"Persona file {persona_file} does not contain a valid JSON object. Using default.")
+                if not isinstance(loaded_persona, dict):  # Ensure it's a dict
+                    self.logger.warning(
+                        f"Persona file {persona_file} does not contain a valid JSON object. Using default."
+                    )
                     loaded_persona = None
             except json.JSONDecodeError:
-                self.logger.warning(f"Error decoding JSON from {persona_file}. Using default.")
+                self.logger.warning(
+                    f"Error decoding JSON from {persona_file}. Using default."
+                )
             except Exception as e:
-                self.logger.error(f"Could not load persona file {persona_file}: {e}. Using default.")
+                self.logger.error(
+                    f"Could not load persona file {persona_file}: {e}. Using default."
+                )
 
         if loaded_persona is not None:
             return loaded_persona
@@ -139,11 +146,15 @@ class AgentPersonalityManager:
             default_persona = self.default_personas.get(agent_name)
             if default_persona:
                 self.logger.info(f"Using default persona for {agent_name}.")
-                return default_persona.copy() # Return a copy to prevent modification of defaults
+                return (
+                    default_persona.copy()
+                )  # Return a copy to prevent modification of defaults
             else:
                 # If no file and no default, return empty dict
                 if not persona_file.exists():
-                    self.logger.info(f"No persona file or default found for {agent_name}. Returning empty persona.")
+                    self.logger.info(
+                        f"No persona file or default found for {agent_name}. Returning empty persona."
+                    )
                 return {}
 
     def setup_all_personas(self):
@@ -231,18 +242,23 @@ AGENT PROFILE:
             agent_name = persona_file.stem.replace("_persona", "")
             # Use self.load_persona to ensure consistent loading logic
             persona = self.load_persona(agent_name)
-            if persona: # Check if persona is not empty
+            if persona:  # Check if persona is not empty
                 found_personas = True
-                print(f"\n🤖 {persona.get('name', agent_name.upper())}") # Use agent_name as fallback for name
+                print(
+                    f"\n🤖 {persona.get('name', agent_name.upper())}"
+                )  # Use agent_name as fallback for name
                 print(f"   Role: {persona.get('role', 'undefined')}")
                 print(f"   Personality: {persona.get('personality', 'undefined')}")
                 print(f"   Specialties: {', '.join(persona.get('specialties', []))}")
                 print(f"   Style: {persona.get('communication_style', 'adaptive')}")
             else:
-                print(f"\n🤖 {agent_name.upper()} (Warning: Could not load details or persona is empty)")
+                print(
+                    f"\n🤖 {agent_name.upper()} (Warning: Could not load details or persona is empty)"
+                )
 
         if not found_personas:
             print(f"No valid persona configurations found in {self.personas_dir}.")
+
 
 def main():
     """Main persona management interface"""

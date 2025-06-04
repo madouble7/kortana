@@ -5,18 +5,23 @@
         }
     ],
     "settings": {
-        "python.defaultInterpreterPath": "c:\\kortana\\venv311\\Scripts\\python.exe",
-        "python.pythonPath": "c:\\kortana\\venv311\\Scripts\\python.exe",
+        "python.defaultInterpreterPath": "C:\\\\project-kortana\\\\venv311\\\\Scripts\\\\python.exe",
+        "python.pythonPath": "C:\\\\project-kortana\\\\venv311\\\\Scripts\\\\python.exe",
         "python.terminal.activateEnvironment": true,
         "python.terminal.activateEnvInCurrentTerminal": true,
         "files.exclude": {
             "**/__pycache__": true,
-            "**/.pytest_cache": true
+            "**/.pytest_cache": true,
+            "**/*.pyc": true,
+            "**/venv311": false
         },
         "python.testing.pytestEnabled": true,
         "python.testing.pytestPath": "pytest",
         "python.testing.pytestArgs": [
             "tests"
-        ]
+        ],
+        "search.exclude": {
+            "**/venv311": false
+        }
     }
 }

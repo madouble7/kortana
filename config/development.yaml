@@ -1,0 +1,7 @@
+debug: true
+api:
+  host: "127.0.0.1"
+  port: 8000
+default_llm_id: "gpt-3.5-turbo"
+agents:
+  default_llm_id: "gpt-3.5-turbo"
