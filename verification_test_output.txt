@@ -1,0 +1,29 @@
+CHATENGINE AND BRAIN ALIAS VERIFICATION TEST
+Python version: 3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]
+Python path includes: C:\project-kortana\src
+================================================================================
+TESTING CHATENGINE AND BRAIN ALIAS INSTANTIATION
+================================================================================
+
+1. Testing load_config() import and execution...
+Error importing kortana modules: cannot import name 'AutonomousAgents' from 'kortana.agents.autonomous_agents' (C:\project-kortana\src\kortana\agents\autonomous_agents.py)
+Traceback (most recent call last):
+  File "C:\project-kortana\test_chat_engine_init.py", line 26, in test_chat_engine_instantiation
+    print("   \u2713 load_config imported successfully")
+  File "C:\Program Files\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 3: character maps to <undefined>
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\project-kortana\test_chat_engine_init.py", line 147, in <module>
+    success = test_chat_engine_instantiation()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\project-kortana\test_chat_engine_init.py", line 124, in test_chat_engine_instantiation
+    print(f"\n\u2717 CRITICAL ERROR: {e}")
+  File "C:\Program Files\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2717' in position 2: character maps to <undefined>
