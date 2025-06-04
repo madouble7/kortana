@@ -8,15 +8,18 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import async_engine_from_config
+# from sqlalchemy.ext.asyncio import async_engine_from_config # Remove or comment out
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+# Modify sys.path manipulation
+# sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "..")) # Remove or comment out
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))) # Add this line
+
+from src.kortana.config.settings import settings
 
 # Import models for autogenerate support
-from kortana.modules.memory_core.models import CoreMemory  # noqa: F401
-
-from kortana.config.settings import settings
-from kortana.services.database import Base
+# from kortana.modules.memory_core.models import CoreMemory  # noqa: F401 # Keep this import if present, ensure path is src.kortana.modules... # Remove or comment out the old import
+from src.kortana.modules.memory_core.models import CoreMemory # Add this line
+from src.kortana.services.database import Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -35,14 +38,17 @@ target_metadata = Base.metadata
 
 # Configure the database URL from settings
 # For SQLite, we'll use sync mode for migrations
-db_url = settings.ALEMBIC_DATABASE_URL
-if db_url.startswith("sqlite"):
-    # Use sync mode for SQLite migrations
-    config.set_main_option("sqlalchemy.url", db_url)
-else:
-    # For other databases, configure async
-    alembic_config_dict = config.get_section(config.config_ini_section, {})
-    alembic_config_dict["sqlalchemy.url"] = db_url
+# db_url = settings.ALEMBIC_DATABASE_URL # Remove or comment out
+# if db_url.startswith("sqlite"):
+#     # Use sync mode for SQLite migrations
+#     config.set_main_option("sqlalchemy.url", db_url)
+# else:
+#     # For other databases, configure async
+#     alembic_config_dict = config.get_section(config.config_ini_section, {})
+#     alembic_config_dict["sqlalchemy.url"] = db_url
+
+# New URL configuration for offline mode
+url = settings.ALEMBIC_DATABASE_URL # Add this line
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -62,7 +68,8 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
+    # url = config.get_main_option("sqlalchemy.url") # Remove or comment out
+    url = settings.ALEMBIC_DATABASE_URL # Add this line
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -80,43 +87,20 @@ def do_run_migrations(connection: Connection) -> None:
     with context.begin_transaction():
         context.run_migrations()
 
-
+# Replace run_migrations_online and run_async_migrations with the new sync version
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
+    from sqlalchemy import create_engine
+    connectable = create_engine(settings.ALEMBIC_DATABASE_URL)
 
-    # Check if we're using SQLite (sync) or other database (async)
-    db_url = config.get_main_option("sqlalchemy.url")
+    with connectable.connect() as connection:
+        context.configure(
+            connection=connection, target_metadata=target_metadata
+        )
+        context.run_migrations()
 
-    if db_url and db_url.startswith("sqlite"):
-        # Use sync engine for SQLite
-        from sqlalchemy import create_engine
-
-        connectable = create_engine(db_url)
-
-        with connectable.connect() as connection:
-            do_run_migrations(connection)
-    else:
-        # Use async engine for other databases
-        asyncio.run(run_async_migrations())
-
-
-async def run_async_migrations() -> None:
-    """In this scenario we need to create an Engine
-    and associate a connection with the context.
-
-    """
-
-    connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
-
-    async with connectable.connect() as connection:
-        await connection.run_sync(do_run_migrations)
-
-    await connectable.dispose()
-
+# async def run_async_migrations() -> None: # Remove or comment out
+#     """In this scenario we need to create an Engine...
 
 if context.is_offline_mode():
     run_migrations_offline()
