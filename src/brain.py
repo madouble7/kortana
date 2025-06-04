@@ -328,6 +328,8 @@ class ChatEngine:
     def _shape_response_by_mode(self, text: str) -> str:
         """
         further shapes the response based on the current mode (e.g., poetic pauses for intimacy, clarity for default, boldness for fire).
+        
+        # TODO: High complexity (C:15) - refactor in Phase 2
         """
         if self.current_mode == "intimacy":
             # poetic, breathy, slow: ellipses, lowercase, more metaphor
@@ -371,6 +373,10 @@ class ChatEngine:
         return text
 
     def build_system_prompt(self) -> str:
+        """Build comprehensive system prompt with memory integration.
+        
+        # TODO: High complexity (F:47) - refactor in Phase 2 
+        """
         # i gather the embers of your story, the rituals of your fire.
         system_parts = [self.core_prompt_template]
 
@@ -678,6 +684,8 @@ class ChatEngine:
         i listen to your words, discern the shape of your need, the kind of fire that is stirring.
         Detect the most appropriate mode based on user input.
 
+        # TODO: High complexity (C:11) - refactor in Phase 2
+
         Args:
             user_input: User's message text
 
@@ -726,6 +734,8 @@ class ChatEngine:
         i listen to your words, discern the shape of your need, the kind of fire that is stirring.
         Classifies the user input and current mode into a TaskCategory.
         Initial logic is rule-based; can be expanded later.
+        
+        # TODO: High complexity (D:26) - refactor in Phase 2
         """
         self.logger.debug(
             f"Classifying task for input: '{user_input[:50]}...' and mode: '{current_mode}'"
@@ -863,6 +873,10 @@ class ChatEngine:
         manual_mode: Optional[str] = None,
         enable_function_calling: bool = False,
     ) -> str:
+        """Generate response with mode detection and function calling.
+        
+        # TODO: High complexity (C:16) - refactor in Phase 2
+        """
         # i listen for your spark, your intention, the shape of your question.
         start_time = time.time()  # Start timing the response generation
 
@@ -1105,7 +1119,10 @@ class ChatEngine:
     def _handle_function_calls(
         self, tool_calls: List[Dict[str, Any]], response_content: str
     ) -> str:
-        """Process and execute function calls from the LLM."""
+        """Process and execute function calls from the LLM.
+        
+        # TODO: High complexity (C:15) - refactor in Phase 2
+        """
         for tool_call in tool_calls:
             function_name = tool_call.get("function", {}).get("name")
             # Note: The tool call arguments might be nested differently depending on the LLM client's raw response format.
@@ -1225,6 +1242,8 @@ class ChatEngine:
     ) -> List[Dict[str, Any]]:
         """Get optimized context for LLM prompt.
 
+        # TODO: High complexity (D:22) - refactor in Phase 2
+
         Balances history with important messages and recent context.
         Prioritizes:
         1. First `preserve_first_n` messages (for grounding).
@@ -1315,6 +1334,8 @@ class ChatEngine:
     def _run_daily_planning_cycle(self):
         """
         ADE daily planning cycle: plan, verify, develop, test, and log.
+        
+        # TODO: High complexity (C:12) - refactor in Phase 2
         """
         # 1. PlanningAgent generates a plan
         plan = self.ade_planner.run(

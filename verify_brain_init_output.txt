@@ -1,0 +1,23 @@
+--- Output of verify_brain_init.py ---
+Attempting to import load_config from kortana.config...
+SUCCESS: Imported load_config from kortana.config.
+
+Attempting to call load_config()...
+SUCCESS: Called load_config(), type of settings: <class 'kortana.config.schema.KortanaConfig'>
+
+Attempting to import ChatEngine and Brain from kortana.core.brain...
+SUCCESS: Imported ChatEngine and Brain.
+
+Attempting to instantiate ChatEngine(settings=settings)...
+
+GENERAL_ERROR: LLMClientFactory() takes no arguments
+Traceback:
+Traceback (most recent call last):
+  File "C:\project-kortana\verify_brain_init.py", line 36, in <module>
+    engine = ChatEngine(settings=settings)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\project-kortana\src\kortana\core\brain.py", line 86, in __init__
+    self.llm_client_factory = LLMClientFactory(settings=self.settings)
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: LLMClientFactory() takes no arguments
+

@@ -6,7 +6,6 @@ Provides type-safe configuration management with validation.
 """
 
 import os
-from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field, validator
 
@@ -15,7 +14,7 @@ class AgentTypeConfig(BaseModel):
     """Configuration for a specific agent type."""
 
     # Changed from 'model_mapping' to 'agent_model_mapping' to avoid Pydantic protected namespace
-    agent_model_mapping: Dict[str, str] = Field(
+    agent_model_mapping: dict[str, str] = Field(
         default_factory=dict, description="Model mapping for this agent type"
     )
     enabled: bool = Field(
@@ -25,7 +24,7 @@ class AgentTypeConfig(BaseModel):
     timeout_seconds: int = Field(
         default=300, description="Timeout for agent operations"
     )
-    llm_model: Optional[str] = Field(
+    llm_model: str | None = Field(
         default=None, description="Default LLM model for this agent"
     )
 
@@ -44,7 +43,7 @@ class AgentsConfig(BaseModel):
     )
 
     # Agent type configurations
-    types: Dict[str, AgentTypeConfig] = Field(
+    types: dict[str, AgentTypeConfig] = Field(
         default_factory=dict, description="Agent type configurations"
     )
 
@@ -56,10 +55,8 @@ class MemoryConfig(BaseModel):
     """Configuration for memory systems."""
 
     # Pinecone settings
-    pinecone_api_key: Optional[str] = Field(
-        default=None, description="Pinecone API key"
-    )
-    pinecone_environment: Optional[str] = Field(
+    pinecone_api_key: str | None = Field(default=None, description="Pinecone API key")
+    pinecone_environment: str | None = Field(
         default=None, description="Pinecone environment"
     )
     pinecone_index_name: str = Field(
@@ -97,6 +94,47 @@ class PersonaConfig(BaseModel):
         default=0.33, description="Weight for compassion principle"
     )
     truth_weight: float = Field(default=0.34, description="Weight for truth principle")
+
+    class Config:
+        extra = "allow"
+
+
+class PathsConfig(BaseModel):
+    """Configuration for file system paths."""
+
+    # Core configuration files
+    persona_file_path: str = Field(
+        default="config/persona.json", description="Path to persona configuration file"
+    )
+    identity_file_path: str = Field(
+        default="config/identity.json",
+        description="Path to identity configuration file",
+    )
+    covenant_file_path: str = Field(
+        default="config/covenant.yaml",
+        description="Path to covenant configuration file",
+    )
+
+    # Memory system paths
+    memory_journal_path: str = Field(
+        default="data/memory_journal.jsonl", description="Path to memory journal file"
+    )
+    heart_log_path: str = Field(
+        default="data/heart_log.jsonl", description="Path to heart memory log"
+    )
+    soul_index_path: str = Field(
+        default="data/soul_index.jsonl", description="Path to soul index file"
+    )
+    lit_log_path: str = Field(
+        default="data/lit_log.jsonl", description="Path to lit log file"
+    )
+    project_memory_file_path: str = Field(
+        default="data/project_memory.jsonl", description="Path to project memory file"
+    )  # Directory paths (legacy compatibility)
+    config: str = Field(default="config", description="Configuration directory")
+    data: str = Field(default="data", description="Data directory")
+    logs: str = Field(default="logs", description="Logs directory")
+    models: str = Field(default="models", description="Models directory")
 
     class Config:
         extra = "allow"
@@ -140,7 +178,7 @@ class CovenantConfig(BaseModel):
     )
 
     # Sacred principles
-    sacred_principles: List[str] = Field(
+    sacred_principles: list[str] = Field(
         default=["wisdom", "compassion", "truth"], description="Core sacred principles"
     )
 
@@ -161,17 +199,9 @@ class KortanaConfig(BaseModel):
     # Legacy compatibility fields
     default_llm_id: str = Field(
         default="gpt-4.1-nano", description="Default LLM ID (legacy field)"
-    )
-
-    # Paths configuration (legacy compatibility)
-    paths: Dict[str, str] = Field(
-        default_factory=lambda: {
-            "config": "config",
-            "data": "data",
-            "logs": "logs",
-            "models": "models",
-        },
-        description="File system paths",
+    )  # Paths configuration
+    paths: PathsConfig = Field(
+        default_factory=PathsConfig, description="File system paths"
     )
 
     # Component configurations
@@ -278,6 +308,7 @@ def create_default_config() -> KortanaConfig:
 # Export for convenience
 __all__ = [
     "KortanaConfig",
+    "PathsConfig",
     "AgentsConfig",
     "AgentTypeConfig",
     "MemoryConfig",

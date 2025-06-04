@@ -7,6 +7,7 @@ Real-time monitoring with token tracking, rate limits, and agent status
 
 import os
 import sqlite3
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List
@@ -139,7 +140,7 @@ class KortanaEnhancedMonitor:
                     modified_time = datetime.fromtimestamp(log_file.stat().st_mtime)
                     if (datetime.now() - modified_time) < timedelta(hours=1):
                         agents.append(log_file.stem)
-                except:
+                except Exception:
                     pass
 
         # Also check database for recent activity
@@ -154,7 +155,7 @@ class KortanaEnhancedMonitor:
             db_agents = [row[0] for row in cursor.fetchall()]
             agents.extend(db_agents)
             conn.close()
-        except:
+        except Exception:
             pass
 
         return list(set(agents))
@@ -356,9 +357,7 @@ class KortanaEnhancedMonitor:
 
         # Count log files
         if self.logs_dir.exists():
-            health["log_files"] = len(list(self.logs_dir.glob("*.log")))
-
-        # Check for recent activity
+            health["log_files"] = len(list(self.logs_dir.glob("*.log")))        # Check for recent activity
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
@@ -369,10 +368,8 @@ class KortanaEnhancedMonitor:
             if result:
                 health["last_activity"] = result[0]
             conn.close()
-        except:
-            health["issues"].append("Cannot access database")
-
-        # Determine overall status
+        except Exception:
+            health["issues"].append("Cannot access database")        # Determine overall status
         active_agents = len(self.get_active_agents())
         if active_agents > 0:
             health["status"] = "active"
@@ -385,7 +382,7 @@ class KortanaEnhancedMonitor:
                     health["status"] = "idle"
                 else:
                     health["status"] = "inactive"
-            except:
+            except Exception:
                 health["status"] = "unknown"
         else:
             health["status"] = "offline"

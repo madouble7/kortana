@@ -13,6 +13,7 @@ from pathlib import Path
 src_path = Path(__file__).parent / "src"
 sys.path.insert(0, str(src_path))
 
+
 def test_chat_engine_instantiation():
     """Test ChatEngine and Brain alias instantiation with KortanaConfig settings."""
     print("=" * 80)
@@ -23,24 +24,29 @@ def test_chat_engine_instantiation():
         # Step 1: Test load_config() returns KortanaConfig
         print("\n1. Testing load_config() import and execution...")
         from kortana.config import load_config
+
         print("   [OK] load_config imported successfully")
 
         settings = load_config()
-        print(f"   ✓ load_config() executed successfully")
+        print("   ✓ load_config() executed successfully")
         print(f"   ✓ Returned type: {type(settings)}")
         print(f"   ✓ Type name: {settings.__class__.__name__}")
 
         # Verify it's actually a KortanaConfig instance
         from kortana.config.schema import KortanaConfig
+
         if isinstance(settings, KortanaConfig):
             print("   ✓ Confirmed: settings is a KortanaConfig instance")
         else:
-            print(f"   ✗ ERROR: settings is not a KortanaConfig instance (got {type(settings)})")
+            print(
+                f"   ✗ ERROR: settings is not a KortanaConfig instance (got {type(settings)})"
+            )
             return False
 
         # Step 2: Test ChatEngine and Brain imports
         print("\n2. Testing ChatEngine and Brain imports...")
-        from kortana.core.brain import ChatEngine, Brain
+        from kortana.core.brain import Brain, ChatEngine
+
         print("   ✓ ChatEngine imported successfully")
         print("   ✓ Brain alias imported successfully")
         print(f"   ✓ Brain alias points to: {Brain}")
@@ -50,7 +56,7 @@ def test_chat_engine_instantiation():
         if Brain is ChatEngine:
             print("   ✓ Confirmed: Brain is an alias for ChatEngine")
         else:
-            print(f"   ✗ ERROR: Brain is not an alias for ChatEngine")
+            print("   ✗ ERROR: Brain is not an alias for ChatEngine")
             return False
 
         # Step 3: Test ChatEngine instantiation
@@ -81,14 +87,14 @@ def test_chat_engine_instantiation():
 
         # Step 5: Test think method availability
         print("\n5. Testing think method availability...")
-        if hasattr(brain_alias_instance, 'think'):
+        if hasattr(brain_alias_instance, "think"):
             print("   ✓ Brain instance has think method")
             print(f"   ✓ think method: {brain_alias_instance.think}")
         else:
             print("   ✗ ERROR: Brain instance missing think method")
             return False
 
-        if hasattr(engine, 'think'):
+        if hasattr(engine, "think"):
             print("   ✓ ChatEngine instance has think method")
             print(f"   ✓ think method: {engine.think}")
         else:
@@ -97,20 +103,22 @@ def test_chat_engine_instantiation():
 
         # Step 6: Test process_message method availability
         print("\n6. Testing process_message method availability...")
-        if hasattr(brain_alias_instance, 'process_message'):
+        if hasattr(brain_alias_instance, "process_message"):
             print("   ✓ Brain instance has process_message method")
         else:
             print("   ✗ ERROR: Brain instance missing process_message method")
             return False
 
-        if hasattr(engine, 'process_message'):
+        if hasattr(engine, "process_message"):
             print("   ✓ ChatEngine instance has process_message method")
         else:
             print("   ✗ ERROR: ChatEngine instance missing process_message method")
             return False
 
         print("\n" + "=" * 80)
-        print("SUCCESS: ChatEngine and Brain alias instantiated successfully with KortanaConfig settings!")
+        print(
+            "SUCCESS: ChatEngine and Brain alias instantiated successfully with KortanaConfig settings!"
+        )
         print("✓ load_config() returns proper KortanaConfig instance")
         print("✓ ChatEngine accepts KortanaConfig settings parameter")
         print("✓ Brain alias works identically to ChatEngine")
@@ -127,17 +135,18 @@ def test_chat_engine_instantiation():
     finally:
         # Cleanup if instances were created
         try:
-            if 'engine' in locals():
+            if "engine" in locals():
                 engine.shutdown()
                 print("\n   ✓ ChatEngine instance cleaned up")
         except:
             pass
         try:
-            if 'brain_alias_instance' in locals():
+            if "brain_alias_instance" in locals():
                 brain_alias_instance.shutdown()
                 print("   ✓ Brain alias instance cleaned up")
         except:
             pass
+
 
 if __name__ == "__main__":
     print("CHATENGINE AND BRAIN ALIAS VERIFICATION TEST")
