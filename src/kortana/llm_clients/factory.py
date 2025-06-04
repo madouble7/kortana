@@ -2,7 +2,9 @@
 
 import logging
 import os
-from typing import Any, Dict, Optional
+from typing import Any
+
+from kortana.config.schema import KortanaConfig
 
 from .base_client import BaseLLMClient
 from .genai_client import GoogleGenAIClient
@@ -37,10 +39,32 @@ class LLMClientFactory:
         "qwen/qwen3-235b-a22b": OpenRouterClient,
     }
 
+    def __init__(self, settings: KortanaConfig):
+        """Initialize the factory with Kortana configuration.
+
+        Args:
+            settings: KortanaConfig instance containing models configuration
+        """
+        self.settings = settings
+        # Extract models config from settings
+        # For now, we'll use a placeholder until the models config structure is defined
+        self.models_config = getattr(settings, "models", {})
+
+    def get_client(self, model_id: str) -> BaseLLMClient | None:
+        """Get an LLM client for a specific model ID.
+
+        Args:
+            model_id: The identifier for the model
+
+        Returns:
+            Initialized client instance or None if creation fails
+        """
+        return self.create_client(model_id, self.models_config)
+
     @staticmethod
     def create_client(
-        model_id: str, models_config: Dict[str, Any]
-    ) -> Optional[BaseLLMClient]:
+        model_id: str, models_config: dict[str, Any]
+    ) -> BaseLLMClient | None:
         """Create an LLM client based on provider configuration.
 
         Args:
@@ -83,7 +107,7 @@ class LLMClientFactory:
                 )
                 return None
 
-            client: Optional[BaseLLMClient] = None
+            client: BaseLLMClient | None = None
 
             if client_class == OpenAIClient:
                 client = OpenAIClient(
@@ -142,12 +166,12 @@ class LLMClientFactory:
             return None
 
     @staticmethod
-    def get_client_for_model(model_id: str, models_config: Dict[str, Any]):
+    def get_client_for_model(model_id: str, models_config: dict[str, Any]):
         """Enhanced method with validation for ADE requirements."""
         return LLMClientFactory.create_client(model_id, models_config)
 
     @staticmethod
-    def get_default_client(models_config: Dict[str, Any]) -> Optional[BaseLLMClient]:
+    def get_default_client(models_config: dict[str, Any]) -> BaseLLMClient | None:
         """Get the default LLM client (GPT-4.1-Nano for Kor'tana primary use)."""
         default_model_id = "gpt-4.1-nano"
 
@@ -164,8 +188,8 @@ class LLMClientFactory:
 
     @staticmethod
     def get_ade_client(
-        models_config: Dict[str, Any], task_type: str = "primary"
-    ) -> Optional[BaseLLMClient]:
+        models_config: dict[str, Any], task_type: str = "primary"
+    ) -> BaseLLMClient | None:
         """Get appropriate client for ADE tasks based on task type."""
         task_model_mapping = {
             "primary": "gpt-4.1-nano",
@@ -197,7 +221,7 @@ class LLMClientFactory:
             return LLMClientFactory.get_default_client(models_config)
 
     @staticmethod
-    def validate_configuration(models_config: Dict[str, Any]) -> bool:
+    def validate_configuration(models_config: dict[str, Any]) -> bool:
         """Validate that essential models are properly configured."""
         essential_models = ["gpt-4.1-nano", "x-ai/grok-3-mini-beta", "gemini-2.5-flash"]
 
@@ -238,8 +262,8 @@ class LLMClientFactory:
 
     @staticmethod
     def get_client(
-        model_id: str, models_config: Optional[Dict[str, Any]] = None
-    ) -> Optional[BaseLLMClient]:
+        model_id: str, models_config: dict[str, Any] | None = None
+    ) -> BaseLLMClient | None:
         """Get an LLM client for a specific model ID (backward compatibility method)."""
         if models_config is None:
             # Try to load default config - this is a fallback approach
