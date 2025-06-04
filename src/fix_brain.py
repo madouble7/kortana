@@ -75,7 +75,6 @@ def fix_indentation_issue():
 
     # Look for indentation issues
     fixed_lines = []
-    prev_line = ""
 
     for line in lines:
         # Check for specific indentation issue in the PlanningAgent section
@@ -86,7 +85,6 @@ def fix_indentation_issue():
             continue
 
         fixed_lines.append(line)
-        prev_line = line
 
     # Write the fixed file
     with open(brain_path, "w") as f:

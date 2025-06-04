@@ -47,7 +47,6 @@ def test_set_mode(chat_engine_instance: ChatEngine):
     """Tests if mode can be set."""
     # Assumes 'default' and 'intimacy' are the only active modes in persona.json
     # for the minimal brain.py setup.
-    initial_mode = chat_engine_instance.current_mode
 
     if "intimacy" in chat_engine_instance.persona_config.get("modes", {}):
         chat_engine_instance.set_mode("intimacy")

@@ -28,6 +28,7 @@ from kortana.core.memory import (
     save_project_insight,
     get_memory_by_type,
 )
+from src.kortana.core.brain import ChatEngine
 
 # Constants for testing
 TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), "test_data")
@@ -99,9 +100,9 @@ class TestMemoryIntegration:
         # Check memory types
         memory_types = [memory["type"] for memory in memories]
         assert "decision" in memory_types, "Missing decision memory"
-        assert (
-            "implementation_note" in memory_types
-        ), "Missing implementation note memory"
+        assert "implementation_note" in memory_types, (
+            "Missing implementation note memory"
+        )
         assert "project_insight" in memory_types, "Missing project insight memory"
 
         # Test retrieving by type
@@ -156,12 +157,12 @@ class TestMemoryIntegration:
         )
 
         # Check sorting
-        assert (
-            sorted_memories[0]["content"] == "Latest decision"
-        ), "Wrong order - expected latest decision first"
-        assert (
-            sorted_memories[-1]["content"] == "First decision"
-        ), "Wrong order - expected first decision last"
+        assert sorted_memories[0]["content"] == "Latest decision", (
+            "Wrong order - expected latest decision first"
+        )
+        assert sorted_memories[-1]["content"] == "First decision", (
+            "Wrong order - expected first decision last"
+        )
 
     @patch("brain.ChatEngine._get_llm_client_for_model")
     @patch("brain.ChatEngine.add_assistant_message")
@@ -237,24 +238,24 @@ class TestMemoryIntegration:
         system_prompt = engine.build_system_prompt()
 
         # Check if memories are included in the prompt
-        assert (
-            "Key Project Decisions" in system_prompt
-        ), "Missing decision section in prompt"
-        assert (
-            "Implementation Context" in system_prompt
-        ), "Missing implementation note section in prompt"
-        assert (
-            "Key Project Insights" in system_prompt
-        ), "Missing project insight section in prompt"
-        assert (
-            "Use automatic summarization" in system_prompt
-        ), "Missing decision content in prompt"
-        assert (
-            "Added memory helper functions" in system_prompt
-        ), "Missing implementation note content in prompt"
-        assert (
-            "Memory organization is crucial" in system_prompt
-        ), "Missing project insight content in prompt"
+        assert "Key Project Decisions" in system_prompt, (
+            "Missing decision section in prompt"
+        )
+        assert "Implementation Context" in system_prompt, (
+            "Missing implementation note section in prompt"
+        )
+        assert "Key Project Insights" in system_prompt, (
+            "Missing project insight section in prompt"
+        )
+        assert "Use automatic summarization" in system_prompt, (
+            "Missing decision content in prompt"
+        )
+        assert "Added memory helper functions" in system_prompt, (
+            "Missing implementation note content in prompt"
+        )
+        assert "Memory organization is crucial" in system_prompt, (
+            "Missing project insight content in prompt"
+        )
 
     @patch("brain.ChatEngine._get_llm_client_for_model")
     def test_function_calls_for_memory(self, mock_get_llm_client):
@@ -326,12 +327,12 @@ class TestMemoryIntegration:
 
         # Check if we got the most recent one
         assert len(recent_notes) == 1, "Expected exactly 1 recent memory"
-        assert (
-            recent_notes[0]["content"] == "Recent implementation note"
-        ), "Wrong content in recent memory"
-        assert (
-            recent_notes[0]["component"] == "current_component"
-        ), "Wrong component in recent memory"
+        assert recent_notes[0]["content"] == "Recent implementation note", (
+            "Wrong content in recent memory"
+        )
+        assert recent_notes[0]["component"] == "current_component", (
+            "Wrong component in recent memory"
+        )
 
     def test_enhanced_memory_organization_in_system_prompt(self):
         """Test that different memory types are properly organized in the system prompt."""

@@ -126,7 +126,7 @@ async def test_chat_engine_text_analysis(
     chat_engine = ChatEngine(settings=mock_config)
 
     # Process a message
-    response = await chat_engine.process_message("Test message")
+    await chat_engine.process_message("Test message")
 
     # Verify text analysis functions were called
     mock_text_analysis.identify_important_message_for_context.assert_called_once_with(

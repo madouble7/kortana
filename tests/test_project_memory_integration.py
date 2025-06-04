@@ -1,6 +1,9 @@
 import logging
 import sys
 import os
+import unittest
+import json
+from unittest.mock import patch, MagicMock
 
 # Configure logging for this diagnostic burst (basic console output). This should happen first.
 # Note: basicConfig should ideally be called only once at the application entry point.
@@ -51,20 +54,22 @@ for key_test in sorted(list(set(keys_to_print_test))):
         print(f"{key_test}: Error accessing __file__ or built-in module")
 print("--- END TRACE (tests/test_project_memory_integration.py) ---")
 
-import unittest
-import os
-import json
-import sys
-from unittest.mock import patch, MagicMock
-
-# Add the src/ directory to sys.path to allow importing core and brain
+# Add the src directory to the path so we can import modules
 sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
 )
 
-# Import modules to be tested
+# Import the modules we want to test
 from src.core import memory
 from src.brain import ChatEngine
+
+"""
+Integration tests for Kor'tana's memory system.
+
+These tests validate the end-to-end flow of the memory system, including:
+- Creation and retrieval of different memory types
+- Memory integration in system prompts
+"""
 
 # Define the path to the dummy project memory file for testing
 TEST_MEMORY_FILE = os.path.join(os.path.dirname(__file__), "temp_project_memory.jsonl")
@@ -262,8 +267,8 @@ class TestProjectMemoryIntegration(unittest.TestCase):
 
                 # Add messages up to the threshold minus one
                 for i in range(SUMMARY_THRESHOLD - 1):
-                    self.engine.add_user_message(f"User message {i+1}")
-                    self.engine.add_assistant_message(f"Assistant response {i+1}")
+                    self.engine.add_user_message(f"User message {i + 1}")
+                    self.engine.add_assistant_message(f"Assistant response {i + 1}")
 
                 # Assure summarization is NOT called yet
                 mock_summarize_context.assert_not_called()

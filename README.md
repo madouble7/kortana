@@ -2,6 +2,18 @@
 
 The Warchief's AI companion.
 
+## 🔒 Infrastructure Status: LOCKED & READY ✅
+
+**Database Infrastructure**: Fully operational and locked for feature development
+**Migration Head**: df8dc2b048ef
+**Validation Status**: All checks passed (5/5)
+**Last Validated**: June 4, 2025
+
+```cmd
+# Quick validation check
+python validate_infrastructure.py
+```
+
 ## Project Structure
 
 ```
@@ -22,34 +34,65 @@ kortana/
     └── unit/         # Unit tests
 ```
 
-## Setup and Installation
+## 🚀 Quick Setup
 
-1. Create a virtual environment:
-   ```bash
+### Prerequisites
+- Python 3.11+
+- Git
+- Virtual environment support
+
+### Installation Steps
+
+1. **Clone and Setup Environment**:
+   ```cmd
+   git clone <repository-url>
+   cd project-kortana
    python -m venv venv311
    ```
 
-2. Activate the virtual environment:
+2. **Activate Virtual Environment**:
+   ```cmd
+   # Windows
+   venv311\Scripts\activate.bat
 
-   Windows:
-   ```bash
-   venv311\Scripts\activate
-   ```
-
-   Linux/Mac:
-   ```bash
+   # Linux/Mac
    source venv311/bin/activate
    ```
 
-3. Install dependencies:
-   ```bash
-   pip install pyyaml apscheduler pydantic
+3. **Install Dependencies**:
+   ```cmd
+   pip install -e .
    ```
 
-4. Set up the directory structure and placeholder configs:
-   ```bash
-   python scripts/setup_and_run_batch1.py
+4. **Initialize Database**:
+   ```cmd
+   # Upgrade to latest schema
+   C:\project-kortana\venv311\Scripts\alembic.exe upgrade head
+
+   # Verify setup
+   C:\project-kortana\venv311\Scripts\alembic.exe current
    ```
+
+5. **Configure Environment**:
+   Create `.env` file:
+   ```env
+   APP_NAME=kortana
+   LOG_LEVEL=INFO
+   MEMORY_DB_URL=sqlite:///./kortana_memory_dev.db
+   OPENAI_API_KEY=your_key_here
+   ANTHROPIC_API_KEY=your_key_here
+   ```
+
+6. **Start the Application**:
+   ```cmd
+   C:\project-kortana\venv311\Scripts\python.exe -m uvicorn src.kortana.main:app --reload
+   ```
+
+7. **Verify Installation**:
+   - Visit `http://127.0.0.1:8000/health` for health check
+   - Visit `http://127.0.0.1:8000/docs` for API documentation
+
+> 📚 **Full Setup Guide**: See [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md) for detailed instructions.
 
 ## Running Kor'tana
 

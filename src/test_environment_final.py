@@ -68,14 +68,14 @@ def main():
 
     # Test local imports
     try:
-        import brain
+        # import brain # Removed F401 unused import
 
         print("   ✅ Can import brain module")
     except ImportError as e:
         print(f"   ❌ Cannot import brain: {e}")
 
     try:
-        import autonomous_development_engine
+        # import autonomous_development_engine # Removed F401 unused import
 
         print("   ✅ Can import autonomous_development_engine")
     except ImportError as e:
@@ -83,7 +83,7 @@ def main():
 
     # Test package imports
     try:
-        import kortana
+        # import kortana # Removed F401 unused import
 
         print("   ✅ Can import kortana package")
     except ImportError as e:

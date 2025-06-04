@@ -162,15 +162,13 @@ class KortanaRelay:
         try:
             last_dt = datetime.fromisoformat(last_time)
             now = datetime.now()
-            minutes_since = (now - last_dt).total_seconds() / 60
-
-            if minutes_since < 5:
+            minutes_since = (now - last_dt).total_seconds() / 60            if minutes_since < 5:
                 return "active"
             elif minutes_since < 30:
                 return "idle"
             else:
                 return "inactive"
-        except:
+        except Exception:
             return "unknown"
 
     def relay_cycle(self) -> Dict[str, int]:

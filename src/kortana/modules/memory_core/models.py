@@ -10,7 +10,9 @@ class CoreMemory(Base):
     title = Column(String(255), nullable=False, index=True)
     content = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    updated_at = Column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
 
     def __repr__(self):
         return f"<CoreMemory(id={self.id}, title='{self.title[:30]}...')>"

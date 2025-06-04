@@ -1,0 +1,15 @@
+--- arch_test_script.py execution start ---
+Python Executable Used by This Script: C:\project-kortana\venv311\Scripts\python.exe
+Python Version Used by This Script: 3.11.9
+Script's Current Working Directory: C:\project-kortana
+sys.path contents for this script's execution:
+  [0] C:\project-kortana
+  [1] C:\project-kortana
+  [2] C:\project-kortana\src
+  [3] C:\Program Files\Python311\python311.zip
+  [4] C:\Program Files\Python311\DLLs
+  [5] C:\Program Files\Python311\Lib
+  [6] C:\Program Files\Python311
+  [7] C:\project-kortana\venv311
+  [8] C:\project-kortana\venv311\Lib\site-packages
+--- arch_test_script.py execution end ---

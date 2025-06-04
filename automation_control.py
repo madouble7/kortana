@@ -222,9 +222,7 @@ if __name__ == "__main__":
             log_files = list(logs_dir.glob("*.log"))
             print(f"✅ Logs: {len(log_files)} agent log files")
         else:
-            print("❌ Logs: logs directory not found")
-
-        # Check queues directory
+            print("❌ Logs: logs directory not found")  # Check queues directory
         queues_dir = self.project_root / "queues"
         if queues_dir.exists():
             queue_files = list(queues_dir.glob("*_in.txt"))
@@ -239,7 +237,7 @@ if __name__ == "__main__":
                 cwd=self.project_root,
                 timeout=10,
             )
-        except:
+        except Exception:
             print("⚠️  Could not get enhanced relay status")
 
     def run(self):

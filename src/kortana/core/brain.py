@@ -315,6 +315,24 @@ Keep your response concise and focused on addressing the user's needs.
 
         logger.info("ChatEngine shutdown complete")
 
+    def think(self, user_message: str) -> str:
+        """
+        Synchronous wrapper for process_message to maintain compatibility with legacy CLI.
+
+        Args:
+            user_message: The user's input message
+
+        Returns:
+            The processed response as a string
+        """
+        import asyncio
+
+        return asyncio.run(self.process_message(user_message))
+
+
+# Alias for backward compatibility
+Brain = ChatEngine
+
 
 def ritual_announce(message: str) -> None:
     """Display a ritual announcement."""

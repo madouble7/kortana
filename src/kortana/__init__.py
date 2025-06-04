@@ -12,18 +12,20 @@ __description__ = (
 # Core imports for convenience
 # Import from config module
 try:
-    from .config import get_api_key, get_config, load_config
+    from .config import load_config, get_config, get_api_key
+    from .core.brain import Brain
+    from .core.autonomous_development_engine import AutonomousDevelopmentEngine
+    from .memory.memory_manager import MemoryManager
+    from .agents.autonomous_agents import AutonomousAgents
 except ImportError as e:
-    print(f"Error importing kortana config: {e}")
-
-# Note: Other modules can be imported individually as needed
-# from .core.brain import Brain
-# from .core.autonomous_development_engine import AutonomousDevelopmentEngine
-# from .memory.memory_manager import MemoryManager
-# from .agents.autonomous_agents import AutonomousAgents
+    print(f"Error importing kortana modules: {e}")
 
 __all__ = [
     "load_config",
     "get_config",
     "get_api_key",
+    "Brain",
+    "AutonomousDevelopmentEngine",
+    "MemoryManager",
+    "AutonomousAgents",
 ]

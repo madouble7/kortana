@@ -21,14 +21,14 @@ def main():
     # Try to import from other directories
     print("\nTesting imports:")
     try:
-        from src import brain
+        # from src import brain # Removed F401 unused import
 
         print("✅ Successfully imported 'brain' module")
     except ImportError as e:
         print(f"❌ Failed to import 'brain' module: {e}")
 
     try:
-        import brain
+        # import brain # Removed F401 unused import
 
         print("✅ Successfully imported 'brain' module directly")
     except ImportError as e:

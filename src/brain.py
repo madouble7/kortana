@@ -1,6 +1,8 @@
 """
-TODO: Add a concise description of this module.
 Kor'tana's core brain module - central consciousness and response generation.
+
+This module serves as the primary interface for Kor'tana's AI consciousness,
+handling conversation management, memory integration, and autonomous agent coordination.
 """
 
 import json
@@ -35,10 +37,7 @@ from src.model_router import SacredModelRouter
 from src.sacred_trinity_router import SacredTrinityRouter
 from src.strategic_config import PerformanceMetric, TaskCategory
 from src.utils import (
-    analyze_sentiment,
-    detect_emphasis_all_caps,
-    detect_keywords,
-    identify_important_message_for_context,
+    identify_important_message_for_context,  # analyze_sentiment, # Remove or comment out; detect_emphasis_all_caps, # Remove or comment out; detect_keywords, # Remove or comment out
 )
 
 # Configure logging for this diagnostic burst (basic console output). This
@@ -1501,27 +1500,54 @@ class ChatEngine:
     def save_implementation_note(
         self, content: str, component: str, priority: str = "normal"
     ) -> bool:
-        """Save an implementation note about code or architecture."""
+        """Save an implementation note about code or architecture.
+
+        Args:
+            content: The implementation note content
+            component: The component this note relates to
+            priority: Priority level (default: "normal")
+
+        Returns:
+            bool: True if successfully saved, False otherwise
+        """
         return self.store_memory(
             "implementation_note", content, component=component, priority=priority
         )
 
     def save_project_insight(self, content: str, impact: str = "medium") -> bool:
-        """Save a high-level insight about the project."""
+        """Save a high-level insight about the project.
+
+        Args:
+            content: The insight content to save
+            impact: The impact level of the insight (default: "medium")
+
+        Returns:
+            bool: True if successfully saved, False otherwise
+        """
         return self.store_memory("project_insight", content, impact=impact)
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Main entry point for the Kor'tana ChatEngine.
+
+    Initializes the ChatEngine with autonomous agents and runs the interactive
+    conversation loop. Handles graceful shutdown on exit commands or interrupts.
+    """
     logging.info("Initializing Kor'tana's ChatEngine with Autonomous Agents...")
-    engine = ChatEngine()  # ChatEngine will start its own scheduler
-    if hasattr(engine, "start_autonomous_scheduler"):
-        engine.start_autonomous_scheduler(
-            test_mode_interval_minutes=1
-        )  # Run every minute for testing
-    logging.info(
-        "Kor'tana's ChatEngine is live with autonomous capabilities. Type 'exit' or 'quit' to end."
-    )
+
     try:
+        engine = ChatEngine()  # ChatEngine will start its own scheduler
+
+        if hasattr(engine, "start_autonomous_scheduler"):
+            engine.start_autonomous_scheduler(
+                test_mode_interval_minutes=1
+            )  # Run every minute for testing
+
+        logging.info(
+            "Kor'tana's ChatEngine is live with autonomous capabilities. "
+            "Type 'exit' or 'quit' to end."
+        )
+
         print("[DEBUG] Entering input loop.")
         while True:
             user_input = input("you: ").lower()
@@ -1539,7 +1565,7 @@ if __name__ == "__main__":
 
     except KeyboardInterrupt:
         logging.info("Shutting down Kor'tana's ChatEngine...")
-        if hasattr(engine, "shutdown_autonomous_scheduler"):
+        if "engine" in locals() and hasattr(engine, "shutdown_autonomous_scheduler"):
             engine.shutdown_autonomous_scheduler()
         logging.info("Shutdown complete.")
     except Exception as e:
@@ -1547,3 +1573,7 @@ if __name__ == "__main__":
             f"ChatEngine encountered an unhandled exception in main loop: {e}",
             exc_info=True,
         )
+
+
+if __name__ == "__main__":
+    main()

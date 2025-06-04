@@ -452,7 +452,6 @@ class CovenantEnforcer:
         """Check if response aligns with core Soulprint values."""
         try:
             # Load Soulprint values from configuration
-            soulprint_values = ["wisdom", "compassion", "truth", "protection", "growth"]
 
             # Simple alignment check - look for negative patterns that conflict with values
             negative_patterns = [

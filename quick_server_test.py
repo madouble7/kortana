@@ -2,11 +2,13 @@
 """
 Quick FastAPI server test
 """
+
+import os
 import subprocess
 import time
+
 import requests
-import os
-import signal
+
 
 def quick_server_test():
     """Quick test of FastAPI server."""
@@ -16,13 +18,20 @@ def quick_server_test():
 
     # Start server
     print("Starting server on port 8003...")
-    process = subprocess.Popen([
-        "C:\\project-kortana\\venv311\\Scripts\\python.exe",
-        "-m", "uvicorn",
-        "src.kortana.main:app",
-        "--host", "127.0.0.1",
-        "--port", "8003"
-    ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    process = subprocess.Popen(
+        [
+            "C:\\project-kortana\\venv311\\Scripts\\python.exe",
+            "-m",
+            "uvicorn",
+            "src.kortana.main:app",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "8003",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
 
     # Wait for server to start
     time.sleep(4)
@@ -68,6 +77,7 @@ def quick_server_test():
 
     print(f"\\nResults: {success_count}/{total_tests} tests passed")
     return success_count == total_tests
+
 
 if __name__ == "__main__":
     result = quick_server_test()

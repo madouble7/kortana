@@ -1,57 +1,116 @@
-src\admin_setup.py:10:8: F401 [*] `sys` imported but unused
-src\admin_setup.py:14:8: F401 [*] `yaml` imported but unused
+warning: `--output-format=text` is deprecated. Use `--output-format=full` or `--output-format=concise` instead. `text` will be treated as `concise`.
+error: Failed to parse update_import_check.py:4:8: Simple statements must be separated by newlines or semicolons
+error: Failed to parse covenant_test.py:1:246: Compound statements are not allowed on the same line as simple statements
+error: Failed to parse archive_2025_05_30\monitoring_dashboard_legacy.py:275:144: Expected 'else', found ':'
+archive_2025_05_30\monitoring_dashboard_legacy.py:275:144: E999 SyntaxError: Expected 'else', found ':'
+archive_2025_05_30\tests_legacy\test-venv.py:49:16: F401 `json` imported but unused; consider using `importlib.util.find_spec` to test for availability
+archive_2025_05_30\tests_legacy\test-venv.py:56:16: F401 `requests` imported but unused; consider using `importlib.util.find_spec` to test for availability
+archive_2025_05_30\tests_legacy\test_sanity.py:27:9: F841 Local variable `response` is assigned to but never used
+archive_2025_05_30\tests_legacy\validate_sacred_trinity.py:198:26: F821 Undefined name `datetime`
+archive_2025_05_30\tests_legacy\validate_sacred_trinity.py:198:39: F821 Undefined name `timezone`
+ascii_import_test.py:43:52: F401 `kortana.core.covenant_enforcer.CovenantEnforcer` imported but unused; consider using `importlib.util.find_spec` to test for availability
+automation_control.py:242:9: E722 Do not use bare `except`
+automation_guide.py:115:51: F401 `relays.gemini_integration.GeminiSummarizer` imported but unused; consider using `importlib.util.find_spec` to test for availability
+automation_guide.py:116:47: F401 `relays.relay_enhanced.KortanaEnhancedRelay` imported but unused; consider using `importlib.util.find_spec` to test for availability
+check_pydantic_warnings.py:21:1: E402 Module level import not at top of file
+comprehensive_import_test.py:39:52: F401 `kortana.core.covenant_enforcer.CovenantEnforcer` imported but unused; consider using `importlib.util.find_spec` to test for availability
+covenant_test.py:1:11: E702 Multiple statements on one line (semicolon)
+covenant_test.py:1:36: E702 Multiple statements on one line (semicolon)
+covenant_test.py:1:68: E702 Multiple statements on one line (semicolon)
+covenant_test.py:1:108: E702 Multiple statements on one line (semicolon)
+covenant_test.py:1:134: E702 Multiple statements on one line (semicolon)
+covenant_test.py:1:163: E702 Multiple statements on one line (semicolon)
+covenant_test.py:1:244: E702 Multiple statements on one line (semicolon)
+covenant_test.py:1:246: E999 SyntaxError: Compound statements are not allowed on the same line as simple statements
+covenant_test.py:1:284: E701 Multiple statements on one line (colon)
+covenant_test.py:1:355: E702 Multiple statements on one line (semicolon)
+covenant_test.py:1:421: E702 Multiple statements on one line (semicolon)
+covenant_test.py:1:537: E702 Multiple statements on one line (semicolon)
+covenant_test.py:1:572: E702 Multiple statements on one line (semicolon)
+demos\memory_demo.py:39:9: F841 Local variable `settings` is assigned to but never used
+demos\memory_demo.py:46:9: F841 Local variable `timestamp` is assigned to but never used
+integrate_arch_torch.py:167:5: F841 Local variable `torch_protocol` is assigned to but never used
+main.py:31:43: F401 `memory.memory_manager.MemoryManager` imported but unused; consider using `importlib.util.find_spec` to test for availability
+pydantic_warning_check.py:16:1: E402 Module level import not at top of file
+relays\agent_interface.py:154:9: E722 Do not use bare `except`
+relays\agent_interface.py:172:5: F841 Local variable `messages` is assigned to but never used
+relays\agent_interface.py:191:13: F841 Local variable `messages` is assigned to but never used
+relays\autonomous_relay.py:94:9: F841 Local variable `last_processed_time` is assigned to but never used
+relays\autonomous_relay.py:173:9: E722 Do not use bare `except`
+relays\master_orchestrator.py:99:13: E722 Do not use bare `except`
+relays\monitor.py:142:17: E722 Do not use bare `except`
+relays\monitor.py:157:9: E722 Do not use bare `except`
+relays\monitor.py:372:9: E722 Do not use bare `except`
+relays\monitor.py:388:13: E722 Do not use bare `except`
+relays\monitor.py:492:17: F821 Undefined name `time`
+relays\relay.py:47:38: F401 `google.genai.GenerativeModel` imported but unused; consider using `importlib.util.find_spec` to test for availability
+relays\relay.py:47:55: F401 `google.genai.types` imported but unused; consider using `importlib.util.find_spec` to test for availability
+relays\run_claude_task.py:49:27: E741 Ambiguous variable name: `l`
+relays\run_flash_task.py:49:27: E741 Ambiguous variable name: `l`
+run_pytest_diagnostic.py:39:14: F541 [*] f-string without any placeholders
+scripts\test_config.py:94:9: E722 Do not use bare `except`
+scripts\test_config.py:123:13: F841 Local variable `config` is assigned to but never used
+scripts\test_config.py:137:9: E722 Do not use bare `except`
+scripts\test_covenant_config.py:48:13: F841 Local variable `module` is assigned to but never used
+scripts\test_covenant_config.py:209:13: F841 Local variable `module` is assigned to but never used
+scripts\test_extensions.py:61:13: F841 Local variable `response` is assigned to but never used
+scripts\test_extensions.py:252:5: F841 Local variable `result` is assigned to but never used
+setup_task_scheduler.py:158:5: E722 Do not use bare `except`
+simple_kortana.py:73:5: F841 Local variable `env` is assigned to but never used
 src\brain.py:38:5: F811 Redefinition of unused `analyze_sentiment` from line 29
 src\brain.py:39:5: F811 Redefinition of unused `detect_emphasis_all_caps` from line 30
 src\brain.py:40:5: F811 Redefinition of unused `detect_keywords` from line 31
-src\check_dependencies.py:8:8: F401 [*] `sys` imported but unused
-src\fix_brain.py:86:9: F841 Local variable `prev_line` is assigned to but never used
-src\fix_permissions.py:8:8: F401 [*] `sys` imported but unused
-src\fix_permissions.py:9:21: F401 [*] `pathlib.Path` imported but unused
-src\fix_syntax.py:9:21: F401 [*] `pathlib.Path` imported but unused
-src\kortana\agents\autonomous_agents.py:133:37: E999 SyntaxError: Compound statements are not allowed on the same line as simple statements
-src\kortana\cli\main.py:96:19: F541 [*] f-string without any placeholders
-src\kortana\cli\main.py:145:15: F541 [*] f-string without any placeholders
-src\kortana\cli\main.py:150:19: F541 [*] f-string without any placeholders
-src\kortana\core\covenant.py:457:13: F841 Local variable `soulprint_values` is assigned to but never used
-src\llm_clients\anthropic_client.py:7:31: F401 [*] `typing.Optional` imported but unused
-src\llm_clients\openai_client.py:7:31: F401 [*] `typing.Optional` imported but unused
-src\run_with_output.py:88:13: F841 Local variable `startup_output` is assigned to but never used
-src\run_with_output.py:106:17: F841 Local variable `response` is assigned to but never used
-src\scripts\run_kortana.py:8:8: F401 [*] `os` imported but unused
+src\fix_brain.py:89:9: F841 Local variable `prev_line` is assigned to but never used
+src\kortana\agents\autonomous_agents.py:99:9: F841 Local variable `response` is assigned to but never used
+src\kortana\core\covenant.py:455:13: F841 Local variable `soulprint_values` is assigned to but never used
+src\kortana\migrations\env.py:1:8: F401 [*] `asyncio` imported but unused
+src\kortana\migrations\env.py:9:24: F401 [*] `sqlalchemy.pool` imported but unused
+src\kortana\migrations\env.py:21:52: F401 [*] `src.kortana.modules.memory_core.models.CoreMemory` imported but unused
+src\run_with_output.py:86:13: F841 Local variable `startup_output` is assigned to but never used
+src\run_with_output.py:104:17: F841 Local variable `response` is assigned to but never used
 src\scripts\run_kortana.py:17:1: E402 Module level import not at top of file
 src\scripts\run_kortana.py:18:1: E402 Module level import not at top of file
-src\setup_directories.py:7:8: F401 [*] `sys` imported but unused
 src\test_environment_final.py:71:16: F401 `brain` imported but unused; consider using `importlib.util.find_spec` to test for availability
 src\test_environment_final.py:78:16: F401 `autonomous_development_engine` imported but unused; consider using `importlib.util.find_spec` to test for availability
 src\test_environment_final.py:86:16: F401 `kortana` imported but unused; consider using `importlib.util.find_spec` to test for availability
 src\test_python_path.py:31:16: F401 `brain` imported but unused; consider using `importlib.util.find_spec` to test for availability
-tests\integration\test_chat_engine.py:4:8: F401 [*] `asyncio` imported but unused
-tests\integration\test_chat_engine.py:14:20: F401 [*] `config.load_config` imported but unused
-tests\integration\test_chat_engine.py:124:5: F841 Local variable `response` is assigned to but never used
+start_autonomy.py:24:1: E402 Module level import not at top of file
+start_autonomy.py:25:1: E402 Module level import not at top of file
+start_autonomy.py:149:13: E722 Do not use bare `except`
+start_autonomy.py:197:9: F841 Local variable `relay_thread` is assigned to but never used
+test_config_loading.py:15:1: E402 Module level import not at top of file
+test_full_system.py:62:9: F841 Local variable `memory_manager` is assigned to but never used
+test_full_system.py:71:9: F841 Local variable `planning_agent` is assigned to but never used
+test_full_system.py:72:9: F841 Local variable `coding_agent` is assigned to but never used
+test_full_system.py:73:9: F841 Local variable `testing_agent` is assigned to but never used
+test_full_system.py:74:9: F841 Local variable `monitoring_agent` is assigned to but never used
+test_imports_verbose.py:11:1: E402 Module level import not at top of file
+test_memory_service.py:13:1: E402 Module level import not at top of file
+test_memory_service.py:14:1: E402 Module level import not at top of file
+tests\integration\test_chat_engine.py:129:5: F841 Local variable `response` is assigned to but never used
 tests\test_brain.py:50:5: F841 Local variable `initial_mode` is assigned to but never used
 tests\test_helpers.py:39:5: E722 Do not use bare `except`
 tests\test_memory_integration.py:180:18: F821 Undefined name `ChatEngine`
-tests\test_memory_integration.py:228:18: F821 Undefined name `ChatEngine`
-tests\test_memory_integration.py:261:18: F821 Undefined name `ChatEngine`
-tests\test_memory_integration.py:369:22: F821 Undefined name `ChatEngine`
-tests\test_memory_integration.py:397:18: F821 Undefined name `ChatEngine`
-tests\test_memory_integration.py:429:18: F821 Undefined name `ChatEngine`
-tests\test_project_memory_integration.py:25:1: E402 Module level import not at top of file
-tests\test_project_memory_integration.py:26:1: E402 Module level import not at top of file
-tests\test_project_memory_integration.py:27:7: F541 [*] f-string without any placeholders
-tests\test_project_memory_integration.py:30:7: F541 [*] f-string without any placeholders
-tests\test_project_memory_integration.py:41:7: F541 [*] f-string without any placeholders
-tests\test_project_memory_integration.py:43:1: E402 Module level import not at top of file
-tests\test_project_memory_integration.py:44:1: E402 Module level import not at top of file
-tests\test_project_memory_integration.py:45:1: E402 Module level import not at top of file
-tests\test_project_memory_integration.py:46:1: E402 Module level import not at top of file
-tests\test_project_memory_integration.py:47:1: E402 Module level import not at top of file
+tests\test_memory_integration.py:234:18: F821 Undefined name `ChatEngine`
+tests\test_memory_integration.py:267:18: F821 Undefined name `ChatEngine`
+tests\test_memory_integration.py:375:22: F821 Undefined name `ChatEngine`
+tests\test_memory_integration.py:403:18: F821 Undefined name `ChatEngine`
+tests\test_memory_integration.py:435:18: F821 Undefined name `ChatEngine`
+tests\test_project_memory_integration.py:27:1: E402 Module level import not at top of file
+tests\test_project_memory_integration.py:28:1: E402 Module level import not at top of file
+tests\test_project_memory_integration.py:54:1: E402 Module level import not at top of file
 tests\test_project_memory_integration.py:55:1: E402 Module level import not at top of file
 tests\test_project_memory_integration.py:56:1: E402 Module level import not at top of file
+tests\test_project_memory_integration.py:57:1: E402 Module level import not at top of file
+tests\test_project_memory_integration.py:58:1: E402 Module level import not at top of file
+tests\test_project_memory_integration.py:66:1: E402 Module level import not at top of file
+tests\test_project_memory_integration.py:67:1: E402 Module level import not at top of file
 tests\test_reporter.py:190:9: F841 Local variable `test_modules` is assigned to but never used
-tests\test_text_encoding.py:2:8: F401 [*] `time` imported but unused
 tests\test_trinity_integration.py:159:9: F841 Local variable `trinity_scores` is assigned to but never used
 tests\test_trinity_integration.py:287:5: F841 Local variable `mock_trinity_router` is assigned to but never used
-tests\unit\test_text_analysis.py:4:8: F401 [*] `pytest` imported but unused
-Found 55 errors.
-[*] 20 fixable with the `--fix` option (9 hidden fixes can be enabled with the `--unsafe-fixes` option).
+tests\unit\core\test_brain.py:51:13: F821 Undefined name `kortana`
+tests\unit\core\test_brain.py:52:13: F821 Undefined name `kortana`
+tests\unit\core\test_brain.py:55:22: F821 Undefined name `ChatEngine`
+update_import_check.py:4:8: E999 SyntaxError: Simple statements must be separated by newlines or semicolons
+Found 110 errors.
+[*] 4 fixable with the `--fix` option (29 hidden fixes can be enabled with the `--unsafe-fixes` option).

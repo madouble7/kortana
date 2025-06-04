@@ -21,16 +21,16 @@ def test_model_router_module_structure():
     with open(router_path, "r", encoding="utf-8") as f:
         content = f.read()
 
-    assert (
-        "class SacredModelRouter" in content
-    ), "SacredModelRouter class should be defined"
+    assert "class SacredModelRouter" in content, (
+        "SacredModelRouter class should be defined"
+    )
     assert "class ModelArchetype" in content, "ModelArchetype enum should be defined"
-    assert (
-        "class AugmentedModelConfig" in content
-    ), "AugmentedModelConfig dataclass should be defined"
-    assert (
-        "def select_model_with_sacred_guidance" in content
-    ), "select_model_with_sacred_guidance method should exist"
+    assert "class AugmentedModelConfig" in content, (
+        "AugmentedModelConfig dataclass should be defined"
+    )
+    assert "def select_model_with_sacred_guidance" in content, (
+        "select_model_with_sacred_guidance method should exist"
+    )
     assert "def get_model_config" in content, "get_model_config method should exist"
     assert "def get_routing_stats" in content, "get_routing_stats method should exist"
 

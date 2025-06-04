@@ -187,7 +187,7 @@ class TestSummaryReporter:
         test_files = self.discover_test_files()
 
         # Create mapping of test files to source files
-        test_modules = {f.stem.replace("test_", ""): f for f in test_files}
+        {f.stem.replace("test_", ""): f for f in test_files}
 
         for src_file in source_files:
             module_name = src_file.stem

@@ -2,12 +2,14 @@
 """
 Test script for FastAPI endpoints
 """
-import requests
-import time
-import subprocess
-import sys
+
 import os
+import subprocess
+import time
 from threading import Thread
+
+import requests
+
 
 def start_server():
     """Start the FastAPI server in a subprocess."""
@@ -16,17 +18,24 @@ def start_server():
         os.chdir("c:\\project-kortana")
 
         # Start the server
-        subprocess.run([
-            "C:\\project-kortana\\venv311\\Scripts\\python.exe",
-            "-m", "uvicorn",
-            "src.kortana.main:app",
-            "--host", "127.0.0.1",
-            "--port", "8000"
-        ], timeout=30)
+        subprocess.run(
+            [
+                "C:\\project-kortana\\venv311\\Scripts\\python.exe",
+                "-m",
+                "uvicorn",
+                "src.kortana.main:app",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                "8000",
+            ],
+            timeout=30,
+        )
     except subprocess.TimeoutExpired:
         pass  # Server will keep running
     except Exception as e:
         print(f"Error starting server: {e}")
+
 
 def test_endpoints():
     """Test the FastAPI endpoints."""
@@ -62,6 +71,7 @@ def test_endpoints():
         print("❌ Could not connect to server. Make sure it's running.")
     except Exception as e:
         print(f"❌ Error testing endpoints: {e}")
+
 
 if __name__ == "__main__":
     print("=== FastAPI Endpoint Test ===")

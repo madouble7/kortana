@@ -1,0 +1,149 @@
+.kortana_config_test_env\Lib\site-packages\pip\_vendor\pygments\formatters\svg.py:103:9: E722 Do not use bare `except`
+    |
+101 |         try:
+102 |             int_fs = int(fs)
+103 |         except:
+    |         ^^^^^^ E722
+104 |             int_fs = 20
+105 |         self.yoffset = get_int_opt(options, 'yoffset', int_fs)
+    |
+
+.kortana_config_test_env\Lib\site-packages\pip\_vendor\rich\logging.py:282:9: E722 Do not use bare `except`
+    |
+280 |         try:
+281 |             number / divisor
+282 |         except:
+    |         ^^^^^^ E722
+283 |             log.exception("An error of some kind occurred!")
+    |
+
+.kortana_config_test_env\Lib\site-packages\pip\_vendor\rich\traceback.py:751:13: E722 Do not use bare `except`
+    |
+749 |             try:
+750 |                 foo(0)
+751 |             except:
+    |             ^^^^^^ E722
+752 |                 slfkjsldkfj  # type: ignore[name-defined]
+753 |         except:
+    |
+
+.kortana_config_test_env\Lib\site-packages\pip\_vendor\rich\traceback.py:753:9: E722 Do not use bare `except`
+    |
+751 |             except:
+752 |                 slfkjsldkfj  # type: ignore[name-defined]
+753 |         except:
+    |         ^^^^^^ E722
+754 |             console.print_exception(show_locals=True)
+    |
+
+automation_control.py:242:9: E722 Do not use bare `except`
+    |
+240 |                 timeout=10,
+241 |             )
+242 |         except:
+    |         ^^^^^^ E722
+243 |             print("⚠️  Could not get enhanced relay status")
+    |
+
+relays\agent_interface.py:154:9: E722 Do not use bare `except`
+    |
+152 |                 "last_position": self._last_queue_position,
+153 |             }
+154 |         except:
+    |         ^^^^^^ E722
+155 |             return {"total_messages": 0, "unread_messages": 0, "last_position": 0}
+    |
+
+relays\autonomous_relay.py:173:9: E722 Do not use bare `except`
+    |
+171 |             else:
+172 |                 return "inactive"
+173 |         except:
+    |         ^^^^^^ E722
+174 |             return "unknown"
+    |
+
+relays\master_orchestrator.py:99:13: E722 Do not use bare `except`
+    |
+ 97 |                 proc.terminate()
+ 98 |                 print(f"Stopped {name}")
+ 99 |             except:
+    |             ^^^^^^ E722
+100 |                 pass
+    |
+
+relays\monitor.py:142:17: E722 Do not use bare `except`
+    |
+140 |                     if (datetime.now() - modified_time) < timedelta(hours=1):
+141 |                         agents.append(log_file.stem)
+142 |                 except:
+    |                 ^^^^^^ E722
+143 |                     pass
+    |
+
+relays\monitor.py:157:9: E722 Do not use bare `except`
+    |
+155 |             agents.extend(db_agents)
+156 |             conn.close()
+157 |         except:
+    |         ^^^^^^ E722
+158 |             pass
+    |
+
+relays\monitor.py:372:9: E722 Do not use bare `except`
+    |
+370 |                 health["last_activity"] = result[0]
+371 |             conn.close()
+372 |         except:
+    |         ^^^^^^ E722
+373 |             health["issues"].append("Cannot access database")
+    |
+
+relays\monitor.py:388:13: E722 Do not use bare `except`
+    |
+386 |                 else:
+387 |                     health["status"] = "inactive"
+388 |             except:
+    |             ^^^^^^ E722
+389 |                 health["status"] = "unknown"
+390 |         else:
+    |
+
+scripts\test_config.py:94:9: E722 Do not use bare `except`
+   |
+92 |         try:
+93 |             (Path(__file__).parent.parent / ".env.test").unlink()
+94 |         except:
+   |         ^^^^^^ E722
+95 |             pass
+   |
+
+scripts\test_config.py:137:9: E722 Do not use bare `except`
+    |
+135 |         try:
+136 |             required_config_path.unlink()
+137 |         except:
+    |         ^^^^^^ E722
+138 |             pass
+    |
+
+setup_task_scheduler.py:158:5: E722 Do not use bare `except`
+    |
+156 |                         print(f"  - {task_name}")
+157 |             return True
+158 |     except:
+    |     ^^^^^^ E722
+159 |         pass
+160 |     return False
+    |
+
+start_autonomy.py:149:13: E722 Do not use bare `except`
+    |
+147 |                     lines = len(f.readlines())
+148 |                 print(f"   {queue_file.name}: {lines} messages")
+149 |             except:
+    |             ^^^^^^ E722
+150 |                 print(f"   {queue_file.name}: error reading")
+    |
+
+Found 16 errors.

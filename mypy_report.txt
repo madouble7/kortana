@@ -1,2 +1,2 @@
-src\kortana\agents\autonomous_agents.py:133: error: invalid syntax  [syntax]
+archive_2025_05_30\monitoring_dashboard_legacy.py:275: error: invalid syntax  [syntax]
 Found 1 error in 1 file (errors prevented further checking)

@@ -1,0 +1,14 @@
+--- sys.path AFTER editable install ---
+
+C:\project-kortana
+C:\project-kortana\src
+C:\Program Files\Python311\python311.zip
+C:\Program Files\Python311\DLLs
+C:\Program Files\Python311\Lib
+C:\Program Files\Python311
+C:\project-kortana\venv311
+C:\project-kortana\venv311\Lib\site-packages
+--- end sys.path ---
+Error importing kortana modules: cannot import name 'Brain' from 'kortana.core.brain' (C:\project-kortana\src\kortana\core\brain.py)
+
+SUCCESS: Successfully imported load_config from kortana.config

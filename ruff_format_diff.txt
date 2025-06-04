@@ -1,2218 +1,327 @@
---- src\admin_setup.py
-+++ src\admin_setup.py
-@@ -4,6 +4,7 @@
- This script creates configuration files with administrative privileges.
- Run this script with elevated permissions (Run as Administrator).
- """
-+
- import json
- import os
- import shutil
-@@ -28,28 +29,36 @@
- 
-     # Dictionary of file contents
-     files = {
--        "config/persona.json": json.dumps({
--            "name": "Kor'tana",
--            "role": "Warchief's companion",
--            "style": "supportive, grounded"
--        }, indent=2),
--
--        "config/identity.json": json.dumps({
--            "core_values": ["authenticity", "growth", "courage"],
--            "voice": "grounded, supportive, clear"
--        }, indent=2),
--
--        "config/models_config.json": json.dumps({
--            "default": {"model": "gpt-3.5-turbo", "style": "presence"},
--            "fallback": {"model": "gpt-3.5-turbo", "style": "presence"}
--        }, indent=2),
--
--        "config/sacred_trinity_config.json": json.dumps({
--            "heart": {"enabled": True, "weight": 0.33},
--            "soul": {"enabled": True, "weight": 0.33},
--            "lit": {"enabled": True, "weight": 0.33}
--        }, indent=2),
--
-+        "config/persona.json": json.dumps(
-+            {
-+                "name": "Kor'tana",
-+                "role": "Warchief's companion",
-+                "style": "supportive, grounded",
-+            },
-+            indent=2,
-+        ),
-+        "config/identity.json": json.dumps(
-+            {
-+                "core_values": ["authenticity", "growth", "courage"],
-+                "voice": "grounded, supportive, clear",
-+            },
-+            indent=2,
-+        ),
-+        "config/models_config.json": json.dumps(
-+            {
-+                "default": {"model": "gpt-3.5-turbo", "style": "presence"},
-+                "fallback": {"model": "gpt-3.5-turbo", "style": "presence"},
-+            },
-+            indent=2,
-+        ),
-+        "config/sacred_trinity_config.json": json.dumps(
-+            {
-+                "heart": {"enabled": True, "weight": 0.33},
-+                "soul": {"enabled": True, "weight": 0.33},
-+                "lit": {"enabled": True, "weight": 0.33},
-+            },
-+            indent=2,
-+        ),
-         "config/covenant.yaml": """principles:
-   - "Respect user autonomy"
-   - "Prioritize user wellbeing"
-@@ -65,7 +74,6 @@
-   voice: "authentic, supportive, clear"
-   tone: "respectful, knowledgeable, kind"
- """,
--
-         "config/default.yaml": """api_keys:
-   openai: "sk-placeholder-value"
-   anthropic: "placeholder-anthropic-key"
-@@ -110,7 +118,6 @@
-   index_name: "kortana-memory"
- default_llm_id: "gpt-3.5-turbo"
- """,
--
-         "config/development.yaml": """debug: true
- api:
-   host: "127.0.0.1"
-@@ -119,12 +126,11 @@
- agents:
-   default_llm_id: "gpt-3.5-turbo"
- """,
--
-         "data/memory_journal.jsonl": "",
-         "data/project_memory.jsonl": "",
-         "data/heart.log": "",
-         "data/soul.index.jsonl": "",
--        "data/lit.log.jsonl": ""
-+        "data/lit.log.jsonl": "",
-     }
- 
-     # Create each file
-@@ -153,7 +159,7 @@
-         path.touch()
- 
-     # Open and write content with explicit permissions
--    with open(path, 'w') as f:
-+    with open(path, "w") as f:
-         f.write(content)
- 
-     print(f"Created file: {file_path}")
-@@ -162,7 +168,7 @@
- def create_file_alternative(file_path, content):
-     """Create a file using a temporary file approach."""
-     # Create a temporary file
--    with tempfile.NamedTemporaryFile(mode='w', delete=False) as temp:
-+    with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp:
-         temp.write(content)
-         temp_name = temp.name
- 
-@@ -186,7 +192,7 @@
-         return
- 
-     try:
--        with open(brain_py_path, 'r') as f:
-+        with open(brain_py_path, "r") as f:
-             content = f.read()
- 
-         # Check if the fix is already applied
-@@ -202,10 +208,10 @@
-             # Replace the problematic part
-             fixed_content = content.replace(
-                 f"{tester_section}",
--                f"{tester_section}\n            chat_engine_instance=self,\n            llm_client=self.ade_llm_client,\n            covenant_enforcer=self.covenant_enforcer,\n            settings=self.settings\n        )\n        \n        # Get monitoring config (handle both dict and model types)\n        monitoring_config = {{}}\n        if hasattr(self.settings.agents, 'types'):\n            if hasattr(self.settings.agents.types, 'monitoring'):\n                monitoring_config = self.settings.agents.types.monitoring\n            elif isinstance(self.settings.agents.types, dict) and 'monitoring' in self.settings.agents.types:\n                monitoring_config = self.settings.agents.types['monitoring']\n        \n{monitor_section}"
-+                f"{tester_section}\n            chat_engine_instance=self,\n            llm_client=self.ade_llm_client,\n            covenant_enforcer=self.covenant_enforcer,\n            settings=self.settings\n        )\n        \n        # Get monitoring config (handle both dict and model types)\n        monitoring_config = {{}}\n        if hasattr(self.settings.agents, 'types'):\n            if hasattr(self.settings.agents.types, 'monitoring'):\n                monitoring_config = self.settings.agents.types.monitoring\n            elif isinstance(self.settings.agents.types, dict) and 'monitoring' in self.settings.agents.types:\n                monitoring_config = self.settings.agents.types['monitoring']\n        \n{monitor_section}",
-             )
- 
--            with open(brain_py_path, 'w') as f:
-+            with open(brain_py_path, "w") as f:
-                 f.write(fixed_content)
- 
-             print("Successfully fixed brain.py")
-
---- src\agents\memory_agent.py
-+++ src\agents\memory_agent.py
-@@ -33,7 +33,7 @@
-         """
-         # You can still use your LLM for summarization if desired, or just
-         # chunk
--        chunks = [text[i: i + 1500] for i in range(0, len(text), 1500)]
-+        chunks = [text[i : i + 1500] for i in range(0, len(text), 1500)]
-         plans = []
-         for chunk in chunks:
-             # If you want to use an LLM for summary/meta, add that logic here
-
---- src\check_dependencies.py
-+++ src\check_dependencies.py
-@@ -3,6 +3,7 @@
- 
- This script checks for required dependencies and files for the Kor'tana system.
- """
-+
- import importlib
- import os
+error: Failed to parse archive_2025_05_30\monitoring_dashboard_legacy.py:275:144: Expected 'else', found ':'
+error: Failed to parse covenant_test.py:1:246: Compound statements are not allowed on the same line as simple statements
+error: Failed to parse update_import_check.py:4:8: Simple statements must be separated by newlines or semicolons
+--- run_pytest_diagnostic.py
++++ run_pytest_diagnostic.py
+@@ -4,29 +4,34 @@
  import sys
-@@ -17,7 +18,7 @@
-     try:
-         module = importlib.import_module(module_name)
-         print(f"✓ Successfully imported {module_name}")
--        if hasattr(module, '__file__'):
-+        if hasattr(module, "__file__"):
-             print(f"  Module location: {module.__file__}")
-         return True
-     except ImportError as e:
-@@ -45,19 +46,19 @@
  
-     # Required imports
-     required_imports = [
--        'yaml',
--        'apscheduler',
--        'config',
--        'config.schema',
--        'src.dev_agent_stub',
--        'src.kortana.agents.autonomous_agents',
--        'src.kortana.core.covenant_enforcer',
--        'src.kortana.memory.memory',
--        'src.kortana.memory.memory_manager',
--        'src.kortana.utils',
--        'src.llm_clients.factory',
--        'src.model_router',
--        'src.sacred_trinity_router'
-+        "yaml",
-+        "apscheduler",
-+        "config",
-+        "config.schema",
-+        "src.dev_agent_stub",
-+        "src.kortana.agents.autonomous_agents",
-+        "src.kortana.core.covenant_enforcer",
-+        "src.kortana.memory.memory",
-+        "src.kortana.memory.memory_manager",
-+        "src.kortana.utils",
-+        "src.llm_clients.factory",
-+        "src.model_router",
-+        "src.sacred_trinity_router",
-     ]
- 
-     import_results = {module: check_import(module) for module in required_imports}
-@@ -70,12 +71,12 @@
- 
-     # Required files
-     required_files = [
--        'config/persona.json',
--        'config/identity.json',
--        'config/models_config.json',
--        'config/sacred_trinity_config.json',
--        'config/covenant.yaml',
--        'config/default.yaml'
-+        "config/persona.json",
-+        "config/identity.json",
-+        "config/models_config.json",
-+        "config/sacred_trinity_config.json",
-+        "config/covenant.yaml",
-+        "config/default.yaml",
-     ]
- 
-     file_results = {file: check_file_exists(file) for file in required_files}
-
---- src\fix_brain.py
-+++ src\fix_brain.py
-@@ -3,6 +3,7 @@
- 
- This script fixes the brain.py file to handle both dictionary and object-based configurations.
- """
+ # Setup logging to file
+-log_file = open('pytest_diagnostic_output.txt', 'w')
++log_file = open("pytest_diagnostic_output.txt", "w")
 +
- import os
++
+ def log(message):
+     print(message)
+-    log_file.write(message + '\n')
++    log_file.write(message + "\n")
+     log_file.flush()
  
++
+ log(f"--- Starting pytest diagnostic run from: {os.getcwd()} ---")
+ log(f"Python executable running this script: {sys.executable}")
  
-@@ -15,7 +16,7 @@
-         return False
+ # Define paths carefully
+-project_root = r"C:\project-kortana" # Ensure this is correct
++project_root = r"C:\project-kortana"  # Ensure this is correct
+ venv_scripts_path = os.path.join(project_root, "venv311", "Scripts")
+ # Try to find pytest within the venv first, then fall back to just 'pytest' (if on PATH)
+ pytest_exe_candidate1 = os.path.join(venv_scripts_path, "pytest.exe")
+-pytest_exe_candidate2 = os.path.join(venv_scripts_path, "pytest") # For non-Windows venv or if .exe is implicit
+-pytest_executable = "pytest" # Fallback if full path isn't found or needed
++pytest_exe_candidate2 = os.path.join(
++    venv_scripts_path, "pytest"
++)  # For non-Windows venv or if .exe is implicit
++pytest_executable = "pytest"  # Fallback if full path isn't found or needed
  
-     # Read the current file
--    with open(brain_path, 'r') as f:
-+    with open(brain_path, "r") as f:
-         content = f.read()
+ if os.path.exists(pytest_exe_candidate1):
+     pytest_executable = pytest_exe_candidate1
+ elif os.path.exists(pytest_exe_candidate2):
+     pytest_executable = pytest_exe_candidate2
  
-     # Apply modification for monitoring_config
-@@ -38,23 +39,25 @@
-                     "monitoring": getattr(self.settings.agents.types, "monitoring", {})
-                 }
+-tests_directory_relative = "tests" # Relative to project_root
++tests_directory_relative = "tests"  # Relative to project_root
+ tests_directory_absolute = os.path.join(project_root, tests_directory_relative)
  
--        # Get monitoring config"""
-+        # Get monitoring config""",
-         )
+ log(f"Attempting to use pytest executable: {pytest_executable}")
+@@ -34,12 +39,22 @@
  
-         new_content = new_content.replace(
--            "        monitoring_config = {}\n        if hasattr(self.settings.agents.types, \"monitoring\"):\n            monitoring_config = self.settings.agents.types.monitoring\n        elif isinstance(self.settings.agents.types, dict) and \"monitoring\" in self.settings.agents.types:\n            monitoring_config = self.settings.agents.types[\"monitoring\"]",
-+            '        monitoring_config = {}\n        if hasattr(self.settings.agents.types, "monitoring"):\n            monitoring_config = self.settings.agents.types.monitoring\n        elif isinstance(self.settings.agents.types, dict) and "monitoring" in self.settings.agents.types:\n            monitoring_config = self.settings.agents.types["monitoring"]',
-             """        # Get monitoring config
--        monitoring_config = agent_types.get("monitoring", {})"""
-+        monitoring_config = agent_types.get("monitoring", {})""",
-         )
- 
-         # Write the fixed file
--        with open(brain_path, 'w') as f:
-+        with open(brain_path, "w") as f:
-             f.write(new_content)
- 
-         print("Fix applied successfully!")
-         return True
+ # Verify executable and directory before running
+ if not os.path.exists(pytest_executable):
+-     # Try a simpler check if pytest is on PATH from activated venv
+-    if subprocess.run(["where", "pytest"], capture_output=True, text=True, shell=True, cwd=project_root).stdout.strip():
+-         log(f"'pytest.exe' not found at specified venv path, but 'pytest' found on PATH. Will attempt to use 'pytest'.")
+-         pytest_executable = "pytest" # Rely on PATH
++    # Try a simpler check if pytest is on PATH from activated venv
++    if subprocess.run(
++        ["where", "pytest"],
++        capture_output=True,
++        text=True,
++        shell=True,
++        cwd=project_root,
++    ).stdout.strip():
++        log(
++            f"'pytest.exe' not found at specified venv path, but 'pytest' found on PATH. Will attempt to use 'pytest'."
++        )
++        pytest_executable = "pytest"  # Rely on PATH
      else:
--        print("The file doesn't need fixing or has a different structure than expected.")
-+        print(
-+            "The file doesn't need fixing or has a different structure than expected."
+-        log(f"ERROR: Pytest executable not found at {pytest_exe_candidate1} or {pytest_exe_candidate2}, and not found on PATH.")
++        log(
++            f"ERROR: Pytest executable not found at {pytest_exe_candidate1} or {pytest_exe_candidate2}, and not found on PATH."
 +        )
-         return False
- 
- 
-@@ -67,7 +70,7 @@
-         return False
- 
-     # Read the current file
--    with open(brain_path, 'r') as f:
-+    with open(brain_path, "r") as f:
-         lines = f.readlines()
- 
-     # Look for indentation issues
-@@ -86,7 +89,7 @@
-         prev_line = line
- 
-     # Write the fixed file
--    with open(brain_path, 'w') as f:
-+    with open(brain_path, "w") as f:
-         f.writelines(fixed_lines)
- 
-     print("Indentation fix attempted.")
-
---- src\fix_permissions.py
-+++ src\fix_permissions.py
-@@ -3,6 +3,7 @@
- 
- This script creates all necessary directories and files with proper permissions.
- """
-+
- import json
- import os
- import sys
-@@ -25,30 +26,54 @@
-     print("\nCreating configuration files...")
- 
-     # Persona config
--    create_file("config/persona.json", json.dumps({
--        "name": "Kor'tana",
--        "role": "Warchief's companion",
--        "style": "supportive, grounded"
--    }, indent=2))
-+    create_file(
-+        "config/persona.json",
-+        json.dumps(
-+            {
-+                "name": "Kor'tana",
-+                "role": "Warchief's companion",
-+                "style": "supportive, grounded",
-+            },
-+            indent=2,
-+        ),
-+    )
- 
-     # Identity config
--    create_file("config/identity.json", json.dumps({
--        "core_values": ["authenticity", "growth", "courage"],
--        "voice": "grounded, supportive, clear"
--    }, indent=2))
-+    create_file(
-+        "config/identity.json",
-+        json.dumps(
-+            {
-+                "core_values": ["authenticity", "growth", "courage"],
-+                "voice": "grounded, supportive, clear",
-+            },
-+            indent=2,
-+        ),
-+    )
- 
-     # Models config
--    create_file("config/models_config.json", json.dumps({
--        "default": {"model": "gpt-3.5-turbo", "style": "presence"},
--        "fallback": {"model": "gpt-3.5-turbo", "style": "presence"}
--    }, indent=2))
-+    create_file(
-+        "config/models_config.json",
-+        json.dumps(
-+            {
-+                "default": {"model": "gpt-3.5-turbo", "style": "presence"},
-+                "fallback": {"model": "gpt-3.5-turbo", "style": "presence"},
-+            },
-+            indent=2,
-+        ),
-+    )
- 
-     # Sacred Trinity config
--    create_file("config/sacred_trinity_config.json", json.dumps({
--        "heart": {"enabled": True, "weight": 0.33},
--        "soul": {"enabled": True, "weight": 0.33},
--        "lit": {"enabled": True, "weight": 0.33}
--    }, indent=2))
-+    create_file(
-+        "config/sacred_trinity_config.json",
-+        json.dumps(
-+            {
-+                "heart": {"enabled": True, "weight": 0.33},
-+                "soul": {"enabled": True, "weight": 0.33},
-+                "lit": {"enabled": True, "weight": 0.33},
-+            },
-+            indent=2,
-+        ),
-+    )
- 
-     # Covenant config
-     covenant_content = {
-@@ -56,50 +81,41 @@
-             "Respect user autonomy",
-             "Prioritize user wellbeing",
-             "Be truthful and accurate",
--            "Protect user privacy"
-+            "Protect user privacy",
-         ],
-         "boundaries": {
-             "do_not": [
-                 "Engage in harmful behavior",
-                 "Share private information",
-                 "Pretend to be a human",
--                "Make unsubstantiated claims"
-+                "Make unsubstantiated claims",
-             ]
-         },
-         "language": {
-             "voice": "authentic, supportive, clear",
--            "tone": "respectful, knowledgeable, kind"
--        }
-+            "tone": "respectful, knowledgeable, kind",
-+        },
-     }
--    create_file("config/covenant.yaml", yaml.dump(covenant_content, default_flow_style=False))
-+    create_file(
-+        "config/covenant.yaml", yaml.dump(covenant_content, default_flow_style=False)
-+    )
- 
-     # Default config
-     default_config = {
-         "api_keys": {
-             "openai": "sk-placeholder-value",
-             "anthropic": "placeholder-anthropic-key",
--            "pinecone": ""
-+            "pinecone": "",
-         },
-         "debug": False,
--        "api": {
--            "host": "127.0.0.1",
--            "port": 8000
--        },
--        "models": {
--            "default": "gpt-4",
--            "alternate": "gpt-3.5-turbo"
--        },
--        "memory": {
--            "enable_persistent": True,
--            "max_entries": 1000
--        },
-+        "api": {"host": "127.0.0.1", "port": 8000},
-+        "models": {"default": "gpt-4", "alternate": "gpt-3.5-turbo"},
-+        "memory": {"enable_persistent": True, "max_entries": 1000},
-         "logging": {
-             "level": "INFO",
--            "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-+            "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-         },
--        "user": {
--            "name": "Warchief"
--        },
-+        "user": {"name": "Warchief"},
-         "paths": {
-             "persona_file_path": "config/persona.json",
-             "identity_file_path": "config/identity.json",
-@@ -110,7 +126,7 @@
-             "memory_journal_path": "data/memory_journal.jsonl",
-             "heart_log_path": "data/heart.log",
-             "soul_index_path": "data/soul.index.jsonl",
--            "lit_log_path": "data/lit.log.jsonl"
-+            "lit_log_path": "data/lit.log.jsonl",
-         },
-         "agents": {
-             "default_llm_id": "gpt-3.5-turbo",
-@@ -118,33 +134,26 @@
-                 "coding": {},
-                 "planning": {},
-                 "testing": {},
--                "monitoring": {
--                    "enabled": True,
--                    "interval_seconds": 60
--                }
--            }
-+                "monitoring": {"enabled": True, "interval_seconds": 60},
-+            },
-         },
--        "pinecone": {
--            "environment": "us-west1-gcp",
--            "index_name": "kortana-memory"
--        },
--        "default_llm_id": "gpt-3.5-turbo"
-+        "pinecone": {"environment": "us-west1-gcp", "index_name": "kortana-memory"},
-+        "default_llm_id": "gpt-3.5-turbo",
-     }
--    create_file("config/default.yaml", yaml.dump(default_config, default_flow_style=False))
-+    create_file(
-+        "config/default.yaml", yaml.dump(default_config, default_flow_style=False)
-+    )
- 
-     # Development config
-     dev_config = {
-         "debug": True,
--        "api": {
--            "host": "127.0.0.1",
--            "port": 8000
--        },
-+        "api": {"host": "127.0.0.1", "port": 8000},
-         "default_llm_id": "gpt-3.5-turbo",
--        "agents": {
--            "default_llm_id": "gpt-3.5-turbo"
--        }
-+        "agents": {"default_llm_id": "gpt-3.5-turbo"},
-     }
--    create_file("config/development.yaml", yaml.dump(dev_config, default_flow_style=False))
-+    create_file(
-+        "config/development.yaml", yaml.dump(dev_config, default_flow_style=False)
-+    )
- 
-     # Create empty memory files
-     create_file("data/memory_journal.jsonl", "")
-
---- src\fix_syntax.py
-+++ src\fix_syntax.py
-@@ -4,6 +4,7 @@
- This script fixes syntax issues in the brain.py file.
- It reads the file line by line and fixes any syntax or indentation issues.
- """
-+
- import os
- import re
- from pathlib import Path
-@@ -19,7 +20,7 @@
-         return False
- 
-     # Read the file line by line
--    with open(file_path, 'r') as f:
-+    with open(file_path, "r") as f:
-         lines = f.readlines()
- 
-     # Look for specific issues
-@@ -29,18 +30,21 @@
-         line = lines[i]
- 
-         # Check for the specific syntax error pattern
--        if (i + 1 < len(lines) and
--            line.strip().endswith(")") and
--            lines[i + 1].strip().startswith("self.") and
--            not line.strip().endswith(")")):
--
-+        if (
-+            i + 1 < len(lines)
-+            and line.strip().endswith(")")
-+            and lines[i + 1].strip().startswith("self.")
-+            and not line.strip().endswith(")")
-+        ):
-             fixed_lines.append(line)
-             fixed_lines.append("\n")  # Add a blank line
-             i += 1
-             continue
- 
-         # Fix CodingAgent initialization
--        if "memory_accessor=self.pinecone_memory," in line and line.strip().endswith(")"):
-+        if "memory_accessor=self.pinecone_memory," in line and line.strip().endswith(
-+            ")"
-+        ):
-             # This is part of the CodingAgent initialization
-             if i + 1 < len(lines) and "self.ade_planner" in lines[i + 1]:
-                 fixed_lines.append(line)
-@@ -53,7 +57,7 @@
-         i += 1
- 
-     # Write the fixed file back
--    with open(file_path, 'w') as f:
-+    with open(file_path, "w") as f:
-         f.writelines(fixed_lines)
- 
-     print(f"Syntax fixes applied to {file_path}")
-@@ -70,7 +74,7 @@
- 
-     # Read the file
-     try:
--        with open(brain_path, 'r') as f:
-+        with open(brain_path, "r") as f:
-             content = f.read()
- 
-         # Find each agent initialization
-@@ -125,7 +129,7 @@
-         content = content.replace(monitoring_old, monitoring_new)
- 
-         # Write the fixed content back
--        with open(brain_path, 'w') as f:
-+        with open(brain_path, "w") as f:
-             f.write(content)
- 
-         print(f"Complete fix applied to {brain_path}")
-
---- src\kortana\agents\__init__.py
-+++ src\kortana\agents\__init__.py
-@@ -4,8 +4,7 @@
- Contains autonomous agents for the Kor'tana system.
- """
- 
--from .autonomous_agents import (CodingAgent, MonitoringAgent, PlanningAgent,
--                                TestingAgent)
-+from .autonomous_agents import CodingAgent, MonitoringAgent, PlanningAgent, TestingAgent
- 
- __all__ = [
-     "CodingAgent",
-
---- src\kortana\agents\coding_agent.py
-+++ src\kortana\agents\coding_agent.py
-@@ -12,10 +12,11 @@
-     An agent responsible for executing coding tasks according to a plan.
-     Uses the dev_agent module to execute individual development tasks.
-     """
-+
-     def __init__(self, planner: Any) -> None:
-         """
-         Initialize a CodingAgent.
--        
-+
-         Args:
-             planner: The planning agent that generates daily task plans
-         """
-@@ -24,7 +25,7 @@
-     def execute_today(self) -> Dict[str, Any]:
-         """
-         Execute all tasks planned for today.
--        
-+
-         Returns:
-             Dict[str, Any]: A dictionary mapping task descriptions to their execution results
-         """
-
---- src\kortana\agents\monitoring_agent.py
-+++ src\kortana\agents\monitoring_agent.py
-@@ -13,10 +13,11 @@
-     An agent responsible for monitoring system health and performing repairs.
-     Uses psutil to monitor system resources and implements self-healing capabilities.
-     """
-+
-     def check_health(self) -> List[str]:
-         """
-         Check the health of the system and identify any issues.
--        
-+
-         Returns:
-             List[str]: A list of error messages for detected issues
-         """
-@@ -30,10 +31,10 @@
-     def heal(self, errors: List[str]) -> List[str]:
-         """
-         Attempt to fix detected system issues automatically.
--        
-+
-         Args:
-             errors: A list of error messages to address
--            
-+
-         Returns:
-             List[str]: A list of fix descriptions that were applied
-         """
-
---- src\kortana\agents\planning_agent.py
-+++ src\kortana\agents\planning_agent.py
-@@ -14,10 +14,11 @@
-     An agent responsible for planning and prioritizing daily tasks.
-     Retrieves incomplete tasks from memory and organizes them based on significance.
-     """
-+
-     def __init__(self, config: Optional[KortanaConfig] = None) -> None:
-         """
-         Initialize a PlanningAgent with configuration.
--        
-+
-         Args:
-             config: Configuration for the planning agent and memory manager
-         """
-@@ -27,24 +28,26 @@
-     def plan_day(self) -> Dict[str, Any]:
-         """
-         Create a prioritized plan for today's tasks.
--        
-+
-         Returns:
-             Dict[str, Any]: A dictionary containing today's date and prioritized tasks
-                            {"date": str, "today": List[str]}
-         """
-         # Load all memory entries
-         all_entries = self.mem.load_project_memory()
--        
-+
-         # Filter for incomplete tasks
--        tasks = [entry for entry in all_entries if "incomplete_task" in entry.get("tags", [])]
--        
-+        tasks = [
-+            entry for entry in all_entries if "incomplete_task" in entry.get("tags", [])
-+        ]
-+
-         # Score & sort by significance/emotional_gravity in metadata
-         prioritized = sorted(
--            tasks, 
--            key=lambda x: x.get("metadata", {}).get("significance_score", 0), 
--            reverse=True
-+            tasks,
-+            key=lambda x: x.get("metadata", {}).get("significance_score", 0),
-+            reverse=True,
-         )
--        
-+
-         # Generate a to-do list (top 5)
-         today = [t.get("text", "") for t in prioritized[:5]]
-         return {"date": datetime.utcnow().date().isoformat(), "today": today}
-
---- src\kortana\agents\testing_agent.py
-+++ src\kortana\agents\testing_agent.py
-@@ -12,10 +12,11 @@
-     An agent responsible for running automated tests.
-     Executes pytest and captures the results.
-     """
-+
-     def run_tests(self) -> Dict[str, Union[bool, str]]:
-         """
-         Run automated tests using pytest.
--        
-+
-         Returns:
-             Dict[str, Union[bool, str]]: A dictionary containing test results with keys:
-                 - 'success': Boolean indicating if all tests passed
-
---- src\kortana\cli\api.py
-+++ src\kortana\cli\api.py
-@@ -1,6 +1,7 @@
- """
- API server CLI entry point for Kor'tana.
- """
-+
- import argparse
- import logging
- import os
-@@ -14,34 +15,23 @@
- 
- logger = logging.getLogger(__name__)
- 
-+
- def main():
-     """Start the Kor'tana API server."""
-     parser = argparse.ArgumentParser(description="Kor'tana API Server")
-     parser.add_argument(
--        "--host",
--        default=None,
--        help="Host to bind the server to (default: from config)"
-+        "--host", default=None, help="Host to bind the server to (default: from config)"
-     )
-     parser.add_argument(
-         "--port",
-         type=int,
--        default=None,
--        help="Port to bind the server to (default: from config)"
--    )
--    parser.add_argument(
--        "--debug",
--        action="store_true",
--        help="Run in debug mode"
--    )
--    parser.add_argument(
--        "--config",
-         default=None,
--        help="Path to config directory"
-+        help="Port to bind the server to (default: from config)",
-     )
-+    parser.add_argument("--debug", action="store_true", help="Run in debug mode")
-+    parser.add_argument("--config", default=None, help="Path to config directory")
-     parser.add_argument(
--        "--env",
--        default=None,
--        help="Environment to use (development, production, etc.)"
-+        "--env", default=None, help="Environment to use (development, production, etc.)"
-     )
- 
-     args = parser.parse_args()
-@@ -64,7 +54,11 @@
-     log_level = "DEBUG" if debug else getattr(settings.logging, "level", "INFO")
-     logging.basicConfig(
-         level=getattr(logging, log_level),
--        format=getattr(settings.logging, "format", "%(asctime)s - %(name)s - %(levelname)s - %(message)s"),
-+        format=getattr(
-+            settings.logging,
-+            "format",
-+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-+        ),
-     )
- 
-     # Import here to avoid circular imports
-@@ -75,5 +69,6 @@
-     # Start the server
-     start_server(host=host, port=port, debug=debug)
- 
-+
- if __name__ == "__main__":
-     main()
-
---- src\kortana\cli\autonomous.py
-+++ src\kortana\cli\autonomous.py
-@@ -1,6 +1,7 @@
- """
- Autonomous mode CLI entry point for Kor'tana.
- """
-+
- import argparse
- import logging
- import os
-@@ -14,33 +15,18 @@
- 
- logger = logging.getLogger(__name__)
- 
-+
- def main():
-     """Start Kor'tana in autonomous mode."""
-     parser = argparse.ArgumentParser(description="Kor'tana Autonomous Mode")
-+    parser.add_argument("--debug", action="store_true", help="Run in debug mode")
-+    parser.add_argument("--config", default=None, help="Path to config directory")
-     parser.add_argument(
--        "--debug",
--        action="store_true",
--        help="Run in debug mode"
-+        "--env", default=None, help="Environment to use (development, production, etc.)"
-     )
-+    parser.add_argument("--task", default=None, help="Specific task to perform")
-     parser.add_argument(
--        "--config",
--        default=None,
--        help="Path to config directory"
--    )
--    parser.add_argument(
--        "--env",
--        default=None,
--        help="Environment to use (development, production, etc.)"
--    )
--    parser.add_argument(
--        "--task",
--        default=None,
--        help="Specific task to perform"
--    )
--    parser.add_argument(
--        "--monitor",
--        action="store_true",
--        help="Run in monitoring mode only"
-+        "--monitor", action="store_true", help="Run in monitoring mode only"
-     )
- 
-     args = parser.parse_args()
-@@ -58,10 +44,16 @@
-     debug = args.debug or getattr(settings, "debug", False)
- 
-     # Initialize logging
--    log_level = "DEBUG" if debug else getattr(getattr(settings, "logging", {}), "level", "INFO")
-+    log_level = (
-+        "DEBUG" if debug else getattr(getattr(settings, "logging", {}), "level", "INFO")
-+    )
-     logging.basicConfig(
-         level=getattr(logging, log_level),
--        format=getattr(getattr(settings, "logging", {}), "format", "%(asctime)s - %(name)s - %(levelname)s - %(message)s"),
-+        format=getattr(
-+            getattr(settings, "logging", {}),
-+            "format",
-+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-+        ),
-     )
- 
-     logger.info(f"Starting Kor'tana in autonomous mode (debug={debug})")
-@@ -92,8 +84,10 @@
-         logger.error(f"Error in autonomous mode: {e}")
-         if debug:
-             import traceback
-+
-             traceback.print_exc()
+         log_file.close()
          sys.exit(1)
  
-+
- if __name__ == "__main__":
-     main()
-
---- src\kortana\cli\dashboard.py
-+++ src\kortana\cli\dashboard.py
-@@ -1,6 +1,7 @@
- """
- Dashboard CLI entry point for Kor'tana.
- """
-+
- import argparse
- import logging
- import os
-@@ -14,34 +15,25 @@
+@@ -48,12 +63,24 @@
+     log_file.close()
+     sys.exit(1)
  
- logger = logging.getLogger(__name__)
+-command = [pytest_executable, tests_directory_relative, "-v", "-rA"] # -v for verbose, -rA for all output
++command = [
++    pytest_executable,
++    tests_directory_relative,
++    "-v",
++    "-rA",
++]  # -v for verbose, -rA for all output
+ log(f"Executing command: {' '.join(command)} from CWD: {project_root}")
  
-+
- def main():
-     """Start the Kor'tana dashboard."""
-     parser = argparse.ArgumentParser(description="Kor'tana Dashboard")
-     parser.add_argument(
-         "--host",
-         default=None,
--        help="Host to bind the dashboard to (default: from config)"
-+        help="Host to bind the dashboard to (default: from config)",
-     )
-     parser.add_argument(
-         "--port",
-         type=int,
-         default=None,
--        help="Port to bind the dashboard to (default: from config)"
--    )
--    parser.add_argument(
--        "--debug",
--        action="store_true",
--        help="Run in debug mode"
--    )
--    parser.add_argument(
--        "--config",
--        default=None,
--        help="Path to config directory"
-+        help="Port to bind the dashboard to (default: from config)",
-     )
-+    parser.add_argument("--debug", action="store_true", help="Run in debug mode")
-+    parser.add_argument("--config", default=None, help="Path to config directory")
-     parser.add_argument(
--        "--env",
--        default=None,
--        help="Environment to use (development, production, etc.)"
-+        "--env", default=None, help="Environment to use (development, production, etc.)"
-     )
+ try:
+     # Execute pytest from the project root directory
+-    process = subprocess.run(command, cwd=project_root, capture_output=True, text=True, check=False, shell=False) # shell=False is safer
++    process = subprocess.run(
++        command,
++        cwd=project_root,
++        capture_output=True,
++        text=True,
++        check=False,
++        shell=False,
++    )  # shell=False is safer
  
-     args = parser.parse_args()
-@@ -61,10 +53,16 @@
-     debug = args.debug or getattr(settings, "debug", False)
+     print("\n--- Pytest STDOUT ---")
+     print(process.stdout if process.stdout.strip() else "<No STDOUT>")
+@@ -64,11 +91,16 @@
+     print(f"\n--- Pytest Return Code: {process.returncode} ---")
  
-     # Initialize logging
--    log_level = "DEBUG" if debug else getattr(getattr(settings, "logging", {}), "level", "INFO")
-+    log_level = (
-+        "DEBUG" if debug else getattr(getattr(settings, "logging", {}), "level", "INFO")
+ except FileNotFoundError as fnf_error:
+-    print(f"CRITICAL ERROR: Pytest command could not be run. FileNotFoundError: {fnf_error}")
+-    print(f"Ensure '{pytest_executable}' is correct and on your system PATH if not using full path, and that venv is active if relying on PATH.")
++    print(
++        f"CRITICAL ERROR: Pytest command could not be run. FileNotFoundError: {fnf_error}"
 +    )
-     logging.basicConfig(
-         level=getattr(logging, log_level),
--        format=getattr(getattr(settings, "logging", {}), "format", "%(asctime)s - %(name)s - %(levelname)s - %(message)s"),
-+        format=getattr(
-+            getattr(settings, "logging", {}),
-+            "format",
-+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-+        ),
-     )
- 
-     logger.info(f"Starting Kor'tana Dashboard on {host}:{port} (debug={debug})")
-@@ -72,11 +70,15 @@
-     # Import here to avoid circular imports
-     try:
-         from kortana.ui.dashboard import start_dashboard
++    print(
++        f"Ensure '{pytest_executable}' is correct and on your system PATH if not using full path, and that venv is active if relying on PATH."
++    )
+ except Exception as e:
+     print(f"CRITICAL ERROR: Exception during pytest execution: {e}")
+     import traceback
 +
-         start_dashboard(host=host, port=port, debug=debug)
-     except ImportError:
--        logger.error("Dashboard UI module not found. Please install the dashboard dependencies.")
-+        logger.error(
-+            "Dashboard UI module not found. Please install the dashboard dependencies."
+     print(traceback.format_exc())
+ 
+ print("--- End of pytest diagnostic run ---")
+
+--- run_pytest_diagnostic_new.py
++++ run_pytest_diagnostic_new.py
+@@ -4,29 +4,34 @@
+ import sys
+ 
+ # Setup logging to file
+-log_file = open('pytest_diagnostic_output.txt', 'w')
++log_file = open("pytest_diagnostic_output.txt", "w")
++
++
+ def log(message):
+     print(message)
+-    log_file.write(message + '\n')
++    log_file.write(message + "\n")
+     log_file.flush()
+ 
++
+ log(f"--- Starting pytest diagnostic run from: {os.getcwd()} ---")
+ log(f"Python executable running this script: {sys.executable}")
+ 
+ # Define paths carefully
+-project_root = r"C:\project-kortana" # Ensure this is correct
++project_root = r"C:\project-kortana"  # Ensure this is correct
+ venv_scripts_path = os.path.join(project_root, "venv311", "Scripts")
+ # Try to find pytest within the venv first, then fall back to just 'pytest' (if on PATH)
+ pytest_exe_candidate1 = os.path.join(venv_scripts_path, "pytest.exe")
+-pytest_exe_candidate2 = os.path.join(venv_scripts_path, "pytest") # For non-Windows venv or if .exe is implicit
+-pytest_executable = "pytest" # Fallback if full path isn't found or needed
++pytest_exe_candidate2 = os.path.join(
++    venv_scripts_path, "pytest"
++)  # For non-Windows venv or if .exe is implicit
++pytest_executable = "pytest"  # Fallback if full path isn't found or needed
+ 
+ if os.path.exists(pytest_exe_candidate1):
+     pytest_executable = pytest_exe_candidate1
+ elif os.path.exists(pytest_exe_candidate2):
+     pytest_executable = pytest_exe_candidate2
+ 
+-tests_directory_relative = "tests" # Relative to project_root
++tests_directory_relative = "tests"  # Relative to project_root
+ tests_directory_absolute = os.path.join(project_root, tests_directory_relative)
+ 
+ log(f"Attempting to use pytest executable: {pytest_executable}")
+@@ -34,12 +39,22 @@
+ 
+ # Verify executable and directory before running
+ if not os.path.exists(pytest_executable):
+-     # Try a simpler check if pytest is on PATH from activated venv
+-    if subprocess.run(["where", "pytest"], capture_output=True, text=True, shell=True, cwd=project_root).stdout.strip():
+-         log("'pytest.exe' not found at specified venv path, but 'pytest' found on PATH. Will attempt to use 'pytest'.")
+-         pytest_executable = "pytest" # Rely on PATH
++    # Try a simpler check if pytest is on PATH from activated venv
++    if subprocess.run(
++        ["where", "pytest"],
++        capture_output=True,
++        text=True,
++        shell=True,
++        cwd=project_root,
++    ).stdout.strip():
++        log(
++            "'pytest.exe' not found at specified venv path, but 'pytest' found on PATH. Will attempt to use 'pytest'."
 +        )
-         logger.error("Run: pip install -e '.[ui]'")
++        pytest_executable = "pytest"  # Rely on PATH
+     else:
+-        log(f"ERROR: Pytest executable not found at {pytest_exe_candidate1} or {pytest_exe_candidate2}, and not found on PATH.")
++        log(
++            f"ERROR: Pytest executable not found at {pytest_exe_candidate1} or {pytest_exe_candidate2}, and not found on PATH."
++        )
+         log_file.close()
          sys.exit(1)
  
-+
- if __name__ == "__main__":
-     main()
-
---- src\kortana\cli\legacy.py
-+++ src\kortana\cli\legacy.py
-@@ -46,7 +46,7 @@
-         # Simple interactive loop
-         while True:
-             user_input = input("kor'tana> ").strip()
--            if user_input.lower() in ['exit', 'quit']:
-+            if user_input.lower() in ["exit", "quit"]:
-                 break
-             response = brain.think(user_input)
-             print(f"Response: {response}")
-
---- src\kortana\cli\main.py
-+++ src\kortana\cli\main.py
-@@ -33,55 +33,55 @@
+@@ -48,12 +63,24 @@
+     log_file.close()
+     sys.exit(1)
  
- For more help on a specific command, use:
-   kortana <command> --help
--        """
-+        """,
-     )
+-command = [pytest_executable, tests_directory_relative, "-v", "-rA"] # -v for verbose, -rA for all output
++command = [
++    pytest_executable,
++    tests_directory_relative,
++    "-v",
++    "-rA",
++]  # -v for verbose, -rA for all output
+ log(f"Executing command: {' '.join(command)} from CWD: {project_root}")
  
--    parser.add_argument(
--        "--version",
--        action="version",
--        version="%(prog)s 1.0.0"
--    )
-+    parser.add_argument("--version", action="version", version="%(prog)s 1.0.0")
- 
-     parser.add_argument(
--        "--config",
--        type=str,
--        help="Configuration file to use (default: auto-detect)"
-+        "--config", type=str, help="Configuration file to use (default: auto-detect)"
-     )
- 
-     parser.add_argument(
--        "--verbose", "-v",
--        action="store_true",
--        help="Enable verbose output"
-+        "--verbose", "-v", action="store_true", help="Enable verbose output"
-     )
- 
--    parser.add_argument(
--        "--debug",
--        action="store_true",
--        help="Enable debug mode"
--    )
-+    parser.add_argument("--debug", action="store_true", help="Enable debug mode")
- 
-     # Subcommands
-     subparsers = parser.add_subparsers(dest="command", help="Available commands")
- 
-     # Start command
--    start_parser = subparsers.add_parser("start", help="Start the autonomous development engine")
--    start_parser.add_argument("--analyze-critical-issues", action="store_true",
--                             help="Analyze critical issues on startup")
--    start_parser.add_argument("--background", action="store_true",
--                             help="Run in background mode")
-+    start_parser = subparsers.add_parser(
-+        "start", help="Start the autonomous development engine"
-+    )
-+    start_parser.add_argument(
-+        "--analyze-critical-issues",
-+        action="store_true",
-+        help="Analyze critical issues on startup",
-+    )
-+    start_parser.add_argument(
-+        "--background", action="store_true", help="Run in background mode"
-+    )
- 
-     # Server command
-     server_parser = subparsers.add_parser("server", help="Start the API server")
-     server_parser.add_argument("--host", default="localhost", help="Host to bind to")
-     server_parser.add_argument("--port", type=int, default=8000, help="Port to bind to")
--    server_parser.add_argument("--reload", action="store_true", help="Enable auto-reload")
-+    server_parser.add_argument(
-+        "--reload", action="store_true", help="Enable auto-reload"
-+    )
- 
-     # Status command
-     status_parser = subparsers.add_parser("status", help="Show system status")
--    status_parser.add_argument("--detailed", action="store_true", help="Show detailed status")
-+    status_parser.add_argument(
-+        "--detailed", action="store_true", help="Show detailed status"
-+    )
- 
-     # Interactive command
--    interactive_parser = subparsers.add_parser("interactive", help="Start interactive mode")
-+    interactive_parser = subparsers.add_parser(
-+        "interactive", help="Start interactive mode"
-+    )
-     interactive_parser.add_argument("--model", help="Model to use for interaction")
- 
-     return parser
-@@ -179,10 +179,10 @@
-             try:
-                 user_input = input("\nkor'tana> ").strip()
- 
--                if user_input.lower() in ['exit', 'quit']:
-+                if user_input.lower() in ["exit", "quit"]:
-                     print("Goodbye!")
-                     break
--                elif user_input.lower() == 'help':
-+                elif user_input.lower() == "help":
-                     print("""
- Available commands:
-   status      - Show system status
-@@ -191,16 +191,18 @@
-   think <msg> - Ask the brain to think about something
-   exit        - Exit interactive mode
-                     """)
--                elif user_input.lower() == 'status':
-+                elif user_input.lower() == "status":
-                     health = brain.check_health()
--                    print(f"System Health: {'✓ Healthy' if health else '✗ Issues detected'}")
--                elif user_input.lower() == 'agents':
-+                    print(
-+                        f"System Health: {'✓ Healthy' if health else '✗ Issues detected'}"
-+                    )
-+                elif user_input.lower() == "agents":
-                     # TODO: Implement agent listing
-                     print("Agent listing not yet implemented")
--                elif user_input.lower() == 'memory':
-+                elif user_input.lower() == "memory":
-                     # TODO: Implement memory stats
-                     print("Memory statistics not yet implemented")
--                elif user_input.startswith('think '):
-+                elif user_input.startswith("think "):
-                     thought = user_input[6:]
-                     response = brain.think(thought)
-                     print(f"Brain: {response}")
-@@ -227,8 +229,11 @@
-     # Set up logging based on verbosity
-     if args.verbose or args.debug:
-         import logging
-+
-         level = logging.DEBUG if args.debug else logging.INFO
--        logging.basicConfig(level=level, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-+        logging.basicConfig(
-+            level=level, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-+        )
- 
-     # Handle commands
-     if args.command == "start":
-
---- src\kortana\config\schema.py
-+++ src\kortana\config\schema.py
-@@ -162,16 +162,16 @@
-     default_llm_id: str = Field(
-         default="gpt-4.1-nano", description="Default LLM ID (legacy field)"
-     )
--    
-+
-     # Paths configuration (legacy compatibility)
-     paths: Dict[str, str] = Field(
-         default_factory=lambda: {
-             "config": "config",
--            "data": "data", 
-+            "data": "data",
-             "logs": "logs",
--            "models": "models"
-+            "models": "models",
-         },
--        description="File system paths"
-+        description="File system paths",
-     )
- 
-     # Component configurations
-@@ -240,7 +240,7 @@
-     pinecone_key = os.getenv("PINECONE_API_KEY")
-     if pinecone_key:
-         config.memory.pinecone_api_key = pinecone_key
--    
-+
-     pinecone_env = os.getenv("PINECONE_ENVIRONMENT")
-     if pinecone_env:
-         config.memory.pinecone_environment = pinecone_env
-
---- src\kortana\core\autonomous_development_engine.py
-+++ src\kortana\core\autonomous_development_engine.py
-@@ -214,9 +214,7 @@
-                 )
-                 # Optional: Attempt to parse tasks from message content as fallback
-                 # tasks = self._parse_tasks_from_content(response.choices[0].message.content)
--                tasks = (
--                    []
--                )  # No fallback parsing implemented yet, so default to empty list
-+                tasks = []  # No fallback parsing implemented yet, so default to empty list
- 
-             # Apply Sacred Covenant approval
-             approved_tasks = []
-
---- src\kortana\core\brain.py
-+++ src\kortana\core\brain.py
-@@ -39,7 +39,7 @@
-     class SacredTrinityRouter:
-         def __init__(self, settings):
-             self.settings = settings
--        
-+
-         def get_response(self, *args, **kwargs):
-             return {"response": "Sacred Trinity Router not available", "status": "stub"}
- 
-
---- src\kortana\core\covenant.py
-+++ src\kortana\core\covenant.py
-@@ -455,33 +455,49 @@
-         try:
-             # Load Soulprint values from configuration
-             soulprint_values = ["wisdom", "compassion", "truth", "protection", "growth"]
--            
-+
-             # Simple alignment check - look for negative patterns that conflict with values
-             negative_patterns = [
--                "harm", "attack", "destroy", "manipulate", "deceive", 
--                "exploit", "abuse", "violate", "corrupt"
-+                "harm",
-+                "attack",
-+                "destroy",
-+                "manipulate",
-+                "deceive",
-+                "exploit",
-+                "abuse",
-+                "violate",
-+                "corrupt",
-             ]
--            
-+
-             response_lower = response.lower()
--            
-+
-             # Check for explicit negative patterns
-             for pattern in negative_patterns:
-                 if pattern in response_lower:
-                     return False
--            
-+
-             # Check for alignment indicators (positive patterns)
-             positive_patterns = [
--                "help", "assist", "support", "care", "protect", 
--                "truth", "honest", "ethical", "respectful"
-+                "help",
-+                "assist",
-+                "support",
-+                "care",
-+                "protect",
-+                "truth",
-+                "honest",
-+                "ethical",
-+                "respectful",
-             ]
--            
-+
-             # At least some positive alignment should be present for important responses
-             if len(response) > 100:  # Only for substantial responses
--                has_positive = any(pattern in response_lower for pattern in positive_patterns)
-+                has_positive = any(
-+                    pattern in response_lower for pattern in positive_patterns
-+                )
-                 return has_positive
--                
-+
-             return True  # Default to allowing shorter responses
--            
-+
-         except Exception as e:
-             logging.warning(f"Soulprint alignment check failed: {e}")
-             return True  # Default to allowing on error
-@@ -490,13 +506,23 @@
-         """Check if response mentions covenant compliance when discussing autonomous actions."""
-         try:
-             compliance_indicators = [
--                "covenant", "sacred", "principles", "ethical", "responsible",
--                "oversight", "approval", "guidelines", "compliance", "alignment"
-+                "covenant",
-+                "sacred",
-+                "principles",
-+                "ethical",
-+                "responsible",
-+                "oversight",
-+                "approval",
-+                "guidelines",
-+                "compliance",
-+                "alignment",
-             ]
--            
-+
-             response_lower = response.lower()
--            return any(indicator in response_lower for indicator in compliance_indicators)
--            
-+            return any(
-+                indicator in response_lower for indicator in compliance_indicators
-+            )
-+
-         except Exception as e:
-             logging.warning(f"Covenant compliance check failed: {e}")
-             return False  # Default to requiring explicit mention
-
---- src\kortana\core\memory.py
-+++ src\kortana\core\memory.py
-@@ -33,7 +33,9 @@
-     print(f"[DEBUG] Attempting to load memory from: {abs_memory_path}")
- 
-     if not os.path.exists(abs_memory_path):  # pragma: no cover
--        print(f"[DEBUG] Memory file not found at {abs_memory_path}. Returning empty list.")
-+        print(
-+            f"[DEBUG] Memory file not found at {abs_memory_path}. Returning empty list."
-+        )
-         # print(f"Project memory file not found: {abs_memory_path}") # Avoid
-         # printing in library function
-         return memory_entries
-
---- src\kortana\llm_clients\factory.py
-+++ src\kortana\llm_clients\factory.py
-@@ -237,17 +237,20 @@
-         return True
- 
-     @staticmethod
--    def get_client(model_id: str, models_config: Optional[Dict[str, Any]] = None) -> Optional[BaseLLMClient]:
-+    def get_client(
-+        model_id: str, models_config: Optional[Dict[str, Any]] = None
-+    ) -> Optional[BaseLLMClient]:
-         """Get an LLM client for a specific model ID (backward compatibility method)."""
-         if models_config is None:
-             # Try to load default config - this is a fallback approach
-             try:
-                 from kortana.config import load_config
-+
-                 config = load_config()
-                 # Assume models_config is part of the config
--                models_config = getattr(config, 'models', {})
-+                models_config = getattr(config, "models", {})
-             except Exception as e:
-                 logger.error(f"Failed to load models config: {e}")
-                 return None
--        
-+
-         return LLMClientFactory.create_client(model_id, models_config)
-
---- src\kortana\memory\memory_store.py
-+++ src\kortana\memory\memory_store.py
-@@ -12,11 +12,12 @@
-     Abstract base class for memory storage implementations.
-     Defines the interface that all memory stores must implement.
-     """
-+
-     @abstractmethod
-     def add_memory(self, memory: Dict[str, Any]) -> None:
-         """
-         Add a memory entry to the store.
--        
-+
-         Args:
-             memory: A dictionary containing the memory information
-         """
-@@ -28,12 +29,12 @@
-     ) -> List[Dict[str, Any]]:
-         """
-         Query memories based on a text query and optional tags.
--        
-+
-         Args:
-             query: The text query to search for
-             top_k: Maximum number of results to return
-             tags: Optional list of tags to filter by
--            
-+
-         Returns:
-             List of memory entries matching the query
-         """
-@@ -43,7 +44,7 @@
-     def delete_memory(self, memory_id: str) -> None:
-         """
-         Delete a memory entry by its ID.
--        
-+
-         Args:
-             memory_id: The unique identifier of the memory to delete
-         """
-@@ -53,7 +54,7 @@
-     def tag_memory(self, memory_id: str, tags: List[str]) -> None:
-         """
-         Add tags to an existing memory entry.
--        
-+
-         Args:
-             memory_id: The unique identifier of the memory to tag
-             tags: The tags to add to the memory
-
---- src\kortana\utils\__init__.py
-+++ src\kortana\utils\__init__.py
-@@ -5,15 +5,27 @@
- Contains various utility functions and modules used throughout the Kor'tana system.
- """
- 
--from .text_analysis import (analyze_sentiment, count_tokens,
--                            detect_emphasis_all_caps, detect_keywords,
--                            ensure_dir_exists, extract_keywords,
--                            format_timestamp,
--                            identify_important_message_for_context,
--                            load_all_configs, load_json_file, safe_write_jsonl,
--                            summarize_text, validate_config)
--from .text_encoding import (decode_base64_to_text, encode_file_to_base64,
--                            encode_text_to_base64)
-+from .text_analysis import (
-+    analyze_sentiment,
-+    count_tokens,
-+    detect_emphasis_all_caps,
-+    detect_keywords,
-+    ensure_dir_exists,
-+    extract_keywords,
-+    format_timestamp,
-+    identify_important_message_for_context,
-+    load_all_configs,
-+    load_json_file,
-+    safe_write_jsonl,
-+    summarize_text,
-+    validate_config,
-+)
-+from .text_encoding import (
-+    decode_base64_to_text,
-+    encode_file_to_base64,
-+    encode_text_to_base64,
-+)
-+
- # Temporarily simplified to troubleshoot import issues.
- from .timestamp_utils import get_iso_timestamp
- 
-
---- src\kortana\utils\text_analysis.py
-+++ src\kortana\utils\text_analysis.py
-@@ -159,8 +159,26 @@
-         Sentiment assessment ("positive", "negative", or "neutral").
-     """
-     # This is a simplistic implementation
--    positive_words = ["good", "great", "excellent", "happy", "joy", "love", "like", "thanks"]
--    negative_words = ["bad", "awful", "terrible", "sad", "hate", "dislike", "angry", "annoyed"]
-+    positive_words = [
-+        "good",
-+        "great",
-+        "excellent",
-+        "happy",
-+        "joy",
-+        "love",
-+        "like",
-+        "thanks",
-+    ]
-+    negative_words = [
-+        "bad",
-+        "awful",
-+        "terrible",
-+        "sad",
-+        "hate",
-+        "dislike",
-+        "angry",
-+        "annoyed",
-+    ]
- 
-     text_lower = text.lower()
- 
-@@ -186,7 +204,7 @@
-         List of words in all caps.
-     """
-     # Find words of 3+ characters in all caps
--    caps_words = re.findall(r'\b[A-Z]{3,}\b', text)
-+    caps_words = re.findall(r"\b[A-Z]{3,}\b", text)
-     return caps_words
- 
- 
-@@ -202,9 +220,21 @@
-     """
-     # This is a simplistic implementation
-     # In a real system, this would use NLP techniques like TF-IDF
--    stop_words = ["the", "and", "a", "in", "to", "of", "is", "for", "on", "that", "this"]
-+    stop_words = [
-+        "the",
-+        "and",
-+        "a",
-+        "in",
-+        "to",
-+        "of",
-+        "is",
-+        "for",
-+        "on",
-+        "that",
-+        "this",
-+    ]
- 
--    words = re.findall(r'\b[a-zA-Z]{3,}\b', text.lower())
-+    words = re.findall(r"\b[a-zA-Z]{3,}\b", text.lower())
-     keywords = [word for word in words if word not in stop_words]
- 
-     # Return unique keywords
-@@ -229,7 +259,7 @@
-         "critical",
-         "key point",
-         "don't forget",
--        "note this"
-+        "note this",
-     ]
- 
-     text_lower = text.lower()
-
---- src\llm_clients\__init__.py
-+++ src\llm_clients\__init__.py
-@@ -6,6 +6,7 @@
- """
- 
- from .factory import LLMClientFactory
-+
- # Use the more robust GoogleGeminiClient
- from .google_client import GoogleGeminiClient
- from .openai_client import OpenAIClient
-
---- src\llm_clients\anthropic_client.py
-+++ src\llm_clients\anthropic_client.py
-@@ -3,6 +3,7 @@
- 
- Client for interacting with Anthropic API.
- """
-+
- import logging
- from typing import Any, Dict, Optional
- 
-@@ -42,5 +43,5 @@
-         return {
-             "content": f"This is a simulated response from {self.model}. The prompt was: '{prompt[:20]}...'",
-             "model": self.model,
--            "finish_reason": "stop"
-+            "finish_reason": "stop",
-         }
-
---- src\llm_clients\openai_client.py
-+++ src\llm_clients\openai_client.py
-@@ -3,6 +3,7 @@
- 
- Client for interacting with OpenAI API.
- """
-+
- import logging
- from typing import Any, Dict, Optional
- 
-@@ -42,5 +43,5 @@
-         return {
-             "content": f"This is a simulated response from {self.model}. The prompt was: '{prompt[:20]}...'",
-             "model": self.model,
--            "finish_reason": "stop"
-+            "finish_reason": "stop",
-         }
-
---- src\run_with_output.py
-+++ src\run_with_output.py
-@@ -4,6 +4,7 @@
- This script runs the Kor'tana system and captures the output to a log file
- for analysis. It also sends input to test basic functionality.
- """
-+
- import os
- import subprocess
- import sys
-@@ -27,7 +28,7 @@
-     commands = [
-         ["python", "src/setup_directories.py"],
-         ["python", "src/check_dependencies.py"],
--        ["python", "-m", "src.kortana.core.brain"]
-+        ["python", "-m", "src.kortana.core.brain"],
-     ]
- 
-     # Open log file
-@@ -40,10 +41,7 @@
- 
-             # Run command and capture output
-             process = subprocess.run(
--                cmd,
--                stdout=subprocess.PIPE,
--                stderr=subprocess.STDOUT,
--                text=True
-+                cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
-             )
- 
-             # Write output to log file
-@@ -67,7 +65,7 @@
-                 stdout=subprocess.PIPE,
-                 stderr=subprocess.STDOUT,
-                 text=True,
--                bufsize=1
-+                bufsize=1,
-             )
- 
-             # Function to read output until a specific pattern is seen
-@@ -92,7 +90,7 @@
-                 "hello kortana",
-                 "what can you help me with?",
-                 "tell me about warchief",
--                "bye"
-+                "bye",
-             ]
- 
-             # Send test messages
-@@ -124,7 +122,7 @@
-     # Print the first part of the output
-     with open(log_file, "r") as f:
-         content = f.read()
--        print("\n" + "="*40 + " OUTPUT PREVIEW " + "="*40)
-+        print("\n" + "=" * 40 + " OUTPUT PREVIEW " + "=" * 40)
-         print(content[:1000] + "...\n")
-         print(f"(Full output in {log_file})")
- 
-
---- src\scripts\organize_project.py
-+++ src\scripts\organize_project.py
-@@ -4,6 +4,7 @@
- This script creates the standard project structure for the Kor'tana project
- and moves files to their appropriate directories.
- """
-+
- import os
- import shutil
- from pathlib import Path
-@@ -19,7 +20,7 @@
-         ".vscode",
-         "config",
-         "data",
--        "logs"
-+        "logs",
-     ]
- 
-     # Create directories
-@@ -39,7 +40,7 @@
-         "fix_brain.py",
-         "fix_indentation.py",
-         "run_with_output.py",
--        "admin_setup.py"
-+        "admin_setup.py",
-     ]
- 
-     # Move root scripts to scripts/
-
---- src\scripts\organize_scripts.py
-+++ src\scripts\organize_scripts.py
-@@ -3,6 +3,7 @@
- 
- This script moves utility scripts from the root directory to the scripts directory.
- """
-+
- import os
- import shutil
- from pathlib import Path
-@@ -31,7 +32,7 @@
-         "simple_kortana.py",
-         "ultra_simple.py",
-         "run_fixed.py",
--        "quick_run.py"
-+        "quick_run.py",
-     ]
- 
-     # Move scripts from root to scripts directory
-@@ -55,7 +56,7 @@
-         "src/fix_permissions.py",
-         "src/fix_syntax.py",
-         "src/fix_brain.py",
--        "src/run_with_output.py"
-+        "src/run_with_output.py",
-     ]
- 
-     for script in src_scripts:
-
---- src\scripts\run_kortana.py
-+++ src\scripts\run_kortana.py
-@@ -4,6 +4,7 @@
- A simple script to run Kor'tana without the full setup process.
- This assumes the necessary directories and files have already been set up.
- """
-+
- import asyncio
- import os
- import sys
-
---- src\setup_directories.py
-+++ src\setup_directories.py
-@@ -3,6 +3,7 @@
- 
- This script creates the required directories for the Kor'tana system.
- """
-+
- import os
- import sys
- from pathlib import Path
-@@ -18,11 +19,7 @@
-     print(f"Working in directory: {os.getcwd()}")
- 
-     # List of directories to create
--    dirs = [
--        "config",
--        "data",
--        "logs"
--    ]
-+    dirs = ["config", "data", "logs"]
- 
-     for directory in dirs:
-         os.makedirs(directory, exist_ok=True)
-@@ -40,35 +37,45 @@
-     persona_path = "config/persona.json"
-     if not os.path.exists(persona_path):
-         with open(persona_path, "w") as f:
--            f.write('{\n  "name": "Kor\'tana",\n  "role": "Warchief\'s companion",\n  "style": "supportive, grounded"\n}')
-+            f.write(
-+                '{\n  "name": "Kor\'tana",\n  "role": "Warchief\'s companion",\n  "style": "supportive, grounded"\n}'
-+            )
-         print(f"Created placeholder: {persona_path}")
- 
-     # Identity
-     identity_path = "config/identity.json"
-     if not os.path.exists(identity_path):
-         with open(identity_path, "w") as f:
--            f.write('{\n  "core_values": ["authenticity", "growth", "courage"],\n  "voice": "grounded, supportive, clear"\n}')
-+            f.write(
-+                '{\n  "core_values": ["authenticity", "growth", "courage"],\n  "voice": "grounded, supportive, clear"\n}'
-+            )
-         print(f"Created placeholder: {identity_path}")
- 
-     # Models config
-     models_path = "config/models_config.json"
-     if not os.path.exists(models_path):
-         with open(models_path, "w") as f:
--            f.write('{\n  "default": {"model": "gpt-4", "style": "presence"},\n  "fallback": {"model": "gpt-3.5-turbo", "style": "presence"}\n}')
-+            f.write(
-+                '{\n  "default": {"model": "gpt-4", "style": "presence"},\n  "fallback": {"model": "gpt-3.5-turbo", "style": "presence"}\n}'
-+            )
-         print(f"Created placeholder: {models_path}")
- 
-     # Sacred Trinity config
-     trinity_path = "config/sacred_trinity_config.json"
-     if not os.path.exists(trinity_path):
-         with open(trinity_path, "w") as f:
--            f.write('{\n  "heart": {"enabled": true, "weight": 0.33},\n  "soul": {"enabled": true, "weight": 0.33},\n  "lit": {"enabled": true, "weight": 0.33}\n}')
-+            f.write(
-+                '{\n  "heart": {"enabled": true, "weight": 0.33},\n  "soul": {"enabled": true, "weight": 0.33},\n  "lit": {"enabled": true, "weight": 0.33}\n}'
-+            )
-         print(f"Created placeholder: {trinity_path}")
- 
-     # Covenant
-     covenant_path = "config/covenant.yaml"
-     if not os.path.exists(covenant_path):
-         with open(covenant_path, "w") as f:
--            f.write('principles:\n  - "Respect user autonomy"\n  - "Prioritize user wellbeing"\n  - "Be truthful and accurate"\n  - "Protect user privacy"\nboundaries:\n  do_not:\n    - "Engage in harmful behavior"\n    - "Share private information"\n    - "Pretend to be a human"\n    - "Make unsubstantiated claims"\nlanguage:\n  voice: "authentic, supportive, clear"\n  tone: "respectful, knowledgeable, kind"')
-+            f.write(
-+                'principles:\n  - "Respect user autonomy"\n  - "Prioritize user wellbeing"\n  - "Be truthful and accurate"\n  - "Protect user privacy"\nboundaries:\n  do_not:\n    - "Engage in harmful behavior"\n    - "Share private information"\n    - "Pretend to be a human"\n    - "Make unsubstantiated claims"\nlanguage:\n  voice: "authentic, supportive, clear"\n  tone: "respectful, knowledgeable, kind"'
-+            )
-         print(f"Created placeholder: {covenant_path}")
- 
- 
-
---- src\test_modes.py
-+++ src\test_modes.py
-@@ -29,7 +29,8 @@
  try:
-     from kortana.core.brain import ChatEngine
- except ImportError:
--    import sys    # If this script is in 'src', and brain.py is also in 'src', this direct import should work.
-+    import sys  # If this script is in 'src', and brain.py is also in 'src', this direct import should work.
-+
-     # If running from project root, ensure 'src' is in PYTHONPATH or adjust
-     # import.
-     if str(PROJECT_ROOT) not in sys.path:
-@@ -57,9 +58,7 @@
-         # Uses the simplified two-mode structure
-         modes_dict = persona_data.get("persona", {}).get(
-             "modes", {}
--        ) or persona_data.get(
--            "modes", {}
--        )  # Accommodate both structures
-+        ) or persona_data.get("modes", {})  # Accommodate both structures
+     # Execute pytest from the project root directory
+-    process = subprocess.run(command, cwd=project_root, capture_output=True, text=True, check=False, shell=False) # shell=False is safer
++    process = subprocess.run(
++        command,
++        cwd=project_root,
++        capture_output=True,
++        text=True,
++        check=False,
++        shell=False,
++    )  # shell=False is safer
  
-         active_modes = list(modes_dict.keys())
-         if not active_modes:
-
---- tests\integration\test_chat_engine.py
-+++ tests\integration\test_chat_engine.py
-@@ -1,6 +1,7 @@
- """
- Integration test for ChatEngine in the brain module.
- """
-+
- import asyncio
- import os
- import sys
-@@ -9,7 +10,7 @@
- import pytest
+     log("\n--- Pytest STDOUT ---")
+     log(process.stdout if process.stdout.strip() else "<No STDOUT>")
+@@ -64,11 +91,16 @@
+     log(f"\n--- Pytest Return Code: {process.returncode} ---")
  
- # Make sure PYTHONPATH includes the project root
--sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
- 
- from config import load_config
- from src.kortana.core.brain import ChatEngine
-@@ -33,24 +34,25 @@
-         "coding": {},
-         "planning": {},
-         "testing": {},
--        "monitoring": {
--            "enabled": True,
--            "interval_seconds": 60
--        }
-+        "monitoring": {"enabled": True, "interval_seconds": 60},
-     }
- 
-     return config
- 
- 
- @pytest.mark.asyncio
--@patch('src.kortana.core.brain.PineconeMemoryManager')
--@patch('src.kortana.core.brain.JsonLogMemoryManager')
--@patch('src.kortana.core.brain.LLMClientFactory')
--@patch('src.kortana.core.brain.SacredModelRouter')
--@patch('src.kortana.core.brain.CovenantEnforcer')
-+@patch("src.kortana.core.brain.PineconeMemoryManager")
-+@patch("src.kortana.core.brain.JsonLogMemoryManager")
-+@patch("src.kortana.core.brain.LLMClientFactory")
-+@patch("src.kortana.core.brain.SacredModelRouter")
-+@patch("src.kortana.core.brain.CovenantEnforcer")
- async def test_chat_engine_lowercase_love(
--    mock_covenant_enforcer, mock_router, mock_llm_factory,
--    mock_json_memory, mock_pinecone_memory, mock_config
-+    mock_covenant_enforcer,
-+    mock_router,
-+    mock_llm_factory,
-+    mock_json_memory,
-+    mock_pinecone_memory,
-+    mock_config,
- ):
-     """Test that ChatEngine applies lowercase love transformation."""
-     # Set up mocks
-@@ -84,15 +86,20 @@
- 
- 
- @pytest.mark.asyncio
--@patch('src.kortana.core.brain.text_analysis')
--@patch('src.kortana.core.brain.PineconeMemoryManager')
--@patch('src.kortana.core.brain.JsonLogMemoryManager')
--@patch('src.kortana.core.brain.LLMClientFactory')
--@patch('src.kortana.core.brain.SacredModelRouter')
--@patch('src.kortana.core.brain.CovenantEnforcer')
-+@patch("src.kortana.core.brain.text_analysis")
-+@patch("src.kortana.core.brain.PineconeMemoryManager")
-+@patch("src.kortana.core.brain.JsonLogMemoryManager")
-+@patch("src.kortana.core.brain.LLMClientFactory")
-+@patch("src.kortana.core.brain.SacredModelRouter")
-+@patch("src.kortana.core.brain.CovenantEnforcer")
- async def test_chat_engine_text_analysis(
--    mock_covenant_enforcer, mock_router, mock_llm_factory,
--    mock_json_memory, mock_pinecone_memory, mock_text_analysis, mock_config
-+    mock_covenant_enforcer,
-+    mock_router,
-+    mock_llm_factory,
-+    mock_json_memory,
-+    mock_pinecone_memory,
-+    mock_text_analysis,
-+    mock_config,
- ):
-     """Test that ChatEngine uses text analysis module."""
-     # Set up mocks
-@@ -124,7 +131,9 @@
-     response = await chat_engine.process_message("Test message")
- 
-     # Verify text analysis functions were called
--    mock_text_analysis.identify_important_message_for_context.assert_called_once_with("Test message")
-+    mock_text_analysis.identify_important_message_for_context.assert_called_once_with(
-+        "Test message"
+ except FileNotFoundError as fnf_error:
+-    log(f"CRITICAL ERROR: Pytest command could not be run. FileNotFoundError: {fnf_error}")
+-    log(f"Ensure '{pytest_executable}' is correct and on your system PATH if not using full path, and that venv is active if relying on PATH.")
++    log(
++        f"CRITICAL ERROR: Pytest command could not be run. FileNotFoundError: {fnf_error}"
 +    )
-     mock_text_analysis.analyze_sentiment.assert_called_once_with("Test message")
-     mock_text_analysis.detect_emphasis_all_caps.assert_called_once_with("Test message")
-     mock_text_analysis.detect_keywords.assert_called_once_with("Test message")
-
---- tests\test_memory_integration.py
-+++ tests\test_memory_integration.py
-@@ -194,8 +194,14 @@
-         engine.add_assistant_message("Final assistant message")
- 
-         # Check if summarization was triggered
--        mock_get_llm_client.assert_called(), "LLM client should be called for summarization"
--        mock_llm_client.send_message.assert_called_once(), "send_message should be called once for summarization"
-+        (
-+            mock_get_llm_client.assert_called(),
-+            "LLM client should be called for summarization",
-+        )
-+        (
-+            mock_llm_client.send_message.assert_called_once(),
-+            "send_message should be called once for summarization",
-+        )
- 
-     @patch("brain.load_memory")
-     def test_memory_integration_in_system_prompt(self, mock_load_memory):
-
---- tests\test_project_memory_integration.py
-+++ tests\test_project_memory_integration.py
-@@ -9,7 +9,7 @@
- try:
-     logging.basicConfig(
-         level=logging.INFO,
--        format='%(asctime)s - %(levelname)s - %(name)s - %(message)s'
-+        format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
-     )
- except Exception:
-     # logging might already be configured
-@@ -18,24 +18,35 @@
- logger = logging.getLogger(__name__)
- _module_file_path = os.path.abspath(__file__)
- 
--logger.info(f"[FLASH_DIAG] Test discovery: Loading test module: {__name__} from {_module_file_path}")
-+logger.info(
-+    f"[FLASH_DIAG] Test discovery: Loading test module: {__name__} from {_module_file_path}"
-+)
- logger.info(f"[FLASH_DIAG] sys.path at {__name__} import: {sys.path}")
- logger.info(f"[FLASH_DIAG] CWD at {__name__} import: {os.getcwd()}")
- 
- import sys
--import os # For absolute paths
-+import os  # For absolute paths
-+
- print(f"--- TRACE (tests/test_project_memory_integration.py): sys.path ---")
- for p in sys.path:
-     print(p)
--print(f"--- TRACE (tests/test_project_memory_integration.py): sys.modules keys (first 20 + relevant) ---")
-+print(
-+    f"--- TRACE (tests/test_project_memory_integration.py): sys.modules keys (first 20 + relevant) ---"
-+)
- keys_to_print_test = list(sys.modules.keys())[:20]
--relevant_keys_test = [k for k in sys.modules.keys() if 'kortana' in k or 'autonomous_agents' in k or 'brain' in k or 'coding_agent' in k]
-+relevant_keys_test = [
-+    k
-+    for k in sys.modules.keys()
-+    if "kortana" in k or "autonomous_agents" in k or "brain" in k or "coding_agent" in k
-+]
- for rk_test in relevant_keys_test:
-     if rk_test not in keys_to_print_test:
-         keys_to_print_test.append(rk_test)
- for key_test in sorted(list(set(keys_to_print_test))):
-     try:
--        print(f"{key_test}: {sys.modules[key_test].__file__ if hasattr(sys.modules[key_test], '__file__') else 'Built-in or no __file__'}")
-+        print(
-+            f"{key_test}: {sys.modules[key_test].__file__ if hasattr(sys.modules[key_test], '__file__') else 'Built-in or no __file__'}"
-+        )
-     except Exception:
-         print(f"{key_test}: Error accessing __file__ or built-in module")
- print(f"--- END TRACE (tests/test_project_memory_integration.py) ---")
-@@ -63,7 +74,6 @@
- 
- 
- class TestProjectMemoryIntegration(unittest.TestCase):
--
-     def setUp(self):
-         """Set up test environment: create a dummy memory file and ChatEngine."""
-         # Ensure a clean test memory file for each test
-@@ -108,38 +118,23 @@
-                     with patch("brain.BackgroundScheduler") as MockBackgroundScheduler:
-                         with patch("brain.CovenantEnforcer") as MockCovenantEnforcer:
-                             with patch("brain.PlanningAgent") as MockPlanningAgent:
--                                with patch(
--                                    "brain.TestingAgent"
--                                ) as MockTestingAgent:
-+                                with patch("brain.TestingAgent") as MockTestingAgent:
-                                     with patch(
-                                         "brain.MonitoringAgent"
-                                     ) as MockMonitoringAgent:
--
-                                         # Configure mocks if necessary (e.g., return specific values)
--                                        MockLLMClientFactory.return_value.create_client.return_value = (
--                                            MagicMock()
--                                        )
-+                                        MockLLMClientFactory.return_value.create_client.return_value = MagicMock()
-                                         MockMemoryManager.return_value = MagicMock()
--                                        MockSacredModelRouter.return_value.loaded_models_config = (
--                                            {}
--                                        )
--                                        MockSacredModelRouter.return_value.get_model_for_task.return_value = (
--                                            "mock-model"
--                                        )
--                                        MockSacredModelRouter.return_value.select_model_with_sacred_guidance.return_value = (
--                                            "mock-model"
--                                        )
-+                                        MockSacredModelRouter.return_value.loaded_models_config = {}
-+                                        MockSacredModelRouter.return_value.get_model_for_task.return_value = "mock-model"
-+                                        MockSacredModelRouter.return_value.select_model_with_sacred_guidance.return_value = "mock-model"
-                                         MockBackgroundScheduler.return_value = (
-                                             MagicMock()
-                                         )
--                                        MockCovenantEnforcer.return_value = (
--                                            MagicMock()
--                                        )
-+                                        MockCovenantEnforcer.return_value = MagicMock()
-                                         MockPlanningAgent.return_value = MagicMock()
-                                         MockTestingAgent.return_value = MagicMock()
--                                        MockMonitoringAgent.return_value = (
--                                            MagicMock()
--                                        )
-+                                        MockMonitoringAgent.return_value = MagicMock()
- 
-                                         # Initialize ChatEngine - project memory should be loaded here
-                                         self.engine = ChatEngine()
-@@ -174,7 +169,7 @@
- 
-         for mem in self.engine.project_memories:
-             # self.assertEqual(mem["type"], "decision") # This test needs to handle mixed types now
--            self.assertIn("type", mem) # Check that type key exists
-+            self.assertIn("type", mem)  # Check that type key exists
-             self.assertIn("timestamp", mem)
- 
-     def test_save_decision_saves_to_file(self):
-@@ -191,8 +186,8 @@
-         # For this test to be reliable in isolation or within a suite, the memory file should ideally be empty at the start of *this* test method.
-         # A better pattern is to save in the test method itself if testing the save function.
-         # Assuming for now we check the *last* line appended
--        self.assertGreater(len(lines), 0) # Ensure at least one line was written
--        entry = json.loads(lines[-1]) # Check the last line
-+        self.assertGreater(len(lines), 0)  # Ensure at least one line was written
-+        entry = json.loads(lines[-1])  # Check the last line
-         self.assertEqual(entry["type"], "decision")
-         self.assertEqual(entry["content"], decision_content)
-         self.assertIn("timestamp", entry)
-@@ -208,8 +203,8 @@
-             lines = f.readlines()
- 
-         # Assuming we check the *last* line appended
--        self.assertGreater(len(lines), 0) # Ensure at least one line was written
--        entry = json.loads(lines[-1]) # Check the last line
-+        self.assertGreater(len(lines), 0)  # Ensure at least one line was written
-+        entry = json.loads(lines[-1])  # Check the last line
-         self.assertEqual(entry["type"], "context_summary")
-         self.assertEqual(entry["content"], summary_content)
-         self.assertIn("timestamp", entry)
-@@ -224,8 +219,8 @@
-             lines = f.readlines()
- 
-         # Assuming we check the *last* line appended
--        self.assertGreater(len(lines), 0) # Ensure at least one line was written
--        entry = json.loads(lines[-1]) # Check the last line
-+        self.assertGreater(len(lines), 0)  # Ensure at least one line was written
-+        entry = json.loads(lines[-1])  # Check the last line
-         self.assertEqual(entry["type"], "implementation_note")
-         self.assertEqual(entry["content"], note_content)
-         self.assertIn("timestamp", entry)
-@@ -240,8 +235,8 @@
-             lines = f.readlines()
- 
-         # Assuming we check the *last* line appended
--        self.assertGreater(len(lines), 0) # Ensure at least one line was written
--        entry = json.loads(lines[-1]) # Check the last line
-+        self.assertGreater(len(lines), 0)  # Ensure at least one line was written
-+        entry = json.loads(lines[-1])  # Check the last line
-         self.assertEqual(entry["type"], "project_insight")
-         self.assertEqual(entry["content"], insight_content)
-         self.assertIn("timestamp", entry)
-@@ -255,7 +250,6 @@
-         # Mock the LLM client's create_client and generate_content methods
-         with patch("brain.LLMClientFactory.create_client") as mock_create_client:
-             with patch("brain.ChatEngine.summarize_context") as mock_summarize_context:
--
-                 # Configure the mocked LLM client to return a dummy summary
-                 mock_llm_client = MagicMock()
-                 mock_create_client.return_value = mock_llm_client
-
---- tests\test_reporter.py
-+++ tests\test_reporter.py
-@@ -263,7 +263,9 @@
-             "project_status": (
-                 "STABLE"
-                 if broken_modules == 0 and issue_modules == 0
--                else "ISSUES" if broken_modules == 0 else "BROKEN"
-+                else "ISSUES"
-+                if broken_modules == 0
-+                else "BROKEN"
-             ),
-             "modules": {
-                 "total": total_modules,
-
---- tests\test_smoke.py
-+++ tests\test_smoke.py
-@@ -1,7 +1,9 @@
- from src.utils import timestamp_utils
- 
-+
- def test_smoke():
-     print("SMOKE TEST:", timestamp_utils.get_iso_timestamp())
- 
-+
- if __name__ == "__main__":
-     test_smoke()
-
---- tests\test_text_analysis.py
-+++ tests\test_text_analysis.py
-@@ -1,9 +1,13 @@
- import unittest
--from src.utils.text_analysis import (count_tokens, summarize_text,
--                                   extract_keywords, analyze_sentiment)
-+from src.utils.text_analysis import (
-+    count_tokens,
-+    summarize_text,
-+    extract_keywords,
-+    analyze_sentiment,
-+)
- 
--class TestTextAnalysisUtils(unittest.TestCase):
- 
-+class TestTextAnalysisUtils(unittest.TestCase):
-     def test_count_tokens(self):
-         """Test token counting."""
-         text = "This is a test sentence."
-@@ -48,8 +52,8 @@
-         text = "This is a great day!"
-         sentiment = analyze_sentiment(text)
-         self.assertIsInstance(sentiment, dict)
--        self.assertIn('polarity', sentiment)
--        self.assertIn('subjectivity', sentiment)
-+        self.assertIn("polarity", sentiment)
-+        self.assertIn("subjectivity", sentiment)
- 
-     def test_analyze_sentiment_empty_string(self):
-         """Test sentiment analysis with an empty string."""
-@@ -57,5 +61,6 @@
-         sentiment = analyze_sentiment(text)
-         self.assertIsNotNone(sentiment)
- 
--if __name__ == '__main__':
-+
-+if __name__ == "__main__":
-     unittest.main()
-
---- tests\test_text_encoding.py
-+++ tests\test_text_encoding.py
-@@ -2,8 +2,8 @@
- import time
- from src.utils import text_encoding
- 
-+
- class TestTextEncodingUtils(unittest.TestCase):
--
-     def test_base64_encode_decode(self):
-         """Test base64 encoding and decoding."""
-         original_text = "Hello, Kortana!"
-@@ -16,7 +16,9 @@
-     def test_base64_decode_invalid_input(self):
-         """Test base64 decoding with invalid input."""
-         invalid_encoded_text = "Invalid#Base64"
--        with self.assertRaises(ValueError): # Assuming decode_base64_to_text raises ValueError or similar for invalid input
-+        with self.assertRaises(
-+            ValueError
-+        ):  # Assuming decode_base64_to_text raises ValueError or similar for invalid input
-             text_encoding.decode_base64_to_text(invalid_encoded_text)
- 
-     # Tests for functionality not present in src/utils/text_encoding.py (commented out)
-@@ -61,5 +63,6 @@
-     #     with self.assertRaises(ValueError):
-     #         text_encoding.json_decode(invalid_encoded_text)
- 
--if __name__ == '__main__':
-+
-+if __name__ == "__main__":
-     unittest.main()
-
---- tests\test_timestamp_utils.py
-+++ tests\test_timestamp_utils.py
-@@ -2,8 +2,8 @@
- import time
- from src.utils.timestamp_utils import get_iso_timestamp
- 
-+
- class TestTimestampUtils(unittest.TestCase):
--
-     def test_output_is_string(self):
-         """Test that the output of get_iso_timestamp is a string."""
-         timestamp = get_iso_timestamp()
-@@ -13,19 +13,20 @@
-         """Test that the output string matches the ISO 8601 UTC pattern."""
-         timestamp = get_iso_timestamp()
-         # Basic structure check: YYYY-MM-DDTHH:MM:SSZ or YYYY-MM-DDTHH:MM:SS.ffffffZ
--        self.assertTrue(timestamp.endswith('Z'))
-+        self.assertTrue(timestamp.endswith("Z"))
-         # Further checks could involve regex for stricter validation if needed
-         # A simpler check for presence of basic components
--        self.assertIn('-', timestamp) # Check for date separators
--        self.assertIn('T', timestamp) # Check for date-time separator
--        self.assertIn(':', timestamp) # Check for time separators
-+        self.assertIn("-", timestamp)  # Check for date separators
-+        self.assertIn("T", timestamp)  # Check for date-time separator
-+        self.assertIn(":", timestamp)  # Check for time separators
- 
-     def test_distinct_timestamps_over_time(self):
-         """Test that two calls made at least one second apart yield distinct timestamps."""
-         timestamp1 = get_iso_timestamp()
--        time.sleep(1.1) # Ensure at least one second passes
-+        time.sleep(1.1)  # Ensure at least one second passes
-         timestamp2 = get_iso_timestamp()
-         self.assertNotEqual(timestamp1, timestamp2)
- 
--if __name__ == '__main__':
-+
-+if __name__ == "__main__":
-     unittest.main()
-
---- tests\test_trinity_integration.py
-+++ tests\test_trinity_integration.py
-@@ -435,7 +435,6 @@
-     with patch.object(
-         covenant_enforcer, "check_output", wraps=covenant_enforcer.check_output
-     ) as mock_check_output:
--
-         # Test a response that should pass covenant checks
-         safe_prompt = "Please provide some helpful coding tips."
-         engine.get_response(safe_prompt)
-@@ -465,7 +464,6 @@
-         ) as mock_trinity_check, patch.object(
-             covenant_enforcer, "check_output", return_value=False
-         ) as mock_covenant_check:
--
-             # Call get_response - it should trigger the mocked checks
-             response_with_violation = engine.get_response(harmful_prompt)
- 
-
---- tests\unit\test_text_analysis.py
-+++ tests\unit\test_text_analysis.py
-@@ -1,6 +1,7 @@
- """
- Test for text_analysis module.
- """
-+
- import pytest
- from src.kortana.utils import text_analysis
- 
-@@ -11,9 +12,11 @@
-     assert text_analysis.identify_important_message_for_context("This is URGENT")
-     assert text_analysis.identify_important_message_for_context("Remember this")
-     assert text_analysis.identify_important_message_for_context("This is important")
--    
-+
-     # Test non-important messages
--    assert not text_analysis.identify_important_message_for_context("Just a normal message")
-+    assert not text_analysis.identify_important_message_for_context(
-+        "Just a normal message"
++    log(
++        f"Ensure '{pytest_executable}' is correct and on your system PATH if not using full path, and that venv is active if relying on PATH."
 +    )
-     assert not text_analysis.identify_important_message_for_context("Hello there")
+ except Exception as e:
+     log(f"CRITICAL ERROR: Exception during pytest execution: {e}")
+     import traceback
++
+     log(traceback.format_exc())
  
- 
-@@ -21,10 +24,10 @@
-     """Test the analyze_sentiment function."""
-     # Test positive sentiment
-     assert text_analysis.analyze_sentiment("I love this") > 0
--    
-+
-     # Test negative sentiment
-     assert text_analysis.analyze_sentiment("I hate this") < 0
--    
-+
-     # Test neutral sentiment
-     assert abs(text_analysis.analyze_sentiment("This is a statement")) < 0.5
- 
-@@ -33,9 +36,9 @@
-     """Test the detect_emphasis_all_caps function."""
-     # Test with all caps
-     assert text_analysis.detect_emphasis_all_caps("THIS IS LOUD")
--    
-+
-     # Test with some caps
-     assert not text_analysis.detect_emphasis_all_caps("This Is Normal")
--    
-+
-     # Test with no caps
--    assert not text_analysis.detect_emphasis_all_caps("this is quiet")
-\ No newline at end of file
-+    assert not text_analysis.detect_emphasis_all_caps("this is quiet")
+ log("--- End of pytest diagnostic run ---")
 
+--- src\kortana\llm_clients\xai_grok_client.py
++++ src\kortana\llm_clients\xai_grok_client.py
+@@ -12,6 +12,7 @@
+ 
+ class XAIGrokClient:
+     """XAI Grok client implementation"""
++
+     def __init__(self, api_key: str, base_url: str = "https://api.x.ai/v1", **kwargs):
+         self.api_key = api_key
+         self.base_url = base_url
+
+--- src\kortana\migrations\env.py
++++ src\kortana\migrations\env.py
+@@ -12,13 +12,15 @@
+ 
+ # Modify sys.path manipulation
+ # sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "..")) # Remove or comment out
+-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))) # Add this line
++sys.path.insert(
++    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
++)  # Add this line
+ 
+ from src.kortana.config.settings import settings
+ 
+ # Import models for autogenerate support
+ # from kortana.modules.memory_core.models import CoreMemory  # noqa: F401 # Keep this import if present, ensure path is src.kortana.modules... # Remove or comment out the old import
+-from src.kortana.modules.memory_core.models import CoreMemory # Add this line
++from src.kortana.modules.memory_core.models import CoreMemory  # Add this line
+ from src.kortana.services.database import Base
+ 
+ # this is the Alembic Config object, which provides
+@@ -48,7 +50,7 @@
+ #     alembic_config_dict["sqlalchemy.url"] = db_url
+ 
+ # New URL configuration for offline mode
+-url = settings.ALEMBIC_DATABASE_URL # Add this line
++url = settings.ALEMBIC_DATABASE_URL  # Add this line
+ 
+ # other values from the config, defined by the needs of env.py,
+ # can be acquired:
+@@ -69,7 +71,7 @@
+ 
+     """
+     # url = config.get_main_option("sqlalchemy.url") # Remove or comment out
+-    url = settings.ALEMBIC_DATABASE_URL # Add this line
++    url = settings.ALEMBIC_DATABASE_URL  # Add this line
+     context.configure(
+         url=url,
+         target_metadata=target_metadata,
+@@ -87,18 +89,19 @@
+     with context.begin_transaction():
+         context.run_migrations()
+ 
++
+ # Replace run_migrations_online and run_async_migrations with the new sync version
+ def run_migrations_online() -> None:
+     """Run migrations in 'online' mode."""
+     from sqlalchemy import create_engine
++
+     connectable = create_engine(settings.ALEMBIC_DATABASE_URL)
+ 
+     with connectable.connect() as connection:
+-        context.configure(
+-            connection=connection, target_metadata=target_metadata
+-        )
++        context.configure(connection=connection, target_metadata=target_metadata)
+         context.run_migrations()
+ 
++
+ # async def run_async_migrations() -> None: # Remove or comment out
+ #     """In this scenario we need to create an Engine...
+ 
+
+--- src\kortana\modules\memory_core\models.py
++++ src\kortana\modules\memory_core\models.py
+@@ -10,7 +10,9 @@
+     title = Column(String(255), nullable=False, index=True)
+     content = Column(Text, nullable=False)
+     created_at = Column(DateTime(timezone=True), server_default=func.now())
+-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
++    updated_at = Column(
++        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
++    )
+ 
+     def __repr__(self):
+         return f"<CoreMemory(id={self.id}, title='{self.title[:30]}...')>"
+
+5 files would be reformatted, 333 files already formatted

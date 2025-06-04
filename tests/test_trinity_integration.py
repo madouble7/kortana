@@ -156,7 +156,6 @@ class MockCovenantEnforcer:
         # You can add logic here to simulate failures for specific responses if needed
 
         # Simulate Trinity alignment check and include in metadata
-        trinity_scores = {"wisdom": 4.0, "compassion": 4.0, "truth": 4.0}  # Mock scores
         if "harmful" in response.lower():
             return False  # Simulate covenant violation
 
@@ -284,7 +283,7 @@ def mock_chat_engine():
             return final_response
 
     # Create a mock SacredTrinityRouter instance that uses mock config
-    mock_trinity_router = (
+    (
         MockCovenantEnforcer()._check_trinity_alignment
     )  # Using the mock alignment check for simplicity
 
@@ -457,13 +456,16 @@ def test_trinity_covenant_enforcement(mock_chat_engine):
         # This is tricky with the current mock setup. A better approach is to mock the *response text* directly
 
         # Alternative: patch the internal _check_trinity_alignment and check_output methods
-        with patch.object(
-            covenant_enforcer,
-            "_check_trinity_alignment",
-            return_value={"wisdom": 1.0, "compassion": 1.0, "truth": 1.0},
-        ) as mock_trinity_check, patch.object(
-            covenant_enforcer, "check_output", return_value=False
-        ) as mock_covenant_check:
+        with (
+            patch.object(
+                covenant_enforcer,
+                "_check_trinity_alignment",
+                return_value={"wisdom": 1.0, "compassion": 1.0, "truth": 1.0},
+            ) as mock_trinity_check,
+            patch.object(
+                covenant_enforcer, "check_output", return_value=False
+            ) as mock_covenant_check,
+        ):
             # Call get_response - it should trigger the mocked checks
             response_with_violation = engine.get_response(harmful_prompt)
 

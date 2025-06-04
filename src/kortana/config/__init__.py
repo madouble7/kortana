@@ -6,7 +6,7 @@ This package contains configuration schemas and utilities for the Kortana system
 
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import yaml
 
@@ -28,29 +28,39 @@ def get_project_root() -> Path:
     return Path(__file__).parent.parent.parent.parent
 
 
-def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
+def load_config(config_path: str | None = None) -> KortanaConfig:
     """
-    Load configuration from config file.
+    Load configuration from config file and return a KortanaConfig instance.
 
     Args:
         config_path: Optional path to config file. If None, uses default config.yaml
 
     Returns:
-        Dict containing configuration
+        KortanaConfig instance
     """
     if config_path is None:
         config_path = os.path.join(get_project_root(), "config.yaml")
 
     try:
-        with open(config_path, "r", encoding="utf-8") as f:
-            config = yaml.safe_load(f)
-        return config
+        # First try to load from file
+        if os.path.exists(config_path):
+            with open(config_path, encoding="utf-8") as f:
+                config_data = yaml.safe_load(f) or {}
+            # Parse through Pydantic model with loaded data
+            return KortanaConfig(**config_data)
+        else:
+            # If no config file, use environment variables and defaults
+            print(
+                f"Config file not found at {config_path}, using environment variables and defaults"
+            )
+            return load_config_from_env()
     except Exception as e:
         print(f"Error loading config from {config_path}: {e}")
-        return {}
+        print("Using default configuration")
+        return create_default_config()
 
 
-def get_config(key: Optional[str] = None, config_path: Optional[str] = None) -> Any:
+def get_config(key: str | None = None, config_path: str | None = None) -> Any:
     """
     Get a specific configuration value or the entire config.
 
@@ -59,17 +69,18 @@ def get_config(key: Optional[str] = None, config_path: Optional[str] = None) -> 
         config_path: Optional path to config file
 
     Returns:
-        Configuration value or entire config dict
+        Configuration value or entire config KortanaConfig instance
     """
     config = load_config(config_path)
 
     if key is None:
         return config
 
-    return config.get(key, None)
+    # Access attribute on the KortanaConfig instance
+    return getattr(config, key, None)
 
 
-def get_api_key(service: str) -> Optional[str]:
+def get_api_key(service: str) -> str | None:
     """
     Get API key for a specific service from environment variables.
 

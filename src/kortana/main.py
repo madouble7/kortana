@@ -24,6 +24,7 @@ async def health_check():
 def test_db_connection(db: Session = Depends(database.get_db_sync)):
     try:
         from sqlalchemy import text
+
         result = db.execute(text("SELECT 1")).scalar_one()
         return {"db_connection": "ok", "result": result}
     except Exception as e:

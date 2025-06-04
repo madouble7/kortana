@@ -2,11 +2,13 @@
 """
 Start FastAPI server for testing
 """
-import subprocess
-import sys
-import time
-import requests
+
 import os
+import subprocess
+import time
+
+import requests
+
 
 def start_server_and_test():
     """Start server and test endpoints."""
@@ -16,14 +18,20 @@ def start_server_and_test():
     os.chdir("c:\\project-kortana")
 
     # Start server in background
-    process = subprocess.Popen([
-        "C:\\project-kortana\\venv311\\Scripts\\python.exe",
-        "-m", "uvicorn",
-        "src.kortana.main:app",
-        "--host", "127.0.0.1",
-        "--port", "8002",
-        "--log-level", "warning"
-    ])
+    process = subprocess.Popen(
+        [
+            "C:\\project-kortana\\venv311\\Scripts\\python.exe",
+            "-m",
+            "uvicorn",
+            "src.kortana.main:app",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "8002",
+            "--log-level",
+            "warning",
+        ]
+    )
 
     print("Server starting... waiting 3 seconds")
     time.sleep(3)
@@ -71,6 +79,7 @@ def start_server_and_test():
         process.wait()
 
     return success
+
 
 if __name__ == "__main__":
     success = start_server_and_test()

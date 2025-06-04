@@ -1,0 +1,93 @@
+tests\test_project_memory_integration.py:6:8: F401 [*] `shutil` imported but unused
+  |
+4 | import unittest
+5 | import json
+6 | import shutil
+  |        ^^^^^^ F401
+7 | from datetime import datetime, timezone, timedelta
+8 | from unittest.mock import patch, MagicMock
+  |
+  = help: Remove unused import: `shutil`
+
+tests\test_project_memory_integration.py:7:22: F401 [*] `datetime.datetime` imported but unused
+  |
+5 | import json
+6 | import shutil
+7 | from datetime import datetime, timezone, timedelta
+  |                      ^^^^^^^^ F401
+8 | from unittest.mock import patch, MagicMock
+9 | from pathlib import Path
+  |
+  = help: Remove unused import
+
+tests\test_project_memory_integration.py:7:32: F401 [*] `datetime.timezone` imported but unused
+  |
+5 | import json
+6 | import shutil
+7 | from datetime import datetime, timezone, timedelta
+  |                                ^^^^^^^^ F401
+8 | from unittest.mock import patch, MagicMock
+9 | from pathlib import Path
+  |
+  = help: Remove unused import
+
+tests\test_project_memory_integration.py:7:42: F401 [*] `datetime.timedelta` imported but unused
+  |
+5 | import json
+6 | import shutil
+7 | from datetime import datetime, timezone, timedelta
+  |                                          ^^^^^^^^^ F401
+8 | from unittest.mock import patch, MagicMock
+9 | from pathlib import Path
+  |
+  = help: Remove unused import
+
+tests\test_project_memory_integration.py:9:21: F401 [*] `pathlib.Path` imported but unused
+   |
+ 7 | from datetime import datetime, timezone, timedelta
+ 8 | from unittest.mock import patch, MagicMock
+ 9 | from pathlib import Path
+   |                     ^^^^ F401
+10 |
+11 | # Configure logging for this diagnostic burst (basic console output). This should happen first.
+   |
+   = help: Remove unused import: `pathlib.Path`
+
+tests\test_project_memory_integration.py:33:1: E402 Module level import not at top of file
+   |
+31 | logger.info(f"[FLASH_DIAG] CWD at {__name__} import: {os.getcwd()}")
+32 |
+33 | import sys
+   | ^^^^^^^^^^ E402
+34 | import os  # For absolute paths
+   |
+
+tests\test_project_memory_integration.py:34:1: E402 Module level import not at top of file
+   |
+33 | import sys
+34 | import os  # For absolute paths
+   | ^^^^^^^^^ E402
+35 |
+36 | print("--- TRACE (tests/test_project_memory_integration.py): sys.path ---")
+   |
+
+tests\test_project_memory_integration.py:66:1: E402 Module level import not at top of file
+   |
+65 | # Import the modules we want to test
+66 | from src.core import memory
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ E402
+67 | from src.brain import ChatEngine
+   |
+
+tests\test_project_memory_integration.py:67:1: E402 Module level import not at top of file
+   |
+65 | # Import the modules we want to test
+66 | from src.core import memory
+67 | from src.brain import ChatEngine
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ E402
+68 |
+69 | """
+   |
+
+Found 9 errors.
+[*] 5 fixable with the `--fix` option.

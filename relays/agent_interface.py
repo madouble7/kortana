@@ -141,17 +141,14 @@ class AgentInterface:
         """Get current queue status"""
         try:
             with open(self.queue_file, "r", encoding="utf-8") as f:
-                all_lines = f.readlines()
-
-            total_messages = len(all_lines)
+                all_lines = f.readlines()            total_messages = len(all_lines)
             unread_messages = total_messages - self._last_queue_position
-
             return {
                 "total_messages": total_messages,
                 "unread_messages": unread_messages,
                 "last_position": self._last_queue_position,
             }
-        except:
+        except Exception:
             return {"total_messages": 0, "unread_messages": 0, "last_position": 0}
 
 

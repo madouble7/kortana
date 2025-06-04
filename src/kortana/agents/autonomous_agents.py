@@ -96,7 +96,7 @@ Provide:
 3. Performance considerations
 4. Improvement suggestions
 """
-        response = await self.llm_client.complete(prompt)
+        await self.llm_client.complete(prompt)
 
         # In a real implementation, this would parse the response into a structured format
         return {

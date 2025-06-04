@@ -35,27 +35,27 @@ def main():
     with open(log_file, "w") as f:
         # Run setup commands
         for i, cmd in enumerate(commands[:-1]):
-            f.write(f"\n\n{'='*80}\n")
+            f.write(f"\n\n{'=' * 80}\n")
             f.write(f"Running: {' '.join(cmd)}\n")
-            f.write(f"{'='*80}\n\n")
+            f.write(f"{'=' * 80}\n\n")
 
             # Run command and capture output
-            process = subprocess.run(
+            setup_process = subprocess.run(
                 cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
             )
 
             # Write output to log file
-            f.write(process.stdout)
+            f.write(setup_process.stdout)
 
-            if process.returncode != 0:
-                f.write(f"\nCommand failed with exit code {process.returncode}\n")
+            if setup_process.returncode != 0:
+                f.write(f"\nCommand failed with exit code {setup_process.returncode}\n")
                 return
 
         # Run main command with interactive input
         cmd = commands[-1]
-        f.write(f"\n\n{'='*80}\n")
+        f.write(f"\n\n{'=' * 80}\n")
         f.write(f"Running: {' '.join(cmd)}\n")
-        f.write(f"{'='*80}\n\n")
+        f.write(f"{'=' * 80}\n\n")
 
         try:
             # Start process
@@ -72,6 +72,12 @@ def main():
             def read_until_prompt(prompt="matt: "):
                 output = ""
                 while True:
+                    # Add check for stdout being None
+                    if process.stdout is None:
+                        print(
+                            "process.stdout is None in read_until_prompt"
+                        )  # Add logging for clarity
+                        break  # Exit loop if stdout is None
                     char = process.stdout.read(1)
                     if not char:
                         break
@@ -83,7 +89,7 @@ def main():
                 return output
 
             # Wait for initial startup and first prompt
-            startup_output = read_until_prompt()
+            read_until_prompt()
 
             # Test messages to send
             test_messages = [
@@ -95,13 +101,19 @@ def main():
 
             # Send test messages
             for msg in test_messages:
+                # Add check for stdin being None
+                if process.stdin is None:
+                    print(
+                        "process.stdin is None when attempting to write"
+                    )  # Add logging for clarity
+                    break  # Cannot send message if stdin is None
                 # Write message to stdin
                 process.stdin.write(msg + "\n")
                 process.stdin.flush()
                 f.write(f"[SENT] {msg}\n")
 
                 # Read response
-                response = read_until_prompt()
+                read_until_prompt()
 
                 # If bye was sent, we're done
                 if msg == "bye":

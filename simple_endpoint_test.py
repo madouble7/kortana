@@ -2,8 +2,9 @@
 """
 Simple endpoint test without starting server
 """
+
 import requests
-import sys
+
 
 def test_endpoints():
     """Test the FastAPI endpoints."""
@@ -35,11 +36,14 @@ def test_endpoints():
         return True
 
     except requests.exceptions.ConnectionError:
-        print("❌ Could not connect to server. Make sure it's running on http://127.0.0.1:8000")
+        print(
+            "❌ Could not connect to server. Make sure it's running on http://127.0.0.1:8000"
+        )
         return False
     except Exception as e:
         print(f"❌ Error testing endpoints: {e}")
         return False
+
 
 if __name__ == "__main__":
     print("=== FastAPI Endpoint Test ===")

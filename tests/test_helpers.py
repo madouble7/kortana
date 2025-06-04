@@ -36,5 +36,5 @@ def cleanup_test_file(file_path: str):
     """Remove a temporary test file."""
     try:
         os.unlink(file_path)
-    except:
+    except OSError:
         pass

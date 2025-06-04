@@ -11,7 +11,9 @@ logger = logging.getLogger(__name__)
 
 
 class XAIGrokClient:
-    """XAI Grok client implementation"""    def __init__(self, api_key: str, base_url: str = "https://api.x.ai/v1", **kwargs):
+    """XAI Grok client implementation"""
+
+    def __init__(self, api_key: str, base_url: str = "https://api.x.ai/v1", **kwargs):
         self.api_key = api_key
         self.base_url = base_url
         self.session_id: Optional[str] = None
@@ -40,7 +42,9 @@ class XAIGrokClient:
             return {"error": "Not authenticated"}
         logger.info(f"Sending message to Grok: {message}")
         # Placeholder: Implement actual API call here
-        return {"content": f"[Grok {model} simulated response]", "model": model}    def get_completion(self, messages: List[Dict[str, str]], **kwargs) -> Any:
+        return {"content": f"[Grok {model} simulated response]", "model": model}
+
+    def get_completion(self, messages: List[Dict[str, str]], **kwargs) -> Any:
         """
         Get completion from XAI Grok API (placeholder implementation)
         """
