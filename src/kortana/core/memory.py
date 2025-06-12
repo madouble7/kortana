@@ -4,11 +4,11 @@ This module provides functionality for loading, saving, and managing memory entr
 stored in JSONL format for long-term retention of important information.
 """
 
+import asyncio
 import json
+import logging
 import os
 import sys
-import logging
-import asyncio
 from datetime import UTC, datetime
 from typing import Any
 
@@ -191,7 +191,7 @@ class MemoryManager:
     async def delete_entries(self, query: str) -> None:
         self.logger.info(f"Dummy MemoryManager: Deleting entries with query: {query}")
         # This is a very naive delete, replace with actual delete logic.
-        self.entries = [e for e in self.entries if not (query.lower() in str(e).lower())]
+        self.entries = [e for e in self.entries if query.lower() not in str(e).lower()]
         await asyncio.sleep(0) # Simulate async operation
 
     async def get_all_entries(self) -> list[dict[str, Any]]:

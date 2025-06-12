@@ -74,10 +74,10 @@ class GoalGenerator:
                 logger.debug(f"Generated goal: {goal.id} - {description}")
 
             except Exception as e:
-                logger.error(f"Error generating goal from description '{description}': {str(e)}")
-
-        logger.info(f"Successfully generated {len(created_goals)} goals.")
-        return created_goals    async def _extract_goal_details_with_llm(self, description: str) -> dict:
+                logger.error(f"Error generating goal from description '{description}': {str(e)}")        logger.info(f"Successfully generated {len(created_goals)} goals.")
+        return created_goals
+    
+    async def _extract_goal_details_with_llm(self, description: str) -> dict:
         """Extract goal details using an LLM.
 
         Args:

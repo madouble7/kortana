@@ -6,35 +6,34 @@ Manages scheduling and execution of autonomous tasks.
 import asyncio
 import logging
 import time
-from typing import Dict, Optional, Set, Any
 from datetime import datetime, timedelta
 
-from .models import Task, TaskStatus, TaskPriority, TaskResult
 from ..execution_engine import ExecutionEngine, OperationResult
+from .models import Task, TaskResult, TaskStatus
 
 logger = logging.getLogger(__name__)
 
 class TaskCoordinator:
     """Coordinates execution of autonomous tasks"""
-    
+
     def __init__(self, execution_engine: ExecutionEngine):
         self.execution_engine = execution_engine
-        self._tasks: Dict[str, Task] = {}
-        self._in_progress: Set[str] = set()
-        self._schedules: Dict[str, datetime] = {}
-        self._task_locks: Dict[str, asyncio.Lock] = {}
+        self._tasks: dict[str, Task] = {}
+        self._in_progress: set[str] = set()
+        self._schedules: dict[str, datetime] = {}
+        self._task_locks: dict[str, asyncio.Lock] = {}
 
     async def add_task(self, task: Task) -> str:
         """Add a new task to be executed."""
         self._tasks[task.id] = task
         self._task_locks[task.id] = asyncio.Lock()
-        
+
         # If task has dependencies, schedule after them
         if task.dependencies:
             await self._schedule_after_dependencies(task)
         else:
             self._schedules[task.id] = datetime.now()
-            
+
         logger.info(f"Added task {task.id} - {task.description}")
         return task.id
 
@@ -52,11 +51,11 @@ class TaskCoordinator:
                 return True
         return False
 
-    async def get_task_status(self, task_id: str) -> Optional[TaskStatus]:
+    async def get_task_status(self, task_id: str) -> TaskStatus | None:
         """Get current status of a task."""
         return self._tasks[task_id].status if task_id in self._tasks else None
 
-    async def get_task_result(self, task_id: str) -> Optional[TaskResult]:
+    async def get_task_result(self, task_id: str) -> TaskResult | None:
         """Get the result of a completed task."""
         return self._tasks[task_id].result if task_id in self._tasks else None
 
@@ -70,7 +69,7 @@ class TaskCoordinator:
             else:
                 # If dependency not scheduled, schedule it ASAP
                 self._schedules[dep_id] = datetime.now()
-                
+
         # Schedule this task after latest dependency
         self._schedules[task.id] = max_dep_time + timedelta(seconds=1)
 
@@ -79,7 +78,7 @@ class TaskCoordinator:
         while True:
             ready_tasks = []
             now = datetime.now()
-            
+
             # Find tasks ready for execution
             for task_id, scheduled_time in self._schedules.items():
                 if scheduled_time <= now:
@@ -87,7 +86,7 @@ class TaskCoordinator:
                     if task.status == TaskStatus.PENDING:
                         if self._are_dependencies_met(task):
                             ready_tasks.append(task)
-            
+
             # Execute ready tasks in parallel
             if ready_tasks:
                 await asyncio.gather(*[self._execute_task(task) for task in ready_tasks])
@@ -121,7 +120,7 @@ class TaskCoordinator:
 
                 # Execute the main task operation
                 result = await self._run_task_operation(task)
-                
+
                 if not result.success and task.retries < task.max_retries:
                     # Retry failed task
                     task.retries += 1
@@ -152,7 +151,7 @@ class TaskCoordinator:
                     completion_time=datetime.now(),
                     error=str(e)
                 )
-                
+
             finally:
                 self._in_progress.remove(task.id)
 

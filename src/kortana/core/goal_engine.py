@@ -138,7 +138,7 @@ class GoalEngine:
             result = self.execution_engine.execute_shell_command("wmic process where \"workingsetsize > 100000000\" get commandline,processid,workingsetsize")
             if not result["success"]:
                 return False
-            
+
             # Log memory-intensive processes
             logger.info(f"Memory usage analysis:\n{result['stdout']}")
             return True

@@ -1,9 +1,9 @@
 """Test suite for the Scheduler class."""
 
 import logging
-import pytest
 import time
-from typing import Optional
+
+import pytest
 
 from src.kortana.scheduler import Scheduler, TaskStatus
 

@@ -1,0 +1,4 @@
+src\kortana\core\goals\generator.py:80: error: invalid syntax  [syntax]
+            return created_goals    async def _extract_goal_details_with_l...
+                                     ^
+Found 1 error in 1 file (errors prevented further checking)

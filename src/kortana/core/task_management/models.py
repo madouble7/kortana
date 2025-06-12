@@ -4,9 +4,10 @@ Defines data models for autonomous task tracking and execution.
 """
 
 import enum
-from datetime import datetime
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any
+from datetime import datetime
+from typing import Any
+
 
 class TaskStatus(enum.Enum):
     """Status of a task in the system"""
@@ -38,12 +39,12 @@ class TaskCategory(enum.Enum):
 @dataclass
 class TaskContext:
     """Context information for a task"""
-    allowed_dirs: List[str] = field(default_factory=list)
-    env_vars: Dict[str, str] = field(default_factory=dict)
-    token_budget: Optional[int] = None
-    related_files: List[str] = field(default_factory=list)
-    memory_refs: List[str] = field(default_factory=list)
-    workspace_root: Optional[str] = None
+    allowed_dirs: list[str] = field(default_factory=list)
+    env_vars: dict[str, str] = field(default_factory=dict)
+    token_budget: int | None = None
+    related_files: list[str] = field(default_factory=list)
+    memory_refs: list[str] = field(default_factory=list)
+    workspace_root: str | None = None
 
 @dataclass
 class TaskResult:
@@ -51,8 +52,8 @@ class TaskResult:
     success: bool
     completion_time: datetime
     output: Any = None
-    error: Optional[str] = None
-    metrics: Dict[str, Any] = field(default_factory=dict)
+    error: str | None = None
+    metrics: dict[str, Any] = field(default_factory=dict)
 
 @dataclass
 class Task:
@@ -63,12 +64,12 @@ class Task:
     priority: TaskPriority
     status: TaskStatus = TaskStatus.PENDING
     created_at: datetime = field(default_factory=datetime.now)
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
     context: TaskContext = field(default_factory=TaskContext)
-    subtasks: List['Task'] = field(default_factory=list)
-    parent_id: Optional[str] = None
-    dependencies: List[str] = field(default_factory=list)  # IDs of tasks this one depends on
-    result: Optional[TaskResult] = None
+    subtasks: list['Task'] = field(default_factory=list)
+    parent_id: str | None = None
+    dependencies: list[str] = field(default_factory=list)  # IDs of tasks this one depends on
+    result: TaskResult | None = None
     retries: int = 0
     max_retries: int = 3

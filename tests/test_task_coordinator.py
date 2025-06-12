@@ -7,14 +7,19 @@ and concurrency control.
 
 import asyncio
 import logging
-import pytest
 from datetime import datetime, timedelta
-from typing import Dict, List
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
+
+import pytest
 
 from src.kortana.core.execution_engine import ExecutionEngine
 from src.kortana.core.task_management.coordinator import TaskCoordinator
-from src.kortana.core.task_management.models import Task, TaskCategory, TaskStatus, TaskPriority
+from src.kortana.core.task_management.models import (
+    Task,
+    TaskCategory,
+    TaskPriority,
+    TaskStatus,
+)
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -37,7 +42,7 @@ def create_test_task(
     category: TaskCategory = TaskCategory.SYSTEM,
     priority: TaskPriority = TaskPriority.MEDIUM,
     description: str = "Test task",
-    dependencies: List[str] = None
+    dependencies: list[str] = None
 ) -> Task:
     """Helper function to create test tasks."""
     return Task(

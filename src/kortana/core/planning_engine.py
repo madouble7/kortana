@@ -1,12 +1,14 @@
 import json
-from typing import List, Dict, Any
+from typing import Any
+
 from kortana.services.llm_service import llm_service
+
 
 class PlanningEngine:
     def __init__(self):
         print("INFO: PlanningEngine initialized.")
 
-    async def create_plan_for_goal(self, goal_description: str) -> List[Dict[str, Any]]:
+    async def create_plan_for_goal(self, goal_description: str) -> list[dict[str, Any]]:
         """
         Uses an LLM to break down a high-level goal into a sequence of executable steps.
         """
@@ -57,7 +59,7 @@ The output MUST be a valid JSON array of objects. Each object represents one ste
 ## Your JSON Plan:
 """
 
-    def _parse_llm_plan(self, raw_plan_text: str) -> List[Dict[str, Any]]:
+    def _parse_llm_plan(self, raw_plan_text: str) -> list[dict[str, Any]]:
         """
         Safely parses the LLM's text response to extract the JSON plan.
         Handles common LLM formatting quirks like markdown code blocks.
@@ -84,7 +86,7 @@ The output MUST be a valid JSON array of objects. Each object represents one ste
 
         except (json.JSONDecodeError, IndexError, ValueError) as e:
             print(f"ERROR: Could not parse plan from LLM response. Reason: {e}")
-            print(f"--- Raw LLM Response ---")
+            print("--- Raw LLM Response ---")
             print(raw_plan_text)
             print("--------------------------")
             return []

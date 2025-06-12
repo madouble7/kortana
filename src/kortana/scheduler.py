@@ -126,7 +126,7 @@ class Scheduler:
                         result = self.task_results[task_id]
                         result.status = TaskStatus.RUNNING
                         result.start_time = datetime.now()
-                        
+
                         try:
                             logger.info(f"Executing task {task_id} with priority {priority}")
                             result.result = task()

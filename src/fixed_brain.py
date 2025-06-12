@@ -16,7 +16,6 @@ from typing import Any
 import yaml
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from src.kortana.config import load_config
 from kortana.config.schema import KortanaConfig
 from src.dev_agent_stub import DevAgentStub
 from src.kortana.agents.autonomous_agents import (
@@ -25,6 +24,7 @@ from src.kortana.agents.autonomous_agents import (
     PlanningAgent,
     TestingAgent,
 )
+from src.kortana.config import load_config
 from src.kortana.core.covenant_enforcer import CovenantEnforcer
 from src.kortana.memory.memory import MemoryManager as JsonLogMemoryManager
 from src.kortana.memory.memory_manager import MemoryManager as PineconeMemoryManager

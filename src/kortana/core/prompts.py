@@ -1,7 +1,8 @@
 # src/kortana/core/prompts.py
-from typing import List, Dict, Any # Added Any for memory item structure
+from typing import Any  # Added Any for memory item structure
 
-def build_core_query_prompt(user_query: str, memory_context: List[Dict[str, Any]]) -> str:
+
+def build_core_query_prompt(user_query: str, memory_context: list[dict[str, Any]]) -> str:
     """
     Builds the main prompt for Kor'tana to reason about a user's query,
     incorporating retrieved memories.

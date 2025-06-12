@@ -1,7 +1,10 @@
 # src/kortana/services/llm_service.py
+from typing import Any
+
 import openai
-from typing import Dict, Any
+
 from kortana.config.settings import settings
+
 
 class LLMService:
     """
@@ -24,7 +27,7 @@ class LLMService:
         model: str = "gpt-4o", # A powerful and modern default
         temperature: float = 0.7,
         max_tokens: int = 1500
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generates a response from the configured LLM provider.
 
@@ -79,7 +82,7 @@ if __name__ == '__main__':
             print("\n--- Metadata ---")
             print(result["metadata"])
         else:
-            print(f"--- LLM Service Test Error ---")
+            print("--- LLM Service Test Error ---")
             print(result.get("error"))
 
     asyncio.run(test_llm_service())

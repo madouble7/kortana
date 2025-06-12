@@ -1,5 +1,5 @@
 try:
-    from fastapi import FastAPI, Depends
+    from fastapi import Depends, FastAPI
 
     FASTAPI_AVAILABLE = True
 except ImportError:

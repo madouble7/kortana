@@ -4,7 +4,6 @@ Handles storage and retrieval of memory entries
 """
 
 import logging
-from typing import List
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +11,7 @@ class MemoryManager:
     def __init__(self):
         self.recent_interactions = []
 
-    def get_recent_interactions(self, limit: int = 100) -> List[str]:
+    def get_recent_interactions(self, limit: int = 100) -> list[str]:
         """Get recent interaction history"""
         return self.recent_interactions[-limit:]
 
