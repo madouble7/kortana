@@ -5,12 +5,12 @@ Kor'tana AI Summarization Test Suite
 Test real Gemini 2.0 Flash integration with practical scenarios
 """
 
-import sys
-import time
 import json
 import sqlite3
-from pathlib import Path
+import sys
+import time
 from datetime import datetime
+from pathlib import Path
 
 # Add project root to path
 sys.path.append(str(Path(__file__).parent))

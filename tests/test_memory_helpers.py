@@ -5,12 +5,13 @@ These tests focus on the individual memory helper functions in memory.py,
 ensuring they work correctly in isolation.
 """
 
+import json
 import os
 import sys
-import pytest
-import json
 import tempfile
-from unittest.mock import patch, mock_open
+from unittest.mock import mock_open, patch
+
+import pytest
 
 # Add the src directory to the path so we can import modules
 sys.path.insert(
@@ -19,13 +20,13 @@ sys.path.insert(
 
 # Import memory helpers
 from kortana.core.memory import (
-    save_memory,
+    get_memory_by_type,
+    get_recent_memories_by_type,
     load_memory,
     save_decision,
     save_implementation_note,
+    save_memory,
     save_project_insight,
-    get_memory_by_type,
-    get_recent_memories_by_type,
 )
 
 

@@ -1,0 +1,14 @@
+repos:
+  - repo: local
+    hooks:
+      - id: check-living-log
+        name: Enforce Living Log Update
+        entry: python check_living_log.py
+        language: system
+        # Consider specifying file patterns or types if needed, e.g.:
+        # files: \.(py|yaml|md)$
+        # Or more broadly:
+        # types: [python, yaml, markdown]
+        # For this specific check, we want it to run on relevant changes,
+        # the script itself checks staged files, so 'stages' is implicitly 'commit'.
+        stages: [commit]

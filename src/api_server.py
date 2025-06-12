@@ -7,7 +7,6 @@ import logging
 import os
 import sys
 from datetime import datetime
-from typing import Optional
 
 import bleach
 import uvicorn
@@ -59,7 +58,7 @@ class MessageRequest(BaseModel):
     """
 
     message: str
-    manual_mode: Optional[str] = None
+    manual_mode: str | None = None
 
 
 class MessageResponse(BaseModel):
@@ -130,7 +129,7 @@ async def chat_endpoint(
         )
         raise HTTPException(
             status_code=500, detail=f"Internal server error in Kor'tana: {str(e)}"
-        )
+        ) from e
 
 
 # Alias for LobeChat or alternate frontend
@@ -176,7 +175,7 @@ async def kortana_chat_alias(request: Request, csrf_protect: CsrfProtect = Depen
         )
         raise HTTPException(
             status_code=500, detail=f"Internal server error in Kor'tana: {str(e)}"
-        )
+        ) from e
 
 
 @app.get("/health")

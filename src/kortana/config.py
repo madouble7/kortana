@@ -3,9 +3,10 @@ Kortana Configuration Module
 """
 
 import os
-import yaml
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any
+
+import yaml
 
 
 def get_project_root() -> Path:
@@ -13,7 +14,7 @@ def get_project_root() -> Path:
     return Path(__file__).parent.parent.parent
 
 
-def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
+def load_config(config_path: str | None = None) -> dict[str, Any]:
     """
     Load configuration from config file.
 
@@ -27,7 +28,7 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
         config_path = os.path.join(get_project_root(), "config.yaml")
 
     try:
-        with open(config_path, "r", encoding="utf-8") as f:
+        with open(config_path, encoding="utf-8") as f:
             config = yaml.safe_load(f)
         return config
     except Exception as e:
@@ -35,7 +36,7 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
         return {}
 
 
-def get_config(key: str = None, config_path: Optional[str] = None) -> Any:
+def get_config(key: str = None, config_path: str | None = None) -> Any:
     """
     Get a specific configuration value or the entire config.
 

@@ -5,7 +5,7 @@ This module provides integration with xAI's Grok language model through their AP
 
 import logging
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -16,8 +16,8 @@ class XAIGrokClient:
     def __init__(self, api_key: str, base_url: str = "https://api.x.ai/v1", **kwargs):
         self.api_key = api_key
         self.base_url = base_url
-        self.session_id: Optional[str] = None
-        self.conversation_history: List[Dict[str, str]] = []
+        self.session_id: str | None = None
+        self.conversation_history: list[dict[str, str]] = []
         self.client = None  # Add client attribute for MyPy
 
     def authenticate(self) -> bool:
@@ -36,7 +36,7 @@ class XAIGrokClient:
             logger.error(f"❌ Authentication error: {e}")
             return False
 
-    def send_message(self, message: str, model: str = "grok-3-mini") -> Dict[str, Any]:
+    def send_message(self, message: str, model: str = "grok-3-mini") -> dict[str, Any]:
         """Send message to Grok and get response (placeholder)."""
         if not self.session_id:
             return {"error": "Not authenticated"}
@@ -44,7 +44,7 @@ class XAIGrokClient:
         # Placeholder: Implement actual API call here
         return {"content": f"[Grok {model} simulated response]", "model": model}
 
-    def get_completion(self, messages: List[Dict[str, str]], **kwargs) -> Any:
+    def get_completion(self, messages: list[dict[str, str]], **kwargs) -> Any:
         """
         Get completion from XAI Grok API (placeholder implementation)
         """

@@ -12,7 +12,7 @@ Optimized for GPT-4.1-Nano and autonomous development
 import json
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from openai import OpenAI
 from openai.types.chat import ChatCompletionUserMessageParam
@@ -29,7 +29,7 @@ class OpenAIClient(BaseLLMClient):
     """
 
     def __init__(
-        self, api_key: Optional[str] = None, model_name: str = "gpt-4.1-nano", **kwargs
+        self, api_key: str | None = None, model_name: str = "gpt-4.1-nano", **kwargs
     ):
         """
         Initialize OpenAI client using official SDK structure        Args:
@@ -59,10 +59,10 @@ class OpenAIClient(BaseLLMClient):
         self,
         content: str,
         model_id: str,
-        usage: Dict[str, int],
-        function_call: Optional[Dict] = None,
+        usage: dict[str, int],
+        function_call: dict | None = None,
         finish_reason: str = "stop",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         message = {"content": content}
         if function_call:  # Ensure function_call is a list of tool_calls as expected
             # by ChatEngine. The OpenAI SDK returns a list of ToolCall objects
@@ -89,11 +89,11 @@ class OpenAIClient(BaseLLMClient):
     def generate_response(
         self,
         system_prompt: str,
-        messages: List[Dict[str, str]],
+        messages: list[dict[str, str]],
         enable_function_calling: bool = False,
-        functions: Optional[List[Dict]] = None,
+        functions: list[dict] | None = None,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Generate response using official OpenAI SDK structure"""
         try:
             # Prepare messages with system prompt
@@ -187,7 +187,7 @@ class OpenAIClient(BaseLLMClient):
                 finish_reason="error",
             )
 
-    def get_capabilities(self) -> Dict[str, Any]:
+    def get_capabilities(self) -> dict[str, Any]:
         """Return client capabilities"""
         return {
             "name": self.model_name,
@@ -216,7 +216,7 @@ class OpenAIClient(BaseLLMClient):
             logger.error(f"Connection validation failed: {e}")
             return False
 
-    def get_completion(self, messages: List[Dict[str, str]], **kwargs) -> Any:
+    def get_completion(self, messages: list[dict[str, str]], **kwargs) -> Any:
         """Get completion from OpenAI API"""
         try:
             # Set default parameters
@@ -273,7 +273,7 @@ class OpenAIClient(BaseLLMClient):
         """Test connection to OpenAI API"""
         try:
             # Simple test with minimal tokens
-            test_messages: List[ChatCompletionUserMessageParam] = [
+            test_messages: list[ChatCompletionUserMessageParam] = [
                 {"role": "user", "content": "Hello"}
             ]
             response = self.client.chat.completions.create(
@@ -298,7 +298,7 @@ class OpenAIClient(BaseLLMClient):
         """Check if client supports streaming"""
         return True
 
-    def get_model_info(self) -> Dict[str, Any]:
+    def get_model_info(self) -> dict[str, Any]:
         """Get detailed model information"""
         return {
             "model_name": self.model_name,

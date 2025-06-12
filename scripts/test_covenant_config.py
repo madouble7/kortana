@@ -7,10 +7,10 @@ This script ensures that:
 3. config.load_config() correctly loads covenant.yaml
 """
 
-import sys
-import logging
-from pathlib import Path
 import importlib
+import logging
+import sys
+from pathlib import Path
 
 # Add the project root to Python path to ensure imports work correctly
 sys.path.insert(0, str(Path(__file__).parent.parent))

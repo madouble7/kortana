@@ -10,7 +10,7 @@ import sqlite3
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import tiktoken
 
@@ -128,7 +128,7 @@ class KortanaEnhancedMonitor:
         except Exception as e:
             print(f"[WARNING] Could not log chain communication: {e}")
 
-    def get_active_agents(self) -> List[str]:
+    def get_active_agents(self) -> list[str]:
         """Get list of currently active agents"""
         agents = []
 
@@ -160,7 +160,7 @@ class KortanaEnhancedMonitor:
 
         return list(set(agents))
 
-    def get_token_usage_stats(self) -> Dict[str, Any]:
+    def get_token_usage_stats(self) -> dict[str, Any]:
         """Get comprehensive token usage statistics"""
         stats = {
             "last_24h": {},
@@ -219,7 +219,7 @@ class KortanaEnhancedMonitor:
 
         return stats
 
-    def get_rate_limit_status(self) -> Dict[str, Any]:
+    def get_rate_limit_status(self) -> dict[str, Any]:
         """Get rate limit status for various services"""
         # Rate limits based on current API tiers
         limits = {
@@ -304,7 +304,7 @@ class KortanaEnhancedMonitor:
 
         return limits
 
-    def get_context_window_status(self) -> Dict[str, Any]:
+    def get_context_window_status(self) -> dict[str, Any]:
         """Get context window utilization"""
         context_limits = {"gemini_flash": 128000, "claude": 200000, "gpt4": 128000}
 
@@ -330,7 +330,7 @@ class KortanaEnhancedMonitor:
 
         return status
 
-    def get_dashboard_data(self) -> Dict[str, Any]:
+    def get_dashboard_data(self) -> dict[str, Any]:
         """Get comprehensive dashboard data"""
         return {
             "timestamp": datetime.utcnow().isoformat(),
@@ -341,7 +341,7 @@ class KortanaEnhancedMonitor:
             "system_health": self.get_system_health(),
         }
 
-    def get_system_health(self) -> Dict[str, Any]:
+    def get_system_health(self) -> dict[str, Any]:
         """Get overall system health indicators"""
         health = {
             "status": "unknown",

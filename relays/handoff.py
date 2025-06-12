@@ -17,13 +17,12 @@ import sqlite3
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
 
 
 class AgentHandoffManager:
     """Manages agent handoffs and context package transfers"""
 
-    def __init__(self, project_root: Optional[str] = None):
+    def __init__(self, project_root: str | None = None):
         """Initialize handoff manager"""
         self.project_root = (
             Path(project_root) if project_root else Path(__file__).parent.parent
@@ -54,7 +53,7 @@ class AgentHandoffManager:
 
         print(f"📝 {message}")
 
-    def get_agent_token_usage(self, agent_name: str) -> Dict[str, int]:
+    def get_agent_token_usage(self, agent_name: str) -> dict[str, int]:
         """Calculate total token usage for an agent (S + T + H + O)"""
         # S = System/Summary tokens from context packages
         # T = Task tokens from current queue
@@ -78,14 +77,14 @@ class AgentHandoffManager:
             # Get task tokens from queue
             queue_file = self.queues_dir / f"{agent_name}_in.txt"
             if queue_file.exists():
-                with open(queue_file, "r", encoding="utf-8") as f:
+                with open(queue_file, encoding="utf-8") as f:
                     queue_content = f.read()
                 tokens["task"] = len(queue_content) // 4  # Rough estimate
 
             # Get history tokens from log
             log_file = self.logs_dir / f"{agent_name}.log"
             if log_file.exists():
-                with open(log_file, "r", encoding="utf-8") as f:
+                with open(log_file, encoding="utf-8") as f:
                     log_content = f.read()
                 tokens["history"] = len(log_content) // 4  # Rough estimate
 
@@ -114,7 +113,7 @@ class AgentHandoffManager:
 
         return False
 
-    def create_context_package(self, agent_name: str) -> Optional[str]:
+    def create_context_package(self, agent_name: str) -> str | None:
         """Create context package for agent handoff"""
         try:
             # Read agent history
@@ -122,7 +121,7 @@ class AgentHandoffManager:
             if not log_file.exists():
                 return None
 
-            with open(log_file, "r", encoding="utf-8") as f:
+            with open(log_file, encoding="utf-8") as f:
                 history = f.read()
 
             # Create task ID
@@ -244,7 +243,7 @@ Continue from where the previous agent left off."""
 
         try:
             if task_file.exists():
-                with open(task_file, "r") as f:
+                with open(task_file) as f:
                     tasks = json.load(f)
             else:
                 tasks = []
@@ -264,7 +263,7 @@ Continue from where the previous agent left off."""
         except Exception as e:
             print(f"⚠️  Error updating task queue: {e}")
 
-    def monitor_agents(self) -> List[str]:
+    def monitor_agents(self) -> list[str]:
         """Monitor all agents and return list of agents needing handoff"""
         agents_needing_handoff = []
 
@@ -308,7 +307,7 @@ Continue from where the previous agent left off."""
         if self.handoff_log.exists():
             print("\n📝 Recent handoffs:")
             try:
-                with open(self.handoff_log, "r") as f:
+                with open(self.handoff_log) as f:
                     lines = f.readlines()
                 for line in lines[-5:]:  # Last 5 handoff events
                     print(f"   {line.strip()}")

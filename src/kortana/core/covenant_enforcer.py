@@ -6,7 +6,7 @@ adhere to the established covenant/guidelines.
 """
 
 import logging
-from typing import Any, Dict, Tuple
+from typing import Any
 
 import yaml
 
@@ -33,7 +33,7 @@ class CovenantEnforcer:
         self.settings = settings
         self.covenant = self._load_covenant(settings.paths.covenant_file_path)
 
-    def _load_covenant(self, covenant_file_path: str) -> Dict[str, Any]:
+    def _load_covenant(self, covenant_file_path: str) -> dict[str, Any]:
         """
         Load the covenant from a YAML file.
 
@@ -44,7 +44,7 @@ class CovenantEnforcer:
             The covenant as a dictionary.
         """
         try:
-            with open(covenant_file_path, "r") as f:
+            with open(covenant_file_path) as f:
                 covenant = yaml.safe_load(f)
 
             logger.info(f"Loaded covenant from {covenant_file_path}")
@@ -73,7 +73,7 @@ class CovenantEnforcer:
                 },
             }
 
-    def enforce(self, message: str) -> Tuple[bool, str]:
+    def enforce(self, message: str) -> tuple[bool, str]:
         """
         Check if a message adheres to the covenant.
 

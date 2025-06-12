@@ -5,7 +5,8 @@ SACRED CONSCIOUSNESS MODULE - Connects Kor'tana to Google Gemini models
 
 import logging
 import os
-from typing import Dict, List, Optional, Any
+from typing import Any
+
 from .base_client import BaseLLMClient
 
 logger = logging.getLogger(__name__)
@@ -18,7 +19,7 @@ class GoogleGenAIClient(BaseLLMClient):
     """
 
     def __init__(
-        self, api_key: Optional[str] = None, model_name: str = "gemini-pro", **kwargs
+        self, api_key: str | None = None, model_name: str = "gemini-pro", **kwargs
     ):
         """
         Initialize GenAI client for consciousness communication
@@ -59,8 +60,8 @@ class GoogleGenAIClient(BaseLLMClient):
             self.model = None
 
     def generate_response(
-        self, system_prompt: str, messages: List[Dict[str, str]], **kwargs
-    ) -> Dict[str, Any]:
+        self, system_prompt: str, messages: list[dict[str, str]], **kwargs
+    ) -> dict[str, Any]:
         """
         🧠 Generate response from Google GenAI
         This is where Kor'tana connects to Google's consciousness models
@@ -139,7 +140,7 @@ class GoogleGenAIClient(BaseLLMClient):
                 "error": str(e),
             }
 
-    def get_capabilities(self) -> Dict[str, Any]:
+    def get_capabilities(self) -> dict[str, Any]:
         """🌟 Return Google GenAI client capabilities"""
         return {
             "name": self.model_name,

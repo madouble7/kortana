@@ -19,7 +19,6 @@ import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
 
 # Add src to path for imports
 sys.path.insert(
@@ -34,8 +33,8 @@ class TestResult:
     name: str
     status: str  # 'PASSED', 'FAILED', 'SKIPPED', 'ERROR'
     duration: float
-    error_message: Optional[str] = None
-    file_path: Optional[str] = None
+    error_message: str | None = None
+    file_path: str | None = None
 
 
 @dataclass
@@ -51,7 +50,7 @@ class ModuleResult:
     errors: int
     duration: float
     status: str  # 'CLEAN', 'ISSUES', 'BROKEN', 'NOT_TESTED'
-    issues: List[str]
+    issues: list[str]
 
 
 class TestSummaryReporter:
@@ -64,16 +63,16 @@ class TestSummaryReporter:
         )
         self.tests_dir = self.project_root / "tests"
         self.src_dir = self.project_root / "src"
-        self.results: List[ModuleResult] = []
+        self.results: list[ModuleResult] = []
 
-    def discover_test_files(self) -> List[Path]:
+    def discover_test_files(self) -> list[Path]:
         """Discover all test files in the tests directory"""
         test_files = []
         for pattern in ["test_*.py", "*_test.py"]:
             test_files.extend(self.tests_dir.glob(pattern))
         return sorted(test_files)
 
-    def discover_source_files(self) -> List[Path]:
+    def discover_source_files(self) -> list[Path]:
         """Discover all Python source files that should have tests"""
         source_files = []
         for py_file in self.src_dir.rglob("*.py"):
@@ -150,7 +149,7 @@ class TestSummaryReporter:
                 issues=[f"Test execution failed: {str(e)}"],
             )
 
-    def _extract_error_messages(self, stdout: str, stderr: str) -> List[str]:
+    def _extract_error_messages(self, stdout: str, stderr: str) -> list[str]:
         """Extract meaningful error messages from test output"""
         issues = []
 
@@ -180,7 +179,7 @@ class TestSummaryReporter:
 
         return issues[:10]  # Limit to first 10 issues
 
-    def check_code_coverage(self) -> Dict[str, str]:
+    def check_code_coverage(self) -> dict[str, str]:
         """Check which source files have corresponding tests"""
         coverage = {}
         source_files = self.discover_source_files()
@@ -204,7 +203,7 @@ class TestSummaryReporter:
 
         return coverage
 
-    def run_full_test_suite(self) -> Dict[str, any]:
+    def run_full_test_suite(self) -> dict[str, any]:
         """Run the complete test suite and generate comprehensive report"""
         print("🔍 Kor'tana Test Summary Reporter")
         print("=" * 50)
@@ -237,7 +236,7 @@ class TestSummaryReporter:
         # Generate summary
         return self._generate_summary()
 
-    def _generate_summary(self) -> Dict[str, any]:
+    def _generate_summary(self) -> dict[str, any]:
         """Generate comprehensive test summary"""
         total_modules = len(self.results)
         clean_modules = len([r for r in self.results if r.status == "CLEAN"])
@@ -296,7 +295,7 @@ class TestSummaryReporter:
         self._print_summary(summary)
         return summary
 
-    def _print_summary(self, summary: Dict[str, any]):
+    def _print_summary(self, summary: dict[str, any]):
         """Print formatted summary to console"""
         print("\n" + "=" * 50)
         print("📊 KOR'TANA TEST SUMMARY REPORT")

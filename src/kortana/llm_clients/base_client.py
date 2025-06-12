@@ -3,7 +3,7 @@
 import logging
 import time
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
+from typing import Any
 
 
 class BaseLLMClient(ABC):
@@ -27,8 +27,8 @@ class BaseLLMClient(ABC):
 
     @abstractmethod
     def generate_response(
-        self, system_prompt: str, messages: List, **kwargs
-    ) -> Dict[str, Any]:
+        self, system_prompt: str, messages: list, **kwargs
+    ) -> dict[str, Any]:
         """Generate a response from the LLM.
 
         Args:
@@ -47,7 +47,7 @@ class BaseLLMClient(ABC):
         pass
 
     @abstractmethod
-    def get_capabilities(self) -> Dict[str, Any]:
+    def get_capabilities(self) -> dict[str, Any]:
         """
         Get the capabilities of this LLM client
 
@@ -83,10 +83,10 @@ class BaseLLMClient(ABC):
     def generate_response_with_retry(
         self,
         system_prompt: str,
-        messages: List,
+        messages: list,
         max_retries: int = 3,
         backoff_factor: float = 2.0,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Generate response with automatic retry on transient failures.
 
         Implements exponential backoff strategy for resilience.
@@ -125,6 +125,6 @@ class BaseLLMClient(ABC):
         """Check if the client supports streaming responses"""
         return False
 
-    def get_model_info(self) -> Dict[str, Any]:
+    def get_model_info(self) -> dict[str, Any]:
         """Get information about the current model"""
         return {"name": self.model_name, "provider": "unknown"}

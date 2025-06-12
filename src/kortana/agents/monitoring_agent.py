@@ -4,7 +4,6 @@ This module provides functionality to check system health and perform
 automatic repairs when issues are detected.
 """
 
-from typing import List
 
 import psutil
 
@@ -15,7 +14,7 @@ class MonitoringAgent:
     Uses psutil to monitor system resources and implements self-healing capabilities.
     """
 
-    def check_health(self) -> List[str]:
+    def check_health(self) -> list[str]:
         """
         Check the health of the system and identify any issues.
 
@@ -29,7 +28,7 @@ class MonitoringAgent:
         # 2. (Extend: read your logs for ERROR entries in last hour)
         return errs
 
-    def heal(self, errors: List[str]) -> List[str]:
+    def heal(self, errors: list[str]) -> list[str]:
         """
         Attempt to fix detected system issues automatically.
 

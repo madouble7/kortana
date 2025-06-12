@@ -8,14 +8,14 @@ import json
 import logging
 import os
 import re
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 def format_timestamp(
-    compact: bool = False, dt_object: Optional[datetime] = None
+    compact: bool = False, dt_object: datetime | None = None
 ) -> str:
     """
     Returns the current UTC timestamp or a provided datetime object's timestamp
@@ -30,9 +30,9 @@ def format_timestamp(
         str: The formatted timestamp string.
     """
     if dt_object is None:
-        dt_object = datetime.now(timezone.utc)
+        dt_object = datetime.now(UTC)
     elif dt_object.tzinfo is None:  # If naive, assume UTC
-        dt_object = dt_object.replace(tzinfo=timezone.utc)
+        dt_object = dt_object.replace(tzinfo=UTC)
 
     if compact:
         return dt_object.strftime("%Y%m%d_%H%M%S")
@@ -40,7 +40,7 @@ def format_timestamp(
         return dt_object.strftime("%Y-%m-%d %H:%M")  # Standard readable format
 
 
-def validate_config(config: dict, required_keys: Optional[List[str]] = None) -> bool:
+def validate_config(config: dict, required_keys: list[str] | None = None) -> bool:
     """
     Basic schema check for required keys in a configuration dictionary.
 
@@ -99,7 +99,7 @@ def ensure_dir_exists(path: str):
 
 def load_json_file(
     path: str,
-) -> Dict[Any, Any]:  # Changed to Dict[Any, Any] for more flexibility
+) -> dict[Any, Any]:  # Changed to Dict[Any, Any] for more flexibility
     """
     Loads JSON from a file, returns empty dict on failure.
     Ensures directory exists before trying to read (though less critical for read).
@@ -113,7 +113,7 @@ def load_json_file(
     # ensure_dir_exists(path) # Not strictly necessary for reading, but good
     # if creating default configs
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             data = json.load(f)
             # logging.debug(f"Successfully loaded JSON from: {path}")
             return data
@@ -193,7 +193,7 @@ def analyze_sentiment(text: str) -> str:
         return "neutral"
 
 
-def detect_emphasis_all_caps(text: str) -> List[str]:
+def detect_emphasis_all_caps(text: str) -> list[str]:
     """
     Detect words in ALL CAPS which indicate emphasis.
 
@@ -208,7 +208,7 @@ def detect_emphasis_all_caps(text: str) -> List[str]:
     return caps_words
 
 
-def detect_keywords(text: str) -> List[str]:
+def detect_keywords(text: str) -> list[str]:
     """
     Extract potential keywords from text.
 
@@ -284,7 +284,7 @@ def identify_important_message_for_context(text: str) -> bool:
 # CONFIG_DIR = os.path.join(os.path.dirname(__file__), '..', 'config')
 
 
-def load_json_config(config_name: str, config_dir: str) -> Dict[str, Any]:
+def load_json_config(config_name: str, config_dir: str) -> dict[str, Any]:
     """
     Loads a specific JSON configuration file.
 
@@ -297,7 +297,7 @@ def load_json_config(config_name: str, config_dir: str) -> Dict[str, Any]:
     """
     config_path = os.path.join(config_dir, f"{config_name}.json")
     try:
-        with open(config_path, "r", encoding="utf-8") as f:
+        with open(config_path, encoding="utf-8") as f:
             return json.load(f)
     except FileNotFoundError:
         logger.error(f"Config file not found: {config_path}")
@@ -307,7 +307,7 @@ def load_json_config(config_name: str, config_dir: str) -> Dict[str, Any]:
         return {}
 
 
-def load_all_configs(config_dir: str) -> Dict[str, Any]:
+def load_all_configs(config_dir: str) -> dict[str, Any]:
     """
     Loads all relevant JSON configuration files, including Sacred Trinity config.
 
@@ -317,7 +317,7 @@ def load_all_configs(config_dir: str) -> Dict[str, Any]:
     Returns:
         Dict[str, Any]: A dictionary containing all loaded configuration data.
     """
-    configs: Dict[str, Any] = {}
+    configs: dict[str, Any] = {}
     # List of config files to load
     config_files = [
         "persona",
@@ -366,7 +366,7 @@ def summarize_text(text: str, max_tokens: int) -> str:
     return text  # Return original text as a placeholder
 
 
-def extract_keywords(text: str) -> List[str]:
+def extract_keywords(text: str) -> list[str]:
     """
     Placeholder for extracting keywords from text.
 

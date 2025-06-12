@@ -12,7 +12,7 @@ def test_full_system():
     # Test 1: Configuration System
     print("1. Testing configuration system...")
     try:
-        from config import load_config
+        from src.kortana.config import load_config
 
         settings = load_config()
         print(f"   ✓ Config loaded: {settings.app.name} v{settings.app.version}")

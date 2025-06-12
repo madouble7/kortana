@@ -6,46 +6,76 @@ Helper functions and utilities extracted from the main brain module
 to improve maintainability and reduce complexity.
 """
 
+import hashlib
 import json
 import logging
 import os
-from datetime import datetime, timezone
-from typing import Any, Dict, List
+from datetime import UTC, datetime
+from functools import lru_cache
+from typing import Any
 
 # Module-level logger
 logger = logging.getLogger(__name__)
 
+# Singleton for embedding model to avoid reloading
+_EMBEDDING_MODEL = None
+_EMBEDDING_MODEL_NAME = "all-MiniLM-L6-v2"  # Smaller, faster model
 
-def load_json_config(path: str) -> Dict:
+
+def get_embedding_model():
+    """Get or initialize the sentence transformer embedding model (singleton pattern).
+
+    Returns:
+        The sentence transformer model instance
+    """
+    global _EMBEDDING_MODEL
+
+    if _EMBEDDING_MODEL is None:
+        try:
+            from sentence_transformers import SentenceTransformer
+
+            logger.info(f"Initializing embedding model: {_EMBEDDING_MODEL_NAME}")
+            _EMBEDDING_MODEL = SentenceTransformer(_EMBEDDING_MODEL_NAME)
+            logger.info("Embedding model initialized successfully")
+        except ImportError:
+            logger.warning(
+                "sentence-transformers not installed, embeddings will be empty"
+            )
+        except Exception as e:
+            logger.error(f"Error initializing embedding model: {e}")
+
+    return _EMBEDDING_MODEL
+
+
+def load_json_config(path: str) -> dict:
     """Load JSON configuration from file with graceful error handling.
 
     Args:
-        path: Path to the JSON configuration file
+        path: Path to JSON configuration file
 
     Returns:
-        Dictionary containing the configuration data, empty dict if error
+        Dictionary containing loaded configuration
     """
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             return json.load(f)
     except FileNotFoundError:
-        logger.error(
-            f"config file not found: {path} — the ember searches, but does not shame."
-        )
+        logger.warning(f"Config file not found: {path}")
         return {}
     except json.JSONDecodeError:
-        logger.error(
-            f"error decoding json: {path} — the fire stumbles, but does not go out."
-        )
+        logger.error(f"Invalid JSON in config file: {path}")
+        return {}
+    except Exception as e:
+        logger.error(f"Error loading config: {e}")
         return {}
 
 
-def append_to_memory_journal(memory_journal_path: str, entry: Dict[str, Any]) -> None:
-    """Append memory entry to the journal file.
+def append_to_memory_journal(memory_journal_path: str, entry: dict[str, Any]) -> None:
+    """Append an entry to the memory journal.
 
     Args:
         memory_journal_path: Path to the memory journal file
-        entry: Memory entry dictionary to append
+        entry: Memory entry to append
     """
     try:
         with open(memory_journal_path, "a", encoding="utf-8") as f:
@@ -85,7 +115,7 @@ def gentle_log_init() -> None:
     logging.info("kor'tana's fire: logging initialized — the ember is awake.")
 
 
-def format_memory_entries_by_type(memories_by_type: Dict[str, List[Dict]]) -> List[str]:
+def format_memory_entries_by_type(memories_by_type: dict[str, list[dict]]) -> list[str]:
     """Format memory entries by type for system prompt inclusion.
 
     # TODO: This function has high complexity and should be refactored in next phase
@@ -213,10 +243,10 @@ def create_timestamp() -> str:
     Returns:
         ISO format timestamp string with timezone
     """
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
-def validate_memory_entry(entry: Dict[str, Any]) -> bool:
+def validate_memory_entry(entry: dict[str, Any]) -> bool:
     """Validate that a memory entry has required fields.
 
     Args:
@@ -250,7 +280,7 @@ def sanitize_user_input(user_input: str) -> str:
     return sanitized
 
 
-def extract_keywords_from_text(text: str, max_keywords: int = 10) -> List[str]:
+def extract_keywords_from_text(text: str, max_keywords: int = 10) -> list[str]:
     """Extract key terms from text for memory tagging.
 
     # TODO: This function could benefit from NLP library integration in next phase
@@ -326,3 +356,79 @@ def extract_keywords_from_text(text: str, max_keywords: int = 10) -> List[str]:
             unique_keywords.append(keyword)
 
     return unique_keywords[:max_keywords]
+
+
+# Hash function to generate keys for embedding cache
+def _hash_text_for_cache(text: str) -> str:
+    """Generate a stable hash for text to use as a cache key.
+
+    Args:
+        text: Text to hash
+
+    Returns:
+        String hash representation
+    """
+    return hashlib.md5(text.encode()).hexdigest()
+
+
+# Cache the embedding generation for performance
+@lru_cache(maxsize=128)
+def _cached_generate_embedding(text_hash: str) -> list[float]:
+    """Cached implementation of embedding generation.
+
+    Args:
+        text_hash: Hash of the text for caching
+
+    Returns:
+        Embedding vector
+    """
+    # This is a placeholder - the real function will be called with text
+    return [0.0] * 384
+
+
+def generate_embedding(text: str) -> list[float]:
+    """Generate embedding vector for text using sentence-transformers with caching.
+
+    Args:
+        text: The text to generate embedding for
+
+    Returns:
+        A list of floats representing the embedding vector
+    """
+    if not text:
+        logger.warning("Empty text provided for embedding generation")
+        # Return zero vector with correct dimensions
+        return [0.0] * 384  # Default dimension for MiniLM model
+
+    # Check cache using text hash
+    text_hash = _hash_text_for_cache(text)
+
+    # Define actual embedding function for cache misses
+    def _generate_uncached_embedding(txt: str) -> list[float]:
+        model = get_embedding_model()
+        if model is None:
+            logger.warning("No embedding model available, returning empty vector")
+            return [0.0] * 384
+
+        try:
+            # Generate embedding with performance optimizations
+            embedding = model.encode(
+                txt,
+                convert_to_tensor=False,  # Keep as numpy for speed
+                normalize_embeddings=True,  # Pre-normalize for better search results
+            )
+
+            return embedding.tolist()
+        except Exception as e:
+            logger.error(f"Error generating embedding: {e}")
+            return [0.0] * 384  # Return zero vector as fallback
+
+    # Store the actual embedding in the cache
+    _cached_generate_embedding.__wrapped__.__dict__[text_hash] = (
+        _generate_uncached_embedding(text)
+    )
+
+    # Return from cache
+    return _cached_generate_embedding.__wrapped__.__dict__.get(
+        text_hash, _generate_uncached_embedding(text)
+    )

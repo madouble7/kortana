@@ -37,7 +37,7 @@ def load_yaml(file_path):
             logger.warning(f"File not found: {file_path}")
             return {}
 
-        with open(file_path, "r") as f:
+        with open(file_path) as f:
             data = yaml.safe_load(f)
 
         logger.info(f"Loaded YAML from {file_path}")
@@ -54,7 +54,7 @@ def load_json(file_path):
             logger.warning(f"File not found: {file_path}")
             return {}
 
-        with open(file_path, "r") as f:
+        with open(file_path) as f:
             data = json.load(f)
 
         logger.info(f"Loaded JSON from {file_path}")

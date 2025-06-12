@@ -6,7 +6,6 @@ Intelligent model selection based on llm-stats.com data and usage patterns
 import json
 import logging
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +19,7 @@ class ModelPerformance:
     cost_per_1m_output: float
     context_window: int
     reasoning_capability: str
-    specialized_features: List[str]
+    specialized_features: list[str]
 
 
 @dataclass
@@ -46,16 +45,16 @@ class ModelOptimizer:
         self.usage_stats = {}
         self.cost_tracker = {"daily_spend": 0.0, "conversation_count": 0}
 
-    def _load_config(self, config_path: str) -> Dict:
+    def _load_config(self, config_path: str) -> dict:
         """Load optimized models configuration"""
         try:
-            with open(config_path, "r") as f:
+            with open(config_path) as f:
                 return json.load(f)
         except Exception as e:
             logger.error(f"Failed to load config: {e}")
             return {}
 
-    def select_optimal_model(self, context: ConversationContext) -> Tuple[str, str]:
+    def select_optimal_model(self, context: ConversationContext) -> tuple[str, str]:
         """
         Select the optimal model based on conversation context and cost efficiency
         Returns: (model_id, reason)
@@ -141,7 +140,7 @@ class ModelOptimizer:
         self.cost_tracker["daily_spend"] += cost
         self.cost_tracker["conversation_count"] += 1
 
-    def get_optimization_recommendations(self) -> List[str]:
+    def get_optimization_recommendations(self) -> list[str]:
         """Generate optimization recommendations based on usage patterns"""
         recommendations = []
 
@@ -168,7 +167,7 @@ class ModelOptimizer:
 
         return recommendations
 
-    def generate_daily_report(self) -> Dict:
+    def generate_daily_report(self) -> dict:
         """Generate daily optimization report"""
         return {
             "total_spend": self.cost_tracker["daily_spend"],

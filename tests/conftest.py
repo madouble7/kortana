@@ -4,10 +4,11 @@ Configuration and fixtures for pytest.
 This file sets up common fixtures and configurations for all tests.
 """
 
+import json
 import os
 import sys
+
 import pytest
-import json
 
 # Add the src directory to the path so we can import modules
 sys.path.insert(

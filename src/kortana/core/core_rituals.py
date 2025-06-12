@@ -17,7 +17,7 @@ except ImportError:
     # If import fails, implement a local timestamp function
     def get_timestamp():
         """Generates the current UTC date and time in ISO 8601 format (local fallback)."""
-        now_utc = datetime.datetime.now(datetime.timezone.utc)
+        now_utc = datetime.datetime.now(datetime.UTC)
         return now_utc.isoformat(timespec="seconds").replace("+00:00", "Z")
 
     _timestamp_source = "local_fallback"

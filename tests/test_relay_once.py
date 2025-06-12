@@ -44,14 +44,14 @@ def test_relay_once():
         # Get last processed count
         last_count = 0
         if os.path.exists(seen_path):
-            with open(seen_path, "r", encoding="utf-8") as f:
+            with open(seen_path, encoding="utf-8") as f:
                 try:
                     last_count = int(f.read().strip())
                 except ValueError:
                     last_count = 0
 
         # Read log file
-        with open(log_path, "r", encoding="utf-8") as f:
+        with open(log_path, encoding="utf-8") as f:
             lines = f.readlines()
 
         # Get new lines
@@ -85,7 +85,7 @@ if __name__ == "__main__":
         for queue_file in os.listdir(QUEUES_DIR):
             if queue_file.endswith("_in.txt"):
                 queue_path = os.path.join(QUEUES_DIR, queue_file)
-                with open(queue_path, "r", encoding="utf-8") as f:
+                with open(queue_path, encoding="utf-8") as f:
                     content = f.read().strip()
                 print(
                     f"   {queue_file}: {len(content.splitlines()) if content else 0} lines"

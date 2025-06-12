@@ -138,13 +138,13 @@ def test_chat_engine_instantiation():
             if "engine" in locals():
                 engine.shutdown()
                 print("\n   ✓ ChatEngine instance cleaned up")
-        except:
+        except Exception:  # Changed bare except to except Exception
             pass
         try:
             if "brain_alias_instance" in locals():
                 brain_alias_instance.shutdown()
                 print("   ✓ Brain alias instance cleaned up")
-        except:
+        except Exception:  # Changed bare except to except Exception
             pass
 
 

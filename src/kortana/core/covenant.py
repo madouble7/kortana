@@ -9,9 +9,9 @@ import logging  # Added import for logging
 import os
 import re
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from config import load_config
+from src.kortana.config import load_config
 
 
 class CovenantEnforcer:
@@ -21,7 +21,7 @@ class CovenantEnforcer:
     soulprint values, and operational principles.
     """
 
-    def __init__(self, settings: Optional[Any] = None):
+    def __init__(self, settings: Any | None = None):
         self.settings = settings or load_config()
 
         if (
@@ -66,19 +66,19 @@ class CovenantEnforcer:
     def _load_core_values(self):
         """Load core Soulprint values and memory principles"""
         try:
-            with open(self.soulprint_path, "r") as f:
+            with open(self.soulprint_path) as f:
                 self.soulprint = json.load(f)
         except FileNotFoundError:
             self.soulprint = {}
 
         try:
-            with open(self.memory_principles_path, "r") as f:
+            with open(self.memory_principles_path) as f:
                 self.memory_principles = f.read()
         except FileNotFoundError:
             self.memory_principles = ""
 
     def _log_audit_event(
-        self, event_type: str, details: Dict[str, Any], approved: bool
+        self, event_type: str, details: dict[str, Any], approved: bool
     ):
         """Log covenant enforcement events for transparency"""
         event = {
@@ -189,7 +189,7 @@ class CovenantEnforcer:
         return approved
 
     def check_autonomous_action(
-        self, action_type: str, action_details: Dict[str, Any]
+        self, action_type: str, action_details: dict[str, Any]
     ) -> bool:
         """Validate autonomous ADE actions against sovereignty boundaries"""
         violations = []
@@ -230,7 +230,7 @@ class CovenantEnforcer:
             bool: True if action is approved, False if rejected
         """
         violations = []
-        concerns: List[str] = []
+        concerns: list[str] = []
 
         # Check against autonomous sovereignty rules
         sovereignty_violations = self._check_sovereignty_rules(
@@ -267,7 +267,7 @@ class CovenantEnforcer:
         return True
 
     def request_human_oversight(
-        self, action_description: dict, concerns: List[str]
+        self, action_description: dict, concerns: list[str]
     ) -> None:
         """
         Log a request for Matt's review when covenant concerns are detected
@@ -299,7 +299,7 @@ class CovenantEnforcer:
 
     def _check_sovereignty_rules(
         self, action_description: dict, proposed_change: Any
-    ) -> List[str]:
+    ) -> list[str]:
         """Check action against autonomous sovereignty rules"""
         violations = []
         sovereignty_rules = self.rules.get("autonomous_sovereignty_rules", [])
@@ -324,7 +324,7 @@ class CovenantEnforcer:
 
         return violations
 
-    def _check_symbiosis_protocols(self, action_description: dict) -> List[str]:
+    def _check_symbiosis_protocols(self, action_description: dict) -> list[str]:
         """Check action against symbiosis protocols"""
         violations = []
 
@@ -356,7 +356,7 @@ class CovenantEnforcer:
 
     def _check_integrity_rules(
         self, action_description: dict, proposed_change: Any
-    ) -> List[str]:
+    ) -> list[str]:
         """Check action against evolutionary integrity rules"""
         violations = []
 
@@ -405,7 +405,7 @@ class CovenantEnforcer:
 
         return has_alignment and not has_forbidden
 
-    def _assess_concern_severity(self, concerns: List[str]) -> str:
+    def _assess_concern_severity(self, concerns: list[str]) -> str:
         """Assess the severity level of concerns for prioritization"""
         if any("critical" in concern.lower() for concern in concerns):
             return "critical"
@@ -419,7 +419,7 @@ class CovenantEnforcer:
         else:
             return "low"
 
-    def _requires_immediate_attention(self, concerns: List[str]) -> bool:
+    def _requires_immediate_attention(self, concerns: list[str]) -> bool:
         """Determine if concerns require immediate Matt's attention"""
         immediate_triggers = [
             "critical",
@@ -525,14 +525,14 @@ class CovenantEnforcer:
             return False  # Default to requiring explicit mention
 
     def get_audit_trail(
-        self, event_type: Optional[str] = None, limit: int = 100
-    ) -> List[Dict]:
+        self, event_type: str | None = None, limit: int = 100
+    ) -> list[dict]:
         """Retrieve audit trail for transparency"""
         if not os.path.exists(self.audit_log_path):
             return []
 
         events = []
-        with open(self.audit_log_path, "r") as f:
+        with open(self.audit_log_path) as f:
             for line in f:
                 try:
                     event = json.loads(line.strip())
@@ -543,7 +543,7 @@ class CovenantEnforcer:
 
         return events[-limit:]
 
-    def get_oversight_queue(self, limit: int = 50) -> List[Dict]:
+    def get_oversight_queue(self, limit: int = 50) -> list[dict]:
         """Retrieve pending oversight requests for Matt's review"""
         oversight_log_path = os.path.join(
             os.path.dirname(self.audit_log_path), "oversight_queue.jsonl"
@@ -553,7 +553,7 @@ class CovenantEnforcer:
             return []
 
         requests = []
-        with open(oversight_log_path, "r") as f:
+        with open(oversight_log_path) as f:
             for line in f:
                 try:
                     request = json.loads(line.strip())

@@ -1,6 +1,7 @@
 # C:\kortana\tests\test_brain.py
-import pytest
 import os
+
+import pytest
 
 # Adjust import based on how you run tests (e.g., from project root)
 # If running pytest from project root, 'from src.brain import ChatEngine' should work if src/__init__.py exists.

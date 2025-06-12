@@ -6,7 +6,6 @@ Provides type-safe configuration management with validation.
 """
 
 import os
-from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field, validator
 
@@ -15,7 +14,7 @@ class AgentTypeConfig(BaseModel):
     """Configuration for a specific agent type."""
 
     # Changed from 'model_mapping' to 'agent_model_mapping' to avoid Pydantic protected namespace
-    agent_model_mapping: Dict[str, str] = Field(
+    agent_model_mapping: dict[str, str] = Field(
         default_factory=dict, description="Model mapping for this agent type"
     )
     enabled: bool = Field(
@@ -25,7 +24,7 @@ class AgentTypeConfig(BaseModel):
     timeout_seconds: int = Field(
         default=300, description="Timeout for agent operations"
     )
-    llm_model: Optional[str] = Field(
+    llm_model: str | None = Field(
         default=None, description="Default LLM model for this agent"
     )
 
@@ -44,7 +43,7 @@ class AgentsConfig(BaseModel):
     )
 
     # Agent type configurations
-    types: Dict[str, AgentTypeConfig] = Field(
+    types: dict[str, AgentTypeConfig] = Field(
         default_factory=dict, description="Agent type configurations"
     )
 
@@ -56,10 +55,10 @@ class MemoryConfig(BaseModel):
     """Configuration for memory systems."""
 
     # Pinecone settings
-    pinecone_api_key: Optional[str] = Field(
+    pinecone_api_key: str | None = Field(
         default=None, description="Pinecone API key"
     )
-    pinecone_environment: Optional[str] = Field(
+    pinecone_environment: str | None = Field(
         default=None, description="Pinecone environment"
     )
     pinecone_index_name: str = Field(
@@ -140,7 +139,7 @@ class CovenantConfig(BaseModel):
     )
 
     # Sacred principles
-    sacred_principles: List[str] = Field(
+    sacred_principles: list[str] = Field(
         default=["wisdom", "compassion", "truth"], description="Core sacred principles"
     )
 

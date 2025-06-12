@@ -27,7 +27,7 @@ def load_config() -> KortanaConfig:
     default_yaml = config_dir / "default.yaml"
 
     # Load default configuration
-    with open(default_yaml, "r") as f:
+    with open(default_yaml) as f:
         config_dict = yaml.safe_load(f)
 
     # Check for environment-specific configuration
@@ -36,7 +36,7 @@ def load_config() -> KortanaConfig:
 
     if env_yaml.exists():
         print(f"Loading environment configuration: {env_yaml}")
-        with open(env_yaml, "r") as f:
+        with open(env_yaml) as f:
             env_dict = yaml.safe_load(f)
             # Update configuration with environment-specific values
             _update_dict(config_dict, env_dict)

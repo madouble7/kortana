@@ -11,7 +11,7 @@ def check_file_exists_and_print(file_path):
     if os.path.exists(file_path):
         print(f"✅ File exists: {file_path}")
         try:
-            with open(file_path, "r") as f:
+            with open(file_path) as f:
                 content = f.read()
             print(f"File content (first 300 chars):\n{content[:300]}...")
             print(f"File size: {len(content)} bytes")

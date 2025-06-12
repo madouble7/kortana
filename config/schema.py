@@ -5,7 +5,7 @@ Pydantic-based configuration validation and management using pydantic-settings
 
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field, validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -49,8 +49,8 @@ class ModelProviderConfig(BaseModel):
     model: str
     provider: str
     api_key_env: str
-    base_url: Optional[str] = None
-    default_params: Dict[str, Any] = Field(default_factory=dict)
+    base_url: str | None = None
+    default_params: dict[str, Any] = Field(default_factory=dict)
     max_tokens: int = Field(default=4096, ge=1, le=128000)
     cost_per_1k_input: float = Field(default=0.0, ge=0.0)
     cost_per_1k_output: float = Field(default=0.0, ge=0.0)
@@ -64,7 +64,7 @@ class ModelsConfig(BaseModel):
     max_tokens: int = Field(default=4096, ge=1, le=128000)
     temperature: float = Field(default=0.2, ge=0.0, le=2.0)
     top_p: float = Field(default=0.9, ge=0.0, le=1.0)
-    providers: Dict[str, ModelProviderConfig] = {}
+    providers: dict[str, ModelProviderConfig] = {}
     default: str = "gpt-4"
     alternate: str = "gpt-3.5-turbo"
 
@@ -84,10 +84,10 @@ class AgentTypeConfig(BaseModel):
 
     enabled: bool = True
     max_tasks: int = Field(default=10, ge=1, le=100)
-    model_mapping: Dict[str, str] = Field(default_factory=dict)
-    coding: Dict[str, Any] = {}
-    planning: Dict[str, Any] = {}
-    testing: Dict[str, Any] = {}
+    model_mapping: dict[str, str] = Field(default_factory=dict)
+    coding: dict[str, Any] = {}
+    planning: dict[str, Any] = {}
+    testing: dict[str, Any] = {}
     monitoring: "MonitoringAgentConfig" = None
 
 
@@ -104,7 +104,7 @@ class AgentsConfig(BaseModel):
     max_concurrent: int = Field(default=5, ge=1, le=20)
     default_timeout: int = Field(default=300, ge=30, le=3600)
     retry_attempts: int = Field(default=3, ge=0, le=10)
-    types: Dict[str, AgentTypeConfig] = {}
+    types: dict[str, AgentTypeConfig] = {}
     default_llm_id: str = "gpt-4"
 
 
@@ -130,10 +130,10 @@ class DatabaseConfig(BaseModel):
 
     type: str = Field(default="sqlite", pattern="^(sqlite|postgresql|mysql)$")
     name: str = "kortana.db"
-    host: Optional[str] = None
-    port: Optional[int] = None
-    user: Optional[str] = None
-    password: Optional[str] = None
+    host: str | None = None
+    port: int | None = None
+    user: str | None = None
+    password: str | None = None
     backup_enabled: bool = True
     backup_interval: int = Field(default=86400, ge=3600)
 
@@ -145,7 +145,7 @@ class MonitoringConfig(BaseModel):
     metrics_interval: int = Field(default=60, ge=10, le=3600)
     health_check_interval: int = Field(default=30, ge=5, le=300)
     external_service: bool = False
-    metrics_endpoint: Optional[str] = None
+    metrics_endpoint: str | None = None
 
 
 class PathsConfig(BaseModel):
@@ -172,12 +172,12 @@ class PathsConfig(BaseModel):
 class APIKeysConfig(BaseModel):
     """API keys configuration (for production)"""
 
-    openai: Optional[str] = None
-    google: Optional[str] = None
-    openrouter: Optional[str] = None
-    xai: Optional[str] = None
-    anthropic: Optional[str] = None
-    pinecone: Optional[str] = None
+    openai: str | None = None
+    google: str | None = None
+    openrouter: str | None = None
+    xai: str | None = None
+    anthropic: str | None = None
+    pinecone: str | None = None
 
 
 class PineconeConfig(BaseModel):
@@ -201,8 +201,8 @@ class KortanaConfig(BaseSettings):
     database: DatabaseConfig = DatabaseConfig()
     monitoring: MonitoringConfig = MonitoringConfig()
     paths: PathsConfig = PathsConfig()
-    api_keys: Optional[APIKeysConfig] = None
-    covenant_rules: Optional[Dict[Any, Any]] = None  # Added for covenant.yaml content
+    api_keys: APIKeysConfig | None = None
+    covenant_rules: dict[Any, Any] | None = None  # Added for covenant.yaml content
     pinecone: PineconeConfig = PineconeConfig()
     default_llm_id: str = "gpt-4"
 
@@ -246,7 +246,7 @@ class KortanaConfig(BaseSettings):
             return APIKeysConfig(**resolved)
         return v
 
-    def get_api_key(self, provider: str) -> Optional[str]:
+    def get_api_key(self, provider: str) -> str | None:
         """Get API key for a specific provider"""
         if not self.api_keys:
             return None

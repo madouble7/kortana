@@ -10,17 +10,17 @@ Example:
     python scripts/add_project_memory_entry.py implementation_note "Added automatic summarization trigger in brain.py."
 """
 
-import sys
-import os
 import argparse
+import os
+import sys
 
 # Add the src/ directory to sys.path to allow importing core.memory
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
 
 # Import the memory helper functions
 from kortana.core.memory import (
-    save_decision,
     save_context_summary,
+    save_decision,
     save_implementation_note,
     save_project_insight,
 )

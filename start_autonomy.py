@@ -17,7 +17,7 @@ import threading
 import time
 from pathlib import Path
 
-# Add project root to path
+# Add project root to path first, then import project modules
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
@@ -143,10 +143,10 @@ def show_system_status():
         print(f"📥 Queue files: {len(queue_files)}")
         for queue_file in queue_files:
             try:
-                with open(queue_file, "r") as f:
+                with open(queue_file) as f:
                     lines = len(f.readlines())
                 print(f"   {queue_file.name}: {lines} messages")
-            except:
+            except Exception:  # Changed bare except to except Exception
                 print(f"   {queue_file.name}: error reading")
 
 
@@ -194,7 +194,7 @@ def main():
         print()
 
         # Start relay in background
-        relay_thread = start_relay_daemon()
+        start_relay_daemon()  # Removed assignment to unused relay_thread
         time.sleep(3)  # Give relay time to start
 
         # Run agent demonstration

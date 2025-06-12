@@ -105,7 +105,7 @@ def main():
 
         # Include basic execution results
         if exec_result_file.exists():
-            with open(exec_result_file, "r") as exec_f:
+            with open(exec_result_file) as exec_f:
                 f.write(exec_f.read() + "\n\n")
 
     print("\nAll diagnostics completed!")

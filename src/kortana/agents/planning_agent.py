@@ -4,7 +4,7 @@ This module provides functionality to plan daily tasks based on memory records.
 """
 
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 
 from kortana.config.schema import KortanaConfig
 from kortana.memory.memory_manager import MemoryManager
@@ -16,7 +16,7 @@ class PlanningAgent:
     Retrieves incomplete tasks from memory and organizes them based on significance.
     """
 
-    def __init__(self, config: Optional[KortanaConfig] = None) -> None:
+    def __init__(self, config: KortanaConfig | None = None) -> None:
         """
         Initialize a PlanningAgent with configuration.
 
@@ -26,7 +26,7 @@ class PlanningAgent:
         self.config = config if config is not None else KortanaConfig()
         self.mem = MemoryManager(self.config)
 
-    def plan_day(self) -> Dict[str, Any]:
+    def plan_day(self) -> dict[str, Any]:
         """
         Create a prioritized plan for today's tasks.
 

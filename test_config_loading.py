@@ -8,11 +8,14 @@ import sys
 from pathlib import Path
 
 # Add the parent directory to Python path to make imports work
-current_dir = Path(__file__).parent
-if str(current_dir) not in sys.path:
-    sys.path.insert(0, str(current_dir))
+# This should be done before other project imports if test_config_loading.py is run as a script
+current_dir = Path(__file__).resolve().parent  # Use resolve() for a canonical path
+project_root = current_dir  # Assuming this test file is in the project root
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
 
-from config import load_config
+# Now import from the config module (assuming it's in the project root or src)
+from src.kortana.config import load_config
 
 
 def test_covenant_loading():

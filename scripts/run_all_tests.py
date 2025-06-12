@@ -70,7 +70,7 @@ def run_frontend_tests():
     try:
         import json
 
-        with open(package_json, "r") as f:
+        with open(package_json) as f:
             data = json.load(f)
 
         if "scripts" not in data or "test" not in data["scripts"]:

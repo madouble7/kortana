@@ -9,7 +9,7 @@ from collections import defaultdict
 
 def analyze_ruff_results():
     try:
-        with open("ruff_analysis.json", "r") as f:
+        with open("ruff_analysis.json") as f:
             data = json.load(f)
     except (FileNotFoundError, json.JSONDecodeError) as e:
         print(f"Error reading ruff_analysis.json: {e}")

@@ -93,7 +93,7 @@ def main():
             "Note: For this section, manually run the following commands in a fresh shell:\n\n"
         )
         f.write("```\n")
-        f.write("python -m venv .venv && .\.venv\Scripts\activate\n")
+        f.write("python -m venv .venv && .\\.venv\\Scripts\activate\n")
         f.write("pip install -e .\n")
         f.write(
             "python -c \"import kortana, importlib, pkg_resources; print('kortana import ok:', kortana.__file__); print('console scripts:', [e.name for e in pkg_resources.iter_entry_points('console_scripts') if 'kortana' in e.name])\"\n"

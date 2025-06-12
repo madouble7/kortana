@@ -6,13 +6,14 @@ These tests validate the end-to-end flow of the memory system, including:
 - Memory integration in system prompts
 """
 
-import os
-import sys
-import pytest
 import json
+import os
 import shutil
-from datetime import datetime, timezone, timedelta
-from unittest.mock import patch, MagicMock
+import sys
+from datetime import UTC, datetime, timedelta
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 # Add the src directory to the path so we can import modules
 sys.path.insert(
@@ -21,12 +22,12 @@ sys.path.insert(
 
 # Import the modules we want to test
 from kortana.core.memory import (
+    get_memory_by_type,
     load_memory,
-    save_memory,
     save_decision,
     save_implementation_note,
+    save_memory,
     save_project_insight,
-    get_memory_by_type,
 )
 from src.kortana.core.brain import ChatEngine
 
@@ -121,7 +122,7 @@ class TestMemoryIntegration:
                 "type": "decision",
                 "content": "First decision",
                 "timestamp": (
-                    datetime.now(timezone.utc) - timedelta(days=3)
+                    datetime.now(UTC) - timedelta(days=3)
                 ).isoformat(),
                 "tags": [],
             }
@@ -132,7 +133,7 @@ class TestMemoryIntegration:
                 "type": "decision",
                 "content": "Second decision",
                 "timestamp": (
-                    datetime.now(timezone.utc) - timedelta(days=2)
+                    datetime.now(UTC) - timedelta(days=2)
                 ).isoformat(),
                 "tags": [],
             }
@@ -142,7 +143,7 @@ class TestMemoryIntegration:
             {
                 "type": "decision",
                 "content": "Latest decision",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "tags": [],
             }
         )
@@ -212,20 +213,20 @@ class TestMemoryIntegration:
             {
                 "type": "decision",
                 "content": "Use automatic summarization",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "tags": ["memory"],
             },
             {
                 "type": "implementation_note",
                 "content": "Added memory helper functions",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "component": "memory_system",
                 "priority": "high",
             },
             {
                 "type": "project_insight",
                 "content": "Memory organization is crucial",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "impact": "high",
             },
         ]
@@ -303,7 +304,7 @@ class TestMemoryIntegration:
                 "type": "implementation_note",
                 "content": "Old implementation note",
                 "timestamp": (
-                    datetime.now(timezone.utc) - timedelta(days=10)
+                    datetime.now(UTC) - timedelta(days=10)
                 ).isoformat(),
                 "component": "old_component",
                 "priority": "low",
@@ -314,7 +315,7 @@ class TestMemoryIntegration:
             {
                 "type": "implementation_note",
                 "content": "Recent implementation note",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "component": "current_component",
                 "priority": "high",
             }

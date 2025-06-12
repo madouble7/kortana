@@ -1,9 +1,9 @@
-import logging
-import sys
-import os
-import unittest
 import json
-from unittest.mock import patch, MagicMock
+import logging
+import os
+import sys
+import unittest
+from unittest.mock import MagicMock, patch
 
 # Configure logging for this diagnostic burst (basic console output). This should happen first.
 # Note: basicConfig should ideally be called only once at the application entry point.
@@ -27,8 +27,8 @@ logger.info(
 logger.info(f"[FLASH_DIAG] sys.path at {__name__} import: {sys.path}")
 logger.info(f"[FLASH_DIAG] CWD at {__name__} import: {os.getcwd()}")
 
-import sys
 import os  # For absolute paths
+import sys
 
 print("--- TRACE (tests/test_project_memory_integration.py): sys.path ---")
 for p in sys.path:
@@ -60,8 +60,8 @@ sys.path.insert(
 )
 
 # Import the modules we want to test
-from src.core import memory
 from src.brain import ChatEngine
+from src.core import memory
 
 """
 Integration tests for Kor'tana's memory system.
@@ -184,7 +184,7 @@ class TestProjectMemoryIntegration(unittest.TestCase):
         memory.save_decision(decision_content)
 
         # Check the file content directly
-        with open(TEST_MEMORY_FILE, "r") as f:
+        with open(TEST_MEMORY_FILE) as f:
             lines = f.readlines()
 
         # This assertion needs to account for any initial memories written in setUp
@@ -204,7 +204,7 @@ class TestProjectMemoryIntegration(unittest.TestCase):
         memory.save_context_summary(summary_content)
 
         # Check the file content directly
-        with open(TEST_MEMORY_FILE, "r") as f:
+        with open(TEST_MEMORY_FILE) as f:
             lines = f.readlines()
 
         # Assuming we check the *last* line appended
@@ -220,7 +220,7 @@ class TestProjectMemoryIntegration(unittest.TestCase):
         # Call save_implementation_note directly from the memory module
         memory.save_implementation_note(note_content)
 
-        with open(TEST_MEMORY_FILE, "r") as f:
+        with open(TEST_MEMORY_FILE) as f:
             lines = f.readlines()
 
         # Assuming we check the *last* line appended
@@ -236,7 +236,7 @@ class TestProjectMemoryIntegration(unittest.TestCase):
         # Call save_project_insight directly from the memory module
         memory.save_project_insight(insight_content)
 
-        with open(TEST_MEMORY_FILE, "r") as f:
+        with open(TEST_MEMORY_FILE) as f:
             lines = f.readlines()
 
         # Assuming we check the *last* line appended

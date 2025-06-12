@@ -21,7 +21,7 @@ import sqlite3
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import tiktoken
 
@@ -39,7 +39,7 @@ class KortanaRelay:
     """Enhanced relay with Gemini integration and context management"""
 
     def __init__(
-        self, project_root: Optional[str] = None, gemini_api_key: Optional[str] = None
+        self, project_root: str | None = None, gemini_api_key: str | None = None
     ):
         """Initialize relay with Gemini integration"""
         self.project_root = (
@@ -140,7 +140,7 @@ class KortanaRelay:
         task_id: str,
         summary: str,
         code: str = "",
-        issues: List[str] = None,
+        issues: list[str] = None,
         commit_ref: str = "",
     ) -> int:
         """Save context package to database"""
@@ -173,7 +173,7 @@ class KortanaRelay:
         print(f"[SAVED] Context package '{task_id}' ({tokens} tokens)")
         return tokens
 
-    def relay_context(self, task: Dict[str, Any], history: str) -> str:
+    def relay_context(self, task: dict[str, Any], history: str) -> str:
         """Main context relay logic - checks if summarization needed"""
         history_tokens = self.count_tokens(history)
         threshold_tokens = int(self.context_window * self.handoff_threshold)
@@ -202,7 +202,7 @@ class KortanaRelay:
 
         return history
 
-    def _discover_agents(self) -> Dict[str, Dict[str, Path]]:
+    def _discover_agents(self) -> dict[str, dict[str, Path]]:
         """Auto-discover agents from log and queue files"""
         agents = {}
         log_files = list(self.logs_dir.glob("*.log"))
@@ -222,11 +222,11 @@ class KortanaRelay:
 
         return agents
 
-    def _load_relay_state(self) -> Dict[str, Any]:
+    def _load_relay_state(self) -> dict[str, Any]:
         """Load relay state"""
         if self.relay_state_file.exists():
             try:
-                with open(self.relay_state_file, "r") as f:
+                with open(self.relay_state_file) as f:
                     return json.load(f)
             except (json.JSONDecodeError, FileNotFoundError):
                 pass
@@ -238,7 +238,7 @@ class KortanaRelay:
         with open(self.relay_state_file, "w") as f:
             json.dump(self.relay_state, f, indent=2)
 
-    def _get_new_messages(self, agent_name: str) -> List[str]:
+    def _get_new_messages(self, agent_name: str) -> list[str]:
         """Get new messages from agent log"""
         log_file = self.agents[agent_name]["log"]
         if not log_file.exists():
@@ -248,7 +248,7 @@ class KortanaRelay:
         last_line_count = agent_state.get("last_line_count", 0)
 
         try:
-            with open(log_file, "r", encoding="utf-8") as f:
+            with open(log_file, encoding="utf-8") as f:
                 lines = f.readlines()
         except Exception as e:
             print(f"[WARNING] Error reading {log_file}: {e}")
@@ -271,7 +271,7 @@ class KortanaRelay:
 
         return new_messages
 
-    def _relay_to_all_other_agents(self, source_agent: str, messages: List[str]) -> int:
+    def _relay_to_all_other_agents(self, source_agent: str, messages: list[str]) -> int:
         """Relay messages to other agents"""
         if not messages:
             return 0
@@ -299,7 +299,7 @@ class KortanaRelay:
 
         return relayed_count
 
-    def relay_cycle(self) -> Dict[str, int]:
+    def relay_cycle(self) -> dict[str, int]:
         """Single relay cycle with context management"""
         cycle_stats = {
             "agents_checked": 0,

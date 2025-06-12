@@ -4,11 +4,10 @@ Complete VS Code Extension Test for Project Kor'tana
 Tests all configured extensions with actual API calls to verify functionality.
 """
 
+import json
 import os
 import sys
-import json
 from pathlib import Path
-from typing import Tuple
 
 
 class ExtensionTester:
@@ -18,7 +17,7 @@ class ExtensionTester:
         self.workspace_root = Path("c:/kortana")
         self.test_results = []
 
-    def test_openai_connection(self) -> Tuple[bool, str]:
+    def test_openai_connection(self) -> tuple[bool, str]:
         """Test OpenAI API connection."""
         try:
             import openai
@@ -45,7 +44,7 @@ class ExtensionTester:
         except Exception as e:
             return False, f"OpenAI connection failed: {str(e)}"
 
-    def test_google_connection(self) -> Tuple[bool, str]:
+    def test_google_connection(self) -> tuple[bool, str]:
         """Test Google Gemini API connection."""
         try:
             import google.generativeai as genai
@@ -70,7 +69,7 @@ class ExtensionTester:
         except Exception as e:
             return False, f"Google Gemini connection failed: {str(e)}"
 
-    def test_continue_config(self) -> Tuple[bool, str]:
+    def test_continue_config(self) -> tuple[bool, str]:
         """Test Continue AI configuration."""
         try:
             config_file = self.workspace_root / ".continue" / "config.json"
@@ -78,7 +77,7 @@ class ExtensionTester:
             if not config_file.exists():
                 return False, "Continue config file not found"
 
-            with open(config_file, "r") as f:
+            with open(config_file) as f:
                 config = json.load(f)
 
             # Check if models are configured
@@ -105,7 +104,7 @@ class ExtensionTester:
         except Exception as e:
             return False, f"Continue config test failed: {str(e)}"
 
-    def test_python_environment(self) -> Tuple[bool, str]:
+    def test_python_environment(self) -> tuple[bool, str]:
         """Test Python environment setup."""
         try:
             python_path = self.workspace_root / "venv311" / "Scripts" / "python.exe"
@@ -126,7 +125,7 @@ class ExtensionTester:
         except Exception as e:
             return False, f"Python environment test failed: {str(e)}"
 
-    def test_vscode_tasks(self) -> Tuple[bool, str]:
+    def test_vscode_tasks(self) -> tuple[bool, str]:
         """Test VS Code tasks configuration."""
         try:
             tasks_file = self.workspace_root / ".vscode" / "tasks.json"
@@ -134,7 +133,7 @@ class ExtensionTester:
             if not tasks_file.exists():
                 return False, "VS Code tasks.json not found"
 
-            with open(tasks_file, "r") as f:
+            with open(tasks_file) as f:
                 content = f.read()
                 # Remove comments for parsing
                 lines = [
@@ -241,7 +240,7 @@ def main():
     # Load environment variables if .env exists
     env_file = Path(".env")
     if env_file.exists():
-        with open(env_file, "r") as f:
+        with open(env_file) as f:
             for line in f:
                 line = line.strip()
                 if line and not line.startswith("#") and "=" in line:

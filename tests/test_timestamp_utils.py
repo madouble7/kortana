@@ -1,5 +1,6 @@
-import unittest
 import time
+import unittest
+
 from src.utils.timestamp_utils import get_iso_timestamp
 
 

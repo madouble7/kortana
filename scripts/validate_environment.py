@@ -5,70 +5,75 @@ Validates that all API keys and environment variables are properly accessible
 for VS Code extensions and autonomous agent development.
 """
 
-import os
-import sys
 import json
+import sys
+from datetime import datetime
 from pathlib import Path
-from typing import Dict
 
 
 class EnvironmentValidator:
     """Validates environment configuration for Kor'tana development."""
 
-    def __init__(self):
-        self.workspace_root = Path("c:/kortana")
-        self.required_env_vars = [
-            "OPENAI_API_KEY",
-            "GOOGLE_API_KEY",
-            "OPENROUTER_API_KEY",
-            "XAI_API_KEY",
-            "SK_ANT_API_KEY",
-            "PINECONE_API_KEY",
-            "VECTOR_STORE",
-        ]
+    def __init__(self, root_path: Path):
+        self.workspace_root = root_path
+        self.results_dir = self.workspace_root / "audit_results"
+        self.results_dir.mkdir(exist_ok=True)
+        self.report_path = (
+            self.results_dir
+            / f"environment_validation_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+        )
+        self.log_messages: list[str] = []
+        self.categories: dict[str, list[str]] = {
+            "CRITICAL": [],
+            "ERROR": [],
+            "WARNING": [],
+            "SUCCESS": [],
+            "INFO": [],
+            "MISSING": [],
+        }
+        self.python_executable: str | None = None
+        self.pip_executable: str | None = None
+        self.env_vars: dict[str, str] = {}
 
-        self.optional_env_vars = ["GCP_SERVICE_ACCOUNT_KEY_PATH", "PYTHONPATH"]
+    def _log(self, message: str, level: str = "INFO"):
+        self.log_messages.append(f"{level}: {message}")
+        self.categories[level].append(message)
 
-        self.results = []
-
-    def load_env_file(self) -> Dict[str, str]:
+    def load_env_file(self) -> dict[str, str]:
         """Load environment variables from .env file."""
         env_file = self.workspace_root / ".env"
-        env_vars = {}
+        loaded_vars: dict[str, str] = {}
 
         if not env_file.exists():
-            self.results.append(
-                ("❌", "CRITICAL", f".env file not found at {env_file}")
-            )
-            return env_vars
+            self._log(f".env file not found at {env_file}", "CRITICAL")
+            return loaded_vars
 
         try:
-            with open(env_file, "r", encoding="utf-8") as f:
-                for line_num, line in enumerate(f, 1):
+            with open(env_file, encoding="utf-8") as f:
+                for line in f:
                     line = line.strip()
                     if line and not line.startswith("#") and "=" in line:
                         key, value = line.split("=", 1)
-                        env_vars[key.strip()] = value.strip()
+                        loaded_vars[key.strip()] = value.strip()
 
-            self.results.append(
-                ("✅", "SUCCESS", f"Loaded {len(env_vars)} variables from .env")
-            )
+            self._log(f"Loaded {len(loaded_vars)} variables from .env", "SUCCESS")
 
         except Exception as e:
-            self.results.append(("❌", "ERROR", f"Failed to read .env file: {e}"))
+            self._log(f"Failed to read .env file: {e}", "ERROR")
 
-        return env_vars
+        return loaded_vars
 
-    def validate_api_keys(self, env_vars: Dict[str, str]) -> None:
+    def validate_api_keys(self, env_vars: dict[str, str]) -> None:
         """Validate API key format and presence."""
+        self._log("### 🔑 API Key Validation", "INFO")
 
         api_key_patterns = {
-            "OPENAI_API_KEY": ("sk-proj-", 164),  # OpenAI project keys
-            "GOOGLE_API_KEY": ("AIza", 39),  # Google API keys
-            "OPENROUTER_API_KEY": ("sk-or-v1-", 71),  # OpenRouter keys
-            "XAI_API_KEY": ("xai-", 67),  # xAI keys
-            "SK_ANT_API_KEY": ("sk-ant-api", 108),  # Anthropic keys
-            "PINECONE_API_KEY": ("pcsk_", 72),  # Pinecone keys
+            "OPENAI_API_KEY": ("sk-proj-", 164),
+            "GOOGLE_API_KEY": ("AIza", 39),
+            "OPENROUTER_API_KEY": ("sk-or-v1-", 71),
+            "XAI_API_KEY": ("xai-", 67),
+            "SK_ANT_API_KEY": ("sk-ant-api", 108),
+            "PINECONE_API_KEY": ("pcsk_", 72),
         }
 
         for key_name, (prefix, expected_length) in api_key_patterns.items():
@@ -76,34 +81,23 @@ class EnvironmentValidator:
                 key_value = env_vars[key_name]
 
                 if key_value.startswith(prefix):
-                    if len(key_value) >= expected_length - 10:  # Allow some variance
-                        self.results.append(
-                            ("✅", "SUCCESS", f"{key_name}: Valid format and length")
-                        )
+                    if len(key_value) >= expected_length - 10:
+                        self._log(f"{key_name}: Valid format and length", "SUCCESS")
                     else:
-                        self.results.append(
-                            (
-                                "⚠️",
-                                "WARNING",
-                                f"{key_name}: Valid prefix but unexpected length ({len(key_value)})",
-                            )
+                        self._log(
+                            f"{key_name}: Valid prefix but unexpected length ({len(key_value)})",
+                            "WARNING",
                         )
                 else:
-                    self.results.append(
-                        (
-                            "❌",
-                            "ERROR",
-                            f"{key_name}: Invalid format (expected to start with {prefix})",
-                        )
+                    self._log(
+                        f"{key_name}: Invalid format (expected to start with {prefix})",
+                        "ERROR",
                     )
             else:
-                self.results.append(
-                    ("❌", "MISSING", f"{key_name}: Not found in environment")
-                )
+                self._log(f"{key_name}: Not found in environment", "MISSING")
 
-    def validate_vscode_config(self) -> None:
+    def validate_vscode_settings(self) -> None:
         """Validate VS Code configuration files."""
-
         config_files = [
             (".vscode/settings.json", "VS Code settings"),
             (".vscode/tasks.json", "VS Code tasks"),
@@ -117,117 +111,99 @@ class EnvironmentValidator:
 
             if full_path.exists():
                 try:
-                    with open(full_path, "r", encoding="utf-8") as f:
+                    with open(full_path, encoding="utf-8") as f:
                         content = f.read()
-                        # Remove comments for JSON parsing
                         lines = []
                         for line in content.split("\n"):
                             if not line.strip().startswith("//"):
                                 lines.append(line)
                         clean_content = "\n".join(lines)
 
-                        # Try to parse as JSON
                         json.loads(clean_content)
-                        self.results.append(
-                            (
-                                "✅",
-                                "SUCCESS",
-                                f"{description}: Valid JSON configuration",
-                            )
-                        )
+                        self._log(f"{description}: Valid JSON configuration", "SUCCESS")
 
-                        # Check for environment variable references
                         if "${env:" in content or "${OPENAI_API_KEY}" in content:
-                            self.results.append(
-                                (
-                                    "✅",
-                                    "SUCCESS",
-                                    f"{description}: Contains environment variable references",
-                                )
+                            self._log(
+                                f"{description}: Contains environment variable references",
+                                "SUCCESS",
                             )
                         else:
-                            self.results.append(
-                                (
-                                    "⚠️",
-                                    "INFO",
-                                    f"{description}: No environment variable references found",
-                                )
+                            self._log(
+                                f"{description}: No environment variable references found",
+                                "INFO",
                             )
 
                 except json.JSONDecodeError as e:
-                    self.results.append(
-                        ("❌", "ERROR", f"{description}: Invalid JSON - {e}")
-                    )
+                    self._log(f"{description}: Invalid JSON - {e}", "ERROR")
                 except Exception as e:
-                    self.results.append(
-                        ("❌", "ERROR", f"{description}: Read error - {e}")
-                    )
+                    self._log(f"{description}: Read error - {e}", "ERROR")
             else:
-                self.results.append(
-                    ("❌", "MISSING", f"{description}: File not found at {config_path}")
-                )
+                self._log(f"{description}: File not found at {config_path}", "MISSING")
 
     def validate_python_environment(self) -> None:
         """Validate Python environment and PYTHONPATH."""
-
-        # Check Python executable
         python_path = self.workspace_root / "venv311" / "Scripts" / "python.exe"
         if python_path.exists():
-            self.results.append(
-                ("✅", "SUCCESS", f"Python virtual environment found at {python_path}")
-            )
+            self._log(f"Python virtual environment found at {python_path}", "SUCCESS")
         else:
-            self.results.append(
-                (
-                    "❌",
-                    "ERROR",
-                    f"Python virtual environment not found at {python_path}",
-                )
-            )
+            self._log(f"Python virtual environment not found at {python_path}", "ERROR")
 
-        # Check PYTHONPATH components
         expected_paths = ["src", "kortana.core", "kortana.team", "kortana.network"]
 
         for path_component in expected_paths:
             full_path = self.workspace_root / path_component
             if full_path.exists():
-                self.results.append(
-                    ("✅", "SUCCESS", f"PYTHONPATH component exists: {path_component}")
-                )
+                self._log(f"PYTHONPATH component exists: {path_component}", "SUCCESS")
             else:
-                self.results.append(
-                    (
-                        "⚠️",
+                self._log(
+                    f"PYTHONPATH component not found: {path_component}", "WARNING"
+                )
+
+    def validate_file_encoding(self, file_paths: list[Path]) -> None:
+        """Validate file encoding."""
+        self._log("### 📄 File Encoding Validation", "INFO")
+        for file_path in file_paths:
+            if file_path.exists():
+                try:
+                    with open(file_path, "rb") as f_bin:
+                        content_start = f_bin.read(3)
+
+                    if content_start == b"\xef\xbb\xbf":
+                        self._log(
+                            f"{file_path.relative_to(self.workspace_root)} is UTF-8 with BOM.",
+                            "SUCCESS",
+                        )
+                    else:
+                        try:
+                            with open(file_path, encoding="utf-8") as f_text:
+                                f_text.read()
+                            self._log(
+                                f"{file_path.relative_to(self.workspace_root)} is UTF-8 compatible.",
+                                "SUCCESS",
+                            )
+                        except UnicodeDecodeError:
+                            self._log(
+                                f"{file_path.relative_to(self.workspace_root)} is not UTF-8 encoded.",
+                                "ERROR",
+                            )
+                        except Exception as e_read:
+                            self._log(
+                                f"Could not fully read {file_path.relative_to(self.workspace_root)} as UTF-8: {e_read}",
+                                "WARNING",
+                            )
+                except Exception as e_open:
+                    self._log(
+                        f"Could not check encoding for {file_path.relative_to(self.workspace_root)}: {e_open}",
                         "WARNING",
-                        f"PYTHONPATH component not found: {path_component}",
                     )
-                )
-
-    def test_environment_access(self) -> None:
-        """Test if environment variables are accessible from Python."""
-
-        for var_name in self.required_env_vars:
-            value = os.getenv(var_name)
-            if value:
-                # Mask sensitive data
-                display_value = (
-                    f"{value[:8]}...{value[-4:]}" if len(value) > 12 else "***"
-                )
-                self.results.append(
-                    (
-                        "✅",
-                        "SUCCESS",
-                        f"Environment access: {var_name} = {display_value}",
-                    )
-                )
             else:
-                self.results.append(
-                    ("❌", "ERROR", f"Environment access: {var_name} not accessible")
+                self._log(
+                    f"File not found for encoding check: {file_path.relative_to(self.workspace_root)}",
+                    "MISSING",
                 )
 
     def generate_report(self) -> str:
         """Generate a comprehensive validation report."""
-
         report_lines = [
             "=" * 80,
             "🚀 PROJECT KOR'TANA - ENVIRONMENT VALIDATION REPORT",
@@ -235,23 +211,11 @@ class EnvironmentValidator:
             "",
         ]
 
-        # Group results by category
-        categories = {
-            "CRITICAL": [],
-            "ERROR": [],
-            "WARNING": [],
-            "SUCCESS": [],
-            "INFO": [],
-            "MISSING": [],
-        }
-
-        for emoji, category, message in self.results:
-            categories[category].append(f"{emoji} {message}")
-
-        # Add summary
-        total_issues = len(categories["CRITICAL"]) + len(categories["ERROR"])
-        total_warnings = len(categories["WARNING"]) + len(categories["MISSING"])
-        total_success = len(categories["SUCCESS"]) + len(categories["INFO"])
+        total_issues = len(self.categories["CRITICAL"]) + len(self.categories["ERROR"])
+        total_warnings = len(self.categories["WARNING"]) + len(
+            self.categories["MISSING"]
+        )
+        total_success = len(self.categories["SUCCESS"]) + len(self.categories["INFO"])
 
         report_lines.extend(
             [
@@ -263,14 +227,12 @@ class EnvironmentValidator:
             ]
         )
 
-        # Add detailed results
-        for category_name, messages in categories.items():
+        for category_name, messages in self.categories.items():
             if messages:
                 report_lines.extend(
                     [f"📋 {category_name}:", *[f"   {msg}" for msg in messages], ""]
                 )
 
-        # Add recommendations
         if total_issues > 0:
             report_lines.extend(
                 [
@@ -306,41 +268,32 @@ class EnvironmentValidator:
 
     def run_validation(self) -> str:
         """Run complete environment validation."""
+        self._log("🔍 Starting environment validation for Project Kor'tana...", "INFO")
 
-        print("🔍 Starting environment validation for Project Kor'tana...")
-
-        # Load environment variables
-        env_vars = self.load_env_file()
-
-        # Run all validation checks
-        self.validate_api_keys(env_vars)
-        self.validate_vscode_config()
+        self.env_vars = self.load_env_file()
+        self.validate_api_keys(self.env_vars)
+        self.validate_vscode_settings()
         self.validate_python_environment()
-        self.test_environment_access()
 
-        # Generate and return report
         return self.generate_report()
 
 
 def main():
     """Main validation entry point."""
-
-    validator = EnvironmentValidator()
+    workspace_root = Path("c:\\project-kortana")
+    validator = EnvironmentValidator(workspace_root)
     report = validator.run_validation()
 
     print(report)
 
-    # Save report to file
-    report_file = Path("c:/kortana/logs/environment_validation_report.txt")
-    report_file.parent.mkdir(exist_ok=True)
-
-    with open(report_file, "w", encoding="utf-8") as f:
+    with open(validator.report_path, "w", encoding="utf-8") as f:
         f.write(report)
 
-    print(f"\n📄 Report saved to: {report_file}")
+    print(f"\n📄 Report saved to: {validator.report_path}")
 
-    # Return appropriate exit code
-    error_count = len([r for r in validator.results if r[1] in ["CRITICAL", "ERROR"]])
+    error_count = len(validator.categories["CRITICAL"]) + len(
+        validator.categories["ERROR"]
+    )
     return 1 if error_count > 0 else 0
 
 

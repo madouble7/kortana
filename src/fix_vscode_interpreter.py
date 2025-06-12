@@ -74,7 +74,7 @@ def fix_vscode_interpreter():
 
     if root_settings_path.exists():
         try:
-            with open(root_settings_path, "r") as f:
+            with open(root_settings_path) as f:
                 root_settings = json.load(f)
         except json.JSONDecodeError:
             print("Warning: Existing root settings.json is invalid, creating new file")
@@ -120,7 +120,7 @@ def fix_vscode_interpreter():
 
     if src_settings_path.exists():
         try:
-            with open(src_settings_path, "r") as f:
+            with open(src_settings_path) as f:
                 src_settings = json.load(f)
         except json.JSONDecodeError:
             print("Warning: Existing src settings.json is invalid, creating new file")
@@ -157,7 +157,7 @@ def fix_vscode_interpreter():
     if workspace_files:
         workspace_file = workspace_files[0]
         try:
-            with open(workspace_file, "r") as f:
+            with open(workspace_file) as f:
                 workspace_data = json.load(f)
 
             if "settings" not in workspace_data:

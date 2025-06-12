@@ -132,7 +132,7 @@ def main():
     print(f"Run completed. Output saved to {log_file}")
 
     # Print the first part of the output
-    with open(log_file, "r") as f:
+    with open(log_file) as f:
         content = f.read()
         print("\n" + "=" * 40 + " OUTPUT PREVIEW " + "=" * 40)
         print(content[:1000] + "...\n")

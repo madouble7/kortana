@@ -7,7 +7,7 @@ required by the Kortana autonomous development system.
 import json
 import logging  # Added for logging
 import os
-from typing import Any, Dict, List, Optional  # Added Any for flexibility
+from typing import Any  # Added Any for flexibility
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ class MemoryLoader:
                 f"Data path does not exist: {self.data_path}. Please ensure it's created."
             )
 
-    def load_jsonl(self, file_name: str = "memory.jsonl") -> List[Dict[str, Any]]:
+    def load_jsonl(self, file_name: str = "memory.jsonl") -> list[dict[str, Any]]:
         """
         Loads a .jsonl file and returns a list of memory entries.
 
@@ -47,7 +47,7 @@ class MemoryLoader:
             List[Dict[str, Any]]: A list of memory entries.
         """
         full_path = os.path.join(self.data_path, file_name)
-        memories: List[Dict[str, Any]] = []
+        memories: list[dict[str, Any]] = []
         if not os.path.exists(full_path):
             logging.warning(
                 f"Memory file not found: {full_path}. Returning empty list."
@@ -55,7 +55,7 @@ class MemoryLoader:
             return memories
 
         try:
-            with open(full_path, "r", encoding="utf-8") as f:
+            with open(full_path, encoding="utf-8") as f:
                 for line_number, line in enumerate(f, 1):
                     if line.strip():
                         try:
@@ -72,8 +72,8 @@ class MemoryLoader:
         return memories
 
     def get_entries_by_mode(
-        self, entries: List[Dict[str, Any]], mode: str
-    ) -> List[Dict[str, Any]]:
+        self, entries: list[dict[str, Any]], mode: str
+    ) -> list[dict[str, Any]]:
         """
         Filters memory entries by a specific mode.
 
@@ -102,8 +102,8 @@ class MemoryLoader:
         return filtered_entries
 
     def get_recent_entries(
-        self, entries: List[Dict[str, Any]], count: int = 5
-    ) -> List[Dict[str, Any]]:
+        self, entries: list[dict[str, Any]], count: int = 5
+    ) -> list[dict[str, Any]]:
         """
         Returns the most recent N memory entries from a list.
 
@@ -125,7 +125,7 @@ class MemoryLoader:
 
         return entries[-count:]
 
-    def detect_pattern_tags(self, entries: List[Dict[str, Any]]) -> Optional[List[str]]:
+    def detect_pattern_tags(self, entries: list[dict[str, Any]]) -> list[str] | None:
         """
         Detects recurring themes or patterns from memory entries.
 

@@ -16,7 +16,7 @@ def test_minimal_import():
     # Test 2: Config system
     print("2. Testing config...")
     try:
-        from config import load_config
+        from src.kortana.config import load_config
 
         settings = load_config()
         print(f"   ✓ Config OK: {settings.app.name}")

@@ -97,7 +97,7 @@ def main():
             "Note: For this section, manually run the following commands in a fresh shell:\n\n"
         )
         f.write("```\n")
-        f.write("python -m venv .venv && .\.venv\Scripts\activate\n")
+        f.write("python -m venv .venv && .\\.venv\\Scripts\activate\n")
         f.write("pip install -e .\n")
         f.write(
             "python -c \"import kortana, importlib, pkg_resources; print('kortana import ok:', kortana.__file__); print('console scripts:', [e.name for e in pkg_resources.iter_entry_points('console_scripts') if 'kortana' in e.name])\"\n"
@@ -170,7 +170,7 @@ def main():
         print_section(f, "CONFIG PIPELINE CHECK")
 
         f.write("Checking config pipeline:\n\n")
-        config_cmd = 'from config import load_config; cfg = load_config(); print("loaded env:", cfg.model_dump())'
+        config_cmd = 'from src.kortana.config import load_config; cfg = load_config(); print("loaded env:", cfg.model_dump())'
         config_output, config_status = run_command(
             [sys.executable, "-c", config_cmd], cwd=project_root
         )

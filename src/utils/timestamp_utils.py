@@ -15,7 +15,7 @@ def get_iso_timestamp():
         str: The current UTC date and time string in ISO 8601 format (YYYY-MM-DDTHH:MM:SSZ).
     """
     # Get the current UTC time
-    now_utc = datetime.datetime.now(datetime.timezone.utc)
+    now_utc = datetime.datetime.now(datetime.UTC)
     # Format as ISO 8601 string with 'Z' suffix for UTC
     iso_timestamp = now_utc.isoformat(timespec="seconds").replace("+00:00", "Z")
     return iso_timestamp

@@ -4,7 +4,7 @@ import os
 # First, determine if we need to modify the __init__.py file
 init_path = os.path.join("src", "kortana", "__init__.py")
 
-with open(init_path, "r") as f:
+with open(init_path) as f:
     content = f.read()
 
 if "from .config import" in content:

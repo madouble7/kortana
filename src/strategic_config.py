@@ -10,7 +10,7 @@ import os
 import time
 from dataclasses import asdict, dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -42,14 +42,14 @@ class PerformanceMetric:
     quality_score: float  # E.g., 0.0 to 1.0 or based on specific rubrics
     cost_effectiveness: float  # E.g., normalized cost per task
     time_efficiency: float  # E.g., normalized latency or tokens/sec
-    human_validation: Optional[float] = None  # Human feedback score
-    sacred_alignment_achieved: Optional[Dict[str, float]] = (
+    human_validation: float | None = None  # Human feedback score
+    sacred_alignment_achieved: dict[str, float] | None = (
         None  # How well principles were embodied in this response
     )
     timestamp: float = time.time()
-    metadata: Optional[Dict] = None
+    metadata: dict | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the performance metric to a dictionary representation.
 
         Returns:
@@ -82,13 +82,13 @@ class UltimateLivingSacredConfig:
         self, performance_history_path: str = "data/performance_history.jsonl"
     ):
         self.performance_history_path = performance_history_path
-        self.performance_history: List[PerformanceMetric] = (
+        self.performance_history: list[PerformanceMetric] = (
             self._load_performance_history()
         )
 
         # Sacred Trinity - Initially based on conceptual understanding,
         # optimized by performance
-        self.sacred_trinity: Dict[str, SacredPrinciple] = {
+        self.sacred_trinity: dict[str, SacredPrinciple] = {
             "wisdom": SacredPrinciple(weight=0.95, validation_score=0.90, active=True),
             "compassion": SacredPrinciple(
                 weight=0.92, validation_score=0.93, active=True
@@ -99,7 +99,7 @@ class UltimateLivingSacredConfig:
         # Initial strategic scores - Will be augmented by real performance data over time
         # Stored internally initially due to file edit issues with
         # models_config.json
-        self.initial_sacred_alignment_scores: Dict[str, Dict[str, float]] = {
+        self.initial_sacred_alignment_scores: dict[str, dict[str, float]] = {
             "gpt-4.1-nano": {"wisdom": 0.8, "truth": 0.8, "compassion": 0.6},
             "x-ai/grok-3-mini-beta": {"wisdom": 0.7, "compassion": 0.75, "truth": 0.8},
             "gemini-2.5-flash": {"wisdom": 0.7, "compassion": 0.75, "truth": 0.8},
@@ -129,7 +129,7 @@ class UltimateLivingSacredConfig:
             "gemini-2.0-flash-lite": {"wisdom": 0.65, "compassion": 0.7, "truth": 0.68},
         }
 
-        self.initial_archetype_fits: Dict[str, Dict[str, float]] = {
+        self.initial_archetype_fits: dict[str, dict[str, float]] = {
             # Scores from 0 to 1, higher is better fit
             # Archetypes: oracle, swift_responder, memory_weaver, dev_agent,
             # budget_workhorse, multimodal_seer
@@ -224,25 +224,25 @@ class UltimateLivingSacredConfig:
         }
 
         # Performance thresholds and adaptive settings (placeholders for now)
-        self.performance_thresholds: Dict[str, float] = {
+        self.performance_thresholds: dict[str, float] = {
             "minimum_success_rate": 0.85,
             "quality_threshold": 0.80,
             "cost_effectiveness_target": 0.75,
             "human_validation_minimum": 0.85,
         }
 
-        self.adaptive_settings: Dict[str, float] = {
+        self.adaptive_settings: dict[str, float] = {
             "learning_rate": 0.0015,
             "adaptation_threshold": 0.87,
             "healing_interval": 240,
             "performance_window": 50,
         }
 
-    def _load_performance_history(self) -> List[PerformanceMetric]:
+    def _load_performance_history(self) -> list[PerformanceMetric]:
         """Loads performance history from a JSONL file."""
         history = []
         if os.path.exists(self.performance_history_path):
-            with open(self.performance_history_path, "r") as f:
+            with open(self.performance_history_path) as f:
                 for line in f:
                     try:
                         data = json.loads(line)
@@ -301,7 +301,7 @@ class UltimateLivingSacredConfig:
         #       # Update self.sacred_trinity[principle].weight based on this average
         pass
 
-    def get_task_guidance(self, task_category: TaskCategory) -> Dict[str, Any]:
+    def get_task_guidance(self, task_category: TaskCategory) -> dict[str, Any]:
         """
         Provides strategic guidance for model selection based on task category
         and current Sacred Trinity optimization state.
@@ -352,13 +352,13 @@ class UltimateLivingSacredConfig:
 
         return guidance
 
-    def get_model_sacred_scores(self, model_id: str) -> Dict[str, float]:
+    def get_model_sacred_scores(self, model_id: str) -> dict[str, float]:
         """Retrieves the initial sacred alignment scores for a model."""
         # In a truly living system, these might also be influenced by
         # performance data
         return self.initial_sacred_alignment_scores.get(model_id, {})
 
-    def get_model_archetype_fits(self, model_id: str) -> Dict[str, float]:
+    def get_model_archetype_fits(self, model_id: str) -> dict[str, float]:
         """Retrieves the initial archetype fit scores for a model."""
         # In a truly living system, these might also be influenced by
         # performance data

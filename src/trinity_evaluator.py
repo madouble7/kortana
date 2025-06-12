@@ -7,7 +7,7 @@ based on Sacred Trinity principles of Wisdom, Compassion, and Truth.
 import json
 import logging
 import os
-from typing import Any, Dict, List
+from typing import Any
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ class SacredTrinityEvaluator:
     Evaluates LLM responses based on Sacred Trinity principles and ranks models.
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         self.config = config.get("sacred_trinity_config", {})
         self.model_configs = config.get("models_config", {})
         self.logger = logging.getLogger(__name__)
@@ -85,7 +85,7 @@ class SacredTrinityEvaluator:
             score += 1.5
         return min(score, 5.0)  # Cap score at 5.0
 
-    def evaluate_response(self, response_text: str) -> Dict[str, float]:
+    def evaluate_response(self, response_text: str) -> dict[str, float]:
         """Evaluates a response against all Sacred Trinity aspects."""
         return {
             "wisdom": self.wisdom_score(response_text),
@@ -94,14 +94,14 @@ class SacredTrinityEvaluator:
         }
 
     def run_evaluation(
-        self, model_responses: Dict[str, List[Dict[str, Any]]]
-    ) -> Dict[str, Any]:
+        self, model_responses: dict[str, list[dict[str, Any]]]
+    ) -> dict[str, Any]:
         """
         Runs the evaluation process for collected model responses.
         model_responses format: {model_id: [{prompt: str, response: str, ...}, ...]}
         """
         self.logger.info("Running Sacred Trinity evaluation.")
-        evaluation_results: Dict[str, Any] = {
+        evaluation_results: dict[str, Any] = {
             "model_scores": {},
             "model_baselines": {},
             "model_rankings": {},
@@ -110,7 +110,7 @@ class SacredTrinityEvaluator:
 
         for model_id, responses in model_responses.items():
             self.logger.info(f"Evaluating responses for model: {model_id}")
-            model_scores: Dict[str, List[float]] = {
+            model_scores: dict[str, list[float]] = {
                 "wisdom": [],
                 "compassion": [],
                 "truth": [],
@@ -197,7 +197,7 @@ class SacredTrinityEvaluator:
 
     def export_results(
         self,
-        results: Dict[str, Any],
+        results: dict[str, Any],
         file_path: str = os.path.join(DATA_DIR, "sacred_trinity_results.json"),
     ):
         """Exports evaluation results to a JSON file."""
@@ -211,7 +211,7 @@ class SacredTrinityEvaluator:
             self.logger.error(f"Error exporting evaluation results: {e}")
 
     def update_config(
-        self, recommendations: Dict[str, str], baselines: Dict[str, Dict[str, Any]]
+        self, recommendations: dict[str, str], baselines: dict[str, dict[str, Any]]
     ):
         """Updates the sacred_trinity_config.json with recommended models and baselines."""
         config_path = os.path.join(CONFIG_DIR, "sacred_trinity_config.json")
@@ -219,7 +219,7 @@ class SacredTrinityEvaluator:
         try:
             # Read existing config
             if os.path.exists(config_path):
-                with open(config_path, "r", encoding="utf-8") as f:
+                with open(config_path, encoding="utf-8") as f:
                     config_data = json.load(f)
             else:
                 config_data = {}  # Start with empty if not exists

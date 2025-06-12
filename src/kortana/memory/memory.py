@@ -9,7 +9,7 @@ import json
 import logging
 import os
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from kortana.config.schema import KortanaConfig
 
@@ -22,11 +22,11 @@ class MemoryEntry:
     def __init__(
         self,
         text: str,
-        timestamp: Optional[datetime] = None,
-        tags: Optional[List[str]] = None,
+        timestamp: datetime | None = None,
+        tags: list[str] | None = None,
         source: str = "conversation",
-        embedding: Optional[List[float]] = None,
-        id: Optional[str] = None,
+        embedding: list[float] | None = None,
+        id: str | None = None,
     ):
         self.text = text
         self.timestamp = timestamp or datetime.now()
@@ -35,7 +35,7 @@ class MemoryEntry:
         self.embedding = embedding or []
         self.id = id or f"{source}-{self.timestamp.isoformat()}"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the memory entry to a dictionary."""
         return {
             "id": self.id,
@@ -47,7 +47,7 @@ class MemoryEntry:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "MemoryEntry":
+    def from_dict(cls, data: dict[str, Any]) -> "MemoryEntry":
         """Create a memory entry from a dictionary."""
         timestamp = (
             datetime.fromisoformat(data["timestamp"]) if "timestamp" in data else None
@@ -59,6 +59,16 @@ class MemoryEntry:
             source=data.get("source", "conversation"),
             embedding=data.get("embedding", []),
             id=data.get("id"),
+        )
+
+    @staticmethod
+    def from_interaction(interaction: dict[str, Any]) -> "MemoryEntry":
+        """Create a MemoryEntry from interaction data."""
+        return MemoryEntry(
+            text=interaction.get("text", ""),
+            tags=interaction.get("tags", []),
+            source=interaction.get("source", "conversation"),
+            embedding=interaction.get("embedding", []),
         )
 
 
@@ -77,11 +87,18 @@ class MemoryManager:
         """
         self.settings = settings
 
+        user_name = os.getenv("KORTANA_USER_NAME", "default")
+
+        # Update paths to be user-specific
+        def userify(path):
+            base, ext = os.path.splitext(path)
+            return f"{base}_{user_name}{ext}"
+
         # Set paths from settings
-        self.heart_log_path = self.settings.paths.heart_log_path
-        self.soul_index_path = self.settings.paths.soul_index_path
-        self.lit_log_path = self.settings.paths.lit_log_path
-        self.project_memory_path = self.settings.paths.project_memory_file_path
+        self.heart_log_path = userify(self.settings.paths.heart_log_path)
+        self.soul_index_path = userify(self.settings.paths.soul_index_path)
+        self.lit_log_path = userify(self.settings.paths.lit_log_path)
+        self.project_memory_path = userify(self.settings.paths.project_memory_file_path)
 
         # Ensure directories exist
         for path in [
@@ -92,7 +109,7 @@ class MemoryManager:
         ]:
             os.makedirs(os.path.dirname(path), exist_ok=True)
 
-    def add_heart_memory(self, text: str, tags: Optional[List[str]] = None) -> bool:
+    def add_heart_memory(self, text: str, tags: list[str] | None = None) -> bool:
         """
         Add a memory to the heart log.
 
@@ -116,7 +133,7 @@ class MemoryManager:
             return False
 
     def add_soul_memory(
-        self, text: str, pattern: str, tags: Optional[List[str]] = None
+        self, text: str, pattern: str, tags: list[str] | None = None
     ) -> bool:
         """
         Add a memory to the soul index.
@@ -146,7 +163,7 @@ class MemoryManager:
             return False
 
     def add_lit_memory(
-        self, text: str, ritual: str, tags: Optional[List[str]] = None
+        self, text: str, ritual: str, tags: list[str] | None = None
     ) -> bool:
         """
         Add a memory to the lit log.
@@ -173,7 +190,7 @@ class MemoryManager:
             logger.error(f"Failed to add lit memory: {e}")
             return False
 
-    def get_heart_memories(self, limit: int = 10) -> List[Dict[str, Any]]:
+    def get_heart_memories(self, limit: int = 10) -> list[dict[str, Any]]:
         """
         Get memories from the heart log.
 
@@ -186,7 +203,7 @@ class MemoryManager:
         try:
             memories = []
             if os.path.exists(self.heart_log_path):
-                with open(self.heart_log_path, "r") as f:
+                with open(self.heart_log_path) as f:
                     for line in f:
                         if line.strip():
                             memories.append(json.loads(line))
@@ -198,8 +215,8 @@ class MemoryManager:
             return []
 
     def get_soul_memories(
-        self, pattern: Optional[str] = None, limit: int = 10
-    ) -> List[Dict[str, Any]]:
+        self, pattern: str | None = None, limit: int = 10
+    ) -> list[dict[str, Any]]:
         """
         Get memories from the soul index.
 
@@ -213,7 +230,7 @@ class MemoryManager:
         try:
             memories = []
             if os.path.exists(self.soul_index_path):
-                with open(self.soul_index_path, "r") as f:
+                with open(self.soul_index_path) as f:
                     for line in f:
                         if line.strip():
                             entry = json.loads(line)
@@ -229,8 +246,8 @@ class MemoryManager:
             return []
 
     def get_lit_memories(
-        self, ritual: Optional[str] = None, limit: int = 10
-    ) -> List[Dict[str, Any]]:
+        self, ritual: str | None = None, limit: int = 10
+    ) -> list[dict[str, Any]]:
         """
         Get memories from the lit log.
 
@@ -244,7 +261,7 @@ class MemoryManager:
         try:
             memories = []
             if os.path.exists(self.lit_log_path):
-                with open(self.lit_log_path, "r") as f:
+                with open(self.lit_log_path) as f:
                     for line in f:
                         if line.strip():
                             entry = json.loads(line)
@@ -260,7 +277,7 @@ class MemoryManager:
             return []
 
 
-def load_memory(file_path: str) -> List[Dict[str, Any]]:
+def load_memory(file_path: str) -> list[dict[str, Any]]:
     """
     Load memory from a JSONL file.
 
@@ -273,7 +290,7 @@ def load_memory(file_path: str) -> List[Dict[str, Any]]:
     memories = []
     try:
         if os.path.exists(file_path):
-            with open(file_path, "r") as f:
+            with open(file_path) as f:
                 for line in f:
                     if line.strip():
                         memories.append(json.loads(line))
@@ -284,7 +301,7 @@ def load_memory(file_path: str) -> List[Dict[str, Any]]:
         return []
 
 
-def save_memory(memories: List[Dict[str, Any]], file_path: str) -> bool:
+def save_memory(memories: list[dict[str, Any]], file_path: str) -> bool:
     """
     Save memory to a JSONL file.
 
@@ -318,12 +335,12 @@ class JsonMemoryStore:
         self.file_path = file_path
         self.memories = load_memory(file_path)
 
-    def add(self, memory: Dict[str, Any]) -> bool:
+    def add(self, memory: dict[str, Any]) -> bool:
         """Add a memory entry."""
         self.memories.append(memory)
         return save_memory(self.memories, self.file_path)
 
-    def get_all(self) -> List[Dict[str, Any]]:
+    def get_all(self) -> list[dict[str, Any]]:
         """Get all memory entries."""
         return self.memories
 

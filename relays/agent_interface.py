@@ -141,7 +141,8 @@ class AgentInterface:
         """Get current queue status"""
         try:
             with open(self.queue_file, "r", encoding="utf-8") as f:
-                all_lines = f.readlines()            total_messages = len(all_lines)
+                all_lines = f.readlines()
+            total_messages = len(all_lines)
             unread_messages = total_messages - self._last_queue_position
             return {
                 "total_messages": total_messages,

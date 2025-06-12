@@ -15,7 +15,7 @@ if str(current_dir) not in sys.path:
     sys.path.insert(0, str(current_dir))
 
 try:
-    from config import load_config
+    from src.kortana.config import load_config
 
     def test_covenant_loading():
         """Test that covenant.yaml is loaded into settings.covenant_rules"""
@@ -90,7 +90,7 @@ try:
         if root_covenant.exists():
             print(f"covenant.yaml found in root directory: {root_covenant.absolute()}")
             try:
-                with open(root_covenant, "r") as f:
+                with open(root_covenant) as f:
                     covenant_data = yaml.safe_load(f) or {}
                 print(
                     f"Successfully loaded covenant.yaml from root, version: {covenant_data.get('covenant_version', 'Not found')}"
@@ -107,7 +107,7 @@ try:
                 f"covenant.yaml found in config directory: {config_covenant.absolute()}"
             )
             try:
-                with open(config_covenant, "r") as f:
+                with open(config_covenant) as f:
                     covenant_data = yaml.safe_load(f) or {}
                 print(
                     f"Successfully loaded covenant.yaml from config dir, version: {covenant_data.get('covenant_version', 'Not found')}"

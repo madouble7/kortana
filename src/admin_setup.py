@@ -189,7 +189,7 @@ def quick_fix_brain_py():
         return
 
     try:
-        with open(brain_py_path, "r") as f:
+        with open(brain_py_path) as f:
             content = f.read()
 
         # Check if the fix is already applied

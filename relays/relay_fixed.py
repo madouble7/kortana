@@ -28,7 +28,7 @@ import time
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import requests
 import tiktoken
@@ -202,7 +202,7 @@ class EnhancedKortanaRelay:
         conn.commit()
         conn.close()
 
-    def _discover_agents(self) -> Dict[str, Dict]:
+    def _discover_agents(self) -> dict[str, dict]:
         """Discover agent log files and queues"""
         agents = {}
 
@@ -382,7 +382,7 @@ class EnhancedKortanaRelay:
             print(f"[OPENROUTER] Error: {e}")
             return f"[OPENROUTER ERROR] {str(e)}"
 
-    def route_task(self, task_description: str) -> Dict[str, Any]:
+    def route_task(self, task_description: str) -> dict[str, Any]:
         """Route task through multi-stage AI chain"""
         task_id = str(uuid.uuid4())
         print(f"\n[CHAIN] Starting task routing: {task_id[:8]}")
@@ -511,7 +511,7 @@ class EnhancedKortanaRelay:
 
         return results
 
-    def _get_agent_new_messages(self, agent_name: str) -> tuple[int, List[str]]:
+    def _get_agent_new_messages(self, agent_name: str) -> tuple[int, list[str]]:
         """Get new messages from agent log and the current total line count."""
         log_file = self.agents[agent_name]["log"]
         new_messages = []
@@ -532,7 +532,7 @@ class EnhancedKortanaRelay:
         conn.close()
 
         try:
-            with open(log_file, "r", encoding="utf-8") as f:
+            with open(log_file, encoding="utf-8") as f:
                 lines = f.readlines()
             current_total_lines = len(lines)
 
@@ -561,7 +561,7 @@ class EnhancedKortanaRelay:
         conn.commit()
         conn.close()
 
-    def _relay_messages(self, source_agent: str, messages: List[str]) -> int:
+    def _relay_messages(self, source_agent: str, messages: list[str]) -> int:
         """Relay messages to other agents and log activity"""
         relayed_count = 0
 
@@ -617,7 +617,7 @@ class EnhancedKortanaRelay:
         self,
         summary: str,
         code: str = "",
-        issues: List[str] = None,
+        issues: list[str] = None,
         commit_ref: str = "",
     ) -> str:
         """Create a context package and store in database"""
@@ -655,7 +655,7 @@ class EnhancedKortanaRelay:
         print(f"[CONTEXT] Created package {task_id[:8]} ({total_tokens} tokens)")
         return task_id
 
-    def relay_cycle(self) -> Dict[str, Any]:
+    def relay_cycle(self) -> dict[str, Any]:
         """Execute one relay cycle"""
         cycle_start = datetime.now()
         cycle_stats = {

@@ -13,7 +13,7 @@ Usage:
 """
 
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 
 import tiktoken
 
@@ -30,7 +30,7 @@ class GeminiSummarizer:
     """AI-powered summarization using Gemini 2.0 Flash"""
 
     def __init__(
-        self, api_key: Optional[str] = None, model_name: str = "gemini-2.0-flash-exp"
+        self, api_key: str | None = None, model_name: str = "gemini-2.0-flash-exp"
     ):
         """Initialize Gemini summarizer"""
         self.api_key = api_key
@@ -156,7 +156,7 @@ SUMMARY (max {max_tokens} tokens):"""
 
     def summarize_agent_context(
         self, agent_name: str, messages: list, max_tokens: int = 1000
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Summarize agent context with metadata"""
 
         # Combine messages into text

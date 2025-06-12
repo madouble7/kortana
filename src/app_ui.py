@@ -101,7 +101,7 @@ def load_modes_from_persona():
     """Loads available modes from persona.json to populate the dropdown."""
     try:
         persona_path = CONFIG_DIR / "persona.json"
-        with open(persona_path, "r", encoding="utf-8") as f:
+        with open(persona_path, encoding="utf-8") as f:
             persona_data = json.load(f)
 
         # Accommodate both nested "persona": {"modes": {}} and top-level
@@ -129,7 +129,7 @@ AVAILABLE_MODES = load_modes_from_persona()
 # Determine default mode for the dropdown based on persona.json
 try:
     persona_path = CONFIG_DIR / "persona.json"
-    with open(persona_path, "r", encoding="utf-8") as f:
+    with open(persona_path, encoding="utf-8") as f:
         persona_data = json.load(f)
     DEFAULT_MODE_FOR_UI = persona_data.get("persona", {}).get(
         "default_mode"

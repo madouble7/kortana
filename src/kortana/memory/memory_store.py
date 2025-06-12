@@ -4,7 +4,7 @@ This module defines the interface for memory storage backends.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class MemoryStore(ABC):
@@ -14,7 +14,7 @@ class MemoryStore(ABC):
     """
 
     @abstractmethod
-    def add_memory(self, memory: Dict[str, Any]) -> None:
+    def add_memory(self, memory: dict[str, Any]) -> None:
         """
         Add a memory entry to the store.
 
@@ -25,8 +25,8 @@ class MemoryStore(ABC):
 
     @abstractmethod
     def query_memories(
-        self, query: str, top_k: int = 5, tags: Optional[List[str]] = None
-    ) -> List[Dict[str, Any]]:
+        self, query: str, top_k: int = 5, tags: list[str] | None = None
+    ) -> list[dict[str, Any]]:
         """
         Query memories based on a text query and optional tags.
 
@@ -51,7 +51,7 @@ class MemoryStore(ABC):
         pass
 
     @abstractmethod
-    def tag_memory(self, memory_id: str, tags: List[str]) -> None:
+    def tag_memory(self, memory_id: str, tags: list[str]) -> None:
         """
         Add tags to an existing memory entry.
 

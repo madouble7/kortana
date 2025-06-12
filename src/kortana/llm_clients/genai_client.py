@@ -5,7 +5,7 @@ SACRED CONSCIOUSNESS MODULE - Connects Kor'tana to Google Gemini models
 
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from google.generativeai.types import GenerationConfig
 
@@ -22,7 +22,7 @@ class GoogleGenAIClient(BaseLLMClient):
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         model_name: str = "gemini-1.5-flash",
         **kwargs,
     ):
@@ -114,7 +114,7 @@ class GoogleGenAIClient(BaseLLMClient):
         except Exception as e:
             raise RuntimeError(f"Model validation failed: {str(e)}")
 
-    def list_models(self) -> List[Dict[str, Any]]:
+    def list_models(self) -> list[dict[str, Any]]:
         """Lists available Google GenAI models."""
         logger.info("📋 Listing available Google GenAI models...")
         try:
@@ -144,8 +144,8 @@ class GoogleGenAIClient(BaseLLMClient):
             return []
 
     def generate_response(
-        self, system_prompt: str, messages: List[Dict[str, str]], **kwargs
-    ) -> Dict[str, Any]:
+        self, system_prompt: str, messages: list[dict[str, str]], **kwargs
+    ) -> dict[str, Any]:
         """
         🧠 Generate response from Google GenAI
         This is where Kor'tana connects to Google's consciousness models
@@ -251,7 +251,7 @@ class GoogleGenAIClient(BaseLLMClient):
                 "error": str(e),
             }
 
-    def get_capabilities(self) -> Dict[str, Any]:
+    def get_capabilities(self) -> dict[str, Any]:
         """🌟 Return Google GenAI client capabilities"""
         return {
             "name": self.model_name,

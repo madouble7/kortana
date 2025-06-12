@@ -126,7 +126,7 @@ def check_readme_completeness():
         return False
 
     try:
-        with open(readme_path, "r", encoding="utf-8") as f:
+        with open(readme_path, encoding="utf-8") as f:
             content = f.read().lower()
 
         required_sections = [
@@ -168,7 +168,7 @@ def verify_cli_entry_points():
         return False
 
     try:
-        with open(setup_py, "r", encoding="utf-8") as f:
+        with open(setup_py, encoding="utf-8") as f:
             content = f.read()
 
         entry_points = ["kortana-api", "kortana-dashboard", "kortana-autonomous"]

@@ -3,7 +3,7 @@
 import logging
 import os
 import time
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 try:
     import google.generativeai as genai  # type: ignore
@@ -74,7 +74,7 @@ class GoogleGenAIClient(BaseLLMClient):
             )
             raise
 
-    def get_capabilities(self) -> Dict[str, Any]:
+    def get_capabilities(self) -> dict[str, Any]:
         """Return capabilities of the Google Gemini client."""
         return {
             "supports_system_prompt": True,
@@ -87,8 +87,8 @@ class GoogleGenAIClient(BaseLLMClient):
         }
 
     def generate_response(
-        self, system_prompt: str, messages: List[Dict[str, str]], **kwargs
-    ) -> Tuple[str, Dict[str, Any]]:
+        self, system_prompt: str, messages: list[dict[str, str]], **kwargs
+    ) -> tuple[str, dict[str, Any]]:
         """
         Generate response using Google Gemini API.
 
@@ -141,7 +141,7 @@ class GoogleGenAIClient(BaseLLMClient):
                 )
 
             # Extract generation parameters with proper typing
-            generation_config: Dict[str, Any] = {}
+            generation_config: dict[str, Any] = {}
             if "temperature" in kwargs:
                 generation_config["temperature"] = kwargs["temperature"]
             if "max_tokens" in kwargs:
@@ -217,7 +217,7 @@ class GoogleGenAIClient(BaseLLMClient):
             return False
 
     def stream_response(
-        self, system_prompt: str, messages: List[Dict[str, str]], **kwargs
+        self, system_prompt: str, messages: list[dict[str, str]], **kwargs
     ) -> Any:
         """
         Stream response from Google Gemini API.
@@ -253,7 +253,7 @@ class GoogleGenAIClient(BaseLLMClient):
                 )
 
             # Extract generation config
-            generation_config: Dict[str, Any] = {}
+            generation_config: dict[str, Any] = {}
             if "temperature" in kwargs:
                 generation_config["temperature"] = kwargs["temperature"]
             if "max_tokens" in kwargs:
@@ -283,7 +283,7 @@ class GoogleGenAIClient(BaseLLMClient):
             logger.error(f"Error in streaming response: {e}")
             yield f"Error: {str(e)}"
 
-    def get_model_info(self) -> Dict[str, Any]:
+    def get_model_info(self) -> dict[str, Any]:
         """Get information about the current model."""
         return {
             "model_id": self.model_id,

@@ -6,68 +6,151 @@ This module provides a memory system for Kor'tana using Pinecone as the vector d
 
 import json
 import logging
-from typing import Any, Dict, List
+import os
+from functools import lru_cache
+from typing import Any
 
-# Assuming these imports exist
-import pinecone
+# Modern Pinecone SDK import
+try:
+    from pinecone import Pinecone  # Main import for Pinecone client v3+
 
-from kortana.config.schema import KortanaConfig
+    PINECONE_SDK_AVAILABLE = True
+except ImportError:
+    try:
+        import pinecone  # Fallback for older versions
+
+        Pinecone = pinecone.Pinecone
+        PINECONE_SDK_AVAILABLE = True
+    except ImportError:
+        Pinecone = None  # type: ignore  # Make linters aware Pinecone might be None
+        PINECONE_SDK_AVAILABLE = False
+        logging.getLogger(__name__).warning(
+            "Pinecone SDK not found. Pinecone features will be disabled."
+        )
+
+from config.schema import KortanaConfig  # Assuming this path is now correct
 
 from .memory import MemoryEntry
 
 logger = logging.getLogger(__name__)
 
 
+# Cache for the most recently used embeddings to avoid recomputing
+@lru_cache(maxsize=128)
+def _cached_embedding_lookup(text_hash: int) -> list[float] | None:
+    """Cache lookup for text embeddings based on hash.
+
+    Args:
+        text_hash: Hash of the text to look up
+
+    Returns:
+        Cached embedding vector if available, None otherwise
+    """
+    # This is a placeholder - values are inserted by the embedding generation function
+    return None
+
+
 class MemoryManager:
-    """
-    Memory manager for Kor'tana using Pinecone as the vector database.
-    Also handles the memory journal for persistent storage.
-    """
+    """Memory manager for Kor'tana using Pinecone as the vector database."""
+
+    pinecone_enabled: bool = False
+    pinecone_namespace: str | None = None
+    index: Any = None  # For Pinecone Index object
+    pc: Any | None = (
+        None  # Pinecone client instance, type Any to avoid linter issues with conditional import
+    )
 
     def __init__(self, settings: KortanaConfig):
-        """
-        Initialize the memory manager.
-
-        Args:
-            settings: The application configuration.
-        """
         self.settings = settings
-        self.memory_journal_path = self.settings.paths.memory_journal_path
+        logger.info(f"MemoryManager received settings of type: {type(settings)}")
+        try:
+            settings_json = settings.model_dump_json(indent=2)
+            logger.debug(f"MemoryManager received settings (JSON):\n{settings_json}")
+        except Exception as e:
+            logger.error(f"Could not serialize settings to JSON in MemoryManager: {e}")
+            logger.debug(f"MemoryManager received settings (raw): {settings}")
 
-        # Initialize Pinecone
-        pinecone_api_key = self.settings.get_api_key("pinecone")
+        self.user_name = os.getenv("KORTANA_USER_NAME", "default")
+
+        data_dir = getattr(settings, "data_dir", "data")
+        if not hasattr(settings, "data_dir"):
+            logger.warning(
+                "settings.data_dir not found, defaulting to 'data'. Check KortanaConfig initialization."
+            )
+
+        user_specific_data_path = os.path.join(data_dir, "users", self.user_name)
+        self.memory_journal_path = os.path.join(
+            user_specific_data_path, "memory_journal.jsonl"
+        )
+        self.heart_log_path = os.path.join(user_specific_data_path, "heart.log")
+        self.soul_index_path = os.path.join(user_specific_data_path, "soul_index.json")
+        self.lit_log_path = os.path.join(user_specific_data_path, "lit.log")
+        self.project_memory_path = os.path.join(
+            user_specific_data_path, "project_memory.jsonl"
+        )
+
+        paths_to_ensure = [
+            self.memory_journal_path,
+            self.heart_log_path,
+            self.soul_index_path,
+            self.lit_log_path,
+            self.project_memory_path,
+        ]
+        for path_to_ensure in paths_to_ensure:
+            os.makedirs(os.path.dirname(path_to_ensure), exist_ok=True)
+
+        memory_settings = getattr(settings, "memory", None)
+        if not memory_settings:
+            logger.warning(
+                "settings.memory not found. Pinecone will be disabled. Check KortanaConfig initialization."
+            )
+            self.pinecone_enabled = False
+            return
+
+        pinecone_api_key = getattr(memory_settings, "pinecone_api_key", None)
+        pinecone_index_name = getattr(
+            memory_settings, "pinecone_index_name", "kortana-memory"
+        )
+
         if not pinecone_api_key:
             logger.warning(
-                "Pinecone API key not found. Memory system will operate in limited mode."
+                "Pinecone API key not found in settings.memory.pinecone_api_key. Pinecone features disabled."
+            )
+            self.pinecone_enabled = False
+        elif (
+            not PINECONE_SDK_AVAILABLE or Pinecone is None
+        ):  # Check if Pinecone class itself is None
+            logger.warning(
+                "Pinecone SDK not available/installed correctly. Pinecone features disabled."
             )
             self.pinecone_enabled = False
         else:
             try:
-                pinecone.init(
-                    api_key=pinecone_api_key,
-                    environment=self.settings.pinecone.environment,
+                logger.info(
+                    f"Initializing Pinecone client with API key ending: ...{pinecone_api_key[-4:]}"
                 )
+                self.pc = Pinecone(
+                    api_key=pinecone_api_key
+                )  # Initialize Pinecone client
 
-                # Check if index exists, if not create it
-                if self.settings.pinecone.index_name not in pinecone.list_indexes():
+                if self.pc:  # Ensure client was initialized
+                    self.index = self.pc.Index(pinecone_index_name)
+                    self.pinecone_namespace = f"kortana_user_{self.user_name}"
+                    self.pinecone_enabled = True
                     logger.info(
-                        f"Creating Pinecone index: {self.settings.pinecone.index_name}"
+                        f"Pinecone memory system initialized for index '{pinecone_index_name}', namespace '{self.pinecone_namespace}'."
                     )
-                    pinecone.create_index(
-                        name=self.settings.pinecone.index_name,
-                        dimension=1536,  # OpenAI embedding dimension
-                        metric="cosine",
+                else:
+                    logger.error(
+                        "Pinecone client (self.pc) is None after initialization attempt."
                     )
-
-                self.index = pinecone.Index(self.settings.pinecone.index_name)
-                self.pinecone_enabled = True
-                logger.info("Pinecone memory system initialized successfully")
+                    self.pinecone_enabled = False
 
             except Exception as e:
-                logger.error(f"Failed to initialize Pinecone: {e}")
+                logger.error(f"Failed to initialize Pinecone (modern SDK): {e}")
                 self.pinecone_enabled = False
 
-    def load_project_memory(self) -> List[Dict[str, Any]]:
+    def load_project_memory(self) -> list[dict[str, Any]]:
         """
         Load project memory from the memory journal.
 
@@ -75,7 +158,7 @@ class MemoryManager:
             List of memory entries.
         """
         try:
-            with open(self.memory_journal_path, "r") as f:
+            with open(self.memory_journal_path) as f:
                 memory_entries = [json.loads(line) for line in f.readlines()]
             logger.info(
                 f"Loaded {len(memory_entries)} memory entries from {self.memory_journal_path}"
@@ -90,7 +173,7 @@ class MemoryManager:
             logger.error(f"Failed to load memory journal: {e}")
             return []
 
-    def save_project_memory(self, memory_entries: List[Dict[str, Any]]) -> bool:
+    def save_project_memory(self, memory_entries: list[dict[str, Any]]) -> bool:
         """
         Save project memory to the memory journal.
 
@@ -139,7 +222,9 @@ class MemoryManager:
                 "source": memory_entry.source,
             }
 
-            self.index.upsert([(vector_id, vector, metadata)])
+            self.index.upsert(
+                [(vector_id, vector, metadata)], namespace=self.pinecone_namespace
+            )
 
             # Also add to journal for backup
             self._add_to_journal(memory_entry)
@@ -150,33 +235,27 @@ class MemoryManager:
             return False
 
     def search_memory(
-        self, query_vector: List[float], top_k: int = 5
-    ) -> List[Dict[str, Any]]:
-        """
-        Search for similar memories.
-
-        Args:
-            query_vector: The query vector.
-            top_k: Number of results to return.
-
-        Returns:
-            List of matching memory entries.
-        """
-        if not self.pinecone_enabled:
-            logger.warning("Pinecone not enabled. Cannot perform vector search.")
+        self, query_vector: list[float], top_k: int = 5
+    ) -> list[dict[str, Any]]:
+        """Search for similar memories using Pinecone."""
+        if not self.pinecone_enabled or not self.index:
+            logger.warning("Pinecone is not enabled or index is not initialized.")
             return []
 
         try:
             results = self.index.query(
-                vector=query_vector, top_k=top_k, include_metadata=True
+                vector=query_vector,
+                top_k=top_k,
+                include_metadata=True,
+                namespace=self.pinecone_namespace,
             )
 
             return [
                 {
                     "id": match["id"],
                     "score": match["score"],
-                    "text": match["metadata"]["text"],
-                    "timestamp": match["metadata"]["timestamp"],
+                    "text": match["metadata"].get("text", ""),
+                    "timestamp": match["metadata"].get("timestamp", ""),
                     "tags": match["metadata"].get("tags", []),
                     "source": match["metadata"].get("source", "unknown"),
                 }
@@ -186,6 +265,17 @@ class MemoryManager:
             logger.error(f"Failed to search Pinecone: {e}")
             return []
 
+    def append_to_memory_journal(self, memory_entry: MemoryEntry) -> None:
+        """Append a memory entry to the journal."""
+        try:
+            with open(self.memory_journal_path, "a") as journal:
+                journal.write(json.dumps(memory_entry.to_dict()) + "\n")
+            logger.info(f"Memory entry appended to journal: {self.memory_journal_path}")
+        except Exception as e:
+            logger.error(
+                f"Failed to append memory entry to {self.memory_journal_path}: {e}"
+            )
+
     def _add_to_journal(self, memory_entry: MemoryEntry) -> bool:
         """Add a memory entry to the journal file."""
         try:
@@ -194,5 +284,4 @@ class MemoryManager:
             return True
         except Exception as e:
             logger.error(f"Failed to add memory to journal: {e}")
-            return False
             return False

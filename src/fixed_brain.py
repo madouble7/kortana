@@ -10,13 +10,13 @@ import logging
 import os
 import shutil
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 import yaml
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from config import load_config
+from src.kortana.config import load_config
 from kortana.config.schema import KortanaConfig
 from src.dev_agent_stub import DevAgentStub
 from src.kortana.agents.autonomous_agents import (
@@ -83,7 +83,7 @@ class ChatEngine:
     LLM interaction, and autonomous agent coordination.
     """
 
-    def __init__(self, settings: KortanaConfig, session_id: Optional[str] = None):
+    def __init__(self, settings: KortanaConfig, session_id: str | None = None):
         """
         Initialize the chat engine.
 
@@ -183,10 +183,10 @@ class ChatEngine:
 
         logger.info("ChatEngine initialization complete")
 
-    def _load_json_config(self, file_path: str) -> Dict[str, Any]:
+    def _load_json_config(self, file_path: str) -> dict[str, Any]:
         """Load configuration from JSON file."""
         try:
-            with open(file_path, "r") as f:
+            with open(file_path) as f:
                 config = json.load(f)
             logger.info(f"Loaded configuration from {file_path}")
             return config
@@ -194,10 +194,10 @@ class ChatEngine:
             logger.error(f"Failed to load configuration from {file_path}: {e}")
             return {}
 
-    def _load_covenant(self, file_path: str) -> Dict[str, Any]:
+    def _load_covenant(self, file_path: str) -> dict[str, Any]:
         """Load covenant from YAML file."""
         try:
-            with open(file_path, "r") as f:
+            with open(file_path) as f:
                 covenant = yaml.safe_load(f)
             logger.info(f"Loaded covenant from {file_path}")
             return covenant
@@ -227,7 +227,7 @@ class ChatEngine:
 
         conversation_context = {
             "user_message": user_message,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "sentiment": sentiment,
             "is_important": is_important,
             "emphasis": emphasis,
@@ -275,9 +275,9 @@ class ChatEngine:
     def _build_prompt(
         self,
         user_message: str,
-        conversation_context: Dict[str, Any],
+        conversation_context: dict[str, Any],
         voice_style: str,
-        model_params: Dict[str, Any],
+        model_params: dict[str, Any],
     ) -> str:
         """Build a prompt for the LLM."""
         # A simple prompt template - in a real implementation, this would be more sophisticated
@@ -296,7 +296,7 @@ Keep your response concise and focused on addressing the user's needs.
         return prompt
 
     def _update_memory(
-        self, user_message: str, response: str, context: Dict[str, Any]
+        self, user_message: str, response: str, context: dict[str, Any]
     ) -> None:
         """Update memory with conversation details."""
         # In a real implementation, this would use more sophisticated memory management

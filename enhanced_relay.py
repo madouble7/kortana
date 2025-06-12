@@ -19,7 +19,6 @@ import sqlite3
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List
 
 
 class KortanaEnhancedRelay:
@@ -103,7 +102,7 @@ class KortanaEnhancedRelay:
         conn.commit()
         conn.close()
 
-    def _discover_agents(self) -> Dict[str, Dict]:
+    def _discover_agents(self) -> dict[str, dict]:
         """Auto-discover agents from log files"""
         agents = {}
         log_files = list(self.logs_dir.glob("*.log"))
@@ -152,7 +151,7 @@ class KortanaEnhancedRelay:
         conn.close()
         return task_id
 
-    def _get_agent_new_messages(self, agent_name: str) -> List[str]:
+    def _get_agent_new_messages(self, agent_name: str) -> list[str]:
         """Get new messages from agent log"""
         log_file = self.agents[agent_name]["log"]
 
@@ -161,7 +160,7 @@ class KortanaEnhancedRelay:
 
         # Read all lines
         try:
-            with open(log_file, "r", encoding="utf-8") as f:
+            with open(log_file, encoding="utf-8") as f:
                 lines = f.readlines()
         except Exception as e:
             print(f"⚠️  Error reading {log_file}: {e}")
@@ -176,7 +175,7 @@ class KortanaEnhancedRelay:
 
         return new_messages
 
-    def _relay_messages(self, source_agent: str, messages: List[str]):
+    def _relay_messages(self, source_agent: str, messages: list[str]):
         """Relay messages to other agents and log activity"""
         if not messages:
             return 0
@@ -228,7 +227,7 @@ class KortanaEnhancedRelay:
 
         return relayed_count
 
-    def _create_context_package(self) -> Dict:
+    def _create_context_package(self) -> dict:
         """Create a context package for the current task"""
         # Get recent activity from database
         conn = sqlite3.connect(self.db_path)
@@ -278,7 +277,7 @@ class KortanaEnhancedRelay:
 
         return context
 
-    def relay_cycle(self) -> Dict[str, int]:
+    def relay_cycle(self) -> dict[str, int]:
         """Enhanced relay cycle with database logging"""
         cycle_stats = {
             "agents_checked": 0,

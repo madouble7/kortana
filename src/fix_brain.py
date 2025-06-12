@@ -16,7 +16,7 @@ def fix_brain_configuration():
         return False
 
     # Read the current file
-    with open(brain_path, "r") as f:
+    with open(brain_path) as f:
         content = f.read()
 
     # Apply modification for monitoring_config
@@ -70,7 +70,7 @@ def fix_indentation_issue():
         return False
 
     # Read the current file
-    with open(brain_path, "r") as f:
+    with open(brain_path) as f:
         lines = f.readlines()
 
     # Look for indentation issues

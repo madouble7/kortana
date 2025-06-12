@@ -33,7 +33,7 @@ try:
             print(f"Checking {path} (exists: {path.exists()})")
             if path.exists():
                 print(f"Found covenant at: {path}")
-                with open(path, "r") as f:
+                with open(path) as f:
                     data = yaml.safe_load(f)
                 print(f"Direct load successful: {bool(data)}")
                 print(f"Direct load data type: {type(data)}")
@@ -47,7 +47,7 @@ try:
         )
         if covenant_path.exists():
             print(f"Found covenant at: {covenant_path}")
-            with open(covenant_path, "r") as f:
+            with open(covenant_path) as f:
                 data = yaml.safe_load(f)
             print(f"Direct load successful: {bool(data)}")
             print(f"Direct load data type: {type(data)}")

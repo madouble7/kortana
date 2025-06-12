@@ -5,7 +5,6 @@ functionality using various LLM clients during development.
 """
 
 import os
-from typing import Optional
 
 from dotenv import load_dotenv
 
@@ -13,7 +12,7 @@ from kortana.llm_clients.openai_client import OpenAIClient
 
 load_dotenv()
 
-api_key: Optional[str] = os.getenv("OPENAI_API_KEY")
+api_key: str | None = os.getenv("OPENAI_API_KEY")
 model_name: str = "gpt-4.1-nano-2025-04-14"
 
 if not api_key:

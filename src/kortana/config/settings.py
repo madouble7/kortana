@@ -1,6 +1,5 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
-from typing import Optional
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class AppSettings(BaseSettings):
@@ -13,9 +12,37 @@ class AppSettings(BaseSettings):
     MEMORY_DB_URL: str = Field(
         "sqlite:///./kortana_memory_dev.db", validation_alias="MEMORY_DB_URL"
     )
-    OPENAI_API_KEY: Optional[str] = Field(None, validation_alias="OPENAI_API_KEY")
-    ANTHROPIC_API_KEY: Optional[str] = Field(None, validation_alias="ANTHROPIC_API_KEY")
+    OPENAI_API_KEY: str | None = Field(None, validation_alias="OPENAI_API_KEY")
+    ANTHROPIC_API_KEY: str | None = Field(None, validation_alias="ANTHROPIC_API_KEY")
     DEFAULT_GREETING: str = "hello from kor'tana"
+
+    # Execution Engine Permissions for Autonomous Operations
+    EXECUTION_ALLOWED_DIRS: list[str] = [
+        r"c:\project-kortana\src",
+        r"c:\project-kortana\tests",
+        r"c:\project-kortana\docs",
+        r"c:\project-kortana\data",
+        r"c:\project-kortana",
+    ]
+    EXECUTION_BLOCKED_COMMANDS: list[str] = [
+        "rm",
+        "del",
+        "rmdir",
+        "rd",  # File deletion
+        "sudo",
+        "runas",  # Privilege escalation
+        "format",
+        "fdisk",  # Disk operations
+        "net",
+        "netsh",  # Network changes
+        "reg",
+        "regedit",  # Registry changes
+        "shutdown",
+        "restart",  # System control
+        "taskkill",  # Process killing
+        "git push",
+        "git pull",  # Version control (for safety)
+    ]
 
     @property
     def ALEMBIC_DATABASE_URL(self) -> str:

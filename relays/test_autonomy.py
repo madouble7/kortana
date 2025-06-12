@@ -33,7 +33,7 @@ def check_queue(agent):
     """Check if message appeared in agent's queue"""
     queue_path = f"../queues/{agent}_in.txt"
     if os.path.exists(queue_path):
-        with open(queue_path, "r", encoding="utf-8") as f:
+        with open(queue_path, encoding="utf-8") as f:
             lines = f.readlines()
         return len(lines), lines[-1].strip() if lines else ""
     return 0, ""

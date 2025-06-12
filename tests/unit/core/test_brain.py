@@ -5,6 +5,7 @@ Unit tests for the ChatEngine class in brain.py.
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 import src.kortana as kortana
 from src.kortana.core.brain import ChatEngine
 

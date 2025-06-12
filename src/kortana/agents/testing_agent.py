@@ -4,7 +4,6 @@ This module provides functionality to run tests and capture their results.
 """
 
 import subprocess
-from typing import Dict, Union
 
 
 class TestingAgent:
@@ -13,7 +12,7 @@ class TestingAgent:
     Executes pytest and captures the results.
     """
 
-    def run_tests(self) -> Dict[str, Union[bool, str]]:
+    def run_tests(self) -> dict[str, bool | str]:
         """
         Run automated tests using pytest.
 

@@ -1,9 +1,10 @@
 # C:\kortana\tests\test_memory.py
-import pytest
-import os
 import json
+import os
+from datetime import UTC, datetime
 from pathlib import Path
-from datetime import datetime, timezone
+
+import pytest
 
 # Adjust import based on how you run tests
 try:
@@ -63,7 +64,7 @@ def test_store_gravity_anchor(memory_manager_instance: MemoryManager):
     )
 
     assert os.path.exists(memory_manager_instance.heart_log_path)
-    with open(memory_manager_instance.heart_log_path, "r", encoding="utf-8") as f:
+    with open(memory_manager_instance.heart_log_path, encoding="utf-8") as f:
         content = f.read()
         assert test_text in content
         assert f"- Emotion: {test_emotion}" in content
@@ -81,20 +82,20 @@ def test_store_ritual_marker(memory_manager_instance: MemoryManager):
     )
 
     assert os.path.exists(memory_manager_instance.lit_log_path)
-    with open(memory_manager_instance.lit_log_path, "r", encoding="utf-8") as f:
+    with open(memory_manager_instance.lit_log_path, encoding="utf-8") as f:
         content = f.read()
         assert test_utterance in content
         assert f"- Tone: {test_tone}" in content
 
 
 def test_add_to_soul_index(memory_manager_instance: MemoryManager):
-    date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    date_str = datetime.now(UTC).strftime("%Y-%m-%d")
     theme = "test_theme"
     ref = "heart.log#test_ref"
     memory_manager_instance.add_to_soul_index(date_str, theme, ref)
 
     assert os.path.exists(memory_manager_instance.soul_index_path)
-    with open(memory_manager_instance.soul_index_path, "r", encoding="utf-8") as f:
+    with open(memory_manager_instance.soul_index_path, encoding="utf-8") as f:
         content = f.read()
         assert f"{date_str}: #{theme} -> {ref}" in content
 
@@ -103,12 +104,12 @@ def test_save_interaction_to_journal(memory_manager_instance: MemoryManager):
     interaction = {
         "role": "user",
         "content": "Test journal entry.",
-        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "timestamp_utc": datetime.now(UTC).isoformat(),
     }
     memory_manager_instance.save_interaction_to_journal(interaction)
 
     assert os.path.exists(memory_manager_instance.memory_journal_path)
-    with open(memory_manager_instance.memory_journal_path, "r", encoding="utf-8") as f:
+    with open(memory_manager_instance.memory_journal_path, encoding="utf-8") as f:
         line = f.readline()
         assert "Test journal entry." in line
         loaded_interaction = json.loads(line)

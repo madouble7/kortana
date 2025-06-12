@@ -6,7 +6,7 @@ import os
 def read_last_message(log_path):
     if not os.path.exists(log_path):
         return None
-    with open(log_path, "r", encoding="utf-8") as f:
+    with open(log_path, encoding="utf-8") as f:
         lines = f.readlines()
         return lines[-1].strip() if lines else None
 

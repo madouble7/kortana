@@ -29,14 +29,14 @@ def read_new_lines():
         os.makedirs(os.path.dirname(SEEN), exist_ok=True)
         last_count = 0
     else:
-        with open(SEEN, "r") as f:
+        with open(SEEN) as f:
             try:
                 last_count = int(f.read().strip())
             except ValueError:
                 last_count = 0
 
     # Read all lines
-    with open(IN_PATH, "r", encoding="utf-8") as f:
+    with open(IN_PATH, encoding="utf-8") as f:
         lines = f.readlines()
 
     # Get new lines

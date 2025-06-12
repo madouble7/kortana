@@ -11,7 +11,7 @@ import traceback
 from collections import deque
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 # Enhanced logging configuration
 logging.basicConfig(
@@ -28,13 +28,13 @@ class SystemMetrics:
     cpu_usage: float
     memory_usage: float
     disk_usage: float
-    network_io: Dict[str, int]
+    network_io: dict[str, int]
     active_connections: int
     torch_packages_processed: int
     error_count: int
     warning_count: int
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "timestamp": self.timestamp.isoformat(),
             "cpu_usage": self.cpu_usage,
@@ -55,9 +55,9 @@ class TorchMetrics:
     status: str
     relay_node: str
     throughput: float
-    error_details: Optional[str] = None
+    error_details: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
@@ -243,7 +243,7 @@ class DatabaseManager:
         except Exception as e:
             logger.error(f"Failed to store alert: {e}")
 
-    def get_recent_metrics(self, hours: int = 24) -> List[Dict[str, Any]]:
+    def get_recent_metrics(self, hours: int = 24) -> list[dict[str, Any]]:
         """Get recent system metrics."""
         try:
             with self.connect() as conn:
@@ -259,12 +259,12 @@ class DatabaseManager:
                 )
 
                 columns = [desc[0] for desc in cursor.description]
-                return [dict(zip(columns, row)) for row in cursor.fetchall()]
+                return [dict(zip(columns, row, strict=False)) for row in cursor.fetchall()]
         except Exception as e:
             logger.error(f"Failed to get recent metrics: {e}")
             return []
 
-    def get_torch_metrics(self, hours: int = 24) -> List[Dict[str, Any]]:
+    def get_torch_metrics(self, hours: int = 24) -> list[dict[str, Any]]:
         """Get recent torch metrics."""
         try:
             with self.connect() as conn:
@@ -280,12 +280,12 @@ class DatabaseManager:
                 )
 
                 columns = [desc[0] for desc in cursor.description]
-                return [dict(zip(columns, row)) for row in cursor.fetchall()]
+                return [dict(zip(columns, row, strict=False)) for row in cursor.fetchall()]
         except Exception as e:
             logger.error(f"Failed to get torch metrics: {e}")
             return []
 
-    def get_active_alerts(self) -> List[Dict[str, Any]]:
+    def get_active_alerts(self) -> list[dict[str, Any]]:
         """Get active (unresolved) alerts."""
         try:
             with self.connect() as conn:
@@ -297,7 +297,7 @@ class DatabaseManager:
                 """)
 
                 columns = [desc[0] for desc in cursor.description]
-                return [dict(zip(columns, row)) for row in cursor.fetchall()]
+                return [dict(zip(columns, row, strict=False)) for row in cursor.fetchall()]
         except Exception as e:
             logger.error(f"Failed to get active alerts: {e}")
             return []
@@ -407,7 +407,7 @@ class AlertManager:
         self.alert_configs = self._load_alert_configs()
         self.active_alerts = {}
 
-    def _load_alert_configs(self) -> Dict[str, AlertConfig]:
+    def _load_alert_configs(self) -> dict[str, AlertConfig]:
         """Load alert configurations from database."""
         configs = {}
         try:
@@ -434,7 +434,7 @@ class AlertManager:
 
         return configs
 
-    def _get_default_alert_configs(self) -> Dict[str, AlertConfig]:
+    def _get_default_alert_configs(self) -> dict[str, AlertConfig]:
         """Get default alert configurations."""
         return {
             "cpu_usage": AlertConfig("cpu_usage", 80.0, "gt", "high"),
@@ -446,7 +446,7 @@ class AlertManager:
             ),
         }
 
-    def _save_default_configs(self, configs: Dict[str, AlertConfig]):
+    def _save_default_configs(self, configs: dict[str, AlertConfig]):
         """Save default configurations to database."""
         try:
             with self.db_manager.connect() as conn:
@@ -581,7 +581,7 @@ class MonitoringDashboard:
 
         logger.info("Monitoring loop ended")
 
-    def get_dashboard_data(self) -> Dict[str, Any]:
+    def get_dashboard_data(self) -> dict[str, Any]:
         """Get current dashboard data."""
         try:
             # Get recent metrics
@@ -609,7 +609,7 @@ class MonitoringDashboard:
                 "error": str(e),
             }
 
-    def _calculate_stats(self, metrics_data: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _calculate_stats(self, metrics_data: list[dict[str, Any]]) -> dict[str, Any]:
         """Calculate aggregated statistics from metrics data."""
         if not metrics_data:
             return {}

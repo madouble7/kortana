@@ -1,5 +1,5 @@
-import sys
 import os
+import sys
 
 print(f"Python Version: {sys.version}")
 print(f"Python Executable: {sys.executable}")

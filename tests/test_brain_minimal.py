@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from src.brain import ChatEngine
+from src.kortana.core.brain import ChatEngine
 
 
 @pytest.fixture
@@ -132,8 +132,9 @@ def chat_engine(mock_config_files, mock_llm_client):
 
         # Disable scheduler for tests
         with patch("brain.BackgroundScheduler"):
-            engine = ChatEngine()
-            engine.llm_clients = {"gpt-4.1-nano": mock_llm_client}
+            # Pass a mock settings object to ChatEngine
+            mock_settings = Mock()
+            engine = ChatEngine(settings=mock_settings)
             return engine
 
 
@@ -260,7 +261,9 @@ def test_minimal_integration():
             patch.object(ChatEngine, "_load_json_config", return_value={}),
             patch.object(ChatEngine, "_append_to_memory_journal"),
         ):
-            engine = ChatEngine()
+            # Pass a mock settings object to ChatEngine
+            mock_settings = Mock()
+            engine = ChatEngine(settings=mock_settings)
             assert engine is not None
             assert hasattr(engine, "current_mode")
             assert hasattr(engine, "history")

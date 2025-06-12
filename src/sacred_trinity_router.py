@@ -6,7 +6,7 @@ This module provides routing for the Sacred Trinity system.
 
 import json
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from kortana.config.schema import KortanaConfig
 
@@ -32,7 +32,7 @@ class SacredTrinityRouter:
 
         # Load Sacred Trinity configuration
         try:
-            with open(settings.paths.sacred_trinity_config_file_path, "r") as f:
+            with open(settings.paths.sacred_trinity_config_file_path) as f:
                 self.trinity_config = json.load(f)
             logger.info(
                 f"Loaded Sacred Trinity configuration from {settings.paths.sacred_trinity_config_file_path}"
@@ -46,7 +46,7 @@ class SacredTrinityRouter:
                 "lit": {"enabled": True, "weight": 0.33},
             }
 
-    def route(self, message: str, context: Dict[str, Any]) -> str:
+    def route(self, message: str, context: dict[str, Any]) -> str:
         """
         Determine which component of the Sacred Trinity should handle a message.
 

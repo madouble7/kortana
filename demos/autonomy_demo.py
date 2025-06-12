@@ -30,7 +30,7 @@ def read_queue(agent):
     if not os.path.exists(queue_file):
         return []
 
-    with open(queue_file, "r", encoding="utf-8") as f:
+    with open(queue_file, encoding="utf-8") as f:
         lines = f.readlines()
 
     return [line.strip() for line in lines if line.strip()]
@@ -91,7 +91,7 @@ def show_current_status():
             log_path = os.path.join(log_dir, log_file)
 
             if os.path.exists(log_path):
-                with open(log_path, "r", encoding="utf-8") as f:
+                with open(log_path, encoding="utf-8") as f:
                     lines = f.readlines()
                 print(f"   📝 {agent}: {len(lines)} lines")
 
@@ -105,7 +105,7 @@ def show_current_status():
             queue_path = os.path.join(queue_dir, queue_file)
 
             if os.path.exists(queue_path):
-                with open(queue_path, "r", encoding="utf-8") as f:
+                with open(queue_path, encoding="utf-8") as f:
                     lines = f.readlines()
                 print(f"   📥 {agent}_in: {len(lines)} messages")
 

@@ -19,7 +19,7 @@ def fix_syntax_issues():
         return False
 
     # Read the file line by line
-    with open(file_path, "r") as f:
+    with open(file_path) as f:
         lines = f.readlines()
 
     # Look for specific issues
@@ -73,7 +73,7 @@ def complete_fix():
 
     # Read the file
     try:
-        with open(brain_path, "r") as f:
+        with open(brain_path) as f:
             content = f.read()
 
         # Find each agent initialization

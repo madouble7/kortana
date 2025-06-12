@@ -5,8 +5,8 @@ This script runs the test suite for the Kor'tana project.
 """
 
 import os
-import sys
 import subprocess
+import sys
 from pathlib import Path
 
 

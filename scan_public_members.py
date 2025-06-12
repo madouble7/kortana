@@ -10,7 +10,6 @@ import json
 import os
 import pkgutil
 import sys
-from typing import Dict, List
 
 # Add src to path for imports
 sys.path.append(os.path.abspath("src"))
@@ -23,7 +22,7 @@ def is_public_member(name: str) -> bool:
     return not name.startswith("_") or (name.startswith("__") and name.endswith("__"))
 
 
-def get_public_members_from_module(module_name: str) -> Dict[str, List[str]]:
+def get_public_members_from_module(module_name: str) -> dict[str, list[str]]:
     """
     Get all public members from a module.
 
@@ -76,7 +75,7 @@ def get_public_members_from_module(module_name: str) -> Dict[str, List[str]]:
     return result
 
 
-def find_modules_in_package(package_name: str) -> List[str]:
+def find_modules_in_package(package_name: str) -> list[str]:
     """Find all modules in a package recursively."""
     modules = []
 

@@ -8,9 +8,9 @@ This script focuses specifically on:
 4. Resolving its own imports (like yaml and omegaconf)
 """
 
+import importlib
 import sys
 from pathlib import Path
-import importlib
 
 # Add the project root to Python path
 sys.path.insert(0, str(Path(__file__).parent.parent))

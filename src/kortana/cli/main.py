@@ -4,17 +4,16 @@ Kortana Main CLI Entry Point
 Sacred Circuit Development Platform
 """
 
-import sys
 import argparse
+import sys
 from pathlib import Path
-from typing import List, Optional
 
 # Add src to path for development
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from kortana.config import load_config, get_config
-from kortana.core.brain import Brain
+from kortana.config import get_config, load_config
 from kortana.core.autonomous_development_engine import AutonomousDevelopmentEngine
+from kortana.core.brain import Brain
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -221,7 +220,7 @@ Available commands:
         return 1
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     """Main CLI entry point"""
     parser = create_parser()
     args = parser.parse_args(argv)

@@ -38,7 +38,7 @@ def read_new_lines(log_file):
 
     # Get last processed line count
     if os.path.exists(seen_path):
-        with open(seen_path, "r", encoding="utf-8") as f:
+        with open(seen_path, encoding="utf-8") as f:
             try:
                 last_count = int(f.read().strip())
             except ValueError:
@@ -49,7 +49,7 @@ def read_new_lines(log_file):
         return [], last_count
 
     # Read all lines from log
-    with open(log_file, "r", encoding="utf-8") as f:
+    with open(log_file, encoding="utf-8") as f:
         lines = f.readlines()
 
     # Return only new lines

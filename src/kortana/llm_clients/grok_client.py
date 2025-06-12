@@ -1,11 +1,13 @@
 # src/llm_clients/grok_client.py
 """Grok client implementation for Kor'tana."""
 
-from .base_client import BaseLLMClient
-import openai  # Assuming xAI API is OpenAI compatible [2]
-import httpx
 import logging
-from typing import List, Dict, Any
+from typing import Any
+
+import httpx
+import openai  # Assuming xAI API is OpenAI compatible [2]
+
+from .base_client import BaseLLMClient
 
 
 class GrokClient(BaseLLMClient):
@@ -16,7 +18,7 @@ class GrokClient(BaseLLMClient):
     """
 
     def __init__(
-        self, api_key: str, model_name: str, base_url: str, default_params: Dict
+        self, api_key: str, model_name: str, base_url: str, default_params: dict
     ):
         """Initialize the Grok client.
 
@@ -39,7 +41,7 @@ class GrokClient(BaseLLMClient):
         )
         logging.info(f"GrokClient initialized for {model_name}")
 
-    def generate_response(self, system_prompt: str, messages: List) -> Dict[str, Any]:
+    def generate_response(self, system_prompt: str, messages: list) -> dict[str, Any]:
         """Generate a response from Grok.
 
         Handles Grok-specific parameters like reasoning_effort. [1]
@@ -106,7 +108,7 @@ class GrokClient(BaseLLMClient):
                 "model_id_used": self.model_name,
             }
 
-    def get_capabilities(self) -> Dict[str, Any]:
+    def get_capabilities(self) -> dict[str, Any]:
         """Return Grok-specific capabilities."""
         return {
             "name": self.model_name,

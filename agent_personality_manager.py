@@ -5,10 +5,10 @@ Kor'tana Agent Personality System
 Transform generic agents into specialized AI personalities
 """
 
-import logging  # Added for better warnings/errors
 import json
+import logging  # Added for better warnings/errors
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any
 
 
 class AgentPersonalityManager:
@@ -104,7 +104,7 @@ class AgentPersonalityManager:
             },
         }
 
-    def create_persona_file(self, agent_name: str, persona: Dict[str, Any]) -> Path:
+    def create_persona_file(self, agent_name: str, persona: dict[str, Any]) -> Path:
         """Create a persona configuration file"""
         persona_file = self.personas_dir / f"{agent_name}_persona.json"
 
@@ -114,7 +114,7 @@ class AgentPersonalityManager:
         print(f"[CREATED] Persona file: {persona_file}")
         return persona_file
 
-    def load_persona(self, agent_name: str) -> Dict[str, Any]:
+    def load_persona(self, agent_name: str) -> dict[str, Any]:
         """Load persona configuration for an agent.
         Prioritizes loading from file, then falls back to default, then to empty dict.
         """
@@ -123,7 +123,7 @@ class AgentPersonalityManager:
 
         if persona_file.exists():
             try:
-                with open(persona_file, "r", encoding="utf-8") as f:
+                with open(persona_file, encoding="utf-8") as f:
                     loaded_persona = json.load(f)
                 if not isinstance(loaded_persona, dict):  # Ensure it's a dict
                     self.logger.warning(

@@ -1,5 +1,19 @@
 """
 Kor'tana Core Package
 
-Contains the core functionality of the Kor'tana system, including the ChatEngine.
+Contains the core functionality of the Kor'tana system, including:
+- ChatEngine for model management and conversation
+- Goal Framework for autonomous operation
+- Sacred Covenant enforcement
+- Memory and persistence systems
 """
+
+from .goals import Goal, GoalManager, GoalStatus, GoalType
+
+__all__ = [
+    # Goal Framework
+    "Goal",
+    "GoalManager",
+    "GoalStatus",
+    "GoalType",
+]

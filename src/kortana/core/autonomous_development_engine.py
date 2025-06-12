@@ -8,8 +8,8 @@ import json
 import logging
 import os
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
-from typing import Any, Dict, List
+from datetime import UTC, datetime
+from typing import Any
 
 from openai import AsyncClient
 
@@ -21,14 +21,14 @@ class DevelopmentTask:
     task_id: str
     description: str
     priority: int
-    tools_required: List[str]
+    tools_required: list[str]
     estimated_complexity: str  # "low", "medium", "high"
     covenant_approval: bool = False
     created_at: str = ""
 
     def __post_init__(self):
         if not self.created_at:
-            self.created_at = datetime.now(timezone.utc).isoformat()
+            self.created_at = datetime.now(UTC).isoformat()
 
 
 class AutonomousDevelopmentEngine:
@@ -41,8 +41,8 @@ class AutonomousDevelopmentEngine:
         self.client = openai_client
         self.covenant = covenant_enforcer
         self.memory = memory_manager
-        self.active_tasks: List[DevelopmentTask] = []
-        self.completion_history: List[Dict] = []
+        self.active_tasks: list[DevelopmentTask] = []
+        self.completion_history: list[dict] = []
         self.logger = logging.getLogger(__name__)
 
         # Agent tools following OpenAI's primitives
@@ -109,7 +109,7 @@ class AutonomousDevelopmentEngine:
             },
         }
 
-    async def plan_development_session(self, goal: str) -> List[DevelopmentTask]:
+    async def plan_development_session(self, goal: str) -> list[DevelopmentTask]:
         """
         Use GPT-4.1-Nano to plan a development session with multiple tasks.
         Following OpenAI's planning agent pattern.
@@ -250,7 +250,7 @@ class AutonomousDevelopmentEngine:
             )
             return []
 
-    async def execute_task(self, task: DevelopmentTask) -> Dict[str, Any]:
+    async def execute_task(self, task: DevelopmentTask) -> dict[str, Any]:
         """Execute a single development task using OpenAI's function calling."""
         if not task.covenant_approval:
             # Log the blocked task
@@ -309,7 +309,7 @@ class AutonomousDevelopmentEngine:
             completion_record = {
                 "task_id": task.task_id,
                 "description": task.description,
-                "completed_at": datetime.now(timezone.utc).isoformat(),
+                "completed_at": datetime.now(UTC).isoformat(),
                 "results": results,
                 "synthesis": synthesis_content,
                 "success": True,
@@ -327,7 +327,7 @@ class AutonomousDevelopmentEngine:
             error_record = {
                 "task_id": task.task_id,
                 "error": str(e),
-                "failed_at": datetime.now(timezone.utc).isoformat(),
+                "failed_at": datetime.now(UTC).isoformat(),
                 "success": False,
             }
             # Log the error record
@@ -335,7 +335,7 @@ class AutonomousDevelopmentEngine:
             self.logger.error(f"❌ Task failed: {task.description} - {e}")
             return error_record
 
-    async def autonomous_development_cycle(self, goals: List[str], max_cycles: int = 3):
+    async def autonomous_development_cycle(self, goals: list[str], max_cycles: int = 3):
         """Run multiple development cycles autonomously"""
         self.logger.info(
             f"🚀 Starting autonomous development cycle with {len(goals)} goals"
@@ -367,7 +367,7 @@ class AutonomousDevelopmentEngine:
 
         return cycle_results
 
-    async def _reflect_on_cycle(self, cycle_number: int, results: List[Dict]):
+    async def _reflect_on_cycle(self, cycle_number: int, results: list[dict]):
         """Reflect on completed development cycle"""
         successful_tasks = [r for r in results if r.get("success")]
         failed_tasks = [r for r in results if not r.get("success")]
@@ -402,7 +402,7 @@ class AutonomousDevelopmentEngine:
             )
 
     # Tool implementations
-    async def _analyze_codebase(self, task: DevelopmentTask) -> Dict[str, Any]:
+    async def _analyze_codebase(self, task: DevelopmentTask) -> dict[str, Any]:
         """Analyze existing codebase structure"""
         self.logger.info(f"🔍 Analyzing codebase for task: {task.description}")
         try:
@@ -444,7 +444,7 @@ class AutonomousDevelopmentEngine:
             )
             return {"status": "failed", "error": str(e)}
 
-    async def _generate_code(self, task: DevelopmentTask) -> Dict[str, Any]:
+    async def _generate_code(self, task: DevelopmentTask) -> dict[str, Any]:
         """Generate new code following Sacred Covenant guidelines"""
         self.logger.info(f"✨ Generating code for task: {task.description}")
         # Dummy implementation: Use LLM to generate code and apply edits.
@@ -455,7 +455,7 @@ class AutonomousDevelopmentEngine:
         )
         return {"status": "completed", "generated_code": generated_code}
 
-    async def _refactor_code(self, task: DevelopmentTask) -> Dict[str, Any]:
+    async def _refactor_code(self, task: DevelopmentTask) -> dict[str, Any]:
         """Refactor existing code"""
         self.logger.info(f"♻️ Refactoring code for task: {task.description}")
         # Dummy implementation: Analyze code and suggest/apply refactoring.
@@ -467,7 +467,7 @@ class AutonomousDevelopmentEngine:
         )
         return {"status": "completed", "summary": refactoring_summary}
 
-    async def _create_tests(self, task: DevelopmentTask) -> Dict[str, Any]:
+    async def _create_tests(self, task: DevelopmentTask) -> dict[str, Any]:
         """Create comprehensive tests"""
         self.logger.info(f"🧪 Creating tests for task: {task.description}")
         # Dummy implementation: Generate test cases and code.
@@ -478,7 +478,7 @@ class AutonomousDevelopmentEngine:
         )
         return {"status": "completed", "summary": test_summary}
 
-    async def _document_code(self, task: DevelopmentTask) -> Dict[str, Any]:
+    async def _document_code(self, task: DevelopmentTask) -> dict[str, Any]:
         """Generate documentation in Kor'tana's voice"""
         self.logger.info(f"📖 Documenting code for task: {task.description}")
         # Dummy implementation: Generate documentation strings or files.
@@ -489,7 +489,7 @@ class AutonomousDevelopmentEngine:
         )
         return {"status": "completed", "summary": doc_summary}
 
-    async def _enhance_persona(self, task: DevelopmentTask) -> Dict[str, Any]:
+    async def _enhance_persona(self, task: DevelopmentTask) -> dict[str, Any]:
         """Enhance Kor'tana's persona configuration"""
         self.logger.info(f"🎭 Enhancing persona for task: {task.description}")
         # Dummy implementation: Modify persona configuration.
@@ -500,7 +500,7 @@ class AutonomousDevelopmentEngine:
         )
         return {"status": "completed", "summary": persona_summary}
 
-    async def _detect_critical_issues(self, task: DevelopmentTask) -> Dict[str, Any]:
+    async def _detect_critical_issues(self, task: DevelopmentTask) -> dict[str, Any]:
         """Detect critical issues in the codebase using AI analysis"""
         self.logger.info(f"🐞 Detecting critical issues for task: {task.description}")
 
@@ -594,7 +594,7 @@ class AutonomousDevelopmentEngine:
             )
             return {"status": "failed", "error": str(e)}
 
-    async def _fix_memory_issues(self, task: DevelopmentTask) -> Dict[str, Any]:
+    async def _fix_memory_issues(self, task: DevelopmentTask) -> dict[str, Any]:
         """Implement memory management fixes"""
         self.logger.info(f"💾 Fixing memory issues for task: {task.description}")
         # Dummy implementation: Interact with memory_manager or perform code
@@ -606,7 +606,7 @@ class AutonomousDevelopmentEngine:
         )
         return {"status": "completed", "summary": fix_summary}
 
-    async def _enhance_security(self, task: DevelopmentTask) -> Dict[str, Any]:
+    async def _enhance_security(self, task: DevelopmentTask) -> dict[str, Any]:
         """Implement security enhancements"""
         self.logger.info(f"🔒 Enhancing security for task: {task.description}")
         # Dummy implementation: Address security findings.
@@ -620,7 +620,7 @@ class AutonomousDevelopmentEngine:
 
     async def _improve_websocket_stability(
         self, task: DevelopmentTask
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Enhance WebSocket connection stability"""
         self.logger.info(
             f"🕸️ Improving WebSocket stability for task: {task.description}"
@@ -634,7 +634,7 @@ class AutonomousDevelopmentEngine:
         )
         return {"status": "completed", "summary": stability_summary}
 
-    async def _optimize_database(self, task: DevelopmentTask) -> Dict[str, Any]:
+    async def _optimize_database(self, task: DevelopmentTask) -> dict[str, Any]:
         """Implement database optimization techniques"""
         self.logger.info(f"🗃️ Optimizing database for task: {task.description}")
         # Dummy implementation: Interact with database schemas or ORM.
@@ -646,7 +646,7 @@ class AutonomousDevelopmentEngine:
         )
         return {"status": "completed", "summary": optimization_summary}
 
-    async def _implement_monitoring(self, task: DevelopmentTask) -> Dict[str, Any]:
+    async def _implement_monitoring(self, task: DevelopmentTask) -> dict[str, Any]:
         """Implement comprehensive monitoring and alerting"""
         self.logger.info(f"📊 Implementing monitoring for task: {task.description}")
         # Dummy implementation: Add monitoring hooks or metrics collection.
@@ -658,7 +658,7 @@ class AutonomousDevelopmentEngine:
         )
         return {"status": "completed", "summary": monitoring_summary}
 
-    async def emergency_self_repair(self) -> Dict[str, Any]:
+    async def emergency_self_repair(self) -> dict[str, Any]:
         """Emergency self-repair sequence for critical issues"""
         self.logger.warning("🚨 Initiating emergency self-repair!")
         # This is a placeholder for a complex self-repair mechanism.
@@ -698,14 +698,14 @@ class AutonomousDevelopmentEngine:
                 "emergency_repair_completed": True,
                 "tasks_executed": len(repair_results),
                 "results": repair_results,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             },
         )
         return {
             "emergency_repair_completed": True,
             "tasks_executed": len(repair_results),
             "results": repair_results,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
     def _covenant_approve_task(self, task_description):

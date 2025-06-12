@@ -21,7 +21,7 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 # Import torch protocol
 sys.path.append(str(Path(__file__).parent.parent))
@@ -54,7 +54,7 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 class TorchRelay:
     """Enhanced relay with Pass the Torch protocol integration"""
 
-    def __init__(self, project_root: Optional[str] = None):
+    def __init__(self, project_root: str | None = None):
         """Initialize torch relay"""
         self.project_root = (
             Path(project_root) if project_root else Path(__file__).parent.parent
@@ -84,14 +84,14 @@ class TorchRelay:
             f"[APIs] Gemini: {'✓' if self.gemini else '✗'}, OpenAI: {'✓' if OPENAI_API_KEY else '✗'}, Anthropic: {'✓' if ANTHROPIC_API_KEY else '✗'}"
         )
 
-    def _discover_agents(self) -> Dict[str, Any]:
+    def _discover_agents(self) -> dict[str, Any]:
         """Discover available agents from log files"""
         agents = {}
         if self.logs_dir.exists():
             for log_file in self.logs_dir.glob("*.log"):
                 agent_name = log_file.stem
                 try:
-                    with open(log_file, "r", encoding="utf-8") as f:
+                    with open(log_file, encoding="utf-8") as f:
                         lines = f.readlines()
 
                     # Count non-empty, non-comment lines
@@ -128,7 +128,7 @@ class TorchRelay:
             return ""
 
         try:
-            with open(log_file, "r", encoding="utf-8") as f:
+            with open(log_file, encoding="utf-8") as f:
                 content = f.read()
 
             # Truncate if too long
@@ -162,7 +162,7 @@ class TorchRelay:
 
     def create_torch_for_agent(
         self, agent_name: str, handoff_reason: str = ""
-    ) -> Optional[str]:
+    ) -> str | None:
         """Create a torch package for an agent"""
         if agent_name not in self.agents:
             print(f"[ERROR] Agent '{agent_name}' not found")

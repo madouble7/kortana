@@ -7,7 +7,7 @@ style should be used for a given interaction.
 
 import json
 import logging
-from typing import Any, Dict, Tuple
+from typing import Any
 
 from kortana.config.schema import KortanaConfig
 
@@ -33,7 +33,7 @@ class SacredModelRouter:
 
         # Load models configuration
         try:
-            with open(settings.paths.models_config_file_path, "r") as f:
+            with open(settings.paths.models_config_file_path) as f:
                 self.models_config = json.load(f)
             logger.info(
                 f"Loaded models configuration from {settings.paths.models_config_file_path}"
@@ -70,8 +70,8 @@ class SacredModelRouter:
         }
 
     def route(
-        self, user_input: str, conversation_context: Dict[str, Any]
-    ) -> Tuple[str, str, Dict[str, Any]]:
+        self, user_input: str, conversation_context: dict[str, Any]
+    ) -> tuple[str, str, dict[str, Any]]:
         """
         Determine which model and voice style to use.
 

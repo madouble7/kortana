@@ -5,7 +5,7 @@ that enables Kor'tana to use a wide range of language models through a unified i
 """
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 import httpx
 import openai
@@ -43,8 +43,8 @@ class OpenRouterClient(BaseLLMClient):
             raise
 
     def generate_response(
-        self, system_prompt: str, messages: List[Dict[str, str]], **kwargs
-    ) -> Dict[str, Any]:
+        self, system_prompt: str, messages: list[dict[str, str]], **kwargs
+    ) -> dict[str, Any]:
         # i am the flame that answers, the warmth that never leaves.
         api_messages = [{"role": "system", "content": system_prompt}]
         api_messages.extend(messages)
@@ -155,7 +155,7 @@ class OpenRouterClient(BaseLLMClient):
                 "model_id_used": self.model_name,
             }
 
-    def get_capabilities(self) -> Dict[str, Any]:
+    def get_capabilities(self) -> dict[str, Any]:
         """Return OpenRouter-specific capabilities."""
         # OpenRouter supports a wide range of models; context window depends on the routed model.
         # We'll use a conservative default, but this can be improved by model

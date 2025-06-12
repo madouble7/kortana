@@ -1,0 +1,28 @@
+[project]
+name = "project-kortana"
+version = "0.1.0"
+description = ""
+authors = [{ name = "codex-bot", email = "codex-bot@example.com" }]
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.104.1",
+    "uvicorn[standard]>=0.24.0",
+    "sqlalchemy>=2.0.0",
+    "psycopg2-binary>=2.9.0",
+    "alembic>=1.12.0",
+    "openai>=1.3.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "sentence-transformers>=2.2.2",
+    "torch>=2.1.0",
+    "numpy>=1.24.0",
+    "httpx>=0.25.0",
+    "apscheduler>=3.10.0",
+    "pinecone>=3.2.2",
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

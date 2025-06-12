@@ -8,8 +8,8 @@ Revolutionary upgrade to true autonomous agent architecture
 # Consider refactoring into a shared function, method, or utility.
 
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 # Check for OpenAI Agents SDK availability with proper imports
 try:
@@ -41,7 +41,7 @@ class Agent:
         self,
         name: str,
         instructions: str,
-        tools: Optional[List[Any]] = None,
+        tools: list[Any] | None = None,
         model: str = "gpt-4.1-nano",
     ):
         self.name = name
@@ -264,14 +264,14 @@ class KortanaAgentsSDK:
             model="gpt-4.1-nano",
         )
 
-    async def autonomous_repair_cycle(self, target_issues: List[str]) -> Dict[str, Any]:
+    async def autonomous_repair_cycle(self, target_issues: list[str]) -> dict[str, Any]:
         """
         Run a complete autonomous repair cycle
         This is the revolutionary self-healing process!"""
         logger.info("🚀 Starting autonomous repair cycle with Agents SDK")
 
-        results: Dict[str, Any] = {
-            "cycle_start": datetime.now(timezone.utc).isoformat(),
+        results: dict[str, Any] = {
+            "cycle_start": datetime.now(UTC).isoformat(),
             "target_issues": target_issues,
             "phases": {},
             "sdk_type": SDK_TYPE,
@@ -294,7 +294,7 @@ class KortanaAgentsSDK:
             results["phases"]["detection"] = {
                 "success": True,
                 "findings": findings,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
 
             # Phase 2: Planning
@@ -311,7 +311,7 @@ class KortanaAgentsSDK:
             results["phases"]["planning"] = {
                 "success": True,
                 "strategy": strategy,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
 
             # Phase 3: Implementation
@@ -328,7 +328,7 @@ class KortanaAgentsSDK:
             results["phases"]["implementation"] = {
                 "success": True,
                 "fixes_applied": fixes_applied,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
 
             # Phase 4: Verification
@@ -345,11 +345,11 @@ class KortanaAgentsSDK:
             results["phases"]["verification"] = {
                 "success": True,
                 "test_results": test_results,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
 
             results["cycle_success"] = True
-            results["cycle_end"] = datetime.now(timezone.utc).isoformat()
+            results["cycle_end"] = datetime.now(UTC).isoformat()
 
             logger.info("🎉 Autonomous repair cycle completed successfully!")
 

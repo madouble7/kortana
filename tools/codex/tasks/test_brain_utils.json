@@ -1,0 +1,24 @@
+{
+    "task_name": "test_brain_utils",
+    "description": "Generate comprehensive unit tests for the brain_utils module.",
+    "target_files": [
+        "src/kortana/brain_utils.py"
+    ],
+    "output_file": "tests/unit/core/test_brain_utils.py",
+    "prompt_file": "tools/codex/prompts/test_brain_utils.md",
+    "prompt_params": {
+        "module_path": "src/kortana/brain_utils.py",
+        "module_name": "brain_utils"
+    },
+    "validation_checks": [
+        "ruff check tests/unit/core/test_brain_utils.py --fix",
+        "mypy src/kortana/brain_utils.py tests/unit/core/test_brain_utils.py --strict",
+        "pytest tests/unit/core/test_brain_utils.py"
+    ],
+    "review_criteria": [
+        "Tests cover all public functions in brain_utils.py.",
+        "Tests include edge cases and various input scenarios.",
+        "Tests verify the correctness of utility functions.",
+        "Tests are clear, readable, and follow pytest conventions."
+    ]
+}

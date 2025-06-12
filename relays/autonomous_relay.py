@@ -15,13 +15,13 @@ import json
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List
+from typing import Any
 
 
 class KortanaRelay:
     """Autonomous relay system for agent orchestration"""
 
-    def __init__(self, project_root: str = None):
+    def __init__(self, project_root: str | None = None, config_path: str | None = None):
         """Initialize the relay system"""
         self.project_root = (
             Path(project_root) if project_root else Path(__file__).parent.parent
@@ -41,7 +41,7 @@ class KortanaRelay:
         print(f"📥 Queues: {self.queues_dir}")
         print(f"🤖 Agents: {list(self.agents.keys())}")
 
-    def _discover_agents(self) -> Dict[str, Dict[str, Path]]:
+    def _discover_agents(self) -> dict[str, dict[str, Path]]:
         """Auto-discover agents from log and queue files"""
         agents = {}
 
@@ -55,7 +55,6 @@ class KortanaRelay:
             agents[agent_name] = {
                 "log": log_file,
                 "queue": queue_file,
-                "status": "discovered",
             }
 
             # Ensure queue file exists
@@ -64,24 +63,24 @@ class KortanaRelay:
 
         return agents
 
-    def _load_relay_state(self) -> Dict[str, Dict[str, any]]:
+    def _load_relay_state(self) -> dict[str, dict[str, Any]]:
         """Load relay state to track what's been processed"""
-        if self.relay_state_file.exists():
-            try:
-                with open(self.relay_state_file, "r") as f:
-                    return json.load(f)
-            except (json.JSONDecodeError, FileNotFoundError):
-                pass
-
-        return {}
+        if not self.relay_state_file.exists():
+            return {}
+        try:
+            with open(self.relay_state_file, encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, OSError) as e:
+            print(f"⚠️  Error loading relay state from {self.relay_state_file}: {e}")
+            return {}
 
     def _save_relay_state(self):
         """Save relay state to prevent duplicate processing"""
         self.relay_state_file.parent.mkdir(exist_ok=True)
-        with open(self.relay_state_file, "w") as f:
+        with open(self.relay_state_file, "w", encoding="utf-8") as f:
             json.dump(self.relay_state, f, indent=2)
 
-    def _get_new_messages(self, agent_name: str) -> List[str]:
+    def _get_new_messages(self, agent_name: str) -> list[str]:
         """Get new messages from agent log since last relay"""
         log_file = self.agents[agent_name]["log"]
 
@@ -95,7 +94,7 @@ class KortanaRelay:
 
         # Read all lines from log
         try:
-            with open(log_file, "r", encoding="utf-8") as f:
+            with open(log_file, encoding="utf-8") as f:
                 lines = f.readlines()
         except Exception as e:
             print(f"⚠️  Error reading {log_file}: {e}")
@@ -122,47 +121,52 @@ class KortanaRelay:
 
         return new_messages
 
-    def _relay_to_all_other_agents(self, source_agent: str, messages: List[str]):
+    def _relay_to_all_other_agents(self, source_agent: str, messages: list[str]) -> int:
         """Relay messages to all other agents' queues"""
         if not messages:
-            return
+            return 0
 
         timestamp = datetime.now().strftime("%H:%M:%S")
         relayed_count = 0
 
-        for target_agent, agent_info in self.agents.items():
+        for target_agent, _ in self.agents.items():
             if target_agent == source_agent:
                 continue  # Don't relay to self
 
-            queue_file = agent_info["queue"]
+            agent_data = self.agents.get(target_agent)
+            if not agent_data:
+                print(f"⚠️ Agent data not found for {target_agent}")
+                continue
+
+            queue_file = agent_data.get("queue")
+            if not queue_file or not isinstance(queue_file, Path):
+                print(f"⚠️  Queue file not found or invalid for agent {target_agent}")
+                continue
 
             try:
                 with open(queue_file, "a", encoding="utf-8") as f:
                     for message in messages:
-                        # Format: [timestamp] source_agent: message
                         relay_message = f"[{timestamp}] {source_agent}: {message}"
                         f.write(relay_message + "\n")
                         relayed_count += 1
-
                 print(f"📤 {source_agent} → {target_agent}: {len(messages)} messages")
-
             except Exception as e:
                 print(f"⚠️  Error writing to {queue_file}: {e}")
-
         return relayed_count
 
     def _check_agent_status(self, agent_name: str) -> str:
         """Check if agent is active based on recent activity"""
         agent_state = self.relay_state.get(agent_name, {})
-        last_time = agent_state.get("last_processed_time", "")
+        last_time_str = agent_state.get("last_processed_time")
 
-        if not last_time:
+        if not last_time_str:
             return "inactive"
 
         try:
-            last_dt = datetime.fromisoformat(last_time)
+            last_dt = datetime.fromisoformat(last_time_str)
             now = datetime.now()
-            minutes_since = (now - last_dt).total_seconds() / 60            if minutes_since < 5:
+            minutes_since = (now - last_dt).total_seconds() / 60
+            if minutes_since < 5:
                 return "active"
             elif minutes_since < 30:
                 return "idle"
@@ -171,7 +175,7 @@ class KortanaRelay:
         except Exception:
             return "unknown"
 
-    def relay_cycle(self) -> Dict[str, int]:
+    def relay_cycle(self) -> dict[str, int]:
         """Single relay cycle - check all agents and relay new messages"""
         cycle_stats = {
             "agents_checked": 0,
@@ -201,7 +205,7 @@ class KortanaRelay:
             if status == "active":
                 cycle_stats["active_agents"] += 1
 
-            self.agents[agent_name]["status"] = status
+            print(f"  Agent {agent_name}: {status}")
 
         # Save state after each cycle
         self._save_relay_state()
@@ -214,8 +218,8 @@ class KortanaRelay:
         print("📊 KOR'TANA RELAY STATUS")
         print("=" * 50)
 
-        for agent_name, agent_info in self.agents.items():
-            status = agent_info["status"]
+        for agent_name, _ in self.agents.items():
+            status = self._check_agent_status(agent_name)
             emoji = {
                 "active": "🟢",
                 "idle": "🟡",

@@ -3,7 +3,7 @@ A specialized agent for executing code development tasks.
 This module provides functionality for executing tasks according to a plan.
 """
 
-from typing import Any, Dict
+from typing import Any
 
 from dev_agent import execute_dev_task
 
@@ -23,7 +23,7 @@ class CodingAgent:
         """
         self.planner = planner
 
-    def execute_today(self) -> Dict[str, Any]:
+    def execute_today(self) -> dict[str, Any]:
         """
         Execute all tasks planned for today.
 

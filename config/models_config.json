@@ -1,4 +1,19 @@
 {
-  "default": {"model": "gpt-3.5-turbo", "style": "presence"},
-  "fallback": {"model": "gpt-3.5-turbo", "style": "presence"}
+  "models": {
+    "gemini-1.5-flash": {
+      "provider": "google",
+      "api": "google_gemini",
+      "api_key_env": "GOOGLE_API_KEY",
+      "model_name": "gemini-1.5-flash",
+      "style": "presence"
+    }
+  },
+  "default": {
+    "model": "gemini-1.5-flash",
+    "style": "presence"
+  },
+  "fallback": {
+    "model": "gemini-1.5-flash",
+    "style": "presence"
+  }
 }

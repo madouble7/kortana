@@ -5,7 +5,7 @@ ADE Tools module for autonomous development operations.
 
 import os
 import subprocess
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 def read_file(file_path: str) -> str:
@@ -16,7 +16,7 @@ def read_file(file_path: str) -> str:
     Returns:
         The file contents as a string.
     """
-    with open(file_path, "r", encoding="utf-8") as f:
+    with open(file_path, encoding="utf-8") as f:
         return f.read()
 
 
@@ -37,7 +37,7 @@ def write_file(file_path: str, content: str) -> str:
         return f"Error writing to {file_path}: {e}"
 
 
-def list_directory(path: str) -> List[str]:
+def list_directory(path: str) -> list[str]:
     """
     List all files and directories at the given path.
     Args:
@@ -49,8 +49,8 @@ def list_directory(path: str) -> List[str]:
 
 
 def execute_python_script(
-    script_path: str, args: Optional[List[str]] = None
-) -> Dict[str, Any]:
+    script_path: str, args: list[str] | None = None
+) -> dict[str, Any]:
     """
     Execute a Python script and capture its output and errors.
     Args:
@@ -71,7 +71,7 @@ def execute_python_script(
     }
 
 
-def run_pytest(target: str = ".") -> Dict[str, Any]:
+def run_pytest(target: str = ".") -> dict[str, Any]:
     """
     Run pytest on the given target and return structured results.
     Args:

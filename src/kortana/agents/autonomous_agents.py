@@ -7,7 +7,7 @@ testing, and system monitoring.
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from kortana.config.schema import KortanaConfig
 
@@ -47,7 +47,7 @@ class CodingAgent:
         self.settings = settings
         self.llm_client = llm_client
 
-    async def generate_code(self, spec: Dict[str, Any]) -> str:
+    async def generate_code(self, spec: dict[str, Any]) -> str:
         """
         Generate code based on a specification.
 
@@ -71,7 +71,7 @@ Language: {spec.get("language", "python")}
         response = await self.llm_client.complete(prompt)
         return response.get("content", "// Error generating code")
 
-    async def analyze_code(self, code: str) -> Dict[str, Any]:
+    async def analyze_code(self, code: str) -> dict[str, Any]:
         """
         Analyze code for quality, issues, and improvement opportunities.
 
@@ -133,8 +133,8 @@ class PlanningAgent:
         self.settings = settings
 
     async def create_plan(
-        self, objective: str, constraints: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+        self, objective: str, constraints: list[str] | None = None
+    ) -> dict[str, Any]:
         """
         Create a plan to achieve an objective.
 
@@ -205,7 +205,7 @@ class TestingAgent:
         self.settings = settings
 
     async def generate_tests(
-        self, code: str, requirements: Optional[List[str]] = None
+        self, code: str, requirements: list[str] | None = None
     ) -> str:
         """
         Generate tests for a given code.
@@ -250,8 +250,8 @@ class MonitoringAgent:
         chat_engine_instance: Any,
         llm_client: Any,
         covenant_enforcer: Any,
-        config: Optional[Dict[str, Any]] = None,
-        settings: Optional[KortanaConfig] = None,
+        config: dict[str, Any] | None = None,
+        settings: KortanaConfig | None = None,
     ):
         """
         Initialize the monitoring agent.
@@ -290,7 +290,7 @@ class MonitoringAgent:
         logger.info("Stopping monitoring")
         # In a real implementation, this would stop the background task or timer
 
-    async def perform_health_check(self) -> Dict[str, Any]:
+    async def perform_health_check(self) -> dict[str, Any]:
         """
         Perform a system health check.
 

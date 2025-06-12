@@ -24,7 +24,7 @@ import sqlite3
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import requests
 import tiktoken
@@ -55,7 +55,7 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 class EnhancedKortanaRelay:
     """Enhanced relay with chain routing capabilities"""
 
-    def __init__(self, project_root: Optional[str] = None):
+    def __init__(self, project_root: str | None = None):
         """Initialize enhanced relay"""
         self.project_root = (
             Path(project_root) if project_root else Path(__file__).parent.parent
@@ -141,7 +141,7 @@ class EnhancedKortanaRelay:
         conn.commit()
         conn.close()
 
-    def _discover_agents(self) -> Dict[str, Any]:
+    def _discover_agents(self) -> dict[str, Any]:
         """Discover available agents"""
         agents = {}
         if self.logs_dir.exists():
@@ -203,7 +203,7 @@ class EnhancedKortanaRelay:
             print(f"[WARNING] Chain logging failed: {e}")
 
     def call_gemini_flash(
-        self, task: Dict[str, Any], history: str, max_tokens: int = 2000
+        self, task: dict[str, Any], history: str, max_tokens: int = 2000
     ) -> str:
         """Call Gemini 2.0 Flash for task processing"""
         if not self.model:
@@ -231,7 +231,7 @@ Response:"""
             return f"[ERROR] Failed to process with Gemini: {e}"
 
     def call_github_models(
-        self, model: str, task: Dict[str, Any], history: str, max_tokens: int = 1000
+        self, model: str, task: dict[str, Any], history: str, max_tokens: int = 1000
     ) -> str:
         """Call GitHub Models API for testing and validation"""
         if not GITHUB_API_KEY:
@@ -300,7 +300,7 @@ Provide a concise summary:"""
         task_id: str,
         summary: str,
         code: str = "",
-        issues: List[str] = None,
+        issues: list[str] = None,
         commit_ref: str = "",
     ) -> int:
         """Save context package to database"""
@@ -331,7 +331,7 @@ Provide a concise summary:"""
         return tokens
 
     def route_task(
-        self, task: Dict[str, Any], history: str, context_window: Optional[int] = None
+        self, task: dict[str, Any], history: str, context_window: int | None = None
     ) -> tuple[str, str]:
         """Route task through the AI chain based on stage and context"""
         context_window = context_window or self.context_window

@@ -58,7 +58,7 @@ def demo_semi_auto_mode():
         stderr=subprocess.PIPE,
     )
 
-    print("Background process started (PID: {})".format(proc.pid))
+    print(f"Background process started (PID: {proc.pid})")
     print("In real mode, this would run continuously every 5 minutes.")
 
     # Let it run for a few seconds

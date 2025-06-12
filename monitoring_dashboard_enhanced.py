@@ -11,20 +11,20 @@ import sqlite3
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class KortanaMonitor:
     """Real-time monitoring dashboard for Kor'tana system with torch protocol support"""
 
-    def __init__(self, project_root: Optional[str] = None):
+    def __init__(self, project_root: str | None = None):
         self.project_root = (
             Path(project_root) if project_root else Path(__file__).parent
         )
         self.db_path = self.project_root / "kortana.db"
         self.logs_dir = self.project_root / "logs"
 
-    def get_agent_stats(self) -> Dict[str, Any]:
+    def get_agent_stats(self) -> dict[str, Any]:
         """Get current agent statistics"""
         stats = {
             "total_agents": 0,
@@ -41,7 +41,7 @@ class KortanaMonitor:
             for log_file in log_files:
                 agent_name = log_file.stem
                 try:
-                    with open(log_file, "r", encoding="utf-8") as f:
+                    with open(log_file, encoding="utf-8") as f:
                         lines = f.readlines()
 
                     # Count non-empty, non-comment lines
@@ -87,7 +87,7 @@ class KortanaMonitor:
 
         return stats
 
-    def get_database_stats(self) -> Dict[str, Any]:
+    def get_database_stats(self) -> dict[str, Any]:
         """Get database statistics"""
         stats = {
             "context_packages": 0,
@@ -134,7 +134,7 @@ class KortanaMonitor:
 
         return stats
 
-    def get_torch_stats(self) -> Dict[str, Any]:
+    def get_torch_stats(self) -> dict[str, Any]:
         """Get torch protocol statistics"""
         stats = {
             "total_torches": 0,
@@ -262,7 +262,7 @@ class KortanaMonitor:
 
         return stats
 
-    def get_system_health(self) -> Dict[str, Any]:
+    def get_system_health(self) -> dict[str, Any]:
         """Get overall system health"""
         health = {
             "status": "unknown",
@@ -275,7 +275,7 @@ class KortanaMonitor:
         state_file = self.project_root / "data" / "relay_state.json"
         if state_file.exists():
             try:
-                with open(state_file, "r") as f:
+                with open(state_file) as f:
                     state = json.load(f)
 
                 # Find most recent activity

@@ -1,6 +1,6 @@
-# Kor'tana
+# KOR'TANA
 
-The Warchief's AI companion.
+Kor'tana is a highly autonomous AI agent and sacred companion with memory, ethical discernment, and context-aware responses.
 
 ## 🔒 Infrastructure Status: LOCKED & READY ✅
 
@@ -37,6 +37,7 @@ kortana/
 ## 🚀 Quick Setup
 
 ### Prerequisites
+
 - Python 3.11+
 - Git
 - Virtual environment support
@@ -115,10 +116,31 @@ PowerShell:
 
 ## Features
 
-- **Lowercase Love**: All inputs and outputs are transformed to lowercase
-- **Memory System**: Conversation history and important information is stored for context
-- **Autonomous Agents**: Specialized agents for coding, planning, testing, and monitoring
-- **Covenant Enforcement**: Responses are checked against the covenant for alignment with values
+- **Memory System**: Stores and retrieves memories with semantic search capabilities
+- **Ethical Discernment**: Evaluates responses for algorithmic arrogance and uncertainty
+- **Context-Aware Responses**: Integrates memory and ethical considerations in responses
+- **LLM Integration**: Uses OpenAI's GPT models for natural language processing
+- **LobeChat Frontend Support**: Seamlessly integrates with LobeChat for a user-friendly interface
+
+## LobeChat Integration
+
+Kor'tana integrates with [LobeChat](https://github.com/lobehub/lobe-chat) to provide an intuitive chat interface.
+
+### Setting Up LobeChat Connection
+
+1. Follow the guide in `docs/LOBECHAT_CONNECTION.md` to configure LobeChat.
+2. Set your API key in the `.env` file.
+3. Run the Kor'tana API server.
+
+For troubleshooting, see `docs/LOBECHAT_TROUBLESHOOTING.md`.
+
+## Documentation
+
+- Full API documentation: `docs/API_ENDPOINTS.md`
+- Architecture overview: `docs/ARCHITECTURE.md`
+- Memory Core details: `docs/MEMORY_CORE.md`
+- LobeChat integration: `docs/LOBECHAT_CONNECTION.md`
+- LobeChat troubleshooting: `docs/LOBECHAT_TROUBLESHOOTING.md`
 
 ## Development
 
@@ -129,3 +151,14 @@ python -m pytest tests
 
 ### Code Style
 This project uses Black for formatting and Pylint for linting.
+
+## Core Components
+
+- **Memory Core**: Stores, retrieves, and manages memories
+- **Reasoning Core**: Processes user queries and generates responses
+- **Ethical Discernment Module**: Ensures responses are ethical and reflective
+- **API Adapters**: Connect to frontend interfaces (including LobeChat)
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.

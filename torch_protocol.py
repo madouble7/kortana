@@ -18,7 +18,7 @@ import time
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import tiktoken
 
@@ -54,7 +54,7 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 class TorchProtocol:
     """Manages the Pass the Torch protocol for agent handoffs"""
 
-    def __init__(self, project_root: Optional[str] = None):
+    def __init__(self, project_root: str | None = None):
         self.project_root = (
             Path(project_root) if project_root else Path(__file__).parent
         )
@@ -140,7 +140,7 @@ class TorchProtocol:
         conn.commit()
         conn.close()
 
-    def get_torch_template(self) -> Dict[str, Any]:
+    def get_torch_template(self) -> dict[str, Any]:
         """Get the fillable torch package template"""
         return {
             "torch_id": str(uuid.uuid4()),
@@ -225,7 +225,7 @@ class TorchProtocol:
 
         return should_handoff, reason
 
-    def generate_ai_summary(self, context: str, agent_name: str) -> Dict[str, str]:
+    def generate_ai_summary(self, context: str, agent_name: str) -> dict[str, str]:
         """Generate AI-assisted summaries for torch package"""
         if not self.gemini:
             return {
@@ -404,7 +404,7 @@ class TorchProtocol:
         else:
             return "human"
 
-    def get_agent_type_prompts(self, agent_type: str) -> Dict[str, str]:
+    def get_agent_type_prompts(self, agent_type: str) -> dict[str, str]:
         """Get agent type-specific prompts for the torch filling ceremony"""
         prompts = {
             "ai": {
@@ -450,7 +450,7 @@ class TorchProtocol:
         handoff_reason: str = "",
         task_id: str = "",
         auto_mode: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Interactive prompt to help fill the torch package with intelligent agent detection"""
         print("\n" + "🔥" * 70)
         print("                    PASS THE TORCH CEREMONY")
@@ -604,7 +604,7 @@ class TorchProtocol:
         return torch
 
     def save_torch_package(
-        self, torch: Dict[str, Any], from_agent: str = "", to_agent: str = ""
+        self, torch: dict[str, Any], from_agent: str = "", to_agent: str = ""
     ) -> str:
         """Save torch package to database and file system"""
         torch_id = torch["torch_id"]
@@ -668,8 +668,8 @@ class TorchProtocol:
         return torch_id
 
     def load_torch_package(
-        self, torch_id: Optional[str] = None, file_path: Optional[str] = None
-    ) -> Optional[Dict[str, Any]]:
+        self, torch_id: str | None = None, file_path: str | None = None
+    ) -> dict[str, Any] | None:
         """Load torch package by ID or file path"""
         if torch_id:
             # Load from database
@@ -687,12 +687,12 @@ class TorchProtocol:
                     file_path = result[0]
 
         if file_path and Path(file_path).exists():
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 return json.load(f)
 
         return None
 
-    def list_torch_packages(self, limit: int = 10) -> List[Dict[str, Any]]:
+    def list_torch_packages(self, limit: int = 10) -> list[dict[str, Any]]:
         """List recent torch packages"""
         if not self.db_path.exists():
             return []
@@ -727,7 +727,7 @@ class TorchProtocol:
         conn.close()
         return packages
 
-    def get_torch_lineage(self, torch_id: str) -> List[Dict[str, Any]]:
+    def get_torch_lineage(self, torch_id: str) -> list[dict[str, Any]]:
         """Get the lineage/chain of a torch package"""
         if not self.db_path.exists():
             return []
@@ -798,7 +798,7 @@ class TorchProtocol:
 
         print("\n🔥" * 70)
 
-    def get_recent_torches(self, limit: int = 10) -> List[Dict[str, Any]]:
+    def get_recent_torches(self, limit: int = 10) -> list[dict[str, Any]]:
         """Get recent torch packages from database"""
         if not self.db_path.exists():
             return []

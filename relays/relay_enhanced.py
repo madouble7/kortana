@@ -20,7 +20,7 @@ import sqlite3
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import tiktoken
 
@@ -28,7 +28,7 @@ import tiktoken
 class KortanaEnhancedRelay:
     """Enhanced autonomous relay with context management and DB integration"""
 
-    def __init__(self, project_root: Optional[str] = None):
+    def __init__(self, project_root: str | None = None):
         """Initialize the enhanced relay system"""
         self.project_root = (
             Path(project_root) if project_root else Path(__file__).parent.parent
@@ -100,7 +100,7 @@ class KortanaEnhancedRelay:
         conn.commit()
         conn.close()
 
-    def _discover_agents(self) -> Dict[str, Dict[str, Any]]:
+    def _discover_agents(self) -> dict[str, dict[str, Any]]:
         """Auto-discover agents from log and queue files"""
         agents = {}
 
@@ -123,11 +123,11 @@ class KortanaEnhancedRelay:
 
         return agents
 
-    def _load_relay_state(self) -> Dict[str, Dict[str, Any]]:
+    def _load_relay_state(self) -> dict[str, dict[str, Any]]:
         """Load relay state to track what's been processed"""
         if self.relay_state_file.exists():
             try:
-                with open(self.relay_state_file, "r") as f:
+                with open(self.relay_state_file) as f:
                     return json.load(f)
             except (json.JSONDecodeError, FileNotFoundError):
                 pass
@@ -144,7 +144,7 @@ class KortanaEnhancedRelay:
         """Count tokens in text using tiktoken"""
         return len(self.encoding.encode(text))
 
-    def _get_new_messages(self, agent_name: str) -> List[str]:
+    def _get_new_messages(self, agent_name: str) -> list[str]:
         """Get new messages from agent log since last relay"""
         log_file = self.agents[agent_name]["log"]
 
@@ -157,7 +157,7 @@ class KortanaEnhancedRelay:
 
         # Read all lines from log
         try:
-            with open(log_file, "r", encoding="utf-8") as f:
+            with open(log_file, encoding="utf-8") as f:
                 lines = f.readlines()
         except Exception as e:
             print(f"⚠️  Error reading {log_file}: {e}")
@@ -190,7 +190,7 @@ class KortanaEnhancedRelay:
 
         return new_messages
 
-    def _log_agent_activity(self, agent_name: str, messages: List[str], tokens: int):
+    def _log_agent_activity(self, agent_name: str, messages: list[str], tokens: int):
         """Log agent activity to database"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -212,7 +212,7 @@ class KortanaEnhancedRelay:
         conn.commit()
         conn.close()
 
-    def _relay_to_all_other_agents(self, source_agent: str, messages: List[str]) -> int:
+    def _relay_to_all_other_agents(self, source_agent: str, messages: list[str]) -> int:
         """Relay messages to all other agents' queues"""
         if not messages:
             return 0
@@ -268,7 +268,7 @@ class KortanaEnhancedRelay:
         task_id: str,
         summary: str,
         code: str = "",
-        issues: Optional[List[str]] = None,
+        issues: list[str] | None = None,
         commit_ref: str = "",
     ):
         """Save context package to database"""
@@ -305,7 +305,7 @@ class KortanaEnhancedRelay:
 
     def summarize_agent_history(
         self, agent_name: str, max_tokens: int = 1000
-    ) -> Optional[str]:
+    ) -> str | None:
         """Summarize agent history when approaching token limits"""
         # Get recent messages from database
         conn = sqlite3.connect(self.db_path)
@@ -370,7 +370,7 @@ class KortanaEnhancedRelay:
 
         return summary
 
-    def relay_cycle(self) -> Dict[str, int]:
+    def relay_cycle(self) -> dict[str, int]:
         """Single relay cycle - check all agents and relay new messages"""
         cycle_stats = {
             "agents_checked": 0,

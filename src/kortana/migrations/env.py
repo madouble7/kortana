@@ -6,18 +6,13 @@ from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy.engine import Connection
-# from sqlalchemy.ext.asyncio import async_engine_from_config # Remove or comment out
 
 # Modify sys.path manipulation
-# sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "..")) # Remove or comment out
-sys.path.insert(
-    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-)  # Add this line
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from src.kortana.config.settings import settings
 
 # Import models for autogenerate support
-# from kortana.modules.memory_core.models import CoreMemory  # noqa: F401 # Keep this import if present, ensure path is src.kortana.modules... # Remove or comment out the old import
 from src.kortana.services.database import Base
 
 # this is the Alembic Config object, which provides
@@ -37,17 +32,9 @@ target_metadata = Base.metadata
 
 # Configure the database URL from settings
 # For SQLite, we'll use sync mode for migrations
-# db_url = settings.ALEMBIC_DATABASE_URL # Remove or comment out
-# if db_url.startswith("sqlite"):
-#     # Use sync mode for SQLite migrations
-#     config.set_main_option("sqlalchemy.url", db_url)
-# else:
-#     # For other databases, configure async
-#     alembic_config_dict = config.get_section(config.config_ini_section, {})
-#     alembic_config_dict["sqlalchemy.url"] = db_url
 
 # New URL configuration for offline mode
-url = settings.ALEMBIC_DATABASE_URL  # Add this line
+url = settings.ALEMBIC_DATABASE_URL
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -67,8 +54,7 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    # url = config.get_main_option("sqlalchemy.url") # Remove or comment out
-    url = settings.ALEMBIC_DATABASE_URL  # Add this line
+    url = settings.ALEMBIC_DATABASE_URL
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -87,7 +73,6 @@ def do_run_migrations(connection: Connection) -> None:
         context.run_migrations()
 
 
-# Replace run_migrations_online and run_async_migrations with the new sync version
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
     from sqlalchemy import create_engine
@@ -98,9 +83,6 @@ def run_migrations_online() -> None:
         context.configure(connection=connection, target_metadata=target_metadata)
         context.run_migrations()
 
-
-# async def run_async_migrations() -> None: # Remove or comment out
-#     """In this scenario we need to create an Engine...
 
 if context.is_offline_mode():
     run_migrations_offline()

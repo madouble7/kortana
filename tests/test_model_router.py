@@ -18,7 +18,7 @@ def test_model_router_module_structure():
     assert os.path.exists(router_path), "model_router.py file should exist"
 
     # Read and check for key components
-    with open(router_path, "r", encoding="utf-8") as f:
+    with open(router_path, encoding="utf-8") as f:
         content = f.read()
 
     assert "class SacredModelRouter" in content, (

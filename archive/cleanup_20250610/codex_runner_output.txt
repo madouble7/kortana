@@ -1,0 +1,21 @@
+DEBUG: codex_runner.py script execution started.
+DEBUG: __name__ == '__main__' block reached.
+DEBUG: main() function started.
+DEBUG: task_name = test_brain_utils
+DEBUG: Attempting to instantiate CodexTaskRunner.
+DEBUG: self.project_root = C:\project-kortana
+DEBUG: self.codex_dir = C:\project-kortana\tools\codex
+DEBUG: self.tasks_dir = C:\project-kortana\tools\codex\tasks
+[SUCCESS] OpenAI client initialized
+DEBUG: CodexTaskRunner instantiated successfully.
+DEBUG: Attempting to execute task.
+Executing Codex task: test_brain_utils
+==================================================
+DEBUG: task_file in load_task = C:\project-kortana\tools\codex\tasks\test_brain_utils.json
+DEBUG: load_prompt received prompt_file = 'tools/codex/prompts/test_brain_utils.md'
+DEBUG: load_prompt self.project_root = 'C:\\project-kortana'
+DEBUG: load_prompt constructed prompt_path = 'C:\\project-kortana\\tools\\codex\\prompts\\test_brain_utils.md'
+Generating code with OpenAI...
+[FAILURE] Failed to generate code: Error code: 401 - {'error': {'message': 'Incorrect API key provided: sk-YOUR_********HERE. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}
+[FAILURE] Task execution failed: Error code: 401 - {'error': {'message': 'Incorrect API key provided: sk-YOUR_********HERE. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}
+DEBUG: Task execution finished. Success: False

@@ -25,7 +25,7 @@ import sqlite3
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import tiktoken
 
@@ -59,7 +59,7 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 class EnhancedKortanaRelay:
     """Enhanced relay with chain routing capabilities and torch protocol integration"""
 
-    def __init__(self, project_root: Optional[str] = None):
+    def __init__(self, project_root: str | None = None):
         """Initialize enhanced relay"""
         self.project_root = (
             Path(project_root) if project_root else Path(__file__).parent.parent
@@ -77,7 +77,7 @@ class EnhancedKortanaRelay:
         # Initialize torch protocol
         self.torch_protocol = TorchProtocol(str(self.project_root))  # Set up Gemini
         self.gemini_api_key = GEMINI_API_KEY
-        self.model: Optional[Any] = None
+        self.model: Any | None = None
         if self.gemini_api_key and GENAI_AVAILABLE:
             try:
                 genai.configure(api_key=self.gemini_api_key)
@@ -172,7 +172,7 @@ class EnhancedKortanaRelay:
         conn.commit()
         conn.close()
 
-    def call_gemini_flash(self, task: Dict[str, Any], history: str) -> str:
+    def call_gemini_flash(self, task: dict[str, Any], history: str) -> str:
         """Call Gemini 2.0 Flash for task processing"""
         if not self.model:
             return f"[MOCK] Gemini processing for task: {task.get('description', 'Unknown task')}"
@@ -214,7 +214,7 @@ class EnhancedKortanaRelay:
         except Exception as e:
             return f"[ERROR] Summarization failed: {e}"
 
-    def call_github_models(self, model: str, task: Dict[str, Any], history: str) -> str:
+    def call_github_models(self, model: str, task: dict[str, Any], history: str) -> str:
         """Call GitHub Models API"""
         if not GITHUB_API_KEY:
             return f"[MOCK] GitHub Models {model} processing for task: {task.get('description', '')}"
@@ -227,7 +227,7 @@ class EnhancedKortanaRelay:
         task_id: str,
         history: str,
         code: str,
-        issues: Optional[List[str]] = None,
+        issues: list[str] | None = None,
         commit_ref: str = "",
     ) -> int:
         """Save context package to database"""
@@ -264,7 +264,7 @@ class EnhancedKortanaRelay:
         return tokens
 
     def route_task(
-        self, task: Dict[str, Any], history: str, context_window: Optional[int] = None
+        self, task: dict[str, Any], history: str, context_window: int | None = None
     ) -> tuple[str, str]:
         """Route task through the AI chain based on stage and context"""
         context_window = context_window or self.context_window

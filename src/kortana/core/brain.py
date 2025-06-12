@@ -3,36 +3,32 @@ Kor'tana Core Brain
 
 This module contains the core ChatEngine that powers Kor'tana's conversational abilities.
 """
-
 import json
 import logging
+import os
+import sys
 import uuid
-from datetime import UTC, datetime
-from typing import Any
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 
 import yaml
 from apscheduler.schedulers.background import BackgroundScheduler
+from config.schema import KortanaConfig
 
-from kortana.agents.autonomous_agents import (
-    CodingAgent,
-    MonitoringAgent,
-    PlanningAgent,
-    TestingAgent,
-)
-from kortana.config import load_config
-from kortana.config.schema import KortanaConfig
-from kortana.core.covenant_enforcer import CovenantEnforcer
-from kortana.llm_clients.factory import LLMClientFactory
-from kortana.memory.memory import MemoryManager as JsonLogMemoryManager
-from kortana.memory.memory_manager import MemoryManager as PineconeMemoryManager
-from kortana.utils import text_analysis
+from src.kortana.config import load_config
 from src.dev_agent_stub import DevAgentStub
-
-# Import from src path since model_router is not in the kortana package yet
+from src.kortana.agents.autonomous_agents import (CodingAgent, MonitoringAgent,
+                                                  PlanningAgent, TestingAgent)
+from src.kortana.core.covenant_enforcer import CovenantEnforcer
+from src.kortana.memory.memory import MemoryManager as JsonLogMemoryManager
+from src.kortana.memory.memory_manager import \
+    MemoryManager as PineconeMemoryManager
+from src.kortana.utils import text_analysis
+from src.llm_clients.factory import LLMClientFactory
 from src.model_router import SacredModelRouter
 
 try:
-    # Import from src path since sacred_trinity_router is not in the kortana package yet
     from src.sacred_trinity_router import SacredTrinityRouter
 except ImportError:
     # Create a stub if the module doesn't exist
@@ -40,13 +36,10 @@ except ImportError:
         def __init__(self, settings):
             self.settings = settings
 
-        def get_response(self, *args, **kwargs):
-            return {"response": "Sacred Trinity Router not available", "status": "stub"}
-
-
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -59,7 +52,7 @@ class ChatEngine:
     LLM interaction, and autonomous agent coordination.
     """
 
-    def __init__(self, settings: KortanaConfig, session_id: str | None = None):
+    def __init__(self, settings: KortanaConfig, session_id: Optional[str] = None):
         """
         Initialize the chat engine.
 
@@ -74,23 +67,15 @@ class ChatEngine:
         logger.info(f"Initializing ChatEngine with session ID {self.session_id}")
 
         # Load configurations using paths from settings
-        self.persona_data = self._load_json_config(
-            self.settings.paths.persona_file_path
-        )
-        self.identity_data = self._load_json_config(
-            self.settings.paths.identity_file_path
-        )
+        self.persona_data = self._load_json_config(self.settings.paths.persona_file_path)
+        self.identity_data = self._load_json_config(self.settings.paths.identity_file_path)
         self.covenant = self._load_covenant(self.settings.paths.covenant_file_path)
 
         # Initialize LLM clients
         self.llm_client_factory = LLMClientFactory(settings=self.settings)
-        LLMClientFactory.validate_configuration(self.llm_client_factory.models_config)
-        self.default_llm_client = self.llm_client_factory.get_client(
-            self.settings.default_llm_id
-        )
-        self.ade_llm_client = self.llm_client_factory.get_client(
-            self.settings.agents.default_llm_id
-        )
+        LLMClientFactory.validate_configuration(self.settings)
+        self.default_llm_client = self.llm_client_factory.get_client(self.settings.default_llm_id)
+        self.ade_llm_client = self.llm_client_factory.get_client(self.settings.agents.default_llm_id)
 
         # Initialize memory systems
         self.pinecone_memory = PineconeMemoryManager(settings=self.settings)
@@ -112,21 +97,21 @@ class ChatEngine:
             memory_accessor=self.pinecone_memory,
             dev_agent_instance=self.dev_agent_instance,
             settings=self.settings,
-            llm_client=self.ade_llm_client,
+            llm_client=self.ade_llm_client
         )
 
         self.ade_planner = PlanningAgent(
             chat_engine_instance=self,
             llm_client=self.ade_llm_client,
             covenant_enforcer=self.covenant_enforcer,
-            settings=self.settings,
+            settings=self.settings
         )
 
         self.ade_tester = TestingAgent(
             chat_engine_instance=self,
             llm_client=self.ade_llm_client,
             covenant_enforcer=self.covenant_enforcer,
-            settings=self.settings,
+            settings=self.settings
         )
 
         # Handle agent types configuration for both dict and object
@@ -140,7 +125,7 @@ class ChatEngine:
                     "coding": getattr(self.settings.agents.types, "coding", {}),
                     "planning": getattr(self.settings.agents.types, "planning", {}),
                     "testing": getattr(self.settings.agents.types, "testing", {}),
-                    "monitoring": getattr(self.settings.agents.types, "monitoring", {}),
+                    "monitoring": getattr(self.settings.agents.types, "monitoring", {})
                 }
 
         # Get monitoring config
@@ -151,7 +136,7 @@ class ChatEngine:
             llm_client=self.ade_llm_client,
             covenant_enforcer=self.covenant_enforcer,
             config=monitoring_config,
-            settings=self.settings,
+            settings=self.settings
         )
 
         # Start monitoring
@@ -160,10 +145,10 @@ class ChatEngine:
 
         logger.info("ChatEngine initialization complete")
 
-    def _load_json_config(self, file_path: str) -> dict[str, Any]:
+    def _load_json_config(self, file_path: str) -> Dict[str, Any]:
         """Load configuration from JSON file."""
         try:
-            with open(file_path) as f:
+            with open(file_path, 'r') as f:
                 config = json.load(f)
             logger.info(f"Loaded configuration from {file_path}")
             return config
@@ -171,10 +156,10 @@ class ChatEngine:
             logger.error(f"Failed to load configuration from {file_path}: {e}")
             return {}
 
-    def _load_covenant(self, file_path: str) -> dict[str, Any]:
+    def _load_covenant(self, file_path: str) -> Dict[str, Any]:
         """Load covenant from YAML file."""
         try:
-            with open(file_path) as f:
+            with open(file_path, 'r') as f:
                 covenant = yaml.safe_load(f)
             logger.info(f"Loaded covenant from {file_path}")
             return covenant
@@ -195,45 +180,37 @@ class ChatEngine:
         logger.info(f"Processing message: {user_message[:50]}...")
 
         # Analyze message
-        is_important = text_analysis.identify_important_message_for_context(
-            user_message
-        )
+        is_important = text_analysis.identify_important_message_for_context(user_message)
         sentiment = text_analysis.analyze_sentiment(user_message)
         emphasis = text_analysis.detect_emphasis_all_caps(user_message)
         keywords = text_analysis.detect_keywords(user_message)
 
         conversation_context = {
             "user_message": user_message,
-            "timestamp": datetime.now(UTC).isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "sentiment": sentiment,
             "is_important": is_important,
             "emphasis": emphasis,
             "keywords": keywords,
             "session_id": self.session_id,
-            "mode": self.mode,
+            "mode": self.mode
         }
 
         # Determine which model and voice style to use
-        model_id, voice_style, model_params = self.router.route(
-            user_message, conversation_context
-        )
+        model_id, voice_style, model_params = self.router.route(user_message, conversation_context)
 
         # Get relevant memories
         # memories = self.pinecone_memory.search_memory(user_message, top_k=5)
 
         # Prepare prompt
-        prompt = self._build_prompt(
-            user_message, conversation_context, voice_style, model_params
-        )
+        prompt = self._build_prompt(user_message, conversation_context, voice_style, model_params)
 
         # Generate response using the selected model
         llm_client = self.llm_client_factory.get_client(model_id)
         response = await llm_client.complete(prompt)
 
         # Extract response text
-        response_text = response.get(
-            "content", "I'm sorry, I couldn't generate a proper response."
-        )
+        response_text = response.get("content", "I'm sorry, I couldn't generate a proper response.")
 
         # Check response against covenant
         is_compliant, explanation = self.covenant_enforcer.enforce(response_text)
@@ -252,9 +229,9 @@ class ChatEngine:
     def _build_prompt(
         self,
         user_message: str,
-        conversation_context: dict[str, Any],
+        conversation_context: Dict[str, Any],
         voice_style: str,
-        model_params: dict[str, Any],
+        model_params: Dict[str, Any]
     ) -> str:
         """Build a prompt for the LLM."""
         # A simple prompt template - in a real implementation, this would be more sophisticated
@@ -273,7 +250,10 @@ Keep your response concise and focused on addressing the user's needs.
         return prompt
 
     def _update_memory(
-        self, user_message: str, response: str, context: dict[str, Any]
+        self,
+        user_message: str,
+        response: str,
+        context: Dict[str, Any]
     ) -> None:
         """Update memory with conversation details."""
         # In a real implementation, this would use more sophisticated memory management
@@ -283,7 +263,7 @@ Keep your response concise and focused on addressing the user's needs.
             "timestamp": context["timestamp"],
             "sentiment": context["sentiment"],
             "keywords": context["keywords"],
-            "session_id": self.session_id,
+            "session_id": self.session_id
         }
 
         # Add to project memory
@@ -293,7 +273,7 @@ Keep your response concise and focused on addressing the user's needs.
         if context["is_important"]:
             self.json_memory.add_heart_memory(
                 f"User: {user_message}\nKortana: {response}",
-                tags=["conversation", "important"],
+                tags=["conversation", "important"]
             )
 
         # Save project memory periodically
@@ -314,24 +294,6 @@ Keep your response concise and focused on addressing the user's needs.
         self.pinecone_memory.save_project_memory(self.project_memory)
 
         logger.info("ChatEngine shutdown complete")
-
-    def think(self, user_message: str) -> str:
-        """
-        Synchronous wrapper for process_message to maintain compatibility with legacy CLI.
-
-        Args:
-            user_message: The user's input message
-
-        Returns:
-            The processed response as a string
-        """
-        import asyncio
-
-        return asyncio.run(self.process_message(user_message))
-
-
-# Alias for backward compatibility
-Brain = ChatEngine
 
 
 def ritual_announce(message: str) -> None:
@@ -364,7 +326,6 @@ if __name__ == "__main__":
 
             # Process message
             import asyncio
-
             response = asyncio.run(chat_engine.process_message(user_input))
 
             # Print response (lowercase for "kortana")
@@ -376,5 +337,4 @@ if __name__ == "__main__":
     finally:
         # Shutdown
         chat_engine.shutdown()
-        ritual_announce("until we meet again, warchief.")
         ritual_announce("until we meet again, warchief.")

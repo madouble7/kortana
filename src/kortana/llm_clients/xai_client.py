@@ -6,7 +6,7 @@ Specialized for autonomous development and reasoning tasks
 import json
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .base_client import BaseLLMClient
 
@@ -17,13 +17,13 @@ class XAIClient(BaseLLMClient):
     """
     XAI (Grok) client implementation
     Optimized for autonomous development and reasoning
-    """
-
-    def __init__(
-        self, api_key: Optional[str] = None, model_name: str = "grok-3-mini", **kwargs
+    """    def __init__(
+        self, api_key: str | None = None, model_name: str = "grok-3-mini", **kwargs
     ):
         """
-        Initialize XAI client        Args:
+        Initialize XAI client
+        
+        Args:
             api_key: XAI API key (defaults to XAI_API_KEY env var)
             model_name: Model to use (defaults to grok-3-mini)
         """
@@ -61,10 +61,10 @@ class XAIClient(BaseLLMClient):
         self,
         content: str,
         model_id: str,
-        usage: Dict[str, int],
-        function_call: Optional[Dict] = None,
+        usage: dict[str, int],
+        function_call: dict | None = None,
         finish_reason: str = "stop",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         # Add logging for arguments received by standardize_response
         logger.debug(
             f"_standardize_response received: content='{content[:50]}...', model_id={model_id}, usage={usage}, function_call={function_call}, finish_reason={finish_reason}"
@@ -95,11 +95,11 @@ class XAIClient(BaseLLMClient):
     def generate_response(
         self,
         system_prompt: str,
-        messages: List[Dict[str, str]],
+        messages: list[dict[str, str]],
         enable_function_calling: bool = False,
-        functions: Optional[List[Dict]] = None,
+        functions: list[dict] | None = None,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate response using XAI Grok API
         Optimized for autonomous development tasks
@@ -215,7 +215,7 @@ class XAIClient(BaseLLMClient):
                 finish_reason="error",
             )
 
-    def get_capabilities(self) -> Dict[str, Any]:
+    def get_capabilities(self) -> dict[str, Any]:
         """Return XAI client capabilities"""
         return {
             "name": self.model_name,

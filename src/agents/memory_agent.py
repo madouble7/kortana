@@ -1,5 +1,5 @@
-from typing import List, Dict
 from datetime import datetime
+
 from pinecone import Pinecone  # type: ignore
 
 
@@ -26,7 +26,7 @@ class MemoryAgent:
             )
         self.index = self.pc.Index(index_name)
 
-    def plan(self, text: str) -> List[Dict]:
+    def plan(self, text: str) -> list[dict]:
         """
         Split `text` into chunks, summarize + extract metadata for each.
         Returns a list of dicts: {chunk, summary, timestamp, tags}
@@ -49,7 +49,7 @@ class MemoryAgent:
             )
         return plans
 
-    def execute(self, plans: List[Dict]):
+    def execute(self, plans: list[dict]):
         """Upsert each plan into Pinecone index using integrated embedding."""
         records = [
             {
@@ -63,7 +63,7 @@ class MemoryAgent:
         ]
         self.index.upsert_records("default", records)
 
-    def verify(self, query: str) -> List[Dict]:
+    def verify(self, query: str) -> list[dict]:
         """Run a semantic search in Pinecone and return the top 3 matches."""
         results = self.index.query(
             namespace="default",

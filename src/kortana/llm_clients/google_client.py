@@ -7,9 +7,11 @@ Supports adaptive thinking, multimodal input, and rate limit management
 import logging
 import os
 import time
-from typing import Dict, List, Optional, Any
+from typing import Any
+
 import google.generativeai as genai
-from google.generativeai.types import HarmCategory, HarmBlockThreshold
+from google.generativeai.types import HarmBlockThreshold, HarmCategory
+
 from .base_client import BaseLLMClient
 
 logger = logging.getLogger(__name__)
@@ -23,7 +25,7 @@ class GoogleGeminiClient(BaseLLMClient):
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         model_name: str = "gemini-2.5-flash-preview-05-20",
         **kwargs,
     ):
@@ -105,9 +107,9 @@ class GoogleGeminiClient(BaseLLMClient):
         self,
         content: str,
         model_id: str,
-        usage: Dict[str, int],
+        usage: dict[str, int],
         finish_reason: str = "stop",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Standardize response format to match OpenAI structure"""
         return {
             "choices": [
@@ -120,11 +122,11 @@ class GoogleGeminiClient(BaseLLMClient):
     def generate_response(
         self,
         system_prompt: str,
-        messages: List[Dict[str, str]],
+        messages: list[dict[str, str]],
         enable_function_calling: bool = False,
-        functions: Optional[List[Dict]] = None,
+        functions: list[dict] | None = None,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Generate response using Google Gemini API"""
         try:
             # Respect rate limits
@@ -208,7 +210,7 @@ class GoogleGeminiClient(BaseLLMClient):
                 finish_reason="error",
             )
 
-    def get_completion(self, messages: List[Dict[str, str]], **kwargs) -> Any:
+    def get_completion(self, messages: list[dict[str, str]], **kwargs) -> Any:
         """Get completion from Gemini API - matches expected interface"""
         try:
             # Respect rate limits
@@ -248,7 +250,7 @@ class GoogleGeminiClient(BaseLLMClient):
             logger.error(f"Gemini API call failed: {e}")
             raise
 
-    def get_capabilities(self) -> Dict[str, Any]:
+    def get_capabilities(self) -> dict[str, Any]:
         """Return client capabilities"""
         base_capabilities = {
             "name": self.model_name,
@@ -318,7 +320,7 @@ class GoogleGeminiClient(BaseLLMClient):
         """Check if client supports streaming"""
         return True
 
-    def get_model_info(self) -> Dict[str, Any]:
+    def get_model_info(self) -> dict[str, Any]:
         """Get detailed model information"""
         return {
             "model_name": self.model_name,

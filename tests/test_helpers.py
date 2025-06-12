@@ -1,12 +1,12 @@
 """Helper functions for testing."""
 
-import os
 import json
+import os
 import tempfile
-from typing import List, Dict, Any
+from typing import Any
 
 
-def create_test_memory_file(memories: List[Dict[str, Any]]) -> str:
+def create_test_memory_file(memories: list[dict[str, Any]]) -> str:
     """Create a temporary memory file with the given memories.
 
     Args:

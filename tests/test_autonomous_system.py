@@ -262,7 +262,7 @@ class AutonomousSystemTest:
 
             # Test batch file syntax (basic check)
             for script in scripts:
-                with open(script, "r") as f:
+                with open(script) as f:
                     content = f.read()
                     if "python" not in content.lower():
                         self.log_test(

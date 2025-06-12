@@ -5,7 +5,7 @@ This module provides integration with Google's Gemini models through the generat
 
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import google.generativeai as genai
 
@@ -21,7 +21,7 @@ class GenAIClient(LLMClient):
     """
 
     def __init__(
-        self, model_name: str = "gemini-2.5-flash", api_key: Optional[str] = None
+        self, model_name: str = "gemini-2.5-flash", api_key: str | None = None
     ):
         super().__init__(model_name)
 
@@ -44,8 +44,8 @@ class GenAIClient(LLMClient):
             raise
 
     def generate_response(
-        self, messages: List[Dict[str, str]], **kwargs
-    ) -> Dict[str, Any]:
+        self, messages: list[dict[str, str]], **kwargs
+    ) -> dict[str, Any]:
         """
         Generate response using Google GenAI - REQUIRED ABSTRACT METHOD IMPLEMENTATION
 
@@ -110,7 +110,7 @@ class GenAIClient(LLMClient):
                 "error": str(e),
             }
 
-    def get_completion(self, messages: List[Dict[str, str]], **kwargs) -> Any:
+    def get_completion(self, messages: list[dict[str, str]], **kwargs) -> Any:
         """
         Get completion using Google GenAI - COMPATIBILITY METHOD
 
@@ -143,7 +143,7 @@ class GenAIClient(LLMClient):
 
         return MockResponse(response_dict)
 
-    def _convert_messages_to_prompt(self, messages: List[Dict[str, str]]) -> str:
+    def _convert_messages_to_prompt(self, messages: list[dict[str, str]]) -> str:
         """
         Convert OpenAI-style messages to Google GenAI prompt format
 
@@ -168,7 +168,7 @@ class GenAIClient(LLMClient):
 
         return "\n\n".join(prompt_parts)
 
-    def get_capabilities(self) -> Dict[str, Any]:
+    def get_capabilities(self) -> dict[str, Any]:
         """
         Get client capabilities - REQUIRED ABSTRACT METHOD IMPLEMENTATION
 
@@ -246,7 +246,7 @@ class GenAIClient(LLMClient):
         """Check if the client supports streaming responses"""
         return True
 
-    def get_model_info(self) -> Dict[str, Any]:
+    def get_model_info(self) -> dict[str, Any]:
         """Get information about the current model"""
         return {
             "name": self.model_name,

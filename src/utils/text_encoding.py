@@ -36,7 +36,7 @@ def encode_text_to_base64(input_text: str, encoding: str = "utf-8") -> str:
         return base64_string
 
     except Exception as e:
-        raise ValueError(f"Failed to encode text to base64: {str(e)}")
+        raise ValueError(f"Failed to encode text to base64: {str(e)}") from e
 
 
 def decode_base64_to_text(base64_string: str, encoding: str = "utf-8") -> str:
@@ -67,7 +67,7 @@ def decode_base64_to_text(base64_string: str, encoding: str = "utf-8") -> str:
         return original_text
 
     except Exception as e:
-        raise ValueError(f"Failed to decode base64 to text: {str(e)}")
+        raise ValueError(f"Failed to decode base64 to text: {str(e)}") from e
 
 
 def encode_file_to_base64(file_path: str) -> str:
@@ -91,7 +91,7 @@ def encode_file_to_base64(file_path: str) -> str:
             return base64_bytes.decode("ascii")
 
     except Exception as e:
-        raise ValueError(f"Failed to encode file to base64: {str(e)}")
+        raise ValueError(f"Failed to encode file to base64: {str(e)}") from e
 
 
 # Example usage and testing

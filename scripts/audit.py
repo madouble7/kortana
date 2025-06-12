@@ -80,7 +80,7 @@ def main():
 
         f.write("Please run the following commands in a fresh shell:\n\n")
         f.write("```\n")
-        f.write("python -m venv .venv && .\.venv\Scripts\activate\n")
+        f.write("python -m venv .venv && .\\.venv\\Scripts\activate\n")
         f.write("pip install -e .\n")
         f.write(
             "python -c \"import kortana, importlib, pkg_resources; print('kortana import ok:', kortana.__file__); print('console scripts:', [e.name for e in pkg_resources.iter_entry_points('console_scripts') if 'kortana' in e.name])\"\n"
@@ -117,7 +117,7 @@ def main():
             )
         else:
             yaml_output, _ = run_cmd(
-                ["grep", "-r", "yaml.safe_load\|\.yaml", "src/kortana"], project_root
+                ["grep", "-r", r"yaml.safe_load\|\.yaml", "src/kortana"], project_root
             )
 
         if yaml_output:
@@ -135,7 +135,7 @@ def main():
 
     print(f"\nDone! Audit artifacts collected in {audit_file}")
     print("\nPlease also run the installation test manually in a fresh shell:")
-    print("python -m venv .venv && .\.venv\Scripts\\activate")
+    print("python -m venv .venv && .\\.venv\\Scripts\\activate")
     print("pip install -e .")
     print(
         "python -c \"import kortana, importlib, pkg_resources; print('kortana import ok:', kortana.__file__); print('console scripts:', [e.name for e in pkg_resources.iter_entry_points('console_scripts') if 'kortana' in e.name])\""

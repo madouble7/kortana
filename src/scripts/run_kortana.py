@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 # Import Kor'tana components
-from config import load_config
+from src.kortana.config import load_config
 from src.kortana.core.brain import ChatEngine, ritual_announce
 
 # Add the project root to the Python path

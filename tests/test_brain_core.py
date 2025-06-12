@@ -14,7 +14,7 @@ def test_brain_module_structure():
     assert os.path.exists(brain_path), "brain.py file should exist"
 
     # Read and check for key components
-    with open(brain_path, "r", encoding="utf-8") as f:
+    with open(brain_path, encoding="utf-8") as f:
         content = f.read()
 
     assert "class ChatEngine" in content, "ChatEngine class should be defined"
@@ -112,7 +112,7 @@ def test_config_file_structure():
     if os.path.exists(persona_path):
         import json
 
-        with open(persona_path, "r") as f:
+        with open(persona_path) as f:
             persona_config = json.load(f)
         assert "persona" in persona_config or "modes" in persona_config
 
@@ -121,7 +121,7 @@ def test_config_file_structure():
     if os.path.exists(models_path):
         import json
 
-        with open(models_path, "r") as f:
+        with open(models_path) as f:
             models_config = json.load(f)
         assert "models" in models_config or "default_model" in models_config
 

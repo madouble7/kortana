@@ -5,7 +5,6 @@ Handles model aliases and unified configuration for autonomous repair system
 
 import json
 import logging
-from typing import Dict, Optional, List
 
 logger = logging.getLogger(__name__)
 
@@ -21,16 +20,16 @@ class ModelResolver:
         self.config = self._load_config()
         self.aliases = self.config.get("model_aliases", {})
 
-    def _load_config(self) -> Dict:
+    def _load_config(self) -> dict:
         """Load the unified models configuration"""
         try:
-            with open(self.config_path, "r") as f:
+            with open(self.config_path) as f:
                 return json.load(f)
         except Exception as e:
             logger.error(f"Failed to load model config: {e}")
             return {}
 
-    def resolve_model_id(self, model_identifier: str) -> Optional[str]:
+    def resolve_model_id(self, model_identifier: str) -> str | None:
         """
         Resolve model identifier to actual model ID
         Handles aliases and direct model IDs
@@ -53,21 +52,21 @@ class ModelResolver:
         logger.warning(f"Could not resolve model identifier: {model_identifier}")
         return None
 
-    def get_model_config(self, model_identifier: str) -> Optional[Dict]:
+    def get_model_config(self, model_identifier: str) -> dict | None:
         """Get model configuration by identifier (supports aliases)"""
         resolved_id = self.resolve_model_id(model_identifier)
         if resolved_id:
             return self.config.get("models", {}).get(resolved_id)
         return None
 
-    def get_available_models(self) -> List[str]:
+    def get_available_models(self) -> list[str]:
         """Get list of all available model IDs and aliases"""
         models = list(self.config.get("models", {}).keys())
         aliases = list(self.aliases.keys())
         routing = list(self.config.get("model_routing", {}).keys())
         return sorted(set(models + aliases + routing))
 
-    def verify_autonomous_models(self) -> Dict[str, bool]:
+    def verify_autonomous_models(self) -> dict[str, bool]:
         """
         Verify that all required autonomous repair system models are available
         Returns dict of model_id -> availability

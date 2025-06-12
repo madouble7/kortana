@@ -1,7 +1,7 @@
-import pytest
+from typing import Any
 from unittest.mock import MagicMock, patch
-from typing import Dict, Any, List
-from typing import Optional
+
+import pytest
 
 # Assume necessary Kor'tana modules are importable
 # from src.brain import ChatEngine
@@ -123,7 +123,7 @@ class MockMemoryManager:
         self,
         user_input: str,
         assistant_response: str,
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ):
         self.interactions.append(
             {
@@ -133,7 +133,7 @@ class MockMemoryManager:
             }
         )
 
-    def search(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
+    def search(self, query: str, limit: int = 5) -> list[dict[str, Any]]:
         # Mock search implementation
         return [
             i
@@ -145,7 +145,7 @@ class MockMemoryManager:
 
 # Placeholder mock Covenant Enforcer
 class MockCovenantEnforcer:
-    def __init__(self, config_dir: Optional[str] = None):
+    def __init__(self, config_dir: str | None = None):
         # Load mock Sacred Trinity config if needed for internal checks
         self.sacred_trinity_config = load_mock_configs().get(
             "sacred_trinity_config", {}
@@ -228,7 +228,7 @@ def mock_chat_engine():
         def get_response(
             self,
             user_input: str,
-            manual_mode: Optional[str] = None,
+            manual_mode: str | None = None,
             enable_function_calling: bool = False,
         ) -> str:
             self.logger.info(f"Mock ChatEngine processing input: {user_input}")
