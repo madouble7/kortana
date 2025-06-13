@@ -16,13 +16,11 @@ from typing import Any
 # Initialize logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('task_execution.log')
-    ]
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.StreamHandler(), logging.FileHandler("task_execution.log")],
 )
 logger = logging.getLogger(__name__)
+
 
 def load_task_config(task_id: str) -> dict[str, Any] | None:
     """Load task configuration from the tasks directory."""
@@ -38,18 +36,22 @@ def load_task_config(task_id: str) -> dict[str, Any] | None:
         logger.error(f"Error loading task configuration: {e}")
         return None
 
+
 def save_task_result(task_id: str, result: dict[str, Any]) -> None:
     """Save task execution result."""
     try:
         result_dir = Path("task_results")
         result_dir.mkdir(exist_ok=True)
 
-        result_file = result_dir / f"{task_id}-{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        result_file = (
+            result_dir / f"{task_id}-{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        )
         with open(result_file, "w") as f:
             json.dump(result, f, indent=2)
 
     except Exception as e:
         logger.error(f"Error saving task result: {e}")
+
 
 def execute_task(task_id: str) -> dict[str, Any]:
     """Execute a specific task and return the result."""
@@ -61,7 +63,7 @@ def execute_task(task_id: str) -> dict[str, Any]:
             "success": False,
             "error": "Failed to load task configuration",
             "task_id": task_id,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
     try:
@@ -87,22 +89,19 @@ def execute_task(task_id: str) -> dict[str, Any]:
                 "task_id": task_id,
                 "result": result,
                 "start_time": start_time.isoformat(),
-                "end_time": datetime.now().isoformat()
+                "end_time": datetime.now().isoformat(),
             }
 
         # Execute shell command if specified
         elif "command" in task_config:
             import subprocess
+
             command = task_config["command"]
             cwd = task_config.get("working_dir")
 
             logger.info(f"Executing command: {command}")
             process = subprocess.run(
-                command,
-                shell=True,
-                cwd=cwd,
-                capture_output=True,
-                text=True
+                command, shell=True, cwd=cwd, capture_output=True, text=True
             )
 
             return {
@@ -112,7 +111,7 @@ def execute_task(task_id: str) -> dict[str, Any]:
                 "stdout": process.stdout,
                 "stderr": process.stderr,
                 "start_time": start_time.isoformat(),
-                "end_time": datetime.now().isoformat()
+                "end_time": datetime.now().isoformat(),
             }
 
         else:
@@ -120,7 +119,7 @@ def execute_task(task_id: str) -> dict[str, Any]:
                 "success": False,
                 "error": "No execution method specified in task configuration",
                 "task_id": task_id,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
 
     except Exception as e:
@@ -130,8 +129,9 @@ def execute_task(task_id: str) -> dict[str, Any]:
             "error": str(e),
             "task_id": task_id,
             "start_time": start_time.isoformat(),
-            "end_time": datetime.now().isoformat()
+            "end_time": datetime.now().isoformat(),
         }
+
 
 def main():
     parser = argparse.ArgumentParser(description="Kor'tana Task Management")
@@ -144,6 +144,7 @@ def main():
         result = execute_task(args.task_id)
         save_task_result(args.task_id, result)
         sys.exit(0 if result["success"] else 1)
+
 
 if __name__ == "__main__":
     main()

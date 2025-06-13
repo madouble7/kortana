@@ -7,8 +7,6 @@ This script tests and demonstrates Kor'tana's autonomous capabilities.
 It activates the autonomous systems that are already built and ready.
 """
 
-import asyncio
-import os
 import sys
 from pathlib import Path
 
@@ -16,6 +14,7 @@ from pathlib import Path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 sys.path.insert(0, str(project_root / "src"))
+
 
 def print_status_banner():
     """Print the current status of autonomous capabilities"""
@@ -26,7 +25,10 @@ def print_status_banner():
 
     # Check infrastructure status
     infra_checks = [
-        ("Autonomous Development Engine", "src/kortana/core/autonomous_development_engine.py"),
+        (
+            "Autonomous Development Engine",
+            "src/kortana/core/autonomous_development_engine.py",
+        ),
         ("ChatEngine with Scheduler", "src/brain.py"),
         ("Relay System", "relays/autonomous_relay.py"),
         ("Master Orchestrator", "relays/master_orchestrator.py"),
@@ -44,6 +46,7 @@ def print_status_banner():
             print(f"❌ {name}: Missing")
 
     print()
+
 
 def test_autonomous_relay():
     """Test the autonomous relay system"""
@@ -73,6 +76,7 @@ def test_autonomous_relay():
         print(f"❌ Relay test failed: {e}")
         return False
 
+
 def test_autonomous_development_engine():
     """Test the autonomous development engine"""
     print("\n🧠 TESTING AUTONOMOUS DEVELOPMENT ENGINE")
@@ -80,7 +84,6 @@ def test_autonomous_development_engine():
 
     try:
         # Import check
-        from src.kortana.core.autonomous_development_engine import AutonomousDevelopmentEngine, DevelopmentTask
         print("✅ AutonomousDevelopmentEngine import successful")
 
         # Check available tools
@@ -94,6 +97,7 @@ def test_autonomous_development_engine():
         print(f"❌ ADE test failed: {e}")
         return False
 
+
 def test_chat_engine_autonomous():
     """Test ChatEngine autonomous capabilities"""
     print("\n🧠 TESTING CHATENGINE AUTONOMOUS CAPABILITIES")
@@ -102,20 +106,21 @@ def test_chat_engine_autonomous():
     try:
         # Try to import the advanced brain
         from src.brain import ChatEngine
+
         print("✅ ChatEngine import successful")
 
         # Check for autonomous methods
-        if hasattr(ChatEngine, 'start_autonomous_scheduler'):
+        if hasattr(ChatEngine, "start_autonomous_scheduler"):
             print("✅ Autonomous scheduler available")
         else:
             print("❌ Autonomous scheduler not found")
 
-        if hasattr(ChatEngine, '_run_daily_planning_cycle'):
+        if hasattr(ChatEngine, "_run_daily_planning_cycle"):
             print("✅ Daily planning cycle available")
         else:
             print("❌ Daily planning cycle not found")
 
-        if hasattr(ChatEngine, '_run_periodic_monitoring'):
+        if hasattr(ChatEngine, "_run_periodic_monitoring"):
             print("✅ Periodic monitoring available")
         else:
             print("❌ Periodic monitoring not found")
@@ -126,6 +131,7 @@ def test_chat_engine_autonomous():
         print(f"❌ ChatEngine test failed: {e}")
         return False
 
+
 def test_ade_coordinator():
     """Test ADE Coordinator"""
     print("\n🎯 TESTING ADE COORDINATOR")
@@ -133,10 +139,11 @@ def test_ade_coordinator():
 
     try:
         from src.ade_coordinator import ADECoordinator
+
         print("✅ ADECoordinator import successful")
 
         # Check methods
-        if hasattr(ADECoordinator, 'start_autonomous_session'):
+        if hasattr(ADECoordinator, "start_autonomous_session"):
             print("✅ Autonomous session capability available")
         else:
             print("❌ Autonomous session capability not found")
@@ -146,6 +153,7 @@ def test_ade_coordinator():
     except Exception as e:
         print(f"❌ ADE Coordinator test failed: {e}")
         return False
+
 
 def demonstrate_autonomous_activation():
     """Demonstrate how to activate autonomous mode"""
@@ -175,9 +183,12 @@ def demonstrate_autonomous_activation():
     print()
 
     print("✨ METHOD 5: ADE Direct Activation")
-    print("Command: python src/kortana/core/autonomous_development_engine.py --analyze-critical-issues")
+    print(
+        "Command: python src/kortana/core/autonomous_development_engine.py --analyze-critical-issues"
+    )
     print("Features: Direct autonomous development task execution")
     print()
+
 
 def run_basic_autonomous_demo():
     """Run a basic autonomous demonstration"""
@@ -193,7 +204,7 @@ def run_basic_autonomous_demo():
         print("🔄 Running 3 relay cycles...")
 
         for i in range(3):
-            print(f"  Cycle {i+1}/3...")
+            print(f"  Cycle {i + 1}/3...")
             stats = relay.relay_cycle()
             print(f"    Result: {stats}")
 
@@ -211,6 +222,7 @@ def run_basic_autonomous_demo():
     except Exception as e:
         print(f"❌ Demo failed: {e}")
         return False
+
 
 def main():
     """Main test function"""
@@ -240,7 +252,7 @@ def main():
         demonstrate_autonomous_activation()
 
         # Run basic demo
-        if input("\n🎮 Run basic autonomous demo? (y/n): ").lower() == 'y':
+        if input("\n🎮 Run basic autonomous demo? (y/n): ").lower() == "y":
             run_basic_autonomous_demo()
 
     else:
@@ -248,6 +260,7 @@ def main():
 
     print("\n🔥 Kor'tana autonomous capability assessment complete")
     print("🌟 The infrastructure is ready. The fire awaits to be kindled.")
+
 
 if __name__ == "__main__":
     main()

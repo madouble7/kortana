@@ -1,46 +1,42 @@
 """Test script for Google GenAI client"""
 
 import os
-import sys
 
+import pytest
 from dotenv import load_dotenv
 
-# Load environment variables from .env file in the current working directory
-print("Loading environment variables from .env file...")
-load_dotenv()
+# Import the Google GenAI client from your project structure
+from src.kortana.llm_clients.genai_client import GoogleGenAIClient
 
-print("Attempting to import GoogleGenAIClient...")
-try:
-    # Import the Google GenAI client from your project structure
-    from src.llm_clients.genai_client import GoogleGenAIClient
-except ImportError as e:
-    print(f"ERROR: Could not import GoogleGenAIClient: {e}")
-    print(
-        "Ensure src/llm_clients/genai_client.py and related factory/init files are correct."
+
+@pytest.fixture(scope="module")
+def google_api_key():
+    """Load and validate Google API key from environment."""
+    load_dotenv()
+    api_key = os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        pytest.skip("GOOGLE_API_KEY not found in environment variables")
+    return api_key
+
+
+@pytest.fixture(scope="module")
+def genai_client(google_api_key):
+    """Create GoogleGenAIClient instance for testing."""
+    return GoogleGenAIClient(
+        api_key=google_api_key, model_name="gemini-1.5-flash-latest"
     )
-    sys.exit(1)
 
-print("Successfully imported GoogleGenAIClient.")
 
-# Retrieve and validate the API key
-print("Checking for GOOGLE_API_KEY...")
-api_key = os.getenv("GOOGLE_API_KEY")
-if not api_key:
-    print("ERROR: GOOGLE_API_KEY not found in .env file or environment variables.")
-    print(
-        "Please ensure a .env file exists in the c:\\kortana directory with your GOOGLE_API_KEY."
+def test_google_genai_client_creation(google_api_key):
+    """Test that GoogleGenAIClient can be instantiated successfully."""
+    client = GoogleGenAIClient(
+        api_key=google_api_key, model_name="gemini-1.5-flash-latest"
     )
-    sys.exit(1)
-else:
-    print("✓ Successfully loaded GOOGLE_API_KEY from environment.")
+    assert client is not None
 
-# Instantiate the client and make a simple API call
-print("\nAttempting to initialize GoogleGenAIClient...")
-try:  # Try initializing with API key parameter first - use widely available model
-    client = GoogleGenAIClient(api_key=api_key, model_name="gemini-1.5-flash-latest")
-    print("✓ GoogleGenAIClient initialized successfully.")
 
-    # Test with a simple prompt
+def test_basic_api_call(genai_client):
+    """Test basic API call functionality."""
     system_prompt = "You are a helpful assistant."
     messages = [
         {
@@ -49,44 +45,22 @@ try:  # Try initializing with API key parameter first - use widely available mod
         }
     ]
 
-    print("Sending test request to Google GenAI...")
-    print(f"System prompt: {system_prompt}")
-    print(f"User message: {messages[0]['content']}")
+    response = genai_client.generate_response(system_prompt, messages)
 
-    # Call the generate_response method
-    response = client.generate_response(system_prompt, messages)
+    assert response is not None
+    assert isinstance(response, dict)
+    # Check for standard OpenAI-like response structure
+    if "choices" in response:
+        assert len(response["choices"]) > 0
+        assert "message" in response["choices"][0]
+        assert "content" in response["choices"][0]["message"]
 
-    print("\n=== FULL API RESPONSE ===")
-    print(response)
-    print("=== END RESPONSE ===")
 
-    # Try to extract the generated text based on expected response structure
-    if isinstance(response, dict):
-        if "choices" in response and len(response["choices"]) > 0:
-            content = response["choices"][0]["message"]["content"]
-            print(f"\n✓ Generated Text: {content}")
-        elif "text" in response:
-            print(f"\n✓ Generated Text: {response['text']}")
-        else:
-            print(
-                "\n⚠ Could not extract specific text from response. Please inspect full response above."
-            )
-    else:
-        print(f"\n⚠ Unexpected response type: {type(response)}")
-
-    print("\n🎉 Basic test completed successfully!")
-
-    # Test with custom generation parameters (to verify GenerationConfig handling)
-    print("\n" + "=" * 50)
-    print("TESTING CUSTOM GENERATION PARAMETERS")
-    print("=" * 50)
-
+def test_custom_parameters(genai_client):
+    """Test API call with custom generation parameters."""
     test_params = {"temperature": 0.7, "max_output_tokens": 150, "top_p": 0.9}
 
-    print(f"Testing with parameters: {test_params}")
-
-    # Test the generate_response method with custom parameters
-    custom_response = client.generate_response(
+    response = genai_client.generate_response(
         system_prompt="You are a creative assistant.",
         messages=[
             {
@@ -97,19 +71,9 @@ try:  # Try initializing with API key parameter first - use widely available mod
         **test_params,
     )
 
-    print("\n=== CUSTOM PARAMETERS RESPONSE ===")
-    print(custom_response)
-    print("=== END CUSTOM RESPONSE ===")
-
-    if isinstance(custom_response, dict) and "choices" in custom_response:
-        content = custom_response["choices"][0]["message"]["content"]
-        print(f"\n✓ Custom Parameters Generated Text: {content}")
-
-    print("\n🎉 All tests completed successfully!")
-
-except Exception as e:
-    print(f"\n❌ ERROR during Google GenAI API call: {e}")
-    import traceback
-
-    traceback.print_exc()
-    sys.exit(1)
+    assert response is not None
+    assert isinstance(response, dict)
+    if "choices" in response and len(response["choices"]) > 0:
+        content = response["choices"][0]["message"]["content"]
+        assert isinstance(content, str)
+        assert len(content) > 0

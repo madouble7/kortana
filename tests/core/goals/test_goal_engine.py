@@ -90,7 +90,7 @@ def goal_prioritizer():
 @pytest.fixture
 def goal_engine(goal_manager, environmental_scanner, goal_generator, goal_prioritizer):
     # Mock ADE dependency if GoalEngine requires it for execution phase
-    mock_ade = AsyncMock()
+    AsyncMock()
     engine = GoalEngine(
         goal_manager, environmental_scanner, goal_generator, goal_prioritizer
     )

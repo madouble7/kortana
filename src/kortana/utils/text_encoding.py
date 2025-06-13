@@ -23,8 +23,7 @@ def encode_text_to_base64(input_text: str, encoding: str = "utf-8") -> str:
         >>> encode_text_to_base64("Kor'tana AI Assistant")
         'S29yJ3RhbmEgQUkgQXNzaXN0YW50'
     """
-    try:
-        # Convert string to bytes using specified encoding
+    try:  # Convert string to bytes using specified encoding
         text_bytes = input_text.encode(encoding)
 
         # Encode bytes to base64
@@ -32,11 +31,10 @@ def encode_text_to_base64(input_text: str, encoding: str = "utf-8") -> str:
 
         # Convert base64 bytes back to string
         base64_string = base64_bytes.decode("ascii")
-
         return base64_string
 
     except Exception as e:
-        raise ValueError(f"Failed to encode text to base64: {str(e)}")
+        raise ValueError(f"Failed to encode text to base64: {str(e)}") from e
 
 
 def decode_base64_to_text(base64_string: str, encoding: str = "utf-8") -> str:
@@ -59,15 +57,14 @@ def decode_base64_to_text(base64_string: str, encoding: str = "utf-8") -> str:
         base64_bytes = base64_string.encode("ascii")
 
         # Decode base64 to original bytes
-        text_bytes = base64.b64decode(base64_bytes)
-
-        # Convert bytes back to string using specified encoding
+        text_bytes = base64.b64decode(
+            base64_bytes
+        )  # Convert bytes back to string using specified encoding
         original_text = text_bytes.decode(encoding)
-
         return original_text
 
     except Exception as e:
-        raise ValueError(f"Failed to decode base64 to text: {str(e)}")
+        raise ValueError(f"Failed to decode base64 to text: {str(e)}") from e
 
 
 def encode_file_to_base64(file_path: str) -> str:
@@ -78,9 +75,7 @@ def encode_file_to_base64(file_path: str) -> str:
         file_path (str): Path to the file to encode
 
     Returns:
-        str: Base64 encoded file content
-
-    Example:
+        str: Base64 encoded file content    Example:
         >>> encode_file_to_base64("./data/sample.txt")
         'VGhpcyBpcyBhIHNhbXBsZSBmaWxlIGNvbnRlbnQ='
     """
@@ -89,9 +84,8 @@ def encode_file_to_base64(file_path: str) -> str:
             file_bytes = file.read()
             base64_bytes = base64.b64encode(file_bytes)
             return base64_bytes.decode("ascii")
-
     except Exception as e:
-        raise ValueError(f"Failed to encode file to base64: {str(e)}")
+        raise ValueError(f"Failed to encode file to base64: {str(e)}") from e
 
 
 # Example usage and testing

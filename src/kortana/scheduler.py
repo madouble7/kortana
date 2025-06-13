@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 class TaskStatus(Enum):
     """Enum representing the possible states of a task."""
+
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -28,6 +29,7 @@ class TaskStatus(Enum):
 @dataclass
 class TaskResult:
     """Container for task execution results."""
+
     status: TaskStatus
     start_time: datetime | None = None
     end_time: datetime | None = None
@@ -49,11 +51,11 @@ class Scheduler:
 
     def add_task(self, task: Callable[[], None], priority: int = 1) -> int:
         """Add a task to the scheduler with the given priority.
-        
+
         Args:
             task: The task function to execute
             priority: Priority level (lower number = higher priority)
-        
+
         Returns:
             task_id: Unique identifier for the task
         """
@@ -68,10 +70,10 @@ class Scheduler:
 
     def cancel_task(self, task_id: int) -> bool:
         """Cancel a pending task.
-        
+
         Args:
             task_id: ID of the task to cancel
-        
+
         Returns:
             bool: True if task was cancelled, False if not found or already complete
         """
@@ -86,10 +88,10 @@ class Scheduler:
 
     def get_task_status(self, task_id: int) -> TaskStatus | None:
         """Get the current status of a task.
-        
+
         Args:
             task_id: ID of the task to check
-            
+
         Returns:
             TaskStatus | None: Current status of the task, or None if not found
         """
@@ -100,10 +102,10 @@ class Scheduler:
 
     def get_task_result(self, task_id: int) -> TaskResult | None:
         """Get the result details of a task.
-        
+
         Args:
             task_id: ID of the task to check
-            
+
         Returns:
             TaskResult | None: Task result details, or None if not found
         """
@@ -118,9 +120,12 @@ class Scheduler:
                     priority, task = self.tasks.pop(0)
                     # Find task_id by looking through results
                     task_id = next(
-                        (tid for tid, result in self.task_results.items()
-                         if result.status == TaskStatus.PENDING),
-                        None
+                        (
+                            tid
+                            for tid, result in self.task_results.items()
+                            if result.status == TaskStatus.PENDING
+                        ),
+                        None,
                     )
                     if task_id:
                         result = self.task_results[task_id]
@@ -128,11 +133,15 @@ class Scheduler:
                         result.start_time = datetime.now()
 
                         try:
-                            logger.info(f"Executing task {task_id} with priority {priority}")
+                            logger.info(
+                                f"Executing task {task_id} with priority {priority}"
+                            )
                             result.result = task()
                             result.status = TaskStatus.COMPLETED
                         except Exception as e:
-                            logger.error(f"Task {task_id} failed: {str(e)}", exc_info=True)
+                            logger.error(
+                                f"Task {task_id} failed: {str(e)}", exc_info=True
+                            )
                             result.error = e
                             result.status = TaskStatus.FAILED
                         finally:

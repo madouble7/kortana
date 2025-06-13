@@ -79,7 +79,7 @@ class TestGoal:
         assert goal_dict["description"] == "Test Description"
         assert goal_dict["priority"] == 7
         assert goal_dict["status"] == "new"
-        assert goal_dict["covenant_approved"] == False
+        assert not goal_dict["covenant_approved"]
 
     def test_goal_from_dict(self):
         """Test goal deserialization from dictionary"""
@@ -103,7 +103,7 @@ class TestGoal:
         assert goal.priority == 6
         assert goal.status == GoalStatus.ACTIVE
         assert goal.success_criteria == ["Test criterion"]
-        assert goal.covenant_approved == True
+        assert goal.covenant_approved
 
     def test_goal_actionability(self):
         """Test goal actionability checks"""
@@ -319,8 +319,8 @@ class TestGoalManager:
         """Test goal prioritization algorithm"""
         # Create goals with different priorities and types
         goal1 = goal_manager.create_goal(GoalType.MAINTENANCE, priority=5)
-        goal2 = goal_manager.create_goal(GoalType.USER_SERVICE, priority=5)  # Should get type bonus
-        goal3 = goal_manager.create_goal(GoalType.EXPLORATION, priority=7)  # High base but exploration penalty
+        goal_manager.create_goal(GoalType.USER_SERVICE, priority=5)  # Should get type bonus
+        goal_manager.create_goal(GoalType.EXPLORATION, priority=7)  # High base but exploration penalty
 
         # Set deadline for urgency testing
         goal1.target_completion = datetime.now(UTC) + timedelta(hours=12)  # Urgent
@@ -424,7 +424,7 @@ class TestGoalManager:
     def test_statistics_generation(self, goal_manager):
         """Test goal statistics generation"""
         # Create goals with different statuses and types
-        goal1 = goal_manager.create_goal(GoalType.MAINTENANCE, priority=5)
+        goal_manager.create_goal(GoalType.MAINTENANCE, priority=5)
         goal2 = goal_manager.create_goal(GoalType.LEARNING, priority=7)
         goal2.complete()
         goal_manager._goal_cache[goal2.goal_id] = goal2

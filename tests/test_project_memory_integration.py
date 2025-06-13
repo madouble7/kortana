@@ -45,7 +45,7 @@ relevant_keys_test = [
 for rk_test in relevant_keys_test:
     if rk_test not in keys_to_print_test:
         keys_to_print_test.append(rk_test)
-for key_test in sorted(list(set(keys_to_print_test))):
+for key_test in sorted(set(keys_to_print_test)):
     try:
         print(
             f"{key_test}: {sys.modules[key_test].__file__ if hasattr(sys.modules[key_test], '__file__') else 'Built-in or no __file__'}"

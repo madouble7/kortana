@@ -3,8 +3,8 @@
 Test script to verify Kor'tana server can start
 """
 
-import sys
 import os
+import sys
 
 # Add src to path so we can import kortana
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
@@ -15,6 +15,7 @@ try:
 
     # Test the health endpoint
     import asyncio
+
     from fastapi.testclient import TestClient
 
     client = TestClient(app)

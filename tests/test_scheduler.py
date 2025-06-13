@@ -22,8 +22,12 @@ def scheduler():
 
 def test_task_creation(scheduler):
     """Test that tasks can be created with different priorities."""
-    def task1(): pass
-    def task2(): pass
+
+    def task1():
+        pass
+
+    def task2():
+        pass
 
     task1_id = scheduler.add_task(task1, priority=2)
     task2_id = scheduler.add_task(task2, priority=1)
@@ -59,6 +63,7 @@ def test_task_execution(scheduler):
 
 def test_task_error_handling(scheduler):
     """Test error handling during task execution."""
+
     def failing_task():
         raise ValueError("Test error")
 
@@ -77,6 +82,7 @@ def test_task_error_handling(scheduler):
 
 def test_task_cancellation(scheduler):
     """Test task cancellation."""
+
     def long_task():
         time.sleep(10)
 
@@ -97,6 +103,7 @@ def test_priority_execution_order(scheduler):
         def task():
             execution_order.append(name)
             time.sleep(0.1)  # Small delay to ensure deterministic ordering
+
         return task
 
     # Add tasks in reverse priority order
@@ -112,6 +119,7 @@ def test_priority_execution_order(scheduler):
 
 def test_scheduler_stop(scheduler):
     """Test that scheduler can be stopped gracefully."""
+
     def long_task():
         time.sleep(5)
 

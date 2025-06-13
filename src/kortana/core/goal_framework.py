@@ -3,30 +3,37 @@ Kor'tana's Goal Framework - Core Data Structures
 Enables autonomous goal setting, prioritization, and pursuit within Sacred Covenant boundaries.
 """
 
+import json
+import os
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
+
+# Constants
+GOAL_STORAGE_PATH = "data/goals.jsonl"
 
 
 class GoalType(Enum):
     """Types of goals Kor'tana can autonomously pursue"""
-    MAINTENANCE = "maintenance"          # System health, code quality, cleanup
-    LEARNING = "learning"               # Knowledge acquisition, skill improvement
-    IMPROVEMENT = "improvement"         # Performance optimization, feature enhancement
-    USER_SERVICE = "user_service"       # Direct user assistance, request fulfillment
-    EXPLORATION = "exploration"         # Research, experimentation, discovery
+
+    MAINTENANCE = "maintenance"  # System health, code quality, cleanup
+    LEARNING = "learning"  # Knowledge acquisition, skill improvement
+    IMPROVEMENT = "improvement"  # Performance optimization, feature enhancement
+    USER_SERVICE = "user_service"  # Direct user assistance, request fulfillment
+    EXPLORATION = "exploration"  # Research, experimentation, discovery
 
 
 class GoalStatus(Enum):
     """Lifecycle states for goals"""
-    NEW = "new"                         # Recently created, not yet reviewed
-    ACTIVE = "active"                   # Currently being pursued
-    PAUSED = "paused"                   # Temporarily suspended
-    COMPLETED = "completed"             # Successfully accomplished
-    CANCELLED = "cancelled"             # Abandoned or rejected
-    BLOCKED = "blocked"                 # Cannot proceed due to dependencies
+
+    NEW = "new"  # Recently created, not yet reviewed
+    ACTIVE = "active"  # Currently being pursued
+    PAUSED = "paused"  # Temporarily suspended
+    COMPLETED = "completed"  # Successfully accomplished
+    CANCELLED = "cancelled"  # Abandoned or rejected
+    BLOCKED = "blocked"  # Cannot proceed due to dependencies
 
 
 @dataclass
@@ -49,96 +56,27 @@ class Goal:
     status: GoalStatus = GoalStatus.NEW
 
     # Temporal tracking
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    target_completion: Optional[datetime] = None
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    target_completion: datetime | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
 
     # Execution details
-    success_criteria: List[str] = field(default_factory=list)
-    required_capabilities: List[str] = field(default_factory=list)
+    success_criteria: list[str] = field(default_factory=list)
+    required_capabilities: list[str] = field(default_factory=list)
     estimated_effort: str = "medium"  # "low", "medium", "high"
 
     # Progress and metrics
-    progress_metrics: Dict[str, Any] = field(default_factory=dict)
+    progress_metrics: dict[str, Any] = field(default_factory=dict)
     completion_percentage: float = 0.0
 
     # Hierarchical relationships
-    parent_goal_id: Optional[str] = None
-    sub_goals: List[str] = field(default_factory=list)
-
-    # Learning and insights"""
-Kor'tana's Goal Framework - Core Data Structures
-Enables autonomous goal setting, prioritization, and pursuit within Sacred Covenant boundaries.
-"""
-
-import uuid
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from enum import Enum
-from typing import Any, Dict, List, Optional
-
-
-class GoalType(Enum):
-    """Types of goals Kor'tana can autonomously pursue"""
-    MAINTENANCE = "maintenance"          # System health, code quality, cleanup
-    LEARNING = "learning"               # Knowledge acquisition, skill improvement
-    IMPROVEMENT = "improvement"         # Performance optimization, feature enhancement
-    USER_SERVICE = "user_service"       # Direct user assistance, request fulfillment
-    EXPLORATION = "exploration"         # Research, experimentation, discovery
-
-
-class GoalStatus(Enum):
-    """Lifecycle states for goals"""
-    NEW = "new"                         # Recently created, not yet reviewed
-    ACTIVE = "active"                   # Currently being pursued
-    PAUSED = "paused"                   # Temporarily suspended
-    COMPLETED = "completed"             # Successfully accomplished
-    CANCELLED = "cancelled"             # Abandoned or rejected
-    BLOCKED = "blocked"                 # Cannot proceed due to dependencies
-
-
-@dataclass
-class Goal:
-    """
-    Represents an autonomous goal that Kor'tana can set and pursue.
-
-    This is the fundamental unit of Kor'tana's self-directed behavior,
-    enabling her to transition from reactive responses to proactive planning.
-    """
-
-    # Core identification
-    goal_id: str = field(default_factory=lambda: f"goal_{uuid.uuid4().hex[:8]}")
-    type: GoalType = GoalType.MAINTENANCE
-    title: str = ""
-    description: str = ""
-
-    # Priority and status management
-    priority: int = 5  # 1-10, where 10 is highest priority
-    status: GoalStatus = GoalStatus.NEW
-
-    # Temporal tracking
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    target_completion: Optional[datetime] = None
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-
-    # Execution details
-    success_criteria: List[str] = field(default_factory=list)
-    required_capabilities: List[str] = field(default_factory=list)
-    estimated_effort: str = "medium"  # "low", "medium", "high"
-
-    # Progress and metrics
-    progress_metrics: Dict[str, Any] = field(default_factory=dict)
-    completion_percentage: float = 0.0
-
-    # Hierarchical relationships
-    parent_goal_id: Optional[str] = None
-    sub_goals: List[str] = field(default_factory=list)
+    parent_goal_id: str | None = None
+    sub_goals: list[str] = field(default_factory=list)
 
     # Learning and insights
-    learning_insights: List[str] = field(default_factory=list)
-    lessons_learned: Dict[str, str] = field(default_factory=dict)
+    learning_insights: list[str] = field(default_factory=list)
+    lessons_learned: dict[str, str] = field(default_factory=dict)
 
     # Sacred Covenant compliance
     covenant_approved: bool = False
@@ -146,8 +84,8 @@ class Goal:
 
     # Metadata
     created_by: str = "autonomous"  # "autonomous", "user", "system"
-    tags: List[str] = field(default_factory=list)
-    context: Dict[str, Any] = field(default_factory=dict)
+    tags: list[str] = field(default_factory=list)
+    context: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         """Post-initialization validation and setup"""
@@ -157,7 +95,7 @@ class Goal:
         if not self.description:
             self.description = f"Autonomous {self.type.value} goal created at {self.created_at.isoformat()}"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert goal to dictionary for storage"""
         return {
             "goal_id": self.goal_id,
@@ -167,9 +105,13 @@ class Goal:
             "priority": self.priority,
             "status": self.status.value,
             "created_at": self.created_at.isoformat(),
-            "target_completion": self.target_completion.isoformat() if self.target_completion else None,
+            "target_completion": self.target_completion.isoformat()
+            if self.target_completion
+            else None,
             "started_at": self.started_at.isoformat() if self.started_at else None,
-            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "completed_at": self.completed_at.isoformat()
+            if self.completed_at
+            else None,
             "success_criteria": self.success_criteria,
             "required_capabilities": self.required_capabilities,
             "estimated_effort": self.estimated_effort,
@@ -187,7 +129,7 @@ class Goal:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Goal":
+    def from_dict(cls, data: dict[str, Any]) -> "Goal":
         """Create goal from dictionary"""
         goal = cls()
         goal.goal_id = data.get("goal_id", goal.goal_id)
@@ -228,21 +170,26 @@ class Goal:
     def is_actionable(self) -> bool:
         """Check if goal is ready for execution"""
         return (
-            self.status == GoalStatus.ACTIVE and
-            self.covenant_approved and
-            len(self.success_criteria) > 0 and
-            self.priority >= 3  # Don't execute very low priority goals
+            self.status == GoalStatus.ACTIVE
+            and self.covenant_approved
+            and len(self.success_criteria) > 0
+            and self.priority >= 3  # Don't execute very low priority goals
         )
 
     def can_be_activated(self) -> bool:
         """Check if goal is ready to be activated"""
         return (
-            self.status == GoalStatus.NEW and
-            self.covenant_approved and
-            len(self.success_criteria) > 0
+            self.status == GoalStatus.NEW
+            and self.covenant_approved
+            and len(self.success_criteria) > 0
         )
 
-    def update_progress(self, percentage: float, metrics: Dict[str, Any] = None, insights: List[str] = None):
+    def update_progress(
+        self,
+        percentage: float,
+        metrics: dict[str, Any] = None,
+        insights: list[str] = None,
+    ):
         """Update goal progress and learning"""
         self.completion_percentage = max(0.0, min(100.0, percentage))
 
@@ -255,20 +202,20 @@ class Goal:
         # Auto-complete if 100%
         if self.completion_percentage >= 100.0 and self.status == GoalStatus.ACTIVE:
             self.status = GoalStatus.COMPLETED
-            self.completed_at = datetime.now(timezone.utc)
+            self.completed_at = datetime.now(UTC)
 
     def activate(self):
         """Activate goal for pursuit"""
         if self.can_be_activated():
             self.status = GoalStatus.ACTIVE
-            self.started_at = datetime.now(timezone.utc)
+            self.started_at = datetime.now(UTC)
             return True
         return False
 
-    def complete(self, lessons: Dict[str, str] = None):
+    def complete(self, lessons: dict[str, str] = None):
         """Mark goal as completed with optional lessons"""
         self.status = GoalStatus.COMPLETED
-        self.completed_at = datetime.now(timezone.utc)
+        self.completed_at = datetime.now(UTC)
         self.completion_percentage = 100.0
 
         if lessons:
@@ -289,58 +236,55 @@ class Goal:
 
     def get_age_days(self) -> float:
         """Get goal age in days"""
-        return (datetime.now(timezone.utc) - self.created_at).total_seconds() / 86400
+        return (datetime.now(UTC) - self.created_at).total_seconds() / 86400
 
-    def get_time_to_deadline_days(self) -> Optional[float]:
+    def get_time_to_deadline_days(self) -> float | None:
         """Get days until target completion"""
         if not self.target_completion:
             return None
-        return (self.target_completion - datetime.now(timezone.utc)).total_seconds() / 86400
+        return (self.target_completion - datetime.now(UTC)).total_seconds() / 86400
 
     def is_overdue(self) -> bool:
         """Check if goal is past its target completion date"""
         if not self.target_completion:
             return False
-        return datetime.now(timezone.utc) > self.target_completion and self.status not in [GoalStatus.COMPLETED, GoalStatus.CANCELLED]
+        return datetime.now(UTC) > self.target_completion and self.status not in [
+            GoalStatus.COMPLETED,
+            GoalStatus.CANCELLED,
+        ]
 
-    @staticmethod
-    def from_dict(data: Dict[str, Any]):
-        goal = Goal(
-            goal_type=GoalType(data['type']),
-            description=data['description'],
-            priority=data.get('priority', 5),
-            metadata=data.get('metadata', {})
-        )
-        goal.id = data['id']
-        goal.status = GoalStatus(data['status'])
-        goal.progress = data.get('progress', 0.0)
-        goal.created_at = data.get('created_at')
-        goal.updated_at = data.get('updated_at', goal.created_at)
-        return goal
 
 class GoalManager:
     def __init__(self, storage_path: str = GOAL_STORAGE_PATH):
         self.storage_path = storage_path
         self.goals = self._load_goals()
 
-    def _load_goals(self) -> List[Goal]:
+    def _load_goals(self) -> list[Goal]:
         if not os.path.exists(self.storage_path):
             return []
-        with open(self.storage_path, 'r', encoding='utf-8') as f:
+        with open(self.storage_path, encoding="utf-8") as f:
             return [Goal.from_dict(json.loads(line)) for line in f if line.strip()]
 
     def _save_goals(self):
-        with open(self.storage_path, 'w', encoding='utf-8') as f:
+        with open(self.storage_path, "w", encoding="utf-8") as f:
             for goal in self.goals:
-                f.write(json.dumps(goal.to_dict()) + '\n')
+                f.write(json.dumps(goal.to_dict()) + "\n")
 
-    def create_goal(self, goal_type: GoalType, description: str, priority: int = 5, metadata: Optional[Dict[str, Any]] = None) -> Goal:
+    def create_goal(
+        self,
+        goal_type: GoalType,
+        description: str,
+        priority: int = 5,
+        metadata: dict[str, Any] | None = None,
+    ) -> Goal:
         goal = Goal(goal_type, description, priority, metadata)
         self.goals.append(goal)
         self._save_goals()
         return goal
 
-    def update_goal_status(self, goal_id: str, status: GoalStatus, progress: Optional[float] = None):
+    def update_goal_status(
+        self, goal_id: str, status: GoalStatus, progress: float | None = None
+    ):
         for goal in self.goals:
             if goal.id == goal_id:
                 goal.status = status
@@ -351,7 +295,7 @@ class GoalManager:
                 return goal
         return None
 
-    def get_next_goal(self) -> Optional[Goal]:
+    def get_next_goal(self) -> Goal | None:
         pending_goals = [g for g in self.goals if g.status == GoalStatus.PENDING]
         if not pending_goals:
             return None
@@ -366,10 +310,11 @@ class GoalManager:
                 return goal
         return None
 
-    def list_goals(self, status: Optional[GoalStatus] = None) -> List[Goal]:
+    def list_goals(self, status: GoalStatus | None = None) -> list[Goal]:
         if status:
             return [g for g in self.goals if g.status == status]
         return self.goals
+
 
 class GoalEvaluator:
     def __init__(self, covenant_enforcer=None):
@@ -380,5 +325,6 @@ class GoalEvaluator:
         if self.covenant_enforcer:
             return self.covenant_enforcer.check_goal(goal)
         return True
+
 
 # Integration with scheduler and ADE would be implemented in their respective modules.

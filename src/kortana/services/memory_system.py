@@ -7,6 +7,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class MemoryManager:
     def __init__(self):
         self.recent_interactions = []
@@ -19,5 +20,6 @@ class MemoryManager:
         """Store a research topic in memory"""
         logger.info(f"Storing research topic: {topic}")
         # Implementation will be added
+
 
 memory_manager = MemoryManager()

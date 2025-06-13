@@ -26,7 +26,7 @@ def engine():
         for f in TEST_DIR.glob("*"):
             try:
                 f.unlink()
-            except:
+            except OSError:
                 pass
         TEST_DIR.rmdir()
 

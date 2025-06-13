@@ -145,7 +145,7 @@ class MemoryCoreService:
             if (
                 mem.embedding is not None
                 and isinstance(mem.embedding, list)
-                and all(isinstance(x, (int, float)) for x in mem.embedding)
+                and all(isinstance(x, int | float) for x in mem.embedding)
             ):
                 similarity = cosine_similarity(query_embedding, mem.embedding)
                 scored_memories.append({"memory": mem, "score": similarity})

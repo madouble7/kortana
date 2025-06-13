@@ -34,7 +34,7 @@ def main():
     # Open log file
     with open(log_file, "w") as f:
         # Run setup commands
-        for i, cmd in enumerate(commands[:-1]):
+        for _i, cmd in enumerate(commands[:-1]):
             f.write(f"\n\n{'=' * 80}\n")
             f.write(f"Running: {' '.join(cmd)}\n")
             f.write(f"{'=' * 80}\n\n")

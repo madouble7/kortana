@@ -1,5 +1,8 @@
 """
-Goal Engine for Kor'tana's Autonomous Development System.
+Goalfrom kortana.core.execution_engine import ExecutionEngine
+from kortana.core.goals.goal import Goal, GoalStatus
+from kortana.core.goals.manager import GoalManager
+from kortana.core.planning_engine import PlanningEngineine for Kor'tana's Autonomous Development System.
 
 This component orchestrates the process of goal processing and execution.
 """
@@ -8,7 +11,7 @@ import asyncio
 import logging
 
 from kortana.core.execution_engine import ExecutionEngine
-from kortana.core.goals.goal import GoalStatus
+from kortana.core.goals.goal import Goal, GoalStatus
 from kortana.core.goals.manager import GoalManager
 from kortana.core.planning_engine import PlanningEngine
 
@@ -42,7 +45,7 @@ class GoalEngine:
         self._processing_lock = asyncio.Lock()
         logger.info("GoalEngine initialized.")
 
-    async def run_cycle(self) -> list:
+    async def run_cycle(self) -> list[Goal]:
         logger.info("Running Goal Engine cycle...")
         # 1. Scan Environment
         potential_descriptions = await self.scanner.scan_environment()
@@ -76,9 +79,8 @@ class GoalEngine:
                 top_goal.update_status(GoalStatus.FAILED)
                 await self.goal_manager.update_goal(top_goal)
                 logger.error("Planning failed for goal.")
-                return prioritized_goals
-            # 6. Execute the plan step by step
-            execution_context = {}
+                return prioritized_goals  # 6. Execute the plan step by step
+            execution_context: dict[str, str] = {}
             for i, step in enumerate(plan_steps):
                 action_type = step.get("action_type")
                 params = step.get("parameters", {})

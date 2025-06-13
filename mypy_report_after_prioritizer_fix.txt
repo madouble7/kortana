@@ -1,0 +1,2 @@
+src\kortana\core\goal_framework.py:83: error: unterminated string literal (detected at line 83)  [syntax]
+Found 1 error in 1 file (errors prevented further checking)

@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 # Try to import Google genai, but don't fail if not available
 try:
     from google import genai
+
     GOOGLE_GENAI_AVAILABLE = True
 except ImportError:
     GOOGLE_GENAI_AVAILABLE = False

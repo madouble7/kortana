@@ -1,0 +1,552 @@
+c:\project-kortana\venv311\Lib\site-packages\pytest_asyncio\plugin.py:217: PytestDeprecationWarning: The configuration option "asyncio_default_fixture_loop_scope" is unset.
+The event loop scope for asynchronous fixtures will default to the fixture caching scope. Future versions of pytest-asyncio will default the loop scope for asynchronous fixtures to function scope. Set the default fixture loop scope explicitly in order to avoid unexpected behavior in the future. Valid fixture loop scopes are: "function", "class", "module", "package", "session"
+
+  warnings.warn(PytestDeprecationWarning(_DEFAULT_FIXTURE_LOOP_SCOPE_UNSET))
+tests/integration/test_chat_engine.py::test_chat_engine_lowercase_love
+tests/integration/test_chat_engine.py::test_chat_engine_text_analysis
+tests/test_brain_core.py::test_brain_module_structure
+tests/test_brain_core.py::test_strategic_config_imports
+tests/test_brain_core.py::test_model_router_basic
+tests/test_brain_core.py::test_memory_manager_basic
+tests/test_brain_core.py::test_basic_response_simulation
+tests/test_brain_core.py::test_config_file_structure
+tests/test_brain_integration.py::test_brain_memory_integration
+tests/test_brain_minimal.py::TestChatEngineBasic::test_initialization
+tests/test_brain_minimal.py::TestChatEngineBasic::test_mode_setting
+tests/test_brain_minimal.py::TestChatEngineBasic::test_add_user_message
+tests/test_brain_minimal.py::TestChatEngineBasic::test_add_assistant_message
+tests/test_brain_minimal.py::TestChatEngineBasic::test_basic_response_generation
+tests/test_brain_minimal.py::TestChatEngineBasic::test_system_prompt_building
+tests/test_brain_minimal.py::TestChatEngineAdvanced::test_task_classification
+tests/test_brain_minimal.py::TestChatEngineAdvanced::test_mode_detection
+tests/test_brain_minimal.py::TestChatEngineAdvanced::test_response_shaping_by_mode
+tests/test_brain_minimal.py::test_minimal_integration
+tests/test_brain_minimal.py::test_can_import_brain_module
+tests/test_db.py::test_db_creation
+tests/test_demo.py::test_passing_basic
+tests/test_demo.py::test_passing_with_delay
+tests/test_demo.py::test_skipped_example
+tests/test_demo.py::test_passing_complex
+tests/test_demo.py::test_expected_failure
+tests/test_demo.py::test_math_operations
+tests/test_enhanced_system.py::test_database
+tests/test_enhanced_system.py::test_gemini_integration
+tests/test_enhanced_system.py::test_enhanced_relay
+tests/test_execution_engine.py::test_edit_file_success
+tests/test_execution_engine.py::test_edit_file_outside_allowed_dirs
+tests/test_execution_engine.py::test_run_tests_success
+tests/test_execution_engine.py::test_run_tests_failure
+tests/test_execution_engine.py::test_execute_shell_command_blocked
+tests/test_execution_engine.py::test_deploy_success
+tests/test_failure_demo.py::test_this_will_fail
+tests/test_failure_demo.py::test_this_will_pass
+tests/test_failure_demo.py::test_import_error
+tests/test_genai.py::test_google_genai_client_creation
+tests/test_genai.py::test_basic_api_call
+tests/test_genai.py::test_custom_parameters
+tests/test_goal_framework.py::TestGoal::test_goal_creation_defaults
+tests/test_goal_framework.py::TestGoal::test_goal_creation_with_parameters
+tests/test_goal_framework.py::TestGoal::test_goal_post_init
+tests/test_goal_framework.py::TestGoal::test_goal_to_dict
+tests/test_goal_framework.py::TestGoal::test_goal_from_dict
+tests/test_goal_framework.py::TestGoal::test_goal_actionability
+tests/test_goal_framework.py::TestGoal::test_goal_activation
+tests/test_goal_framework.py::TestGoal::test_goal_progress_update
+tests/test_goal_framework.py::TestGoal::test_goal_completion
+tests/test_goal_framework.py::TestGoal::test_goal_pause_and_cancel
+tests/test_goal_framework.py::TestGoal::test_goal_time_calculations
+tests/test_goal_framework.py::TestGoalManager::test_goal_manager_initialization
+tests/test_goal_framework.py::TestGoalManager::test_create_goal
+tests/test_goal_framework.py::TestGoalManager::test_create_goal_from_template
+tests/test_goal_framework.py::TestGoalManager::test_goal_retrieval
+tests/test_goal_framework.py::TestGoalManager::test_goals_by_status
+tests/test_goal_framework.py::TestGoalManager::test_goal_prioritization
+tests/test_goal_framework.py::TestGoalManager::test_goal_activation
+tests/test_goal_framework.py::TestGoalManager::test_goal_progress_update
+tests/test_goal_framework.py::TestGoalManager::test_goal_completion
+tests/test_goal_framework.py::TestGoalManager::test_autonomous_goal_suggestions
+tests/test_goal_framework.py::TestGoalManager::test_covenant_enforcement
+tests/test_goal_framework.py::TestGoalManager::test_statistics_generation
+tests/test_goals.py::TestGoal::test_goal_creation
+tests/test_goals.py::TestGoal::test_update_status
+tests/test_goals.py::TestGoal::test_sacred_scores
+tests/test_goals.py::TestGoalManager::test_create_goal
+tests/test_goals.py::TestGoalManager::test_update_goal
+tests/test_goals.py::TestGoalManager::test_parent_child_goals
+tests/test_goals.py::TestGoalCovenantValidator::test_validate_goal
+tests/test_goals.py::TestGoalCovenantValidator::test_get_recommendations
+tests/test_live_conversation.py::test_live_conversation
+tests/test_memory_helpers.py::TestMemoryHelpers::test_load_memory
+tests/test_memory_helpers.py::TestMemoryHelpers::test_save_memory
+tests/test_memory_helpers.py::TestMemoryHelpers::test_save_decision
+tests/test_memory_helpers.py::TestMemoryHelpers::test_save_implementation_note
+tests/test_memory_helpers.py::TestMemoryHelpers::test_save_project_insight
+tests/test_memory_helpers.py::TestMemoryHelpers::test_get_memory_by_type
+tests/test_memory_helpers.py::TestMemoryHelpers::test_get_recent_memories_by_type
+tests/test_memory_integration.py::TestMemoryIntegration::test_save_and_load_decision
+tests/test_memory_integration.py::TestMemoryIntegration::test_save_multiple_memory_types
+tests/test_memory_integration.py::TestMemoryIntegration::test_memory_timestamp_ordering
+tests/test_memory_integration.py::TestMemoryIntegration::test_automatic_summarization_trigger
+tests/test_memory_integration.py::TestMemoryIntegration::test_memory_integration_in_system_prompt
+tests/test_memory_integration.py::TestMemoryIntegration::test_function_calls_for_memory
+tests/test_memory_integration.py::TestMemoryIntegration::test_memory_retrieval_by_type_and_recency
+tests/test_memory_integration.py::TestMemoryIntegration::test_enhanced_memory_organization_in_system_prompt
+tests/test_memory_integration.py::TestMemoryIntegration::test_memory_helper_command_parsing
+tests/test_memory_integration.py::TestMemoryIntegration::test_summarization_threshold_behavior
+tests/test_model_router.py::test_model_router_module_structure
+tests/test_model_router.py::test_sacred_model_router_import
+tests/test_model_router.py::test_model_archetype_enum
+tests/test_model_router.py::test_sacred_model_router_initialization
+tests/test_model_router.py::test_get_model_config_method
+tests/test_model_router.py::test_routing_stats_method
+tests/test_model_router.py::test_strategic_config_integration
+tests/test_model_router.py::test_task_category_mapping
+tests/test_model_router.py::test_config_file_loading_error_handling
+tests/test_relay_once.py::test_relay_once
+tests/test_sacred_trinity.py::test_trinity_router_model_selection
+tests/test_sacred_trinity.py::test_trinity_alignment_scoring_placeholder
+tests/test_sacred_trinity.py::test_model_performance_validation_placeholder
+tests/test_sacred_trinity.py::test_overall_trinity_verification_placeholder
+tests/test_scheduler.py::test_task_creation
+tests/test_scheduler.py::test_task_execution
+tests/test_scheduler.py::test_task_error_handling
+tests/test_scheduler.py::test_task_cancellation
+tests/test_scheduler.py::test_priority_execution_order
+tests/test_scheduler.py::test_scheduler_stop
+tests/test_scheduler.py::test_concurrent_tasks
+tests/test_simple_memory.py::test_memory_only
+tests/test_simple_memory.py::test_environment
+tests/test_smoke.py::test_smoke
+tests/test_text_analysis.py::TestTextAnalysisUtils::test_analyze_sentiment_basic
+tests/test_text_analysis.py::TestTextAnalysisUtils::test_analyze_sentiment_empty_string
+tests/test_text_analysis.py::TestTextAnalysisUtils::test_count_tokens
+tests/test_text_analysis.py::TestTextAnalysisUtils::test_count_tokens_empty_string
+tests/test_text_analysis.py::TestTextAnalysisUtils::test_extract_keywords_basic
+tests/test_text_analysis.py::TestTextAnalysisUtils::test_extract_keywords_empty_string
+tests/test_text_analysis.py::TestTextAnalysisUtils::test_summarize_text_basic
+tests/test_text_analysis.py::TestTextAnalysisUtils::test_summarize_text_empty_string
+tests/test_text_encoding.py::TestTextEncodingUtils::test_base64_decode_invalid_input
+tests/test_text_encoding.py::TestTextEncodingUtils::test_base64_encode_decode
+tests/test_timestamp_utils.py::TestTimestampUtils::test_distinct_timestamps_over_time
+tests/test_timestamp_utils.py::TestTimestampUtils::test_output_is_string
+tests/test_timestamp_utils.py::TestTimestampUtils::test_output_iso_8601_format
+tests/test_torch_integration.py::test_torch_integration
+tests/test_trinity_integration.py::test_end_to_end_trinity_routing
+tests/test_trinity_integration.py::test_trinity_metadata_in_memory_logging
+tests/test_trinity_integration.py::test_trinity_covenant_enforcement
+tests/test_trinity_integration.py::test_trinity_configuration_loading
+tests/unit/core/test_brain.py::TestChatEngine::test_init
+tests/unit/core/test_brain.py::TestChatEngine::test_load_json_config
+tests/unit/core/test_brain.py::TestChatEngine::test_load_covenant
+tests/unit/core/test_brain.py::TestChatEngine::test_process_message
+tests/unit/memory/test_memory_manager.py::TestMemoryManager::test_init
+tests/unit/memory/test_memory_manager.py::TestMemoryManager::test_load_project_memory
+tests/unit/memory/test_memory_manager.py::TestMemoryManager::test_save_project_memory
+tests/unit/memory/test_memory_manager.py::TestMemoryManager::test_add_memory
+tests/unit/memory/test_memory_manager.py::TestMemoryManager::test_search_memory
+tests/unit/test_basic.py::test_simple_pass
+tests/unit/test_basic.py::TestBasic::test_simple_class_method
+tests/unit/test_brain_refactoring.py::TestChatEngineRefactoring::test_build_prompt_with_memory_integration
+tests/unit/test_brain_refactoring.py::TestChatEngineRefactoring::test_format_channel_info
+tests/unit/test_brain_refactoring.py::TestChatEngineRefactoring::test_format_memory_context
+tests/unit/test_brain_refactoring.py::TestChatEngineRefactoring::test_format_user_info
+tests/unit/test_brain_refactoring.py::TestChatEngineRefactoring::test_get_base_persona_prompt
+tests/unit/test_brain_refactoring.py::TestChatEngineRefactoring::test_get_basic_memory_stats
+tests/unit/test_brain_refactoring.py::TestChatEngineRefactoring::test_get_memory_manager_stats
+tests/unit/test_brain_refactoring.py::TestChatEngineRefactoring::test_get_memory_stats_error_handling
+tests/unit/test_brain_refactoring.py::TestChatEngineRefactoring::test_get_memory_stats_integration
+tests/unit/test_brain_refactoring.py::TestChatEngineRefactoring::test_save_pending_memory_operations
+tests/unit/test_brain_refactoring.py::TestChatEngineRefactoring::test_shutdown_integration
+tests/unit/test_embedding_functions.py::TestEmbeddingFunctions::test_generate_embedding_caching
+tests/unit/test_embedding_functions.py::TestEmbeddingFunctions::test_generate_embedding_error_handling
+tests/unit/test_embedding_functions.py::TestEmbeddingFunctions::test_generate_embedding_with_empty_text
+tests/unit/test_embedding_functions.py::TestEmbeddingFunctions::test_generate_embedding_with_text
+tests/unit/test_embedding_functions.py::TestEmbeddingFunctions::test_get_embedding_model_singleton
+tests/unit/test_embedding_functions.py::TestEmbeddingFunctions::test_hash_text_for_cache
+tests/unit/test_embedding_service.py::test_embedding_service_initialization_success
+tests/unit/test_embedding_service.py::test_embedding_service_initialization_failure_no_key
+tests/unit/test_embedding_service.py::test_get_embedding_for_text_success
+tests/unit/test_embedding_service.py::test_get_embedding_for_text_empty_input
+tests/unit/test_embedding_service.py::test_get_embeddings_for_texts_success
+tests/unit/test_embedding_service.py::test_get_embeddings_for_texts_empty_input_list
+tests/unit/test_embedding_service.py::test_get_embeddings_for_texts_with_empty_strings_in_list
+tests/unit/test_embedding_service.py::test_get_embeddings_for_texts_all_empty_or_whitespace_strings
+tests/unit/test_orchestrator.py::test_kor_orchestrator_init
+tests/unit/test_orchestrator.py::test_process_query
+tests/unit/test_orchestrator.py::test_process_query_with_empty_memories
+tests/unit/test_orchestrator.py::test_process_query_llm_failure
+tests/unit/test_orchestrator.py::test_process_query_client_initialization_failure
+tests/unit/test_text_analysis.py::test_identify_important_message_for_context
+tests/unit/test_text_analysis.py::test_analyze_sentiment
+tests/unit/test_text_analysis.py::test_detect_emphasis_all_caps
+
+=================================== ERRORS ====================================
+____________ ERROR collecting tests/core/goals/test_goal_engine.py ____________
+venv311\Lib\site-packages\pytest_asyncio\plugin.py:754: in _patched_collect
+    module = collector.obj
+venv311\Lib\site-packages\_pytest\python.py:282: in obj
+    self._obj = obj = self._getobj()
+venv311\Lib\site-packages\_pytest\python.py:540: in _getobj
+    return importtestmodule(self.path, self.config)
+venv311\Lib\site-packages\_pytest\python.py:487: in importtestmodule
+    mod = import_path(
+venv311\Lib\site-packages\_pytest\pathlib.py:591: in import_path
+    importlib.import_module(module_name)
+C:\Program Files\Python311\Lib\importlib\__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+<frozen importlib._bootstrap>:1204: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1176: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1147: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:690: in _load_unlocked
+    ???
+venv311\Lib\site-packages\_pytest\assertion\rewrite.py:178: in exec_module
+    exec(co, module.__dict__)
+tests\core\goals\test_goal_engine.py:9: in <module>
+    from kortana.core.goals.engine import GoalEngine
+src\kortana\__init__.py:17: in <module>
+    from .core.brain import Brain
+src\kortana\core\brain.py:16: in <module>
+    from config.schema import KortanaConfig
+src\config\__init__.py:7: in <module>
+    from .schema import (
+src\config\schema.py:150: in <module>
+    class KortanaConfig(BaseModel):
+src\config\schema.py:182: in KortanaConfig
+    logs_dir: str = Field(default="logs", description="Logs directory")    @field_validator("log_level", mode="after")
+E   TypeError: unsupported operand type(s) for @: 'FieldInfo' and 'function'
+------------------------------- Captured stdout -------------------------------
+LLMService initialized with OpenAI provider.
+INFO: PlanningEngine initialized.
+_____________ ERROR collecting tests/integration/test_core_api.py _____________
+ImportError while importing test module 'C:\project-kortana\tests\integration\test_core_api.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+C:\Program Files\Python311\Lib\importlib\__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests\integration\test_core_api.py:8: in <module>
+    from src.kortana.main import app  # Your FastAPI app
+src\kortana\main.py:10: in <module>
+    from src.kortana.api.routers import core_router, goal_router, memory_router
+E   ImportError: cannot import name 'memory_router' from 'src.kortana.api.routers' (unknown location)
+------------------------------- Captured stdout -------------------------------
+EmbeddingService initialized with OpenAI text-embedding-3-small.
+___________ ERROR collecting tests/test_autonomous_consciousness.py ___________
+ImportError while importing test module 'C:\project-kortana\tests\test_autonomous_consciousness.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+C:\Program Files\Python311\Lib\importlib\__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests\test_autonomous_consciousness.py:7: in <module>
+    from src.llm_clients.genai_client import GoogleGenAIClient
+E   ModuleNotFoundError: No module named 'src.llm_clients.genai_client'
+____________________ ERROR collecting tests/test_brain.py _____________________
+ImportError while importing test module 'C:\project-kortana\tests\test_brain.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+tests\test_brain.py:9: in <module>
+    from src.brain import ChatEngine
+E   ImportError: cannot import name 'ChatEngine' from 'src.brain' (C:\project-kortana\src\brain.py)
+
+During handling of the above exception, another exception occurred:
+C:\Program Files\Python311\Lib\importlib\__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests\test_brain.py:15: in <module>
+    from src.brain import ChatEngine
+E   ImportError: cannot import name 'ChatEngine' from 'src.brain' (C:\project-kortana\src\brain.py)
+__________ ERROR collecting tests/test_comprehensive_integration.py ___________
+venv311\\Lib\\site-packages\\_pytest\\python.py:487: in importtestmodule\n    mod = import_path(\nvenv311\\Lib\\site-packages\\_pytest\\pathlib.py:591: in import_path\n    importlib.import_module(module_name)\nC:\\Program Files\\Python311\\Lib\\importlib\\__init__.py:126: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n<frozen importlib._bootstrap>:1204: in _gcd_import\n    ???\n<frozen importlib._bootstrap>:1176: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1147: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:690: in _load_unlocked\n    ???\nvenv311\\Lib\\site-packages\\_pytest\\assertion\\rewrite.py:169: in exec_module\n    source_stat, co = _rewrite_test(fn, self.config)\nvenv311\\Lib\\site-packages\\_pytest\\assertion\\rewrite.py:349: in _rewrite_test\n    tree = ast.parse(source, filename=strfn)\nC:\\Program Files\\Python311\\Lib\\ast.py:50: in parse\n    return compile(source, filename, mode, flags,\nE     File "C:\\project-kortana\\tests\\test_comprehensive_integration.py", line 15\nE       print("\U0001f527 Environment Loading Test")    print("=" * 40)\nE                                              ^^^^^\nE   SyntaxError: invalid syntax
+_________________ ERROR collecting tests/test_goal_engine.py __________________
+ImportError while importing test module 'C:\project-kortana\tests\test_goal_engine.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+C:\Program Files\Python311\Lib\importlib\__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests\test_goal_engine.py:10: in <module>
+    from kortana.core.goal_engine import Goal, GoalEngine, GoalType
+src\kortana\core\goal_engine.py:265: in <module>
+    goal_engine = GoalEngine()
+src\kortana\core\goal_engine.py:41: in __init__
+    from kortana.core.execution_engine import execution_engine
+E   ImportError: cannot import name 'execution_engine' from 'kortana.core.execution_engine' (C:\project-kortana\src\kortana\core\execution_engine.py)
+____________________ ERROR collecting tests/test_memory.py ____________________
+ImportError while importing test module 'C:\project-kortana\tests\test_memory.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+tests\test_memory.py:11: in <module>
+    from src.memory import MemoryManager
+E   ModuleNotFoundError: No module named 'src.memory'
+
+During handling of the above exception, another exception occurred:
+C:\Program Files\Python311\Lib\importlib\__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests\test_memory.py:19: in <module>
+    from src.memory import MemoryManager
+E   ModuleNotFoundError: No module named 'src.memory'
+__________ ERROR collecting tests/test_model_router_comprehensive.py __________
+ImportError while importing test module 'C:\project-kortana\tests\test_model_router_comprehensive.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+C:\Program Files\Python311\Lib\importlib\__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests\test_model_router_comprehensive.py:17: in <module>
+    from src.model_router import AugmentedModelConfig, ModelArchetype, SacredModelRouter
+E   ImportError: cannot import name 'AugmentedModelConfig' from 'src.model_router' (C:\project-kortana\src\model_router.py)
+__________ ERROR collecting tests/test_project_memory_integration.py __________
+ImportError while importing test module 'C:\project-kortana\tests\test_project_memory_integration.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+C:\Program Files\Python311\Lib\importlib\__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests\test_project_memory_integration.py:63: in <module>
+    from src.brain import ChatEngine
+E   ImportError: cannot import name 'ChatEngine' from 'src.brain' (C:\project-kortana\src\brain.py)
+------------------------------- Captured stdout -------------------------------
+--- TRACE (tests/test_project_memory_integration.py): sys.path ---
+C:\project-kortana
+C:\project-kortana\src
+C:\project-kortana
+C:\project-kortana\src
+C:\project-kortana
+C:\project-kortana\tests\..\src
+C:\project-kortana
+C:\project-kortana\tests\..\src
+C:\project-kortana
+C:\project-kortana\tests\src
+C:\project-kortana
+C:\project-kortana
+C:\project-kortana\tests\core\goals
+C:\project-kortana\src
+C:\project-kortana
+C:\project-kortana
+C:\project-kortana\src
+C:\Program Files\Python311\python311.zip
+C:\Program Files\Python311\DLLs
+C:\Program Files\Python311\Lib
+C:\Program Files\Python311
+c:\project-kortana\venv311
+c:\project-kortana\venv311\Lib\site-packages
+C:\project-kortana\src\kortana\core
+C:\project-kortana\src\kortana\core
+C:\project-kortana
+C:\project-kortana\tests
+C:\project-kortana\tests\relays
+--- TRACE (tests/test_project_memory_integration.py): sys.modules keys (first 20 + relevant) ---
+_codecs: Built-in or no __file__
+_frozen_importlib: C:\Program Files\Python311\Lib\importlib\_bootstrap.py
+_frozen_importlib_external: C:\Program Files\Python311\Lib\importlib\_bootstrap_external.py
+_imp: Built-in or no __file__
+_io: Built-in or no __file__
+_thread: Built-in or no __file__
+_warnings: Built-in or no __file__
+_weakref: Built-in or no __file__
+builtins: Built-in or no __file__
+codecs: C:\Program Files\Python311\Lib\codecs.py
+encodings: C:\Program Files\Python311\Lib\encodings\__init__.py
+encodings.aliases: C:\Program Files\Python311\Lib\encodings\aliases.py
+encodings.cp1252: C:\Program Files\Python311\Lib\encodings\cp1252.py
+encodings.utf_8: C:\Program Files\Python311\Lib\encodings\utf_8.py
+kortana: C:\project-kortana\src\kortana\__init__.py
+kortana.brain: C:\project-kortana\src\kortana\brain.py
+kortana.brain_utils: C:\project-kortana\src\kortana\brain_utils.py
+kortana.config: C:\project-kortana\src\kortana\config\__init__.py
+kortana.config.schema: C:\project-kortana\src\kortana\config\schema.py
+kortana.config.settings: C:\project-kortana\src\kortana\config\settings.py
+kortana.core: C:\project-kortana\src\kortana\core\__init__.py
+kortana.core.autonomous_development_engine: C:\project-kortana\src\kortana\core\autonomous_development_engine.py
+kortana.core.brain: C:\project-kortana\src\kortana\core\brain.py
+kortana.core.covenant: C:\project-kortana\src\kortana\core\covenant.py
+kortana.core.covenant_enforcer: C:\project-kortana\src\kortana\core\covenant_enforcer.py
+kortana.core.execution_engine: C:\project-kortana\src\kortana\core\execution_engine.py
+kortana.core.goal_framework: C:\project-kortana\src\kortana\core\goal_framework.py
+kortana.core.goal_manager: C:\project-kortana\src\kortana\core\goal_manager.py
+kortana.core.goals: C:\project-kortana\src\kortana\core\goals\__init__.py
+kortana.core.goals.covenant: C:\project-kortana\src\kortana\core\goals\covenant.py
+kortana.core.goals.engine: C:\project-kortana\src\kortana\core\goals\engine.py
+kortana.core.goals.generator: C:\project-kortana\src\kortana\core\goals\generator.py
+kortana.core.goals.goal: C:\project-kortana\src\kortana\core\goals\goal.py
+kortana.core.goals.manager: C:\project-kortana\src\kortana\core\goals\manager.py
+kortana.core.goals.prioritizer: C:\project-kortana\src\kortana\core\goals\prioritizer.py
+kortana.core.goals.scanner: C:\project-kortana\src\kortana\core\goals\scanner.py
+kortana.core.memory: C:\project-kortana\src\kortana\core\memory.py
+kortana.core.planning_engine: C:\project-kortana\src\kortana\core\planning_engine.py
+kortana.llm_clients: C:\project-kortana\src\kortana\llm_clients\__init__.py
+kortana.llm_clients.base_client: C:\project-kortana\src\kortana\llm_clients\base_client.py
+kortana.llm_clients.factory: C:\project-kortana\src\kortana\llm_clients\factory.py
+kortana.llm_clients.genai_client: C:\project-kortana\src\kortana\llm_clients\genai_client.py
+kortana.llm_clients.google_client: C:\project-kortana\src\kortana\llm_clients\google_client.py
+kortana.llm_clients.openai_client: C:\project-kortana\src\kortana\llm_clients\openai_client.py
+kortana.llm_clients.openrouter_client: C:\project-kortana\src\kortana\llm_clients\openrouter_client.py
+kortana.llm_clients.xai_client: C:\project-kortana\src\kortana\llm_clients\xai_client.py
+kortana.memory: C:\project-kortana\src\kortana\memory\__init__.py
+kortana.memory.memory: C:\project-kortana\src\kortana\memory\memory.py
+kortana.memory.memory_manager: C:\project-kortana\src\kortana\memory\memory_manager.py
+kortana.memory.memory_store: C:\project-kortana\src\kortana\memory\memory_store.py
+kortana.services: C:\project-kortana\src\kortana\services\__init__.py
+kortana.services.llm_service: C:\project-kortana\src\kortana\services\llm_service.py
+kortana.utils: C:\project-kortana\src\kortana\utils\__init__.py
+kortana.utils.text_analysis: C:\project-kortana\src\kortana\utils\text_analysis.py
+kortana.utils.text_encoding: C:\project-kortana\src\kortana\utils\text_encoding.py
+kortana.utils.timestamp_utils: C:\project-kortana\src\kortana\utils\timestamp_utils.py
+marshal: Built-in or no __file__
+nt: Built-in or no __file__
+src.brain: C:\project-kortana\src\brain.py
+src.kortana: C:\project-kortana\src\kortana\__init__.py
+src.kortana.agents: C:\project-kortana\src\kortana\agents\__init__.py
+src.kortana.agents.autonomous_agents: C:\project-kortana\src\kortana\agents\autonomous_agents.py
+src.kortana.api: None
+src.kortana.api.routers: None
+src.kortana.api.routers.core_router: C:\project-kortana\src\kortana\api\routers\core_router.py
+src.kortana.api.routers.goal_router: C:\project-kortana\src\kortana\api\routers\goal_router.py
+src.kortana.config: C:\project-kortana\src\kortana\config\__init__.py
+src.kortana.config.schema: C:\project-kortana\src\kortana\config\schema.py
+src.kortana.config.settings: C:\project-kortana\src\kortana\config\settings.py
+src.kortana.core: C:\project-kortana\src\kortana\core\__init__.py
+src.kortana.core.autonomous_development_engine: C:\project-kortana\src\kortana\core\autonomous_development_engine.py
+src.kortana.core.brain: C:\project-kortana\src\kortana\core\brain.py
+src.kortana.core.covenant: C:\project-kortana\src\kortana\core\covenant.py
+src.kortana.core.execution_engine: C:\project-kortana\src\kortana\core\execution_engine.py
+src.kortana.core.goal_framework: C:\project-kortana\src\kortana\core\goal_framework.py
+src.kortana.core.goal_manager: C:\project-kortana\src\kortana\core\goal_manager.py
+src.kortana.core.goals: C:\project-kortana\src\kortana\core\goals\__init__.py
+src.kortana.core.goals.covenant: C:\project-kortana\src\kortana\core\goals\covenant.py
+src.kortana.core.goals.engine: C:\project-kortana\src\kortana\core\goals\engine.py
+src.kortana.core.goals.generator: C:\project-kortana\src\kortana\core\goals\generator.py
+src.kortana.core.goals.goal: C:\project-kortana\src\kortana\core\goals\goal.py
+src.kortana.core.goals.manager: C:\project-kortana\src\kortana\core\goals\manager.py
+src.kortana.core.goals.prioritizer: C:\project-kortana\src\kortana\core\goals\prioritizer.py
+src.kortana.core.goals.scanner: C:\project-kortana\src\kortana\core\goals\scanner.py
+src.kortana.core.memory: C:\project-kortana\src\kortana\core\memory.py
+src.kortana.core.orchestrator: C:\project-kortana\src\kortana\core\orchestrator.py
+src.kortana.core.prompts: C:\project-kortana\src\kortana\core\prompts.py
+src.kortana.llm_clients: C:\project-kortana\src\kortana\llm_clients\__init__.py
+src.kortana.llm_clients.base_client: C:\project-kortana\src\kortana\llm_clients\base_client.py
+src.kortana.llm_clients.factory: C:\project-kortana\src\kortana\llm_clients\factory.py
+src.kortana.llm_clients.genai_client: C:\project-kortana\src\kortana\llm_clients\genai_client.py
+src.kortana.llm_clients.google_client: C:\project-kortana\src\kortana\llm_clients\google_client.py
+src.kortana.llm_clients.openai_client: C:\project-kortana\src\kortana\llm_clients\openai_client.py
+src.kortana.llm_clients.openrouter_client: C:\project-kortana\src\kortana\llm_clients\openrouter_client.py
+src.kortana.llm_clients.xai_client: C:\project-kortana\src\kortana\llm_clients\xai_client.py
+src.kortana.modules: C:\project-kortana\src\kortana\modules\__init__.py
+src.kortana.modules.ethical_discernment_module: C:\project-kortana\src\kortana\modules\ethical_discernment_module\__init__.py
+src.kortana.modules.ethical_discernment_module.evaluators: C:\project-kortana\src\kortana\modules\ethical_discernment_module\evaluators.py
+src.kortana.modules.memory_core: C:\project-kortana\src\kortana\modules\memory_core\__init__.py
+src.kortana.modules.memory_core.models: C:\project-kortana\src\kortana\modules\memory_core\models.py
+src.kortana.modules.memory_core.schemas: C:\project-kortana\src\kortana\modules\memory_core\schemas.py
+src.kortana.modules.memory_core.services: C:\project-kortana\src\kortana\modules\memory_core\services.py
+src.kortana.services: C:\project-kortana\src\kortana\services\__init__.py
+src.kortana.services.database: C:\project-kortana\src\kortana\services\database.py
+src.kortana.services.embedding_service: C:\project-kortana\src\kortana\services\embedding_service.py
+sys: Built-in or no __file__
+tests.test_brain_core: C:\project-kortana\tests\test_brain_core.py
+tests.test_brain_functionality: C:\project-kortana\tests\test_brain_functionality.py
+tests.test_brain_integration: C:\project-kortana\tests\test_brain_integration.py
+tests.test_brain_minimal: C:\project-kortana\tests\test_brain_minimal.py
+time: Built-in or no __file__
+winreg: Built-in or no __file__
+zipimport: C:\Program Files\Python311\Lib\zipimport.py
+--- END TRACE (tests/test_project_memory_integration.py) ---
+_______________ ERROR collecting tests/test_task_coordinator.py _______________
+tests\test_task_coordinator.py:45: in <module>
+    category: TaskCategory = TaskCategory.SYSTEM,
+C:\Program Files\Python311\Lib\enum.py:786: in __getattr__
+    raise AttributeError(name) from None
+E   AttributeError: SYSTEM
+_______________ ERROR collecting tests/unit/test_brain_utils.py _______________
+venv311\Lib\site-packages\_pytest\python.py:487: in importtestmodule
+    mod = import_path(
+venv311\Lib\site-packages\_pytest\pathlib.py:591: in import_path
+    importlib.import_module(module_name)
+C:\Program Files\Python311\Lib\importlib\__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+<frozen importlib._bootstrap>:1204: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1176: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1147: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:690: in _load_unlocked
+    ???
+venv311\Lib\site-packages\_pytest\assertion\rewrite.py:169: in exec_module
+    source_stat, co = _rewrite_test(fn, self.config)
+venv311\Lib\site-packages\_pytest\assertion\rewrite.py:349: in _rewrite_test
+    tree = ast.parse(source, filename=strfn)
+C:\Program Files\Python311\Lib\ast.py:50: in parse
+    return compile(source, filename, mode, flags,
+E     File "C:\project-kortana\tests\unit\test_brain_utils.py", line 150
+E       assert result == []    def test_format_conversation_summaries(self):
+E                              ^^^
+E   SyntaxError: invalid syntax
+____________ ERROR collecting tests/unit/test_lobe_chat_adapter.py ____________
+ImportError while importing test module 'C:\project-kortana\tests\unit\test_lobe_chat_adapter.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+C:\Program Files\Python311\Lib\importlib\__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests\unit\test_lobe_chat_adapter.py:17: in <module>
+    from src.kortana.main import app
+src\kortana\main.py:10: in <module>
+    from src.kortana.api.routers import core_router, goal_router, memory_router
+E   ImportError: cannot import name 'memory_router' from 'src.kortana.api.routers' (unknown location)
+------------------------------- Captured stdout -------------------------------
+LobeChatAdapter initialized.
+___________ ERROR collecting tests/unit/test_memory_integration.py ____________
+ImportError while importing test module 'C:\project-kortana\tests\unit\test_memory_integration.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+C:\Program Files\Python311\Lib\importlib\__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests\unit\test_memory_integration.py:13: in <module>
+    from src.kortana.brain_fixed import ChatEngine
+E   ModuleNotFoundError: No module named 'src.kortana.brain_fixed'
+============================== warnings summary ===============================
+venv311\Lib\site-packages\pydantic\_internal\_config.py:291
+venv311\Lib\site-packages\pydantic\_internal\_config.py:291
+venv311\Lib\site-packages\pydantic\_internal\_config.py:291
+venv311\Lib\site-packages\pydantic\_internal\_config.py:291
+venv311\Lib\site-packages\pydantic\_internal\_config.py:291
+venv311\Lib\site-packages\pydantic\_internal\_config.py:291
+venv311\Lib\site-packages\pydantic\_internal\_config.py:291
+venv311\Lib\site-packages\pydantic\_internal\_config.py:291
+venv311\Lib\site-packages\pydantic\_internal\_config.py:291
+  c:\project-kortana\venv311\Lib\site-packages\pydantic\_internal\_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+venv311\Lib\site-packages\pydantic\_internal\_fields.py:132
+  c:\project-kortana\venv311\Lib\site-packages\pydantic\_internal\_fields.py:132: UserWarning: Field "model_mapping" in AgentTypeConfig has conflict with protected namespace "model_".
+  
+  You may be able to resolve this warning by setting `model_config['protected_namespaces'] = ()`.
+    warnings.warn(
+
+venv311\Lib\site-packages\pydantic\_internal\_config.py:341
+  c:\project-kortana\venv311\Lib\site-packages\pydantic\_internal\_config.py:341: UserWarning: Valid config keys have changed in V2:
+  * 'orm_mode' has been renamed to 'from_attributes'
+    warnings.warn(message, UserWarning)
+
+tests\test_reporter.py:29
+  C:\project-kortana\tests\test_reporter.py:29: PytestCollectionWarning: cannot collect test class 'TestResult' because it has a __init__ constructor (from: tests/test_reporter.py)
+    @dataclass
+
+tests\test_reporter.py:56
+  C:\project-kortana\tests\test_reporter.py:56: PytestCollectionWarning: cannot collect test class 'TestSummaryReporter' because it has a __init__ constructor (from: tests/test_reporter.py)
+    class TestSummaryReporter:
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+ERROR tests/core/goals/test_goal_engine.py - TypeError: unsupported operand t...
+ERROR tests/integration/test_core_api.py
+ERROR tests/test_autonomous_consciousness.py
+ERROR tests/test_brain.py
+ERROR tests/test_comprehensive_integration.py
+ERROR tests/test_goal_engine.py
+ERROR tests/test_memory.py
+ERROR tests/test_model_router_comprehensive.py
+ERROR tests/test_project_memory_integration.py
+ERROR tests/test_task_coordinator.py - AttributeError: SYSTEM
+ERROR tests/unit/test_brain_utils.py
+ERROR tests/unit/test_lobe_chat_adapter.py
+ERROR tests/unit/test_memory_integration.py
+!!!!!!!!!!!!!!!!!! Interrupted: 13 errors during collection !!!!!!!!!!!!!!!!!!!
+177 tests collected, 13 errors in 4.97s

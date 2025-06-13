@@ -3,6 +3,7 @@ Kor'tana Core Brain
 
 This module contains the core ChatEngine that powers Kor'tana's conversational abilities.
 """
+
 import json
 import logging
 import uuid
@@ -12,7 +13,14 @@ from typing import Any
 import yaml
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from config.schema import KortanaConfig
+from kortana.config.schema import KortanaConfig
+from kortana.config import load_config
+from kortana.core.covenant_enforcer import CovenantEnforcer
+from kortana.memory.memory import MemoryManager as JsonLogMemoryManager
+from kortana.memory.memory_manager import MemoryManager as PineconeMemoryManager
+from kortana.utils import text_analysis
+from llm_clients.factory import LLMClientFactory
+from model_router import SacredModelRouter
 from src.dev_agent_stub import DevAgentStub
 from src.kortana.agents.autonomous_agents import (
     CodingAgent,
@@ -20,13 +28,6 @@ from src.kortana.agents.autonomous_agents import (
     PlanningAgent,
     TestingAgent,
 )
-from src.kortana.config import load_config
-from src.kortana.core.covenant_enforcer import CovenantEnforcer
-from src.kortana.memory.memory import MemoryManager as JsonLogMemoryManager
-from src.kortana.memory.memory_manager import MemoryManager as PineconeMemoryManager
-from src.kortana.utils import text_analysis
-from src.llm_clients.factory import LLMClientFactory
-from src.model_router import SacredModelRouter
 
 try:
     from src.sacred_trinity_router import SacredTrinityRouter
@@ -36,10 +37,10 @@ except ImportError:
         def __init__(self, settings):
             self.settings = settings
 
+
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -67,15 +68,23 @@ class ChatEngine:
         logger.info(f"Initializing ChatEngine with session ID {self.session_id}")
 
         # Load configurations using paths from settings
-        self.persona_data = self._load_json_config(self.settings.paths.persona_file_path)
-        self.identity_data = self._load_json_config(self.settings.paths.identity_file_path)
+        self.persona_data = self._load_json_config(
+            self.settings.paths.persona_file_path
+        )
+        self.identity_data = self._load_json_config(
+            self.settings.paths.identity_file_path
+        )
         self.covenant = self._load_covenant(self.settings.paths.covenant_file_path)
 
         # Initialize LLM clients
         self.llm_client_factory = LLMClientFactory(settings=self.settings)
         LLMClientFactory.validate_configuration(self.settings)
-        self.default_llm_client = self.llm_client_factory.get_client(self.settings.default_llm_id)
-        self.ade_llm_client = self.llm_client_factory.get_client(self.settings.agents.default_llm_id)
+        self.default_llm_client = self.llm_client_factory.get_client(
+            self.settings.default_llm_id
+        )
+        self.ade_llm_client = self.llm_client_factory.get_client(
+            self.settings.agents.default_llm_id
+        )
 
         # Initialize memory systems
         self.pinecone_memory = PineconeMemoryManager(settings=self.settings)
@@ -97,21 +106,21 @@ class ChatEngine:
             memory_accessor=self.pinecone_memory,
             dev_agent_instance=self.dev_agent_instance,
             settings=self.settings,
-            llm_client=self.ade_llm_client
+            llm_client=self.ade_llm_client,
         )
 
         self.ade_planner = PlanningAgent(
             chat_engine_instance=self,
             llm_client=self.ade_llm_client,
             covenant_enforcer=self.covenant_enforcer,
-            settings=self.settings
+            settings=self.settings,
         )
 
         self.ade_tester = TestingAgent(
             chat_engine_instance=self,
             llm_client=self.ade_llm_client,
             covenant_enforcer=self.covenant_enforcer,
-            settings=self.settings
+            settings=self.settings,
         )
 
         # Handle agent types configuration for both dict and object
@@ -125,7 +134,7 @@ class ChatEngine:
                     "coding": getattr(self.settings.agents.types, "coding", {}),
                     "planning": getattr(self.settings.agents.types, "planning", {}),
                     "testing": getattr(self.settings.agents.types, "testing", {}),
-                    "monitoring": getattr(self.settings.agents.types, "monitoring", {})
+                    "monitoring": getattr(self.settings.agents.types, "monitoring", {}),
                 }
 
         # Get monitoring config
@@ -136,7 +145,7 @@ class ChatEngine:
             llm_client=self.ade_llm_client,
             covenant_enforcer=self.covenant_enforcer,
             config=monitoring_config,
-            settings=self.settings
+            settings=self.settings,
         )
 
         # Start monitoring
@@ -180,7 +189,9 @@ class ChatEngine:
         logger.info(f"Processing message: {user_message[:50]}...")
 
         # Analyze message
-        is_important = text_analysis.identify_important_message_for_context(user_message)
+        is_important = text_analysis.identify_important_message_for_context(
+            user_message
+        )
         sentiment = text_analysis.analyze_sentiment(user_message)
         emphasis = text_analysis.detect_emphasis_all_caps(user_message)
         keywords = text_analysis.detect_keywords(user_message)
@@ -193,24 +204,30 @@ class ChatEngine:
             "emphasis": emphasis,
             "keywords": keywords,
             "session_id": self.session_id,
-            "mode": self.mode
+            "mode": self.mode,
         }
 
         # Determine which model and voice style to use
-        model_id, voice_style, model_params = self.router.route(user_message, conversation_context)
+        model_id, voice_style, model_params = self.router.route(
+            user_message, conversation_context
+        )
 
         # Get relevant memories
         # memories = self.pinecone_memory.search_memory(user_message, top_k=5)
 
         # Prepare prompt
-        prompt = self._build_prompt(user_message, conversation_context, voice_style, model_params)
+        prompt = self._build_prompt(
+            user_message, conversation_context, voice_style, model_params
+        )
 
         # Generate response using the selected model
         llm_client = self.llm_client_factory.get_client(model_id)
         response = await llm_client.complete(prompt)
 
         # Extract response text
-        response_text = response.get("content", "I'm sorry, I couldn't generate a proper response.")
+        response_text = response.get(
+            "content", "I'm sorry, I couldn't generate a proper response."
+        )
 
         # Check response against covenant
         is_compliant, explanation = self.covenant_enforcer.enforce(response_text)
@@ -231,7 +248,7 @@ class ChatEngine:
         user_message: str,
         conversation_context: dict[str, Any],
         voice_style: str,
-        model_params: dict[str, Any]
+        model_params: dict[str, Any],
     ) -> str:
         """Build a prompt for the LLM."""
         # A simple prompt template - in a real implementation, this would be more sophisticated
@@ -250,10 +267,7 @@ Keep your response concise and focused on addressing the user's needs.
         return prompt
 
     def _update_memory(
-        self,
-        user_message: str,
-        response: str,
-        context: dict[str, Any]
+        self, user_message: str, response: str, context: dict[str, Any]
     ) -> None:
         """Update memory with conversation details."""
         # In a real implementation, this would use more sophisticated memory management
@@ -263,7 +277,7 @@ Keep your response concise and focused on addressing the user's needs.
             "timestamp": context["timestamp"],
             "sentiment": context["sentiment"],
             "keywords": context["keywords"],
-            "session_id": self.session_id
+            "session_id": self.session_id,
         }
 
         # Add to project memory
@@ -273,7 +287,7 @@ Keep your response concise and focused on addressing the user's needs.
         if context["is_important"]:
             self.json_memory.add_heart_memory(
                 f"User: {user_message}\nKortana: {response}",
-                tags=["conversation", "important"]
+                tags=["conversation", "important"],
             )
 
         # Save project memory periodically
@@ -326,6 +340,7 @@ if __name__ == "__main__":
 
             # Process message
             import asyncio
+
             response = asyncio.run(chat_engine.process_message(user_input))
 
             # Print response (lowercase for "kortana")

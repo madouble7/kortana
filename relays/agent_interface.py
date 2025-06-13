@@ -18,7 +18,6 @@ Usage:
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import List
 
 
 class AgentInterface:
@@ -78,13 +77,13 @@ class AgentInterface:
             intent_message += f" @{target_agent}"
         return self.send_output(intent_message, "intent")
 
-    def get_new_messages(self) -> List[str]:
+    def get_new_messages(self) -> list[str]:
         """Get new messages from queue since last check"""
         if not self.queue_file.exists():
             return []
 
         try:
-            with open(self.queue_file, "r", encoding="utf-8") as f:
+            with open(self.queue_file, encoding="utf-8") as f:
                 # Read all lines
                 all_lines = f.readlines()
 
@@ -110,7 +109,7 @@ class AgentInterface:
             print(f"⚠️  Error reading queue: {e}")
             return []
 
-    def check_for_directives(self) -> List[str]:
+    def check_for_directives(self) -> list[str]:
         """Check for specific directive messages (INTENT, REQUEST, etc.)"""
         messages = self.get_new_messages()
         directives = []
@@ -128,7 +127,7 @@ class AgentInterface:
     def clear_queue(self):
         """Clear the agent's queue (mark all as read)"""
         try:
-            with open(self.queue_file, "r", encoding="utf-8") as f:
+            with open(self.queue_file, encoding="utf-8") as f:
                 line_count = len(f.readlines())
             self._last_queue_position = line_count
             print(
@@ -140,7 +139,7 @@ class AgentInterface:
     def get_queue_status(self) -> dict:
         """Get current queue status"""
         try:
-            with open(self.queue_file, "r", encoding="utf-8") as f:
+            with open(self.queue_file, encoding="utf-8") as f:
                 all_lines = f.readlines()
             total_messages = len(all_lines)
             unread_messages = total_messages - self._last_queue_position

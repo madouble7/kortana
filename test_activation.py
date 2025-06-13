@@ -1,1 +1,1 @@
-print("Testing activation script")  
+print("Testing activation script")

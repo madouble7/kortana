@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class GoalManager:
     """
     Central controller for Kor'tana's autonomous goal management.
-    
+
     This class transforms Kor'tana from reactive assistance to proactive autonomy
     by enabling her to create, prioritize, and pursue her own objectives.
     """
@@ -110,7 +110,7 @@ class GoalManager:
                    context: dict[str, Any] = None) -> Goal:
         """
         Create a new autonomous goal.
-        
+
         This is where Kor'tana's proactive behavior begins - the ability to set
         her own objectives rather than waiting for human commands.
         """
@@ -186,7 +186,7 @@ class GoalManager:
     def prioritize_goals(self) -> list[Goal]:
         """
         Dynamically prioritize goals based on multiple factors.
-        
+
         This implements Kor'tana's strategic thinking capability.
         """
 
@@ -285,7 +285,7 @@ class GoalManager:
     def suggest_new_goals(self, context: dict[str, Any] = None) -> list[Goal]:
         """
         Autonomously suggest new goals based on current state and patterns.
-        
+
         This is a key autonomous behavior - proactive goal generation.
         """
 
@@ -372,7 +372,7 @@ class GoalManager:
             return
 
         try:
-            memory_entry = {
+            {
                 "timestamp": datetime.now(UTC).isoformat(),
                 "role": "goal",
                 "goal_id": goal.goal_id,

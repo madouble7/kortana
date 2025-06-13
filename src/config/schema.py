@@ -7,7 +7,7 @@ Provides type-safe configuration management with validation.
 
 import os
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class AgentTypeConfig(BaseModel):
@@ -55,9 +55,7 @@ class MemoryConfig(BaseModel):
     """Configuration for memory systems."""
 
     # Pinecone settings
-    pinecone_api_key: str | None = Field(
-        default=None, description="Pinecone API key"
-    )
+    pinecone_api_key: str | None = Field(default=None, description="Pinecone API key")
     pinecone_environment: str | None = Field(
         default=None, description="Pinecone environment"
     )
@@ -179,16 +177,18 @@ class KortanaConfig(BaseModel):
     # File paths
     config_dir: str = Field(default="config", description="Configuration directory")
     data_dir: str = Field(default="data", description="Data directory")
-    logs_dir: str = Field(default="logs", description="Logs directory")
+    logs_dir: str = Field(
+        default="logs", description="Logs directory"
+    ) @ field_validator("log_level", mode="after")
 
-    @validator("log_level")
+    @classmethod
     def validate_log_level(cls, v):
         valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
         if v.upper() not in valid_levels:
             raise ValueError(f"log_level must be one of {valid_levels}")
-        return v.upper()
+        return v.upper() @ field_validator("environment", mode="after")
 
-    @validator("environment")
+    @classmethod
     def validate_environment(cls, v):
         valid_environments = ["development", "testing", "production"]
         if v.lower() not in valid_environments:

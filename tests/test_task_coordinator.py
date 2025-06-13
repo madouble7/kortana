@@ -25,6 +25,7 @@ from src.kortana.core.task_management.models import (
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 @pytest.fixture
 def execution_engine():
     """Create a mock execution engine for testing."""
@@ -32,17 +33,19 @@ def execution_engine():
     mock_engine.execute_operation = MagicMock()
     return mock_engine
 
+
 @pytest.fixture
 def task_coordinator(execution_engine):
     """Create a TaskCoordinator instance for testing."""
     return TaskCoordinator(execution_engine=execution_engine)
+
 
 def create_test_task(
     task_id: str = "test-task-1",
     category: TaskCategory = TaskCategory.SYSTEM,
     priority: TaskPriority = TaskPriority.MEDIUM,
     description: str = "Test task",
-    dependencies: list[str] = None
+    dependencies: list[str] = None,
 ) -> Task:
     """Helper function to create test tasks."""
     return Task(
@@ -51,8 +54,9 @@ def create_test_task(
         description=description,
         priority=priority,
         status=TaskStatus.PENDING,
-        dependencies=dependencies or []
+        dependencies=dependencies or [],
     )
+
 
 class TestTaskCoordinator:
     """Test cases for the TaskCoordinator class."""
@@ -76,7 +80,9 @@ class TestTaskCoordinator:
 
     async def test_task_execution_error_handling(self, task_coordinator):
         """Test error handling during task execution."""
-        task_coordinator.execution_engine.execute_operation.side_effect = Exception("Test error")
+        task_coordinator.execution_engine.execute_operation.side_effect = Exception(
+            "Test error"
+        )
         task = create_test_task()
         await task_coordinator.schedule_task(task)
         await task_coordinator.execute_task(task.id)
@@ -103,7 +109,9 @@ class TestTaskCoordinator:
             tasks_executed.append(args[0].id)
             return original_execute(*args, **kwargs)
 
-        task_coordinator.execution_engine.execute_operation = MagicMock(side_effect=track_execution)
+        task_coordinator.execution_engine.execute_operation = MagicMock(
+            side_effect=track_execution
+        )
 
         await task_coordinator.execute_pending_tasks()
 
@@ -112,10 +120,7 @@ class TestTaskCoordinator:
 
     async def test_concurrent_task_execution(self, task_coordinator):
         """Test concurrent execution of independent tasks."""
-        independent_tasks = [
-            create_test_task(f"concurrent-task-{i}")
-            for i in range(3)
-        ]
+        independent_tasks = [create_test_task(f"concurrent-task-{i}") for i in range(3)]
 
         # Schedule all tasks
         for task in independent_tasks:
@@ -126,7 +131,9 @@ class TestTaskCoordinator:
             await asyncio.sleep(0.1)
             return True
 
-        task_coordinator.execution_engine.execute_operation = MagicMock(side_effect=delayed_execution)
+        task_coordinator.execution_engine.execute_operation = MagicMock(
+            side_effect=delayed_execution
+        )
 
         # Execute tasks concurrently
         start_time = datetime.now()
@@ -152,7 +159,9 @@ class TestTaskCoordinator:
             await asyncio.sleep(1)
             return True
 
-        task_coordinator.execution_engine.execute_operation = MagicMock(side_effect=long_running_task)
+        task_coordinator.execution_engine.execute_operation = MagicMock(
+            side_effect=long_running_task
+        )
 
         # Start task execution in background
         execution_task = asyncio.create_task(task_coordinator.execute_task(task.id))
@@ -169,7 +178,7 @@ class TestTaskCoordinator:
         tasks = [
             create_test_task("low-priority", priority=TaskPriority.LOW),
             create_test_task("medium-priority", priority=TaskPriority.MEDIUM),
-            create_test_task("high-priority", priority=TaskPriority.HIGH)
+            create_test_task("high-priority", priority=TaskPriority.HIGH),
         ]
 
         # Schedule tasks in reverse priority order
@@ -178,11 +187,14 @@ class TestTaskCoordinator:
 
         # Track execution order
         execution_order = []
+
         def track_execution(*args, **kwargs):
             execution_order.append(args[0].id)
             return True
 
-        task_coordinator.execution_engine.execute_operation = MagicMock(side_effect=track_execution)
+        task_coordinator.execution_engine.execute_operation = MagicMock(
+            side_effect=track_execution
+        )
         await task_coordinator.execute_pending_tasks()
 
         # Verify high priority tasks were executed first
@@ -195,6 +207,7 @@ class TestTaskCoordinator:
 
         # Mock execution to fail twice then succeed
         fail_count = 0
+
         def fail_then_succeed(*args, **kwargs):
             nonlocal fail_count
             fail_count += 1
@@ -202,7 +215,9 @@ class TestTaskCoordinator:
                 raise Exception(f"Failure {fail_count}")
             return True
 
-        task_coordinator.execution_engine.execute_operation = MagicMock(side_effect=fail_then_succeed)
+        task_coordinator.execution_engine.execute_operation = MagicMock(
+            side_effect=fail_then_succeed
+        )
         await task_coordinator.execute_task(task.id, max_retries=3)
 
         assert task_coordinator._tasks[task.id].status == TaskStatus.COMPLETED

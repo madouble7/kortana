@@ -84,7 +84,7 @@ def analyze_codebase(path: str = "c:/kortana/src") -> str:
         import os
 
         python_files = []
-        for root, dirs, files in os.walk(path):
+        for root, _dirs, files in os.walk(path):
             for file in files:
                 if file.endswith(".py"):
                     python_files.append(os.path.join(root, file))

@@ -1,5 +1,6 @@
+
 import requests
-import json
+
 
 def test_kortana_backend():
     """Test if Kor'tana backend is running and responding"""

@@ -104,7 +104,7 @@ async def test_core_query_endpoint_integration_with_dummy_embeddings(
         patch(
             "kortana.llm_clients.factory.LLMClientFactory",
             return_value=mock_llm_factory,
-        ) as mock_factory,
+        ),
         patch(
             "src.kortana.core.orchestrator.KorOrchestrator._load_models_config",
             return_value={

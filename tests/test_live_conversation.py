@@ -77,7 +77,7 @@ def test_live_conversation():
             print(f"👤 Matt: {user_input}")
 
             # Store user input
-            user_memory = mm.store_memory(
+            mm.store_memory(
                 "user", user_input, {"type": "conversation", "user": "Matt", "turn": i}
             )
 
@@ -134,7 +134,7 @@ def test_live_conversation():
                 print(f"🤖 Kor'tana (simulated): {ai_response}")
 
             # Store AI response
-            ai_memory = mm.store_memory(
+            mm.store_memory(
                 "assistant",
                 ai_response,
                 {

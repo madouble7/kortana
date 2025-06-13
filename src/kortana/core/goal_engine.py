@@ -11,6 +11,7 @@ from enum import Enum
 
 logger = logging.getLogger(__name__)
 
+
 class GoalType(Enum):
     MAINTENANCE = "maintenance"
     OPTIMIZATION = "optimization"
@@ -18,6 +19,7 @@ class GoalType(Enum):
     BUG_FIX = "bug_fix"
     RESEARCH = "research"
     LEARNING = "learning"
+
 
 @dataclass
 class Goal:
@@ -32,11 +34,13 @@ class Goal:
     dependencies: list[str] = field(default_factory=list)
     status: str = "pending"
 
+
 class GoalEngine:
     def __init__(self):
         # Import here to avoid circular imports
         from kortana.core.execution_engine import execution_engine
         from kortana.services.memory_system import memory_manager
+
         self.execution_engine = execution_engine
         self.memory_manager = memory_manager
 
@@ -53,40 +57,46 @@ class GoalEngine:
         # Scan project files
         project_status = self._scan_project_files()
         if project_status["needs_optimization"]:
-            goals.append(Goal(
-                id=f"opt_{datetime.now().strftime('%Y%m%d%H%M%S')}",
-                type=GoalType.OPTIMIZATION,
-                title="Code Optimization Required",
-                description=f"Optimize {project_status['high_complexity_files']} high complexity files",
-                priority=2,
-                created_at=datetime.now()
-            ))
+            goals.append(
+                Goal(
+                    id=f"opt_{datetime.now().strftime('%Y%m%d%H%M%S')}",
+                    type=GoalType.OPTIMIZATION,
+                    title="Code Optimization Required",
+                    description=f"Optimize {project_status['high_complexity_files']} high complexity files",
+                    priority=2,
+                    created_at=datetime.now(),
+                )
+            )
 
         # Scan system performance
         performance_metrics = self._scan_system_performance()
         if performance_metrics["memory_usage"] > 85:
-            goals.append(Goal(
-                id=f"maint_{datetime.now().strftime('%Y%m%d%H%M%S')}",
-                type=GoalType.MAINTENANCE,
-                title="High Memory Usage Alert",
-                description="Investigate and optimize memory usage",
-                priority=1,
-                created_at=datetime.now()
-            ))
+            goals.append(
+                Goal(
+                    id=f"maint_{datetime.now().strftime('%Y%m%d%H%M%S')}",
+                    type=GoalType.MAINTENANCE,
+                    title="High Memory Usage Alert",
+                    description="Investigate and optimize memory usage",
+                    priority=1,
+                    created_at=datetime.now(),
+                )
+            )
 
         # Scan for research opportunities
         research_topics = self._identify_research_opportunities()
-        goals.extend([
-            Goal(
-                id=f"research_{datetime.now().strftime('%Y%m%d%H%M%S')}_{i}",
-                type=GoalType.RESEARCH,
-                title=f"Research: {topic}",
-                description=f"Investigate and learn about {topic}",
-                priority=3,
-                created_at=datetime.now()
-            )
-            for i, topic in enumerate(research_topics)
-        ])
+        goals.extend(
+            [
+                Goal(
+                    id=f"research_{datetime.now().strftime('%Y%m%d%H%M%S')}_{i}",
+                    type=GoalType.RESEARCH,
+                    title=f"Research: {topic}",
+                    description=f"Investigate and learn about {topic}",
+                    priority=3,
+                    created_at=datetime.now(),
+                )
+                for i, topic in enumerate(research_topics)
+            ]
+        )
 
         return goals
 
@@ -98,19 +108,23 @@ class GoalEngine:
         # Priority weights for different goal types
         type_weights = {
             GoalType.MAINTENANCE: 5,  # High priority for system health
-            GoalType.BUG_FIX: 4,     # Critical for stability
-            GoalType.OPTIMIZATION: 3, # Important for performance
-            GoalType.FEATURE: 2,      # New capabilities
-            GoalType.RESEARCH: 1,     # Long-term improvement
-            GoalType.LEARNING: 1      # Long-term improvement
+            GoalType.BUG_FIX: 4,  # Critical for stability
+            GoalType.OPTIMIZATION: 3,  # Important for performance
+            GoalType.FEATURE: 2,  # New capabilities
+            GoalType.RESEARCH: 1,  # Long-term improvement
+            GoalType.LEARNING: 1,  # Long-term improvement
         }
 
         # Sort goals by weighted priority
-        return sorted(goals, key=lambda g: (
-            g.priority * type_weights[g.type],
-            -len(g.dependencies or []),  # Fewer dependencies first
-            g.created_at.timestamp()     # Older goals first
-        ), reverse=True)
+        return sorted(
+            goals,
+            key=lambda g: (
+                g.priority * type_weights[g.type],
+                -len(g.dependencies or []),  # Fewer dependencies first
+                g.created_at.timestamp(),  # Older goals first
+            ),
+            reverse=True,
+        )
 
     def execute_goal(self, goal: Goal) -> bool:
         """
@@ -135,7 +149,9 @@ class GoalEngine:
         """Execute maintenance-type goals"""
         if "memory usage" in goal.description.lower():
             # Clean up memory-intensive processes
-            result = self.execution_engine.execute_shell_command("wmic process where \"workingsetsize > 100000000\" get commandline,processid,workingsetsize")
+            result = self.execution_engine.execute_shell_command(
+                'wmic process where "workingsetsize > 100000000" get commandline,processid,workingsetsize'
+            )
             if not result["success"]:
                 return False
 
@@ -182,10 +198,7 @@ class GoalEngine:
 
     def _scan_project_files(self) -> dict[str, list[str] | bool]:
         """Analyzes project files for potential improvements"""
-        result = {
-            "needs_optimization": False,
-            "high_complexity_files": []
-        }
+        result = {"needs_optimization": False, "high_complexity_files": []}
 
         try:
             file_list = self.execution_engine.list_directory("src")
@@ -205,21 +218,21 @@ class GoalEngine:
 
     def _scan_system_performance(self) -> dict[str, float]:
         """Monitors system performance metrics"""
-        metrics = {
-            "memory_usage": 0.0,
-            "cpu_usage": 0.0,
-            "disk_usage": 0.0
-        }
+        metrics = {"memory_usage": 0.0, "cpu_usage": 0.0, "disk_usage": 0.0}
 
         try:
             # Use execution engine to get system metrics
-            result = self.execution_engine.execute_shell_command("wmic CPU get loadpercentage")
+            result = self.execution_engine.execute_shell_command(
+                "wmic CPU get loadpercentage"
+            )
             if result["success"]:
                 with suppress(ValueError, IndexError):
                     metrics["cpu_usage"] = float(result["stdout"].split("\n")[1])
 
             # Memory usage
-            result = self.execution_engine.execute_shell_command("wmic OS get FreePhysicalMemory,TotalVisibleMemorySize")
+            result = self.execution_engine.execute_shell_command(
+                "wmic OS get FreePhysicalMemory,TotalVisibleMemorySize"
+            )
             if result["success"]:
                 with suppress(ValueError, IndexError):
                     lines = result["stdout"].strip().split("\n")
@@ -246,6 +259,7 @@ class GoalEngine:
         except Exception as e:
             logger.error(f"Error identifying research opportunities: {e}")
             return []
+
 
 # Create a global instance
 goal_engine = GoalEngine()

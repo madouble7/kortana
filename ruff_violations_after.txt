@@ -1,0 +1,783 @@
+src\ade_coordinator.py:103:14: SyntaxError: Compound statements are not allowed on the same line as simple statements
+    |
+101 |             "goals": [str(g.id) for g in goal_objects],
+102 |             "results": ade_results,
+103 |         }    async def get_active_goals(self) -> list[Goal]:
+    |              ^
+104 |         """Get all goals currently being worked on."""
+105 |         return await self.goal_manager.list_goals(status=GoalStatus.IN_PROGRESS)
+    |
+
+src\ade_coordinator.py:104:9: SyntaxError: Expected an indented block after function definition
+    |
+102 |             "results": ade_results,
+103 |         }    async def get_active_goals(self) -> list[Goal]:
+104 |         """Get all goals currently being worked on."""
+    |         ^
+105 |         return await self.goal_manager.list_goals(status=GoalStatus.IN_PROGRESS)
+    |
+
+src\agents_sdk_integration.py:87:19: B007 Loop control variable `dirs` not used within loop body
+   |
+86 |         python_files = []
+87 |         for root, dirs, files in os.walk(path):
+   |                   ^^^^ B007
+88 |             for file in files:
+89 |                 if file.endswith(".py"):
+   |
+   = help: Rename unused `dirs` to `_dirs`
+
+src\agents_sdk_integration_clean.py:87:19: B007 Loop control variable `dirs` not used within loop body
+   |
+86 |         python_files = []
+87 |         for root, dirs, files in os.walk(path):
+   |                   ^^^^ B007
+88 |             for file in files:
+89 |                 if file.endswith(".py"):
+   |
+   = help: Rename unused `dirs` to `_dirs`
+
+src\agents_sdk_integration_corrupted.py:88:19: B007 Loop control variable `dirs` not used within loop body
+   |
+87 |         python_files = []
+88 |         for root, dirs, files in os.walk(path):
+   |                   ^^^^ B007
+89 |             for file in files:
+90 |                 if file.endswith(".py"):
+   |
+   = help: Rename unused `dirs` to `_dirs`
+
+src\api_server.py:98:51: B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+    |
+ 96 | @app.post("/chat", response_model=MessageResponse)
+ 97 | async def chat_endpoint(
+ 98 |     request: Request, csrf_protect: CsrfProtect = Depends()
+    |                                                   ^^^^^^^^^ B008
+ 99 | ) -> MessageResponse:
+100 |     """Endpoint for processing chat messages.
+    |
+
+src\api_server.py:137:76: B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+    |
+135 | # Alias for LobeChat or alternate frontend
+136 | @app.post("/kortana-chat")
+137 | async def kortana_chat_alias(request: Request, csrf_protect: CsrfProtect = Depends()):
+    |                                                                            ^^^^^^^^^ B008
+138 |     """Alias endpoint for processing chat messages.
+    |
+
+src\config\schema.py:185:28: N805 First argument of a method should be named `self`
+    |
+184 |     @validator("log_level")
+185 |     def validate_log_level(cls, v):
+    |                            ^^^ N805
+186 |         valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+187 |         if v.upper() not in valid_levels:
+    |
+    = help: Rename `cls` to `self`
+
+src\config\schema.py:192:30: N805 First argument of a method should be named `self`
+    |
+191 |     @validator("environment")
+192 |     def validate_environment(cls, v):
+    |                              ^^^ N805
+193 |         valid_environments = ["development", "testing", "production"]
+194 |         if v.lower() not in valid_environments:
+    |
+    = help: Rename `cls` to `self`
+
+src\kortana\adapters\__init__.py:4:39: F401 `.adapter_router.router` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+  |
+2 | # This file makes the 'adapters' directory a Python package.
+3 |
+4 | from .adapter_router import router as adapter_router
+  |                                       ^^^^^^^^^^^^^^ F401
+  |
+  = help: Use an explicit re-export: `router as router`
+
+src\kortana\adapters\adapter_router.py:49:45: B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+   |
+47 | @router.post("/lobechat/chat", response_model=LobeChatResponse)
+48 | async def handle_lobechat_message(
+49 |     request: LobeChatRequest, db: Session = Depends(get_db_sync)
+   |                                             ^^^^^^^^^^^^^^^^^^^^ B008
+50 | ):
+51 |     """
+   |
+
+src\kortana\adapters\lobe_chat_adapter.py:105:19: B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+    |
+103 |     message: LobeMessage,
+104 |     request: Request,
+105 |     db: Session = Depends(get_db_sync),
+    |                   ^^^^^^^^^^^^^^^^^^^^ B008
+106 |     _: bool = Depends(verify_api_key),
+107 | ) -> LobeResponse:
+    |
+
+src\kortana\api\routers\core_router.py:29:67: B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+   |
+28 | @router.post("/query", response_model=dict[str, Any])
+29 | async def process_user_query(request: QueryRequest, db: Session = Depends(get_db_sync)):
+   |                                                                   ^^^^^^^^^^^^^^^^^^^^ B008
+30 |     """
+31 |     Main endpoint for interacting with Kor'tana's core logic.
+   |
+
+src\kortana\api\routers\core_router.py:79:51: B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+   |
+77 | @openai_adapter_router.post("/chat/completions", response_model=ChatCompletionResponse)
+78 | async def openai_chat_completions_adapter(
+79 |     request: ChatCompletionRequest, db: Session = Depends(get_db_sync)
+   |                                                   ^^^^^^^^^^^^^^^^^^^^ B008
+80 | ):
+81 |     """
+   |
+
+src\kortana\api\routers\goal_router.py:31:56: B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+   |
+30 | @router.post("/", response_model=GoalOut)
+31 | def create_new_goal(goal_in: GoalCreate, db: Session = Depends(get_db)):
+   |                                                        ^^^^^^^^^^^^^^^ B008
+32 |     memory_manager = MemoryCoreService(db)
+33 |     goal_manager = GoalManager(memory_manager=memory_manager)
+   |
+
+src\kortana\api\routers\goal_router.py:44:34: B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+   |
+43 | @router.get("/", response_model=list[GoalOut])
+44 | def list_all_goals(db: Session = Depends(get_db)):
+   |                                  ^^^^^^^^^^^^^^^ B008
+45 |     memory_manager = MemoryCoreService(db)
+46 |     goal_manager = GoalManager(memory_manager=memory_manager)
+   |
+
+src\kortana\brain.py:237:77: SyntaxError: Simple statements must be separated by newlines or semicolons
+    |
+235 |                     role = entry.get("role", "unknown")
+236 |                     content = entry.get("content", "")
+237 |                     context_lines.append(f"  {role}: {content}")            return "\n".join(context_lines)
+    |                                                                             ^
+238 |         except Exception as e:
+239 |             logger.error(f"Error getting conversation history context: {e}")
+    |
+
+src\kortana\config\settings.py:48:9: N802 Function name `ALEMBIC_DATABASE_URL` should be lowercase
+   |
+47 |     @property
+48 |     def ALEMBIC_DATABASE_URL(self) -> str:
+   |         ^^^^^^^^^^^^^^^^^^^^ N802
+49 |         # Alembic needs a plain URL, handle potential async prefix if MEMORY_DB_URL might have it
+50 |         # For now, assuming MEMORY_DB_URL is sync. If it can be async, more logic is needed here.
+   |
+
+src\kortana\core\execution_engine.py:182:17: E722 Do not use bare `except`
+    |
+180 |                 try:
+181 |                     process.kill()
+182 |                 except:
+    |                 ^^^^^^ E722
+183 |                     pass
+184 |                 return OperationResult(
+    |
+
+src\kortana\core\goal_framework.py:71:4: SyntaxError: Simple statements must be separated by newlines or semicolons
+   |
+70 |     # Learning and insights"""
+71 | Kor'tana's Goal Framework - Core Data Structures
+   |    ^
+72 | Enables autonomous goal setting, prioritization, and pursuit within Sacred Covenant boundaries.
+73 | """
+   |
+
+src\kortana\core\goal_framework.py:71:10: SyntaxError: Simple statements must be separated by newlines or semicolons
+   |
+70 |     # Learning and insights"""
+71 | Kor'tana's Goal Framework - Core Data Structures
+   |          ^
+72 | Enables autonomous goal setting, prioritization, and pursuit within Sacred Covenant boundaries.
+73 | """
+   |
+
+src\kortana\core\goal_framework.py:71:12: SyntaxError: Simple statements must be separated by newlines or semicolons
+   |
+70 |     # Learning and insights"""
+71 | Kor'tana's Goal Framework - Core Data Structures
+   |            ^
+72 | Enables autonomous goal setting, prioritization, and pursuit within Sacred Covenant boundaries.
+73 | """
+   |
+
+src\kortana\core\goal_framework.py:71:17: SyntaxError: Simple statements must be separated by newlines or semicolons
+   |
+70 |     # Learning and insights"""
+71 | Kor'tana's Goal Framework - Core Data Structures
+   |                 ^
+72 | Enables autonomous goal setting, prioritization, and pursuit within Sacred Covenant boundaries.
+73 | """
+   |
+
+src\kortana\core\goal_framework.py:71:34: SyntaxError: Simple statements must be separated by newlines or semicolons
+   |
+70 |     # Learning and insights"""
+71 | Kor'tana's Goal Framework - Core Data Structures
+   |                                  ^
+72 | Enables autonomous goal setting, prioritization, and pursuit within Sacred Covenant boundaries.
+73 | """
+   |
+
+src\kortana\core\goal_framework.py:71:39: SyntaxError: Simple statements must be separated by newlines or semicolons
+   |
+70 |     # Learning and insights"""
+71 | Kor'tana's Goal Framework - Core Data Structures
+   |                                       ^
+72 | Enables autonomous goal setting, prioritization, and pursuit within Sacred Covenant boundaries.
+73 | """
+   |
+
+src\kortana\core\goal_framework.py:72:9: SyntaxError: Simple statements must be separated by newlines or semicolons
+   |
+70 |     # Learning and insights"""
+71 | Kor'tana's Goal Framework - Core Data Structures
+72 | Enables autonomous goal setting, prioritization, and pursuit within Sacred Covenant boundaries.
+   |         ^
+73 | """
+   |
+
+src\kortana\core\goal_framework.py:72:20: SyntaxError: Simple statements must be separated by newlines or semicolons
+   |
+70 |     # Learning and insights"""
+71 | Kor'tana's Goal Framework - Core Data Structures
+72 | Enables autonomous goal setting, prioritization, and pursuit within Sacred Covenant boundaries.
+   |                    ^
+73 | """
+   |
+
+src\kortana\core\goal_framework.py:72:25: SyntaxError: Simple statements must be separated by newlines or semicolons
+   |
+70 |     # Learning and insights"""
+71 | Kor'tana's Goal Framework - Core Data Structures
+72 | Enables autonomous goal setting, prioritization, and pursuit within Sacred Covenant boundaries.
+   |                         ^
+73 | """
+   |
+
+src\kortana\core\goal_framework.py:72:50: SyntaxError: Expected ',', found 'and'
+   |
+70 |     # Learning and insights"""
+71 | Kor'tana's Goal Framework - Core Data Structures
+72 | Enables autonomous goal setting, prioritization, and pursuit within Sacred Covenant boundaries.
+   |                                                  ^
+73 | """
+   |
+
+src\kortana\core\goal_framework.py:72:62: SyntaxError: Expected ',', found name
+   |
+70 |     # Learning and insights"""
+71 | Kor'tana's Goal Framework - Core Data Structures
+72 | Enables autonomous goal setting, prioritization, and pursuit within Sacred Covenant boundaries.
+   |                                                              ^
+73 | """
+   |
+
+src\kortana\core\goal_framework.py:72:69: SyntaxError: Expected ',', found name
+   |
+70 |     # Learning and insights"""
+71 | Kor'tana's Goal Framework - Core Data Structures
+72 | Enables autonomous goal setting, prioritization, and pursuit within Sacred Covenant boundaries.
+   |                                                                     ^
+73 | """
+   |
+
+src\kortana\core\goal_framework.py:72:76: SyntaxError: Expected ',', found name
+   |
+70 |     # Learning and insights"""
+71 | Kor'tana's Goal Framework - Core Data Structures
+72 | Enables autonomous goal setting, prioritization, and pursuit within Sacred Covenant boundaries.
+   |                                                                            ^
+73 | """
+   |
+
+src\kortana\core\goal_framework.py:72:85: SyntaxError: Expected ',', found name
+   |
+70 |     # Learning and insights"""
+71 | Kor'tana's Goal Framework - Core Data Structures
+72 | Enables autonomous goal setting, prioritization, and pursuit within Sacred Covenant boundaries.
+   |                                                                                     ^
+73 | """
+   |
+
+src\kortana\core\goal_framework.py:72:96: SyntaxError: Expected an identifier
+   |
+70 |     # Learning and insights"""
+71 | Kor'tana's Goal Framework - Core Data Structures
+72 | Enables autonomous goal setting, prioritization, and pursuit within Sacred Covenant boundaries.
+   |                                                                                                ^
+73 | """
+   |
+
+src\kortana\core\goal_framework.py:83:8: SyntaxError: Simple statements must be separated by newlines or semicolons
+   |
+82 | class GoalType(Enum):
+83 |     """Types of goals Kor'tana can autonomously pursue"""
+   |        ^
+84 |     MAINTENANCE = "maintenance"          # System health, code quality, cleanup
+85 |     LEARNING = "learning"               # Knowledge acquisition, skill improvement
+   |
+
+src\kortana\core\goal_framework.py:83:14: SyntaxError: Simple statements must be separated by newlines or semicolons
+   |
+82 | class GoalType(Enum):
+83 |     """Types of goals Kor'tana can autonomously pursue"""
+   |              ^
+84 |     MAINTENANCE = "maintenance"          # System health, code quality, cleanup
+85 |     LEARNING = "learning"               # Knowledge acquisition, skill improvement
+   |
+
+src\kortana\core\goal_framework.py:83:17: SyntaxError: Simple statements must be separated by newlines or semicolons
+   |
+82 | class GoalType(Enum):
+83 |     """Types of goals Kor'tana can autonomously pursue"""
+   |                 ^
+84 |     MAINTENANCE = "maintenance"          # System health, code quality, cleanup
+85 |     LEARNING = "learning"               # Knowledge acquisition, skill improvement
+   |
+
+src\kortana\core\goal_framework.py:83:23: SyntaxError: Simple statements must be separated by newlines or semicolons
+   |
+82 | class GoalType(Enum):
+83 |     """Types of goals Kor'tana can autonomously pursue"""
+   |                       ^
+84 |     MAINTENANCE = "maintenance"          # System health, code quality, cleanup
+85 |     LEARNING = "learning"               # Knowledge acquisition, skill improvement
+   |
+
+src\kortana\core\goal_framework.py:83:26: SyntaxError: missing closing quote in string literal
+   |
+82 | class GoalType(Enum):
+83 |     """Types of goals Kor'tana can autonomously pursue"""
+   |                          ^
+84 |     MAINTENANCE = "maintenance"          # System health, code quality, cleanup
+85 |     LEARNING = "learning"               # Knowledge acquisition, skill improvement
+   |
+
+src\kortana\core\goal_framework.py:83:58: SyntaxError: Expected a statement
+   |
+82 | class GoalType(Enum):
+83 |     """Types of goals Kor'tana can autonomously pursue"""
+   |                                                          ^
+84 |     MAINTENANCE = "maintenance"          # System health, code quality, cleanup
+85 |     LEARNING = "learning"               # Knowledge acquisition, skill improvement
+   |
+
+src\kortana\core\goal_framework.py:84:1: SyntaxError: Unexpected indentation
+   |
+82 | class GoalType(Enum):
+83 |     """Types of goals Kor'tana can autonomously pursue"""
+84 |     MAINTENANCE = "maintenance"          # System health, code quality, cleanup
+   | ^
+85 |     LEARNING = "learning"               # Knowledge acquisition, skill improvement
+86 |     IMPROVEMENT = "improvement"         # Performance optimization, feature enhancement
+   |
+
+src\kortana\core\goal_framework.py:91:1: SyntaxError: Expected a statement
+   |
+91 | class GoalStatus(Enum):
+   | ^
+92 |     """Lifecycle states for goals"""
+93 |     NEW = "new"                         # Recently created, not yet reviewed
+   |
+
+src\kortana\core\goal_manager.py:18:1: W293 Blank line contains whitespace
+   |
+16 |     """
+17 |     Central controller for Kor'tana's autonomous goal management.
+18 |     
+   | ^^^^ W293
+19 |     This class transforms Kor'tana from reactive assistance to proactive autonomy
+20 |     by enabling her to create, prioritize, and pursue her own objectives.
+   |
+   = help: Remove whitespace from blank line
+
+src\kortana\core\goal_manager.py:113:1: W293 Blank line contains whitespace
+    |
+111 |         """
+112 |         Create a new autonomous goal.
+113 |         
+    | ^^^^^^^^ W293
+114 |         This is where Kor'tana's proactive behavior begins - the ability to set
+115 |         her own objectives rather than waiting for human commands.
+    |
+    = help: Remove whitespace from blank line
+
+src\kortana\core\goal_manager.py:189:1: W293 Blank line contains whitespace
+    |
+187 |         """
+188 |         Dynamically prioritize goals based on multiple factors.
+189 |         
+    | ^^^^^^^^ W293
+190 |         This implements Kor'tana's strategic thinking capability.
+191 |         """
+    |
+    = help: Remove whitespace from blank line
+
+src\kortana\core\goal_manager.py:288:1: W293 Blank line contains whitespace
+    |
+286 |         """
+287 |         Autonomously suggest new goals based on current state and patterns.
+288 |         
+    | ^^^^^^^^ W293
+289 |         This is a key autonomous behavior - proactive goal generation.
+290 |         """
+    |
+    = help: Remove whitespace from blank line
+
+src\kortana\core\goal_manager.py:375:13: F841 Local variable `memory_entry` is assigned to but never used
+    |
+374 |         try:
+375 |             memory_entry = {
+    |             ^^^^^^^^^^^^ F841
+376 |                 "timestamp": datetime.now(UTC).isoformat(),
+377 |                 "role": "goal",
+    |
+    = help: Remove assignment to unused variable `memory_entry`
+
+src\kortana\core\goals\covenant.py:62:13: N806 Variable `MIN_ALIGNMENT` in function should be lowercase
+   |
+61 |             # Goal must meet minimum alignment threshold
+62 |             MIN_ALIGNMENT = 0.6  # 60% minimum alignment required
+   |             ^^^^^^^^^^^^^ N806
+63 |             if total_score < MIN_ALIGNMENT:
+64 |                 msg = (
+   |
+
+src\kortana\core\goals\prioritizer.py:89:37: SyntaxError: Compound statements are not allowed on the same line as simple statements
+   |
+88 |         logger.info(f"Finished prioritizing {len(prioritized_goals)} goals.")
+89 |         return prioritized_goals    def _calculate_goal_score(self, goal: Goal, all_goals: list[Goal]) -> float:
+   |                                     ^
+90 |         """Calculate a composite priority score for a single goal."""
+91 |         scores: dict[str, float] = {}
+   |
+
+src\kortana\core\goals\prioritizer.py:90:9: SyntaxError: Expected an indented block after function definition
+   |
+88 |         logger.info(f"Finished prioritizing {len(prioritized_goals)} goals.")
+89 |         return prioritized_goals    def _calculate_goal_score(self, goal: Goal, all_goals: list[Goal]) -> float:
+90 |         """Calculate a composite priority score for a single goal."""
+   |         ^
+91 |         scores: dict[str, float] = {}
+   |
+
+src\kortana\llm_clients\factory.py:264:9: F811 Redefinition of unused `get_client` from line 53
+    |
+263 |     @staticmethod
+264 |     def get_client(
+    |         ^^^^^^^^^^ F811
+265 |         model_id: str, models_config: dict[str, Any] | None = None
+266 |     ) -> BaseLLMClient | None:
+    |
+    = help: Remove definition: `get_client`
+
+src\kortana\llm_clients\genai_client.py:115:13: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    |
+113 |             _ = self.model.generate_content("Test")
+114 |         except Exception as e:
+115 |             raise RuntimeError(f"Model validation failed: {str(e)}")
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ B904
+116 |
+117 |     def list_models(self) -> list[dict[str, Any]]:
+    |
+
+src\kortana\llm_clients\xai_client.py:20:12: SyntaxError: Compound statements are not allowed on the same line as simple statements
+   |
+18 |     XAI (Grok) client implementation
+19 |     Optimized for autonomous development and reasoning
+20 |     """    def __init__(
+   |            ^
+21 |         self, api_key: str | None = None, model_name: str = "grok-3-mini", **kwargs
+22 |     ):
+   |
+
+src\kortana\llm_clients\xai_client.py:25:1: W293 Blank line contains whitespace
+   |
+23 |         """
+24 |         Initialize XAI client
+25 |         
+   | ^^^^^^^^ W293
+26 |         Args:
+27 |             api_key: XAI API key (defaults to XAI_API_KEY env var)
+   |
+   = help: Remove whitespace from blank line
+
+src\kortana\main.py:92:9: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   |
+90 |         return {"response": response, "status": "success"}
+91 |     except Exception as e:
+92 |         raise HTTPException(status_code=500, detail=str(e))
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ B904
+   |
+
+src\kortana\main.py:115:9: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    |
+113 |         return {"choices": [{"message": {"role": "assistant", "content": response}}]}
+114 |     except Exception as e:
+115 |         raise HTTPException(status_code=500, detail=str(e))
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ B904
+    |
+
+src\kortana\main_backup.py:102:28: F821 Undefined name `Session`
+    |
+101 | @app.get("/test-db", tags=["system"])
+102 | def test_db_connection(db: Session = Depends(database.get_db_sync)):
+    |                            ^^^^^^^ F821
+103 |     try:
+104 |         from sqlalchemy import text
+    |
+
+src\kortana\main_backup.py:102:38: B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+    |
+101 | @app.get("/test-db", tags=["system"])
+102 | def test_db_connection(db: Session = Depends(database.get_db_sync)):
+    |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ B008
+103 |     try:
+104 |         from sqlalchemy import text
+    |
+
+src\kortana\main_backup.py:102:46: F821 Undefined name `database`
+    |
+101 | @app.get("/test-db", tags=["system"])
+102 | def test_db_connection(db: Session = Depends(database.get_db_sync)):
+    |                                              ^^^^^^^^ F821
+103 |     try:
+104 |         from sqlalchemy import text
+    |
+
+src\kortana\main_backup.py:113:20: F821 Undefined name `memory_router`
+    |
+112 | # --- Include Routers ---
+113 | app.include_router(memory_router)
+    |                    ^^^^^^^^^^^^^ F821
+114 | app.include_router(core_router.router)
+115 | app.include_router(
+    |
+
+src\kortana\main_backup.py:114:20: F821 Undefined name `core_router`
+    |
+112 | # --- Include Routers ---
+113 | app.include_router(memory_router)
+114 | app.include_router(core_router.router)
+    |                    ^^^^^^^^^^^ F821
+115 | app.include_router(
+116 |     openai_adapter_router.router
+    |
+
+src\kortana\main_backup.py:116:5: F821 Undefined name `openai_adapter_router`
+    |
+114 | app.include_router(core_router.router)
+115 | app.include_router(
+116 |     openai_adapter_router.router
+    |     ^^^^^^^^^^^^^^^^^^^^^ F821
+117 | )  # Assuming this was intended to be included
+118 | app.include_router(adapter_router)  # Added the new adapter_router for LobeChat etc.
+    |
+
+src\kortana\main_backup.py:118:20: F821 Undefined name `adapter_router`
+    |
+116 |     openai_adapter_router.router
+117 | )  # Assuming this was intended to be included
+118 | app.include_router(adapter_router)  # Added the new adapter_router for LobeChat etc.
+    |                    ^^^^^^^^^^^^^^ F821
+    |
+
+src\kortana\modules\memory_core\routers\__init__.py:2:38: F401 `.memory_router.router` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+  |
+1 | # src/kortana/modules/memory_core/routers/__init__.py
+2 | from .memory_router import router as memory_router
+  |                                      ^^^^^^^^^^^^^ F401
+  |
+  = help: Use an explicit re-export: `router as router`
+
+src\kortana\modules\memory_core\routers\memory_router.py:19:53: B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+   |
+17 | @router.post("/", response_model=schemas.CoreMemoryDisplay)
+18 | def create_memory_endpoint(
+19 |     memory: schemas.CoreMemoryCreate, db: Session = Depends(get_db_sync)
+   |                                                     ^^^^^^^^^^^^^^^^^^^^ B008
+20 | ):
+21 |     service = services.MemoryCoreService(db=db)
+   |
+
+src\kortana\modules\memory_core\routers\memory_router.py:27:52: B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+   |
+25 | @router.get("/", response_model=list[schemas.CoreMemoryDisplay])
+26 | def read_memories_endpoint(
+27 |     skip: int = 0, limit: int = 100, db: Session = Depends(get_db_sync)
+   |                                                    ^^^^^^^^^^^^^^^^^^^^ B008
+28 | ):
+29 |     service = services.MemoryCoreService(db=db)
+   |
+
+src\kortana\modules\memory_core\routers\memory_router.py:35:56: B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+   |
+34 | @router.get("/{memory_id}", response_model=schemas.CoreMemoryDisplay)
+35 | def read_memory_endpoint(memory_id: int, db: Session = Depends(get_db_sync)):
+   |                                                        ^^^^^^^^^^^^^^^^^^^^ B008
+36 |     service = services.MemoryCoreService(db=db)
+37 |     db_memory = service.get_memory_by_id(memory_id=memory_id)
+   |
+
+src\kortana\modules\memory_core\services.py:148:25: UP038 Use `X | Y` in `isinstance` call instead of `(X, Y)`
+    |
+146 |                 mem.embedding is not None
+147 |                 and isinstance(mem.embedding, list)
+148 |                 and all(isinstance(x, (int, float)) for x in mem.embedding)
+    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ UP038
+149 |             ):
+150 |                 similarity = cosine_similarity(query_embedding, mem.embedding)
+    |
+    = help: Convert to `X | Y`
+
+src\kortana\scheduler.py:52:1: W293 Blank line contains whitespace
+   |
+50 |     def add_task(self, task: Callable[[], None], priority: int = 1) -> int:
+51 |         """Add a task to the scheduler with the given priority.
+52 |         
+   | ^^^^^^^^ W293
+53 |         Args:
+54 |             task: The task function to execute
+   |
+   = help: Remove whitespace from blank line
+
+src\kortana\scheduler.py:56:1: W293 Blank line contains whitespace
+   |
+54 |             task: The task function to execute
+55 |             priority: Priority level (lower number = higher priority)
+56 |         
+   | ^^^^^^^^ W293
+57 |         Returns:
+58 |             task_id: Unique identifier for the task
+   |
+   = help: Remove whitespace from blank line
+
+src\kortana\scheduler.py:71:1: W293 Blank line contains whitespace
+   |
+69 |     def cancel_task(self, task_id: int) -> bool:
+70 |         """Cancel a pending task.
+71 |         
+   | ^^^^^^^^ W293
+72 |         Args:
+73 |             task_id: ID of the task to cancel
+   |
+   = help: Remove whitespace from blank line
+
+src\kortana\scheduler.py:74:1: W293 Blank line contains whitespace
+   |
+72 |         Args:
+73 |             task_id: ID of the task to cancel
+74 |         
+   | ^^^^^^^^ W293
+75 |         Returns:
+76 |             bool: True if task was cancelled, False if not found or already complete
+   |
+   = help: Remove whitespace from blank line
+
+src\kortana\scheduler.py:89:1: W293 Blank line contains whitespace
+   |
+87 |     def get_task_status(self, task_id: int) -> TaskStatus | None:
+88 |         """Get the current status of a task.
+89 |         
+   | ^^^^^^^^ W293
+90 |         Args:
+91 |             task_id: ID of the task to check
+   |
+   = help: Remove whitespace from blank line
+
+src\kortana\scheduler.py:92:1: W293 Blank line contains whitespace
+   |
+90 |         Args:
+91 |             task_id: ID of the task to check
+92 |             
+   | ^^^^^^^^^^^^ W293
+93 |         Returns:
+94 |             TaskStatus | None: Current status of the task, or None if not found
+   |
+   = help: Remove whitespace from blank line
+
+src\kortana\scheduler.py:103:1: W293 Blank line contains whitespace
+    |
+101 |     def get_task_result(self, task_id: int) -> TaskResult | None:
+102 |         """Get the result details of a task.
+103 |         
+    | ^^^^^^^^ W293
+104 |         Args:
+105 |             task_id: ID of the task to check
+    |
+    = help: Remove whitespace from blank line
+
+src\kortana\scheduler.py:106:1: W293 Blank line contains whitespace
+    |
+104 |         Args:
+105 |             task_id: ID of the task to check
+106 |             
+    | ^^^^^^^^^^^^ W293
+107 |         Returns:
+108 |             TaskResult | None: Task result details, or None if not found
+    |
+    = help: Remove whitespace from blank line
+
+src\kortana\utils\text_encoding.py:39:9: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   |
+38 |     except Exception as e:
+39 |         raise ValueError(f"Failed to encode text to base64: {str(e)}")
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ B904
+   |
+
+src\kortana\utils\text_encoding.py:70:9: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   |
+69 |     except Exception as e:
+70 |         raise ValueError(f"Failed to decode base64 to text: {str(e)}")
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ B904
+   |
+
+src\kortana\utils\text_encoding.py:94:9: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   |
+93 |     except Exception as e:
+94 |         raise ValueError(f"Failed to encode file to base64: {str(e)}")
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ B904
+   |
+
+src\run_with_output.py:37:13: B007 Loop control variable `i` not used within loop body
+   |
+35 |     with open(log_file, "w") as f:
+36 |         # Run setup commands
+37 |         for i, cmd in enumerate(commands[:-1]):
+   |             ^ B007
+38 |             f.write(f"\n\n{'=' * 80}\n")
+39 |             f.write(f"Running: {' '.join(cmd)}\n")
+   |
+   = help: Rename unused `i` to `_i`
+
+src\test_environment_final.py:30:8: UP036 Version block is outdated for minimum Python version
+   |
+28 |     print("2. Python Version:")
+29 |     print(f"   {sys.version}")
+30 |     if sys.version_info >= (3, 11):
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^ UP036
+31 |         print("   ✅ Python 3.11+ detected")
+32 |     else:
+   |
+   = help: Remove outdated version block
+
+src\tests\test_execution_engine.py:29:13: E722 Do not use bare `except`
+   |
+27 |             try:
+28 |                 f.unlink()
+29 |             except:
+   |             ^^^^^^ E722
+30 |                 pass
+31 |         TEST_DIR.rmdir()
+   |
+
+Found 82 errors.
+No fixes available (21 hidden fixes can be enabled with the `--unsafe-fixes` option).

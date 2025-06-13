@@ -6,7 +6,7 @@ them a priority based on various factors, including Sacred Trinity alignment.
 """
 
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 from .goal import Goal, GoalStatus, GoalType
 
@@ -25,13 +25,13 @@ class GoalPrioritizer:
         # Define priority weights for different factors
         # These could be made configurable in the future
         self.weights = {
-            "explicit_priority": 0.35,      # User/creator-assigned priority
-            "sacred_alignment": 0.25,       # Sacred Trinity alignment scores
-            "goal_type_weight": 0.15,       # Weight based on goal type
-            "dependencies": 0.10,           # Dependency relationships
-            "blockers": -0.10,              # Negative weight for blocked goals
-            "staleness": 0.05,              # Time since creation/last update
-            "progress": 0.10                # Current progress (prioritize nearly complete)
+            "explicit_priority": 0.35,  # User/creator-assigned priority
+            "sacred_alignment": 0.25,  # Sacred Trinity alignment scores
+            "goal_type_weight": 0.15,  # Weight based on goal type
+            "dependencies": 0.10,  # Dependency relationships
+            "blockers": -0.10,  # Negative weight for blocked goals
+            "staleness": 0.05,  # Time since creation/last update
+            "progress": 0.10,  # Current progress (prioritize nearly complete)
         }
 
         # Configure goal type weights (some types may be inherently higher priority)
@@ -43,7 +43,7 @@ class GoalPrioritizer:
             GoalType.ASSISTANCE: 0.8,
             GoalType.INTEGRATION: 0.6,
             GoalType.AUTONOMOUS: 0.4,
-            GoalType.COVENANT: 0.9  # Sacred Covenant goals are high priority
+            GoalType.COVENANT: 0.9,  # Sacred Covenant goals are high priority
         }
 
     async def prioritize_goals(self, goals: list[Goal]) -> list[Goal]:
@@ -65,15 +65,20 @@ class GoalPrioritizer:
             A list of Goal objects sorted by computed priority (highest first).
         """
         logger.info(f"Prioritizing {len(goals)} goals...")
-
         if not goals:
             logger.info("No goals to prioritize.")
-            return []        # Calculate a composite score for each goal
+            return []
+
+        # Calculate a composite score for each goal
         scored_goals: list[tuple[Goal, float]] = []
 
         for goal in goals:
             # Skip goals that are completed, failed, or abandoned
-            if goal.status in [GoalStatus.COMPLETED, GoalStatus.FAILED, GoalStatus.ABANDONED]:
+            if goal.status in [
+                GoalStatus.COMPLETED,
+                GoalStatus.FAILED,
+                GoalStatus.ABANDONED,
+            ]:
                 continue
 
             # Calculate composite score based on weighted factors
@@ -83,10 +88,13 @@ class GoalPrioritizer:
             logger.debug(f"Goal '{goal.description[:30]}...' score: {score:.2f}")
 
         # Sort by computed score (descending)
-        prioritized_goals = [g[0] for g in sorted(scored_goals, key=lambda x: x[1], reverse=True)]
-
+        prioritized_goals = [
+            g[0] for g in sorted(scored_goals, key=lambda x: x[1], reverse=True)
+        ]
         logger.info(f"Finished prioritizing {len(prioritized_goals)} goals.")
-        return prioritized_goals    def _calculate_goal_score(self, goal: Goal, all_goals: list[Goal]) -> float:
+        return prioritized_goals
+
+    def _calculate_goal_score(self, goal: Goal, all_goals: list[Goal]) -> float:
         """Calculate a composite priority score for a single goal."""
         scores: dict[str, float] = {}
 
@@ -94,7 +102,9 @@ class GoalPrioritizer:
         scores["explicit_priority"] = (goal.priority - 1) / 4.0
 
         # 2. Sacred Trinity alignment (average of the three scores)
-        trinity_avg = (goal.wisdom_score + goal.compassion_score + goal.truth_score) / 3.0
+        trinity_avg = (
+            goal.wisdom_score + goal.compassion_score + goal.truth_score
+        ) / 3.0
         scores["sacred_alignment"] = trinity_avg
 
         # 3. Goal type priority
@@ -105,7 +115,9 @@ class GoalPrioritizer:
         scores["dependencies"] = min(1.0, dependent_count / 5.0)  # Cap at 1.0
 
         # 5. Blockers (blocked goals get penalty)
-        blocker_penalty = 1.0 if not goal.blockers else max(0.0, 1.0 - (len(goal.blockers) * 0.2))
+        blocker_penalty = (
+            1.0 if not goal.blockers else max(0.0, 1.0 - (len(goal.blockers) * 0.2))
+        )
         scores["blockers"] = blocker_penalty
 
         # 6. Staleness (older goals get boost if not worked on)

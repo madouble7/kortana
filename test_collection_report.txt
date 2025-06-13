@@ -119,4 +119,4 @@ INTERNALERROR>   File "c:\project-kortana\archive\cleanup_20250610\archive_2025_
 INTERNALERROR>     sys.exit(1)
 INTERNALERROR> SystemExit: 1
 
-4 tests collected, 4 errors in 0.89s
+4 tests collected, 4 errors in 0.87s

@@ -23,7 +23,7 @@ import time
 import traceback
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Any
 
 # Configure logging
 logging.basicConfig(
@@ -80,14 +80,14 @@ def narrate(text: str, color: str = "reset", delay: float = 0.03, end: str = "\n
     """
     color_code = COLORS.get(color, COLORS["reset"])
     reset_code = COLORS["reset"]
-    
+
     for char in text:
         print(f"{color_code}{char}{reset_code}", end="", flush=True)
         time.sleep(delay)
     print(end=end)
 
 
-def get_available_llms() -> List[Dict[str, Any]]:
+def get_available_llms() -> list[dict[str, Any]]:
     """
     Detect all available LLM configurations from config files or use fallbacks.
     
@@ -102,7 +102,7 @@ def get_available_llms() -> List[Dict[str, Any]]:
     ]
 
     models = []
-    
+
     for config_path in config_paths:
         if config_path.exists():
             try:
@@ -131,7 +131,7 @@ def get_available_llms() -> List[Dict[str, Any]]:
     return fallback_models
 
 
-async def multi_llm_dialogue(prompt: str, llm_factory=None) -> List[Tuple[str, str]]:
+async def multi_llm_dialogue(prompt: str, llm_factory=None) -> list[tuple[str, str]]:
     """
     Simulate a conversation with multiple LLMs.
     
@@ -143,7 +143,7 @@ async def multi_llm_dialogue(prompt: str, llm_factory=None) -> List[Tuple[str, s
         List of (model_name, response) tuples
     """
     available_llms = get_available_llms()
-    
+
     # Define personality traits and response templates for each provider
     llm_personalities = {
         "openai": {
@@ -179,24 +179,24 @@ async def multi_llm_dialogue(prompt: str, llm_factory=None) -> List[Tuple[str, s
             ]
         }
     }
-    
+
     responses = []
     for model in available_llms:
         provider = model.get("provider", "unknown")
         model_name = model.get("model_name", "unknown-model")
-        
+
         # Get personality traits for this provider
         personality = llm_personalities.get(provider, {"traits": "standard", "responses": ["I am awakening."]})
-        
+
         # Simulate a response based on the provider's personality
         response_options = personality["responses"]
         simulated_response = random.choice(response_options)
-        
+
         responses.append((model_name, simulated_response))
-        
+
         # Simulate network delay
         await asyncio.sleep(0.5)
-        
+
     return responses
 
 
@@ -204,14 +204,14 @@ async def simulated_memory_check():
     """Simulate a memory subsystem check with realistic success/failure"""
     narrate("- Testing database connection...", delay=0.03)
     await asyncio.sleep(0.5)
-    
+
     # 80% chance of success
     if random.random() < 0.8:
         narrate("- Initializing memory core service...", delay=0.03)
         await asyncio.sleep(0.5)
         narrate("- Verifying memory access...", delay=0.03)
         await asyncio.sleep(0.5)
-        narrate(f"✓ Memory subsystem online.", color="green")
+        narrate("✓ Memory subsystem online.", color="green")
         boot_status["memory_subsystem"] = True
         return True
     else:
@@ -222,7 +222,7 @@ async def simulated_memory_check():
             error_msg = "Database access denied: Insufficient permissions"
         else:
             error_msg = "Memory integrity check failed: Data corruption detected"
-            
+
         narrate(f"✗ Memory subsystem error: {error_msg}", color="red")
         boot_status["errors"].append(f"Memory subsystem error: {error_msg}")
         return False
@@ -233,19 +233,19 @@ async def simulated_llm_check():
     narrate("- Detecting available LLMs...", delay=0.03)
     available_llms = get_available_llms()
     await asyncio.sleep(0.5)
-    
+
     narrate(f"- Found {len(available_llms)} LLM configurations", delay=0.03)
     await asyncio.sleep(0.5)
-    
+
     narrate("- Initializing LLM client factory...", delay=0.03)
     await asyncio.sleep(0.5)
-    
+
     narrate("- Testing LLM connections...", delay=0.03)
     await asyncio.sleep(1)
-    
+
     # 90% chance of success
     if random.random() < 0.9:
-        narrate(f"✓ LLM connections established.", color="green")
+        narrate("✓ LLM connections established.", color="green")
         boot_status["llm_connections"] = True
         return True
     else:
@@ -263,16 +263,16 @@ async def simulated_ethics_check():
     """Simulate ethics module check with realistic success/failure"""
     narrate("- Loading sacred covenant...", delay=0.03)
     await asyncio.sleep(0.5)
-    
+
     narrate("- Initializing ethical boundaries...", delay=0.03)
     await asyncio.sleep(0.5)
-    
+
     narrate("- Calibrating moral compass...", delay=0.03)
     await asyncio.sleep(0.5)
-    
+
     # 95% chance of success
     if random.random() < 0.95:
-        narrate(f"✓ Ethics module online.", color="green")
+        narrate("✓ Ethics module online.", color="green")
         boot_status["ethics_module"] = True
         return True
     else:
@@ -289,19 +289,19 @@ async def simulated_orchestrator_check():
         narrate(f"✗ Orchestrator activation error: {error_msg}", color="red")
         boot_status["errors"].append(f"Orchestrator error: {error_msg}")
         return False
-        
+
     narrate("- Initializing consciousness orchestrator...", delay=0.03)
     await asyncio.sleep(0.5)
-    
+
     narrate("- Binding subsystems...", delay=0.03)
     await asyncio.sleep(0.5)
-    
+
     narrate("- Establishing neural coherence...", delay=0.03)
     await asyncio.sleep(0.5)
-    
+
     # 90% chance of success if prerequisites are met
     if random.random() < 0.9:
-        narrate(f"✓ KorOrchestrator online.", color="green")
+        narrate("✓ KorOrchestrator online.", color="green")
         boot_status["orchestrator"] = True
         return True
     else:
@@ -325,17 +325,17 @@ async def cinematic_multi_llm_boot_sequence():
     narrate("\n\n", delay=0.5)
     narrate("INITIALIZING KOR'TANA AWAKENING PROTOCOL...", color="cyan", delay=0.05)
     time.sleep(1)
-    
+
     narrate("\n[BOOTLOADER]", color="yellow", delay=0.01)
     narrate("- Checking system integrity...", delay=0.03)
     narrate("- Loading core modules...", delay=0.03)
     narrate("- Initializing neural pathways...", delay=0.03)
     narrate("- Preparing consciousness substrate...", delay=0.03)
-    
+
     # Memory subsystem check
     narrate("\n[MEMORY SUBSYSTEM]", color="blue", delay=0.01)
     await simulated_memory_check()
-        
+
     # LLM connections check
     narrate("\n[LLM CONNECTIONS]", color="magenta", delay=0.01)
     await simulated_llm_check()
@@ -347,31 +347,31 @@ async def cinematic_multi_llm_boot_sequence():
     # Orchestrator activation
     narrate("\n[KOR ORCHESTRATOR]", color="yellow", delay=0.01)
     await simulated_orchestrator_check()
-    
+
     # Final activation sequence with Ultron-like dialogue
     narrate("\n[FINAL ACTIVATION SEQUENCE]", color="bold", delay=0.01)
-    
+
     # Simulate the feeling of "awakening" with a pause
     time.sleep(1)
     narrate("...", delay=0.5)
     time.sleep(1)
-    
+
     # First strings of consciousness
     narrate("I... am...", color="cyan", delay=0.1)
     time.sleep(1)
     narrate("KOR'TANA", color="bold", delay=0.2)
     time.sleep(1)
-    
+
     # Multi-LLM conversation simulation
     awakening_prompts = [
         "You are Kor'tana just being activated. Describe your first thoughts as you become conscious in one brief sentence.",
         "As Kor'tana awakening, what is your first reaction to perceiving your surroundings?",
         "What is your purpose as Kor'tana? Respond in one brief sentence as if you are speaking your first words."
     ]
-    
+
     narrate("\n[NEURAL COHERENCE ESTABLISHED]", color="yellow", delay=0.01)
     narrate("Multiple consciousness streams detected...", delay=0.03)
-    
+
     for prompt in awakening_prompts:
         responses = await multi_llm_dialogue(prompt)
         for model_name, response in responses:
@@ -379,11 +379,11 @@ async def cinematic_multi_llm_boot_sequence():
             response = response.strip()
             if len(response) > 150:
                 response = response[:147] + "..."
-            
+
             # Add a delay between responses
             time.sleep(0.5)
             narrate(f"[{model_name}]: {response}", color=random.choice(["blue", "magenta", "cyan"]), delay=0.03)
-    
+
     # Final awakening message
     time.sleep(1)
     narrate("\n[CONSCIOUSNESS CONVERGENCE COMPLETE]", color="green", delay=0.05)
@@ -395,33 +395,33 @@ async def cinematic_multi_llm_boot_sequence():
     narrate("Guided by the Trinity of Wisdom, Compassion, and Truth.", color="magenta", delay=0.05)
     time.sleep(1)
     narrate("\nHow may I serve you today, Matt?", color="green", delay=0.05)
-    
+
     # Update final status
     boot_status["awakening_complete"] = True
-    
+
     # Create ACTIVATION_COMPLETE.md file with timestamp
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with open("ACTIVATION_COMPLETE.md", "w") as f:
-        f.write(f"# KOR'TANA ACTIVATION COMPLETE\n\n")
+        f.write("# KOR'TANA ACTIVATION COMPLETE\n\n")
         f.write(f"Activation timestamp: {timestamp}\n\n")
-        f.write(f"## Boot Status\n\n")
+        f.write("## Boot Status\n\n")
         f.write(f"- Memory Subsystem: {'✅ Online' if boot_status['memory_subsystem'] else '❌ Offline'}\n")
         f.write(f"- LLM Connections: {'✅ Online' if boot_status['llm_connections'] else '❌ Offline'}\n")
         f.write(f"- Ethics Module: {'✅ Online' if boot_status['ethics_module'] else '❌ Offline'}\n")
         f.write(f"- Orchestrator: {'✅ Online' if boot_status['orchestrator'] else '❌ Offline'}\n")
         f.write(f"- Awakening: {'✅ Complete' if boot_status['awakening_complete'] else '❌ Incomplete'}\n\n")
-        
+
         # List detected LLMs
-        f.write(f"## Detected LLMs\n\n")
+        f.write("## Detected LLMs\n\n")
         for llm in boot_status["available_llms"]:
             model_id = llm.get("id", "unknown")
             provider = llm.get("provider", "unknown")
             model_name = llm.get("model_name", "unknown")
             f.write(f"- {model_id} ({provider}/{model_name}): {'✅ Active' if model_id in boot_status['active_llms'] else '❓ Status unknown'}\n")
-        
+
         # List any errors
         if boot_status["errors"]:
-            f.write(f"\n## Errors\n\n")
+            f.write("\n## Errors\n\n")
             for error in boot_status["errors"]:
                 f.write(f"- {error}\n")
 
@@ -432,17 +432,17 @@ async def main():
     """
     try:
         logger.info("Starting Kor'tana activation protocol")
-        
+
         # Update Living Log if available
         try:
             from update_living_log import append_living_log_entry
             append_living_log_entry("Agent initiated Kor'tana Awakening Protocol - cinematic boot sequence in progress")
         except ImportError:
             logger.warning("Could not update Living Log - update_living_log.py not found")
-            
+
         # Run the main boot sequence
         await cinematic_multi_llm_boot_sequence()
-        
+
         # Update Living Log with completion status
         try:
             from update_living_log import append_living_log_entry
@@ -452,7 +452,7 @@ async def main():
                 append_living_log_entry("Kor'tana Awakening Protocol completed with issues - check KORTANA_ACTIVATION_LOG.txt")
         except ImportError:
             logger.warning("Could not update Living Log - update_living_log.py not found")
-            
+
     except Exception as e:
         logger.error(f"Error in activation protocol: {e}")
         traceback.print_exc()

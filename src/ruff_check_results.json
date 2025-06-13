@@ -1,0 +1,19 @@
+[
+  {
+    "cell": null,
+    "code": "E902",
+    "end_location": {
+      "column": 1,
+      "row": 1
+    },
+    "filename": "c:\\project-kortana\\src\\src",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "The system cannot find the file specified. (os error 2)",
+    "noqa_row": null,
+    "url": "https://docs.astral.sh/ruff/rules/io-error"
+  }
+]

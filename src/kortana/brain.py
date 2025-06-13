@@ -133,7 +133,7 @@ class ChatEngine:
 
         # Create message entry
         entry = self._create_message_entry("user", sanitized_message)
-          # Add to history and save to memory
+        # Add to history and save to memory
         self._add_message_to_history_and_memory(entry)
 
         logger.info(f"Added user message: {sanitized_message[:50]}...")
@@ -187,9 +187,7 @@ class ChatEngine:
         keywords = extract_keywords_from_text(entry["content"])
         memory_entry = MemoryEntry(
             text=entry["content"],
-            timestamp=datetime.fromisoformat(
-                entry["timestamp"].replace("Z", "+00:00")
-            ),
+            timestamp=datetime.fromisoformat(entry["timestamp"].replace("Z", "+00:00")),
             tags=["conversation", entry["role"]] + keywords,
             source="chat_engine",
         )
@@ -210,7 +208,9 @@ class ChatEngine:
         try:
             # Get conversation history and semantic search results
             history_context = self._get_conversation_history_context()
-            semantic_context = await self._get_semantic_search_context(user_message, limit)
+            semantic_context = await self._get_semantic_search_context(
+                user_message, limit
+            )
 
             # Combine the contexts
             full_context = []
@@ -228,18 +228,22 @@ class ChatEngine:
         """Get formatted context from recent conversation history."""
         context_lines: list[str] = []
         try:
-            history_to_consider = self.history[-min(len(self.history), 10):]
+            history_to_consider = self.history[-min(len(self.history), 10) :]
             if history_to_consider:
                 context_lines.append("Recent conversation turns:")
                 for entry in history_to_consider:
                     role = entry.get("role", "unknown")
                     content = entry.get("content", "")
-                    context_lines.append(f"  {role}: {content}")            return "\n".join(context_lines)
+                    context_lines.append(f"  {role}: {content}")
+
+            return "\n".join(context_lines)
         except Exception as e:
             logger.error(f"Error getting conversation history context: {e}")
             return ""
 
-    async def _get_semantic_search_context(self, user_message: str, limit: int = 5) -> str:
+    async def _get_semantic_search_context(
+        self, user_message: str, limit: int = 5
+    ) -> str:
         """Get formatted context from semantic search results."""
         if not self._is_semantic_search_enabled():
             return ""
@@ -261,7 +265,9 @@ class ChatEngine:
         """Check if semantic search functionality is enabled."""
         return bool(self.memory_manager and self.memory_manager.pinecone_enabled)
 
-    async def _retrieve_semantic_memories(self, user_message: str, limit: int = 5) -> list[dict[str, Any]]:
+    async def _retrieve_semantic_memories(
+        self, user_message: str, limit: int = 5
+    ) -> list[dict[str, Any]]:
         """Retrieve semantic memories related to the query text.
 
         Args:
@@ -278,7 +284,9 @@ class ChatEngine:
             query_vector = generate_embedding(user_message)
 
             # Search for relevant memories
-            return self.memory_manager.search_memory(query_vector=query_vector, top_k=limit)
+            return self.memory_manager.search_memory(
+                query_vector=query_vector, top_k=limit
+            )
         except Exception as e:
             logger.error(f"Error retrieving semantic memories: {e}")
             return []
@@ -307,8 +315,13 @@ class ChatEngine:
             formatted_lines.append(f"  - {text} (Source: {source}, Score: {score_str})")
         return formatted_lines
 
-    async def process_message(self, user_message: str, user_id: str | None = None,
-                              user_name: str | None = None, channel: str = "default") -> str:
+    async def process_message(
+        self,
+        user_message: str,
+        user_id: str | None = None,
+        user_name: str | None = None,
+        channel: str = "default",
+    ) -> str:
         """
         Process a user message and generate a response with memory integration.
 
@@ -321,7 +334,9 @@ class ChatEngine:
         Returns:
             Kor'tana's response.
         """
-        logger.info(f"Processing message from {user_name or 'unknown'} via {channel}: {user_message[:50]}...")
+        logger.info(
+            f"Processing message from {user_name or 'unknown'} via {channel}: {user_message[:50]}..."
+        )
 
         # Step 1: Add the user's message to history
         self._add_message_to_history(user_message)
@@ -331,11 +346,7 @@ class ChatEngine:
 
         # Step 3: Generate response from LLM
         response_text = await self._generate_llm_response(
-            user_message,
-            memory_context,
-            user_id,
-            user_name,
-            channel
+            user_message, memory_context, user_id, user_name, channel
         )
 
         return response_text
@@ -349,9 +360,12 @@ class ChatEngine:
         return await self._get_memory_context(message)
 
     async def _generate_llm_response(
-        self, user_message: str, memory_context: str,
-        user_id: str | None = None, user_name: str | None = None,
-        channel: str = "default"
+        self,
+        user_message: str,
+        memory_context: str,
+        user_id: str | None = None,
+        user_name: str | None = None,
+        channel: str = "default",
     ) -> str:
         """Generate response using LLM with provided context."""
         try:
@@ -361,12 +375,14 @@ class ChatEngine:
                 memory_context,
                 user_id=user_id,
                 user_name=user_name,
-                channel=channel
+                channel=channel,
             )
 
             # Get response from LLM
             response = await self.default_llm_client.complete(prompt)
-            response_text = response.get("content", "I'm here with you, though I'm still gathering my thoughts.")
+            response_text = response.get(
+                "content", "I'm here with you, though I'm still gathering my thoughts."
+            )
 
             # Add the assistant's response to history
             self.add_assistant_message(response_text)
@@ -379,9 +395,12 @@ class ChatEngine:
             return error_response
 
     def _build_prompt_with_memory(
-        self, user_message: str, memory_context: str,
-        user_id: str | None = None, user_name: str | None = None,
-        channel: str = "default"
+        self,
+        user_message: str,
+        memory_context: str,
+        user_id: str | None = None,
+        user_name: str | None = None,
+        channel: str = "default",
     ) -> dict[str, Any]:
         """
         Build a prompt with integrated memory context.
@@ -435,7 +454,9 @@ class ChatEngine:
         """Format memory context for prompt."""
         return f"Recent conversation context:\n{memory_context}\n\n"
 
-    def _format_user_info(self, user_name: str | None = None, user_id: str | None = None) -> str:
+    def _format_user_info(
+        self, user_name: str | None = None, user_id: str | None = None
+    ) -> str:
         """Format user information for prompt."""
         # Get user name from environment or parameter
         actual_user_name = user_name or os.getenv("KORTANA_USER_NAME", "User")

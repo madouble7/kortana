@@ -1,0 +1,28 @@
+src\kortana\agents\autonomous_agents.py:72: error: Returning Any from function declared to return "str"  [no-any-return]
+src\kortana\agents\autonomous_agents.py:240: error: Returning Any from function declared to return "str"  [no-any-return]
+src\kortana\config\__init__.py:11: error: Library stubs not installed for "yaml"  [import-untyped]
+src\kortana\core\memory.py:174: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+src\kortana\core\goals\engine.py:45: error: Name "Goal" is not defined  [name-defined]
+src\kortana\core\goals\engine.py:79: error: Returning Any from function declared to return "list[Any]"  [no-any-return]
+src\kortana\core\goals\engine.py:115: error: Returning Any from function declared to return "list[Any]"  [no-any-return]
+src\kortana\core\goals\engine.py:125: error: Returning Any from function declared to return "list[Any]"  [no-any-return]
+src\kortana\core\goals\covenant.py:184: error: Unexpected keyword argument "content" for "evaluate_sacred_alignment" of "CovenantEnforcer"  [call-arg]
+src\kortana\core\covenant.py:624: note: "evaluate_sacred_alignment" of "CovenantEnforcer" defined here
+src\kortana\core\goals\covenant.py:184: error: Unexpected keyword argument "context" for "evaluate_sacred_alignment" of "CovenantEnforcer"  [call-arg]
+src\kortana\core\covenant.py:624: note: "evaluate_sacred_alignment" of "CovenantEnforcer" defined here
+src\kortana\core\goals\manager.py:178: error: Incompatible return value type (got "tuple[bool, str | None]", expected "tuple[bool, str]")  [return-value]
+config\schema.py:91: error: Incompatible types in assignment (expression has type "None", variable has type "MonitoringAgentConfig")  [assignment]
+config\__init__.py:10: error: Library stubs not installed for "yaml"  [import-untyped]
+src\kortana\core\brain.py:13: error: Library stubs not installed for "yaml"  [import-untyped]
+src\kortana\core\brain.py:13: note: Hint: "python3 -m pip install types-PyYAML"
+src\kortana\core\brain.py:13: note: (or run "mypy --install-types" to install all missing stub packages)
+src\kortana\core\brain.py:13: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+src\kortana\core\brain.py:36: error: Name "SacredTrinityRouter" already defined (possibly by an import)  [no-redef]
+src\kortana\core\brain.py:141: error: Need type annotation for "monitoring_config"  [var-annotated]
+src\kortana\core\brain.py:147: error: Argument "config" to "MonitoringAgent" has incompatible type "AgentTypeConfig | dict[Any, Any]"; expected "dict[str, Any] | None"  [arg-type]
+src\kortana\core\brain.py:163: error: Returning Any from function declared to return "dict[str, Any]"  [no-any-return]
+src\kortana\core\brain.py:174: error: Returning Any from function declared to return "dict[str, Any]"  [no-any-return]
+src\kortana\core\brain.py:244: error: Returning Any from function declared to return "str"  [no-any-return]
+src\kortana\core\autonomous_development_engine.py:279: error: "object" not callable  [operator]
+src\kortana\__init__.py:17: error: Module "src.kortana.core.brain" has no attribute "Brain"  [attr-defined]
+Found 21 errors in 10 files (checked 9 source files)

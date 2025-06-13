@@ -100,7 +100,9 @@ class ADECoordinator:
             "success": True,
             "goals": [str(g.id) for g in goal_objects],
             "results": ade_results,
-        }    async def get_active_goals(self) -> list[Goal]:
+        }
+
+    async def get_active_goals(self) -> list[Goal]:
         """Get all goals currently being worked on."""
         return await self.goal_manager.list_goals(status=GoalStatus.IN_PROGRESS)
 

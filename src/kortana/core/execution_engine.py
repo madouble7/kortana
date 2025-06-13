@@ -179,7 +179,7 @@ class ExecutionEngine:
             except TimeoutError:
                 try:
                     process.kill()
-                except:
+                except Exception:
                     pass
                 return OperationResult(
                     success=False,

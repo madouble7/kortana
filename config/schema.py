@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -210,7 +210,8 @@ class KortanaConfig(BaseSettings):
         env_prefix="KORTANA_", case_sensitive=False, extra="allow"
     )
 
-    @validator("paths")
+    @field_validator("paths", mode="after")
+    @classmethod
     def validate_paths(cls, v):
         """Ensure all paths exist or can be created"""
         paths = v if isinstance(v, PathsConfig) else PathsConfig(**v)
@@ -225,7 +226,8 @@ class KortanaConfig(BaseSettings):
                     )
         return paths
 
-    @validator("api_keys", pre=True, always=True)
+    @field_validator("api_keys", mode="before")
+    @classmethod
     def resolve_environment_variables(cls, v):
         """Resolve environment variables in API keys"""
         if not v:

@@ -56,8 +56,8 @@ def test_scan_system_performance(mock_execution_engine, goal_engine):
     ]
 
     metrics = goal_engine._scan_system_performance()
-    assert isinstance(metrics["cpu_usage"], (int, float))
-    assert isinstance(metrics["memory_usage"], (int, float))
+    assert isinstance(metrics["cpu_usage"], int | float)
+    assert isinstance(metrics["memory_usage"], int | float)
 
 
 @patch("kortana.core.goal_engine.memory_manager")

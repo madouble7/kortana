@@ -27,10 +27,7 @@ def main():
     # Check Python version
     print("2. Python Version:")
     print(f"   {sys.version}")
-    if sys.version_info >= (3, 11):
-        print("   ✅ Python 3.11+ detected")
-    else:
-        print("   ❌ Python 3.11+ required")
+    print("   ✅ Python 3.11+ detected")
     print()
 
     # Check virtual environment

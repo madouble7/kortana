@@ -13,6 +13,7 @@ from .models import Task, TaskResult, TaskStatus
 
 logger = logging.getLogger(__name__)
 
+
 class TaskCoordinator:
     """Coordinates execution of autonomous tasks"""
 
@@ -44,7 +45,11 @@ class TaskCoordinator:
 
         task = self._tasks[task_id]
         async with self._task_locks[task_id]:
-            if task.status in (TaskStatus.PENDING, TaskStatus.SCHEDULED, TaskStatus.IN_PROGRESS):
+            if task.status in (
+                TaskStatus.PENDING,
+                TaskStatus.SCHEDULED,
+                TaskStatus.IN_PROGRESS,
+            ):
                 task.status = TaskStatus.CANCELLED
                 if task_id in self._in_progress:
                     self._in_progress.remove(task_id)
@@ -89,7 +94,9 @@ class TaskCoordinator:
 
             # Execute ready tasks in parallel
             if ready_tasks:
-                await asyncio.gather(*[self._execute_task(task) for task in ready_tasks])
+                await asyncio.gather(
+                    *[self._execute_task(task) for task in ready_tasks]
+                )
             else:
                 await asyncio.sleep(1)  # Wait before checking again
 
@@ -124,14 +131,20 @@ class TaskCoordinator:
                 if not result.success and task.retries < task.max_retries:
                     # Retry failed task
                     task.retries += 1
-                    logger.warning(f"Task {task.id} failed, retrying ({task.retries}/{task.max_retries})")
-                    self._schedules[task.id] = datetime.now() + timedelta(seconds=5)  # Retry after 5s
+                    logger.warning(
+                        f"Task {task.id} failed, retrying ({task.retries}/{task.max_retries})"
+                    )
+                    self._schedules[task.id] = datetime.now() + timedelta(
+                        seconds=5
+                    )  # Retry after 5s
                     task.status = TaskStatus.PENDING
                 else:
                     # Record final task result
                     completion_time = datetime.now()
                     task.completed_at = completion_time
-                    task.status = TaskStatus.COMPLETED if result.success else TaskStatus.FAILED
+                    task.status = (
+                        TaskStatus.COMPLETED if result.success else TaskStatus.FAILED
+                    )
                     task.result = TaskResult(
                         success=result.success,
                         completion_time=completion_time,
@@ -139,17 +152,15 @@ class TaskCoordinator:
                         error=result.error,
                         metrics={
                             "duration": result.duration,
-                            "operation_type": result.operation_type
-                        }
+                            "operation_type": result.operation_type,
+                        },
                     )
 
             except Exception as e:
                 logger.error(f"Error executing task {task.id}: {str(e)}")
                 task.status = TaskStatus.FAILED
                 task.result = TaskResult(
-                    success=False,
-                    completion_time=datetime.now(),
-                    error=str(e)
+                    success=False, completion_time=datetime.now(), error=str(e)
                 )
 
             finally:
@@ -161,7 +172,7 @@ class TaskCoordinator:
             return OperationResult(
                 success=False,
                 error="No workspace root specified in task context",
-                operation_type="task_execution"
+                operation_type="task_execution",
             )
 
         start = time.time()
@@ -170,7 +181,7 @@ class TaskCoordinator:
             # For now, execute as shell command - could be expanded to handle different types
             command_result = await self.execution_engine.execute_shell_command(
                 command=f"python {task.context.workspace_root}/manage_task.py execute {task.id}",
-                working_dir=task.context.workspace_root
+                working_dir=task.context.workspace_root,
             )
 
             return OperationResult(
@@ -178,7 +189,7 @@ class TaskCoordinator:
                 data=command_result.data,
                 error=command_result.error,
                 duration=time.time() - start,
-                operation_type="task_execution"
+                operation_type="task_execution",
             )
 
         except Exception as e:
@@ -186,5 +197,5 @@ class TaskCoordinator:
                 success=False,
                 error=str(e),
                 duration=time.time() - start,
-                operation_type="task_execution"
+                operation_type="task_execution",
             )

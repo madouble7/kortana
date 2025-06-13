@@ -35,7 +35,7 @@ def test_passing_complex():
 @pytest.mark.xfail(reason="Intentional failure for demo")
 def test_expected_failure():
     """A test that's expected to fail"""
-    assert False  # Intentional failure
+    raise AssertionError()  # Intentional failure
 
 
 def test_math_operations():
