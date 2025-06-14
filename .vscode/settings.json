@@ -3,7 +3,6 @@
     "python.defaultInterpreterPath": "C:\\\\project-kortana\\\\venv311\\\\Scripts\\\\python.exe",
     "python.terminal.activateEnvironment": true,
     "python.terminal.activateEnvInCurrentTerminal": true,
-
     // Performance optimizations - File handling
     "files.autoSave": "afterDelay",
     "files.autoSaveDelay": 1000,
@@ -26,7 +25,6 @@
         "**/htmlcov/**": true,
         "**/archive_*/**": true
     },
-
     // Performance optimizations - Search
     "search.exclude": {
         "**/venv311": false,
@@ -40,7 +38,6 @@
         "**/archive_*": true,
         "**/*.pyc": true
     },
-
     // Python analysis optimizations
     "python.analysis.extraPaths": [
         ".",
@@ -57,7 +54,6 @@
             "depth": 3
         }
     ],
-
     // Testing configuration
     "python.testing.pytestEnabled": true,
     "python.testing.pytestPath": "pytest",
@@ -68,7 +64,6 @@
     ],
     "python.testing.autoTestDiscoverOnSaveEnabled": true,
     "python.testing.unittestEnabled": false,
-
     // AI-Powered Development with GitHub Copilot
     "github.copilot.enable": {
         "*": true,
@@ -82,7 +77,6 @@
     "github.copilot.advanced": {},
     "github.copilot.chat.enabled": true,
     "github.copilot.chat.welcomeMessage": "auto",
-
     // Intelligent Code Completion & Suggestions
     "editor.inlineSuggest.enabled": true,
     "editor.inlineSuggest.showToolbar": "always",
@@ -103,34 +97,31 @@
     },
     "editor.quickSuggestionsDelay": 10,
     "editor.suggest.snippetsPreventQuickSuggestions": false,
-
     // Code Actions & Auto-formatting for Autonomous Development
     "editor.codeActionsOnSave": {
-        "source.organizeImports": "explicit",
-        "source.fixAll": "explicit",
-        "source.addMissingImports": "explicit"
+        "source.fixAll.ruff": "explicit",
+        "source.organizeImports.ruff": "explicit"
     },
-    "editor.codeActionsOnSaveMode": "explicit",
-    "editor.codeActionsOnSaveTimeout": 1500,
-    "editor.codeActionsOnSaveTriggerOnFocusChange": false,
     "editor.formatOnSave": true,
-    "editor.formatOnPaste": true,
-    "editor.formatOnType": true,
-    "editor.trimAutoWhitespace": true,
-    "files.trimTrailingWhitespace": true,
-    "files.insertFinalNewline": true,
-    "files.trimFinalNewlines": true,
-
+    "[python]": {
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "editor.codeActionsOnSave": {
+            "source.fixAll.ruff": "explicit",
+            "source.organizeImports.ruff": "explicit"
+        }
+    },
     // Python-Specific AI Enhancements
     "python.linting.enabled": true,
     "python.linting.lintOnSave": true,
-    "python.formatting.provider": "black",
-    "python.sortImports.args": ["--profile", "black"],
-
+    "python.linting.ruffEnabled": true,
+    "python.formatting.provider": "none",
+    "python.sortImports.args": [
+        "--profile",
+        "black"
+    ],
     // Autonomous Error Detection & Quick Fixes
     "problems.showCurrentInStatus": true,
     "problems.sortOrder": "severity",
-
     // Intelligent File Management
     "explorer.confirmDragAndDrop": false,
     "explorer.confirmDelete": false,
@@ -138,7 +129,6 @@
     "workbench.editor.enablePreviewFromQuickOpen": false,
     "breadcrumbs.enabled": true,
     "breadcrumbs.symbolPath": "on",
-
     // Enhanced Terminal for Development Automation
     "terminal.integrated.enableMultiLinePasteWarning": "never",
     "terminal.integrated.copyOnSelection": true,
@@ -154,13 +144,11 @@
         }
     },
     "terminal.integrated.defaultProfile.windows": "Python venv311",
-
     // Workspace Intelligence
     "workbench.startupEditor": "none",
     "workbench.editor.showTabs": "multiple",
     "workbench.editor.tabSizing": "shrink",
     "workbench.editor.highlightModifiedTabs": true,
-
     // Git Integration for Autonomous Development
     "git.enableSmartCommit": true,
     "git.autofetch": "all",
@@ -168,14 +156,12 @@
     "git.enableCommitSigning": false,
     "git.decorations.enabled": false,
     "scm.defaultViewMode": "tree",
-
     // Performance & Memory optimizations
     "extensions.autoCheckUpdates": false,
     "extensions.autoUpdate": false,
     "telemetry.telemetryLevel": "off",
     "workbench.enableExperiments": false,
     "workbench.settings.enableNaturalLanguageSearch": false,
-
     // Environment
     "python.envFile": "${workspaceFolder}/.env"
 }

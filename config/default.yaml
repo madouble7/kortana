@@ -1,6 +1,6 @@
 api_keys:
-  openai: "sk-placeholder-value"
-  anthropic: "placeholder-anthropic-key"
+  openai: "sk-test-key-for-validation-only"
+  anthropic: "test-anthropic-key"
   pinecone: ""
 debug: false
 api:

@@ -1,7 +1,9 @@
 """Factory for creating LLM clients based on configuration."""
 
+import json
 import logging
 import os
+from pathlib import Path  # Added import
 from typing import Any
 
 from kortana.config.schema import KortanaConfig
@@ -25,17 +27,27 @@ class LLMClientFactory:
     """
 
     MODEL_CLIENTS = {
+        # Premium models via OpenRouter
+        "google/gemini-2.5-flash-preview-05-20": OpenRouterClient,
+        "openai/gpt-4.1-nano": OpenRouterClient,
+        "meta-llama/llama-4-maverick": OpenRouterClient,
+        "google/gemini-2.0-flash-001": OpenRouterClient,
+        "x-ai/grok-3-mini-beta": OpenRouterClient,
+        # Free models via OpenRouter
+        "deepseek/deepseek-r1-0528:free": OpenRouterClient,
+        "deepseek/deepseek-r1-0528-qwen3-8b:free": OpenRouterClient,
+        # Legacy models for backward compatibility
         "anthropic/claude-3-haiku": OpenRouterClient,
         "gpt-4.1-nano": OpenAIClient,
         "gpt-4o-mini-openai": OpenAIClient,
-        "gemini-2.5-flash": GoogleGeminiClient,  # Changed to GoogleGeminiClient
-        "gemini-2.0-flash-lite": GoogleGeminiClient,  # Changed to GoogleGeminiClient
-        "x-ai/grok-3-mini-beta": XAIClient,
+        "gemini-2.5-flash": GoogleGeminiClient,
+        "gemini-2.0-flash-lite": GoogleGeminiClient,
+        "gemini-1.5-flash": GoogleGeminiClient,
         "deepseek/deepseek-chat-v3-0324": OpenRouterClient,
         "deepseek-chat-v3-openrouter": OpenRouterClient,
+        "deepseek-r1-0528-free": OpenRouterClient,  # Legacy alias
         "neversleep/noromaid-20b": OpenRouterClient,
         "meta-llama/llama-4-scout": OpenRouterClient,
-        "meta-llama/llama-4-maverick": OpenRouterClient,
         "qwen/qwen3-235b-a22b": OpenRouterClient,
     }
 
@@ -46,9 +58,39 @@ class LLMClientFactory:
             settings: KortanaConfig instance containing models configuration
         """
         self.settings = settings
-        # Extract models config from settings
-        # For now, we'll use a placeholder until the models config structure is defined
-        self.models_config = getattr(settings, "models", {})
+        self.models_config = {}
+
+        config_file_path_str = settings.paths.models_config_file_path
+
+        absolute_config_path = Path(config_file_path_str)
+        if not absolute_config_path.is_absolute():
+            # Attempt to resolve relative to project root if get_project_root is available
+            try:
+                from ..config import get_project_root  # Delayed import
+
+                absolute_config_path = get_project_root() / config_file_path_str
+            except ImportError:
+                logger.warning(
+                    "get_project_root not available for resolving models_config_file_path, assuming CWD relative or absolute."
+                )
+
+        if absolute_config_path.exists():
+            try:
+                with open(absolute_config_path, encoding="utf-8") as f:
+                    self.models_config = json.load(f)
+                logger.info(
+                    f"Successfully loaded models configuration from {absolute_config_path}"
+                )
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to decode JSON from {absolute_config_path}: {e}")
+            except Exception as e:
+                logger.error(
+                    f"Failed to load models configuration from {absolute_config_path}: {e}"
+                )
+        else:
+            logger.error(
+                f"Models configuration file not found at {absolute_config_path}. Using empty config."
+            )
 
     def get_client(self, model_id: str) -> BaseLLMClient | None:
         """Get an LLM client for a specific model ID.
@@ -59,11 +101,18 @@ class LLMClientFactory:
         Returns:
             Initialized client instance or None if creation fails
         """
-        return self.create_client(model_id, self.models_config)
+        # Ensure models_config is not None, though __init__ initializes it to {}
+        if self.models_config is None:
+            logger.error(
+                "LLMClientFactory.models_config is None. Cannot create client."
+            )
+            return None
+        return self.create_client(model_id, self.models_config)  # models_config is dict
 
     @staticmethod
     def create_client(
-        model_id: str, models_config: dict[str, Any]
+        model_id: str,
+        models_config: dict[str, Any],  # Ensure this expects dict
     ) -> BaseLLMClient | None:
         """Create an LLM client based on provider configuration.
 
@@ -221,60 +270,88 @@ class LLMClientFactory:
             return LLMClientFactory.get_default_client(models_config)
 
     @staticmethod
-    def validate_configuration(models_config: dict[str, Any]) -> bool:
+    def validate_configuration(settings: KortanaConfig) -> bool:
         """Validate that essential models are properly configured."""
-        essential_models = ["gpt-4.1-nano", "x-ai/grok-3-mini-beta", "gemini-2.5-flash"]
+        # Load models from the enhanced configuration
+        try:
+            with open(settings.paths.models_config_file_path) as f:
+                models_config = json.load(f)
+        except Exception as e:
+            logger.error(f"Failed to load models configuration: {e}")
+            return False  # Essential models for core functionality (prioritizing free models)
+        essential_models = [
+            "deepseek/deepseek-r1-0528:free",  # Free reasoning model
+            "deepseek/deepseek-r1-0528-qwen3-8b:free",  # Free fast model
+            "openai/gpt-4.1-nano",  # Premium general purpose
+        ]
 
-        missing_models = []
+        # Recommended models for enhanced functionality
+        recommended_models = [
+            "google/gemini-2.5-flash-preview-05-20",  # Vision and long context
+            "meta-llama/llama-4-maverick",  # Analysis tasks
+            "google/gemini-2.0-flash-001",  # Fast vision
+            "x-ai/grok-3-mini-beta",  # Creative and planning
+        ]
 
+        missing_essential = []
+        missing_recommended = []
+
+        # Check essential models
         for model_id in essential_models:
             if model_id not in LLMClientFactory.MODEL_CLIENTS:
-                missing_models.append(
-                    f"{model_id} (Not in etched-in-stone MODEL_CLIENTS)"
-                )
+                missing_essential.append(f"{model_id} (Not in MODEL_CLIENTS)")
                 continue
 
             model_conf = models_config.get("models", {}).get(model_id)
             if not model_conf:
-                missing_models.append(
-                    f"{model_id} (Missing config in models_config.json)"
-                )
+                missing_essential.append(f"{model_id} (Missing config)")
                 continue
 
             api_key_env = model_conf.get("api_key_env", "")
             if not api_key_env:
-                missing_models.append(f"{model_id} (Missing api_key_env in config)")
+                missing_essential.append(f"{model_id} (Missing api_key_env)")
                 continue
 
             if not os.getenv(api_key_env):
-                missing_models.append(
-                    f"{model_id} (Missing {api_key_env} environment variable)"
+                missing_essential.append(f"{model_id} (Missing {api_key_env} env var)")
+
+        # Check recommended models
+        for model_id in recommended_models:
+            if model_id not in LLMClientFactory.MODEL_CLIENTS:
+                missing_recommended.append(f"{model_id} (Not in MODEL_CLIENTS)")
+                continue
+
+            model_conf = models_config.get("models", {}).get(model_id)
+            if not model_conf:
+                missing_recommended.append(f"{model_id} (Missing config)")
+                continue
+
+            api_key_env = model_conf.get("api_key_env", "")
+            if not api_key_env:
+                missing_recommended.append(f"{model_id} (Missing api_key_env)")
+                continue
+
+            if not os.getenv(api_key_env):
+                missing_recommended.append(
+                    f"{model_id} (Missing {api_key_env} env var)"
                 )
 
-        if missing_models:
-            logger.error(
-                f"Missing essential model configurations or API keys: {missing_models}"
-            )
+        # Report results
+        if missing_essential:
+            logger.error(f"Missing ESSENTIAL model configurations: {missing_essential}")
+            logger.error("Kor'tana may not function properly without these models")
             return False
 
-        logger.info("All essential models properly configured for Sacred Covenant")
+        if missing_recommended:
+            logger.warning(
+                f"Missing RECOMMENDED model configurations: {missing_recommended}"
+            )
+            logger.warning("Some advanced features may not be available")
+
+        logger.info("Essential model configurations validated successfully")
+        if not missing_recommended:
+            logger.info(
+                "All recommended models properly configured - full functionality available"
+            )
+
         return True
-
-    @staticmethod
-    def get_client(
-        model_id: str, models_config: dict[str, Any] | None = None
-    ) -> BaseLLMClient | None:
-        """Get an LLM client for a specific model ID (backward compatibility method)."""
-        if models_config is None:
-            # Try to load default config - this is a fallback approach
-            try:
-                from kortana.config import load_config
-
-                config = load_config()
-                # Assume models_config is part of the config
-                models_config = getattr(config, "models", {})
-            except Exception as e:
-                logger.error(f"Failed to load models config: {e}")
-                return None
-
-        return LLMClientFactory.create_client(model_id, models_config)

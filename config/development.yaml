@@ -5,3 +5,8 @@ api:
 default_llm_id: "gpt-3.5-turbo"
 agents:
   default_llm_id: "gpt-3.5-turbo"
+
+# API Keys - Add your actual keys here
+api_keys:
+  openai: "your-openai-api-key-here"
+  anthropic: "your-anthropic-api-key-here"

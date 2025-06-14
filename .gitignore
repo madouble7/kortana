@@ -70,3 +70,26 @@ data/lit.log.jsonl
 *~
 
 .early.coverage
+
+# Additional ignores for cache, build, and archive folders
+**/__pycache__
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/.qodo
+**/.cacheme
+build
+dist
+**/*.egg-info
+coverage_html
+htmlcov
+test_outputs
+test-results
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/*.so
+**/*.coverage
+coverage.xml
+.coverage*
+archive/

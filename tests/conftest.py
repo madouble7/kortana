@@ -9,11 +9,19 @@ import os
 import sys
 
 import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+from src.kortana.services.database import Base
 
 # Add the src directory to the path so we can import modules
 sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
 )
+
+# Define a global test database engine
+engine_test = create_engine("sqlite:///:memory:", echo=False)
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine_test)
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -55,3 +63,13 @@ def setup_test_environment():
         del os.environ["TEST_API_KEY"]
     if "MODELS_CONFIG_PATH" in os.environ:
         del os.environ["MODELS_CONFIG_PATH"]
+
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_test_database():
+    """Set up the test database schema for all tests."""
+    # Create the schema
+    Base.metadata.create_all(bind=engine_test)
+    yield
+    # Drop the schema
+    Base.metadata.drop_all(bind=engine_test)

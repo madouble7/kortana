@@ -1,4 +1,0 @@
-Line 1 of test.
-Line 2 with "quotes" and 'apostrophes'.
-Line 3 has a tab:	 and a newline character here.
-Line 4 after explicit newline.

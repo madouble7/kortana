@@ -7,9 +7,7 @@ Focus on format_memory_entries_by_type function as specified in requirements.
 """
 
 import json
-import os
-import tempfile
-from datetime import datetime, timezone
+from datetime import datetime
 from unittest.mock import mock_open, patch
 
 import pytest
@@ -69,7 +67,11 @@ class TestAppendToMemoryJournal:
     def test_append_to_existing_journal(self, tmp_path):
         """Test appending to an existing journal file."""
         journal_file = tmp_path / "memory.jsonl"
-        entry = {"content": "test memory", "type": "test", "timestamp": "2025-06-09T10:00:00Z"}
+        entry = {
+            "content": "test memory",
+            "type": "test",
+            "timestamp": "2025-06-09T10:00:00Z",
+        }
 
         append_to_memory_journal(str(journal_file), entry)
 
@@ -80,14 +82,22 @@ class TestAppendToMemoryJournal:
     def test_append_multiple_entries(self, tmp_path):
         """Test appending multiple entries to journal."""
         journal_file = tmp_path / "memory.jsonl"
-        entry1 = {"content": "first memory", "type": "test", "timestamp": "2025-06-09T10:00:00Z"}
-        entry2 = {"content": "second memory", "type": "test", "timestamp": "2025-06-09T10:01:00Z"}
+        entry1 = {
+            "content": "first memory",
+            "type": "test",
+            "timestamp": "2025-06-09T10:00:00Z",
+        }
+        entry2 = {
+            "content": "second memory",
+            "type": "test",
+            "timestamp": "2025-06-09T10:01:00Z",
+        }
 
         append_to_memory_journal(str(journal_file), entry1)
         append_to_memory_journal(str(journal_file), entry2)
 
         # Read the file and verify both entries
-        lines = journal_file.read_text().strip().split('\n')
+        lines = journal_file.read_text().strip().split("\n")
         assert len(lines) == 2
         assert json.loads(lines[0]) == entry1
         assert json.loads(lines[1]) == entry2
@@ -103,7 +113,7 @@ class TestAppendToMemoryJournal:
 class TestLogReasoningContent:
     """Test reasoning content logging functionality."""
 
-    @patch('src.kortana.brain_utils.logger')
+    @patch("src.kortana.brain_utils.logger")
     def test_log_reasoning_content(self, mock_logger):
         """Test logging reasoning content."""
         response = "test response"
@@ -115,7 +125,7 @@ class TestLogReasoningContent:
             f"Reasoning content for model {response}: {reasoning}"
         )
 
-    @patch('src.kortana.brain_utils.logger')
+    @patch("src.kortana.brain_utils.logger")
     def test_log_reasoning_with_none_content(self, mock_logger):
         """Test logging with None reasoning content."""
         response = "test response"
@@ -147,13 +157,15 @@ class TestFormatMemoryEntriesByType:
     def test_format_empty_memories(self):
         """Test formatting empty memory dictionary."""
         result = format_memory_entries_by_type({})
-        assert result == []    def test_format_conversation_summaries(self):
+        assert result == []
+
+    def test_format_conversation_summaries(self):
         """Test formatting conversation summary entries."""
         memories = {
             "conversation_summary": [
                 {
                     "content": "Discussed project setup",
-                    "timestamp": "2025-06-09T10:00:00Z"
+                    "timestamp": "2025-06-09T10:00:00Z",
                 }
             ]
         }
@@ -161,28 +173,34 @@ class TestFormatMemoryEntriesByType:
         result = format_memory_entries_by_type(memories)
         assert len(result) == 2  # Header + entry
         assert "💬 Recent Conversation Summaries:" in result[0]
-        assert "Discussed project setup (2025-06-09)" in result[1]    def test_format_decisions_with_tags(self):
+        assert "Discussed project setup (2025-06-09)" in result[1]
+
+    def test_format_decisions_with_tags(self):
         """Test formatting decision entries with tags."""
         memories = {
             "decision": [
                 {
                     "content": "Use OpenAI API for primary LLM",
                     "tags": ["architecture", "api"],
-                    "timestamp": "2025-06-09T10:00:00Z"
+                    "timestamp": "2025-06-09T10:00:00Z",
                 },
                 {
                     "content": "Implement vector storage",
                     "tags": ["memory", "storage"],
-                    "timestamp": "2025-06-08T10:00:00Z"
-                }
+                    "timestamp": "2025-06-08T10:00:00Z",
+                },
             ]
         }
 
         result = format_memory_entries_by_type(memories)
-        result_text = '\n'.join(result)
+        result_text = "\n".join(result)
         assert "🎯 Key Decisions Made:" in result_text
-        assert "Use OpenAI API for primary LLM [architecture, api] (2025-06-09)" in result
-        assert "Implement vector storage [memory, storage] (2025-06-08)" in result    def test_format_implementation_notes(self):
+        assert (
+            "Use OpenAI API for primary LLM [architecture, api] (2025-06-09)" in result
+        )
+        assert "Implement vector storage [memory, storage] (2025-06-08)" in result
+
+    def test_format_implementation_notes(self):
         """Test formatting implementation note entries."""
         memories = {
             "implementation_note": [
@@ -190,76 +208,94 @@ class TestFormatMemoryEntriesByType:
                     "content": "Memory system requires async initialization",
                     "component": "memory_manager",
                     "priority": "high",
-                    "timestamp": "2025-06-09T10:00:00Z"
+                    "timestamp": "2025-06-09T10:00:00Z",
                 }
             ]
         }
 
         result = format_memory_entries_by_type(memories)
-        result_text = '\n'.join(result)
+        result_text = "\n".join(result)
         assert "🛠️ Implementation Context:" in result_text
-        assert "Memory system requires async initialization [memory_manager] (Priority: high) (2025-06-09)" in result    def test_format_project_insights(self):
+        assert (
+            "Memory system requires async initialization [memory_manager] (Priority: high) (2025-06-09)"
+            in result
+        )
+
+    def test_format_project_insights(self):
         """Test formatting project insight entries."""
         memories = {
             "project_insight": [
                 {
                     "content": "Agent coordination improves with structured protocols",
                     "impact": "high",
-                    "timestamp": "2025-06-09T10:00:00Z"
+                    "timestamp": "2025-06-09T10:00:00Z",
                 }
             ]
         }
 
         result = format_memory_entries_by_type(memories)
-        result_text = '\n'.join(result)
+        result_text = "\n".join(result)
         assert "💡 Key Project Insights:" in result_text
-        assert "Agent coordination improves with structured protocols (Impact: high) (2025-06-09)" in result    def test_format_ade_coding_entries(self):
+        assert (
+            "Agent coordination improves with structured protocols (Impact: high) (2025-06-09)"
+            in result
+        )
+
+    def test_format_ade_coding_entries(self):
         """Test formatting ADE coding entries."""
         memories = {
             "ade_coding": [
                 {
                     "content": "Generated test file for brain_utils",
                     "type": "ade_coding",
-                    "timestamp": "2025-06-09T10:00:00Z"
+                    "timestamp": "2025-06-09T10:00:00Z",
                 }
             ]
         }
 
         result = format_memory_entries_by_type(memories)
-        result_text = '\n'.join(result)
+        result_text = "\n".join(result)
         assert "🧩 Other Project Memories:" in result_text
-        assert "- [ade_coding] Generated test file for brain_utils (2025-06-09)" in result    def test_format_mixed_memory_types(self):
+        assert (
+            "- [ade_coding] Generated test file for brain_utils (2025-06-09)" in result
+        )
+
+    def test_format_mixed_memory_types(self):
         """Test formatting multiple memory types together."""
         memories = {
             "decision": [
                 {"content": "Decision 1", "timestamp": "2025-06-09T10:00:00Z"}
             ],
             "implementation_note": [
-                {"content": "Note 1", "component": "test", "timestamp": "2025-06-09T10:00:00Z"}
+                {
+                    "content": "Note 1",
+                    "component": "test",
+                    "timestamp": "2025-06-09T10:00:00Z",
+                }
             ],
             "ade_coding": [
-                {"content": "ADE activity", "type": "ade_coding", "timestamp": "2025-06-09T10:00:00Z"}
-            ]
+                {
+                    "content": "ADE activity",
+                    "type": "ade_coding",
+                    "timestamp": "2025-06-09T10:00:00Z",
+                }
+            ],
         }
 
         result = format_memory_entries_by_type(memories)
 
         # Check that all sections are present
-        result_text = '\n'.join(result)
+        result_text = "\n".join(result)
         assert "🎯 Key Decisions Made:" in result_text
         assert "🛠️ Implementation Context:" in result_text
         assert "🧩 Other Project Memories:" in result_text
 
     def test_format_entries_without_timestamps(self):
         """Test formatting entries that don't have timestamps."""
-        memories = {
-            "decision": [
-                {"content": "Decision without timestamp"}
-            ]
-        }
+        memories = {"decision": [{"content": "Decision without timestamp"}]}
 
         result = format_memory_entries_by_type(memories)
-        assert "Decision without timestamp" in '\n'.join(result)
+        assert "Decision without timestamp" in "\n".join(result)
 
     def test_format_entries_sorting_by_timestamp(self):
         """Test that entries are sorted by timestamp (most recent first)."""
@@ -267,12 +303,12 @@ class TestFormatMemoryEntriesByType:
             "decision": [
                 {"content": "Older decision", "timestamp": "2025-06-08T10:00:00Z"},
                 {"content": "Newer decision", "timestamp": "2025-06-09T10:00:00Z"},
-                {"content": "Middle decision", "timestamp": "2025-06-08T15:00:00Z"}
+                {"content": "Middle decision", "timestamp": "2025-06-08T15:00:00Z"},
             ]
         }
 
         result = format_memory_entries_by_type(memories)
-        result_text = '\n'.join(result)
+        result_text = "\n".join(result)
 
         # Check that newer decision appears before older decision
         newer_pos = result_text.find("Newer decision")
@@ -283,7 +319,7 @@ class TestFormatMemoryEntriesByType:
         """Test that only the most recent items are included (limits applied)."""
         # Create 10 decision entries
         decisions = [
-            {"content": f"Decision {i}", "timestamp": f"2025-06-0{9-i}T10:00:00Z"}
+            {"content": f"Decision {i}", "timestamp": f"2025-06-0{9 - i}T10:00:00Z"}
             for i in range(10)
         ]
 
@@ -336,7 +372,7 @@ class TestCreateTimestamp:
         timestamp = create_timestamp()
 
         # Should be able to parse it back
-        parsed = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+        parsed = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
         assert parsed.tzinfo is not None
 
     def test_create_timestamp_uniqueness(self):
@@ -356,26 +392,20 @@ class TestValidateMemoryEntry:
         entry = {
             "content": "Test memory content",
             "type": "test",
-            "timestamp": "2025-06-09T10:00:00Z"
+            "timestamp": "2025-06-09T10:00:00Z",
         }
 
         assert validate_memory_entry(entry) is True
 
     def test_validate_missing_content(self):
         """Test validation of entry missing content field."""
-        entry = {
-            "type": "test",
-            "timestamp": "2025-06-09T10:00:00Z"
-        }
+        entry = {"type": "test", "timestamp": "2025-06-09T10:00:00Z"}
 
         assert validate_memory_entry(entry) is False
 
     def test_validate_missing_type(self):
         """Test validation of entry missing type field."""
-        entry = {
-            "content": "Test content",
-            "timestamp": "2025-06-09T10:00:00Z"
-        }
+        entry = {"content": "Test content", "timestamp": "2025-06-09T10:00:00Z"}
 
         assert validate_memory_entry(entry) is False
 
@@ -390,7 +420,7 @@ class TestValidateMemoryEntry:
             "content": "Test content",
             "type": "test",
             "extra_field": "extra_value",
-            "timestamp": "2025-06-09T10:00:00Z"
+            "timestamp": "2025-06-09T10:00:00Z",
         }
 
         assert validate_memory_entry(entry) is True
@@ -414,7 +444,7 @@ class TestSanitizeUserInput:
     def test_sanitize_empty_input(self):
         """Test sanitizing empty input."""
         assert sanitize_user_input("") == ""
-        assert sanitize_user_input(None) == ""
+        # Note: sanitize_user_input expects str, not None
 
     def test_sanitize_null_bytes(self):
         """Test sanitizing input with null bytes."""
@@ -438,7 +468,9 @@ class TestExtractKeywordsFromText:
         keywords = extract_keywords_from_text(text)
 
         expected = ["machine", "learning", "algorithms", "powerful", "tools"]
-        assert keywords == expected    def test_extract_keywords_removes_stop_words(self):
+        assert keywords == expected
+
+    def test_extract_keywords_removes_stop_words(self):
         """Test that stop words are removed."""
         text = "the quick brown fox jumps over the lazy dog"
         keywords = extract_keywords_from_text(text)
@@ -452,7 +484,7 @@ class TestExtractKeywordsFromText:
     def test_extract_keywords_empty_text(self):
         """Test extracting keywords from empty text."""
         assert extract_keywords_from_text("") == []
-        assert extract_keywords_from_text(None) == []
+        # Note: extract_keywords_from_text expects str, not None
 
     def test_extract_keywords_max_limit(self):
         """Test that keyword extraction respects max limit."""

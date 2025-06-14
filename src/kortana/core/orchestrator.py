@@ -126,8 +126,8 @@ class KorOrchestrator:
         # 4. Evaluate the LLM response for ethical alignment
         evaluation = await self.arrogance_evaluator.evaluate_response(
             response_text=llm_response_content,
-            metadata=llm_response_metadata,  # Updated parameter name
-            query_context=query,  # Updated parameter name
+            llm_metadata=llm_response_metadata,
+            original_query_context=query,
         )
         print(f"--- Ethical Evaluation ---\n{evaluation}")  # Log evaluation
 

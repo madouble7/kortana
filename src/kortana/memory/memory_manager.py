@@ -13,20 +13,14 @@ from typing import Any
 # Modern Pinecone SDK import
 try:
     from pinecone import Pinecone  # Main import for Pinecone client v3+
-
     PINECONE_SDK_AVAILABLE = True
 except ImportError:
-    try:
-        import pinecone  # Fallback for older versions
-
-        Pinecone = pinecone.Pinecone
-        PINECONE_SDK_AVAILABLE = True
-    except ImportError:
-        Pinecone = None  # type: ignore  # Make linters aware Pinecone might be None
-        PINECONE_SDK_AVAILABLE = False
-        logging.getLogger(__name__).warning(
-            "Pinecone SDK not found. Pinecone features will be disabled."
-        )
+    # Disable Pinecone for now to avoid import issues
+    Pinecone = None  # type: ignore
+    PINECONE_SDK_AVAILABLE = False
+    logging.getLogger(__name__).warning(
+        "Pinecone SDK not found. Pinecone features will be disabled."
+    )
 
 from config.schema import KortanaConfig  # Assuming this path is now correct
 

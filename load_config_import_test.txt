@@ -1,1 +1,0 @@
-Successfully imported load_config from kortana.config

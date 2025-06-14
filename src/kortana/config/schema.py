@@ -86,8 +86,12 @@ class PathsConfig(BaseModel):
         description="Path to identity configuration file",
     )
     covenant_file_path: str = Field(
-        default="config/covenant.yaml",
+        default="covenant.yaml",
         description="Path to covenant configuration file",
+    )
+    models_config_file_path: str = Field(
+        default="config/models_config.json",
+        description="Path to LLM models configuration file",
     )
 
     # Memory system paths with user templating
@@ -143,6 +147,6 @@ class KortanaConfig(BaseModel):
     persona: PersonaConfig = Field(default_factory=PersonaConfig)
     paths: PathsConfig = Field(default_factory=PathsConfig)
     default_llm_id: str = Field(
-        default="gpt-4.1-nano", description="Default LLM model ID"
+        default="openai/gpt-4.1-nano", description="Default LLM model ID"
     )
     models: dict = Field(default_factory=dict, description="LLM models config")

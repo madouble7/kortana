@@ -7,11 +7,14 @@ from contextlib import asynccontextmanager  # For lifespan events
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.kortana.api.routers import core_router, goal_router, memory_router
+from src.kortana.api.routers import core_router, goal_router
 from src.kortana.core.scheduler import (
     get_scheduler_status,
     start_scheduler,
     stop_scheduler,
+)
+from src.kortana.modules.memory_core.routers.memory_router import (
+    router as memory_router,
 )
 
 
@@ -44,7 +47,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(memory_router.router)
+app.include_router(memory_router)
 app.include_router(core_router.router)
 app.include_router(goal_router.router)
 

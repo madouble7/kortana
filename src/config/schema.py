@@ -145,17 +145,90 @@ class CovenantConfig(BaseModel):
         extra = "allow"
 
 
-class KortanaConfig(BaseModel):
-    """Main Kortana configuration model."""
+class PathsConfig(BaseModel):
+    """Configuration for file system paths."""
 
-    # Core settings
+    # Core configuration files
+    persona_file_path: str = Field(
+        default="config/persona.json", description="Path to persona configuration file"
+    )
+    identity_file_path: str = Field(
+        default="config/identity.json",
+        description="Path to identity configuration file",
+    )
+    covenant_file_path: str = Field(
+        default="covenant.yaml",
+        description="Path to covenant configuration file",
+    )
+
+    # Memory system paths with user templating
+    memory_journal_path: str = Field(
+        default="data/memory/{user}/memory_journal.jsonl",
+        description="Path to memory journal file. {user} will be replaced with username",
+    )
+    heart_log_path: str = Field(
+        default="data/memory/{user}/heart_log.jsonl",
+        description="Path to heart memory log. {user} will be replaced with username",
+    )
+    soul_index_path: str = Field(
+        default="data/memory/{user}/soul_index.jsonl",
+        description="Path to soul index file. {user} will be replaced with username",
+    )
+    lit_log_path: str = Field(
+        default="data/memory/{user}/lit_log.jsonl",
+        description="Path to lit log file. {user} will be replaced with username",
+    )
+    project_memory_file_path: str = Field(
+        default="data/memory/{user}/project_memory.jsonl",
+        description="Path to project memory file. {user} will be replaced with username",
+    )
+
+    # Directory paths
+    config: str = Field(default="config", description="Configuration directory")
+    data: str = Field(default="data", description="Data directory")
+    logs: str = Field(default="logs", description="Logs directory")
+    models: str = Field(default="models", description="Models directory")
+
+    def get_user_paths(self, user_name: str) -> dict[str, str]:
+        """Get all memory paths with user name substituted.
+
+        Args:
+            user_name: The username to substitute into path templates.
+
+        Returns:
+            Dictionary of path names to concrete paths with username substituted.
+        """
+        memory_paths = {
+            "memory_journal_path": self.memory_journal_path,
+            "heart_log_path": self.heart_log_path,
+            "soul_index_path": self.soul_index_path,
+            "lit_log_path": self.lit_log_path,
+            "project_memory_file_path": self.project_memory_file_path,
+        }
+        return {k: v.format(user=user_name) for k, v in memory_paths.items()}
+
+
+class ApiKeysConfig(BaseModel):
+    """Configuration for API keys."""
+
+    openai: str | None = Field(default=None, description="OpenAI API key")
+    # Add other API keys as needed
+
+    class Config:
+        extra = "allow"
+
+
+class KortanaConfig(BaseModel):
+    """Main Kortana configuration model."""  # Core settings
+
     debug: bool = Field(default=False, description="Debug mode")
     log_level: str = Field(default="INFO", description="Logging level")
     environment: str = Field(
         default="development", description="Environment (development/production)"
     )
-
-    # Component configurations
+    default_llm_id: str = Field(
+        default="gpt-4.1-nano", description="Default LLM model ID"
+    )  # Component configurations
     agents: AgentsConfig = Field(
         default_factory=AgentsConfig, description="Agents configuration"
     )
@@ -165,22 +238,31 @@ class KortanaConfig(BaseModel):
     persona: PersonaConfig = Field(
         default_factory=PersonaConfig, description="Persona configuration"
     )
+    paths: PathsConfig = Field(
+        default_factory=PathsConfig, description="File system paths configuration"
+    )
     llm: LLMConfig = Field(default_factory=LLMConfig, description="LLM configuration")
     covenant: CovenantConfig = Field(
         default_factory=CovenantConfig, description="Covenant configuration"
     )
+    api_keys: ApiKeysConfig = Field(
+        default_factory=ApiKeysConfig, description="API keys configuration"
+    ) # Added api_keys
 
     # API settings
     api_host: str = Field(default="localhost", description="API host")
-    api_port: int = Field(default=8000, description="API port")
-
-    # File paths
+    api_port: int = Field(default=8000, description="API port")  # File paths
     config_dir: str = Field(default="config", description="Configuration directory")
     data_dir: str = Field(default="data", description="Data directory")
-    logs_dir: str = Field(
-        default="logs", description="Logs directory"
-    ) @ field_validator("log_level", mode="after")
+    logs_dir: str = Field(default="logs", description="Logs directory")
 
+    def get_api_key(self, provider: str) -> str | None:
+        """Get API key for a specific provider."""
+        if hasattr(self.api_keys, provider):
+            return getattr(self.api_keys, provider)
+        return None
+
+    @field_validator("log_level", mode="after")
     @classmethod
     def validate_log_level(cls, v):
         valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
@@ -202,31 +284,57 @@ class KortanaConfig(BaseModel):
 
 def load_config_from_env() -> KortanaConfig:
     """Load configuration with environment variable overrides."""
-
-    # Start with defaults
-    config_data = {}
+    # Start with default configuration
+    config = KortanaConfig()
 
     # Override with environment variables
-    if os.getenv("KORTANA_DEBUG"):
-        config_data["debug"] = os.getenv("KORTANA_DEBUG").lower() == "true"
+    debug_env = os.getenv("KORTANA_DEBUG")
+    if debug_env is not None:
+        config.debug = debug_env.lower() == "true"
 
-    if os.getenv("KORTANA_LOG_LEVEL"):
-        config_data["log_level"] = os.getenv("KORTANA_LOG_LEVEL")
+    log_level_env = os.getenv("KORTANA_LOG_LEVEL")
+    if log_level_env is not None:
+        config.log_level = log_level_env
 
-    if os.getenv("KORTANA_ENVIRONMENT"):
-        config_data["environment"] = os.getenv("KORTANA_ENVIRONMENT")
+    environment_env = os.getenv("KORTANA_ENVIRONMENT")
+    if environment_env is not None:
+        config.environment = environment_env
 
     # Memory configuration from environment
-    memory_config = {}
-    if os.getenv("PINECONE_API_KEY"):
-        memory_config["pinecone_api_key"] = os.getenv("PINECONE_API_KEY")
-    if os.getenv("PINECONE_ENVIRONMENT"):
-        memory_config["pinecone_environment"] = os.getenv("PINECONE_ENVIRONMENT")
+    pinecone_api_key = os.getenv("PINECONE_API_KEY")
+    pinecone_environment = os.getenv("PINECONE_ENVIRONMENT")
 
-    if memory_config:
-        config_data["memory"] = memory_config
+    if pinecone_api_key is not None or pinecone_environment is not None:
+        # Update memory config
+        memory_updates: dict[str, Any] = {}
+        if pinecone_api_key is not None:
+            memory_updates["pinecone_api_key"] = pinecone_api_key
+        if pinecone_environment is not None:
+            memory_updates["pinecone_environment"] = pinecone_environment
 
-    return KortanaConfig(**config_data)
+        # Create new memory config with updates
+        # Use model_dump() for Pydantic v2, or dict() for Pydantic v1
+        try:
+            # Attempt Pydantic v2 model_dump()
+            current_memory_data = config.memory.model_dump()
+        except AttributeError:
+            # Fallback to Pydantic v1 dict()
+            current_memory_data = config.memory.dict()
+
+        config.memory = MemoryConfig(**{**current_memory_data, **memory_updates})
+
+    # Add overrides for other configs as needed
+    # Example for LLMConfig:
+    default_llm_model_env = os.getenv("KORTANA_DEFAULT_LLM_MODEL")
+    if default_llm_model_env is not None:
+         try:
+            current_llm_data = config.llm.model_dump()
+         except AttributeError:
+            current_llm_data = config.llm.dict()
+         config.llm = LLMConfig(**{**current_llm_data, "default_model": default_llm_model_env})
+
+
+    return config
 
 
 def create_default_config() -> KortanaConfig:
@@ -243,6 +351,8 @@ __all__ = [
     "PersonaConfig",
     "LLMConfig",
     "CovenantConfig",
+    "PathsConfig", # Added PathsConfig to __all__
+    "ApiKeysConfig", # Added ApiKeysConfig to __all__
     "load_config_from_env",
     "create_default_config",
 ]

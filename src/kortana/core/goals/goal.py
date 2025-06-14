@@ -84,6 +84,9 @@ class Goal:
     covenant_approval: bool | None = None  # Whether goal passed covenant check
     covenant_feedback: str | None = None  # Feedback from covenant check
 
+    # Add dynamic priority attribute
+    dynamic_priority: float = field(default=0.0)
+
     def update_status(self, new_status: GoalStatus) -> None:
         """Update goal status with proper timestamp tracking"""
         self.status = new_status

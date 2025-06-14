@@ -19,6 +19,7 @@ class MemoryType(enum.Enum):
 
 class CoreMemory(Base):
     __tablename__ = "core_memories"
+    __table_args__ = {"extend_existing": True}
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     memory_type = Column(
@@ -52,6 +53,7 @@ class CoreMemory(Base):
 
 class MemorySentiment(Base):
     __tablename__ = "memory_sentiments"
+    __table_args__ = {"extend_existing": True}
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     memory_id = Column(Integer, ForeignKey("core_memories.id"), nullable=False)

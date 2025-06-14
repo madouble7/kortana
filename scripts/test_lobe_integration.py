@@ -37,7 +37,7 @@ def send_request(url, api_key, message, conversation_id=None):
         try:
             error_body = json.loads(e.read().decode("utf-8"))
             print(f"Error details: {error_body}")
-        except:
+        except Exception:
             print("Could not parse error response")
         return None, e.code
 

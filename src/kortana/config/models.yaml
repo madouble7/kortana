@@ -1,0 +1,82 @@
+# src/kortana/config/models.yaml
+# This is the SINGLE SOURCE OF TRUTH for all model configurations.
+# It has been updated to include only the specified models.
+
+models:
+  # --- Premium Models (via OpenRouter) ---
+
+  - id: "google/gemini-2.5-flash-preview-05-20"
+    name: "Google: Gemini 2.5 Flash Preview 05-20"
+    provider: "openrouter"
+    context_window: 1048576
+    cost_tier: "value"
+    cost_per_1m_input: 0.15
+    cost_per_1m_output: 0.60
+    capabilities: ["fast", "long_context", "vision", "function_call"]
+
+  - id: "openai/gpt-4.1-nano"
+    name: "OpenAI: GPT-4.1 Nano"
+    provider: "openrouter"
+    context_window: 1047576
+    cost_tier: "standard"
+    cost_per_1m_input: 0.10
+    cost_per_1m_output: 0.40
+    capabilities: ["fast", "long_context", "default_choice", "function_call"]
+
+  - id: "meta-llama/llama-4-maverick"
+    name: "Meta: Llama 4 Maverick"
+    provider: "openrouter"
+    context_window: 1048576
+    cost_tier: "value"
+    cost_per_1m_input: 0.15
+    cost_per_1m_output: 0.60
+    capabilities: ["strong_reasoning", "long_context", "best_for_analysis"]
+
+  - id: "google/gemini-2.0-flash-001"
+    name: "Google: Gemini 2.0 Flash"
+    provider: "openrouter"
+    context_window: 1048576
+    cost_tier: "standard"
+    cost_per_1m_input: 0.10
+    cost_per_1m_output: 0.40
+    capabilities: ["fast", "long_context", "vision", "function_call"]
+
+  - id: "x-ai/grok-3-mini-beta"
+    name: "xAI: Grok 3 Mini Beta"
+    provider: "openrouter"
+    context_window: 131072
+    cost_tier: "premium"
+    cost_per_1m_input: 0.30
+    cost_per_1m_output: 0.50
+    capabilities: ["strong_reasoning", "creative_writing", "best_for_planning"]
+
+  # --- Free Models ---
+
+  - id: "deepseek/deepseek-r1-0528:free"
+    name: "DeepSeek: R1 0528 (Free)"
+    provider: "openrouter"
+    context_window: 163840
+    cost_tier: "free"
+    cost_per_1m_input: 0.0
+    cost_per_1m_output: 0.0
+    capabilities: ["strong_reasoning", "cheapest", "free_planning"]
+
+  - id: "deepseek/deepseek-r1-0528-qwen3-8b:free"
+    name: "DeepSeek: R1 0528 Qwen3 8B (Free)"
+    provider: "openrouter"
+    context_window: 131072
+    cost_tier: "free"
+    cost_per_1m_input: 0.0
+    cost_per_1m_output: 0.0
+    capabilities: ["fast", "cheapest", "free_default"]
+
+# Default model selections optimized for cost and capability
+default_routing:
+  default_chat: "openai/gpt-4.1-nano"
+  default_planning: "x-ai/grok-3-mini-beta"
+  default_analysis: "meta-llama/llama-4-maverick"
+  default_vision: "google/gemini-2.5-flash-preview-05-20"
+  default_fast: "google/gemini-2.0-flash-001"
+  # Free tier defaults
+  default_free_fast: "deepseek/deepseek-r1-0528-qwen3-8b:free"
+  default_free_planning: "deepseek/deepseek-r1-0528:free"

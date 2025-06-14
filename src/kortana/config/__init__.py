@@ -13,7 +13,7 @@ import yaml
 from .schema import (
     AgentsConfig,
     AgentTypeConfig,
-    KortanaConfig,
+    KortanaConfig,  # Ensure KortanaConfig is imported
     MemoryConfig,
     PathsConfig,
     PersonaConfig,
@@ -25,35 +25,49 @@ def get_project_root() -> Path:
     return Path(__file__).parent.parent.parent.parent
 
 
-def load_config(config_path: str | None = None) -> dict:
+def load_config(config_path: str | None = None) -> KortanaConfig:  # Changed return type
     """
-    Load configuration from config file.
+    Load configuration from config file and parse into KortanaConfig object.
 
     Args:
         config_path: Optional path to config file. If None, uses default config.yaml
 
     Returns:
-        Configuration dictionary
+        KortanaConfig object
     """
     if config_path is None:
-        config_path = os.path.join(get_project_root(), "config.yaml")
+        # Assuming get_project_root() correctly points to c:\\project-kortana
+        config_path_obj = get_project_root() / "config.yaml"
+        config_path = str(config_path_obj)
 
+    config_data = {}
     try:
-        # First try to load from file
         if os.path.exists(config_path):
             with open(config_path, encoding="utf-8") as f:
-                config_data = yaml.safe_load(f) or {}
-            return config_data
+                loaded_yaml = yaml.safe_load(f)
+                if loaded_yaml is not None:
+                    config_data = loaded_yaml
+                else:
+                    print(
+                        f"Warning: Config file at {config_path} is empty or invalid YAML. Using defaults."
+                    )
         else:
-            # If no config file, use environment variables and defaults
             print(
-                f"Config file not found at {config_path}, using environment variables and defaults"
+                f"Config file not found at {config_path}, using default KortanaConfig values."
             )
-            return {}
+
+        # Parse the dictionary into KortanaConfig object
+        # If config_data is empty, this will use default_factory for nested models
+        return KortanaConfig(**config_data)
+
+    except yaml.YAMLError as e:
+        print(f"Error parsing YAML from {config_path}: {e}")
+        print("Using default KortanaConfig due to YAML parsing error.")
+        return KortanaConfig()  # Return default config on YAML error
     except Exception as e:
-        print(f"Error loading config from {config_path}: {e}")
-        print("Using default configuration")
-        return {}
+        print(f"Error loading or parsing config from {config_path}: {e}")
+        print("Using default KortanaConfig due to an unexpected error.")
+        return KortanaConfig()  # Return default config on other errors
 
 
 def get_config(key: str | None = None, config_path: str | None = None) -> Any:

@@ -1,8 +1,5 @@
 """
-Goalfrom kortana.core.execution_engine import ExecutionEngine
-from kortana.core.goals.goal import Goal, GoalStatus
-from kortana.core.goals.manager import GoalManager
-from kortana.core.planning_engine import PlanningEngineine for Kor'tana's Autonomous Development System.
+Goal Engine for Kor'tana's Autonomous Development System.
 
 This component orchestrates the process of goal processing and execution.
 """
@@ -10,10 +7,10 @@ This component orchestrates the process of goal processing and execution.
 import asyncio
 import logging
 
-from kortana.core.execution_engine import ExecutionEngine
-from kortana.core.goals.goal import Goal, GoalStatus
-from kortana.core.goals.manager import GoalManager
-from kortana.core.planning_engine import PlanningEngine
+from ..execution_engine import ExecutionEngine
+from ..planning_engine import PlanningEngine
+from .goal import Goal, GoalStatus
+from .manager import GoalManager
 
 logger = logging.getLogger(__name__)
 
@@ -92,13 +89,57 @@ class GoalEngine:
                 result = {}
                 try:
                     if action_type == "READ_FILE":
-                        result = self.execution_engine.read_file(**params)
-                        if result.get("success"):
-                            execution_context[f"step_{i + 1}"] = result.get("content")
+                        result_obj = await self.execution_engine.read_file(**params)
+                        result = {
+                            "success": result_obj.success,
+                            "data": result_obj.data,
+                            "error": result_obj.error,
+                        }
+                        if result_obj.success:
+                            execution_context[f"step_{i + 1}"] = result_obj.data
                     elif action_type == "WRITE_FILE":
-                        result = self.execution_engine.write_to_file(**params)
+                        result_obj = await self.execution_engine.write_to_file(**params)
+                        result = {
+                            "success": result_obj.success,
+                            "data": result_obj.data,
+                            "error": result_obj.error,
+                        }
                     elif action_type == "EXECUTE_SHELL":
-                        result = self.execution_engine.execute_shell_command(**params)
+                        result_obj = await self.execution_engine.execute_shell_command(
+                            **params
+                        )
+                        result = {
+                            "success": result_obj.success,
+                            "data": result_obj.data,
+                            "error": result_obj.error,
+                        }
+                    elif action_type == "SEARCH_CODEBASE":
+                        result_obj = await self.execution_engine.search_codebase(
+                            **params
+                        )
+                        result = {
+                            "success": result_obj.success,
+                            "data": result_obj.data,
+                            "error": result_obj.error,
+                        }
+                        if result_obj.success:
+                            execution_context[f"step_{i + 1}"] = result_obj.data
+                    elif action_type == "APPLY_PATCH":
+                        result_obj = await self.execution_engine.apply_patch(**params)
+                        result = {
+                            "success": result_obj.success,
+                            "data": result_obj.data,
+                            "error": result_obj.error,
+                        }
+                    elif action_type == "RUN_TESTS":
+                        result_obj = await self.execution_engine.run_tests(**params)
+                        result = {
+                            "success": result_obj.success,
+                            "data": result_obj.data,
+                            "error": result_obj.error,
+                        }
+                        if result_obj.success:
+                            execution_context[f"step_{i + 1}"] = result_obj.data
                     elif action_type == "REASONING_COMPLETE":
                         result = {
                             "success": True,

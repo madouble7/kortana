@@ -65,7 +65,8 @@ class ModelOptimizer:
                 self._get_budget_model(),
                 "Budget optimization",
             )  # Route based on conversation type
-        # routing_rules = self.config.get("routing_rules", {})  # TODO: Implement
+        # NOTE: Future: implement routing_rules for more granular model selection.
+        # routing_rules = self.config.get("routing_rules", {})
         # routing rules
 
         if context.conversation_type == "memory":

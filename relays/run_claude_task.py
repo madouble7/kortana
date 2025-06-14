@@ -46,7 +46,7 @@ def read_new_lines():
     with open(SEEN, "w") as f:
         f.write(str(len(lines)))
 
-    return [l.strip() for l in new_lines if l.strip()]
+    return [line.strip() for line in new_lines if line.strip()]
 
 
 def handle_message(msg):

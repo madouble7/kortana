@@ -1,19 +1,16 @@
 import os
-
-# Import Kortana settings and database
 import sys
 from logging.config import fileConfig
 
+from sqlalchemy import engine_from_config, pool
+
 from alembic import context
-from sqlalchemy.engine import Connection
 
-# Modify sys.path manipulation
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+# This line allows for imports from the project root
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+)
 
-from src.kortana.config.settings import settings
-
-# Import models for autogenerate support
-from src.kortana.services.database import Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -28,13 +25,12 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
+# --- KORTANA INTEGRATION START ---
+from src.kortana.config.settings import settings  # Import settings for DB URL
+from src.kortana.services.database import Base  # Import Base from your application
+
 target_metadata = Base.metadata
-
-# Configure the database URL from settings
-# For SQLite, we'll use sync mode for migrations
-
-# New URL configuration for offline mode
-url = settings.ALEMBIC_DATABASE_URL
+# --- KORTANA INTEGRATION END ---
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -54,7 +50,9 @@ def run_migrations_offline() -> None:
     script output.
 
     """
+    # --- KORTANA INTEGRATION START ---
     url = settings.ALEMBIC_DATABASE_URL
+    # --- KORTANA INTEGRATION END ---
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -66,22 +64,32 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
-def do_run_migrations(connection: Connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata)
-
-    with context.begin_transaction():
-        context.run_migrations()
-
-
 def run_migrations_online() -> None:
-    """Run migrations in 'online' mode."""
-    from sqlalchemy import create_engine
+    """Run migrations in 'online' mode.
 
-    connectable = create_engine(settings.ALEMBIC_DATABASE_URL)
+    In this scenario we need to create an Engine
+    and associate a connection with the context.
+
+    """
+    # --- KORTANA INTEGRATION START ---
+    # This configuration section is modified to use Kortana's settings
+    connectable_config = config.get_section(config.config_ini_section)
+    if connectable_config is None:
+        connectable_config = {}  # provide an empty dict if section not found
+    connectable_config["sqlalchemy.url"] = settings.ALEMBIC_DATABASE_URL
+
+    connectable = engine_from_config(
+        connectable_config,  # Use the modified config
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
+    )
+    # --- KORTANA INTEGRATION END ---
 
     with connectable.connect() as connection:
         context.configure(connection=connection, target_metadata=target_metadata)
-        context.run_migrations()
+
+        with context.begin_transaction():
+            context.run_migrations()
 
 
 if context.is_offline_mode():

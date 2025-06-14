@@ -9,6 +9,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 
+from kortana.core.services import get_execution_engine, get_memory_core_service
+
 logger = logging.getLogger(__name__)
 
 
@@ -37,12 +39,9 @@ class Goal:
 
 class GoalEngine:
     def __init__(self):
-        # Import here to avoid circular imports
-        from kortana.core.execution_engine import execution_engine
-        from kortana.services.memory_system import memory_manager
-
-        self.execution_engine = execution_engine
-        self.memory_manager = memory_manager
+        # Get services from centralized service locator
+        self.execution_engine = get_execution_engine()
+        self.memory_manager = get_memory_core_service()
 
     def scan_environment(self) -> list[Goal]:
         """

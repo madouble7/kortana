@@ -17,9 +17,7 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
-def format_timestamp(
-    compact: bool = False, dt_object: datetime | None = None
-) -> str:
+def format_timestamp(compact: bool = False, dt_object: datetime | None = None) -> str:
     """
     Returns the current UTC timestamp or a provided datetime object's timestamp
     in a human-readable or compact ISO format.
@@ -301,7 +299,7 @@ def count_tokens(text: str) -> int:
         int: The number of tokens (approximate).
     """
     # TODO: Implement actual token counting logic (e.g., using tiktoken or a similar library)
-    # This is a mock implementation
+    # NOTE: Placeholder implementation. Replace with tiktoken or similar for accurate token counting.
     return len(text.split())  # Very basic word count as a placeholder
 
 
@@ -317,7 +315,7 @@ def summarize_text(text: str, max_tokens: int) -> str:
         str: The summarized text.
     """
     # TODO: Implement actual text summarization logic
-    # This is a mock implementation
+    # NOTE: Placeholder implementation. Integrate a real summarization model or API in the future.
     return text  # Return original text as a placeholder
 
 
@@ -332,5 +330,5 @@ def extract_keywords(text: str) -> list[str]:
         List[str]: A list of extracted keywords.
     """
     # TODO: Implement actual keyword extraction logic
-    # This is a mock implementation
+    # NOTE: Placeholder implementation. Integrate a real keyword extraction method in the future.
     return []  # Return empty list as a placeholder

@@ -84,7 +84,7 @@ class AgentTypeConfig(BaseModel):
 
     enabled: bool = True
     max_tasks: int = Field(default=10, ge=1, le=100)
-    model_mapping: dict[str, str] = Field(default_factory=dict)
+    agent_model_mapping: dict[str, str] = Field(default_factory=dict)
     coding: dict[str, Any] = {}
     planning: dict[str, Any] = {}
     testing: dict[str, Any] = {}
@@ -161,7 +161,7 @@ class PathsConfig(BaseModel):
     models_config_file_path: str = "config/models_config.json"
     sacred_trinity_config_file_path: str = "config/sacred_trinity_config.json"
     project_memory_file_path: str = "data/project_memory.jsonl"
-    covenant_file_path: str = "config/covenant.yaml"
+    covenant_file_path: str = "covenant.yaml"
     memory_journal_path: str = "data/memory_journal.jsonl"
     reasoning_log_path: str = "data/reasoning.jsonl"
     heart_log_path: str = "data/heart.log"
@@ -223,15 +223,15 @@ class KortanaConfig(BaseSettings):
                 except Exception as e:
                     raise ValueError(
                         f"Cannot create path {path_value} for {path_name}: {e}"
-                    )
+                    ) from e
         return paths
 
     @field_validator("api_keys", mode="before")
     @classmethod
     def resolve_environment_variables(cls, v):
-        """Resolve environment variables in API keys"""
+        """Resolve environment variables in API keys and ensure proper type"""
         if not v:
-            return v
+            return None
 
         if isinstance(v, dict):
             resolved = {}
@@ -245,7 +245,10 @@ class KortanaConfig(BaseSettings):
                     resolved[key] = os.getenv(env_var)
                 else:
                     resolved[key] = value
+            # Always convert dict to APIKeysConfig
             return APIKeysConfig(**resolved)
+        elif isinstance(v, APIKeysConfig):
+            return v
         return v
 
     def get_api_key(self, provider: str) -> str | None:

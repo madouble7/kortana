@@ -1,19 +1,166 @@
 {
   "models": {
-    "gemini-1.5-flash": {
-      "provider": "google",
-      "api": "google_gemini",
-      "api_key_env": "GOOGLE_API_KEY",
-      "model_name": "gemini-1.5-flash",
-      "style": "presence"
+    "google/gemini-2.5-flash-preview-05-20": {
+      "provider": "openrouter",
+      "api": "openrouter",
+      "api_key_env": "OPENROUTER_API_KEY",
+      "model_name": "google/gemini-2.5-flash-preview-05-20",
+      "base_url": "https://openrouter.ai/api/v1",
+      "style": "presence",
+      "cost_per_1m_input": 0.15,
+      "cost_per_1m_output": 0.60,
+      "context_window": 1048576,
+      "capabilities": [
+        "text",
+        "vision",
+        "function_call",
+        "long_context"
+      ],
+      "default_params": {
+        "temperature": 0.7,
+        "max_tokens": 4096
+      }
+    },
+    "openai/gpt-4.1-nano": {
+      "provider": "openrouter",
+      "api": "openrouter",
+      "api_key_env": "OPENROUTER_API_KEY",
+      "model_name": "openai/gpt-4.1-nano",
+      "base_url": "https://openrouter.ai/api/v1",
+      "style": "presence",
+      "cost_per_1m_input": 0.10,
+      "cost_per_1m_output": 0.40,
+      "context_window": 1047576,
+      "capabilities": [
+        "text",
+        "function_call",
+        "long_context",
+        "fast"
+      ],
+      "default_params": {
+        "temperature": 0.7,
+        "max_tokens": 4096
+      }
+    },
+    "meta-llama/llama-4-maverick": {
+      "provider": "openrouter",
+      "api": "openrouter",
+      "api_key_env": "OPENROUTER_API_KEY",
+      "model_name": "meta-llama/llama-4-maverick",
+      "base_url": "https://openrouter.ai/api/v1",
+      "style": "tactical",
+      "cost_per_1m_input": 0.15,
+      "cost_per_1m_output": 0.60,
+      "context_window": 1048576,
+      "capabilities": [
+        "text",
+        "reasoning",
+        "analysis",
+        "long_context"
+      ],
+      "default_params": {
+        "temperature": 0.7,
+        "max_tokens": 4096
+      }
+    },
+    "google/gemini-2.0-flash-001": {
+      "provider": "openrouter",
+      "api": "openrouter",
+      "api_key_env": "OPENROUTER_API_KEY",
+      "model_name": "google/gemini-2.0-flash-001",
+      "base_url": "https://openrouter.ai/api/v1",
+      "style": "presence",
+      "cost_per_1m_input": 0.10,
+      "cost_per_1m_output": 0.40,
+      "context_window": 1048576,
+      "capabilities": [
+        "text",
+        "vision",
+        "function_call",
+        "long_context",
+        "fast"
+      ],
+      "default_params": {
+        "temperature": 0.7,
+        "max_tokens": 4096
+      }
+    },
+    "x-ai/grok-3-mini-beta": {
+      "provider": "openrouter",
+      "api": "openrouter",
+      "api_key_env": "OPENROUTER_API_KEY",
+      "model_name": "x-ai/grok-3-mini-beta",
+      "base_url": "https://openrouter.ai/api/v1",
+      "style": "fire",
+      "cost_per_1m_input": 0.30,
+      "cost_per_1m_output": 0.50,
+      "context_window": 131072,
+      "capabilities": [
+        "text",
+        "reasoning",
+        "creative_writing"
+      ],
+      "default_params": {
+        "temperature": 0.85,
+        "max_tokens": 4096
+      }
+    },
+    "deepseek/deepseek-r1-0528:free": {
+      "provider": "openrouter",
+      "api": "openrouter",
+      "api_key_env": "OPENROUTER_API_KEY",
+      "model_name": "deepseek/deepseek-r1-0528:free",
+      "base_url": "https://openrouter.ai/api/v1",
+      "style": "tactical",
+      "cost_per_1m_input": 0.0,
+      "cost_per_1m_output": 0.0,
+      "context_window": 163840,
+      "capabilities": [
+        "text",
+        "reasoning",
+        "free"
+      ],
+      "default_params": {
+        "temperature": 0.7,
+        "max_tokens": 4096
+      }
+    },
+    "deepseek/deepseek-r1-0528-qwen3-8b:free": {
+      "provider": "openrouter",
+      "api": "openrouter",
+      "api_key_env": "OPENROUTER_API_KEY",
+      "model_name": "deepseek/deepseek-r1-0528-qwen3-8b:free",
+      "base_url": "https://openrouter.ai/api/v1",
+      "style": "presence",
+      "cost_per_1m_input": 0.0,
+      "cost_per_1m_output": 0.0,
+      "context_window": 131072,
+      "capabilities": [
+        "text",
+        "fast",
+        "free"
+      ],
+      "default_params": {
+        "temperature": 0.7,
+        "max_tokens": 4096
+      }
     }
   },
+  "routing": {
+    "general_chat": "openai/gpt-4.1-nano",
+    "reasoning_tasks": "deepseek/deepseek-r1-0528:free",
+    "analysis": "meta-llama/llama-4-maverick",
+    "creative_writing": "x-ai/grok-3-mini-beta",
+    "vision_tasks": "google/gemini-2.5-flash-preview-05-20",
+    "fast_free": "deepseek/deepseek-r1-0528-qwen3-8b:free",
+    "free_tier": "deepseek/deepseek-r1-0528:free"
+  },
   "default": {
-    "model": "gemini-1.5-flash",
+    "model": "deepseek/deepseek-r1-0528-qwen3-8b:free",
     "style": "presence"
   },
   "fallback": {
-    "model": "gemini-1.5-flash",
+    "model": "openai/gpt-4.1-nano",
     "style": "presence"
   }
 }

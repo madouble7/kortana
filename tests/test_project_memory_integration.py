@@ -1,22 +1,20 @@
+"""Test suite for project memory integration"""
+
 import json
 import logging
 import os
 import sys
 import unittest
+from pathlib import Path
+from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
-# Configure logging for this diagnostic burst (basic console output). This should happen first.
-# Note: basicConfig should ideally be called only once at the application entry point.
-# Calling it here might not reconfigure logging if it was already set up by unittest.
-# However, we include it here for self-containment of this diagnostic step.
-try:
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
-    )
-except Exception:
-    # logging might already be configured
-    pass
+# Configure logging for this diagnostic burst (basic console output)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+    force=True,  # Ensures reconfiguration even if already configured
+)
 
 logger = logging.getLogger(__name__)
 _module_file_path = os.path.abspath(__file__)
@@ -27,41 +25,21 @@ logger.info(
 logger.info(f"[FLASH_DIAG] sys.path at {__name__} import: {sys.path}")
 logger.info(f"[FLASH_DIAG] CWD at {__name__} import: {os.getcwd()}")
 
-import os  # For absolute paths
-import sys
+# Imports from src
+try:
+    from src.core import memory
+    from src.kortana.core.brain import ChatEngine
+except ImportError as e:
+    logger.error(f"Failed to import required modules: {e}")
+    raise
 
-print("--- TRACE (tests/test_project_memory_integration.py): sys.path ---")
-for p in sys.path:
-    print(p)
-print(
-    "--- TRACE (tests/test_project_memory_integration.py): sys.modules keys (first 20 + relevant) ---"
-)
-keys_to_print_test = list(sys.modules.keys())[:20]
-relevant_keys_test = [
-    k
-    for k in sys.modules.keys()
-    if "kortana" in k or "autonomous_agents" in k or "brain" in k or "coding_agent" in k
-]
-for rk_test in relevant_keys_test:
-    if rk_test not in keys_to_print_test:
-        keys_to_print_test.append(rk_test)
-for key_test in sorted(set(keys_to_print_test)):
-    try:
-        print(
-            f"{key_test}: {sys.modules[key_test].__file__ if hasattr(sys.modules[key_test], '__file__') else 'Built-in or no __file__'}"
-        )
-    except Exception:
-        print(f"{key_test}: Error accessing __file__ or built-in module")
-print("--- END TRACE (tests/test_project_memory_integration.py) ---")
+# Constants
+DEFAULT_SUMMARY_THRESHOLD = 20  # This should ideally be imported from config
 
 # Add the src directory to the path so we can import modules
 sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
 )
-
-# Import the modules we want to test
-from src.brain import ChatEngine
-from src.core import memory
 
 """
 Integration tests for Kor'tana's memory system.
@@ -78,7 +56,9 @@ TEST_MEMORY_FILE = os.path.join(os.path.dirname(__file__), "temp_project_memory.
 memory.PROJECT_MEMORY_PATH = TEST_MEMORY_FILE
 
 
-class TestProjectMemoryIntegration(unittest.TestCase):
+class TestProjectMemoryIntegration(TestCase):
+    """Test class for Project Memory integration tests."""
+
     def setUp(self):
         """Set up test environment: create a dummy memory file and ChatEngine."""
         # Ensure a clean test memory file for each test

@@ -96,7 +96,7 @@ def main():
             try:
                 proc.terminate()
                 print(f"Stopped {name}")
-            except:
+            except Exception:
                 pass
 
         # Wait for cleanup

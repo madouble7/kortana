@@ -1,9 +1,0 @@
-File exists: src\kortana\config.py
-Directory exists: src\kortana\config
-File exists: src\kortana\config\__init__.py
-File exists: src\kortana\config\schema.py
-
-Files in the config directory:
-- schema.py 
-- __init__.py 
-- __pycache__ (directory)

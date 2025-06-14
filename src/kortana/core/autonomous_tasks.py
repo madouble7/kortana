@@ -11,15 +11,54 @@ from datetime import UTC, datetime
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 
-from kortana.core.execution_engine import execution_engine
-from kortana.modules.memory_core.models import MemoryType
-from kortana.modules.memory_core.schemas import CoreMemoryCreate
-from kortana.modules.memory_core.services import MemoryCoreService
-from kortana.modules.models import Goal, GoalStatus, PlanStep
-from kortana.modules.planning_engine import planning_engine
-from kortana.services.database import get_db_sync
+from src.kortana.core.execution_engine import ExecutionEngine
+from src.kortana.core.models import Goal, GoalStatus, PlanStep
+from src.kortana.core.planning_engine import PlanningEngine
+from src.kortana.core.services import get_execution_engine, get_planning_engine
+from src.kortana.modules.memory_core import models
+from src.kortana.modules.memory_core.models import MemoryType
+from src.kortana.modules.memory_core.schemas import CoreMemoryCreate
+from src.kortana.services.database import get_db_sync
 
 logger = logging.getLogger(__name__)
+
+
+# Use centralized services instead of direct instantiation
+def get_planning_engine_instance():
+    """Get planning engine from centralized services with fallback."""
+    try:
+        return get_planning_engine()
+    except RuntimeError:
+        # Fallback to direct instantiation if services not initialized
+        return PlanningEngine()
+
+
+def get_execution_engine_instance():
+    """Get execution engine from centralized services with fallback."""
+    try:
+        return get_execution_engine()
+    except RuntimeError:
+        # Fallback to direct instantiation if services not initialized
+        return ExecutionEngine(
+            allowed_dirs=[
+                r"c:\project-kortana",
+                r"c:\project-kortana\docs",
+                r"c:\project-kortana\data",
+            ],
+            blocked_commands=[
+                "rm",
+                "del",
+                "shutdown",
+                "reboot",
+                "format",
+                "mkfs",
+                "rmdir",
+                "mv",
+                "cp",
+                "dd",
+                ":(){:|:&};:",
+            ],
+        )
 
 
 def run_health_check_task():
@@ -47,7 +86,7 @@ def run_health_check_task():
         # === PHASE 2: EXECUTION ===
         logger.info("⚡ EXECUTING: Running health check command...")
 
-        result = execution_engine.execute_shell_command(
+        result = get_execution_engine_instance().execute_shell_command(
             command=command_to_execute, working_dir=project_root
         )
 
@@ -187,6 +226,104 @@ def run_code_improvement_task():
     pass
 
 
+async def run_performance_analysis_task(db: Session):
+    """
+    An autonomous task for Kor'tana to reflect on her recent actions
+    and generate new insights or 'best practices' for herself.
+    """
+    print(
+        "\n🤔 --- AUTONOMOUS TASK: Starting Self-Reflection & Performance Analysis ---"
+    )
+    memory_service = MemoryCoreService(db)
+
+    try:
+        # 1. PLAN: Gather recent goal outcomes and analyze them.
+        task_description = "Analyze the outcomes of my last 10 autonomous goals to identify patterns and derive new insights for self-improvement."
+        print(f"🎯 PLAN: {task_description}")
+
+        # 2. EXECUTE (Internal Action - Read Memory):
+        recent_outcomes = (
+            db.query(models.CoreMemory)
+            .filter(
+                models.CoreMemory.metadata["source"].astext == "goal_processing_cycle"
+            )
+            .order_by(models.CoreMemory.created_at.desc())
+            .limit(10)
+            .all()
+        )
+
+        if not recent_outcomes:
+            print(
+                "--- AUTONOMOUS TASK: No recent goal outcomes to analyze. Standing by. ---"
+            )
+            return
+
+        # 3. REASON: Use the LLM to analyze the collected data.
+        analysis_prompt = _build_self_analysis_prompt(recent_outcomes)
+        llm_result = await llm_service.generate_response(
+            analysis_prompt, temperature=0.5
+        )
+
+        new_insight = llm_result.get("content")
+
+        if not new_insight or "no significant pattern" in new_insight.lower():
+            print(
+                "--- AUTONOMOUS TASK: Analysis complete. No new core belief was formed. ---"
+            )
+            return
+
+        # 4. LEARN: Store the new insight as a Core Belief.
+        print(f"💡 NEW INSIGHT: {new_insight}")
+        belief_to_create = CoreMemoryCreate(
+            memory_type=MemoryType.CORE_BELIEF,
+            title="New Self-Generated Best Practice",
+            content=new_insight,
+            memory_metadata={
+                "source": "performance_analysis_task",
+                "is_self_generated": True,
+            },
+        )
+        created_belief = memory_service.create_memory(memory_create=belief_to_create)
+
+        print(
+            f"🧠 LEARNING: New Core Belief recorded in Memory ID: {created_belief.id}"
+        )
+        print(
+            "🎉 --- AUTONOMOUS TASK: Self-reflection complete. I have learned something new. ---\n"
+        )
+
+    except Exception as e:
+        print(f"❌ AUTONOMOUS TASK ERROR (Self-Reflection): {e}")
+    finally:
+        db.close()
+
+
+def _build_self_analysis_prompt(memories: list[models.CoreMemory]) -> str:
+    """Constructs a prompt for the LLM to analyze past actions."""
+
+    memory_log = "\n".join(
+        [f"- Goal Outcome: {mem.title}\n  Summary: {mem.content}\n" for mem in memories]
+    )
+
+    return f"""
+You are a reflective and analytical AI core. You are analyzing a log of your own recent autonomous actions to learn and improve.
+Review the following outcomes of goals you have pursued. Look for patterns, especially regarding successes, failures, or repeated steps.
+
+Recent Activity Log:
+{memory_log}
+
+Your Task:
+Based only on the log above, derive a single, concise, and actionable "best practice" or "guiding principle" for yourself.
+
+If you see repeated planning failures, suggest a way to improve planning.
+If you see shell command errors, suggest a more robust way to execute them.
+If you see successes, distill the strategy used.
+Your output should be a single sentence starting with "I should..." or "My approach to...".
+If there are no significant patterns, respond with "No significant pattern detected."
+Your derived best practice is:
+"""
+
+
 async def autonomous_goal_processing_cycle():
     """
     The main autonomous cycle. Fetches an active goal, creates a plan, and executes it.
@@ -213,9 +350,21 @@ async def autonomous_goal_processing_cycle():
         active_goal.status = GoalStatus.ACTIVE
         db.commit()
 
+        # Fetch Core Beliefs to guide planning
+        core_beliefs_models = (
+            db.query(models.CoreMemory)
+            .filter(models.CoreMemory.memory_type == MemoryType.CORE_BELIEF)
+            .all()
+        )
+        core_beliefs_content = [
+            belief.content
+            for belief in core_beliefs_models
+            if hasattr(belief, "content") and isinstance(belief.content, str)
+        ]
+
         # 2. Create a plan for the goal using the Planning Engine
-        plan_steps_data = await planning_engine.create_plan_for_goal(
-            active_goal.description
+        plan_steps_data = await get_planning_engine_instance().create_plan_for_goal(
+            active_goal.description, core_beliefs=core_beliefs_content
         )
         if not plan_steps_data:
             active_goal.status = GoalStatus.FAILED
@@ -277,15 +426,61 @@ async def _execute_plan(db: Session, goal: Goal):
             result = {}
 
             if step.action_type == "READ_FILE":
-                result = execution_engine.read_file(**params)
-                if result.get("success"):
-                    execution_context[f"step_{step.step_number}"] = result.get(
-                        "content"
-                    )
+                result_obj = await get_execution_engine_instance().read_file(**params)
+                result = {
+                    "success": result_obj.success,
+                    "data": result_obj.data,
+                    "error": result_obj.error,
+                }
+                if result_obj.success:
+                    execution_context[f"step_{step.step_number}"] = result_obj.data
             elif step.action_type == "WRITE_FILE":
-                result = execution_engine.write_to_file(**params)
+                result_obj = await get_execution_engine_instance().write_to_file(
+                    **params
+                )
+                result = {
+                    "success": result_obj.success,
+                    "data": result_obj.data,
+                    "error": result_obj.error,
+                }
             elif step.action_type == "EXECUTE_SHELL":
-                result = execution_engine.execute_shell_command(**params)
+                result_obj = (
+                    await get_execution_engine_instance().execute_shell_command(
+                        **params
+                    )
+                )
+                result = {
+                    "success": result_obj.success,
+                    "data": result_obj.data,
+                    "error": result_obj.error,
+                }
+            elif step.action_type == "SEARCH_CODEBASE":
+                result_obj = await get_execution_engine_instance().search_codebase(
+                    **params
+                )
+                result = {
+                    "success": result_obj.success,
+                    "data": result_obj.data,
+                    "error": result_obj.error,
+                }
+                if result_obj.success:
+                    execution_context[f"step_{step.step_number}"] = result_obj.data
+            elif step.action_type == "APPLY_PATCH":
+                result_obj = await get_execution_engine_instance().apply_patch(**params)
+                result = {
+                    "success": result_obj.success,
+                    "data": result_obj.data,
+                    "error": result_obj.error,
+                }
+            elif step.action_type == "RUN_TESTS":
+                result_obj = await get_execution_engine_instance().run_tests(**params)
+                result = {
+                    "success": result_obj.success,
+                    "data": result_obj.data,
+                    "error": result_obj.error,
+                }
+                if result_obj.success:
+                    execution_context[f"step_{step.step_number}"] = result_obj.data
             elif step.action_type == "REASONING_COMPLETE":
                 result = {"success": True, "summary": params.get("final_summary")}
                 final_summary = result["summary"]
@@ -353,7 +548,7 @@ def _log_outcome_to_memory(db: Session, goal: Goal, outcome_summary: str):
         memory_type=MemoryType.OBSERVATION,
         title=memory_title,
         content=memory_content,
-        metadata={
+        memory_metadata={
             "source": "goal_processing_cycle",
             "is_self_reflection": True,
             "goal_id": goal.id,
@@ -361,3 +556,164 @@ def _log_outcome_to_memory(db: Session, goal: Goal, outcome_summary: str):
     )
     memory_service.create_memory(memory_create=memory_to_create)
     print(f"🧠 LEARNING: Outcome for Goal ID {goal.id} recorded in memory.")
+
+
+async def run_proactive_code_review_task(db: Session):
+    """
+    🚀 BATCH 10: PROACTIVE ENGINEER INITIATIVE
+
+    Autonomously scan the codebase for quality issues and generate improvement goals.
+    This transforms Kor'tana from reactive to proactive by enabling her to identify
+    her own work and create self-improvement goals.
+
+    This task:
+    1. Scans the codebase for functions missing docstrings
+    2. Creates new goals for each issue found
+    3. Enables autonomous self-improvement cycles
+    """
+    logger.info("🔍 Starting proactive code review task...")
+
+    try:
+        # Get execution engine instance
+        execution_engine = get_execution_engine_instance()
+
+        # Define scan paths - focus on core Kor'tana code
+        scan_paths = [
+            "src/kortana/api/routers",
+            "src/kortana/api/services",
+            "src/kortana/core",
+            "src/kortana/planning",
+        ]
+
+        logger.info(f"📂 Scanning paths: {scan_paths}")
+        # Scan for missing docstrings using a simpler approach
+        # Instead of using the execution engine method, we'll scan directly
+        findings = []
+
+        for scan_path in scan_paths:
+            try:
+                import ast
+                import os
+                from pathlib import Path
+
+                # Walk through the directory and find Python files
+                for root, dirs, files in os.walk(scan_path):
+                    for file in files:
+                        if file.endswith(".py"):
+                            file_path = Path(root) / file
+                            try:
+                                with open(file_path, encoding="utf-8") as f:
+                                    content = f.read()
+
+                                tree = ast.parse(content)
+
+                                # Find functions without docstrings
+                                for node in ast.walk(tree):
+                                    if isinstance(
+                                        node, (ast.FunctionDef, ast.AsyncFunctionDef)
+                                    ):
+                                        if not ast.get_docstring(node):
+                                            findings.append(
+                                                {
+                                                    "file": str(file_path),
+                                                    "line": node.lineno,
+                                                    "type": "missing_docstring",
+                                                    "function_name": node.name,
+                                                }
+                                            )
+                            except Exception as e:
+                                logger.warning(f"Could not scan {file_path}: {e}")
+                                continue
+            except Exception as e:
+                logger.warning(f"Could not scan directory {scan_path}: {e}")
+                continue
+        logger.info(f"🔍 Found {len(findings)} functions missing docstrings")
+
+        # Create goals for each finding (limit to prevent goal spam)
+        goals_created = 0
+        max_goals_per_run = 3  # Limit to prevent overwhelming the system
+
+        for finding in findings[:max_goals_per_run]:
+            if finding.get("type") == "missing_docstring":
+                # Check if we already have a goal for this function
+                existing_goal = (
+                    db.query(Goal)
+                    .filter(
+                        Goal.description.contains(
+                            f"Add docstring to '{finding['function_name']}'"
+                        ),
+                        Goal.description.contains(finding["file"]),
+                    )
+                    .first()
+                )
+
+                if existing_goal:
+                    logger.info(
+                        f"⏭️ Skipping {finding['function_name']} - goal already exists"
+                    )
+                    continue
+
+                # Create a new goal for this missing docstring
+                goal_description = (
+                    f"Add a comprehensive docstring to the '{finding['function_name']}' function "
+                    f"in '{finding['file']}' at line {finding['line']}. The docstring should describe "
+                    f"the function's purpose, parameters, return value, and any important behavior. "
+                    f"Follow Google/NumPy docstring style conventions."
+                )
+
+                new_goal = Goal(
+                    description=goal_description,
+                    priority=3,  # Medium priority for code quality improvements
+                    status=GoalStatus.PENDING,
+                    created_at=datetime.now(UTC),
+                    metadata=json.dumps(
+                        {
+                            "type": "proactive_code_quality",
+                            "source": "autonomous_code_review",
+                            "file": finding["file"],
+                            "function": finding["function_name"],
+                            "line": finding["line"],
+                            "issue_type": "missing_docstring",
+                        }
+                    ),
+                )
+
+                db.add(new_goal)
+                goals_created += 1
+
+                logger.info(
+                    f"✅ Created goal for {finding['function_name']} in {finding['file']}"
+                )
+
+        if goals_created > 0:
+            db.commit()
+            logger.info(
+                f"🎯 PROACTIVE SUCCESS: Created {goals_created} new self-improvement goals!"
+            )
+
+            # Store a memory about this proactive behavior
+            try:
+                memory = models.CoreMemory(
+                    content=f"I autonomously scanned my codebase and identified {len(findings)} functions missing docstrings. I created {goals_created} self-improvement goals to address code quality issues. This demonstrates proactive engineering capabilities.",
+                    memory_type=MemoryType.CORE_BELIEF,
+                    created_at=datetime.now(UTC),
+                    metadata=json.dumps(
+                        {
+                            "findings_count": len(findings),
+                            "goals_created": goals_created,
+                            "scan_paths": scan_paths,
+                            "proactive_cycle": True,
+                        }
+                    ),
+                )
+                db.add(memory)
+                db.commit()
+                logger.info("💾 Stored memory of proactive code review")
+            except Exception as e:
+                logger.error(f"Error storing proactive memory: {e}")
+        else:
+            logger.info("✨ No new goals needed - codebase quality is good!")
+
+    except Exception as e:
+        logger.error(f"❌ Error in proactive code review task: {e}")
+        db.rollback()

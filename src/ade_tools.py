@@ -1,6 +1,6 @@
 """
-TODO: Add a concise description of this module.
-ADE Tools module for autonomous development operations.
+Module: ade_tools.py
+Tools and utilities for Autonomous Development Engine (ADE) operations.
 """
 
 import os

@@ -1,8 +1,0 @@
-{
-  "type": "module",
-  "scripts": {
-    "frontend:dev": "cd lobechat-frontend && npm run dev",
-    "frontend:test": "cd lobechat-frontend && npm run test",
-    "frontend:playwright": "cd lobechat-frontend && npx wait-on http://localhost:3010 && npx playwright test"
-  }
-} 

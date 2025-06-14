@@ -56,7 +56,7 @@ class EnvironmentalScanner:
 
     def _does_similar_goal_exist(self, title_substring: str) -> bool:
         """Checks if a similar pending or active goal already exists."""
-        pending_goals = self.goal_manager.get_goals_by_status(GoalStatus.PENDING)
+        pending_goals = self.goal_manager.get_goals_by_status(GoalStatus.NEW)
         active_goals = self.goal_manager.get_goals_by_status(GoalStatus.ACTIVE)
 
         all_relevant_goals = []
@@ -98,8 +98,8 @@ class EnvironmentalScanner:
                 )
                 return
 
-            if result.get("success") and result.get("stdout"):
-                stdout_trimmed = result["stdout"].strip()
+            if result.success and result.data:
+                stdout_trimmed = result.data.strip()
                 issues_found = []
                 if stdout_trimmed:
                     try:
@@ -156,9 +156,9 @@ class EnvironmentalScanner:
                         if stdout_trimmed
                         else "[EnvironmentalScanner] Code health check (Ruff) found no issues (empty stdout)."
                     )
-            elif not result.get("success"):
+            elif not result.success:
                 logger.error(
-                    f"[EnvironmentalScanner] Code health check (Ruff) command failed: {result.get('error')}"
+                    f"[EnvironmentalScanner] Code health check (Ruff) command failed: {result.error}"
                 )
             else:
                 logger.info(

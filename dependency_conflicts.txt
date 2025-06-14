@@ -1,6 +1,0 @@
-kortana 0.1.0 requires chromadb, which is not installed.
-kortana 0.1.0 requires langchain, which is not installed.
-kortana 0.1.0 requires langchain-community, which is not installed.
-kortana 0.1.0 requires omegaconf, which is not installed.
-kortana 0.1.0 requires pandas, which is not installed.
-kortana 0.1.0 requires pinecone-client, which is not installed.

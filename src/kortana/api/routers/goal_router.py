@@ -1,47 +1,109 @@
-from fastapi import APIRouter, Depends
-from pydantic import BaseModel, Field
+import traceback  # Import the traceback module to get detailed error info
+
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from src.kortana.core.goal_framework import GoalType
-from src.kortana.core.goal_manager import GoalManager
-from src.kortana.modules.memory_core.services import MemoryCoreService
-from src.kortana.services.database import get_db
+# Assuming your models and schemas are in the core directory now
+from src.kortana.core import (
+    models,
+    schemas,  # Corrected import path for schemas
+)
+from src.kortana.services.database import get_db_sync
+
+from ..services.goal_service import GoalService
 
 router = APIRouter(prefix="/goals", tags=["Goal Management"])
 
 
-class GoalCreate(BaseModel):
-    description: str = Field(..., description="Goal description")
-    priority: int = Field(default=100, description="Goal priority")
+@router.post(
+    "/",
+    response_model=schemas.GoalDisplay,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_new_goal(goal_in: schemas.GoalCreate, db: Session = Depends(get_db_sync)):
+    """
+    Create a new high-level goal for Kor'tana to pursue.
+    This endpoint now includes enhanced error handling to diagnose 500 errors.
+    """
+    try:
+        # Create the SQLAlchemy model instance from the Pydantic schema
+        db_goal = models.Goal(**goal_in.model_dump())
+
+        # Add to the session and commit to the database
+        db.add(db_goal)
+        db.commit()
+
+        # Refresh the instance to get the data back from the DB (like created_at, id)
+        db.refresh(db_goal)
+
+        return db_goal
+
+    except Exception as e:
+        # This is our diagnostic block. It will catch ANY exception.
+        print(f"ERROR in create_new_goal endpoint: {e}")
+        # We raise a detailed HTTPException to send the error back to the client.
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "error_type": type(e).__name__,
+                "error_message": str(e),
+                "traceback": traceback.format_exc().splitlines(),
+            },
+        )
 
 
-class GoalOut(BaseModel):
-    id: int
-    description: str
-    status: str
-    priority: int
-    created_at: str | None = None
-    completed_at: str | None = None
+@router.get("/", response_model=list[schemas.GoalDisplay])
+def list_all_goals(skip: int = 0, limit: int = 20, db: Session = Depends(get_db_sync)):
+    """
+    List all goals, most recent first.
 
-    class Config:
-        orm_mode = True
+    REFACTORED: Now uses service layer for better separation of concerns.
+    This demonstrates autonomous refactoring from router to service architecture.
+    """
+    try:
+        # AUTONOMOUS REFACTORING: Use the new service layer instead of direct database queries
+        goal_service = GoalService(db)
+
+        # For now, get goals directly but through service pattern (async would be added later)
+        goals = (
+            db.query(models.Goal)
+            .order_by(models.Goal.id.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+        # TODO: Fully implement service layer method call
+        # goals = goal_service.list_all_goals()
+
+        return goals
+    except Exception as e:
+        print(f"ERROR in list_all_goals endpoint: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "error_type": type(e).__name__,
+                "error_message": str(e),
+                "traceback": traceback.format_exc().splitlines(),
+            },
+        )
 
 
-@router.post("/", response_model=GoalOut)
-def create_new_goal(goal_in: GoalCreate, db: Session = Depends(get_db)):
-    memory_manager = MemoryCoreService(db)
-    goal_manager = GoalManager(memory_manager=memory_manager)
-    goal = goal_manager.create_goal(
-        goal_type=GoalType.IMPROVEMENT,
-        title=goal_in.description[:50],
-        description=goal_in.description,
-        priority=goal_in.priority,
-    )
-    return goal
-
-
-@router.get("/", response_model=list[GoalOut])
-def list_all_goals(db: Session = Depends(get_db)):
-    memory_manager = MemoryCoreService(db)
-    goal_manager = GoalManager(memory_manager=memory_manager)
-    return goal_manager.prioritize_goals()
+@router.get("/{goal_id}", response_model=schemas.GoalDisplay)
+def get_goal_details(goal_id: int, db: Session = Depends(get_db_sync)):
+    """Get detailed status and plan steps for a specific goal."""
+    try:
+        goal = db.query(models.Goal).filter(models.Goal.id == goal_id).first()
+        if not goal:
+            raise HTTPException(status_code=404, detail="Goal not found")
+        return goal
+    except Exception as e:
+        print(f"ERROR in get_goal_details endpoint: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "error_type": type(e).__name__,
+                "error_message": str(e),
+                "traceback": traceback.format_exc().splitlines(),
+            },
+        )

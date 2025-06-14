@@ -2,9 +2,10 @@
 """
 Enhanced Kor'tana System Monitoring Dashboard
 =============================================
-Real-time monitoring with token tracking, rate limits, and agent status
+Real-time monitoring with token tracking, rate limits, and agent status.
 """
 
+import logging
 import os
 import sqlite3
 import time
@@ -14,11 +15,15 @@ from typing import Any
 
 import tiktoken
 
+# Configure logging
+logger = logging.getLogger(__name__)
+
 
 class KortanaEnhancedMonitor:
     """Enhanced monitoring dashboard for Kor'tana system with detailed analytics"""
 
-    def __init__(self, project_root: str = None):
+    def __init__(self, project_root: str | None = None):
+        """Initialize the monitor with project paths and database setup."""
         self.project_root = (
             Path(project_root) if project_root else Path(__file__).parent.parent
         )
@@ -26,21 +31,26 @@ class KortanaEnhancedMonitor:
         self.logs_dir = self.project_root / "logs"
         self.data_dir = self.project_root / "data"
 
-        # Initialize monitoring tables
+        # Ensure required directories exist
+        self.logs_dir.mkdir(parents=True, exist_ok=True)
+        self.data_dir.mkdir(parents=True, exist_ok=True)        # Initialize monitoring tables
         self.init_monitor_tables()
-
+        
     def count_tokens(self, text: str, encoding_name: str = "cl100k_base") -> int:
-        """Count tokens in text using tiktoken"""
+        """Count tokens in text using tiktoken with fallback."""
         try:
             encoding = tiktoken.get_encoding(encoding_name)
             return len(encoding.encode(text))
-        except Exception:
-            # Fallback to simple word count estimation
-            return len(text.split()) * 1.3
+        except (KeyError, ImportError, ValueError) as e:
+            # Log specific error for troubleshooting
+            logger.warning(f"Token counting error: {str(e)}. Using fallback estimation.")
+            # Fallback to simple word count estimation with integer rounding
+            return int(len(text.split()) * 1.3)
 
-    def init_monitor_tables(self):
-        """Initialize monitoring tables in database"""
+    def init_monitor_tables(self) -> None:
+        """Initialize monitoring tables in database."""
         if not self.db_path.exists():
+            print(f"Database not found at: {self.db_path}")
             return
 
         try:
@@ -86,8 +96,9 @@ class KortanaEnhancedMonitor:
 
             conn.commit()
             conn.close()
-        except Exception as e:
-            print(f"[WARNING] Could not initialize monitoring tables: {e}")
+        except (sqlite3.Error, sqlite3.OperationalError) as e:
+            logger.error(f"Failed to initialize monitoring tables: {str(e)}")
+            raise RuntimeError(f"Database initialization failed: {str(e)}") from e
 
     def log_token_usage(
         self, task_id: str, stage: str, tokens: int, agent_name: str = "system"
@@ -102,8 +113,9 @@ class KortanaEnhancedMonitor:
             )
             conn.commit()
             conn.close()
-        except Exception as e:
-            print(f"[WARNING] Could not log token usage: {e}")
+        except sqlite3.Error as e:
+            logger.error(f"Failed to log token usage: {str(e)}")
+            # Don't raise here as token logging failure shouldn't stop the application
 
     def log_chain_communication(
         self, task_id: str, stage: str, tokens: int, agent_from: str, agent_to: str
@@ -140,8 +152,8 @@ class KortanaEnhancedMonitor:
                     modified_time = datetime.fromtimestamp(log_file.stat().st_mtime)
                     if (datetime.now() - modified_time) < timedelta(hours=1):
                         agents.append(log_file.stem)
-                except Exception:
-                    pass
+                except OSError as e:
+                    logger.warning(f"Error checking log file {log_file}: {str(e)}")
 
         # Also check database for recent activity
         try:
@@ -155,9 +167,9 @@ class KortanaEnhancedMonitor:
             db_agents = [row[0] for row in cursor.fetchall()]
             agents.extend(db_agents)
             conn.close()
-        except Exception:
-            pass
-
+        except sqlite3.Error as e:
+            logger.error(f"Database error while getting active agents: {str(e)}")
+            
         return list(set(agents))
 
     def get_token_usage_stats(self) -> dict[str, Any]:
@@ -180,7 +192,7 @@ class KortanaEnhancedMonitor:
                 "SELECT stage, SUM(tokens) FROM token_log WHERE timestamp > ? GROUP BY stage",
                 (one_day_ago,),
             )
-            stats["last_24h"] = {stage: tokens for stage, tokens in cursor.fetchall()}
+            stats["last_24h"] = dict(cursor.fetchall())
 
             # Last hour usage
             one_hour_ago = (datetime.utcnow() - timedelta(hours=1)).isoformat()
@@ -188,18 +200,18 @@ class KortanaEnhancedMonitor:
                 "SELECT stage, SUM(tokens) FROM token_log WHERE timestamp > ? GROUP BY stage",
                 (one_hour_ago,),
             )
-            stats["last_hour"] = {stage: tokens for stage, tokens in cursor.fetchall()}
+            stats["last_hour"] = dict(cursor.fetchall())
 
             # Usage by agent
             cursor.execute(
                 "SELECT agent_name, SUM(tokens) FROM token_log WHERE timestamp > ? GROUP BY agent_name",
                 (one_day_ago,),
             )
-            stats["by_agent"] = {agent: tokens for agent, tokens in cursor.fetchall()}
+            stats["by_agent"] = dict(cursor.fetchall())
 
             # Usage by stage (all time)
             cursor.execute("SELECT stage, SUM(tokens) FROM token_log GROUP BY stage")
-            stats["by_stage"] = {stage: tokens for stage, tokens in cursor.fetchall()}
+            stats["by_stage"] = dict(cursor.fetchall())
 
             # Total today
             today_start = (
@@ -214,8 +226,13 @@ class KortanaEnhancedMonitor:
             stats["total_today"] = result[0] if result[0] else 0
 
             conn.close()
-        except Exception as e:
-            stats["error"] = str(e)
+        except sqlite3.Error as e:
+            stats.update({
+                "error": "Database error",
+                "details": str(e),
+                "total_today": 0
+            })
+            logger.error(f"Failed to retrieve token usage stats: {str(e)}")
 
         return stats
 
@@ -276,12 +293,18 @@ class KortanaEnhancedMonitor:
             limits["github_models"]["used_requests"] = result[0] if result[0] else 0
 
             conn.close()
-        except Exception as e:
-            limits["error"] = str(e)
+        except (sqlite3.Error, sqlite3.OperationalError) as e:
+            # Initialize an error state model matching the expected structure
+            limits = {
+                "openai_models": {"used_tokens": 0, "tpm_limit": 1000, "rpm_limit": 100},
+                "github_models": {"used_requests": 0, "requests_limit": 100},
+                "error_details": {"message": str(e), "timestamp": datetime.utcnow().isoformat()}
+            }
+            logger.error(f"Failed to retrieve rate limits: {str(e)}")
 
         # Calculate percentages
         for service, data in limits.items():
-            if service == "error":
+            if service == "error_details":
                 continue
             if "tpm_limit" in data:
                 data["tpm_percent"] = (
@@ -357,7 +380,8 @@ class KortanaEnhancedMonitor:
 
         # Count log files
         if self.logs_dir.exists():
-            health["log_files"] = len(list(self.logs_dir.glob("*.log")))        # Check for recent activity
+            health["log_files"] = len(list(self.logs_dir.glob("*.log")))
+        # Check for recent activity
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
@@ -368,8 +392,10 @@ class KortanaEnhancedMonitor:
             if result:
                 health["last_activity"] = result[0]
             conn.close()
-        except Exception:
-            health["issues"].append("Cannot access database")        # Determine overall status
+        except sqlite3.Error as e:
+            health["issues"].append(f"Database error: {str(e)}")
+        
+        # Determine overall status
         active_agents = len(self.get_active_agents())
         if active_agents > 0:
             health["status"] = "active"
@@ -382,12 +408,53 @@ class KortanaEnhancedMonitor:
                     health["status"] = "idle"
                 else:
                     health["status"] = "inactive"
-            except Exception:
+            except (ValueError, TypeError) as e:
+                logger.error(f"Error parsing activity timestamp: {str(e)}")
                 health["status"] = "unknown"
+                health["issues"].append("Invalid timestamp format")
         else:
             health["status"] = "offline"
 
         return health
+
+    def _get_status_indicator(self, status: str) -> str:
+        """Get a status indicator based on status value"""
+        indicators = {
+            "optimal": "[OK]",
+            "warning": "[WARN]",
+            "critical": "[CRIT]",
+            "error": "[ERR]",
+            "unknown": "[???]"
+        }
+        return indicators.get(status.lower(), "[???]")
+
+    def _format_usage_line(self, model: str, data: dict[str, Any]) -> str:
+        """Format a usage statistics line with proper indicators"""
+        status_indicator = self._get_status_indicator(data["status"])
+        return (
+            f"         {model}: {data['used']:,}/{data['limit']:,} tokens "
+            f"({data['percent_used']:.1f}%) {status_indicator}"
+        )
+
+    def _display_model_usage(self) -> None:
+        """Display model-specific usage details"""
+        usage = self.get_token_usage_stats()
+        
+        for model, data in usage.items():
+            if isinstance(data, dict) and "used" in data and "limit" in data:
+                print(self._format_usage_line(model, data))
+            elif model == "error":
+                print(f"[ERROR] Failed to retrieve usage stats: {data}")
+                if "details" in usage:
+                    print(f"         Details: {usage['details']}")
+
+    def display_usage_summary(self) -> None:
+        """Display formatted usage summary"""
+        print("\n=== KOR'TANA SYSTEM USAGE ===")
+        print(f"[TIME] {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC")
+        
+        self._display_model_usage()
+        print("\n" + "=" * 80)
 
     def print_dashboard(self):
         """Print comprehensive monitoring dashboard"""

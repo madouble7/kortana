@@ -18,6 +18,8 @@ class GoalStatus(enum.Enum):
 
 class Goal(Base):
     __tablename__ = "goals"
+    __table_args__ = {"extend_existing": True}
+
     id = Column(Integer, primary_key=True, index=True)
     description = Column(Text, nullable=False)
     status = Column(

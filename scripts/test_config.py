@@ -91,7 +91,7 @@ def test_env_file():
         # Clean up
         try:
             (Path(__file__).parent.parent / ".env.test").unlink()
-        except:
+        except Exception:
             pass
 
 
@@ -134,7 +134,7 @@ def test_missing_required():
         # Clean up
         try:
             required_config_path.unlink()
-        except:
+        except Exception:
             pass
 
         # Restore .env if it existed

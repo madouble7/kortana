@@ -44,7 +44,7 @@ except ImportError:
 
 # Try to import google.genai components
 try:
-    from google.genai import Client, GenerativeModel, types
+    from google.genai import Client
 
     GENAI_AVAILABLE = True
 except ImportError:

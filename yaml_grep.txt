@@ -1,6 +1,0 @@
-
-src\kortana\core\brain.py:162:                covenant = yaml.safe_load(f)
-src\kortana\core\covenant_enforcer.py:46:                covenant = yaml.safe_load(f)
-src\kortana\core\covenant.py:317:                    for protected in ["covenant.yaml", "persona.json"]
-src\kortana\core\covenant.py:432:            "covenant.yaml",
-

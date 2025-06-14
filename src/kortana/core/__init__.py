@@ -8,6 +8,7 @@ Contains the core functionality of the Kor'tana system, including:
 - Memory and persistence systems
 """
 
+from . import schemas  # Corrected import path for schemas
 from .goals import Goal, GoalManager, GoalStatus, GoalType
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "GoalManager",
     "GoalStatus",
     "GoalType",
+    "schemas", # Re-export schemas
 ]

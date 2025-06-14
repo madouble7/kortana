@@ -1,4 +1,0 @@
-src\kortana\core\goals\prioritizer.py:86: error: invalid syntax  [syntax]
-    ...oals, key=lambda x: x[1], reverse=True)]        logger.info(f"Finished...
-                                                        ^
-Found 1 error in 1 file (errors prevented further checking)

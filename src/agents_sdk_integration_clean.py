@@ -1,9 +1,8 @@
-# TODO: R0801 (Pylint) - Code duplication.
-# Similar to code found in: src\agents_sdk_integration.py:[10:364] and src\agents_sdk_integration_corrupted.py:[10:228]
-# Consider refactoring into a shared function, method, or utility.
 """
-Kor'tana OpenAI Agents SDK Integration
-Revolutionary upgrade to true autonomous agent architecture
+Module: agents_sdk_integration_clean.py
+Kor'tana OpenAI Agents SDK Integration (clean version).
+Note: This file contains code similar to src/agents_sdk_integration.py and src/agents_sdk_integration_corrupted.py.
+Consider refactoring into shared utilities to reduce duplication (see Pylint R0801).
 """
 
 import logging
