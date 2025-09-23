@@ -1,0 +1,33 @@
+# kortana.yaml
+identity: origin
+project: kortana
+accounts:
+  github:
+    - your-main-username
+    - your-alt-username
+  openai:
+    api_credits: 77
+  openrouter:
+    api_credits: 77
+  aws:
+    account_id: "123456789012"
+    region: "us-east-1"
+    secretsmanager_prefix: kortana/
+  google:
+    gemini: true
+    ai_studio: true
+
+infra:
+  deploy:
+    use_terraform: true
+    ecs:
+      cluster_name: kortana
+      service_name: kortana
+      fargate: true
+      assign_public_ip: false
+      container_port: 8080
+    oidc:
+      github:
+        enabled: true
+        role: kortana-github-oidc-deployer
+        repo: your-org/your-repo
