@@ -1,35 +1,51 @@
-"""
-Kor'tana Main FastAPI Application
-"""
+"""Kor'tana Main FastAPI Application."""
 
-from contextlib import asynccontextmanager  # For lifespan events
+import logging
+from contextlib import asynccontextmanager
+from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.kortana.api.routers import core_router, goal_router
+from src.kortana.config import load_config
 from src.kortana.core.scheduler import (
     get_scheduler_status,
     start_scheduler,
     stop_scheduler,
 )
+from src.kortana.core.services import (
+    get_chat_engine,
+    initialize_services,
+    reset_services,
+)
 from src.kortana.modules.memory_core.routers.memory_router import (
     router as memory_router,
 )
+
+logger = logging.getLogger(__name__)
 
 
 # Lifespan context manager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
-    print("INFO:     Starting Kor'tana's autonomous scheduler...")
-    start_scheduler()
-    print("INFO:     Kor'tana's autonomous scheduler started.")
-    yield
-    # Shutdown
-    print("INFO:     Stopping Kor'tana's autonomous scheduler...")
-    stop_scheduler()
-    print("INFO:     Kor'tana's autonomous scheduler stopped.")
+    settings = load_config()
+    initialize_services(settings)
+    app.state.settings = settings
+
+    scheduler_started = False
+    try:
+        logger.info("Starting Kor'tana scheduler...")
+        start_scheduler()
+        scheduler_started = True
+        logger.info("Kor'tana scheduler started.")
+        yield
+    finally:
+        if scheduler_started:
+            logger.info("Stopping Kor'tana scheduler...")
+            stop_scheduler()
+            logger.info("Kor'tana scheduler stopped.")
+        reset_services()
 
 
 app = FastAPI(
@@ -86,13 +102,23 @@ def test_db():
 
 
 @app.post("/chat")
-async def chat(message: dict):
+async def chat(message: dict[str, Any]):
+    user_message = (message.get("message") or "").strip()
+    if not user_message:
+        raise HTTPException(status_code=400, detail="Message cannot be empty.")
+
     try:
-        user_message = message.get("message", "")
-        response = f"Kor'tana received: {user_message}"
-        return {"response": response, "status": "success"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        chat_engine = get_chat_engine()
+        response_text = await chat_engine.process_message(user_message)
+        return {"response": response_text, "status": "success"}
+    except HTTPException:
+        raise
+    except Exception as exc:  # pragma: no cover - defensive guard
+        logger.exception("Error processing chat request")
+        raise HTTPException(
+            status_code=500,
+            detail="Kor'tana encountered an unexpected issue while thinking.",
+        ) from exc
 
 
 @app.get("/status")
@@ -111,9 +137,19 @@ async def lobechat_adapter(request: dict):
     try:
         messages = request.get("messages", [])
         user_message = messages[-1].get("content", "") if messages else "Hello"
-        response = f"Kor'tana (via LobeChat): {user_message}"
+        chat_engine = get_chat_engine()
+        response_text = await chat_engine.process_message(user_message)
 
-        return {"choices": [{"message": {"role": "assistant", "content": response}}]}
+        return {
+            "choices": [
+                {
+                    "message": {
+                        "role": "assistant",
+                        "content": response_text,
+                    }
+                }
+            ]
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

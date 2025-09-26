@@ -1,5 +1,6 @@
 """Base client abstraction for all LLM providers used in Kor'tana."""
 
+import asyncio
 import logging
 import time
 from abc import ABC, abstractmethod
@@ -128,3 +129,126 @@ class BaseLLMClient(ABC):
     def get_model_info(self) -> dict[str, Any]:
         """Get information about the current model"""
         return {"name": self.model_name, "provider": "unknown"}
+
+    async def complete(self, prompt: Any, **kwargs) -> dict[str, Any]:
+        """Unified async interface used across the Kor'tana codebase.
+
+        This adapter accepts either a raw string prompt or the OpenAI-style
+        payload produced by the chat engine (containing ``messages`` and
+        optional generation parameters). The underlying client implementation
+        remains synchronous, so the work is dispatched to a background thread
+        to avoid blocking the event loop.
+        """
+
+        system_prompt = ""
+        message_payload: list[dict[str, Any]] = []
+        generation_kwargs = dict(kwargs)
+
+        if isinstance(prompt, dict):
+            # Support both explicit ``system_prompt`` keys and a system role
+            # inside the messages collection.
+            system_prompt = prompt.get("system_prompt", "") or ""
+            prompt_messages = prompt.get("messages", [])
+            if not system_prompt:
+                for message in prompt_messages:
+                    if (
+                        isinstance(message, dict)
+                        and message.get("role") == "system"
+                        and isinstance(message.get("content"), str)
+                    ):
+                        system_prompt = message.get("content", "")
+                        break
+
+            for message in prompt_messages:
+                if not isinstance(message, dict):
+                    continue
+                if message.get("role") == "system":
+                    continue
+                message_payload.append(message)
+
+            # Carry through common generation parameters when they are
+            # provided on the prompt object.
+            for key in (
+                "temperature",
+                "max_tokens",
+                "top_p",
+                "frequency_penalty",
+                "presence_penalty",
+            ):
+                if key in prompt and key not in generation_kwargs:
+                    generation_kwargs[key] = prompt[key]
+        elif isinstance(prompt, str):
+            message_payload.append({"role": "user", "content": prompt})
+        else:
+            raise TypeError(
+                f"Unsupported prompt type for complete: {type(prompt)!r}"
+            )
+
+        try:
+            raw_response = await asyncio.to_thread(
+                self.generate_response_with_retry,
+                system_prompt,
+                message_payload,
+                **generation_kwargs,
+            )
+        except RuntimeError:
+            # If no running loop is available (e.g., called from sync code),
+            # fall back to a direct call so that the client still functions.
+            raw_response = self.generate_response_with_retry(
+                system_prompt, message_payload, **generation_kwargs
+            )
+
+        return self._normalize_response(raw_response)
+
+    def _normalize_response(self, raw_response: Any) -> dict[str, Any]:
+        """Standardise heterogeneous client responses."""
+
+        if isinstance(raw_response, dict):
+            normalized: dict[str, Any] = dict(raw_response)
+        else:
+            normalized = {"content": str(raw_response) if raw_response else ""}
+
+        if not isinstance(normalized.get("usage"), dict):
+            normalized["usage"] = {}
+
+        if "error" not in normalized:
+            normalized["error"] = None
+
+        if "model_id_used" not in normalized:
+            normalized["model_id_used"] = getattr(self, "model_name", "unknown")
+
+        if "reasoning_content" not in normalized:
+            normalized["reasoning_content"] = None
+
+        if not normalized.get("content"):
+            normalized["content"] = self._extract_content_from_choices(normalized) or ""
+
+        # Preserve the original response for debugging while ensuring we do
+        # not introduce self-referential structures when the response was a
+        # dictionary.
+        if "_raw_response" not in normalized:
+            normalized["_raw_response"] = raw_response
+
+        return normalized
+
+    @staticmethod
+    def _extract_content_from_choices(response: dict[str, Any]) -> str | None:
+        """Extract assistant text from OpenAI-style response payloads."""
+
+        choices = response.get("choices")
+        if not isinstance(choices, list):
+            return None
+
+        for choice in choices:
+            if not isinstance(choice, dict):
+                continue
+            message = choice.get("message")
+            if isinstance(message, dict):
+                content = message.get("content")
+                if isinstance(content, str):
+                    return content
+            content = choice.get("content")
+            if isinstance(content, str):
+                return content
+
+        return None

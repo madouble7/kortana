@@ -28,7 +28,8 @@ def initialize_services(config) -> None:
     Args:
         config: Application configuration object
     """
-    global _config
+    global _config, _services
+    _services.clear()
     _config = config
     logger.info("Service registry initialized with configuration")
 
@@ -122,15 +123,21 @@ def _create_scheduler():
     return BackgroundScheduler()
 
 
-def _create_memory_core_service():
-    """Factory function for Memory Core Service."""
+def _create_memory_manager():
+    """Factory function for the primary Memory Manager."""
 
-    # TODO: This needs proper database session initialization
-    # For now, return None as placeholder
-    logger.warning(
-        "MemoryCoreService factory not fully implemented - needs database session"
-    )
-    return None
+    from src.kortana.memory.memory_manager import MemoryManager
+
+    if _config is None:
+        raise RuntimeError("Services not initialized with configuration")
+
+    return MemoryManager(settings=_config)
+
+
+def _create_memory_core_service():
+    """Factory function for Memory Core Service (alias for memory manager)."""
+
+    return get_memory_manager()
 
 
 def _create_sacred_model_router():
@@ -155,7 +162,7 @@ def _create_sacred_model_router():
 def _create_chat_engine():
     """Factory function for Chat Engine."""
     try:
-        from src.kortana.modules.chat.chat_engine import ChatEngine
+        from src.kortana.core.brain import ChatEngine
 
         if _config is None:
             raise RuntimeError("Services not initialized with configuration")
@@ -221,9 +228,16 @@ def get_scheduler():
     return get_service("scheduler", _create_scheduler)
 
 
+def get_memory_manager():
+    """Get the primary Memory Manager instance."""
+    return get_service("memory_manager", _create_memory_manager)
+
+
 def get_memory_core_service():
     """Get the Memory Core Service instance."""
-    return get_service("memory_core_service", _create_memory_core_service)
+    memory_manager = get_memory_manager()
+    _services.setdefault("memory_core_service", memory_manager)
+    return memory_manager
 
 
 def get_sacred_model_router():
@@ -263,6 +277,7 @@ def get_service_status() -> dict[str, bool]:
         "execution_engine": "execution_engine" in _services,
         "covenant_enforcer": "covenant_enforcer" in _services,
         "scheduler": "scheduler" in _services,
+        "memory_manager": "memory_manager" in _services,
         "memory_core_service": "memory_core_service" in _services,
         "sacred_model_router": "sacred_model_router" in _services,
         "chat_engine": "chat_engine" in _services,
