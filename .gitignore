@@ -92,4 +92,10 @@ test-results
 **/*.coverage
 coverage.xml
 .coverage*
+# Frontend (Node.js/Vite/React)
+node_modules/
+dist/
+.next/
+.DS_Store
+
 archive/
