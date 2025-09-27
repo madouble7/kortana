@@ -1,0 +1,275 @@
+openapi: 3.1.0
+info:
+  title: Kor'tana Hybrid Auth & Sync API
+  version: 0.1.0
+  description: Initial slice of local ↔ cloud integration endpoints.
+servers:
+  - url: https://api.kortana.example
+    description: Cloud Authority
+paths:
+  /v1/auth/enroll:
+    post:
+      summary: Enroll a new local device
+      operationId: enrollDevice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrollRequest'
+      responses:
+        '200':
+          description: Enrollment bundle issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrollmentBundle'
+        '400': { description: Invalid request }
+        '401': { description: Unauthorized or invalid enrollment token }
+  /v1/auth/capability:
+    post:
+      summary: Issue ephemeral capability token
+      operationId: issueCapability
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CapabilityRequest'
+      responses:
+        '200':
+            description: Capability token
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/CapabilityToken'
+        '401': { description: Device not enrolled / signature invalid }
+        '403': { description: Scope denied }
+  /v1/auth/revocations:
+    get:
+      summary: Retrieve revocation digest
+      operationId: getRevocations
+      responses:
+        '200':
+          description: Revocation digest
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevocationDigest'
+  /v1/sync/submit:
+    post:
+      summary: Submit batched events and optional preference patches
+      operationId: submitSyncBatch
+      security:
+        - capabilityAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncSubmitRequest'
+      responses:
+        '200':
+          description: Accepted batch (idempotent)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncSubmitResponse'
+        '401': { description: Capability expired or invalid }
+        '409': { description: Conflict requires merge }
+  /v1/sync/pull:
+    get:
+      summary: Pull incremental events after a cursor
+      operationId: pullSync
+      security:
+        - capabilityAuth: []
+      parameters:
+        - in: query
+          name: after_cursor
+          schema:
+            type: string
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 500
+            maximum: 2000
+      responses:
+        '200':
+          description: Events & state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncPullResponse'
+  /v1/execute/model:
+    post:
+      summary: Delegated model execution
+      operationId: executeModel
+      security:
+        - capabilityAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModelExecuteRequest'
+      responses:
+        '200':
+          description: Model completion
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelExecuteResponse'
+        '401': { description: Capability invalid }
+        '403': { description: Scope denied }
+components:
+  securitySchemes:
+    capabilityAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: kortana-capability
+  schemas:
+    EnrollRequest:
+      type: object
+      required: [public_key, env, agent_meta]
+      properties:
+        public_key: { type: string, description: base64 Ed25519 public key }
+        env: { type: string, enum: [prod, dev] }
+        agent_meta:
+          type: object
+          properties:
+            version: { type: string }
+            platform: { type: string }
+            commit: { type: string }
+    EnrollmentBundle:
+      type: object
+      required: [device_id, public_key, scopes, env, issued_at, expires_at, signature]
+      properties:
+        device_id: { type: string }
+        public_key: { type: string }
+        scopes:
+          type: array
+          items: { type: string }
+        env: { type: string }
+        issued_at: { type: integer }
+        expires_at: { type: integer }
+        signature: { type: string }
+    CapabilityRequest:
+      type: object
+      required: [device_id, challenge, signature, requested_scopes]
+      properties:
+        device_id: { type: string }
+        challenge: { type: string }
+        signature: { type: string }
+        requested_scopes:
+          type: array
+          items: { type: string }
+    CapabilityToken:
+      type: object
+      required: [typ, ver, device, scopes, iat, exp, jti, signature]
+      properties:
+        typ: { type: string }
+        ver: { type: string }
+        device: { type: string }
+        scopes:
+          type: array
+          items: { type: string }
+        route_hints:
+          type: object
+          additionalProperties: true
+        iat: { type: integer }
+        exp: { type: integer }
+        jti: { type: string }
+        signature: { type: string }
+    RevocationDigest:
+      type: object
+      required: [version, revoked_devices, revoked_cap_jtis, signature]
+      properties:
+        version: { type: integer }
+        revoked_devices:
+          type: array
+          items: { type: string }
+        revoked_cap_jtis:
+          type: array
+          items: { type: string }
+        signature: { type: string }
+    SyncEvent:
+      type: object
+      required: [id, type, ts, payload_hash]
+      properties:
+        id: { type: string }
+        type: { type: string }
+        ts: { type: string, format: date-time }
+        payload_hash: { type: string }
+        payload: { type: object, additionalProperties: true }
+    PrefPatch:
+      type: object
+      required: [doc, clock]
+      properties:
+        doc: { type: string }
+        clock:
+          type: object
+          additionalProperties: { type: integer }
+        patch: { type: object, additionalProperties: true }
+    SyncSubmitRequest:
+      type: object
+      required: [batch_id]
+      properties:
+        batch_id: { type: string }
+        cursor: { type: string }
+        events:
+          type: array
+          items: { $ref: '#/components/schemas/SyncEvent' }
+        pref_patches:
+          type: array
+          items: { $ref: '#/components/schemas/PrefPatch' }
+    SyncSubmitResponse:
+      type: object
+      required: [status, cursor]
+      properties:
+        status: { type: string, enum: [accepted, batch_duplicate, conflict_merge_required] }
+        cursor: { type: string }
+        merge_advisories:
+          type: array
+          items: { type: object, additionalProperties: true }
+    SyncPullResponse:
+      type: object
+      required: [events, next_cursor]
+      properties:
+        events:
+          type: array
+          items: { $ref: '#/components/schemas/SyncEvent' }
+        next_cursor: { type: string }
+        prefs_snapshot:
+          type: object
+          additionalProperties: true
+    ModelExecuteRequest:
+      type: object
+      required: [mode]
+      properties:
+        mode: { type: string, enum: [chat, completion, embedding] }
+        messages:
+          type: array
+          items:
+            type: object
+            properties:
+              role: { type: string }
+              content: { type: string }
+        input: { type: string }
+        options:
+          type: object
+          properties:
+            stream: { type: boolean }
+            temperature: { type: number }
+            max_tokens: { type: integer }
+    ModelExecuteResponse:
+      type: object
+      properties:
+        model: { type: string }
+        usage:
+          type: object
+          properties:
+            tokens_in: { type: integer }
+            tokens_out: { type: integer }
+        output: { type: string }
+        route: { type: string }
