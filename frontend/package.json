@@ -7,12 +7,12 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "proxy": "node server/proxy.js"
+    "proxy": "node ../server/proxy.js"
   },
   "dependencies": {
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.0",
-    "express": "^5.1.0",
+    "express": "^4.19.2",
     "lucide-react": "^0.441.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

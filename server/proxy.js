@@ -1,22 +1,41 @@
-import express from 'express';
-import fetch from 'node-fetch';
+const http = require('http');
+const https = require('https');
+const url = require('url');
+// Using built-in fetch in Node 22
 
-const app = express();
-const PORT = process.env.PORT || 5174;
+const PORT = process.env.PORT || 3002;
 const UA = process.env.KORTANA_UA || 'kortana/1.0 (+https://example.com)';
 
-app.get('/proxy', async (req, res) => {
-  const url = req.query.url;
-  if (!url) return res.status(400).send('Missing url');
-  try {
-    const upstream = await fetch(String(url), {headers: {'User-Agent': UA}});
-    res.status(upstream.status);
-    upstream.headers.forEach((v, k) => res.setHeader(k, v));
-    const buffer = await upstream.arrayBuffer();
-    res.send(Buffer.from(buffer));
-  } catch (e) {
-    res.status(500).send(String(e));
+const server = http.createServer(async (req, res) => {
+  const parsedUrl = url.parse(req.url, true);
+
+  if (parsedUrl.pathname === '/proxy' && req.method === 'GET') {
+    const targetUrl = parsedUrl.query.url;
+    if (!targetUrl) {
+      res.writeHead(400, { 'Content-Type': 'text/plain' });
+      res.end('Missing url parameter');
+      return;
+    }
+
+    try {
+      const upstream = await fetch(String(targetUrl), {
+        headers: { 'User-Agent': UA }
+      });
+
+      res.writeHead(upstream.status, Object.fromEntries(upstream.headers.entries()));
+      const buffer = await upstream.arrayBuffer();
+      res.end(Buffer.from(buffer));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'text/plain' });
+      res.end(String(e));
+    }
+  } else if (parsedUrl.pathname === '/proxy/health' && req.method === 'GET') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'ok', ts: Date.now(), port: PORT }));
+  } else {
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    res.end('Not found');
   }
 });
 
-app.listen(PORT, () => console.log(`Proxy listening on ${PORT}`));
+server.listen(PORT, () => console.log(`Proxy listening on ${PORT}`));
