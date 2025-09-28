@@ -1,0 +1,4 @@
+{
+  "nudge_interval_seconds": 60,
+  "incoming_folder": "incoming"
+}
