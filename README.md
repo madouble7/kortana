@@ -168,9 +168,15 @@ curl -X POST http://localhost:3001/api/github/analyze \
 
 ## Docker Deployment
 
-### Build the Docker Image
+### Local Docker Build
+
+**Note**: For local Docker builds, you must build the application first:
 
 ```bash
+# Build backend and frontend
+npm run build:all
+
+# Build Docker image
 docker build -t kortana .
 ```
 
@@ -180,6 +186,14 @@ docker build -t kortana .
 docker run -p 8080:8080 \
   -e GEMINI_API_KEY=your_gemini_api_key \
   kortana
+```
+
+### Cloud Build (Recommended)
+
+For production deployments, use Google Cloud Build which handles the multi-stage build process:
+
+```bash
+gcloud builds submit --tag gcr.io/PROJECT_ID/kortana
 ```
 
 ## Google Cloud Run Deployment
