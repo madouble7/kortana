@@ -1,57 +1,57 @@
 name: Deploy Backend to Cloud Run
 
 on:
-  push:
-    branches: [ main ]
-    paths:
-      - 'backend/**'
-      - '.github/workflows/deploy-backend.yml'
-  workflow_dispatch:
+    push:
+        branches: [main]
+        paths:
+            - "backend/**"
+            - ".github/workflows/deploy-backend.yml"
+    workflow_dispatch:
 
 env:
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  REGION: us-west1
-  SERVICE_NAME: kortana-backend
+    PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+    REGION: us-west1
+    SERVICE_NAME: kortana-backend
 
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    
-    permissions:
-      contents: read
-      id-token: write
+    deploy:
+        runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+        permissions:
+            contents: read
+            id-token: write
 
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v1
-        with:
-          project_id: ${{ env.PROJECT_ID }}
-          use_oidc: true
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
 
-      - name: Configure Docker to use gcloud as credential helper
-        run: |
-          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+            - name: Set up Cloud SDK
+              uses: google-github-actions/setup-gcloud@v1
+              with:
+                  project_id: ${{ env.PROJECT_ID }}
+                  use_oidc: true
 
-      - name: Build and push Docker image
-        run: |
-          gcloud builds submit \
-            --tag ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
-            --region ${{ env.REGION }} \
-            ./backend
+            - name: Configure Docker to use gcloud as credential helper
+              run: |
+                  gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
 
-      - name: Deploy to Cloud Run
-        run: |
-          gcloud run deploy ${{ env.SERVICE_NAME }} \
-            --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
-            --region ${{ env.REGION }} \
-            --platform managed \
-            --allow-unauthenticated \
-            --set-env-vars GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }},GOOGLE_DRIVE_API_KEY=${{ secrets.GOOGLE_DRIVE_API_KEY }}
+            - name: Build and push Docker image
+              run: |
+                  gcloud builds submit \
+                    --tag ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+                    --region ${{ env.REGION }} \
+                    ./backend
 
-      - name: Output service URL
-        run: |
-          echo "Backend deployed successfully!"
-          gcloud run services describe ${{ env.SERVICE_NAME }} --region ${{ env.REGION }} --format='value(status.url)'
+            - name: Deploy to Cloud Run
+              run: |
+                  gcloud run deploy ${{ env.SERVICE_NAME }} \
+                    --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+                    --region ${{ env.REGION }} \
+                    --platform managed \
+                    --allow-unauthenticated \
+                    --set-env-vars GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }},GOOGLE_DRIVE_API_KEY=${{ secrets.GOOGLE_DRIVE_API_KEY }}
+
+            - name: Output service URL
+              run: |
+                  echo "Backend deployed successfully!"
+                  gcloud run services describe ${{ env.SERVICE_NAME }} --region ${{ env.REGION }} --format='value(status.url)'
