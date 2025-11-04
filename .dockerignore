@@ -12,16 +12,16 @@ client/node_modules
 .git
 .gitignore
 
-# Documentation
-README.md
-LICENSE
+# Documentation (keep for now, can be excluded later)
+# README.md
+# LICENSE
 
 # CI/CD
 .github
 
-# Build artifacts
-dist
-client/build
+# Build artifacts (will be included for Docker - comment out)
+# dist
+# client/build
 
 # Logs
 *.log
@@ -48,3 +48,8 @@ Thumbs.db
 tmp
 temp
 .cache
+
+# Source files (not needed if pre-built)
+src
+client/src
+tsconfig.json

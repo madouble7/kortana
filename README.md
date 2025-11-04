@@ -33,7 +33,7 @@ kortana/
 
 ## Prerequisites
 
-- Node.js 18 or higher
+- Node.js 20 or higher
 - npm or yarn
 - GitHub Personal Access Token
 - Google Gemini API Key

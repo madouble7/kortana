@@ -1,52 +1,20 @@
-# Multi-stage build for Node.js + TypeScript service with React frontend
+# Dockerfile for Kor'tana
+# Build locally first: npm run build:all
+# Then build Docker: docker build -t kortana .
 
-# Stage 1: Build React frontend
-FROM node:18-alpine AS client-builder
-
-WORKDIR /app/client
-
-# Copy client package files
-COPY client/package*.json ./
-
-# Install client dependencies
-RUN npm ci --only=production
-
-# Copy client source
-COPY client/ ./
-
-# Build React app
-RUN npm run build
-
-# Stage 2: Build backend
-FROM node:18-alpine AS backend-builder
+FROM node:20-slim
 
 WORKDIR /app
 
-# Copy root package files
+# Copy package files
 COPY package*.json ./
-COPY tsconfig.json ./
 
-# Install backend dependencies
-RUN npm ci --only=production
+# Install dependencies  
+RUN npm install --no-audit --no-fund
 
-# Copy backend source
-COPY src/ ./src/
-
-# Build TypeScript backend
-RUN npm run build
-
-# Stage 3: Production image
-FROM node:18-alpine
-
-WORKDIR /app
-
-# Copy backend dependencies and built files
-COPY --from=backend-builder /app/node_modules ./node_modules
-COPY --from=backend-builder /app/dist ./dist
-COPY --from=backend-builder /app/package*.json ./
-
-# Copy built React frontend
-COPY --from=client-builder /app/client/build ./client/build
+# Copy application files
+COPY dist/ ./dist/
+COPY client/build/ ./client/build/
 
 # Set environment
 ENV NODE_ENV=production
