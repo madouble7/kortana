@@ -18,17 +18,12 @@ interface GitHubIssue {
 }
 
 // Placeholder function for Gemini API integration
-async function analyzeIssueWithGemini(title: string, body: string): Promise<void> {
-  console.log('Analyzing issue with Kor\'tana:')
-  console.log('Title:', title)
-  console.log('Body:', body)
-  
+async function analyzeIssueWithGemini(title: string, _body: string): Promise<string> {
   // TODO: Integrate with Gemini API
   // This is where you would call the Gemini API to analyze the issue
   return new Promise((resolve) => {
     setTimeout(() => {
-      alert(`Kor'tana analysis ready!\n\nIssue: ${title}\n\nThis is a placeholder for Gemini API integration.`)
-      resolve()
+      resolve(`Analysis ready for: ${title}`)
     }, 1000)
   })
 }
@@ -39,6 +34,7 @@ export default function GitHubIssueAnalyzer() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [analyzingIssue, setAnalyzingIssue] = useState<number | null>(null)
+  const [analysisResult, setAnalysisResult] = useState<string | null>(null)
 
   const fetchIssues = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -114,10 +110,12 @@ export default function GitHubIssueAnalyzer() {
 
   const handleAnalyzeIssue = async (issue: GitHubIssue) => {
     setAnalyzingIssue(issue.id)
+    setAnalysisResult(null)
     try {
-      await analyzeIssueWithGemini(issue.title, issue.body || 'No description provided')
+      const result = await analyzeIssueWithGemini(issue.title, issue.body || 'No description provided')
+      setAnalysisResult(result)
     } catch (err) {
-      console.error('Error analyzing issue:', err)
+      setAnalysisResult('Error analyzing issue. Please try again.')
     } finally {
       setAnalyzingIssue(null)
     }
@@ -163,6 +161,18 @@ export default function GitHubIssueAnalyzer() {
         {error && (
           <div className="mt-4 p-4 bg-red-900/20 border border-red-700 rounded-lg">
             <p className="text-red-400 text-sm">{error}</p>
+          </div>
+        )}
+
+        {analysisResult && (
+          <div className="mt-4 p-4 bg-green-900/20 border border-green-700 rounded-lg">
+            <p className="text-green-400 text-sm">{analysisResult}</p>
+            <button
+              onClick={() => setAnalysisResult(null)}
+              className="mt-2 text-xs text-gray-400 hover:text-gray-200 transition"
+            >
+              Dismiss
+            </button>
           </div>
         )}
       </div>
@@ -247,23 +257,6 @@ export default function GitHubIssueAnalyzer() {
           </div>
         </div>
       )}
-
-      <style>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 8px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: #1f2937;
-          border-radius: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #4b5563;
-          border-radius: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #6b7280;
-        }
-      `}</style>
     </div>
   )
 }

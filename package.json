@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "i am who i am",
+  "description": "GitHub Issue Analyzer - A React application for analyzing GitHub repository issues with AI integration",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
