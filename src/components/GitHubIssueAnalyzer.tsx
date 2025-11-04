@@ -51,10 +51,18 @@ export default function GitHubIssueAnalyzer() {
     
     try {
       // Handle both "owner/repo" and full GitHub URLs
-      if (repoUrl.includes('github.com')) {
-        const urlParts = repoUrl.replace('https://', '').replace('http://', '').split('/')
-        owner = urlParts[1]
-        repo = urlParts[2]
+      if (repoUrl.includes('://')) {
+        // Parse as URL
+        const url = new URL(repoUrl)
+        if (url.hostname !== 'github.com') {
+          throw new Error('Only github.com URLs are supported')
+        }
+        const pathParts = url.pathname.split('/').filter(part => part.length > 0)
+        if (pathParts.length < 2) {
+          throw new Error('Invalid GitHub URL format')
+        }
+        owner = pathParts[0]
+        repo = pathParts[1]
       } else if (repoUrl.includes('/')) {
         [owner, repo] = repoUrl.split('/')
       } else {
