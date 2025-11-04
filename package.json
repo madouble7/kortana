@@ -1,0 +1,35 @@
+{
+  "name": "kortana",
+  "version": "1.0.0",
+  "description": "Kor'tana - AI-powered GitHub integration service",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "nodemon --exec ts-node src/server.ts",
+    "client": "cd client && npm start",
+    "client:build": "cd client && npm run build",
+    "dev:all": "concurrently \"npm run dev\" \"npm run client\"",
+    "build:all": "npm run build && npm run client:build",
+    "test": "echo \"No tests specified\""
+  },
+  "keywords": ["github", "ai", "gemini", "analysis"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@octokit/rest": "^22.0.1",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.5",
+    "@types/node": "^24.10.0",
+    "concurrently": "^9.2.1",
+    "nodemon": "^3.1.10",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}
