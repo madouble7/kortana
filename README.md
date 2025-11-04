@@ -25,24 +25,28 @@ Kor'tana is a living, self-developing AI system:
 ### Local Development
 
 1. **Clone and setup**:
+
    ```bash
    git clone https://github.com/KOR-TANA/kortana.git
    cd kortana
    ```
 
 2. **Install backend dependencies**:
+
    ```bash
    cd backend
    pip install -r requirements.txt
    ```
 
 3. **Configure environment**:
+
    ```bash
    cp backend/.env.example backend/.env
    # Edit backend/.env with your GEMINI_API_KEY and other secrets
    ```
 
 4. **Start the backend server**:
+
    ```bash
    cd backend
    uvicorn main:app --reload --port 8000
@@ -92,15 +96,18 @@ kortana/
 ## 🔗 API Endpoints
 
 ### Health & Status
+
 - `GET /` - Root info
 - `GET /api/health` - Backend health check
 
 ### Gemini Integration
+
 - `POST /api/gemini/analyze` - Analyze text with Gemini
 - `POST /api/gemini/generate` - Generate code
 - `POST /api/gemini/chat` - Chat endpoint
 
 ### Memory Management
+
 - `GET /api/memory/` - List all memories
 - `POST /api/memory/add` - Add a document
 - `GET /api/memory/{doc_id}` - Retrieve document
@@ -108,11 +115,16 @@ kortana/
 - `POST /api/memory/search` - Search memories
 
 ### Agent Orchestration
-- `GET /api/agents/` - List agents
-- `POST /api/agents/register` - Register new agent
-- `GET /api/agents/{agent_name}` - Get agent details
-- `POST /api/agents/{agent_name}/execute` - Execute task
-- `POST /api/agents/{agent_name}/status` - Update status
+
+- `GET /api/agents/list` - List agents
+- `POST /api/agents/create` - Create new agent
+- `POST /api/agents/execute/{agent_id}` - Execute agent task
+
+### GitHub Integration
+
+- `GET /api/github/repos/{owner}/{repo}/issues` - Fetch repository issues
+- `GET /api/github/repos/{owner}/{repo}/pulls` - Fetch pull requests
+- `POST /api/github/analyze` - Analyze GitHub content with Gemini
 
 ---
 
@@ -134,18 +146,21 @@ GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json
 ## 🛠️ Development
 
 ### Running Tests
+
 ```bash
 cd backend
 pytest
 ```
 
 ### Code Formatting
+
 ```bash
 ruff format .
 ruff check . --fix
 ```
 
 ### Type Checking
+
 ```bash
 mypy backend/
 ```
