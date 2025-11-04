@@ -1,5 +1,9 @@
 import { useState } from 'react'
 
+// Constants
+const GITHUB_API_BASE = 'https://api.github.com'
+const DEFAULT_ISSUES_PER_PAGE = 15
+
 interface GitHubIssue {
   id: number
   number: number
@@ -73,7 +77,7 @@ export default function GitHubIssueAnalyzer() {
       
       // Fetch issues from GitHub REST API
       const response = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/issues?state=open&per_page=15&sort=created&direction=desc`,
+        `${GITHUB_API_BASE}/repos/${owner}/${repo}/issues?state=open&per_page=${DEFAULT_ISSUES_PER_PAGE}&sort=created&direction=desc`,
         {
           headers: {
             'Accept': 'application/vnd.github.v3+json',
