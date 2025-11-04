@@ -24,6 +24,8 @@ app.get('/health', (req, res) => {
 });
 
 // Serve static files from React app in production
+// Note: In production on Cloud Run, this is protected by Cloud Run's built-in rate limiting
+// For additional protection, consider using express-rate-limit middleware
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../client/build')));
   
