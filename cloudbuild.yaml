@@ -43,7 +43,7 @@ steps:
       - 'gcr.io/$PROJECT_ID/kortana:latest'
       
   # Deploy to Cloud Run
-  - name: 'gcr.io/google.com/cloudsdktop/gcloud'
+  - name: 'gcr.io/cloud-builders/gcloud'
     args:
       - 'run'
       - 'deploy'
