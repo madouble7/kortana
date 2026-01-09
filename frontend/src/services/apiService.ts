@@ -1,0 +1,154 @@
+// API Service for Kor'tana Frontend
+// Connects to FastAPI backend running on localhost:8001
+
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8001';
+
+export interface HealthResponse {
+  status: string;
+  message: string;
+}
+
+export interface PrayerStatusResponse {
+  status: string;
+  message: string;
+  timestamp: string;
+  persons: string[];
+  next_cycle: string;
+}
+
+export interface GitHubIssue {
+  id: number;
+  number: number;
+  title: string;
+  body: string;
+  state: string;
+  html_url: string;
+  created_at: string;
+}
+
+export interface MemoryEntry {
+  id: string;
+  title: string;
+  content: string;
+  timestamp: string;
+  tags: string[];
+}
+
+class ApiService {
+  private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...options?.headers,
+        },
+        ...options,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error(`API request failed for ${endpoint}:`, error);
+      throw error;
+    }
+  }
+
+  // Health & Status
+  async getHealth(): Promise<HealthResponse> {
+    return this.request<HealthResponse>('/api/health');
+  }
+
+  // Prayer Agent
+  async getPrayerStatus(): Promise<PrayerStatusResponse> {
+    return this.request<PrayerStatusResponse>('/api/prayer/status');
+  }
+
+  async requestPrayer(person: string = 'both', request: string = ''): Promise<any> {
+    const params = new URLSearchParams({ person, request });
+    return this.request(`/api/prayer/request?${params}`);
+  }
+
+  // GitHub Integration
+  async getGitHubIssues(owner: string, repo: string, state: string = 'open'): Promise<GitHubIssue[]> {
+    return this.request<GitHubIssue[]>(`/api/github/repos/${owner}/${repo}/issues?state=${state}`);
+  }
+
+  async getGitHubPullRequests(owner: string, repo: string, state: string = 'open'): Promise<any[]> {
+    return this.request(`/api/github/repos/${owner}/${repo}/pulls?state=${state}`);
+  }
+
+  async analyzeGitHubContent(content: string, type: string = 'issue'): Promise<any> {
+    return this.request('/api/github/analyze', {
+      method: 'POST',
+      body: JSON.stringify({ content, type }),
+    });
+  }
+
+  // Memory System
+  async getMemories(): Promise<MemoryEntry[]> {
+    const response = await this.request<{ documents: MemoryEntry[] }>('/api/memory/documents');
+    return response.documents;
+  }
+
+  async searchMemories(query: string, tags?: string[]): Promise<any> {
+    const params = new URLSearchParams({ query });
+    if (tags && tags.length > 0) {
+      params.append('tags', tags.join(','));
+    }
+    return this.request(`/api/memory/search?${params}`);
+  }
+
+  async addMemory(title: string, content: string): Promise<any> {
+    return this.request('/api/memory/add_document', {
+      method: 'POST',
+      body: JSON.stringify({ title, content }),
+    });
+  }
+
+  // Gemini AI
+  async analyzeWithGemini(text: string): Promise<any> {
+    return this.request('/api/gemini/analyze', {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    });
+  }
+
+  async generateWithGemini(description: string): Promise<any> {
+    return this.request('/api/gemini/generate', {
+      method: 'POST',
+      body: JSON.stringify({ description }),
+    });
+  }
+
+  async chatWithGemini(message: string): Promise<any> {
+    return this.request('/api/gemini/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message }),
+    });
+  }
+
+  // Agent Operations
+  async listAgents(): Promise<any[]> {
+    const response = await this.request<{ agents: any[] }>('/api/agents/list');
+    return response.agents;
+  }
+
+  async createAgent(name: string, description: string, capabilities: string[]): Promise<any> {
+    return this.request('/api/agents/create', {
+      method: 'POST',
+      body: JSON.stringify({ name, description, capabilities }),
+    });
+  }
+
+  async executeAgent(agentId: number, task: string): Promise<any> {
+    return this.request(`/api/agents/execute/${agentId}`, {
+      method: 'POST',
+      body: JSON.stringify({ task }),
+    });
+  }
+}
+
+export const apiService = new ApiService();
