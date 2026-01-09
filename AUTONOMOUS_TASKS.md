@@ -1,12 +1,15 @@
 # 🚀 KOR'TANA AUTONOMOUS ADVANCEMENT TASKS
+
 **7 High-Impact Tasks to Plug Into GitHub Copilot**
 
 ---
 
 ## TASK 1: Autonomous Task Queue & Self-Branching
+
 **Purpose**: Enable Kor'tana to create GitHub branches and PRs without human approval
 
 **Copilot Prompt:**
+
 ```
 Create a new file `backend/routers/autonomy.py` that implements:
 
@@ -30,9 +33,11 @@ Return a complete, production-ready router with type hints and error handling.
 ---
 
 ## TASK 2: Self-Testing & Validation Pipeline
+
 **Purpose**: Kor'tana auto-runs tests and validates code quality before creating PRs
 
 **Copilot Prompt:**
+
 ```
 Create `backend/routers/testing.py` with:
 
@@ -57,9 +62,11 @@ Return pytest fixtures, test utilities, and complete error reporting.
 ---
 
 ## TASK 3: Autonomous Code Review & Gemini Analysis
+
 **Purpose**: Kor'tana reviews her own code and provides intelligent feedback before merge
 
 **Copilot Prompt:**
+
 ```
 Create `backend/routers/code_review.py` with:
 
@@ -84,9 +91,11 @@ Return complete review logic with multi-file diff parsing.
 ---
 
 ## TASK 4: Knowledge Base Auto-Population & Ritual Logging
+
 **Purpose**: Kor'tana learns from her own development and auto-documents discoveries
 
 **Copilot Prompt:**
+
 ```
 Create `backend/routers/knowledge.py` with:
 
@@ -111,9 +120,11 @@ Return chromadb setup, embedding logic, and ritual generation.
 ---
 
 ## TASK 5: Autonomous Deployment & Cloud Sync
+
 **Purpose**: Kor'tana deploys to Cloud Run on schedule and syncs local↔cloud state
 
 **Copilot Prompt:**
+
 ```
 Create `backend/routers/deployment.py` with:
 
@@ -140,9 +151,11 @@ Return complete deployment pipeline with error recovery.
 ---
 
 ## TASK 6: Multi-Agent Orchestration & Delegation
+
 **Purpose**: Kor'tana spawns specialized agents for different capabilities
 
 **Copilot Prompt:**
+
 ```
 Create `backend/routers/multi_agent.py` with:
 
@@ -174,9 +187,11 @@ Return agent base classes, dispatcher, and collaboration framework.
 ---
 
 ## TASK 7: Autonomous Metrics & Self-Optimization
+
 **Purpose**: Kor'tana measures her own performance and optimizes her development process
 
 **Copilot Prompt:**
+
 ```
 Create `backend/routers/metrics.py` with:
 
@@ -208,14 +223,17 @@ Return metrics collection, aggregation, analysis, and visualization endpoints.
 ## 🎯 IMPLEMENTATION ROADMAP
 
 **Phase 1** (This week): Tasks 1, 4, 7
+
 - Enable task queueing, knowledge ingestion, and metrics tracking
 - Kor'tana becomes aware of her own performance
 
 **Phase 2** (Next week): Tasks 2, 3, 5
+
 - Add testing, code review, and deployment automation
 - Kor'tana tests and validates her own code before merge
 
 **Phase 3** (Following week): Task 6
+
 - Spawn specialized agents and coordinate multi-agent workflows
 - Kor'tana scales beyond single-threaded development
 

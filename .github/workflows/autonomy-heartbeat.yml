@@ -1,0 +1,93 @@
+name: Autonomy Heartbeat Check
+
+on:
+    schedule:
+        - cron: "0 */6 * * *" # Every 6 hours
+    workflow_dispatch:
+
+jobs:
+    heartbeat:
+        runs-on: ubuntu-latest
+
+        permissions:
+            contents: read
+            issues: write
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Check for recent autonomy logs
+              id: check-logs
+              run: |
+                  # Check if logs/autonomy/ has any files from last 24 hours
+                  if [ ! -d "logs/autonomy" ]; then
+                    echo "heartbeat_ok=false" >> $GITHUB_OUTPUT
+                    exit 0
+                  fi
+
+                  # Find files modified in last 24 hours
+                  RECENT_LOGS=$(find logs/autonomy -type f -mtime -1 2>/dev/null | wc -l)
+
+                  if [ "$RECENT_LOGS" -gt 0 ]; then
+                    echo "heartbeat_ok=true" >> $GITHUB_OUTPUT
+                    echo "Found $RECENT_LOGS recent autonomy logs"
+                  else
+                    echo "heartbeat_ok=false" >> $GITHUB_OUTPUT
+                    echo "No recent autonomy logs found"
+                  fi
+
+            - name: Report successful heartbeat
+              if: steps.check-logs.outputs.heartbeat_ok == 'true'
+              run: |
+                  echo "✓ Kor'tana heartbeat confirmed"
+                  echo "Recent activity detected in logs/autonomy/"
+
+            - name: Create alert issue on heartbeat failure
+              if: steps.check-logs.outputs.heartbeat_ok == 'false'
+              uses: actions/github-script@v7
+              with:
+                  github-token: ${{ secrets.GITHUB_TOKEN }}
+                  script: |
+                      // Check if issue already exists
+                      const issues = await github.rest.issues.listForRepo({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        labels: ['autonomy-alert'],
+                        state: 'open'
+                      });
+
+                      const heartbeatIssue = issues.data.find(i => i.title.includes('Heartbeat'));
+
+                      if (!heartbeatIssue) {
+                        await github.rest.issues.create({
+                          owner: context.repo.owner,
+                          repo: context.repo.repo,
+                          title: '⚠️ Kor\'tana Autonomy Heartbeat Missing',
+                          body: 'No recent autonomy logs found. Check autonomous processes.',
+                          labels: ['autonomy-alert', 'critical']
+                        });
+                      }
+
+            - name: Set up Python for metrics
+              if: steps.check-logs.outputs.heartbeat_ok == 'true'
+              uses: actions/setup-python@v4
+              with:
+                  python-version: "3.11"
+
+            - name: Generate metrics report
+              if: steps.check-logs.outputs.heartbeat_ok == 'true'
+              run: |
+                  python scripts/generate_metrics.py
+
+            - name: Commit metrics if changed
+              if: steps.check-logs.outputs.heartbeat_ok == 'true'
+              run: |
+                  git config user.name "Kor'tana Autonomous"
+                  git config user.email "kor-tana@example.com"
+
+                  if ! git diff --quiet; then
+                    git add logs/metrics/*.json
+                    git commit -m "docs: autonomy metrics snapshot - $(date +%Y-%m-%d)"
+                    git push origin main
+                  fi

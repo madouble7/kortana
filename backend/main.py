@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 try:
-    from routers import agents, gemini, github, memory, autonomy, knowledge
+    from routers import agents, autonomy, gemini, github, knowledge, memory, task_queue
 except ImportError as e:
     print(f"Error importing routers: {e}")
     raise
@@ -32,6 +32,7 @@ try:
     app.include_router(github.router, prefix="/api/github", tags=["github"])
     app.include_router(autonomy.router, prefix="/api/autonomy", tags=["autonomy"])
     app.include_router(knowledge.router, prefix="/api/knowledge", tags=["knowledge"])
+    app.include_router(task_queue.router, prefix="/api/task-queue", tags=["task-queue"])
 except Exception as e:
     print(f"Error including routers: {e}")
     raise

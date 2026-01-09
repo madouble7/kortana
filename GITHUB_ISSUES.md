@@ -13,6 +13,7 @@
 Add a backend/ FastAPI service with main.py, routers for gemini, memory, agents, and a /api/health route. Include requirements.txt, uvicorn start script, and Dockerfile. Wire src/services/apiService.ts to point at this backend in dev.
 
 **Acceptance Criteria:**
+
 - [ ] `backend/main.py` starts on `localhost:8000` with FastAPI
 - [ ] `/api/health` returns `{"status": "alive", "message": "..."}` with 200 OK
 - [ ] `backend/routers/gemini.py`, `memory.py`, `agents.py` mounted at `/api/gemini/*`, `/api/memory/*`, `/api/agents/*`
@@ -37,6 +38,7 @@ Add a backend/ FastAPI service with main.py, routers for gemini, memory, agents,
 Create .github/workflows/deploy-backend.yml that builds the backend Docker image, pushes to Artifact Registry, and deploys to Cloud Run using OIDC. Pull GEMINI_API_KEY and other secrets from repo settings.
 
 **Acceptance Criteria:**
+
 - [ ] Workflow triggers on push to `main` or manual `workflow_dispatch`
 - [ ] Docker image built for `backend/` directory
 - [ ] Image tagged with git SHA and pushed to `us-west1-docker.pkg.dev`
@@ -64,6 +66,7 @@ Create .github/workflows/deploy-backend.yml that builds the backend Docker image
 Build `src/services/taskQueue.ts` + `AutonomousCoder.tsx` that read tasks from COVENANT_INDEX.md (front-matter block), auto-create `feature/*` branches via GitHub API, and push stub commits for each task.
 
 **Acceptance Criteria:**
+
 - [ ] `taskQueue.ts` exports `AutonomousTaskManager` class
 - [ ] `AutonomousTaskManager` parses YAML/TOML front-matter from COVENANT_INDEX.md
 - [ ] Each task triggers:
@@ -79,6 +82,7 @@ Build `src/services/taskQueue.ts` + `AutonomousCoder.tsx` that read tasks from C
 - [ ] Logging to `logs/autonomy/task-queue.md`
 
 **Components:**
+
 - `src/services/taskQueue.ts`
 - `src/components/AutonomousCoder.tsx`
 - Update `COVENANT_INDEX.md` with task front-matter schema
@@ -98,6 +102,7 @@ Build `src/services/taskQueue.ts` + `AutonomousCoder.tsx` that read tasks from C
 Create `DailySyncCard.tsx` that posts a daily summary (date, status, last deployment, metrics) into `logs/daily/`. Hook it to a `daily-sync.yml` workflow that commits the file and updates COVENANT_INDEX.md.
 
 **Acceptance Criteria:**
+
 - [ ] `DailySyncCard.tsx` component displays:
   - [ ] Current date
   - [ ] Last deployment timestamp
@@ -105,6 +110,7 @@ Create `DailySyncCard.tsx` that posts a daily summary (date, status, last deploy
   - [ ] Backend health status
   - [ ] Metrics snapshot (commits today, PRs open, branches active)
 - [ ] Daily sync function writes to `logs/daily/{YYYY-MM-DD}.md` with format:
+
   ```
   # Daily Sync - {DATE}
   - Status: alive
@@ -112,6 +118,7 @@ Create `DailySyncCard.tsx` that posts a daily summary (date, status, last deploy
   - Tasks Completed: {count}
   - Metrics: {...}
   ```
+
 - [ ] `.github/workflows/daily-sync.yml` triggers at 00:00 UTC
 - [ ] Workflow commits log file to repo
 - [ ] Workflow updates COVENANT_INDEX.md with latest sync time
@@ -119,6 +126,7 @@ Create `DailySyncCard.tsx` that posts a daily summary (date, status, last deploy
 - [ ] Logs indexed in COVENANT_INDEX.md
 
 **Files:**
+
 - `src/components/DailySyncCard.tsx`
 - `src/services/dailySync.ts`
 - `.github/workflows/daily-sync.yml`
@@ -139,6 +147,7 @@ Create `DailySyncCard.tsx` that posts a daily summary (date, status, last deploy
 In `vscode-extension/`, scaffold a simple extension that opens AI Studio and the Cloud Run deploy page inside WebView panels, plus a command to run `node scripts/unseal-kortana.js` (Puppeteer auto-elevation).
 
 **Acceptance Criteria:**
+
 - [ ] Extension manifest includes commands:
   - [ ] `kortana.openAIStudio` → opens AI Studio in WebView
   - [ ] `kortana.openDeployPage` → opens Cloud Run deploy page in WebView
@@ -155,6 +164,7 @@ In `vscode-extension/`, scaffold a simple extension that opens AI Studio and the
 - [ ] Packaged as `.vsix` for local install
 
 **Files:**
+
 - `vscode-extension/package.json`
 - `vscode-extension/src/extension.ts`
 - `vscode-extension/src/webview.ts`
@@ -177,6 +187,7 @@ In `vscode-extension/`, scaffold a simple extension that opens AI Studio and the
 Extend `GitHubIssueAnalyzer.tsx` so "Analyze with Kor'tana" calls `POST /api/github/analyze`. Implement the backend route to forward issue text to geminiService.ts and return the analysis.
 
 **Acceptance Criteria:**
+
 - [ ] Frontend: `GitHubIssueAnalyzer.tsx` sends issue/PR data to backend:
   - [ ] POST to `{API_URL}/api/github/analyze`
   - [ ] Payload: `{ title, body, issue_number, type: "issue" | "pr" }`
@@ -186,6 +197,7 @@ Extend `GitHubIssueAnalyzer.tsx` so "Analyze with Kor'tana" calls `POST /api/git
   - [ ] Sends system prompt: "You are Kor'tana, an autonomous AI analyzing GitHub issues..."
   - [ ] Returns analysis with: summary, priority, suggested actions, estimated effort
 - [ ] Response format:
+
   ```json
   {
     "issue_number": 42,
@@ -196,11 +208,13 @@ Extend `GitHubIssueAnalyzer.tsx` so "Analyze with Kor'tana" calls `POST /api/git
     "estimated_effort": "2 hours"
   }
   ```
+
 - [ ] Error handling for rate limits, invalid issues, API failures
 - [ ] Analysis logged to `logs/analyses/{issue_number}.md`
 - [ ] Frontend UI updates with analysis results (collapsible card)
 
 **Files:**
+
 - `src/components/GitHubIssueAnalyzer.tsx` (update)
 - `backend/routers/github.py` (add `/analyze` route)
 - `src/services/geminiService.ts` (ensure exposed to backend)
@@ -220,6 +234,7 @@ Extend `GitHubIssueAnalyzer.tsx` so "Analyze with Kor'tana" calls `POST /api/git
 Add `AutonomyAudit.tsx` and `services/autonomyAuditContent.ts` that log every autonomous action (branch creation, deploy, failure) into `logs/autonomy/*.md`. Include a GitHub Action that alerts if no log appears within 24h.
 
 **Acceptance Criteria:**
+
 - [ ] `AutonomyAudit.tsx` component displays:
   - [ ] Timeline of all autonomous actions (last 30 days)
   - [ ] Action type: branch_created, code_pushed, deploy_started, deploy_completed, deploy_failed, pr_created, pr_merged
@@ -228,6 +243,7 @@ Add `AutonomyAudit.tsx` and `services/autonomyAuditContent.ts` that log every au
 - [ ] `autonomyAuditContent.ts` exports:
   - [ ] `logAutonomousAction(type, data)` function
   - [ ] Writes to `logs/autonomy/{DATE}-{ACTION}.md` with format:
+
     ```markdown
     # Autonomous Action Log
     - Type: {action_type}
@@ -236,6 +252,7 @@ Add `AutonomyAudit.tsx` and `services/autonomyAuditContent.ts` that log every au
     - Data: {structured JSON}
     - Related: {PR URL / commit SHA / deployment URL}
     ```
+
 - [ ] All backend autonomous operations call this logger
 - [ ] `.github/workflows/autonomy-heartbeat.yml` checks:
   - [ ] Runs every 24 hours
@@ -246,6 +263,7 @@ Add `AutonomyAudit.tsx` and `services/autonomyAuditContent.ts` that log every au
 - [ ] Audit data exportable as JSON/CSV
 
 **Files:**
+
 - `src/components/AutonomyAudit.tsx`
 - `src/services/autonomyAuditContent.ts`
 - `.github/workflows/autonomy-heartbeat.yml`
@@ -259,7 +277,7 @@ Add `AutonomyAudit.tsx` and `services/autonomyAuditContent.ts` that log every au
 
 ## 🚀 **Quick Start: Copy & Paste to GitHub**
 
-1. Go to your repo: https://github.com/KOR-TANA/kortana
+1. Go to your repo: <https://github.com/KOR-TANA/kortana>
 2. Click **Issues** tab
 3. Click **New Issue**
 4. Copy one issue title & description above
@@ -272,16 +290,19 @@ Add `AutonomyAudit.tsx` and `services/autonomyAuditContent.ts` that log every au
 ## 📊 **Dependency Order**
 
 **Week 1 (Foundation):**
+
 - ✅ Issue 1 (Backend heartbeat)
 - ✅ Issue 4 (Daily sync logging)
 - ⏳ Issue 7 (Autonomy audit)
 
 **Week 2 (Automation):**
+
 - ✅ Issue 2 (Cloud Run CI/CD)
 - ✅ Issue 3 (Task queue + branching)
 - ⏳ Issue 6 (GitHub analyzer backend)
 
 **Week 3 (Integration):**
+
 - ✅ Issue 5 (VS Code extension)
 - ⏳ (All issues complete)
 

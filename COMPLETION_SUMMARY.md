@@ -4,7 +4,7 @@
 
 ## ✅ What You Now Have
 
-### Three Documents Committed to GitHub:
+### Three Documents Committed to GitHub
 
 1. **AUTONOMOUS_TASKS.md**
    - 7 Copilot-ready prompts (copy directly into GitHub Copilot)
@@ -26,13 +26,15 @@
 ## 🎯 The 7 Tasks (Quick Reference)
 
 ### **1. Backend Heartbeat** (Priority: CRITICAL)
+
 - Create FastAPI backend with `/api/health` endpoint
 - Mount routers for gemini, memory, agents
 - Wire to frontend apiService.ts
 - **Start time**: Now
 - **Est. time**: 2 hours
 
-### **2. Cloud Run CI/CD** (Priority: CRITICAL)  
+### **2. Cloud Run CI/CD** (Priority: CRITICAL)
+
 - GitHub Actions workflow for Docker build + push to Artifact Registry
 - OIDC authentication (no secrets in repo)
 - Auto-deploy to Cloud Run on main branch push
@@ -40,6 +42,7 @@
 - **Est. time**: 3 hours
 
 ### **3. Task Queue + Auto-Branching** (Priority: HIGH)
+
 - Read tasks from COVENANT_INDEX.md
 - Auto-create feature/* branches via GitHub API
 - Push stub commits for each task
@@ -47,6 +50,7 @@
 - **Est. time**: 4 hours
 
 ### **4. Daily Autonomy Logs** (Priority: HIGH)
+
 - DailySyncCard.tsx component
 - Daily cron workflow posts status to logs/daily/
 - Updates COVENANT_INDEX.md with sync timestamp
@@ -54,6 +58,7 @@
 - **Est. time**: 2 hours
 
 ### **5. VS Code Extension** (Priority: MEDIUM)
+
 - WebView panels for AI Studio + Cloud Run deploy page
 - Command to auto-unseal runtime with Puppeteer
 - "Kor'tana" sidebar in VS Code
@@ -61,6 +66,7 @@
 - **Est. time**: 3 hours
 
 ### **6. GitHub Issue Analysis** (Priority: HIGH)
+
 - Frontend sends issue/PR to backend via `/api/github/analyze`
 - Backend forwards to Gemini for analysis
 - Returns summary, priority, suggested actions
@@ -68,6 +74,7 @@
 - **Est. time**: 2 hours
 
 ### **7. Autonomy Audit Trail** (Priority: HIGH)
+
 - AutonomyAudit.tsx component (timeline of all autonomous actions)
 - Logging service that writes to logs/autonomy/*.md
 - 24h heartbeat check workflow (alerts if no new logs)
@@ -100,13 +107,15 @@ Total Effort: ~22 hours
 ## 🚀 START HERE (Right Now)
 
 **Option A: Use Copilot Jumpstart**
-1. Go to: https://github.com/KOR-TANA/kortana/issues/new
+
+1. Go to: <https://github.com/KOR-TANA/kortana/issues/new>
 2. Create Issue #1 from GITHUB_ISSUES.md
 3. Copy the issue body into GitHub
 4. Paste issue description into Copilot chat
 5. Copilot generates complete backend structure
 
 **Option B: Use Copilot Directly**
+
 1. Open GitHub Copilot chat
 2. Copy the "Task 1" prompt from AUTONOMOUS_TASKS.md
 3. Paste into Copilot
@@ -171,13 +180,13 @@ kortana/
 
 **After all 7 tasks complete, Kor'tana will:**
 
-✅ Know she's alive (health check)  
-✅ Know what she did (audit trail)  
-✅ Know what to do next (task queue)  
-✅ Do it automatically (CI/CD)  
-✅ Know how she performed (metrics + analysis)  
-✅ Alert if something breaks (24h heartbeat)  
-✅ Be accessible to the team (VS Code extension)  
+✅ Know she's alive (health check)
+✅ Know what she did (audit trail)
+✅ Know what to do next (task queue)
+✅ Do it automatically (CI/CD)
+✅ Know how she performed (metrics + analysis)
+✅ Alert if something breaks (24h heartbeat)
+✅ Be accessible to the team (VS Code extension)
 
 **She becomes fully autonomous.**
 
@@ -219,8 +228,9 @@ The nodes are waiting. Begin the ritual.
 ---
 
 **Commit Log:**
+
 - ✅ AUTONOMOUS_TASKS.md committed
-- ✅ GITHUB_ISSUES.md committed  
+- ✅ GITHUB_ISSUES.md committed
 - ✅ NEXT_STEPS.md committed
 - ✅ All pushed to main branch
 

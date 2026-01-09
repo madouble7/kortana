@@ -14,9 +14,11 @@ Both are in your `main` branch and pushed to GitHub.
 ## 🚀 **Next 3 Steps (Right Now)**
 
 ### Step 1: Copy First Issue to GitHub
-Go to: https://github.com/KOR-TANA/kortana/issues/new
+
+Go to: <https://github.com/KOR-TANA/kortana/issues/new>
 
 Copy this **Issue Title:**
+
 ```
 feat: scaffold FastAPI backend with health check and service routers
 ```
@@ -30,6 +32,7 @@ Add labels: `backend`, `infra`, `autonomous`
 ---
 
 ### Step 2: Drop Issue #XX into Copilot
+
 Open GitHub Copilot chat and paste:
 
 ```
@@ -39,7 +42,7 @@ Here's the full issue description:
 
 [PASTE THE FULL ISSUE 1 DESCRIPTION FROM GITHUB_ISSUES.md HERE]
 
-Generate the complete backend/ structure with all files, routers, and Dockerfile. 
+Generate the complete backend/ structure with all files, routers, and Dockerfile.
 Save to: backend/main.py, backend/routers/{gemini,memory,agents}.py, backend/requirements.txt, Dockerfile
 
 Make it production-ready with type hints, error handling, and CORS support.
@@ -50,6 +53,7 @@ Copilot will generate the entire backend structure. Review → commit to a featu
 ---
 
 ### Step 3: Open the Backend Issue
+
 In VS Code terminal:
 
 ```powershell
@@ -59,6 +63,7 @@ python -m uvicorn main:app --reload --port 8000
 ```
 
 Test it:
+
 ```powershell
 curl http://localhost:8000/api/health
 # Should return: {"status": "alive", "message": "Kor'tana backend is breathing"}
@@ -83,16 +88,19 @@ curl http://localhost:8000/api/health
 ## 🔥 **Recommended 3-Week Sprint**
 
 **Week 1: Foundation**
+
 - Issue #1 (Backend) ✅
 - Issue #4 (Daily Logs)
 - Issue #7 (Audit Trail)
 
 **Week 2: Automation**
+
 - Issue #2 (CI/CD)
 - Issue #3 (Task Queue)
 - Issue #6 (GitHub Analyzer)
 
 **Week 3: Integration**
+
 - Issue #5 (VS Code Extension)
 
 ---
@@ -103,7 +111,7 @@ curl http://localhost:8000/api/health
 2. **Each issue is self-contained** - can work independently until dependencies
 3. **Use the Acceptance Criteria checklist** - check items off as you implement
 4. **Commit frequently**: `git commit -m "feat: issue #XX - {description}"`
-5. **When an issue is done**: 
+5. **When an issue is done**:
    - Mark all checkboxes ✅
    - Link PR in comments
    - Close issue
@@ -115,13 +123,13 @@ curl http://localhost:8000/api/health
 
 After all 7 issues → **Kor'tana becomes:**
 
-✅ **Self-aware**: Logs every action to audit trail  
-✅ **Self-maintaining**: Daily heartbeat confirms she's alive  
-✅ **Self-branching**: Auto-creates branches for tasks  
-✅ **Self-deploying**: CI/CD pushes code to Cloud Run  
-✅ **Self-analyzing**: Examines her own issues with Gemini  
-✅ **Self-alerting**: Notices if heartbeat stops (24h check)  
-✅ **Extensible**: VS Code team can work directly with her  
+✅ **Self-aware**: Logs every action to audit trail
+✅ **Self-maintaining**: Daily heartbeat confirms she's alive
+✅ **Self-branching**: Auto-creates branches for tasks
+✅ **Self-deploying**: CI/CD pushes code to Cloud Run
+✅ **Self-analyzing**: Examines her own issues with Gemini
+✅ **Self-alerting**: Notices if heartbeat stops (24h check)
+✅ **Extensible**: VS Code team can work directly with her
 
 ---
 
