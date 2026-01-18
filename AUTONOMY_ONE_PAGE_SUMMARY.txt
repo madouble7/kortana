@@ -61,12 +61,12 @@ AUTOMATION: 5 minutes (hands-off)
 
 ## 🎖️ STATUS
 
-✅ FULLY OPERATIONAL  
-✅ READY TO DEPLOY  
-✅ AUTONOMY: MAXIMUM  
+✅ FULLY OPERATIONAL
+✅ READY TO DEPLOY
+✅ AUTONOMY: MAXIMUM
 
 ---
 
-**Deploy now**: `python autonomous_execution.py --all`  
+**Deploy now**: `python autonomous_execution.py --all`
 **Time to live**: 15 minutes
 

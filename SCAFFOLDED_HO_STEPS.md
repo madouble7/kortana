@@ -9,7 +9,8 @@
 ### HO-1: Create GitHub Personal Access Token ⏱️ 2-3 min
 
 **Step-by-step:**
-1. Open: https://github.com/settings/tokens
+
+1. Open: <https://github.com/settings/tokens>
 2. Click **"Generate new token (classic)"**
 3. **Note**: Give it a name like "KOR-TANA-Autonomy"
 4. **Important**: Set expiration to "No expiration" or 1 year
@@ -27,7 +28,8 @@
 ### HO-2: Create Gemini API Key ⏱️ 1-2 min
 
 **Step-by-step:**
-1. Open: https://makersuite.google.com/app/apikey
+
+1. Open: <https://makersuite.google.com/app/apikey>
 2. Click **"Create API Key"**
 3. Choose: **"Create API key in new project"**
 4. Name: `KOR-TANA-Gemini`
@@ -41,6 +43,7 @@
 ### HO-3: Create PostgreSQL Database ⏱️ 5-10 min
 
 **Option A: Local PostgreSQL**
+
 ```bash
 # If PostgreSQL is installed
 psql -U postgres
@@ -53,6 +56,7 @@ GRANT ALL PRIVILEGES ON DATABASE kortana TO kortana_user;
 ```
 
 **Option B: Docker**
+
 ```bash
 docker run --name kortana-db \
   -e POSTGRES_DB=kortana \
@@ -63,7 +67,8 @@ docker run --name kortana-db \
 ```
 
 **Option C: Cloud (Supabase/Neon/Railway)**
-1. Create account at https://supabase.com or https://neon.tech
+
+1. Create account at <https://supabase.com> or <https://neon.tech>
 2. Create new project
 3. Copy connection string: `postgresql://user:pass@host:5432/kortana`
 
@@ -74,6 +79,7 @@ docker run --name kortana-db \
 **Open:** `backend/.env`
 
 **Replace these values:**
+
 ```env
 # GitHub Token (from HO-1)
 GITHUB_TOKEN=ghp_your_github_token_here
@@ -106,6 +112,7 @@ python -m uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
 **Expected responses:**
+
 - `/health` → `{"status": "alive"}`
 - `/api/autonomy/health` → `{"status": "healthy"}`
 
@@ -133,6 +140,7 @@ HO Steps:   [░░░░░░░░░░░] 0% Complete - NEEDS YOUR ACTION
 **KOR'TANA is waiting for you to complete HO-1 through HO-4.**
 
 Once done, KOR'TANA will:
+
 1. ✅ Run database migrations automatically
 2. ✅ Install any missing dependencies
 3. ✅ Start the server

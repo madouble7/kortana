@@ -50,7 +50,7 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Set up Docker Buildx
-      uses: actions/docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@v3
 
     - name: Build Docker image
       uses: docker/build-push-action@v5
@@ -84,10 +84,7 @@ jobs:
     - name: Run TruffleHog
       uses: trufflesecurity/trufflehog@main
       with:
-        scanType: 'filesystem'
-        scanPath: '.'
-        base64: 'true'
-        zip: 'true'
+        args: filesystem ./ --base64 --zip
 
     - name: Check for .env files committed
       run: |
