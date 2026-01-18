@@ -166,7 +166,8 @@ class Settings:
 
         # Validate database connection string
         try:
-            db_url = cls.DATABASE_URL
+            inst = cls()
+            db_url = inst.DATABASE_URL
             if not db_url or "supersecretpassword" in db_url:
                 print("⚠️  Warning: Database password is using default value")
         except Exception as e:

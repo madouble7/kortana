@@ -134,18 +134,28 @@ class Task(Base):
     __tablename__ = "tasks"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    agent_id = Column(String(36), ForeignKey("agents.id"), nullable=False, index=True)
+    agent_id = Column(String(36), ForeignKey("agents.id"), nullable=True, index=True)
+    parent_id = Column(String(36), ForeignKey("tasks.id"), nullable=True)
     title = Column(String(256), nullable=False)
     description = Column(Text, nullable=True)
+    classification = Column(String(32), nullable=True, default="auto")  # auto, ho, approval
     status = Column(
         String(32), nullable=False, default="pending"
-    )  # pending, running, completed, failed
+    )  # pending, running, completed, failed, waiting_for_ho
     priority = Column(Integer, default=5, nullable=False)  # 1-10
+    command = Column(Text, nullable=True)
+    ho_scaffold = Column(Text, nullable=True)
+    result = Column(Text, nullable=True)
+    error = Column(Text, nullable=True)
+    metadata_json = Column("metadata", JSON, nullable=True)  # 'metadata' is reserved in some SQL implementations
     scheduled_at = Column(DateTime, nullable=True)
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    subtasks = relationship("Task", backref="parent", remote_side=[id])
 
     def __repr__(self):
         return f"<Task {self.title}>"

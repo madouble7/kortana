@@ -16,7 +16,14 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from database import get_db
+from models import Task
+from logger import get_logger
+
+logger = get_logger(__name__)
 
 # ============================================================================
 # ENUMS AND DATA CLASSES
@@ -235,69 +242,63 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
     }
 
     def __init__(self):
-        self.tasks: dict[str, DeploymentTask] = {}
         self.progress_file = Path(__file__).parent / "DEPLOYMENT_PROGRESS.json"
-        self.load_tasks()
+        self._definitions = self.DEPLOYMENT_TASKS
 
-    def load_tasks(self):
-        """Load task definitions and restore progress if available"""
-        # Load default definitions
-        for task_id, task in self.DEPLOYMENT_TASKS.items():
-            self.tasks[task_id] = task
+    async def synchronize_tasks(self, db: AsyncSession):
+        """Synchronize hardcoded task definitions with the database"""
+        for task_key, task_def in self._definitions.items():
+            # Check if task exists in DB by title
+            result = await db.execute(select(Task).where(Task.title == task_def.name))
+            db_task = result.scalar_one_or_none()
 
-        # Restore progress
-        if self.progress_file.exists():
-            try:
-                with open(self.progress_file) as f:
-                    progress = json.load(f)
-                    for task_id, status_data in progress.items():
-                        if task_id in self.tasks:
-                            t = self.tasks[task_id]
-                            t.status = TaskStatus(status_data["status"])
-                            if status_data.get("completed_at"):
-                                t.completed_at = datetime.fromisoformat(status_data["completed_at"])
-                            t.result = status_data.get("result")
-                            t.error = status_data.get("error")
-                print(f"✓ Restored deployment progress from {self.progress_file}")
-            except Exception as e:
-                print(f"⚠️ Failed to restore progress: {e}")
+            if not db_task:
+                # Create new task from definition
+                db_task = Task(
+                    id=task_key if len(task_key) <= 36 else None,
+                    title=task_def.name,
+                    description=task_def.description,
+                    classification=task_def.classification.value,
+                    status=task_def.status.value,
+                    command=task_def.command,
+                    ho_scaffold=task_def.ho_scaffold,
+                )
+                db.add(db_task)
+                logger.info(f"Initialized new autonomy task in DB: {task_def.name}")
 
-    def save_tasks(self):
-        """Persist current task status to disk"""
-        try:
-            progress = {}
-            for task_id, t in self.tasks.items():
-                progress[task_id] = {
-                    "status": t.status.value,
-                    "completed_at": t.completed_at.isoformat() if t.completed_at else None,
-                    "result": t.result,
-                    "error": t.error
-                }
-            with open(self.progress_file, "w") as f:
-                json.dump(progress, f, indent=4)
-        except Exception as e:
-            print(f"⚠️ Failed to save progress: {e}")
+        await db.commit()
 
-    def execute_auto_task(self, task_id: str) -> dict[str, Any]:
-        """Execute an AUTO task and return result"""
-        task = self.tasks.get(task_id)
+    async def get_all_tasks(self, db: AsyncSession) -> list[Task]:
+        """Fetch all autonomy tasks from the database"""
+        await self.synchronize_tasks(db)
+        result = await db.execute(select(Task).order_by(Task.created_at))
+        return list(result.scalars().all())
+
+    async def execute_auto_task(self, task_id: str, db: AsyncSession) -> dict[str, Any]:
+        """Execute an AUTO task and persist result in DB"""
+        result = await db.execute(select(Task).where(Task.id == task_id))
+        task = result.scalar_one_or_none()
+        
         if not task:
-            raise ValueError(f"Task {task_id} not found")
+            raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
 
-        if task.classification != TaskClassification.AUTO:
-            raise ValueError(f"Task {task_id} is not AUTO classifiable")
+        if task.classification != TaskClassification.AUTO.value:
+            raise HTTPException(status_code=400, detail=f"Task {task_id} is not AUTO classifiable")
 
-        task.status = TaskStatus.IN_PROGRESS
-        self.save_tasks()
+        task.status = TaskStatus.IN_PROGRESS.value
+        task.started_at = datetime.utcnow()
+        await db.commit()
 
         if not task.command:
-            task.status = TaskStatus.COMPLETED
+            task.status = TaskStatus.COMPLETED.value
             task.completed_at = datetime.utcnow()
-            self.save_tasks()
+            await db.commit()
             return {"status": "completed", "task": task_id, "message": "No command needed"}
 
         try:
-            result = subprocess.run(
+            # Note: subprocess.run is blocking, but for simple deployment tasks it's acceptable.
+            # In a production environment with many concurrent tasks, we'd use asyncio.create_subprocess_shell
+            proc_result = subprocess.run(
                 task.command,
                 shell=True,
                 capture_output=True,
