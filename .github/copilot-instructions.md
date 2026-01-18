@@ -38,7 +38,7 @@ backend/
 ├── human_only_protocol.py    # Core autonomy engine
 ├── routers/                  # API endpoints
 ├── models.py                 # Database models
-├── config.py                 # configuration management
+├── config.py                 # Configuration management
 └── main.py                   # FastAPI application
 ```
 
