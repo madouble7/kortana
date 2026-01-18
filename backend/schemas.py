@@ -136,6 +136,15 @@ class TaskStatus(str, Enum):
     COMPLETED = "completed"
     FAILED = "failed"
     CANCELLED = "cancelled"
+    WAITING_FOR_HO = "waiting_for_ho"
+
+
+class TaskClassification(str, Enum):
+    """Task classification for Human Only Protocol"""
+
+    AUTO = "auto"  # Fully autonomous
+    HO = "ho"  # Human-only required
+    APPROVAL = "approval"  # Requires human approval
 
 
 class TaskBase(BaseModel):
@@ -143,14 +152,18 @@ class TaskBase(BaseModel):
 
     title: str = Field(..., min_length=1, max_length=255)
     description: str | None = None
-    priority: int = Field(1, ge=1, le=5)
+    priority: int = Field(1, ge=1, le=10)
+    classification: TaskClassification = TaskClassification.AUTO
 
 
 class TaskCreate(TaskBase):
     """Task creation model"""
 
-    agent_id: int
-    input_data: dict | None = None
+    agent_id: str | None = None
+    parent_id: str | None = None
+    command: str | None = Field(None, description="CLI command to execute")
+    ho_scaffold: str | None = Field(None, description="Human-only scaffolded steps")
+    metadata: dict | None = None
 
 
 class TaskUpdate(BaseModel):
@@ -158,22 +171,42 @@ class TaskUpdate(BaseModel):
 
     title: str | None = None
     description: str | None = None
-    priority: int | None = Field(None, ge=1, le=5)
+    priority: int | None = Field(None, ge=1, le=10)
     status: TaskStatus | None = None
+    classification: TaskClassification | None = None
+    command: str | None = None
+    ho_scaffold: str | None = None
+    result: str | None = None
+    error: str | None = None
+    metadata: dict | None = None
 
 
 class Task(TaskBase):
     """Full task model"""
 
-    id: int
-    agent_id: int
+    id: str
+    agent_id: str | None = None
+    parent_id: str | None = None
     status: TaskStatus = TaskStatus.PENDING
-    input_data: dict | None = None
-    output_data: dict | None = None
-    error_message: str | None = None
-    created_at: datetime
+    command: str | None = None
+    ho_scaffold: str | None = None
+    result: str | None = None
+    error: str | None = None
+    metadata: dict | None = None
+    scheduled_at: datetime | None = None
     started_at: datetime | None = None
     completed_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime | None = None
+
+    class Config:
+        from_attributes = True
+
+
+class TaskWithSubtasks(Task):
+    """Task model with subtasks included"""
+
+    subtasks: list[Task] = []
 
     class Config:
         from_attributes = True

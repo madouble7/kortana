@@ -5,17 +5,17 @@ Revises: 002_add_github_tasks
 Create Date: 2026-01-18 15:17:34.090243
 
 """
-from typing import Sequence, Union
 
-from alembic import op
+from collections.abc import Sequence
+
 import sqlalchemy as sa
-
+from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = 'b4df3eb06f8e'
-down_revision: Union[str, Sequence[str], None] = '002_add_github_tasks'
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+revision: str = "b4df3eb06f8e"
+down_revision: str | Sequence[str] | None = "002_add_github_tasks"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -27,7 +27,9 @@ def upgrade() -> None:
     op.add_column("tasks", sa.Column("result", sa.Text(), nullable=True))
     op.add_column("tasks", sa.Column("error", sa.Text(), nullable=True))
     op.add_column("tasks", sa.Column("metadata", sa.JSON(), nullable=True))
-    op.add_column("tasks", sa.Column("parent_id", sa.String(36), sa.ForeignKey("tasks.id"), nullable=True))
+    op.add_column(
+        "tasks", sa.Column("parent_id", sa.String(36), sa.ForeignKey("tasks.id"), nullable=True)
+    )
 
     # Make agent_id nullable
     op.alter_column("tasks", "agent_id", existing_type=sa.String(36), nullable=True)

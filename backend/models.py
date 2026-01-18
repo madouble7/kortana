@@ -147,7 +147,9 @@ class Task(Base):
     ho_scaffold = Column(Text, nullable=True)
     result = Column(Text, nullable=True)
     error = Column(Text, nullable=True)
-    metadata_json = Column("metadata", JSON, nullable=True)  # 'metadata' is reserved in some SQL implementations
+    metadata_json = Column(
+        "metadata", JSON, nullable=True
+    )  # 'metadata' is reserved in some SQL implementations
     scheduled_at = Column(DateTime, nullable=True)
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)

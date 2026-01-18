@@ -8,20 +8,18 @@ Owner: Matt (Primary Human)
 Version: 1.0.0
 """
 
-import json
 import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from pathlib import Path
 from typing import Any
 
+from database import get_db
 from fastapi import APIRouter, Depends, HTTPException
+from logger import get_logger
+from models import Task
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from database import get_db
-from models import Task
-from logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -32,13 +30,15 @@ logger = get_logger(__name__)
 
 class TaskClassification(Enum):
     """Task classification for autonomy decisions"""
+
     AUTO = "auto"  # Fully automatable, execute immediately
-    HO = "ho"      # Human Only, requires explicit human action
+    HO = "ho"  # Human Only, requires explicit human action
     APPROVAL = "approval"  # Requires human approval before execution
 
 
 class TaskStatus(Enum):
     """Status for deployment tasks"""
+
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
@@ -50,6 +50,7 @@ class TaskStatus(Enum):
 @dataclass
 class DeploymentTask:
     """Represents a single deployment task"""
+
     id: str
     name: str
     classification: TaskClassification
@@ -86,7 +87,7 @@ class HumanOnlyProtocol:
             classification=TaskClassification.AUTO,
             status=TaskStatus.PENDING,
             command="python -m venv venv",
-            description="Create isolated Python environment for dependencies"
+            description="Create isolated Python environment for dependencies",
         ),
         "install_dependencies": DeploymentTask(
             id="install_dependencies",
@@ -94,7 +95,7 @@ class HumanOnlyProtocol:
             classification=TaskClassification.AUTO,
             status=TaskStatus.PENDING,
             command="pip install -r backend/requirements.txt",
-            description="Install all production dependencies"
+            description="Install all production dependencies",
         ),
         "create_env_file": DeploymentTask(
             id="create_env_file",
@@ -102,7 +103,7 @@ class HumanOnlyProtocol:
             classification=TaskClassification.AUTO,
             status=TaskStatus.PENDING,
             command="cp backend/.env.example backend/.env",
-            description="Create .env file from template"
+            description="Create .env file from template",
         ),
         "validate_codebase": DeploymentTask(
             id="validate_codebase",
@@ -110,9 +111,8 @@ class HumanOnlyProtocol:
             classification=TaskClassification.AUTO,
             status=TaskStatus.PENDING,
             command="python verify_deployment_readiness.py",
-            description="Verify all routers, migrations, and dependencies"
+            description="Verify all routers, migrations, and dependencies",
         ),
-
         # HO tasks - Require human action
         "github_token": DeploymentTask(
             id="github_token",
@@ -135,7 +135,7 @@ class HumanOnlyProtocol:
 7. COPY the token immediately!
 
 **Token format**: `ghp_xxxxxxxxxxxxxxxxxxxx`
-            """
+            """,
         ),
         "gemini_api_key": DeploymentTask(
             id="gemini_api_key",
@@ -154,7 +154,7 @@ class HumanOnlyProtocol:
 6. COPY the API key
 
 **Key format**: `AIzaSy...`
-            """
+            """,
         ),
         "database_url": DeploymentTask(
             id="database_url",
@@ -190,7 +190,7 @@ Then update `backend/.env`:
 ```env
 DATABASE_URL=postgresql://user:pass@host:5432/kortana
 ```
-            """
+            """,
         ),
         "configure_env": DeploymentTask(
             id="configure_env",
@@ -208,9 +208,8 @@ GITHUB_TOKEN=ghp_your_token_here
 GEMINI_API_KEY=your_gemini_key_here
 DATABASE_URL=postgresql://user:pass@host:5432/kortana
 ```
-            """
+            """,
         ),
-
         # AUTO tasks after HO prerequisites are met
         "run_migrations": DeploymentTask(
             id="run_migrations",
@@ -219,7 +218,7 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
             status=TaskStatus.PENDING,
             prerequisites=["configure_env"],
             command="cd backend && alembic upgrade head",
-            description="Apply database migrations"
+            description="Apply database migrations",
         ),
         "start_server": DeploymentTask(
             id="start_server",
@@ -228,7 +227,7 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
             status=TaskStatus.PENDING,
             prerequisites=["run_migrations"],
             command="python -m uvicorn main:app --host 0.0.0.0 --port 8000",
-            description="Start KOR'TANA backend server"
+            description="Start KOR'TANA backend server",
         ),
         "verify_health": DeploymentTask(
             id="verify_health",
@@ -237,12 +236,11 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
             status=TaskStatus.PENDING,
             prerequisites=["start_server"],
             command="curl -s http://localhost:8000/health | jq .",
-            description="Verify all health endpoints respond"
+            description="Verify all health endpoints respond",
         ),
     }
 
     def __init__(self):
-        self.progress_file = Path(__file__).parent / "DEPLOYMENT_PROGRESS.json"
         self._definitions = self.DEPLOYMENT_TASKS
 
     async def synchronize_tasks(self, db: AsyncSession):
@@ -278,7 +276,7 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
         """Execute an AUTO task and persist result in DB"""
         result = await db.execute(select(Task).where(Task.id == task_id))
         task = result.scalar_one_or_none()
-        
+
         if not task:
             raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
 
@@ -296,181 +294,165 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
             return {"status": "completed", "task": task_id, "message": "No command needed"}
 
         try:
-            # Note: subprocess.run is blocking, but for simple deployment tasks it's acceptable.
-            # In a production environment with many concurrent tasks, we'd use asyncio.create_subprocess_shell
-            proc_result = subprocess.run(
-                task.command,
-                shell=True,
-                capture_output=True,
-                text=True,
-                timeout=300
+            # Execute command
+            proc = subprocess.run(
+                task.command, shell=True, capture_output=True, text=True, timeout=300
             )
 
-            if result.returncode == 0:
-                task.status = TaskStatus.COMPLETED
-                task.result = result.stdout
+            if proc.returncode == 0:
+                task.status = TaskStatus.COMPLETED.value
+                task.result = proc.stdout
                 task.completed_at = datetime.utcnow()
-                self.save_tasks()
-                return {
-                    "status": "completed",
-                    "task": task_id,
-                    "output": result.stdout[:1000]
-                }
+                await db.commit()
+                return {"status": "completed", "task": task_id, "output": proc.stdout[:1000]}
             else:
-                task.status = TaskStatus.FAILED
-                task.error = result.stderr
-                self.save_tasks()
-                return {
-                    "status": "failed",
-                    "task": task_id,
-                    "error": result.stderr
-                }
+                task.status = TaskStatus.FAILED.value
+                task.error = proc.stderr
+                await db.commit()
+                return {"status": "failed", "task": task_id, "error": proc.stderr}
 
         except subprocess.TimeoutExpired:
-            task.status = TaskStatus.FAILED
+            task.status = TaskStatus.FAILED.value
             task.error = "Command timed out after 300 seconds"
-            self.save_tasks()
+            await db.commit()
             return {"status": "failed", "task": task_id, "error": "Timeout"}
         except Exception as e:
-            task.status = TaskStatus.FAILED
+            task.status = TaskStatus.FAILED.value
             task.error = str(e)
-            self.save_tasks()
+            await db.commit()
             return {"status": "failed", "task": task_id, "error": str(e)}
 
-    def complete_ho_task(self, task_id: str) -> dict[str, Any]:
+    async def complete_ho_task(self, task_id: str, db: AsyncSession) -> dict[str, Any]:
         """Mark an HO task as completed (called after human action)"""
-        task = self.tasks.get(task_id)
+        result = await db.execute(select(Task).where(Task.id == task_id))
+        task = result.scalar_one_or_none()
+
         if not task:
-            raise ValueError(f"Task {task_id} not found")
+            raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
 
-        if task.classification != TaskClassification.HO:
-            raise ValueError(f"Task {task_id} is not an HO task")
+        if task.classification != TaskClassification.HO.value:
+            raise HTTPException(status_code=400, detail=f"Task {task_id} is not an HO task")
 
-        task.status = TaskStatus.COMPLETED
+        task.status = TaskStatus.COMPLETED.value
         task.completed_at = datetime.utcnow()
-        self.save_tasks()
+        await db.commit()
 
-        # Check if this unlocks other tasks
-        unlocked = self._check_unlocked_tasks()
+        return {"status": "completed", "task": task_id}
 
-        return {
-            "status": "completed",
-            "task": task_id,
-            "unlocked_tasks": unlocked
-        }
+    async def get_status(self, db: AsyncSession) -> dict[str, Any]:
+        """Get full deployment status from DB"""
+        tasks = await self.get_all_tasks(db)
 
-    def _check_unlocked_tasks(self) -> list[str]:
-        """Check which tasks are now unlocked after task completion"""
-        unlocked = []
-        for task_id, task in self.tasks.items():
-            if task.status == TaskStatus.PENDING:
-                if self._prerequisites_met(task):
-                    unlocked.append(task_id)
-        return unlocked
-
-    def get_status(self) -> dict[str, Any]:
-        """Get full deployment status"""
-        auto_tasks = [t for t in self.tasks.values() if t.classification == TaskClassification.AUTO]
-        ho_tasks = [t for t in self.tasks.values() if t.classification == TaskClassification.HO]
-        approval_tasks = [t for t in self.tasks.values() if t.classification == TaskClassification.APPROVAL]
+        auto_tasks = [t for t in tasks if t.classification == TaskClassification.AUTO.value]
+        ho_tasks = [t for t in tasks if t.classification == TaskClassification.HO.value]
+        approval_tasks = [t for t in tasks if t.classification == TaskClassification.APPROVAL.value]
 
         return {
             "timestamp": datetime.utcnow().isoformat(),
-            "protocol_version": "1.0.0",
+            "protocol_version": "1.1.0",
             "owner": "Matt",
             "summary": {
-                "total_tasks": len(self.tasks),
-                "completed": sum(1 for t in self.tasks.values() if t.status == TaskStatus.COMPLETED),
-                "in_progress": sum(1 for t in self.tasks.values() if t.status == TaskStatus.IN_PROGRESS),
-                "pending": sum(1 for t in self.tasks.values() if t.status == TaskStatus.PENDING),
-                "failed": sum(1 for t in self.tasks.values() if t.status == TaskStatus.FAILED),
-                "waiting_for_ho": sum(1 for t in self.tasks.values() if t.status == TaskStatus.WAITING_FOR_HO),
+                "total_tasks": len(tasks),
+                "completed": sum(1 for t in tasks if t.status == TaskStatus.COMPLETED.value),
+                "in_progress": sum(1 for t in tasks if t.status == TaskStatus.IN_PROGRESS.value),
+                "pending": sum(1 for t in tasks if t.status == TaskStatus.PENDING.value),
+                "failed": sum(1 for t in tasks if t.status == TaskStatus.FAILED.value),
             },
             "classifications": {
                 "auto": {
-                    "count": sum(1 for t in auto_tasks if t.status == TaskStatus.COMPLETED),
+                    "count": sum(1 for t in auto_tasks if t.status == TaskStatus.COMPLETED.value),
                     "total": len(auto_tasks),
                     "tasks": [
                         {
                             "id": t.id,
-                            "name": t.name,
-                            "status": t.status.value,
-                            "completed": t.completed_at.isoformat() if t.completed_at else None
+                            "name": t.title,
+                            "status": t.status,
+                            "completed": t.completed_at.isoformat() if t.completed_at else None,
                         }
                         for t in auto_tasks
-                    ]
+                    ],
                 },
                 "ho": {
-                    "count": sum(1 for t in ho_tasks if t.status == TaskStatus.COMPLETED),
+                    "count": sum(1 for t in ho_tasks if t.status == TaskStatus.COMPLETED.value),
                     "total": len(ho_tasks),
                     "pending": [
                         {
                             "id": t.id,
-                            "name": t.name,
+                            "name": t.title,
                             "description": t.description,
-                            "scaffold": t.ho_scaffold
+                            "scaffold": t.ho_scaffold,
                         }
-                        for t in ho_tasks if t.status != TaskStatus.COMPLETED
-                    ]
+                        for t in ho_tasks
+                        if t.status != TaskStatus.COMPLETED.value
+                    ],
                 },
                 "approval": {
-                    "count": sum(1 for t in approval_tasks if t.status == TaskStatus.COMPLETED),
+                    "count": sum(
+                        1 for t in approval_tasks if t.status == TaskStatus.COMPLETED.value
+                    ),
                     "total": len(approval_tasks),
                     "ready": [
-                        {
-                            "id": t.id,
-                            "name": t.name,
-                            "command": t.command
-                        }
-                        for t in approval_tasks if self._prerequisites_met(t) and t.status == TaskStatus.PENDING
-                    ]
-                }
+                        {"id": t.id, "name": t.title, "command": t.command}
+                        for t in approval_tasks
+                        if t.status == TaskStatus.PENDING.value
+                    ],
+                },
             },
             "autonomy_progress": {
-                "auto_complete": sum(1 for t in auto_tasks if t.status == TaskStatus.COMPLETED),
+                "auto_complete": sum(
+                    1 for t in auto_tasks if t.status == TaskStatus.COMPLETED.value
+                ),
                 "auto_total": len(auto_tasks),
-                "ho_complete": sum(1 for t in ho_tasks if t.status == TaskStatus.COMPLETED),
-                "ho_total": len(ho_tasks)
-            }
+                "ho_complete": sum(1 for t in ho_tasks if t.status == TaskStatus.COMPLETED.value),
+                "ho_total": len(ho_tasks),
+            },
         }
 
-    def get_next_ho_task(self) -> DeploymentTask | None:
+    async def get_next_ho_task(self, db: AsyncSession) -> Task | None:
         """Get the next pending HO task for Matt"""
-        for task in self.tasks.values():
-            if task.classification == TaskClassification.HO and task.status == TaskStatus.PENDING:
+        tasks = await self.get_all_tasks(db)
+        for task in tasks:
+            if (
+                task.classification == TaskClassification.HO.value
+                and task.status == TaskStatus.PENDING.value
+            ):
                 return task
         return None
 
-    def run_autonomous_cycle(self) -> dict[str, Any]:
-        """
-        Execute one autonomous cycle.
-        Runs all ready AUTO tasks without human approval.
-        Returns status and any pending HO tasks.
-        """
+    async def run_autonomous_cycle(self, db: AsyncSession) -> dict[str, Any]:
+        """Execute one autonomous cycle using DB tasks"""
+        tasks = await self.get_all_tasks(db)
         results = {
             "executed": [],
             "failed": [],
             "pending_ho": [],
-            "status": self.get_status()
         }
 
-        # Execute all ready AUTO tasks
-        for task in self.get_auto_tasks():
-            result = self.execute_auto_task(task.id)
-            if result["status"] == "completed":
+        # Find all ready AUTO tasks
+        auto_ready = [
+            t
+            for t in tasks
+            if t.classification == TaskClassification.AUTO.value
+            and t.status == TaskStatus.PENDING.value
+        ]
+
+        for task in auto_ready:
+            exec_res = await self.execute_auto_task(task.id, db)
+            if exec_res["status"] == "completed":
                 results["executed"].append(task.id)
             else:
                 results["failed"].append(task.id)
 
         # Check for pending HO tasks
-        ho_task = self.get_next_ho_task()
+        ho_task = await self.get_next_ho_task(db)
         if ho_task:
             results["pending_ho"] = {
                 "id": ho_task.id,
-                "name": ho_task.name,
-                "scaffold": ho_task.ho_scaffold
+                "name": ho_task.title,
+                "scaffold": ho_task.ho_scaffold,
             }
 
+        results["status"] = await self.get_status(db)
         return results
 
 
@@ -483,79 +465,77 @@ hop = HumanOnlyProtocol()
 
 
 @router.get("/protocol/status")
-async def get_protocol_status() -> dict[str, Any]:
+async def get_protocol_status(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
     """Get full Human Only Protocol status"""
-    return hop.get_status()
+    return await hop.get_status(db)
 
 
 @router.get("/protocol/auto/tasks")
-async def get_auto_tasks() -> list[dict[str, Any]]:
+async def get_auto_tasks(db: AsyncSession = Depends(get_db)) -> list[dict[str, Any]]:
     """Get all AUTO tasks ready for execution"""
+    tasks = await hop.get_all_tasks(db)
     return [
-        {
-            "id": t.id,
-            "name": t.name,
-            "command": t.command,
-            "description": t.description
-        }
-        for t in hop.get_auto_tasks()
+        {"id": t.id, "name": t.title, "command": t.command, "description": t.description}
+        for t in tasks
+        if t.classification == TaskClassification.AUTO.value
+        and t.status == TaskStatus.PENDING.value
     ]
 
 
 @router.post("/protocol/auto/execute/{task_id}")
-async def execute_auto_task(task_id: str) -> dict[str, Any]:
+async def execute_auto_task_endpoint(
+    task_id: str, db: AsyncSession = Depends(get_db)
+) -> dict[str, Any]:
     """Execute an AUTO task without human approval"""
-    try:
-        return hop.execute_auto_task(task_id)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    return await hop.execute_auto_task(task_id, db)
 
 
 @router.post("/protocol/auto/cycle")
-async def run_autonomous_cycle() -> dict[str, Any]:
+async def run_autonomous_cycle_endpoint(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
     """Execute all ready AUTO tasks in one cycle"""
-    return hop.run_autonomous_cycle()
+    return await hop.run_autonomous_cycle(db)
 
 
 @router.get("/protocol/ho/next")
-async def get_next_ho_task() -> dict[str, Any]:
+async def get_next_ho_task_endpoint(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
     """Get next Human Only task for Matt"""
-    task = hop.get_next_ho_task()
+    task = await hop.get_next_ho_task(db)
     if not task:
         return {"message": "All HO tasks completed!", "task": None}
     return {
         "task": {
             "id": task.id,
-            "name": task.name,
+            "name": task.title,
             "description": task.description,
-            "scaffold": task.ho_scaffold
+            "scaffold": task.ho_scaffold,
         }
     }
 
 
 @router.get("/protocol/ho/all")
-async def get_all_ho_tasks() -> list[dict[str, Any]]:
+async def get_all_ho_tasks_endpoint(db: AsyncSession = Depends(get_db)) -> list[dict[str, Any]]:
     """Get all Human Only tasks with their status"""
+    tasks = await hop.get_all_tasks(db)
     return [
         {
             "id": t.id,
-            "name": t.name,
+            "name": t.title,
             "description": t.description,
-            "status": t.status.value,
+            "status": t.status,
             "scaffold": t.ho_scaffold,
-            "completed": t.completed_at.isoformat() if t.completed_at else None
+            "completed": t.completed_at.isoformat() if t.completed_at else None,
         }
-        for t in hop.get_ho_tasks()
+        for t in tasks
+        if t.classification == TaskClassification.HO.value
     ]
 
 
 @router.post("/protocol/ho/complete/{task_id}")
-async def complete_ho_task(task_id: str) -> dict[str, Any]:
+async def complete_ho_task_endpoint(
+    task_id: str, db: AsyncSession = Depends(get_db)
+) -> dict[str, Any]:
     """Mark an HO task as completed (called after Matt completes the task)"""
-    try:
-        return hop.complete_ho_task(task_id)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    return await hop.complete_ho_task(task_id, db)
 
 
 @router.get("/protocol/health")
@@ -565,5 +545,5 @@ async def protocol_health() -> dict[str, Any]:
         "status": "healthy",
         "service": "human_only_protocol",
         "owner": "Matt",
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.utcnow().isoformat(),
     }

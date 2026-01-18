@@ -51,6 +51,7 @@ except ImportError as e:
 # Import Human Only Protocol (HOP) for autonomy
 try:
     from human_only_protocol import router as hop_router
+
     HOP_AVAILABLE = True
 except ImportError as e:
     print(f"Warning: Could not import Human Only Protocol: {e}")
@@ -186,6 +187,10 @@ def create_app() -> FastAPI:
         app.include_router(pr_creation.router, prefix="/api/pr", tags=["pr-creation"])
         app.include_router(test_orchestrator.router, prefix="/api/testing", tags=["testing"])
         app.include_router(code_reviewer.router, prefix="/api/code-review", tags=["code-review"])
+
+        # Human Only Protocol (HOP)
+        if HOP_AVAILABLE:
+            app.include_router(hop_router, prefix="/api", tags=["protocol"])
     except Exception as e:
         log_error("router_error", f"Error including routers: {e}")
         raise
