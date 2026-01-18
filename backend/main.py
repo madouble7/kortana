@@ -43,6 +43,8 @@ try:
         memory,
         pr_creation,
         prayer,
+        rclone,
+        system,
         task_queue,
         test_orchestrator,
     )
@@ -186,6 +188,8 @@ def create_app() -> FastAPI:
         app.include_router(autonomy.router, prefix="/api/autonomy", tags=["autonomy"])
         app.include_router(knowledge.router, prefix="/api/knowledge", tags=["knowledge"])
         app.include_router(task_queue.router, prefix="/api/task-queue", tags=["task-queue"])
+        app.include_router(rclone.router, prefix="/api/rclone", tags=["rclone"])
+        app.include_router(system.router, prefix="/api/system", tags=["system"])
 
         # Phase 2: PR Creation, Testing, and Code Review
         app.include_router(pr_creation.router, prefix="/api/pr", tags=["pr-creation"])

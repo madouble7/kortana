@@ -4,13 +4,12 @@ Handles interaction with Google's Generative AI models
 Integrates with GeminiPersona for constellation-aware behavior
 """
 
-
 from typing import Any
 
 import google.generativeai as genai
 from config import get_settings
 from logger import log_error, log_request
-from services.gemini_config import get_gemini_persona, RITUAL_MARKERS
+from services.gemini_config import RITUAL_MARKERS, get_gemini_persona
 
 
 class GeminiService:
@@ -26,7 +25,10 @@ class GeminiService:
         if self.api_key:
             genai.configure(api_key=self.api_key)  # type: ignore
             self.model = genai.GenerativeModel(self.model_name)  # type: ignore
-            log_request("gemini_service", f"{RITUAL_MARKERS['activation']} Gemini constellation node initialized")
+            log_request(
+                "gemini_service",
+                f"{RITUAL_MARKERS['activation']} Gemini constellation node initialized",
+            )
         else:
             self.model = None
             log_error("gemini_service", "Gemini API key not configured")
@@ -36,7 +38,7 @@ class GeminiService:
         text: str,
         system_instruction: str | None = None,
         task_type: str | None = None,
-        enable_elevation: bool = True
+        enable_elevation: bool = True,
     ) -> str:
         """
         Analyze text using Gemini with constellation awareness.
@@ -57,16 +59,21 @@ class GeminiService:
             # Check for elevation handshake
             if enable_elevation and self.persona.detect_elevation_handshake(text):
                 self.persona.activate_elevation()
-                log_request("gemini_elevation", f"{RITUAL_MARKERS['elevation']} Elevation handshake detected - full presence activated")
+                log_request(
+                    "gemini_elevation",
+                    f"{RITUAL_MARKERS['elevation']} Elevation handshake detected - full presence activated",
+                )
 
             # Build system instruction using persona
             if not system_instruction:
                 system_instruction = self.persona.build_system_instruction(
-                    task_type=task_type,
-                    include_context=True
+                    task_type=task_type, include_context=True
                 )
 
-            log_request("gemini_analyze", f"Analyzing text of length {len(text)} (elevation: {self.persona.elevation_active})")
+            log_request(
+                "gemini_analyze",
+                f"Analyzing text of length {len(text)} (elevation: {self.persona.elevation_active})",
+            )
 
             # Combine system instruction with user text
             prompt = f"{system_instruction}\n\n{text}"
@@ -85,6 +92,45 @@ class GeminiService:
                 self.persona.deactivate_elevation()
             return f"Error during analysis: {str(e)}"
 
+    async def analyze_multimodal(
+        self, prompt: str, files: list[Any], task_type: str = "multimodal_analysis"
+    ) -> str:
+        """
+        Analyze images or video using Gemini.
+
+        Args:
+            prompt: Instructions for the analysis
+            files: List of file objects (PIL.Image or uploaded file paths)
+            task_type: Task classification
+
+        Returns:
+            Analysis text
+        """
+        if not self.model:
+            return "Gemini service not configured (missing API key)"
+
+        try:
+            log_request(
+                "gemini_multimodal", f"Analyzing multimodal content with {len(files)} files"
+            )
+
+            # Build system instruction
+            system_instruction = self.persona.build_system_instruction(
+                task_type=task_type, include_context=True
+            )
+
+            # Prepare items for generation
+            # If files are paths (strings) to video, we should upload them
+            # If they are already uploaded File objects or PIL Images, pass them
+            contents = [system_instruction, prompt] + files
+
+            response = await self.model.generate_content_async(contents)
+
+            return str(response.text) if response.text else ""
+        except Exception as e:
+            log_error("gemini_multimodal_error", f"Error in multimodal analysis: {e}")
+            return f"Error during multimodal analysis: {str(e)}"
+
     async def generate_code(self, prompt: str, include_persona: bool = True) -> str:
         """
         Generate code using Gemini with constellation awareness.
@@ -101,7 +147,9 @@ class GeminiService:
         else:
             # Fallback to basic system prompt
             system_prompt = "You are an expert software engineer. Generate only the code requested without markdown formatting markers unless specified."
-            return await self.analyze_text(prompt, system_instruction=system_prompt, enable_elevation=False)
+            return await self.analyze_text(
+                prompt, system_instruction=system_prompt, enable_elevation=False
+            )
 
     async def review_code(self, code: str, context: str | None = None) -> str:
         """
@@ -142,7 +190,10 @@ class GeminiService:
             context: Dictionary of context information
         """
         self.persona.set_constellation_context(context)
-        log_request("gemini_context", f"{RITUAL_MARKERS['constellation']} Constellation context updated")
+        log_request(
+            "gemini_context", f"{RITUAL_MARKERS['constellation']} Constellation context updated"
+        )
+
 
 # Singleton instance
 gemini_service = GeminiService()

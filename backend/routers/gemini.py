@@ -1,9 +1,12 @@
+import io
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+import PIL.Image
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from services.gemini import gemini_service
 
 router = APIRouter()
+
 
 @router.post("/analyze")
 async def analyze_issue(payload: dict[str, Any]) -> dict[str, Any]:
@@ -15,6 +18,7 @@ async def analyze_issue(payload: dict[str, Any]) -> dict[str, Any]:
     analysis = await gemini_service.analyze_text(text)
     return {"analysis": analysis}
 
+
 @router.post("/generate")
 async def generate_code(payload: dict[str, Any]) -> dict[str, Any]:
     """Generate code based on description."""
@@ -25,6 +29,7 @@ async def generate_code(payload: dict[str, Any]) -> dict[str, Any]:
     code = await gemini_service.generate_code(description)
     return {"code": code}
 
+
 @router.post("/chat")
 async def chat_with_gemini(payload: dict[str, Any]) -> dict[str, Any]:
     """Basic chat endpoint."""
@@ -34,3 +39,47 @@ async def chat_with_gemini(payload: dict[str, Any]) -> dict[str, Any]:
 
     response = await gemini_service.analyze_text(message)
     return {"response": response}
+
+
+@router.post("/analyze/image")
+async def analyze_image(
+    prompt: str = Form("Analyze this image"), image: UploadFile = File(...)
+) -> dict[str, Any]:
+    """Analyze an image with a prompt."""
+    try:
+        image_data = await image.read()
+        pil_image = PIL.Image.open(io.BytesIO(image_data))
+        response = await gemini_service.analyze_multimodal(prompt, [pil_image])
+        return {"response": response}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/analyze/video")
+async def analyze_video(
+    prompt: str = Form("Analyze this video"), video: UploadFile = File(...)
+) -> dict[str, Any]:
+    """Analyze a video with a prompt."""
+    import os
+    import shutil
+    from pathlib import Path
+
+    temp_path = Path(f"temp_{video.filename}")
+    try:
+        with temp_path.open("wb") as buffer:
+            shutil.copyfileobj(video.file, buffer)
+
+        # Gemini requires uploading video via the File API for best results
+        import google.generativeai as genai
+
+        uploaded_file = genai.upload_file(str(temp_path))
+
+        # Wait for processing if needed (basic implementation)
+        response = await gemini_service.analyze_multimodal(prompt, [uploaded_file])
+
+        return {"response": response}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if temp_path.exists():
+            os.remove(temp_path)

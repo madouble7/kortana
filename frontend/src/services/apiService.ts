@@ -149,6 +149,47 @@ class ApiService {
     });
   }
 
+  // System & Logs
+  async getSystemInfo(): Promise<any> {
+    return this.request('/api/system/info');
+  }
+
+  async getLogs(lines: number = 100): Promise<any> {
+    return this.request(`/api/system/logs?lines=${lines}`);
+  }
+
+  async getSettings(): Promise<any> {
+    return this.request('/api/system/settings');
+  }
+
+  // Rclone
+  async getRcloneRemotes(): Promise<any> {
+    return this.request('/api/rclone/list');
+  }
+
+  async getRcloneFiles(remote: string, path: string = ""): Promise<any> {
+    return this.request(`/api/rclone/files/${remote}?path=${path}`);
+  }
+
+  // Protocol / Autonomy
+  async getProtocolStatus(): Promise<any> {
+    return this.request('/api/protocol/status');
+  }
+
+  async runAutonomousCycle(): Promise<any> {
+    return this.request('/api/protocol/auto/cycle', { method: 'POST' });
+  }
+
+  async getNextHoTask(): Promise<any> {
+    return this.request('/api/protocol/ho/next');
+  }
+
+  async completeHoTask(taskId: string): Promise<any> {
+    return this.request(`/api/protocol/ho/complete/${taskId}`, { method: 'POST' });
+  }
+
+  // Task Queue
+
   async generateWithGemini(description: string): Promise<any> {
     return this.request('/api/gemini/generate', {
       method: 'POST',

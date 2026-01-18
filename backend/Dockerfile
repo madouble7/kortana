@@ -4,47 +4,51 @@
 # Multi-stage build for optimized Python backend
 
 # Stage 1: Builder
-FROM python:3.11-slim AS builder
+FROM python:3.11.7-slim AS builder
 
 WORKDIR /build
 
 # Install build dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
+    libpq-dev
 
 # Copy requirements first for better caching
 COPY requirements.txt .
 
-# Install dependencies to user site-packages
-RUN pip install --user --no-cache-dir --no-warn-script-location -r requirements.txt
+# Install dependencies to user site-packages with build cache
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --user --no-warn-script-location -r requirements.txt
 
 # Stage 2: Runtime
-FROM python:3.11-slim
+FROM python:3.11.7-slim
 
 # Set labels for metadata
-LABEL maintainer="Kor'tana Team"
-LABEL description="Kor'tana Backend API Service"
-LABEL version="1.0.0"
+LABEL maintainer="Kor'tana Team" \
+      description="Kor'tana Backend API Service" \
+      version="1.0.0"
 
 # Create non-root user for security
-RUN groupadd -r kortana && useradd -r -g kortana -u 1000 kortana
+RUN groupadd -r kortana && useradd -r -g kortana -u 1000 -m kortana
 
 WORKDIR /app
 
 # Install runtime dependencies only
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq5 \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
     curl \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
+    libpq5 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy Python dependencies from builder
 COPY --from=builder /root/.local /home/kortana/.local
 
-# Set PATH for user-installed packages
+# Set environment variables
 ENV PATH=/home/kortana/.local/bin:$PATH \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
