@@ -1,7 +1,7 @@
 // API Service for Kor'tana Frontend
-// Connects to FastAPI backend running on localhost:8000
+// Standardized for Vite + FastAPI (Port 8000) alignment
 
-const API_BASE_URL = (window as any).ENV?.REACT_APP_API_URL || 'http://localhost:8000';
+const API_BASE_URL = ''; // Uses Vite proxy in development
 
 export interface HealthResponse {
   status: string;
@@ -141,68 +141,20 @@ class ApiService {
     });
   }
 
-  // Gemini AI
-  async analyzeWithGemini(text: string): Promise<any> {
-    return this.request('/api/gemini/analyze', {
-      method: 'POST',
-      body: JSON.stringify({ text }),
-    });
-  }
+  // System & Management
+  async getSystemInfo(): Promise<any> { return this.request('/api/system/info'); }
+  async getLogs(lines: number = 100): Promise<any> { return this.request(`/api/system/logs?lines=${lines}`); }
+  async getSettings(): Promise<any> { return this.request('/api/system/settings'); }
 
-  // System & Logs
-  async getSystemInfo(): Promise<any> {
-    return this.request('/api/system/info');
-  }
+  // Rclone Cloud Storage
+  async getRcloneRemotes(): Promise<any> { return this.request('/api/rclone/list'); }
+  async getRcloneFiles(remote: string, path: string = ""): Promise<any> { return this.request(`/api/rclone/files/${remote}?path=${path}`); }
 
-  async getLogs(lines: number = 100): Promise<any> {
-    return this.request(`/api/system/logs?lines=${lines}`);
-  }
-
-  async getSettings(): Promise<any> {
-    return this.request('/api/system/settings');
-  }
-
-  // Rclone
-  async getRcloneRemotes(): Promise<any> {
-    return this.request('/api/rclone/list');
-  }
-
-  async getRcloneFiles(remote: string, path: string = ""): Promise<any> {
-    return this.request(`/api/rclone/files/${remote}?path=${path}`);
-  }
-
-  // Protocol / Autonomy
-  async getProtocolStatus(): Promise<any> {
-    return this.request('/api/protocol/status');
-  }
-
-  async runAutonomousCycle(): Promise<any> {
-    return this.request('/api/protocol/auto/cycle', { method: 'POST' });
-  }
-
-  async getNextHoTask(): Promise<any> {
-    return this.request('/api/protocol/ho/next');
-  }
-
-  async completeHoTask(taskId: string): Promise<any> {
-    return this.request(`/api/protocol/ho/complete/${taskId}`, { method: 'POST' });
-  }
-
-  // Task Queue
-
-  async generateWithGemini(description: string): Promise<any> {
-    return this.request('/api/gemini/generate', {
-      method: 'POST',
-      body: JSON.stringify({ description }),
-    });
-  }
-
-  async chatWithGemini(message: string): Promise<any> {
-    return this.request('/api/gemini/chat', {
-      method: 'POST',
-      body: JSON.stringify({ message }),
-    });
-  }
+  // Human Only Protocol (HOP)
+  async getProtocolStatus(): Promise<any> { return this.request('/api/protocol/status'); }
+  async runAutonomousCycle(): Promise<any> { return this.request('/api/protocol/auto/cycle', { method: 'POST' }); }
+  async getNextHoTask(): Promise<any> { return this.request('/api/protocol/ho/next'); }
+  async completeHoTask(taskId: string): Promise<any> { return this.request(`/api/protocol/ho/complete/${taskId}`, { method: 'POST' }); }
 
   // Agent Operations
   async listAgents(): Promise<any[]> {

@@ -65,7 +65,7 @@ export class GeminiService {
     private elevationActive: boolean = false;
     private constellationContext: Record<string, any> = {};
 
-    constructor(apiBaseUrl: string = "http://localhost:8000") {
+    constructor(apiBaseUrl: string = "") {
         this.apiBaseUrl = apiBaseUrl;
     }
 
