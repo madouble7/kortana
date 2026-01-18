@@ -3,16 +3,18 @@ Unified Authentication System for Kor'tana Backend
 Consolidated JWT-based authentication with comprehensive user management
 """
 
+import hashlib
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-import jwt
+import bcrypt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt as jose_jwt
+from jose import jwt
+from jose.exceptions import ExpiredSignatureError, JWTError
 from passlib.context import CryptContext
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, Field
 
 # Configuration - use environment variables for security
 SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-production-with-secret-key-from-env")
@@ -40,7 +42,7 @@ class TokenData(BaseModel):
     email: Optional[str] = None
     username: Optional[str] = None
     role: Optional[str] = None
-    scopes: list = []
+    scopes: list[str] = Field(default_factory=list)
 
 class UserResponse(BaseModel):
     """Response model for user data"""
@@ -60,13 +62,28 @@ class UserInDB(UserResponse):
 
 # ==================== Password Utilities ====================
 
+def _normalize_password_bytes(password: str) -> bytes:
+    password_bytes = password.encode("utf-8")
+    if len(password_bytes) > 72:
+        return hashlib.sha256(password_bytes).digest()
+    return password_bytes
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash"""
-    return pwd_context.verify(plain_password, hashed_password)
+    password_bytes = _normalize_password_bytes(plain_password)
+    hash_bytes = (
+        hashed_password if isinstance(hashed_password, bytes) else hashed_password.encode("utf-8")
+    )
+    try:
+        return bcrypt.checkpw(password_bytes, hash_bytes)
+    except ValueError:
+        return False
 
 def get_password_hash(password: str) -> str:
     """Hash a password for storing"""
-    return pwd_context.hash(password)
+    password_bytes = _normalize_password_bytes(password)
+    hashed = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
+    return hashed.decode("utf-8")
 
 # ==================== JWT Token Functions ====================
 
@@ -146,12 +163,26 @@ def decode_token(token: str) -> TokenData:
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        user_id: int = payload.get("sub")
-        email: str = payload.get("email")
-        username: str = payload.get("username")
-        role: str = payload.get("role", "user")
+        subject = payload.get("sub")
+        user_id = payload.get("user_id")
+        email = payload.get("email")
+        username = payload.get("username")
+        role = payload.get("role", "user")
 
-        if user_id is None:
+        if user_id is None and subject is not None:
+            if isinstance(subject, int):
+                user_id = subject
+            elif isinstance(subject, str):
+                if subject.isdigit():
+                    user_id = int(subject)
+                elif "@" in subject:
+                    email = email or subject
+                else:
+                    username = username or subject
+            else:
+                username = username or str(subject)
+
+        if user_id is None and email is None and username is None:
             raise credentials_exception
 
         return TokenData(
@@ -159,16 +190,16 @@ def decode_token(token: str) -> TokenData:
             email=email,
             username=username,
             role=role,
-            scopes=payload.get("scopes", [])
+            scopes=payload.get("scopes") or []
         )
 
-    except jwt.ExpiredSignatureError:
+    except ExpiredSignatureError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token has expired",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    except jwt.JWTError:
+    except JWTError:
         raise credentials_exception
 
 # ==================== OAuth2 Helper Functions ====================
@@ -276,9 +307,9 @@ def decode_token_legacy(token: str) -> dict:
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials"
             )
         return {"username": username, "scopes": payload.get("scopes", [])}
-    except jwt.ExpiredSignatureError:
+    except ExpiredSignatureError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired")
-    except jwt.JWTError:
+    except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials"
         )

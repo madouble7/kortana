@@ -11,13 +11,14 @@ Author: Kor'tana Security Team
 Date: January 14, 2026
 """
 
+import hashlib
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+import bcrypt
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from pydantic import BaseModel, EmailStr
 
 # Security configuration
@@ -25,9 +26,6 @@ SECRET_KEY = "your-super-secret-key-change-in-production"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRE_DAYS = 7
-
-# Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # OAuth2 scheme for token extraction
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
@@ -125,15 +123,30 @@ class MessageResponse(BaseModel):
 
 # ==================== Password Utilities ====================
 
+def _normalize_password_bytes(password: str) -> bytes:
+    password_bytes = password.encode("utf-8")
+    if len(password_bytes) > 72:
+        return hashlib.sha256(password_bytes).digest()
+    return password_bytes
+
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash"""
-    return pwd_context.verify(plain_password, hashed_password)
+    password_bytes = _normalize_password_bytes(plain_password)
+    hash_bytes = (
+        hashed_password if isinstance(hashed_password, bytes) else hashed_password.encode("utf-8")
+    )
+    try:
+        return bcrypt.checkpw(password_bytes, hash_bytes)
+    except ValueError:
+        return False
 
 
 def get_password_hash(password: str) -> str:
     """Hash a password for storing"""
-    return pwd_context.hash(password)
+    password_bytes = _normalize_password_bytes(password)
+    hashed = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
+    return hashed.decode("utf-8")
 
 
 # ==================== JWT Token Functions ====================

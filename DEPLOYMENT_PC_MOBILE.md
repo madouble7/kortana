@@ -98,4 +98,29 @@ Run `ipconfig` (Windows) or `ifconfig` (Mac/Linux) to find your internal IP (e.g
 
 ---
 
+## 🛠️ Rollback & Recovery
+
+### 1. Revert a Failed Deployment
+
+- **Railway/Vercel**: Go to the **Deployments** tab and select the previous successful build. Click **Redeploy** or **Rollback**.
+- **Cloud Run**: Redeploy referencing the previous image tag:
+  `gcloud run deploy kortana --image gcr.io/[PROJECT_ID]/kortana:[PREVIOUS_TAG]`
+
+### 2. Re-Seed Environment Variables
+
+If secrets get corrupted:
+
+1. Refer to `backend/.env.example`.
+2. Delete and re-create your project secrets in the Cloud Console (Railway/Vercel/Cloud Run).
+3. Restart the service to force a re-validation cycle.
+
+### 3. Database Recovery
+
+- If migrations fail:
+  `python manage_migrations.py rollback` (or use Alembic directly)
+- To re-initialize:
+  `python backend/init_db.py`
+
+---
+
 *Kor'tana is now breathing across all your screens.* 🔱
