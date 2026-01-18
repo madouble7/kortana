@@ -20,6 +20,8 @@ async def check_task_errors():
         print(f"Found {len(tasks)} tasks with errors:")
         for t in tasks:
             print(f"--- Task: {t.title} ({t.id}) ---")
+            print(f"Status: {t.status}")
+            print(f"Command: {t.command}")
             print(f"Error: {t.error}")
             print(f"Result: {t.result}")
             print("-" * 40)

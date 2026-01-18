@@ -102,7 +102,7 @@ class HumanOnlyProtocol:
             name="Create Environment Template",
             classification=TaskClassification.AUTO,
             status=TaskStatus.PENDING,
-            command="cp backend/.env.example backend/.env",
+            command="if not exist .env copy backend\\.env.example .env",
             description="Create .env file from template",
         ),
         "validate_codebase": DeploymentTask(
@@ -217,7 +217,7 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
             classification=TaskClassification.AUTO,
             status=TaskStatus.PENDING,
             prerequisites=["configure_env"],
-            command="cd backend && alembic upgrade head",
+            command="alembic -c backend/alembic.ini upgrade head",
             description="Apply database migrations",
         ),
         "start_server": DeploymentTask(
@@ -235,7 +235,7 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
             classification=TaskClassification.AUTO,
             status=TaskStatus.PENDING,
             prerequisites=["start_server"],
-            command="curl -s http://localhost:8000/health | jq .",
+            command="curl -s http://localhost:8000/api/health",
             description="Verify all health endpoints respond",
         ),
     }
@@ -246,7 +246,7 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
     async def synchronize_tasks(self, db: AsyncSession):
         """Synchronize hardcoded task definitions with the database"""
         for task_key, task_def in self._definitions.items():
-            # Check if task exists in DB by title
+            # Check if task exists in DB by title (or ID)
             result = await db.execute(select(Task).where(Task.title == task_def.name))
             db_task = result.scalar_one_or_none()
 
@@ -263,6 +263,17 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
                 )
                 db.add(db_task)
                 logger.info(f"Initialized new autonomy task in DB: {task_def.name}")
+            else:
+                # Update existing task if definition changed (and it's not completed)
+                if db_task.status != TaskStatus.COMPLETED.value:
+                    db_task.command = task_def.command
+                    db_task.classification = task_def.classification.value
+                    db_task.description = task_def.description
+                    db_task.ho_scaffold = task_def.ho_scaffold
+                    # If it previously failed, reset it to pending now that we fixed the command
+                    if db_task.status == TaskStatus.FAILED.value:
+                        db_task.status = TaskStatus.PENDING.value
+                        db_task.error = None
 
         await db.commit()
 
