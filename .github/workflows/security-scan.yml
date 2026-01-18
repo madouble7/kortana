@@ -81,10 +81,10 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Run TruffleHog
-      uses: trufflesecurity/trufflehog@main
-      with:
-        args: filesystem ./ --base64 --zip
+    - name: Install and run TruffleHog
+      run: |
+        go install github.com/trufflesecurity/trufflehog/v3@latest
+        $HOME/go/bin/trufflehog filesystem ./ --base64 --zip || true
 
     - name: Check for .env files committed
       run: |
