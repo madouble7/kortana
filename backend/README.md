@@ -27,6 +27,11 @@ GEMINI_API_KEY=your-gemini-api-key
 GOOGLE_DRIVE_API_KEY=your-drive-api-key
 GOOGLE_PROJECT_ID=your-gcp-project-id
 GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account-key.json
+
+# Billing (optional)
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_PUBLISHABLE_KEY=pk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
 ```
 
 ### Running the Server
@@ -55,6 +60,7 @@ backend/
     ├── __init__.py
     ├── agents.py          # Agent orchestration endpoints
     ├── autonomy.py        # Autonomous operations
+    ├── billing.py         # Stripe billing and payments
     ├── gemini.py          # Google Gemini AI integration
     ├── github.py          # GitHub repository integration
     ├── knowledge.py       # Knowledge base management
@@ -118,6 +124,24 @@ backend/
 - `PUT /{task_id}` - Update task
 - `DELETE /{task_id}` - Cancel task
 
+### Billing (`/api/billing`)
+
+- `GET /config` - Get billing configuration and available plans
+- `POST /customers` - Create a new Stripe customer
+- `GET /customers/{customer_id}` - Get customer details
+- `POST /subscriptions` - Create a subscription for a customer
+- `GET /subscriptions/{subscription_id}` - Get subscription details
+- `POST /subscriptions/{subscription_id}/cancel` - Cancel a subscription
+- `POST /payment-intents` - Create a payment intent for one-time payments
+- `POST /webhooks` - Handle Stripe webhook events
+- `GET /billing-info/{customer_id}` - Get complete billing information for a customer
+
+**Billing Plans Available:**
+- **Free**: Basic API access (100 requests/day)
+- **Basic**: Standard API access ($9.99/month, 1000 requests/day)
+- **Pro**: Full API access ($29.99/month, 10000 requests/day)
+- **Enterprise**: Unlimited access (custom pricing)
+
 ## 🛠️ Development
 
 ### Testing
@@ -151,6 +175,7 @@ mypy backend/
 - **pydantic** - Data validation
 - **requests** - HTTP client
 - **google-cloud-aiplatform** - Gemini AI integration
+- **stripe** - Payment processing integration
 
 ## ☁️ Deployment
 
