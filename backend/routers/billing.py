@@ -5,6 +5,7 @@ Handles customer management, subscriptions, and payment processing
 
 import os
 from typing import Any
+import logging
 
 import stripe
 from fastapi import APIRouter, HTTPException, Header, Request, Depends
@@ -19,9 +20,11 @@ from schemas import (
     PaymentIntentCreate,
     PaymentIntent,
     BillingInfo,
+    BillingPlanType,
 )
 
 router = APIRouter()
+logger = logging.getLogger("kortana.billing")
 
 # Initialize Stripe
 settings = get_settings()
@@ -209,7 +212,7 @@ async def create_payment_intent(payment_data: PaymentIntentCreate):
 
 
 @router.post("/webhooks")
-async def handle_webhook(request: Request, stripe_signature: str = Header(None)):
+async def handle_webhook(request: Request, stripe_signature: str = Header(None, alias="Stripe-Signature")):
     """Handle Stripe webhooks"""
     verify_stripe_configured()
     
@@ -234,19 +237,19 @@ async def handle_webhook(request: Request, stripe_signature: str = Header(None))
     event_type = event["type"]
     event_data = event["data"]["object"]
     
-    # Log event (in production, you'd process these appropriately)
-    print(f"Received webhook event: {event_type}")
+    # Log event using proper logging
+    logger.info(f"Received webhook event: {event_type}", extra={"event_id": event["id"]})
     
     if event_type == "customer.subscription.created":
-        print(f"Subscription created: {event_data['id']}")
+        logger.info(f"Subscription created: {event_data['id']}")
     elif event_type == "customer.subscription.updated":
-        print(f"Subscription updated: {event_data['id']}")
+        logger.info(f"Subscription updated: {event_data['id']}")
     elif event_type == "customer.subscription.deleted":
-        print(f"Subscription deleted: {event_data['id']}")
+        logger.info(f"Subscription deleted: {event_data['id']}")
     elif event_type == "invoice.payment_succeeded":
-        print(f"Payment succeeded: {event_data['id']}")
+        logger.info(f"Payment succeeded: {event_data['id']}")
     elif event_type == "invoice.payment_failed":
-        print(f"Payment failed: {event_data['id']}")
+        logger.warning(f"Payment failed: {event_data['id']}")
     
     return {"received": True, "event_type": event_type}
 
@@ -269,18 +272,32 @@ async def get_billing_info(customer_id: str):
         
         if subscriptions.data:
             subscription = subscriptions.data[0]
+            
+            # Determine plan type from subscription metadata or price
+            plan_type = BillingPlanType.FREE
+            if subscription.metadata and "plan_type" in subscription.metadata:
+                plan_type_str = subscription.metadata["plan_type"]
+                try:
+                    plan_type = BillingPlanType(plan_type_str)
+                except ValueError:
+                    logger.warning(f"Invalid plan type in metadata: {plan_type_str}")
+                    plan_type = BillingPlanType.PRO
+            else:
+                # Default to PRO for active subscriptions without metadata
+                plan_type = BillingPlanType.PRO
+            
             return BillingInfo(
                 customer_id=customer_id,
                 subscription_id=subscription.id,
                 subscription_status=subscription.status,
                 current_period_end=subscription.current_period_end,
                 cancel_at_period_end=subscription.cancel_at_period_end,
-                plan_type="pro"  # This would be determined from subscription metadata
+                plan_type=plan_type
             )
         else:
             return BillingInfo(
                 customer_id=customer_id,
-                plan_type="free"
+                plan_type=BillingPlanType.FREE
             )
     except stripe.error.StripeError as e:
         raise HTTPException(status_code=404, detail=str(e))
