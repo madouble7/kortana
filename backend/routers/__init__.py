@@ -1,2 +1,13 @@
 # Routers package
-from . import agents, autonomy, gemini, github, knowledge, memory, task_queue
+from . import (
+    agents,
+    autonomy,
+    code_reviewer,
+    gemini,
+    github,
+    knowledge,
+    memory,
+    pr_creation,
+    task_queue,
+    test_orchestrator,
+)

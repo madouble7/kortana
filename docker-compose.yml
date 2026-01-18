@@ -1,0 +1,93 @@
+# Docker Compose for Local Development
+version: "3.9"
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: kortana-postgres
+    environment:
+      POSTGRES_USER: ${DB_USER:-kortana}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-kortana_dev}
+      POSTGRES_DB: ${DB_NAME:-kortana_db}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-kortana}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - kortana-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: kortana-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - kortana-network
+
+  # Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kortana-backend
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-kortana}:${DB_PASSWORD:-kortana_dev}@postgres:5432/${DB_NAME:-kortana_db}
+      REDIS_URL: redis://redis:6379
+      ENVIRONMENT: development
+      LOG_LEVEL: debug
+      PYTHONUNBUFFERED: 1
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - kortana-network
+
+  # Frontend Dev Server
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: kortana-frontend
+    environment:
+      REACT_APP_API_URL: ${FRONTEND_API_URL:-http://localhost:8000}
+      REACT_APP_WS_URL: ${FRONTEND_WS_URL:-ws://localhost:8000}
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend/src:/app/src
+    command: npm start
+    networks:
+      - kortana-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  kortana-network:
+    driver: bridge

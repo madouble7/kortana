@@ -1,11 +1,44 @@
 // API Service for Kor'tana Frontend
 // Connects to FastAPI backend running on localhost:8001
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8001';
+const API_BASE_URL = (window as any).ENV?.REACT_APP_API_URL || 'http://localhost:8001';
 
 export interface HealthResponse {
   status: string;
   message: string;
+  environment?: string;
+  version?: string;
+}
+
+export interface SystemMetrics {
+  cpu_percent: number;
+  memory_percent: number;
+  disk_percent: number;
+  requests_total: number;
+  errors_total: number;
+  uptime_seconds: number;
+}
+
+export interface AgentInfo {
+  id: number;
+  name: string;
+  description: string;
+  status: 'active' | 'idle' | 'training' | 'error';
+  model: string;
+  created_at: string;
+  last_active: string;
+}
+
+export interface TaskInfo {
+  id: number;
+  name: string;
+  description: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  priority: number;
+  created_at: string;
+  started_at?: string;
+  completed_at?: string;
+  result?: any;
 }
 
 export interface PrayerStatusResponse {
@@ -148,6 +181,38 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify({ task }),
     });
+  }
+
+  // Task Operations
+  async getTasks(): Promise<any[]> {
+    const response = await this.request<{ tasks: any[] }>('/api/task-queue');
+    return response.tasks || [];
+  }
+
+  async createTask(name: string, description: string, priority: number = 5): Promise<any> {
+    return this.request('/api/task-queue', {
+      method: 'POST',
+      body: JSON.stringify({ name, description, priority }),
+    });
+  }
+
+  async cancelTask(taskId: number): Promise<any> {
+    return this.request(`/api/task-queue/${taskId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Metrics
+  async getMetrics(): Promise<SystemMetrics> {
+    return this.request<SystemMetrics>('/api/health/metrics');
+  }
+
+  async getDetailedHealth(): Promise<any> {
+    return this.request('/api/health/detailed');
+  }
+
+  async getSystemInfo(): Promise<any> {
+    return this.request('/api/health/system');
   }
 }
 
