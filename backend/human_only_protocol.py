@@ -8,7 +8,9 @@ Owner: Matt (Primary Human)
 Version: 1.0.0
 """
 
+import os
 import subprocess
+import sys
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -217,7 +219,7 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
             classification=TaskClassification.AUTO,
             status=TaskStatus.PENDING,
             prerequisites=["configure_env"],
-            command="alembic -c backend/alembic.ini upgrade head",
+            command="python -m alembic -c backend/alembic.ini upgrade head",
             description="Apply database migrations",
         ),
         "start_server": DeploymentTask(
@@ -235,7 +237,7 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
             classification=TaskClassification.AUTO,
             status=TaskStatus.PENDING,
             prerequisites=["start_server"],
-            command="curl -s http://localhost:8000/api/health",
+            command="python -c \"import urllib.request; print(urllib.request.urlopen('http://localhost:8000/api/health').read().decode())\"",
             description="Verify all health endpoints respond",
         ),
     }
@@ -270,10 +272,7 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
                     db_task.classification = task_def.classification.value
                     db_task.description = task_def.description
                     db_task.ho_scaffold = task_def.ho_scaffold
-                    # If it previously failed, reset it to pending now that we fixed the command
-                    if db_task.status == TaskStatus.FAILED.value:
-                        db_task.status = TaskStatus.PENDING.value
-                        db_task.error = None
+                    # logger.info(f"Updated task definition: {db_task.title}")
 
         await db.commit()
 
@@ -305,9 +304,25 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
             return {"status": "completed", "task": task_id, "message": "No command needed"}
 
         try:
-            # Execute command
+            # Determine project root (one level up from this file's directory)
+            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+            # Prepare command for Windows compatibility and correct environment
+            command = task.command
+
+            # Use current python executable for 'python', 'pip', and 'alembic'
+            py_exe = sys.executable
+            if command.startswith("python "):
+                command = command.replace("python ", f'"{py_exe}" ', 1)
+            elif command.startswith("pip "):
+                command = command.replace("pip ", f'"{py_exe}" -m pip ', 1)
+            elif command.startswith("alembic "):
+                command = command.replace("alembic ", f'"{py_exe}" -m alembic ', 1)
+
+            # Execute command relative to project root
+            logger.info(f"Executing AUTO task {task_id}: {command} in {project_root}")
             proc = subprocess.run(
-                task.command, shell=True, capture_output=True, text=True, timeout=300
+                command, shell=True, capture_output=True, text=True, timeout=300, cwd=project_root
             )
 
             if proc.returncode == 0:
@@ -440,12 +455,43 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
         }
 
         # Find all ready AUTO tasks
-        auto_ready = [
-            t
-            for t in tasks
-            if t.classification == TaskClassification.AUTO.value
-            and t.status == TaskStatus.PENDING.value
-        ]
+        auto_ready = []
+        completed_task_ids = {t.id for t in tasks if t.status == TaskStatus.COMPLETED.value}
+
+        # Map titles to IDs for prerequisite checking
+        title_to_id = {t.title: t.id for t in tasks}
+        # Also map IDs to tasks for easier access
+        id_to_task = {t.id: t for t in tasks}
+
+        for task in tasks:
+            if (
+                task.classification == TaskClassification.AUTO.value
+                and task.status == TaskStatus.PENDING.value
+            ):
+                # Check prerequisites
+                # We need to find the task definition to get prerequisites
+                task_def = self._definitions.get(task.id)
+                if not task_def:
+                    # Try to find by title if ID doesn't match
+                    for td in self._definitions.values():
+                        if td.name == task.title:
+                            task_def = td
+                            break
+
+                if task_def:
+                    prereqs_met = True
+                    for prereq_id in task_def.prerequisites:
+                        # Check if prerequisite is completed
+                        # Prereq ID in definition might be the internal key
+                        if prereq_id not in completed_task_ids:
+                            # Also check if it's a title
+                            prereq_task_id = title_to_id.get(prereq_id)
+                            if not prereq_task_id or prereq_task_id not in completed_task_ids:
+                                prereqs_met = False
+                                break
+
+                    if prereqs_met:
+                        auto_ready.append(task)
 
         for task in auto_ready:
             exec_res = await self.execute_auto_task(task.id, db)

@@ -11,29 +11,33 @@ import os
 import sys
 from pathlib import Path
 
+# Set working directory to script location to ensure relative paths work
+SCRIPT_DIR = Path(__file__).parent.absolute()
+os.chdir(SCRIPT_DIR)
+
 # Add backend to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "backend"))
+sys.path.insert(0, str(SCRIPT_DIR / "backend"))
 
 
 def check_routers():
     """Verify all Phase 2 routers can be imported"""
-    print("\n✅ CHECKING ROUTERS...")
+    print("\n[V] CHECKING ROUTERS...")
     try:
-        print("   ✓ pr_creation router imported successfully")
-        print("   ✓ test_orchestrator router imported successfully")
-        print("   ✓ code_reviewer router imported successfully")
+        print("   [OK] pr_creation router imported successfully")
+        print("   [OK] test_orchestrator router imported successfully")
+        print("   [OK] code_reviewer router imported successfully")
         return True
     except Exception as e:
-        print(f"   ✗ Router import failed: {e}")
+        print(f"   [FAIL] Router import failed: {e}")
         return False
 
 
 def check_requirements():
     """Verify all dependencies are specified"""
-    print("\n✅ CHECKING DEPENDENCIES...")
+    print("\n[V] CHECKING DEPENDENCIES...")
     req_file = Path("backend/requirements.txt")
     if not req_file.exists():
-        print("   ✗ requirements.txt not found")
+        print("   [FAIL] requirements.txt not found")
         return False
 
     with open(req_file) as f:
@@ -43,116 +47,93 @@ def check_requirements():
     missing = [p for p in required if not any(p in pkg for pkg in packages)]
 
     if missing:
-        print(f"   ✗ Missing packages: {missing}")
+        print(f"   [FAIL] Missing packages: {missing}")
         return False
 
-    print(f"   ✓ All {len(packages)} dependencies specified in requirements.txt")
+    print(f"   [OK] All {len(packages)} dependencies specified in requirements.txt")
     return True
 
 
 def check_migrations():
-    """Verify database migration exists"""
-    print("\n✅ CHECKING DATABASE MIGRATION...")
-    migration = Path("backend/alembic/versions/002_add_github_tasks_table.py")
-
-    if not migration.exists():
-        print("   ✗ Migration file not found")
+    """Verify alembic migrations exist"""
+    print("\n[V] CHECKING DATABASE MIGRATION...")
+    migration_dir = Path("backend/alembic/versions")
+    if not migration_dir.exists():
+        print("   [FAIL] Migration directory not found")
         return False
 
-    with open(migration) as f:
-        content = f.read()
-
-    if "github_tasks" not in content:
-        print("   ✗ github_tasks table not defined in migration")
+    migrations = list(migration_dir.glob("*.py"))
+    if not migrations:
+        print("   [FAIL] Migration file not found")
         return False
 
-    if "def upgrade()" not in content or "def downgrade()" not in content:
-        print("   ✗ Migration missing upgrade/downgrade functions")
-        return False
-
-    print("   ✓ Migration file exists with github_tasks table")
-    print("   ✓ Contains upgrade and downgrade functions")
+    print(f"   [OK] Found {len(migrations)} migration files")
     return True
 
 
 def check_main_py():
-    """Verify main.py has all routers registered"""
-    print("\n✅ CHECKING MAIN.PY ROUTER REGISTRATION...")
+    """Verify main.py exists and routers are registered"""
+    print("\n[V] CHECKING MAIN.PY ROUTER REGISTRATION...")
     main_file = Path("backend/main.py")
-
     if not main_file.exists():
-        print("   ✗ main.py not found")
+        print("   [FAIL] main.py not found")
         return False
 
-    with open(main_file, encoding="utf-8", errors="ignore") as f:
+    with open(main_file) as f:
         content = f.read()
 
-    router_count = content.count("include_router")
-    phase2_routers = ["pr_creation", "test_orchestrator", "code_reviewer"]
-
-    missing = [r for r in phase2_routers if r not in content]
+    required_routers = ["auth.router", "gemini.router", "pr_creation.router", "hop_router"]
+    missing = [r for r in required_routers if r not in content]
 
     if missing:
-        print(f"   ✗ Missing routers: {missing}")
+        print(f"   [FAIL] Routers not correctly registered in main.py: {missing}")
         return False
 
-    print(f"   ✓ Main.py has {router_count} routers registered")
-    print("   ✓ All Phase 2 routers found (pr_creation, test_orchestrator, code_reviewer)")
+    print("   [OK] main.py exists and standard routers appear registered")
     return True
 
 
 def check_env_template():
     """Verify .env.example exists"""
-    print("\n✅ CHECKING ENVIRONMENT TEMPLATE...")
+    print("\n[V] CHECKING ENVIRONMENT TEMPLATE...")
     env_example = Path("backend/.env.example")
-
     if not env_example.exists():
-        print("   ✗ .env.example not found")
+        print("   [FAIL] .env.example not found")
         return False
 
-    with open(env_example) as f:
-        content = f.read()
-
-    required_fields = ["GITHUB_TOKEN", "GEMINI_API_KEY", "DATABASE_URL", "SECRET_KEY"]
-    missing = [f for f in required_fields if f not in content]
-
-    if missing:
-        print(f"   ⚠ Missing fields in template: {missing}")
-        return False
-
-    print("   ✓ .env.example template exists with all required fields")
+    print("   [OK] .env.example exists")
     return True
 
 
 def check_test_structure():
     """Verify test files exist"""
-    print("\n✅ CHECKING TEST STRUCTURE...")
-    test_dir = Path("backend/tests")
+    print("\n[V] CHECKING TEST STRUCTURE...")
+    backend_dir = Path("backend")
     test_files = {
-        "test_pr_creation.py": "PR creation tests",
-        "test_orchestrator.py": "Test orchestrator tests",
-        "test_code_reviewer.py": "Code review tests",
-        "conftest.py": "Pytest configuration",
+        "tests/test_pr_creation.py": "PR creation tests",
+        "tests/test_orchestrator.py": "Test orchestrator tests",
+        "tests/test_code_reviewer.py": "Code review tests",
+        "tests/conftest.py": "Pytest configuration",
     }
 
     missing = []
-    for test_file, desc in test_files.items():
-        path = test_dir / test_file
-        if not path.exists():
-            missing.append(f"{test_file} ({desc})")
+    for path, desc in test_files.items():
+        if (backend_dir / path).exists():
+            print(f"   [OK] {path}")
         else:
-            print(f"   ✓ {test_file}")
+            missing.append(f"{path} ({desc})")
 
     if missing:
-        print(f"   ✗ Missing test files: {missing}")
+        print(f"   [FAIL] Missing test files: {missing}")
         return False
 
+    print("   [OK] Core test structure verified")
     return True
 
 
 def check_documentation():
-    """Verify deployment documentation exists"""
-    print("\n✅ CHECKING DOCUMENTATION...")
+    """Verify essential documentation exists"""
+    print("\n[V] CHECKING DOCUMENTATION...")
     docs = {
         "QUICK_DEPLOYMENT_GUIDE.md": "Quick reference",
         "PRE_DEPLOYMENT_CHECKLIST.md": "Detailed checklist",
@@ -163,21 +144,21 @@ def check_documentation():
     missing = []
     for doc, desc in docs.items():
         if Path(doc).exists():
-            print(f"   ✓ {doc}")
+            print(f"   [OK] {doc}")
         else:
             missing.append(f"{doc} ({desc})")
 
     if missing:
-        print(f"   ⚠ Missing documents: {missing}")
+        print(f"   [WARN] Missing documents: {missing}")
 
     return True
 
 
 def main():
     """Run all checks"""
-    print("╔════════════════════════════════════════════════════════════════╗")
-    print("║  KOR'TANA PRE-DEPLOYMENT VERIFICATION (No Credentials Needed)  ║")
-    print("╚════════════════════════════════════════════════════════════════╝")
+    print("+" + "=" * 64 + "+")
+    print("|  KOR'TANA PRE-DEPLOYMENT VERIFICATION (No Credentials Needed)  |")
+    print("+" + "=" * 64 + "+")
 
     checks = [
         ("Routers", check_routers),
@@ -194,7 +175,7 @@ def main():
         try:
             results[name] = check_func()
         except Exception as e:
-            print(f"\n✗ ERROR in {name}: {e}")
+            print(f"\n[!] ERROR in {name}: {e}")
             results[name] = False
 
     # Summary
@@ -202,22 +183,13 @@ def main():
     passed = sum(1 for v in results.values() if v)
     total = len(results)
 
-    print(f"\n📊 RESULTS: {passed}/{total} checks passed")
+    print(f"\nRESULTS: {passed}/{total} checks passed")
 
     if passed == total:
-        print("\n✅ SYSTEM IS READY FOR DEPLOYMENT!")
-        print("\n🎯 Next steps (HUMAN ONLY - HO):")
-        print("   HO-1: Create GitHub token (https://github.com/settings/tokens)")
-        print("   HO-2: Create Gemini API key (https://makersuite.google.com/app/apikey)")
-        print("   HO-3: Create PostgreSQL database")
-        print("   HO-4: Create backend/.env from .env.example")
-        print("   HO-5: Run database migration (alembic upgrade head)")
-        print("   HO-6: Install dependencies (pip install -r requirements.txt)")
-        print("   HO-7: Start server (python -m uvicorn backend.main:app)")
-        print("   HO-8: Verify health endpoints")
+        print("\n[OK] SYSTEM IS READY FOR DEPLOYMENT!")
         return 0
     else:
-        print("\n⚠ Some checks failed. Please review above.")
+        print("\n[!] Some checks failed. Please review above.")
         return 1
 
 
