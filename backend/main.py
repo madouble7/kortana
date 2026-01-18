@@ -41,8 +41,8 @@ try:
         health,
         knowledge,
         memory,
-        prayer,
         pr_creation,
+        prayer,
         task_queue,
         test_orchestrator,
     )

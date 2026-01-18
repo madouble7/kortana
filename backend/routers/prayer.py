@@ -1,9 +1,9 @@
+from datetime import datetime
 
 from fastapi import APIRouter
-from datetime import datetime
-from typing import List, Optional
 
 router = APIRouter(prefix="/api/prayer", tags=["prayer"])
+
 
 @router.get("/status")
 async def get_prayer_status():
@@ -13,8 +13,9 @@ async def get_prayer_status():
         "message": "Prayer agents are standing by",
         "timestamp": datetime.now().isoformat(),
         "persons": ["Matt", "Foundation"],
-        "next_cycle": (datetime.now()).isoformat() # placeholder
+        "next_cycle": (datetime.now()).isoformat(),  # placeholder
     }
+
 
 @router.get("/request")
 async def prayer_request(person: str = "both", request: str = ""):
@@ -23,5 +24,5 @@ async def prayer_request(person: str = "both", request: str = ""):
         "status": "received",
         "message": f"Prayer request received for {person}",
         "request": request,
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
     }

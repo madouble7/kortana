@@ -6,7 +6,6 @@ import os
 import re
 import subprocess
 from datetime import datetime
-from typing import List, Optional
 
 import yaml
 from fastapi import APIRouter, HTTPException
@@ -18,10 +17,10 @@ router = APIRouter()
 class Task(BaseModel):
     id: str
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     status: str = "pending"  # pending, in_progress, completed, failed
-    created_at: Optional[str] = None
-    branch_name: Optional[str] = None
+    created_at: str | None = None
+    branch_name: str | None = None
 
 
 # In-memory task store
@@ -86,17 +85,15 @@ def create_branch(task_id: str, task_name: str) -> str:
 
         return branch_name
     except subprocess.CalledProcessError as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to create branch: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to create branch: {str(e)}")
 
 
-def parse_covenant_tasks() -> List[Task]:
+def parse_covenant_tasks() -> list[Task]:
     """Parse COVENANT_INDEX.md front-matter to extract tasks"""
     covenant_path = os.path.join(os.getenv("REPO_ROOT", "."), "COVENANT_INDEX.md")
 
     try:
-        with open(covenant_path, "r") as f:
+        with open(covenant_path) as f:
             content = f.read()
 
         # Extract YAML front-matter
@@ -160,17 +157,17 @@ async def add_task(payload: dict):
     name = payload.get("name")
     description = payload.get("description")
     priority = payload.get("priority", 5)
-    
+
     if not name:
         raise HTTPException(status_code=400, detail="Missing 'name'")
-    
+
     task_id = str(len(task_queue) + 1)
     task = Task(
         id=task_id,
         name=name,
         description=description,
         status="pending",
-        created_at=datetime.now().isoformat()
+        created_at=datetime.now().isoformat(),
     )
     task_queue[task_id] = task
     return task
