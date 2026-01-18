@@ -90,11 +90,8 @@ async def get_repo_issues(
 
     issues = response.json()
 
-    # Return with pagination info
-    return {
-        "issues": issues,
-        "pagination": {"page": page, "per_page": per_page, "total": len(issues)},
-    }
+    # Return issues directly for frontend compatibility
+    return issues
 
 
 @router.get("/repos/{owner}/{repo}/pulls")
@@ -135,10 +132,8 @@ async def get_repo_pulls(
 
     pulls = response.json()
 
-    return {
-        "pull_requests": pulls,
-        "pagination": {"page": page, "per_page": per_page, "total": len(pulls)},
-    }
+    # Return pulls directly for frontend compatibility
+    return pulls
 
 
 @router.post("/analyze")

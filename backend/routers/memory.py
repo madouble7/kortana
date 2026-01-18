@@ -24,6 +24,18 @@ async def add_document(payload: dict):
     return {"message": "Document added", "document": doc}
 
 
+@router.get("/search")
+async def search_documents_get(query: str):
+    """Search knowledge base via GET."""
+    query = query.lower()
+    results = [
+        doc
+        for doc in knowledge_base
+        if query in doc["content"].lower() or query in doc["title"].lower()
+    ]
+    return {"query": query, "results": results}
+
+
 @router.post("/search")
 async def search_documents(payload: dict):
     """Search knowledge base."""

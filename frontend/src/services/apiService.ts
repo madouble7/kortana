@@ -1,7 +1,7 @@
 // API Service for Kor'tana Frontend
-// Connects to FastAPI backend running on localhost:8001
+// Connects to FastAPI backend running on localhost:8000
 
-const API_BASE_URL = (window as any).ENV?.REACT_APP_API_URL || 'http://localhost:8001';
+const API_BASE_URL = (window as any).ENV?.REACT_APP_API_URL || 'http://localhost:8000';
 
 export interface HealthResponse {
   status: string;

@@ -38,8 +38,10 @@ try:
         code_reviewer,
         gemini,
         github,
+        health,
         knowledge,
         memory,
+        prayer,
         pr_creation,
         task_queue,
         test_orchestrator,
@@ -175,6 +177,8 @@ def create_app() -> FastAPI:
         app.include_router(auth.router, prefix="/api/auth", tags=["authentication"])
 
         # Protected API routers
+        app.include_router(health.router)
+        app.include_router(prayer.router)
         app.include_router(gemini.router, prefix="/api/gemini", tags=["gemini"])
         app.include_router(memory.router, prefix="/api/memory", tags=["memory"])
         app.include_router(agents.router, prefix="/api/agents", tags=["agents"])

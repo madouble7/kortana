@@ -148,6 +148,43 @@ async def queue_task(task: Task):
     return {"status": "queued", "task": task}
 
 
+@router.get("/")
+async def list_tasks():
+    """List all tasks in the queue"""
+    return {"tasks": list(task_queue.values())}
+
+
+@router.post("/")
+async def add_task(payload: dict):
+    """Add a new task to the queue"""
+    name = payload.get("name")
+    description = payload.get("description")
+    priority = payload.get("priority", 5)
+    
+    if not name:
+        raise HTTPException(status_code=400, detail="Missing 'name'")
+    
+    task_id = str(len(task_queue) + 1)
+    task = Task(
+        id=task_id,
+        name=name,
+        description=description,
+        status="pending",
+        created_at=datetime.now().isoformat()
+    )
+    task_queue[task_id] = task
+    return task
+
+
+@router.delete("/{task_id}")
+async def delete_task(task_id: str):
+    """Remove a task from the queue"""
+    if task_id in task_queue:
+        del task_queue[task_id]
+        return {"status": "deleted", "task_id": task_id}
+    raise HTTPException(status_code=404, detail="Task not found")
+
+
 @router.post("/create-branch/{task_id}")
 async def create_task_branch(task_id: str):
     """Create a git branch for a task"""

@@ -40,7 +40,7 @@ def check_requirements():
         print("   [FAIL] requirements.txt not found")
         return False
 
-    with open(req_file) as f:
+    with open(req_file, encoding="utf-8") as f:
         packages = [line.strip() for line in f if line.strip() and not line.startswith("#")]
 
     required = ["fastapi", "uvicorn", "sqlalchemy", "alembic", "pydantic"]
@@ -79,7 +79,7 @@ def check_main_py():
         print("   [FAIL] main.py not found")
         return False
 
-    with open(main_file) as f:
+    with open(main_file, encoding="utf-8") as f:
         content = f.read()
 
     required_routers = ["auth.router", "gemini.router", "pr_creation.router", "hop_router"]

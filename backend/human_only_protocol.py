@@ -333,9 +333,10 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
                 return {"status": "completed", "task": task_id, "output": proc.stdout[:1000]}
             else:
                 task.status = TaskStatus.FAILED.value
-                task.error = proc.stderr
+                # Combine stdout and stderr for better debugging on failure
+                task.error = f"STDOUT:\n{proc.stdout}\n\nSTDERR:\n{proc.stderr}"
                 await db.commit()
-                return {"status": "failed", "task": task_id, "error": proc.stderr}
+                return {"status": "failed", "task": task_id, "error": task.error}
 
         except subprocess.TimeoutExpired:
             task.status = TaskStatus.FAILED.value
