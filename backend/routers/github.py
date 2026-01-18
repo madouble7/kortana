@@ -84,7 +84,8 @@ async def get_repo_issues(
         if response.status_code == 404:
             raise HTTPException(status_code=404, detail="Repository not found")
         raise HTTPException(
-            status_code=response.status_code, detail=f"GitHub API error: {response.text}"
+            status_code=response.status_code,
+            detail=f"GitHub API error: {response.text}",
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch issues: {str(e)}")
@@ -126,7 +127,8 @@ async def get_repo_pulls(
         if response.status_code == 404:
             raise HTTPException(status_code=404, detail="Repository not found")
         raise HTTPException(
-            status_code=response.status_code, detail=f"GitHub API error: {response.text}"
+            status_code=response.status_code,
+            detail=f"GitHub API error: {response.text}",
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch PRs: {str(e)}")
@@ -211,7 +213,13 @@ Please analyze this and provide ONLY a JSON response (no markdown, no code block
             }
 
         # Validate response
-        for key in ["summary", "priority", "analysis", "suggested_actions", "estimated_effort"]:
+        for key in [
+            "summary",
+            "priority",
+            "analysis",
+            "suggested_actions",
+            "estimated_effort",
+        ]:
             if key not in analysis_data:
                 analysis_data[key] = "" if key != "suggested_actions" else []
 
@@ -227,7 +235,8 @@ Please analyze this and provide ONLY a JSON response (no markdown, no code block
 
     except ImportError:
         raise HTTPException(
-            status_code=500, detail="Gemini SDK not installed. Install google-generativeai package"
+            status_code=500,
+            detail="Gemini SDK not installed. Install google-generativeai package",
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")

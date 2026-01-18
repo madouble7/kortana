@@ -41,7 +41,7 @@ class Settings:
     # CORS Configuration
     CORS_ORIGINS: list[str] = os.getenv(
         "CORS_ORIGINS",
-        "http://localhost:3000,http://localhost:8000,http://localhost:8080",
+        "http://localhost:3000,http://localhost:8000,http://localhost:8080,http://localhost:5173",
     ).split(",")
     CORS_CREDENTIALS: bool = True
     CORS_METHODS: list[str] = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]

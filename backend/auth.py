@@ -294,7 +294,7 @@ def decode_token(token: str) -> TokenData:
             detail="Token has expired",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    except jwt.JWTError as e:
+    except Exception as e:
         # Handle all other JWT errors
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

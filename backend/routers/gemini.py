@@ -24,7 +24,9 @@ async def generate_code(payload: dict[str, Any]) -> dict[str, Any]:
     """Generate code based on description."""
     description = payload.get("description")
     if not description:
-        raise HTTPException(status_code=400, detail="Missing 'description' field in payload")
+        raise HTTPException(
+            status_code=400, detail="Missing 'description' field in payload"
+        )
 
     code = await gemini_service.generate_code(description)
     return {"code": code}
@@ -35,7 +37,9 @@ async def chat_with_gemini(payload: dict[str, Any]) -> dict[str, Any]:
     """Basic chat endpoint."""
     message = payload.get("message")
     if not message:
-        raise HTTPException(status_code=400, detail="Missing 'message' field in payload")
+        raise HTTPException(
+            status_code=400, detail="Missing 'message' field in payload"
+        )
 
     response = await gemini_service.analyze_text(message)
     return {"response": response}
@@ -90,14 +94,17 @@ async def list_models() -> dict[str, Any]:
     """List available Gemini models."""
     try:
         import google.generativeai as genai
+
         models = []
         for m in genai.list_models():
             if "generateContent" in m.supported_generation_methods:
-                models.append({
-                    "name": m.name,
-                    "display_name": m.display_name,
-                    "description": m.description,
-                })
+                models.append(
+                    {
+                        "name": m.name,
+                        "display_name": m.display_name,
+                        "description": m.description,
+                    }
+                )
         return {"models": models}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

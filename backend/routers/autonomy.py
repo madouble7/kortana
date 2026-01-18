@@ -36,7 +36,9 @@ class AutonomousTaskQueue:
         if not GITHUB_TOKEN:
             raise HTTPException(status_code=500, detail="GitHub token not configured")
 
-    async def queue_from_github_issues(self, repo: str | None = None) -> list[GitHubTask]:
+    async def queue_from_github_issues(
+        self, repo: str | None = None
+    ) -> list[GitHubTask]:
         """Fetch open issues and queue them as autonomous tasks"""
         self._validate_token()
 
@@ -50,7 +52,9 @@ class AutonomousTaskQueue:
                 response.raise_for_status()
         except Exception as e:
             logger.error(f"Failed to fetch GitHub issues: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Failed to fetch issues: {str(e)}")
+            raise HTTPException(
+                status_code=500, detail=f"Failed to fetch issues: {str(e)}"
+            )
 
         issues = response.json()
         queued_tasks = []
@@ -211,7 +215,9 @@ FILE_CHANGES:
             if task.error_count >= MAX_RETRIES:
                 task.status = "failed"
             self.db.commit()
-            raise HTTPException(status_code=500, detail=f"Plan generation failed: {str(e)}")
+            raise HTTPException(
+                status_code=500, detail=f"Plan generation failed: {str(e)}"
+            )
 
         task.status = "ready_to_execute"
         task.updated_at = datetime.utcnow()
@@ -251,7 +257,9 @@ FILE_CHANGES:
                     else:
                         task.status = "ready_to_execute"
                     self.db.commit()
-                    raise Exception(f"Code generation errors: {generation_result['errors']}")
+                    raise Exception(
+                        f"Code generation errors: {generation_result['errors']}"
+                    )
 
             task.status = "completed"
             task.completed_at = datetime.utcnow()
@@ -279,6 +287,7 @@ FILE_CHANGES:
             owner, repo = task.github_repo.split("/")
             # Synchronous request here is fine as it's a small helper inside execute_task
             import requests
+
             headers = {
                 "Authorization": f"token {GITHUB_TOKEN}",
                 "Accept": "application/vnd.github.v3+json",
@@ -290,7 +299,9 @@ FILE_CHANGES:
 
             if ref_response.status_code != 200:
                 # Try master branch
-                ref_url = f"https://api.github.com/repos/{owner}/{repo}/git/ref/heads/master"
+                ref_url = (
+                    f"https://api.github.com/repos/{owner}/{repo}/git/ref/heads/master"
+                )
                 ref_response = requests.get(ref_url, headers=headers, timeout=10)
                 if ref_response.status_code != 200:
                     return False
@@ -381,7 +392,9 @@ async def get_task_queue_status(db: Session = Depends(get_db)) -> dict[str, Any]
                 "status": str(t.status),
                 "updated_at": t.updated_at.isoformat() if t.updated_at else None,
             }
-            for t in db.query(GitHubTask).order_by(GitHubTask.updated_at.desc()).limit(10)
+            for t in db.query(GitHubTask)
+            .order_by(GitHubTask.updated_at.desc())
+            .limit(10)
         ],
     }
 
@@ -428,7 +441,9 @@ async def plan_task_endpoint(
 
 @router.post("/execute/{task_id}")
 async def execute_task_endpoint(
-    task_id: str, dry_run: bool = False, task_queue: AutonomousTaskQueue = Depends(get_task_queue)
+    task_id: str,
+    dry_run: bool = False,
+    task_queue: AutonomousTaskQueue = Depends(get_task_queue),
 ) -> dict[str, Any]:
     """Execute a specific autonomous task."""
     try:
@@ -448,7 +463,9 @@ async def execute_task_endpoint(
 
 
 @router.get("/tasks/{task_id}")
-async def get_task_details(task_id: str, db: Session = Depends(get_db)) -> dict[str, Any]:
+async def get_task_details(
+    task_id: str, db: Session = Depends(get_db)
+) -> dict[str, Any]:
     """Get detailed information about a task"""
     task = db.query(GitHubTask).filter(GitHubTask.id == task_id).first()
     if not task:
@@ -476,7 +493,9 @@ async def get_task_details(task_id: str, db: Session = Depends(get_db)) -> dict[
 
 
 @router.post("/tasks/{task_id}/retry")
-async def retry_failed_task(task_id: str, db: Session = Depends(get_db)) -> dict[str, Any]:
+async def retry_failed_task(
+    task_id: str, db: Session = Depends(get_db)
+) -> dict[str, Any]:
     """Retry a failed task"""
     task = db.query(GitHubTask).filter(GitHubTask.id == task_id).first()
     if not task:
@@ -484,7 +503,8 @@ async def retry_failed_task(task_id: str, db: Session = Depends(get_db)) -> dict
 
     if task.error_count >= task.max_retries:
         raise HTTPException(
-            status_code=400, detail=f"Task has exceeded max retries ({task.max_retries})"
+            status_code=400,
+            detail=f"Task has exceeded max retries ({task.max_retries})",
         )
 
     task.status = "pending"
@@ -517,21 +537,20 @@ async def health_check() -> dict[str, Any]:
 async def get_recent_actions(db: Session = Depends(get_db)) -> dict[str, Any]:
     """Get recent autonomous actions for dashboard"""
     # Simply return recent tasks as actions for now
-    tasks = (
-        db.query(GitHubTask)
-        .order_by(GitHubTask.updated_at.desc())
-        .limit(10)
-        .all()
-    )
+    tasks = db.query(GitHubTask).order_by(GitHubTask.updated_at.desc()).limit(10).all()
     actions = []
     for t in tasks:
-        actions.append({
-            "id": t.id,
-            "type": "task_update",
-            "message": f"Task {t.id} ({t.title}) moved to {t.status}",
-            "status": t.status,
-            "timestamp": t.updated_at.isoformat() if t.updated_at else datetime.utcnow().isoformat(),
-        })
+        actions.append(
+            {
+                "id": t.id,
+                "type": "task_update",
+                "message": f"Task {t.id} ({t.title}) moved to {t.status}",
+                "status": t.status,
+                "timestamp": t.updated_at.isoformat()
+                if t.updated_at
+                else datetime.utcnow().isoformat(),
+            }
+        )
     return {"actions": actions}
 
 
