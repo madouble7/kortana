@@ -1,8 +1,14 @@
+import os
+import sys
 from logging.config import fileConfig
 
 from alembic import context
 
-# Import our models
+# Add backend directory to sys.path so we can import config
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Import our models and config
+from config import get_settings
 from models import Base
 from sqlalchemy import engine_from_config, pool
 
@@ -14,6 +20,12 @@ config = context.config
 # This line sets up loggers basically.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
+
+# Get settings
+settings = get_settings()
+
+# Set sqlalchemy.url dynamically from settings
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL.replace("+asyncpg", ""))
 
 # add your model's MetaData object here
 # for 'autogenerate' support

@@ -7,6 +7,7 @@ Loads secrets from .env file and environment variables
 import os
 from functools import lru_cache
 from pathlib import Path
+from typing import Any
 
 from dotenv import load_dotenv
 
@@ -38,12 +39,12 @@ class Settings:
     API_DESCRIPTION: str = "Autonomous AI constellation API"
 
     # CORS Configuration
-    CORS_ORIGINS: list = os.getenv(
+    CORS_ORIGINS: list[str] = os.getenv(
         "CORS_ORIGINS", "http://localhost:3000,http://localhost:8080"
     ).split(",")
     CORS_CREDENTIALS: bool = True
-    CORS_METHODS: list = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-    CORS_HEADERS: list = ["*"]
+    CORS_METHODS: list[str] = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    CORS_HEADERS: list[str] = ["*"]
 
     # AI & LLM Providers
     OPENAI_API_KEY: str | None = os.getenv("OPENAI_API_KEY")
@@ -53,7 +54,7 @@ class Settings:
     OPENROUTER_API_KEY: str | None = os.getenv("OPENROUTER_API_KEY")
     GROQ_API_KEY: str | None = os.getenv("GROQ_API_KEY")
     # Gemini uses GEMINI_API_KEY or falls back to GOOGLE_API_KEY
-    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY", "")
+    GEMINI_API_KEY: str = (os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or "")
 
     # Vector Database
     PINECONE_API_KEY: str | None = os.getenv("PINECONE_API_KEY")
@@ -97,18 +98,21 @@ class Settings:
     DB_NAME: str = os.getenv("DB_NAME", "kortana")
     DB_USER: str = os.getenv("DB_USER", "postgres")
     DB_PASSWORD: str = os.getenv("DB_PASSWORD", "supersecretpassword")
-    DATABASE_URL: str = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-
     # Security
     SESSION_SALT: str | None = os.getenv("SESSION_SALT")
     HEARTBEAT_TOKEN: str | None = os.getenv("HEARTBEAT_TOKEN")
+
+    @property
+    def DATABASE_URL(self) -> str:
+        """Constructs the async database URL from settings."""
+        return f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
 
     # Logging
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO" if not DEBUG else "DEBUG")
     LOG_FORMAT: str = os.getenv("LOG_FORMAT", "json")
 
     # Security
-    ALLOWED_HOSTS: list = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+    ALLOWED_HOSTS: list[str] = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
     SECRET_KEY: str = os.getenv("SECRET_KEY", "change-me-in-production")
 
     # Rate Limiting
@@ -168,7 +172,7 @@ class Settings:
         except Exception as e:
             print(f"⚠️  Warning: Database configuration issue: {e}")
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """Convert settings to dictionary (excluding sensitive values)"""
         sensitive_keys = {
             "GEMINI_API_KEY",

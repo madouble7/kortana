@@ -3,11 +3,12 @@ import os
 from datetime import datetime
 from typing import Any
 
-import requests
+import httpx
 from database import get_db
 from fastapi import APIRouter, Depends, HTTPException
 from logger import setup_logging
 from models import GitHubTask
+from services.gemini import gemini_service
 from sqlalchemy.orm import Session
 
 # Import CodeGenerator from same routers package
@@ -19,7 +20,6 @@ logger = setup_logging()
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 REPO_OWNER = os.getenv("GITHUB_REPO_OWNER", "KOR-TANA")
 REPO_NAME = os.getenv("GITHUB_REPO_NAME", "kortana")
-KORTANA_BACKEND_URL = os.getenv("KORTANA_BACKEND_URL", "http://localhost:8000")
 MAX_RETRIES = int(os.getenv("TASK_MAX_RETRIES", 3))
 RETRY_DELAY_SECONDS = int(os.getenv("TASK_RETRY_DELAY", 300))
 
@@ -36,7 +36,7 @@ class AutonomousTaskQueue:
         if not GITHUB_TOKEN:
             raise HTTPException(status_code=500, detail="GitHub token not configured")
 
-    def queue_from_github_issues(self, repo: str | None = None) -> list[dict[str, Any]]:
+    async def queue_from_github_issues(self, repo: str | None = None) -> list[GitHubTask]:
         """Fetch open issues and queue them as autonomous tasks"""
         self._validate_token()
 
@@ -45,9 +45,10 @@ class AutonomousTaskQueue:
         url = f"https://api.github.com/repos/{owner}/{name}/issues?state=open&per_page=100"
 
         try:
-            response = requests.get(url, headers=headers, timeout=10)
-            response.raise_for_status()
-        except requests.RequestException as e:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url, headers=headers, timeout=10)
+                response.raise_for_status()
+        except Exception as e:
             logger.error(f"Failed to fetch GitHub issues: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Failed to fetch issues: {str(e)}")
 
@@ -76,7 +77,7 @@ class AutonomousTaskQueue:
                 github_issue_number=issue["number"],
                 github_repo=f"{owner}/{name}",
                 title=issue["title"],
-                description=issue.get("body", ""),
+                description=issue.get("body") or "",
                 status="pending",
                 priority=self._determine_priority(issue),
                 branch_name=self._generate_branch_name(issue["number"], issue["title"]),
@@ -116,7 +117,7 @@ class AutonomousTaskQueue:
         )[:50]
         return f"feature/{issue_num}-{safe_title}"
 
-    def analyze_task(self, task_id: str) -> GitHubTask:
+    async def analyze_task(self, task_id: str) -> GitHubTask:
         """Analyze a task using Gemini"""
         task = self.db.query(GitHubTask).filter(GitHubTask.id == task_id).first()
         if not task:
@@ -130,7 +131,7 @@ class AutonomousTaskQueue:
         self.db.commit()
 
         try:
-            # Call Gemini analysis
+            # Call Gemini analysis via service
             analysis_prompt = f"""
 Analyze this GitHub issue for autonomous development:
 
@@ -146,22 +147,14 @@ Provide:
 5. Risk factors
 6. Success criteria
 
-Format as JSON.
+Format your response as a clear analysis report.
 """
-            payload = {"text": analysis_prompt}
-            response = requests.post(
-                f"{KORTANA_BACKEND_URL}/api/gemini/analyze", json=payload, timeout=30
-            )
-
-            if response.status_code == 200:
-                result = response.json()
-                task.analysis = result.get("analysis", "")
-            else:
-                task.analysis = "Analysis unavailable"
+            analysis = await gemini_service.analyze_text(analysis_prompt)
+            task.analysis = analysis
 
         except Exception as e:
             logger.error(f"Analysis failed for task {task_id}: {str(e)}")
-            task.error_message = str(e)
+            task.error_message = f"Analysis error: {str(e)}"
             task.error_count += 1
             if task.error_count >= MAX_RETRIES:
                 task.status = "failed"
@@ -177,7 +170,7 @@ Format as JSON.
 
         return task
 
-    def generate_task_plan(self, task_id: str) -> GitHubTask:
+    async def generate_task_plan(self, task_id: str) -> GitHubTask:
         """Generate execution plan for task"""
         task = self.db.query(GitHubTask).filter(GitHubTask.id == task_id).first()
         if not task:
@@ -187,7 +180,7 @@ Format as JSON.
             raise HTTPException(status_code=400, detail="Task not in planning status")
 
         try:
-            prompt = f"""
+            plan_prompt = f"""
 Generate a detailed implementation plan for:
 
 Issue: {task.github_repo}#{task.github_issue_number}
@@ -208,17 +201,8 @@ FILE_CHANGES:
   content: |
     actual code here
 """
-            payload = {"text": prompt}
-            response = requests.post(
-                f"{KORTANA_BACKEND_URL}/api/gemini/analyze", json=payload, timeout=30
-            )
-
-            if response.status_code == 200:
-                result = response.json()
-                task.plan = result.get("analysis", "")
-            else:
-                task.plan = "Plan generation failed"
-                raise HTTPException(status_code=500, detail="Failed to generate plan")
+            plan = await gemini_service.analyze_text(plan_prompt)
+            task.plan = plan
 
         except Exception as e:
             logger.error(f"Plan generation failed for task {task_id}: {str(e)}")
@@ -293,6 +277,8 @@ FILE_CHANGES:
 
         try:
             owner, repo = task.github_repo.split("/")
+            # Synchronous request here is fine as it's a small helper inside execute_task
+            import requests
             headers = {
                 "Authorization": f"token {GITHUB_TOKEN}",
                 "Accept": "application/vnd.github.v3+json",
@@ -337,17 +323,17 @@ async def queue_github_tasks(
 ) -> dict[str, Any]:
     """Queue tasks from GitHub issues."""
     try:
-        queued_tasks = task_queue.queue_from_github_issues(repo)
+        queued_tasks = await task_queue.queue_from_github_issues(repo)
         return {
             "message": f"Queued {len(queued_tasks)} new tasks",
             "count": len(queued_tasks),
             "tasks": [
                 {
-                    "id": t.id,
-                    "issue_number": t.github_issue_number,
-                    "title": t.title,
-                    "status": t.status,
-                    "priority": t.priority,
+                    "id": str(t.id),
+                    "issue_number": int(t.github_issue_number),
+                    "title": str(t.title),
+                    "status": str(t.status),
+                    "priority": str(t.priority),
                 }
                 for t in queued_tasks
             ],
@@ -362,7 +348,7 @@ async def queue_github_tasks(
 @router.get("/status")
 async def get_task_queue_status(db: Session = Depends(get_db)) -> dict[str, Any]:
     """Get current task queue status with statistics"""
-    statuses = {
+    statuses: dict[str, int] = {
         "pending": 0,
         "analyzing": 0,
         "planning": 0,
@@ -374,8 +360,9 @@ async def get_task_queue_status(db: Session = Depends(get_db)) -> dict[str, Any]
 
     tasks = db.query(GitHubTask).all()
     for task in tasks:
-        if task.status in statuses:
-            statuses[task.status] += 1
+        task_status = str(task.status)
+        if task_status in statuses:
+            statuses[task_status] += 1
 
     # Calculate completion rate
     total = len(tasks)
@@ -388,11 +375,11 @@ async def get_task_queue_status(db: Session = Depends(get_db)) -> dict[str, Any]
         "completion_rate": f"{completion_rate:.1f}%",
         "recent_tasks": [
             {
-                "id": t.id,
-                "issue_number": t.github_issue_number,
-                "title": t.title,
-                "status": t.status,
-                "updated_at": t.updated_at.isoformat(),
+                "id": str(t.id),
+                "issue_number": int(t.github_issue_number),
+                "title": str(t.title),
+                "status": str(t.status),
+                "updated_at": t.updated_at.isoformat() if t.updated_at else None,
             }
             for t in db.query(GitHubTask).order_by(GitHubTask.updated_at.desc()).limit(10)
         ],
@@ -405,12 +392,12 @@ async def analyze_task_endpoint(
 ) -> dict[str, Any]:
     """Analyze a specific task with Gemini"""
     try:
-        task = task_queue.analyze_task(task_id)
+        task = await task_queue.analyze_task(task_id)
         return {
             "message": "Task analysis initiated",
-            "task_id": task.id,
-            "status": task.status,
-            "analysis": task.analysis[:500] if task.analysis else None,
+            "task_id": str(task.id),
+            "status": str(task.status),
+            "analysis": str(task.analysis)[:500] if task.analysis else None,
         }
     except HTTPException:
         raise
@@ -425,12 +412,12 @@ async def plan_task_endpoint(
 ) -> dict[str, Any]:
     """Generate execution plan for a task"""
     try:
-        task = task_queue.generate_task_plan(task_id)
+        task = await task_queue.generate_task_plan(task_id)
         return {
             "message": "Task plan generated",
-            "task_id": task.id,
-            "status": task.status,
-            "plan": task.plan[:500] if task.plan else None,
+            "task_id": str(task.id),
+            "status": str(task.status),
+            "plan": str(task.plan)[:500] if task.plan else None,
         }
     except HTTPException:
         raise
@@ -448,10 +435,10 @@ async def execute_task_endpoint(
         result = task_queue.execute_task(task_id, dry_run=dry_run)
         return {
             "message": "Task execution completed",
-            "task_id": result.id,
-            "status": result.status,
-            "error": result.error_message,
-            "branch": result.branch_name,
+            "task_id": str(result.id),
+            "status": str(result.status),
+            "error": str(result.error_message) if result.error_message else None,
+            "branch": str(result.branch_name) if result.branch_name else None,
         }
     except HTTPException:
         raise

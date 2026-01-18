@@ -5,9 +5,11 @@ Multimodal AI constellation API with autonomous capabilities
 
 import os
 import sys
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing import Any
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -22,15 +24,26 @@ from logger import log_error, log_request, setup_logging
 # Import middleware
 from middleware.security import (
     RateLimitMiddleware,
-    SecurityHeadersMiddleware,
     RequestIDMiddleware,
     RequestLoggingMiddleware,
+    SecurityHeadersMiddleware,
 )
 
 # Import routers
 try:
-    from routers import agents, auth, autonomy, gemini, github, knowledge, memory, task_queue
-    from routers import pr_creation, test_orchestrator, code_reviewer
+    from routers import (
+        agents,
+        auth,
+        autonomy,
+        code_reviewer,
+        gemini,
+        github,
+        knowledge,
+        memory,
+        pr_creation,
+        task_queue,
+        test_orchestrator,
+    )
 except ImportError as e:
     print(f"Error importing routers: {e}")
     raise
@@ -42,11 +55,11 @@ try:
 except ImportError as e:
     print(f"Warning: Could not import Human Only Protocol: {e}")
     HOP_AVAILABLE = False
-    hop_router = None
+    hop_router = APIRouter()  # Provide empty router as fallback
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan handler for startup/shutdown events"""
     # Startup
     settings = get_settings()
@@ -114,13 +127,13 @@ def create_app() -> FastAPI:
 
     # Exception handlers
     @app.exception_handler(KortanaException)
-    async def kortana_exception_handler(request: Request, exc: KortanaException):
+    async def kortana_exception_handler(request: Request, exc: KortanaException) -> JSONResponse:
         """Handle custom Kortana exceptions"""
         log_error(exc.error_code, f"{exc.message} - Path: {request.url.path}", details=exc.details)
         return JSONResponse(status_code=exc.status_code, content=exc.to_dict())
 
     @app.exception_handler(HTTPException)
-    async def http_exception_handler(request: Request, exc: HTTPException):
+    async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
         """Handle FastAPI HTTP exceptions"""
         log_error(
             "HTTP_ERROR",
@@ -138,7 +151,7 @@ def create_app() -> FastAPI:
         )
 
     @app.exception_handler(Exception)
-    async def general_exception_handler(request: Request, exc: Exception):
+    async def general_exception_handler(request: Request, exc: Exception) -> JSONResponse:
         """Handle unexpected exceptions"""
         log_error(
             "UNHANDLED_ERROR",
@@ -185,7 +198,7 @@ app = create_app()
 
 
 @app.middleware("http")
-async def request_logging_middleware(request: Request, call_next):
+async def request_logging_middleware(request: Request, call_next: Any) -> Any:
     """Middleware to log all requests"""
     log_request(
         "http",
@@ -197,7 +210,7 @@ async def request_logging_middleware(request: Request, call_next):
 
 
 @app.get("/api/health")
-async def health_check():
+async def health_check() -> dict[str, Any]:
     """Health check endpoint"""
     settings = get_settings()
     return {
@@ -209,7 +222,7 @@ async def health_check():
 
 
 @app.get("/")
-async def root():
+async def root() -> dict[str, Any]:
     """Root endpoint with API information"""
     settings = get_settings()
     return {

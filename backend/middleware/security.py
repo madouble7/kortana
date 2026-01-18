@@ -6,8 +6,10 @@ Includes rate limiting, security headers, and request tracking
 import time
 import uuid
 from collections import defaultdict
+from collections.abc import Awaitable, Callable
+from typing import Any
 
-from fastapi import HTTPException, Request, status
+from fastapi import HTTPException, Request, Response, status
 from logger import log_error, log_request
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -15,23 +17,29 @@ from starlette.middleware.base import BaseHTTPMiddleware
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """Rate limiting middleware - limits requests per IP"""
 
-    def __init__(self, app, requests_per_minute: int = 60):
+    def __init__(self, app: Any, requests_per_minute: int = 60):
         super().__init__(app)
         self.requests_per_minute = requests_per_minute
-        self.requests: dict[str, list] = defaultdict()
+        self.requests: dict[str, list[float]] = defaultdict(list)
+        self.last_cleanup = time.time()
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         """Process request and apply rate limiting"""
         client_ip = request.client.host if request.client else "unknown"
 
         now = time.time()
         minute_ago = now - 60
 
-        # Initialize request list for IP if needed
-        if client_ip not in self.requests:
-            self.requests[client_ip] = []
+        # Periodic cleanup of the entire dictionary to prevent memory leaks
+        if now - self.last_cleanup > 3600:  # Every hour
+            self._cleanup_all(now)
 
-        # Remove old requests outside the time window
+        # Initialize request list for IP if needed
+        # (defaultdict(list) handles this automatically, but we might want to manually prune)
+
+        # Remove old requests outside the time window for this specific IP
         self.requests[client_ip] = [
             req_time for req_time in self.requests[client_ip] if req_time > minute_ago
         ]
@@ -57,16 +65,33 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         # Add rate limit headers
         response.headers["X-RateLimit-Limit"] = str(self.requests_per_minute)
         response.headers["X-RateLimit-Remaining"] = str(
-            self.requests_per_minute - len(self.requests[client_ip])
+            max(0, self.requests_per_minute - len(self.requests[client_ip]))
         )
 
         return response
+
+    def _cleanup_all(self, now: float) -> None:
+        """Remove all IPs that haven't made a request in the last minute"""
+        minute_ago = now - 60
+        keys_to_delete = []
+        for ip, timestamps in self.requests.items():
+            new_timestamps = [t for t in timestamps if t > minute_ago]
+            if not new_timestamps:
+                keys_to_delete.append(ip)
+            else:
+                self.requests[ip] = new_timestamps
+
+        for ip in keys_to_delete:
+            del self.requests[ip]
+        self.last_cleanup = now
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Add security headers to all responses"""
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         """Add security headers to response"""
         response = await call_next(request)
 
@@ -88,7 +113,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 class RequestIDMiddleware(BaseHTTPMiddleware):
     """Add unique request ID for tracking"""
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         """Add request ID to all requests"""
         request_id = str(uuid.uuid4())
         request.state.request_id = request_id
@@ -102,7 +129,9 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     """Enhanced request logging with detailed information"""
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         """Log request details"""
         start_time = time.time()
 
@@ -160,11 +189,13 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 class CORSSecurityMiddleware(BaseHTTPMiddleware):
     """Enhanced CORS handling with security checks"""
 
-    def __init__(self, app, allowed_origins: list):
+    def __init__(self, app: Any, allowed_origins: list[str]):
         super().__init__(app)
         self.allowed_origins = allowed_origins
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         """Handle CORS with security checks"""
         origin = request.headers.get("origin")
 

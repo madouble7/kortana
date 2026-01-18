@@ -6,109 +6,76 @@
 
 ## 🚨 HUMAN ONLY (HO) STEPS
 
-### HO-1: Create GitHub Personal Access Token ⏱️ 2-3 min
+### HO-1: Create GitHub Personal Access Token ✅ COMPLETED
 
-**Step-by-step:**
-
-1. Open: <https://github.com/settings/tokens>
-2. Click **"Generate new token (classic)"**
-3. **Note**: Give it a name like "KOR-TANA-Autonomy"
-4. **Important**: Set expiration to "No expiration" or 1 year
-5. **Select these scopes**:
-   - [x] `repo` - Full control of private repositories
-   - [x] `workflow` - Update GitHub Action workflows
-   - [x] `read:org` - Read org and team membership
-6. Click **"Generate token"**
-7. **⚠️ COPY NOW** - You won't see it again!
-
-**Token format**: `ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
+- GitHub token validated and configured.
 
 ---
 
-### HO-2: Create Gemini API Key ⏱️ 1-2 min
+### HO-2: Create Gemini API Key ✅ COMPLETED
 
-**Step-by-step:**
-
-1. Open: <https://makersuite.google.com/app/apikey>
-2. Click **"Create API Key"**
-3. Choose: **"Create API key in new project"**
-4. Name: `KOR-TANA-Gemini`
-5. Click **"Create"**
-6. **⚠️ COPY NOW** - Store it safely!
-
-**Key format**: `AIzaSy...`
+- Gemini API key validated and configured.
 
 ---
 
-### HO-3: Create PostgreSQL Database ⏱️ 5-10 min
+### HO-3: Setup PostgreSQL Database ⏱️ 2-5 min
 
-**Option A: Local PostgreSQL**
+**Update**: I have optimized the setup. If you have PostgreSQL running, I can now attempt to create the database automatically.
 
-```bash
-# If PostgreSQL is installed
-psql -U postgres
+**Option A: Local PostgreSQL (Recommended)**
 
-# In psql console:
-CREATE DATABASE kortana;
-CREATE USER kortana_user WITH PASSWORD 'YourSecurePassword123!';
-GRANT ALL PRIVILEGES ON DATABASE kortana TO kortana_user;
-\q
-```
+1. Ensure PostgreSQL is running.
+2. Ensure `backend/.env` has correct `DB_USER` and `DB_PASSWORD`.
+3. Run: `python backend/init_db.py` (I will try to create the 'kortana' database for you).
 
 **Option B: Docker**
 
 ```bash
 docker run --name kortana-db \
   -e POSTGRES_DB=kortana \
-  -e POSTGRES_USER=kortana_user \
-  -e POSTGRES_PASSWORD=YourSecurePassword123! \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=supersecretpassword \
   -p 5432:5432 \
   -d postgres
 ```
 
-**Option C: Cloud (Supabase/Neon/Railway)**
+---
 
-1. Create account at <https://supabase.com> or <https://neon.tech>
-2. Create new project
-3. Copy connection string: `postgresql://user:pass@host:5432/kortana`
+### HO-4: Configure Environment ✅ MOSTLY COMPLETED
+
+- Tokens are configured.
+- Ensure `DATABASE_URL` matches your HO-3 setup if you deviated from defaults.
 
 ---
 
-### HO-4: Configure Environment ⏱️ 2 min
-
-**Open:** `backend/.env`
-
-**Replace these values:**
-
-```env
-# GitHub Token (from HO-1)
-GITHUB_TOKEN=ghp_your_github_token_here
-
-# Gemini API Key (from HO-2)
-GEMINI_API_KEY=your_gemini_api_key_here
-
-# Database URL (from HO-3)
-DATABASE_URL=postgresql://kortana_user:YourSecurePassword123!@localhost:5432/kortana
-```
-
----
-
-### HO-5: Verify Deployment ⏱️ 1 min
-
-After completing HO-1 through HO-4:
+### HO-5: Verify & Launch ⏱️ 1 min
 
 ```bash
+# Run migrations
+cd backend
+alembic upgrade head
+
+# Start server
+python -m uvicorn main:app --host 0.0.0.0 --port 8000
+```
+
 # 1. Run migrations
+
 cd backend
 alembic upgrade head
 
 # 2. Start server
+
 python -m uvicorn main:app --host 0.0.0.0 --port 8000
 
-# 3. Check these URLs:
-# Health: http://localhost:8000/health
-# API Docs: http://localhost:8000/docs
-# Autonomy: POST http://localhost:8000/api/autonomy/task-queue
+# 3. Check these URLs
+
+# Health: <http://localhost:8000/health>
+
+# API Docs: <http://localhost:8000/docs>
+
+# Autonomy: POST <http://localhost:8000/api/autonomy/task-queue>
+
 ```
 
 **Expected responses:**
@@ -133,8 +100,10 @@ python -m uvicorn main:app --host 0.0.0.0 --port 8000
 ## 🎯 KOR'TANA AUTONOMY STATUS
 
 ```
+
 AUTO Steps: [██████████] 100% Complete
 HO Steps:   [░░░░░░░░░░░] 0% Complete - NEEDS YOUR ACTION
+
 ```
 
 **KOR'TANA is waiting for you to complete HO-1 through HO-4.**

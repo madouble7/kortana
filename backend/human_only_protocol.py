@@ -9,9 +9,7 @@ Version: 1.0.0
 """
 
 import json
-import os
 import subprocess
-import sys
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -19,7 +17,6 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
 
 # ============================================================================
 # ENUMS AND DATA CLASSES
@@ -239,49 +236,47 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
 
     def __init__(self):
         self.tasks: dict[str, DeploymentTask] = {}
+        self.progress_file = Path(__file__).parent / "DEPLOYMENT_PROGRESS.json"
         self.load_tasks()
 
     def load_tasks(self):
-        """Load initial task definitions"""
+        """Load task definitions and restore progress if available"""
+        # Load default definitions
         for task_id, task in self.DEPLOYMENT_TASKS.items():
             self.tasks[task_id] = task
 
-    def classify_task(self, task_id: str) -> TaskClassification:
-        """Get classification for a task"""
-        task = self.tasks.get(task_id)
-        return task.classification if task else TaskClassification.APPROVAL
+        # Restore progress
+        if self.progress_file.exists():
+            try:
+                with open(self.progress_file) as f:
+                    progress = json.load(f)
+                    for task_id, status_data in progress.items():
+                        if task_id in self.tasks:
+                            t = self.tasks[task_id]
+                            t.status = TaskStatus(status_data["status"])
+                            if status_data.get("completed_at"):
+                                t.completed_at = datetime.fromisoformat(status_data["completed_at"])
+                            t.result = status_data.get("result")
+                            t.error = status_data.get("error")
+                print(f"✓ Restored deployment progress from {self.progress_file}")
+            except Exception as e:
+                print(f"⚠️ Failed to restore progress: {e}")
 
-    def get_auto_tasks(self) -> list[DeploymentTask]:
-        """Get all AUTO tasks ready to execute"""
-        return [
-            t for t in self.tasks.values()
-            if t.classification == TaskClassification.AUTO
-            and t.status in [TaskStatus.PENDING, TaskStatus.FAILED]
-            and self._prerequisites_met(t)
-        ]
-
-    def get_ho_tasks(self) -> list[DeploymentTask]:
-        """Get all Human Only tasks"""
-        return [
-            t for t in self.tasks.values()
-            if t.classification == TaskClassification.HO
-        ]
-
-    def get_approval_tasks(self) -> list[DeploymentTask]:
-        """Get tasks requiring human approval"""
-        return [
-            t for t in self.tasks.values()
-            if t.classification == TaskClassification.APPROVAL
-            and self._prerequisites_met(t)
-        ]
-
-    def _prerequisites_met(self, task: DeploymentTask) -> bool:
-        """Check if all prerequisites are completed"""
-        for prereq_id in task.prerequisites:
-            prereq = self.tasks.get(prereq_id)
-            if not prereq or prereq.status != TaskStatus.COMPLETED:
-                return False
-        return True
+    def save_tasks(self):
+        """Persist current task status to disk"""
+        try:
+            progress = {}
+            for task_id, t in self.tasks.items():
+                progress[task_id] = {
+                    "status": t.status.value,
+                    "completed_at": t.completed_at.isoformat() if t.completed_at else None,
+                    "result": t.result,
+                    "error": t.error
+                }
+            with open(self.progress_file, "w") as f:
+                json.dump(progress, f, indent=4)
+        except Exception as e:
+            print(f"⚠️ Failed to save progress: {e}")
 
     def execute_auto_task(self, task_id: str) -> dict[str, Any]:
         """Execute an AUTO task and return result"""
@@ -293,10 +288,12 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
             raise ValueError(f"Task {task_id} is not AUTO classifiable")
 
         task.status = TaskStatus.IN_PROGRESS
+        self.save_tasks()
 
         if not task.command:
             task.status = TaskStatus.COMPLETED
             task.completed_at = datetime.utcnow()
+            self.save_tasks()
             return {"status": "completed", "task": task_id, "message": "No command needed"}
 
         try:
@@ -312,6 +309,7 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
                 task.status = TaskStatus.COMPLETED
                 task.result = result.stdout
                 task.completed_at = datetime.utcnow()
+                self.save_tasks()
                 return {
                     "status": "completed",
                     "task": task_id,
@@ -320,6 +318,7 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
             else:
                 task.status = TaskStatus.FAILED
                 task.error = result.stderr
+                self.save_tasks()
                 return {
                     "status": "failed",
                     "task": task_id,
@@ -329,10 +328,12 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
         except subprocess.TimeoutExpired:
             task.status = TaskStatus.FAILED
             task.error = "Command timed out after 300 seconds"
+            self.save_tasks()
             return {"status": "failed", "task": task_id, "error": "Timeout"}
         except Exception as e:
             task.status = TaskStatus.FAILED
             task.error = str(e)
+            self.save_tasks()
             return {"status": "failed", "task": task_id, "error": str(e)}
 
     def complete_ho_task(self, task_id: str) -> dict[str, Any]:
@@ -346,6 +347,7 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
 
         task.status = TaskStatus.COMPLETED
         task.completed_at = datetime.utcnow()
+        self.save_tasks()
 
         # Check if this unlocks other tasks
         unlocked = self._check_unlocked_tasks()
