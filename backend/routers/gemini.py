@@ -83,3 +83,21 @@ async def analyze_video(
     finally:
         if temp_path.exists():
             os.remove(temp_path)
+
+
+@router.get("/models")
+async def list_models() -> dict[str, Any]:
+    """List available Gemini models."""
+    try:
+        import google.generativeai as genai
+        models = []
+        for m in genai.list_models():
+            if "generateContent" in m.supported_generation_methods:
+                models.append({
+                    "name": m.name,
+                    "display_name": m.display_name,
+                    "description": m.description,
+                })
+        return {"models": models}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

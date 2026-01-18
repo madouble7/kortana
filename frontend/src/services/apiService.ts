@@ -202,10 +202,6 @@ class ApiService {
   async getDetailedHealth(): Promise<any> {
     return this.request('/api/health/detailed');
   }
-
-  async getSystemInfo(): Promise<any> {
-    return this.request('/api/health/system');
-  }
 }
 
 export const apiService = new ApiService();

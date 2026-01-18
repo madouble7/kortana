@@ -511,3 +511,32 @@ async def health_check() -> dict[str, Any]:
         "github_configured": bool(GITHUB_TOKEN),
         "gemini_configured": bool(os.getenv("GEMINI_API_KEY")),
     }
+
+
+@router.get("/actions")
+async def get_recent_actions(db: Session = Depends(get_db)) -> dict[str, Any]:
+    """Get recent autonomous actions for dashboard"""
+    # Simply return recent tasks as actions for now
+    tasks = (
+        db.query(GitHubTask)
+        .order_by(GitHubTask.updated_at.desc())
+        .limit(10)
+        .all()
+    )
+    actions = []
+    for t in tasks:
+        actions.append({
+            "id": t.id,
+            "type": "task_update",
+            "message": f"Task {t.id} ({t.title}) moved to {t.status}",
+            "status": t.status,
+            "timestamp": t.updated_at.isoformat() if t.updated_at else datetime.utcnow().isoformat(),
+        })
+    return {"actions": actions}
+
+
+@router.post("/log")
+async def log_autonomy_event(payload: dict[str, Any]) -> dict[str, Any]:
+    """Log an event from the autonomy system"""
+    logger.info(f"Autonomy Event: {payload}")
+    return {"status": "logged"}

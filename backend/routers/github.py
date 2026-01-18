@@ -1,6 +1,7 @@
 import os
 import time
 from datetime import datetime
+from typing import Any
 
 import requests
 from fastapi import APIRouter, HTTPException
@@ -138,23 +139,31 @@ async def get_repo_pulls(
 
 @router.post("/analyze")
 async def analyze_github_issue(
-    request: GitHubAnalysisRequest,
+    request_data: dict[str, Any],
 ) -> GitHubAnalysisResponse:
     """Analyze GitHub issue/PR with Gemini and return structured analysis"""
 
     if not GEMINI_API_KEY:
         raise HTTPException(status_code=500, detail="Gemini API key not configured")
 
+    # Handle both structured GitHubAnalysisRequest and simplified {content, type}
+    body = request_data.get("body") or request_data.get("content", "")
+    title = request_data.get("title", "Untitled")
+    issue_number = request_data.get("issue_number", 0)
+    req_type = request_data.get("type", "issue")
+    author = request_data.get("author", "Unknown")
+    created_at = request_data.get("created_at", datetime.utcnow().isoformat())
+
     analysis_prompt = f"""
 You are Kor'tana, an autonomous AI system analyzing GitHub issues and PRs.
 
-Issue/PR: {request.type.upper()} #{request.issue_number}
-Title: {request.title}
-Author: {request.author or "Unknown"}
-Created: {request.created_at or "Unknown"}
+Issue/PR: {req_type.upper()} # {issue_number}
+Title: {title}
+Author: {author}
+Created: {created_at}
 
 Content:
-{request.body}
+{body}
 
 Please analyze this and provide ONLY a JSON response (no markdown, no code blocks):
 {{
