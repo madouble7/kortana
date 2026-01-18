@@ -54,7 +54,7 @@ class Settings:
     OPENROUTER_API_KEY: str | None = os.getenv("OPENROUTER_API_KEY")
     GROQ_API_KEY: str | None = os.getenv("GROQ_API_KEY")
     # Gemini uses GEMINI_API_KEY or falls back to GOOGLE_API_KEY
-    GEMINI_API_KEY: str = (os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or "")
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or ""
 
     # Vector Database
     PINECONE_API_KEY: str | None = os.getenv("PINECONE_API_KEY")

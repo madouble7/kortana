@@ -18,37 +18,20 @@
 
 ---
 
-### HO-3: Setup PostgreSQL Database ⏱️ 2-5 min
+### HO-3: Setup PostgreSQL Database ✅ COMPLETED (Auto-Creation Ready)
 
-**Update**: I have optimized the setup. If you have PostgreSQL running, I can now attempt to create the database automatically.
-
-**Option A: Local PostgreSQL (Recommended)**
-
-1. Ensure PostgreSQL is running.
-2. Ensure `backend/.env` has correct `DB_USER` and `DB_PASSWORD`.
-3. Run: `python backend/init_db.py` (I will try to create the 'kortana' database for you).
-
-**Option B: Docker**
-
-```bash
-docker run --name kortana-db \
-  -e POSTGRES_DB=kortana \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=supersecretpassword \
-  -p 5432:5432 \
-  -d postgres
-```
+- Database auto-creation logic implemented in `backend/init_db.py`.
+- Alembic configured to sync with `get_settings()`.
 
 ---
 
-### HO-4: Configure Environment ✅ MOSTLY COMPLETED
+### HO-4: Configure Environment ✅ COMPLETED
 
-- Tokens are configured.
-- Ensure `DATABASE_URL` matches your HO-3 setup if you deviated from defaults.
+- GitHub, Gemini, and Database settings are fully configured in `backend/.env`.
 
 ---
 
-### HO-5: Verify & Launch ⏱️ 1 min
+### HO-5: Verify & Launch ⏱️ 1 min (Action Required)
 
 ```bash
 # Run migrations

@@ -36,14 +36,12 @@ class DatabaseConfig:
         self.echo = os.getenv("DB_ECHO", "false").lower() == "true"
 
     def get_url(self) -> str:
-        """Get async database URL"""
-        return (
-            f"postgresql+asyncpg://{self.user}:{self.password}@{self.host}:{self.port}/{self.name}"
-        )
+        """Get async database URL from centralized settings"""
+        return get_settings().DATABASE_URL
 
     def get_sync_url(self) -> str:
         """Get sync database URL (for migrations)"""
-        return f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.name}"
+        return get_settings().DATABASE_URL.replace("+asyncpg", "")
 
 
 class DatabaseManager:
