@@ -132,13 +132,21 @@ def create_app() -> FastAPI:
 
     # Exception handlers
     @app.exception_handler(KortanaException)
-    async def kortana_exception_handler(request: Request, exc: KortanaException) -> JSONResponse:
+    async def kortana_exception_handler(
+        request: Request, exc: KortanaException
+    ) -> JSONResponse:
         """Handle custom Kortana exceptions"""
-        log_error(exc.error_code, f"{exc.message} - Path: {request.url.path}", details=exc.details)
+        log_error(
+            exc.error_code,
+            f"{exc.message} - Path: {request.url.path}",
+            details=exc.details,
+        )
         return JSONResponse(status_code=exc.status_code, content=exc.to_dict())
 
     @app.exception_handler(HTTPException)
-    async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    async def http_exception_handler(
+        request: Request, exc: HTTPException
+    ) -> JSONResponse:
         """Handle FastAPI HTTP exceptions"""
         log_error(
             "HTTP_ERROR",
@@ -156,7 +164,9 @@ def create_app() -> FastAPI:
         )
 
     @app.exception_handler(Exception)
-    async def general_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    async def general_exception_handler(
+        request: Request, exc: Exception
+    ) -> JSONResponse:
         """Handle unexpected exceptions"""
         log_error(
             "UNHANDLED_ERROR",
@@ -186,19 +196,55 @@ def create_app() -> FastAPI:
         app.include_router(agents.router, prefix="/api/agents", tags=["agents"])
         app.include_router(github.router, prefix="/api/github", tags=["github"])
         app.include_router(autonomy.router, prefix="/api/autonomy", tags=["autonomy"])
-        app.include_router(knowledge.router, prefix="/api/knowledge", tags=["knowledge"])
-        app.include_router(task_queue.router, prefix="/api/task-queue", tags=["task-queue"])
+        app.include_router(
+            knowledge.router, prefix="/api/knowledge", tags=["knowledge"]
+        )
+        app.include_router(
+            task_queue.router, prefix="/api/task-queue", tags=["task-queue"]
+        )
         app.include_router(rclone.router, prefix="/api/rclone", tags=["rclone"])
         app.include_router(system.router, prefix="/api/system", tags=["system"])
 
         # Phase 2: PR Creation, Testing, and Code Review
         app.include_router(pr_creation.router, prefix="/api/pr", tags=["pr-creation"])
-        app.include_router(test_orchestrator.router, prefix="/api/testing", tags=["testing"])
-        app.include_router(code_reviewer.router, prefix="/api/code-review", tags=["code-review"])
+        app.include_router(
+            test_orchestrator.router, prefix="/api/testing", tags=["testing"]
+        )
+        app.include_router(
+            code_reviewer.router, prefix="/api/code-review", tags=["code-review"]
+        )
 
         # Human Only Protocol (HOP)
         if HOP_AVAILABLE:
             app.include_router(hop_router, prefix="/api", tags=["protocol"])
+
+        # Mount static files for frontend in production
+        static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+        if os.path.exists(static_dir):
+            app.mount(
+                "/assets",
+                StaticFiles(directory=os.path.join(static_dir, "assets")),
+                name="assets",
+            )
+
+            @app.get("/{full_path:path}")
+            async def serve_frontend(request: Request, full_path: str):
+                """Serve the frontend SPA for any unmatched routes"""
+                # Don't intercept /api routes
+                if full_path.startswith("api"):
+                    return JSONResponse(
+                        status_code=404,
+                        content={
+                            "error": "Not Found",
+                            "message": "API route not found",
+                        },
+                    )
+
+                file_path = os.path.join(static_dir, full_path)
+                if os.path.isfile(file_path):
+                    return FileResponse(file_path)
+                return FileResponse(os.path.join(static_dir, "index.html"))
+
     except Exception as e:
         log_error("router_error", f"Error including routers: {e}")
         raise

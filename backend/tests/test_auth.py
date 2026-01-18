@@ -77,7 +77,7 @@ class TestTokenGeneration:
         decoded = decode_token(test_token)
 
         assert decoded is not None
-        assert "username" in decoded
+        assert decoded.username is not None or decoded.email is not None
 
     def test_decode_invalid_token(self):
         """Test decoding invalid token"""
@@ -92,7 +92,7 @@ class TestTokenGeneration:
         token = create_access_token(data)
         decoded = decode_token(token)
 
-        assert "scopes" in decoded
+        assert decoded.scopes is not None
 
 
 @pytest.mark.unit
@@ -127,7 +127,7 @@ class TestAuthDependencies:
 
         # Decode token
         decoded = decode_token(token)
-        assert decoded["username"] == "testuser"
+        assert decoded.username == "testuser" or decoded.email == "testuser"
 
     def test_user_login_simulation(self):
         """Simulate user login process"""

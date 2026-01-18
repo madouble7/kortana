@@ -22,6 +22,7 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('vision');
   const [health, setHealth] = useState<any>(null);
   const [isElevated, setIsElevated] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     const fetchHealth = async () => {
@@ -47,8 +48,20 @@ const App: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-kor-deep text-gray-200 overflow-hidden font-sans">
+      {/* Mobile Sidebar Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 bg-kor-surface border-r border-kor-accent/20 flex flex-col">
+      <aside className={`
+        fixed inset-y-0 left-0 z-50 w-64 bg-kor-surface border-r border-kor-accent/20 flex flex-col transition-transform duration-300 transform
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+        md:relative md:translate-x-0
+      `}>
         <div className="p-6 border-b border-kor-accent/10">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-kor-accent to-blue-600 flex items-center justify-center">
@@ -63,10 +76,13 @@ const App: React.FC = () => {
           {navItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => {
+                setActiveTab(item.id);
+                setSidebarOpen(false);
+              }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${activeTab === item.id
-                  ? 'bg-kor-accent/10 text-kor-accent border border-kor-accent/20 shadow-[0_0_15px_rgba(0,212,255,0.1)]'
-                  : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
+                ? 'bg-kor-accent/10 text-kor-accent border border-kor-accent/20 shadow-[0_0_15px_rgba(0,212,255,0.1)]'
+                : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
                 }`}
             >
               <span className={activeTab === item.id ? 'text-kor-accent' : item.color}>{item.icon}</span>
@@ -96,15 +112,23 @@ const App: React.FC = () => {
       {/* Main Content */}
       <main className="flex-1 flex flex-col relative overflow-hidden">
         {/* Top Header */}
-        <header className="h-16 bg-kor-surface/50 backdrop-blur-md border-b border-kor-accent/10 flex items-center justify-between px-8 z-10">
-          <div className="flex items-center gap-2">
-            <span className="text-gray-400 text-sm">Constellation /</span>
-            <span className="text-kor-accent text-sm font-semibold capitalize">{activeTab}</span>
+        <header className="h-16 bg-kor-surface/50 backdrop-blur-md border-b border-kor-accent/10 flex items-center justify-between px-4 md:px-8 z-10">
+          <div className="flex items-center gap-4">
+            <button
+              className="md:hidden p-2 text-gray-400 hover:text-kor-accent"
+              onClick={() => setSidebarOpen(true)}
+            >
+              <Activity size={20} />
+            </button>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-400 text-sm hidden sm:block">Constellation /</span>
+              <span className="text-kor-accent text-sm font-semibold capitalize">{activeTab}</span>
+            </div>
           </div>
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4 md:gap-6">
             <div className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${health?.status === 'alive' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]'}`}></div>
-              <span className="text-xs font-medium text-gray-400">Node Status</span>
+              <span className="text-xs font-medium text-gray-400 hidden sm:block">Node Status</span>
             </div>
             <button className="text-gray-400 hover:text-kor-accent transition-colors">
               <Settings size={18} />
@@ -113,7 +137,7 @@ const App: React.FC = () => {
         </header>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
           {activeTab === 'vision' && <VisionDashboard />}
           {activeTab === 'protocol' && <ProtocolView />}
           {activeTab === 'tasks' && <TaskQueueView />}
@@ -128,40 +152,5 @@ const App: React.FC = () => {
     </div>
   );
 };
-
-// Placeholder components (to be implemented next as part of the unified engine)
-const VisionDashboard = () => (
-  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div className="bg-kor-surface p-6 rounded-2xl border border-kor-accent/10">
-        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <Eye className="text-kor-accent" size={20} />
-          Multimodal Witness
-        </h3>
-        <div className="aspect-video bg-kor-deep rounded-xl border-2 border-dashed border-kor-accent/20 flex flex-col items-center justify-center text-gray-500 hover:border-kor-accent/40 transition-colors cursor-pointer group">
-          <Upload size={32} className="mb-2 group-hover:text-kor-accent transition-colors" />
-          <p className="text-sm">Drop visual data to activate memory</p>
-        </div>
-      </div>
-      <div className="bg-kor-surface p-6 rounded-2xl border border-kor-accent/10 flex flex-col">
-        <h3 className="text-lg font-semibold mb-4">Intelligence Output</h3>
-        <div className="flex-1 bg-kor-deep/50 rounded-xl p-4 font-mono text-sm text-gray-400">
-          Awaiting input signal...
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
-const ProtocolView = () => <div className="text-gray-400 italic">Accessing Human Only Protocol registers...</div>;
-const TaskQueueView = () => <div className="text-gray-400 italic">Synchronizing task queue with local git state...</div>;
-const StorageView = () => <div className="text-gray-400 italic">Polling rclone remotes...</div>;
-const SystemView = () => <div className="text-gray-400 italic">Fetching system telemetry...</div>;
-
-const Upload = ({ size, className }: any) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
-  </svg>
-);
 
 export default App;

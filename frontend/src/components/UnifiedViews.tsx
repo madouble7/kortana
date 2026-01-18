@@ -1,12 +1,14 @@
 import {
     AlertCircle,
+    BrainCircuit,
     CheckCircle2,
     Clock,
     FileText,
     HardDrive,
     Play,
     Terminal,
-    Upload
+    Upload,
+    Zap
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { apiService } from '../services/apiService';
@@ -77,8 +79,8 @@ export const VisionDashboard: React.FC = () => {
                             onClick={handleUpload}
                             disabled={!file || loading}
                             className={`w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${!file || loading
-                                    ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
-                                    : 'bg-gradient-to-r from-kor-accent to-blue-600 text-kor-deep hover:shadow-[0_0_20px_rgba(0,212,255,0.4)]'
+                                ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
+                                : 'bg-gradient-to-r from-kor-accent to-blue-600 text-kor-deep hover:shadow-[0_0_20px_rgba(0,212,255,0.4)]'
                                 }`}
                         >
                             {loading ? <Terminal size={20} className="animate-spin" /> : <Play size={20} fill="currentColor" />}
@@ -323,8 +325,8 @@ export const StorageView: React.FC = () => {
                             key={r}
                             onClick={() => setSelectedRemote(r)}
                             className={`px-4 py-2 rounded-lg text-sm font-semibold border transition-all ${selectedRemote === r
-                                    ? 'bg-kor-accent/10 border-kor-accent text-kor-accent'
-                                    : 'bg-kor-surface border-white/5 text-gray-400 hover:border-white/20'
+                                ? 'bg-kor-accent/10 border-kor-accent text-kor-accent'
+                                : 'bg-kor-surface border-white/5 text-gray-400 hover:border-white/20'
                                 }`}
                         >
                             {r}
@@ -417,8 +419,8 @@ export const TaskQueueView: React.FC = () => {
                         <div>
                             <div className="flex items-center justify-between mb-4">
                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${task.status === 'completed' ? 'bg-emerald-500/10 text-emerald-500' :
-                                        task.status === 'in_progress' ? 'bg-blue-500/10 text-blue-500 animate-pulse' :
-                                            'bg-gray-500/10 text-gray-500'
+                                    task.status === 'in_progress' ? 'bg-blue-500/10 text-blue-500 animate-pulse' :
+                                        'bg-gray-500/10 text-gray-500'
                                     }`}>
                                     {task.status.replace('_', ' ')}
                                 </span>

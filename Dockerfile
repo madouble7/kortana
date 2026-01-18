@@ -1,20 +1,24 @@
-# Multi-stage build for Kor'tana backend
-FROM python:3.11-slim as builder
+# Multi-stage build for Kor'tana Unified Platform
 
+# --- Stage 1: Frontend Build ---
+FROM node:20-slim as frontend-builder
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm install
+COPY frontend/ .
+RUN npm run build
+
+# --- Stage 2: Backend Builder ---
+FROM python:3.11-slim as backend-builder
 WORKDIR /app
-
-# Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements and install dependencies
-COPY backend/requirements.txt .
+COPY backend/requirements.txt ./
 RUN pip install --user --no-cache-dir -r requirements.txt
 
-# Final stage
+# --- Stage 3: Final Production Image ---
 FROM python:3.11-slim
-
 WORKDIR /app
 
 # Install runtime dependencies
@@ -23,16 +27,23 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Python dependencies from builder
-COPY --from=builder /root/.local /root/.local
+COPY --from=backend-builder /root/.local /root/.local
 ENV PATH=/root/.local/bin:$PATH
 
-# Copy application code
+# Copy backend application code
 COPY backend/ .
+
+# Copy built frontend assets to backend static directory
+COPY --from=frontend-builder /app/frontend/dist ./static
+
+# Environment variables
+ENV PORT=8000
+ENV ENVIRONMENT=production
+ENV PYTHONUNBUFFERED=1
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:${PORT:-8000}/api/health || exit 1
+    CMD curl -f http://localhost:8000/api/health || exit 1
 
 # Run the application
-ENV PORT=8000
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
