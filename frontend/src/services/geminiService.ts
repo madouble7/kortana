@@ -285,12 +285,14 @@ export class GeminiService {
 // Singleton instance for global use
 let geminiServiceInstance: GeminiService | null = null;
 
+import config from "./config";
+
 /**
  * Get or create the singleton Gemini service instance
  */
 export function getGeminiService(apiBaseUrl?: string): GeminiService {
     if (!geminiServiceInstance) {
-        const baseUrl = apiBaseUrl || import.meta.env.VITE_API_URL || "";
+        const baseUrl = apiBaseUrl || config.apiUrl;
         geminiServiceInstance = new GeminiService(baseUrl);
     }
     return geminiServiceInstance;

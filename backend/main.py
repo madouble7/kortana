@@ -230,7 +230,7 @@ def create_app() -> FastAPI:
 
             @app.get("/{full_path:path}")
             async def serve_frontend(request: Request, full_path: str):
-                """Serve the frontend SPA for any unmatched routes"""
+                """Serve the frontend SPA for any unmatched routes with runtime config injection"""
                 # Don't intercept /api routes
                 if full_path.startswith("api"):
                     return JSONResponse(
@@ -242,8 +242,38 @@ def create_app() -> FastAPI:
                     )
 
                 file_path = os.path.join(static_dir, full_path)
+
+                # Check if it's the index.html or a directory (which serves index.html)
+                if not os.path.isfile(file_path):
+                    index_path = os.path.join(static_dir, "index.html")
+                    if os.path.exists(index_path):
+                        with open(index_path, "r", encoding="utf-8") as f:
+                            content = f.read()
+
+                        # Inject runtime configuration
+                        settings = get_settings()
+                        runtime_config = {
+                            "VITE_API_URL": "",  # Empty for relative paths in unified mode
+                            "ENVIRONMENT": settings.ENVIRONMENT,
+                            "VERSION": settings.API_VERSION,
+                        }
+                        import json
+
+                        config_script = f"<script>window.__KORTANA__ = {json.dumps(runtime_config)};</script>"
+
+                        # Insert before the first script tag or head end
+                        if "</head>" in content:
+                            content = content.replace(
+                                "</head>", f"{config_script}\n</head>"
+                            )
+
+                        from fastapi.responses import HTMLResponse
+
+                        return HTMLResponse(content=content)
+
                 if os.path.isfile(file_path):
                     return FileResponse(file_path)
+
                 return FileResponse(os.path.join(static_dir, "index.html"))
 
     except Exception as e:

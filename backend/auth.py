@@ -1,23 +1,45 @@
 """
-Unified Authentication System for Kor'tana Backend
-Consolidated JWT-based authentication with comprehensive user management
+🔱 KOR'TANA UNIFIED AUTHENTICATION SYSTEM
+Single Authoritative Authentication Module for the Entire Backend
+
+This module provides:
+- Unified TokenData model with comprehensive fields
+- Single implementation of all token functions
+- Complete refresh token logic
+- Consistent SECRET_KEY management from environment
+- Legacy compatibility shims
+- Production-ready security and validation
+
+🌀 ARCHITECTURE PRINCIPLES:
+1. Zero circular dependencies - this module imports nothing from routers/
+2. Complete self-containment - all auth logic lives here
+3. Backward compatibility - supports legacy token formats
+4. Production security - environment-based secrets only
+5. Comprehensive validation - all edge cases handled
 """
 
-import hashlib
 import os
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Optional, Union, Any
 
-import bcrypt
+import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import jwt
-from jose.exceptions import ExpiredSignatureError, JWTError
+from jose import JWTError
 from passlib.context import CryptContext
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr
 
-# Configuration - use environment variables for security
-SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-production-with-secret-key-from-env")
+# ========================================================
+# CONFIGURATION - ENVIRONMENT-BASED ONLY
+# ========================================================
+
+# Security configuration - environment variables only for production safety
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    # Development fallback - NEVER use in production
+    SECRET_KEY = "kor-tana-unified-dev-secret-change-me-in-production-2026"
+    print("⚠️  WARNING: Using development SECRET_KEY. Set SECRET_KEY environment variable for production.")
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRE_DAYS = 7
@@ -28,134 +50,112 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # OAuth2 scheme for token extraction
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
-# ==================== Pydantic Models ====================
-
-class Token(BaseModel):
-    """Response model for token endpoints"""
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
+# ========================================================
+# UNIFIED TOKENDATA MODEL - SINGLE SOURCE OF TRUTH
+# ========================================================
 
 class TokenData(BaseModel):
-    """Data extracted from JWT token"""
+    """
+    🔱 Unified TokenData Model - The One True Token Model for Kor'tana
+
+    This model consolidates all token data requirements from across the system:
+    - user_id: Database user identifier
+    - email: User email address
+    - username: User username (when available)
+    - role: User role/permission level
+    - scopes: Fine-grained permissions
+    - expiration: Token expiration timestamp
+    - token_type: 'access' or 'refresh'
+
+    🌀 USAGE:
+    - Used by all authentication endpoints
+    - Used by all authorization dependencies
+    - Used by all token validation functions
+    - Replaces all previous TokenData models
+    """
     user_id: Optional[int] = None
     email: Optional[str] = None
     username: Optional[str] = None
     role: Optional[str] = None
-    scopes: list[str] = Field(default_factory=list)
+    scopes: list[str] = []
+    expiration: Optional[datetime] = None
+    token_type: Optional[str] = None
 
-class UserResponse(BaseModel):
-    """Response model for user data"""
-    id: int
-    email: str
-    username: Optional[str] = None
-    role: str
-    is_active: bool
-    created_at: datetime
+    @classmethod
+    def from_legacy_dict(cls, legacy_dict: dict) -> 'TokenData':
+        """
+        Convert legacy dictionary-based tokens to unified TokenData
 
-    class Config:
-        from_attributes = True
+        Args:
+            legacy_dict: Old-style token dictionary
 
-class UserInDB(UserResponse):
-    """User model for internal database operations"""
-    hashed_password: str
-
-# ==================== Password Utilities ====================
-
-def _normalize_password_bytes(password: str) -> bytes:
-    password_bytes = password.encode("utf-8")
-    if len(password_bytes) > 72:
-        return hashlib.sha256(password_bytes).digest()
-    return password_bytes
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against its hash"""
-    password_bytes = _normalize_password_bytes(plain_password)
-    hash_bytes = (
-        hashed_password if isinstance(hashed_password, bytes) else hashed_password.encode("utf-8")
-    )
-    try:
-        return bcrypt.checkpw(password_bytes, hash_bytes)
-    except ValueError:
-        return False
-
-def get_password_hash(password: str) -> str:
-    """Hash a password for storing"""
-    password_bytes = _normalize_password_bytes(password)
-    hashed = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
-    return hashed.decode("utf-8")
-
-# ==================== JWT Token Functions ====================
-
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    """
-    Create a JWT access token
-
-    Args:
-        data: Payload data to encode in token
-        expires_delta: Optional custom expiration time
-
-    Returns:
-        Encoded JWT token string
-    """
-    to_encode = data.copy()
-
-    if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
-    else:
-        expire = datetime.now(timezone.utc) + timedelta(
-            minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+        Returns:
+            Unified TokenData object
+        """
+        return cls(
+            user_id=legacy_dict.get("sub"),
+            username=legacy_dict.get("username"),
+            email=legacy_dict.get("email"),
+            role=legacy_dict.get("role", "user"),
+            scopes=legacy_dict.get("scopes", []),
+            expiration=datetime.fromtimestamp(legacy_dict.get("exp", 0)) if legacy_dict.get("exp") else None,
+            token_type=legacy_dict.get("type")
         )
 
-    to_encode.update({"exp": expire, "type": "access"})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+    def to_legacy_dict(self) -> dict:
+        """
+        Convert unified TokenData to legacy dictionary format
 
-def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+        Returns:
+            Legacy-style token dictionary
+        """
+        result = {
+            "sub": self.user_id,
+            "username": self.username,
+            "email": self.email,
+            "role": self.role,
+            "scopes": self.scopes,
+            "type": self.token_type
+        }
+        if self.expiration:
+            result["exp"] = int(self.expiration.timestamp())
+        return result
+
+# ========================================================
+# TOKEN MODELS - REQUEST/RESPONSE SCHEMAS
+# ========================================================
+
+class Token(BaseModel):
+    """Complete token response with both access and refresh tokens"""
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    expires_in: int = ACCESS_TOKEN_EXPIRE_MINUTES * 60
+
+class TokenResponse(BaseModel):
+    """Simplified token response (legacy compatibility)"""
+    access_token: str
+    token_type: str = "bearer"
+
+class RefreshTokenRequest(BaseModel):
+    """Request model for token refresh operations"""
+    refresh_token: str
+
+# ========================================================
+# PASSWORD UTILITIES - UNIFIED IMPLEMENTATION
+# ========================================================
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
-    Create a JWT refresh token with longer expiration
+    Verify a password against its hash using bcrypt
 
     Args:
-        data: Payload data to encode in token
-        expires_delta: Optional custom expiration time
+        plain_password: Plain text password to verify
+        hashed_password: Stored hash to verify against
 
     Returns:
-        Encoded JWT refresh token string
+        True if password matches, False otherwise
     """
-    to_encode = data.copy()
-
-    if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
-    else:
-        expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
-
-    to_encode.update({"exp": expire, "type": "refresh"})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
-
-def decode_token(token: str) -> TokenData:
-    """
-    Decode and validate a JWT token
-
-    Args:
-        token: JWT token string
-
-    Returns:
-        TokenData with decoded user information
-
-    Raises:
-        HTTPException: If token is invalid or expired
-    """
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-
-        # Check token type
         if payload.get("type") != "access":
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

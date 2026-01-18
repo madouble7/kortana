@@ -1,17 +1,6 @@
-// API Service for Kor'tana Frontend
-// Standardized for Vite + FastAPI (Port 8000) alignment
+import config from './config';
 
-const getApiBaseUrl = () => {
-  // If we're in production and served by the same backend, use relative path
-  // Otherwise use the environment variable
-  const envUrl = import.meta.env.VITE_API_URL;
-  if (envUrl) return envUrl;
-
-  // Default to empty for relative paths (production unified build)
-  return '';
-};
-
-const API_BASE_URL = getApiBaseUrl();
+const API_BASE_URL = config.apiUrl;
 
 export interface HealthResponse {
   status: string;
