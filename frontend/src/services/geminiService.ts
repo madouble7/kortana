@@ -290,7 +290,8 @@ let geminiServiceInstance: GeminiService | null = null;
  */
 export function getGeminiService(apiBaseUrl?: string): GeminiService {
     if (!geminiServiceInstance) {
-        geminiServiceInstance = new GeminiService(apiBaseUrl);
+        const baseUrl = apiBaseUrl || import.meta.env.VITE_API_URL || "";
+        geminiServiceInstance = new GeminiService(baseUrl);
     }
     return geminiServiceInstance;
 }
