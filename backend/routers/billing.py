@@ -280,11 +280,14 @@ async def get_billing_info(customer_id: str):
                 try:
                     plan_type = BillingPlanType(plan_type_str)
                 except ValueError:
-                    logger.warning(f"Invalid plan type in metadata: {plan_type_str}")
-                    plan_type = BillingPlanType.PRO
+                    logger.warning(f"Invalid plan type in metadata: {plan_type_str}, defaulting to FREE")
+                    # Default to FREE as safer option for invalid metadata
+                    plan_type = BillingPlanType.FREE
             else:
-                # Default to PRO for active subscriptions without metadata
-                plan_type = BillingPlanType.PRO
+                # If subscription exists but no metadata, log warning and check price
+                logger.warning(f"Active subscription {subscription.id} missing plan_type metadata")
+                # Default to FREE to avoid overcharging; admin should fix metadata
+                plan_type = BillingPlanType.FREE
             
             return BillingInfo(
                 customer_id=customer_id,

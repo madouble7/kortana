@@ -86,13 +86,15 @@ def test_billing_endpoints():
 
 
 if __name__ == "__main__":
-    # Install test dependencies if needed
+    # Test dependencies should be installed via requirements-dev.txt
+    # but we'll check if they're available
     try:
         import fastapi
         from fastapi.testclient import TestClient
     except ImportError:
-        print("Installing test dependencies...")
-        os.system("pip install -q fastapi httpx")
+        print("❌ Missing test dependencies. Please install:")
+        print("   pip install fastapi httpx")
+        sys.exit(1)
     
     success = test_billing_endpoints()
     sys.exit(0 if success else 1)
