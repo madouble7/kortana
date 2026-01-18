@@ -201,6 +201,18 @@ Press F5 to debug
 - `POST /api/task-queue/` - Add task
 - `GET /api/task-queue/{id}` - Get task status
 
+### Billing
+
+- `GET /api/billing/config` - Get billing configuration and plans
+- `POST /api/billing/customers` - Create a new customer
+- `GET /api/billing/customers/{customer_id}` - Get customer details
+- `POST /api/billing/subscriptions` - Create a subscription
+- `GET /api/billing/subscriptions/{subscription_id}` - Get subscription details
+- `POST /api/billing/subscriptions/{subscription_id}/cancel` - Cancel subscription
+- `POST /api/billing/payment-intents` - Create payment intent
+- `POST /api/billing/webhooks` - Handle Stripe webhooks
+- `GET /api/billing/billing-info/{customer_id}` - Get billing information
+
 See [backend/README.md](backend/README.md) for complete endpoint documentation.
 
 ---

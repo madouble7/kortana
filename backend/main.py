@@ -30,7 +30,7 @@ from middleware.security import (
 # Import routers
 try:
     from routers import agents, auth, autonomy, gemini, github, knowledge, memory, task_queue
-    from routers import pr_creation, test_orchestrator, code_reviewer
+    from routers import pr_creation, test_orchestrator, code_reviewer, billing
 except ImportError as e:
     print(f"Error importing routers: {e}")
     raise
@@ -173,6 +173,9 @@ def create_app() -> FastAPI:
         app.include_router(pr_creation.router, prefix="/api/pr", tags=["pr-creation"])
         app.include_router(test_orchestrator.router, prefix="/api/testing", tags=["testing"])
         app.include_router(code_reviewer.router, prefix="/api/code-review", tags=["code-review"])
+        
+        # Billing router
+        app.include_router(billing.router, prefix="/api/billing", tags=["billing"])
     except Exception as e:
         log_error("router_error", f"Error including routers: {e}")
         raise

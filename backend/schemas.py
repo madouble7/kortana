@@ -367,3 +367,99 @@ class PaginatedResponse(BaseModel):
     pages: int
     has_next: bool
     has_prev: bool
+
+
+# ========================================================
+# Billing Schemas
+# ========================================================
+
+
+class BillingPlanType(str, Enum):
+    """Billing plan types"""
+
+    FREE = "free"
+    BASIC = "basic"
+    PRO = "pro"
+    ENTERPRISE = "enterprise"
+
+
+class CustomerCreate(BaseModel):
+    """Create Stripe customer"""
+
+    email: EmailStr
+    name: str | None = None
+    metadata: dict | None = None
+
+
+class Customer(BaseModel):
+    """Stripe customer model"""
+
+    id: str
+    email: str
+    name: str | None = None
+    created: int
+    metadata: dict | None = None
+
+
+class SubscriptionCreate(BaseModel):
+    """Create subscription"""
+
+    customer_id: str
+    price_id: str
+    trial_period_days: int | None = None
+    metadata: dict | None = None
+
+
+class Subscription(BaseModel):
+    """Stripe subscription model"""
+
+    id: str
+    customer_id: str
+    status: str  # active, past_due, canceled, etc.
+    current_period_start: int
+    current_period_end: int
+    cancel_at_period_end: bool
+    plan_type: BillingPlanType | None = None
+    metadata: dict | None = None
+
+
+class PaymentIntentCreate(BaseModel):
+    """Create payment intent"""
+
+    amount: int = Field(..., ge=1, description="Amount in cents")
+    currency: str = Field("usd", max_length=3)
+    customer_id: str | None = None
+    description: str | None = None
+    metadata: dict | None = None
+
+
+class PaymentIntent(BaseModel):
+    """Payment intent model"""
+
+    id: str
+    amount: int
+    currency: str
+    status: str  # requires_payment_method, requires_confirmation, succeeded, etc.
+    client_secret: str
+    customer_id: str | None = None
+    description: str | None = None
+
+
+class WebhookEvent(BaseModel):
+    """Stripe webhook event"""
+
+    id: str
+    type: str
+    data: dict
+    created: int
+
+
+class BillingInfo(BaseModel):
+    """User billing information"""
+
+    customer_id: str | None = None
+    subscription_id: str | None = None
+    plan_type: BillingPlanType = BillingPlanType.FREE
+    subscription_status: str | None = None
+    current_period_end: int | None = None
+    cancel_at_period_end: bool = False

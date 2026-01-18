@@ -47,5 +47,8 @@ psutil==5.9.6
 # Utilities
 python-dotenv==1.0.0
 
+# Payment Processing
+stripe==7.9.0
+
 # Note: For development and testing, install requirements-dev.txt
 # Note: For development, also install: requirements-dev.txt

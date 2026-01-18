@@ -2,6 +2,7 @@
 from . import (
     agents,
     autonomy,
+    billing,
     code_reviewer,
     gemini,
     github,
