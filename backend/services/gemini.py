@@ -91,4 +91,5 @@ try:
     print("✅ Gemini service created successfully")
 except Exception as e:
     print(f"❌ Failed to create Gemini service: {e}")
+    print(f"   API Key env check: GEMINI_API_KEY={'SET' if os.getenv('GEMINI_API_KEY') else 'NOT SET'}, GOOGLE_API_KEY={'SET' if os.getenv('GOOGLE_API_KEY') else 'NOT SET'}")
     gemini_service = None

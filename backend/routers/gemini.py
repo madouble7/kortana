@@ -41,6 +41,12 @@ async def chat_with_gemini(payload: dict[str, Any]) -> dict[str, Any]:
             status_code=400, detail="Missing 'message' field in payload"
         )
 
+    if gemini_service is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Gemini service is not available. Check backend logs for initialization errors."
+        )
+
     response = await gemini_service.analyze_text(message)
     return {"response": response}
 
