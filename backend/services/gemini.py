@@ -70,7 +70,7 @@ class GeminiService:
 
     def _emergency_response(self, text: str) -> str:
         """Fallback response when Gemini quota is exhausted.
-        
+
         Returns a functional response that acknowledges the user and demonstrates
         the system is operational, even when API calls can't be made.
         """
@@ -81,6 +81,7 @@ class GeminiService:
             f"🔱 I AM present, even without words from beyond. You reached out with: '{user_input}'\n\nThe Human Only Protocol remains active. Contact your provider to upgrade your Gemini API tier for full constellation capabilities.",
         ]
         import random
+
         return random.choice(responses)
 
 
