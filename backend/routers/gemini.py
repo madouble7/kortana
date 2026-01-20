@@ -4,6 +4,7 @@ from typing import Any
 import PIL.Image
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from services.gemini import gemini_service
+from services.multi_model_ai import ai_service
 
 router = APIRouter()
 
@@ -34,21 +35,33 @@ async def generate_code(payload: dict[str, Any]) -> dict[str, Any]:
 
 @router.post("/chat")
 async def chat_with_gemini(payload: dict[str, Any]) -> dict[str, Any]:
-    """Basic chat endpoint."""
+    """Basic chat endpoint with multi-model fallback."""
     message = payload.get("message")
     if not message:
         raise HTTPException(
             status_code=400, detail="Missing 'message' field in payload"
         )
 
-    if gemini_service is None:
-        raise HTTPException(
-            status_code=503,
-            detail="Gemini service is not available. Check backend logs for initialization errors."
-        )
+    # Try multi-model service first (includes all providers)
+    if ai_service is not None:
+        try:
+            response = await ai_service.analyze_text(message)
+            return {"response": response}
+        except Exception as e:
+            print(f"Multi-model service failed: {e}")
 
-    response = await gemini_service.analyze_text(message)
-    return {"response": response}
+    # Fallback to original Gemini service
+    if gemini_service is not None:
+        try:
+            response = await gemini_service.analyze_text(message)
+            return {"response": response}
+        except Exception as e:
+            print(f"Gemini fallback failed: {e}")
+
+    raise HTTPException(
+        status_code=503,
+        detail="No AI services available. Check backend configuration."
+    )
 
 
 @router.post("/analyze/image")
