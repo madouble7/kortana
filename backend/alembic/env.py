@@ -25,7 +25,13 @@ if config.config_file_name is not None:
 settings = get_settings()
 
 # Set sqlalchemy.url dynamically from settings
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL.replace("+asyncpg", ""))
+db_url = settings.DATABASE_URL
+if "sqlite" in db_url:
+    sync_url = db_url.replace("aiosqlite", "sqlite").replace("sqlite+sqlite", "sqlite")
+else:
+    sync_url = db_url.replace("+asyncpg", "")
+
+config.set_main_option("sqlalchemy.url", sync_url)
 
 # add your model's MetaData object here
 # for 'autogenerate' support

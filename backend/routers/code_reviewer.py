@@ -188,7 +188,7 @@ Provide a JSON response with the following structure:
 }}"""
 
             # Call Gemini API
-            url = f"{self.base_url}/gemini-1.5-flash:generateContent?key={self.gemini_api_key}"
+            url = f"{self.base_url}/gemini-pro:generateContent?key={self.gemini_api_key}"
             response = requests.post(
                 url,
                 json={"contents": [{"parts": [{"text": prompt}]}]},
@@ -355,7 +355,11 @@ async def analyze_code(code: str, plan: str = ""):
         security_issues = reviewer.scan_for_security_issues(code)
         quality = reviewer.check_code_quality(code)
 
-        return {"security_issues": security_issues, "code_quality": quality, "success": True}
+        return {
+            "security_issues": security_issues,
+            "code_quality": quality,
+            "success": True,
+        }
     except CodeReviewError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

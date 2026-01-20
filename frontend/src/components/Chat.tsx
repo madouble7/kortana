@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { Send, Loader2, Sparkles } from 'lucide-react';
 import { api } from '../lib/api';
 import { cn, formatRelativeTime } from '../lib/utils';
@@ -19,7 +19,7 @@ export default function Chat() {
     scrollToBottom();
   }, [messages]);
 
-  const sendMessage = async (e: React.FormEvent) => {
+  const sendMessage = async (e: FormEvent) => {
     e.preventDefault();
     if (!input.trim() || loading) return;
 
@@ -36,7 +36,7 @@ export default function Chat() {
 
     try {
       const response = await api.sendChatMessage(input, conversationId || undefined);
-      
+
       if (response.conversation_id && !conversationId) {
         setConversationId(response.conversation_id);
       }

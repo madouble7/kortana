@@ -18,7 +18,7 @@ export default function GitHubPanel() {
     try {
       setLoading(true);
       const data = await api.getGitHubIssues(repo || undefined);
-      setIssues(Array.isArray(data) ? data : data.issues || []);
+      setIssues(data);
     } catch (error) {
       console.error('Failed to fetch GitHub issues:', error);
     } finally {
@@ -34,7 +34,7 @@ export default function GitHubPanel() {
 
     try {
       setCreating(issue.number);
-      await api.createTaskFromIssue(issue.number, repo);
+      await api.createTaskFromIssue(issue, repo);
       alert('Task created successfully!');
     } catch (error: any) {
       alert(`Failed to create task: ${error.message}`);

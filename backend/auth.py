@@ -20,14 +20,13 @@ This module provides:
 
 import os
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Union, Any
+from typing import Optional
 
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jwt.exceptions import ExpiredSignatureError, PyJWTError
 from passlib.context import CryptContext
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 # ========================================================
 # CONFIGURATION - ENVIRONMENT-BASED ONLY
@@ -38,7 +37,12 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
     # Development fallback - NEVER use in production
     SECRET_KEY = "kor-tana-unified-dev-secret-change-me-in-production-2026"
-    print("⚠️  WARNING: Using development SECRET_KEY. Set SECRET_KEY environment variable for production.")
+    print(
+        "⚠️  WARNING: Using development SECRET_KEY. Set SECRET_KEY environment variable for production."
+    )
+
+# Ensure SECRET_KEY is always a string for type safety
+SECRET_KEY: str = SECRET_KEY  # type: ignore
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
@@ -53,6 +57,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 # ========================================================
 # UNIFIED TOKENDATA MODEL - SINGLE SOURCE OF TRUTH
 # ========================================================
+
 
 class TokenData(BaseModel):
     """
@@ -73,6 +78,7 @@ class TokenData(BaseModel):
     - Used by all token validation functions
     - Replaces all previous TokenData models
     """
+
     user_id: Optional[int] = None
     email: Optional[str] = None
     username: Optional[str] = None
@@ -82,7 +88,7 @@ class TokenData(BaseModel):
     token_type: Optional[str] = None
 
     @classmethod
-    def from_legacy_dict(cls, legacy_dict: dict) -> 'TokenData':
+    def from_legacy_dict(cls, legacy_dict: dict) -> "TokenData":
         """
         Convert legacy dictionary-based tokens to unified TokenData
 
@@ -98,8 +104,12 @@ class TokenData(BaseModel):
             email=legacy_dict.get("email"),
             role=legacy_dict.get("role", "user"),
             scopes=legacy_dict.get("scopes", []),
-            expiration=datetime.fromtimestamp(legacy_dict.get("exp", 0)) if legacy_dict.get("exp") else None,
-            token_type=legacy_dict.get("type")
+            expiration=(
+                datetime.fromtimestamp(legacy_dict.get("exp", 0))
+                if legacy_dict.get("exp")
+                else None
+            ),
+            token_type=legacy_dict.get("type"),
         )
 
     def to_legacy_dict(self) -> dict:
@@ -115,35 +125,44 @@ class TokenData(BaseModel):
             "email": self.email,
             "role": self.role,
             "scopes": self.scopes,
-            "type": self.token_type
+            "type": self.token_type,
         }
         if self.expiration:
             result["exp"] = int(self.expiration.timestamp())
         return result
 
+
 # ========================================================
 # TOKEN MODELS - REQUEST/RESPONSE SCHEMAS
 # ========================================================
 
+
 class Token(BaseModel):
     """Complete token response with both access and refresh tokens"""
+
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
     expires_in: int = ACCESS_TOKEN_EXPIRE_MINUTES * 60
 
+
 class TokenResponse(BaseModel):
     """Simplified token response (legacy compatibility)"""
+
     access_token: str
     token_type: str = "bearer"
 
+
 class RefreshTokenRequest(BaseModel):
     """Request model for token refresh operations"""
+
     refresh_token: str
+
 
 # ========================================================
 # PASSWORD UTILITIES - UNIFIED IMPLEMENTATION
 # ========================================================
+
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
@@ -158,6 +177,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
     return pwd_context.verify(plain_password, hashed_password)
 
+
 def get_password_hash(password: str) -> str:
     """
     Hash a password for secure storage using bcrypt
@@ -170,14 +190,14 @@ def get_password_hash(password: str) -> str:
     """
     return pwd_context.hash(password)
 
+
 # ========================================================
 # JWT TOKEN FUNCTIONS - SINGLE UNIFIED IMPLEMENTATION
 # ========================================================
 
+
 def create_access_token(
-    data: dict,
-    expires_delta: Optional[timedelta] = None,
-    token_type: str = "access"
+    data: dict, expires_delta: Optional[timedelta] = None, token_type: str = "access"
 ) -> str:
     """
     🔱 Create a JWT access token - Unified Implementation
@@ -211,17 +231,20 @@ def create_access_token(
             expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
 
     # Add standard claims
-    to_encode.update({
-        "exp": expire,
-        "iat": datetime.now(timezone.utc),
-        "type": token_type,
-        "iss": "kortana-auth",
-        "token_version": "v2-unified"
-    })
+    to_encode.update(
+        {
+            "exp": expire,
+            "iat": datetime.now(timezone.utc),
+            "type": token_type,
+            "iss": "kortana-auth",
+            "token_version": "v2-unified",
+        }
+    )
 
     # Encode with consistent algorithm
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
 
 def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """
@@ -235,6 +258,7 @@ def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) 
         Encoded JWT refresh token string
     """
     return create_access_token(data, expires_delta, token_type="refresh")
+
 
 def decode_token(token: str) -> TokenData:
     """
@@ -285,7 +309,7 @@ def decode_token(token: str) -> TokenData:
             role=role,
             scopes=scopes,
             expiration=expiration,
-            token_type=token_type
+            token_type=token_type,
         )
 
     except jwt.ExpiredSignatureError:
@@ -302,9 +326,11 @@ def decode_token(token: str) -> TokenData:
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+
 # ========================================================
 # LEGACY COMPATIBILITY SHIMS
 # ========================================================
+
 
 def create_access_token_legacy(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """
@@ -328,6 +354,7 @@ def create_access_token_legacy(data: dict, expires_delta: Optional[timedelta] = 
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
+
 def decode_token_legacy(token: str) -> dict:
     """
     Legacy token decoding - returns dictionary format
@@ -348,28 +375,22 @@ def decode_token_legacy(token: str) -> dict:
         username = payload.get("sub")
         if username is None:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Could not validate credentials"
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials"
             )
-        return {
-            "username": username,
-            "scopes": payload.get("scopes", []),
-            "sub": username
-        }
+        return {"username": username, "scopes": payload.get("scopes", []), "sub": username}
     except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired")
+    except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has expired"
+            detail=f"Could not validate credentials: {str(e)}",
         )
-    except jwt.JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials"
-        )
+
 
 # ========================================================
 # OAUTH2 UTILITY FUNCTIONS
 # ========================================================
+
 
 def create_oauth2_authorization_header(token: str) -> dict:
     """
@@ -382,6 +403,7 @@ def create_oauth2_authorization_header(token: str) -> dict:
         Authorization header dictionary
     """
     return {"Authorization": f"Bearer {token}"}
+
 
 def extract_token_from_header(auth_header: str | None) -> str | None:
     """
@@ -402,9 +424,11 @@ def extract_token_from_header(auth_header: str | None) -> str | None:
 
     return parts[1]
 
+
 # ========================================================
 # AUTHENTICATION DEPENDENCIES - FASTAPI INTEGRATION
 # ========================================================
+
 
 async def get_current_user(token: str = Depends(oauth2_scheme)) -> TokenData:
     """
@@ -422,6 +446,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> TokenData:
         HTTPException: 401 if authentication fails
     """
     return decode_token(token)
+
 
 async def get_current_active_user(
     current_user: TokenData = Depends(get_current_user),
@@ -441,12 +466,10 @@ async def get_current_active_user(
     # In production, this would check database for active status
     # For now, we validate that we have basic user info
     if not current_user.email and not current_user.username:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     return current_user
+
 
 async def get_admin_user(
     current_user: TokenData = Depends(get_current_active_user),
@@ -464,16 +487,15 @@ async def get_admin_user(
         HTTPException: 403 if not admin
     """
     if current_user.role != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
 
     return current_user
+
 
 # ========================================================
 # TOKEN VALIDATION UTILITIES
 # ========================================================
+
 
 def validate_token_type(token: str, expected_type: str) -> bool:
     """
@@ -489,8 +511,9 @@ def validate_token_type(token: str, expected_type: str) -> bool:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload.get("type") == expected_type
-    except JWTError:
+    except Exception:
         return False
+
 
 def get_token_expiration(token: str) -> Optional[datetime]:
     """
@@ -505,12 +528,14 @@ def get_token_expiration(token: str) -> Optional[datetime]:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return datetime.fromtimestamp(payload["exp"])
-    except JWTError:
+    except Exception:
         return None
+
 
 # ========================================================
 # SYSTEM INTEGRITY VALIDATION
 # ========================================================
+
 
 def validate_auth_system_integrity() -> dict:
     """
@@ -523,7 +548,7 @@ def validate_auth_system_integrity() -> dict:
         "system": "kortana-unified-auth",
         "version": "v2.0.0",
         "status": "operational",
-        "secret_key_configured": SECRET_KEY is not None and len(SECRET_KEY) > 16,
+        "secret_key_configured": len(SECRET_KEY) > 16,
         "algorithm": ALGORITHM,
         "access_token_expiration": ACCESS_TOKEN_EXPIRE_MINUTES,
         "refresh_token_expiration": REFRESH_TOKEN_EXPIRE_DAYS,
@@ -533,15 +558,16 @@ def validate_auth_system_integrity() -> dict:
             "jwt": "available",
             "jose": "available",
             "passlib": "available",
-            "pydantic": "available"
-        }
+            "pydantic": "available",
+        },
     }
 
     # Warn if using development secret
-    if "dev-secret" in SECRET_KEY:
+    if SECRET_KEY and "dev-secret" in SECRET_KEY:
         status_check["warnings"] = ["Using development SECRET_KEY - not safe for production"]
 
     return status_check
+
 
 # ========================================================
 # MODULE INTEGRITY SEAL

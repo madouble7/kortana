@@ -7,6 +7,7 @@ import os
 import sys
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, FastAPI, HTTPException, Request
@@ -74,30 +75,30 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     try:
         settings.validate()
         print(f"\n{'=' * 60}")
-        print("🔐 Secrets Validation: COMPLETE")
-        print(f"📦 Environment: {settings.ENVIRONMENT}")
-        print("🔗 API Keys Loaded:")
-        print(f"   ✓ Gemini API: {'✅' if settings.GEMINI_API_KEY else '❌'}")
-        print(f"   ✓ GitHub Token: {'✅' if settings.GITHUB_TOKEN else '❌'}")
-        print(f"   ✓ Discord Bot: {'✅' if settings.DISCORD_BOT_TOKEN else '❌'}")
-        print(f"   ✓ OpenAI Key: {'✅' if settings.OPENAI_API_KEY else '❌'}")
-        print(f"   ✓ Anthropic Key: {'✅' if settings.ANTHROPIC_API_KEY else '❌'}")
-        print(f"   ✓ Pinecone Key: {'✅' if settings.PINECONE_API_KEY else '❌'}")
-        print(f"   ✓ Stripe Keys: {'✅' if settings.STRIPE_SECRET_KEY else '❌'}")
+        print("--- Secrets Validation: COMPLETE ---")
+        print(f"Environment: {settings.ENVIRONMENT}")
+        print("API Keys Loaded:")
+        print(f"   - Gemini API: {'[OK]' if settings.GEMINI_API_KEY else '[MISSING]'}")
+        print(f"   - GitHub Token: {'[OK]' if settings.GITHUB_TOKEN else '[MISSING]'}")
+        print(f"   - Discord Bot: {'[OK]' if settings.DISCORD_BOT_TOKEN else '[MISSING]'}")
+        print(f"   - OpenAI Key: {'[OK]' if settings.OPENAI_API_KEY else '[MISSING]'}")
+        print(f"   - Anthropic Key: {'[OK]' if settings.ANTHROPIC_API_KEY else '[MISSING]'}")
+        print(f"   - Pinecone Key: {'[OK]' if settings.PINECONE_API_KEY else '[MISSING]'}")
+        print(f"   - Stripe Keys: {'[OK]' if settings.STRIPE_SECRET_KEY else '[MISSING]'}")
         print(f"{'=' * 60}\n")
     except ValueError as e:
         log_error("config", f"Configuration validation failed: {e}")
-        print(f"❌ Configuration Error: {e}")
+        print(f"[ERROR] Configuration Error: {e}")
         raise
 
     log_request("system", f"Kor'tana API starting in {settings.ENVIRONMENT} mode")
-    print(f"🚀 Kor'tana API starting in {settings.ENVIRONMENT} mode")
+    print(f"[*] Kor'tana API starting in {settings.ENVIRONMENT} mode")
 
     yield
 
     # Shutdown
     log_request("system", "Kor'tana API shutting down")
-    print("👋 Kor'tana API shutting down")
+    print("[-] Kor'tana API shutting down")
 
 
 def create_app() -> FastAPI:
@@ -133,9 +134,7 @@ def create_app() -> FastAPI:
 
     # Exception handlers
     @app.exception_handler(KortanaException)
-    async def kortana_exception_handler(
-        request: Request, exc: KortanaException
-    ) -> JSONResponse:
+    async def kortana_exception_handler(request: Request, exc: KortanaException) -> JSONResponse:
         """Handle custom Kortana exceptions"""
         log_error(
             exc.error_code,
@@ -145,9 +144,7 @@ def create_app() -> FastAPI:
         return JSONResponse(status_code=exc.status_code, content=exc.to_dict())
 
     @app.exception_handler(HTTPException)
-    async def http_exception_handler(
-        request: Request, exc: HTTPException
-    ) -> JSONResponse:
+    async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
         """Handle FastAPI HTTP exceptions"""
         log_error(
             "HTTP_ERROR",
@@ -165,9 +162,7 @@ def create_app() -> FastAPI:
         )
 
     @app.exception_handler(Exception)
-    async def general_exception_handler(
-        request: Request, exc: Exception
-    ) -> JSONResponse:
+    async def general_exception_handler(request: Request, exc: Exception) -> JSONResponse:
         """Handle unexpected exceptions"""
         log_error(
             "UNHANDLED_ERROR",
@@ -190,30 +185,45 @@ def create_app() -> FastAPI:
         app.include_router(auth.router, prefix="/api/auth", tags=["authentication"])
 
         # Protected API routers
-        app.include_router(health.router)
+        app.include_router(health.router, prefix="/api/system/health", tags=["health"])
         app.include_router(prayer.router)
         app.include_router(gemini.router, prefix="/api/gemini", tags=["gemini"])
         app.include_router(memory.router, prefix="/api/memory", tags=["memory"])
         app.include_router(agents.router, prefix="/api/agents", tags=["agents"])
         app.include_router(github.router, prefix="/api/github", tags=["github"])
         app.include_router(autonomy.router, prefix="/api/autonomy", tags=["autonomy"])
-        app.include_router(
-            knowledge.router, prefix="/api/knowledge", tags=["knowledge"]
-        )
-        app.include_router(
-            task_queue.router, prefix="/api/task-queue", tags=["task-queue"]
-        )
+        app.include_router(knowledge.router, prefix="/api/knowledge", tags=["knowledge"])
+        app.include_router(task_queue.router, prefix="/api/task-queue", tags=["task-queue"])
         app.include_router(rclone.router, prefix="/api/rclone", tags=["rclone"])
         app.include_router(system.router, prefix="/api/system", tags=["system"])
 
         # Phase 2: PR Creation, Testing, and Code Review
         app.include_router(pr_creation.router, prefix="/api/pr", tags=["pr-creation"])
-        app.include_router(
-            test_orchestrator.router, prefix="/api/testing", tags=["testing"]
-        )
-        app.include_router(
-            code_reviewer.router, prefix="/api/code-review", tags=["code-review"]
-        )
+        app.include_router(test_orchestrator.router, prefix="/api/testing", tags=["testing"])
+        app.include_router(code_reviewer.router, prefix="/api/code-review", tags=["code-review"])
+
+        # Basic API endpoints (defined before catch-all)
+        @app.get("/api/health", tags=["system"])
+        async def api_health():
+            """Health check endpoint for the frontend"""
+            return {
+                "status": "alive",
+                "message": "Kor'tana backend is breathing",
+                "version": get_settings().API_VERSION,
+                "environment": get_settings().ENVIRONMENT,
+                "timestamp": datetime.now().isoformat(),
+            }
+
+        @app.get("/api/info", tags=["system"])
+        async def api_info():
+            """Basic API information"""
+            settings = get_settings()
+            return {
+                "name": settings.API_TITLE,
+                "version": settings.API_VERSION,
+                "status": "running",
+                "environment": settings.ENVIRONMENT,
+            }
 
         # Human Only Protocol (HOP)
         if HOP_AVAILABLE:
@@ -259,13 +269,13 @@ def create_app() -> FastAPI:
                         }
                         import json
 
-                        config_script = f"<script>window.__KORTANA__ = {json.dumps(runtime_config)};</script>"
+                        config_script = (
+                            f"<script>window.__KORTANA__ = {json.dumps(runtime_config)};</script>"
+                        )
 
                         # Insert before the first script tag or head end
                         if "</head>" in content:
-                            content = content.replace(
-                                "</head>", f"{config_script}\n</head>"
-                            )
+                            content = content.replace("</head>", f"{config_script}\n</head>")
 
                         from fastapi.responses import HTMLResponse
 
@@ -297,31 +307,6 @@ async def request_logging_middleware(request: Request, call_next: Any) -> Any:
     )
     response = await call_next(request)
     return response
-
-
-@app.get("/api/health")
-async def health_check() -> dict[str, Any]:
-    """Health check endpoint"""
-    settings = get_settings()
-    return {
-        "status": "alive",
-        "message": "Kor'tana backend is breathing",
-        "environment": settings.ENVIRONMENT,
-        "version": settings.API_VERSION,
-    }
-
-
-@app.get("/")
-async def root() -> dict[str, Any]:
-    """Root endpoint with API information"""
-    settings = get_settings()
-    return {
-        "name": settings.API_TITLE,
-        "version": settings.API_VERSION,
-        "status": "running",
-        "docs": "/docs",
-        "health": "/api/health",
-    }
 
 
 if __name__ == "__main__":

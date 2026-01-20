@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ElementType } from 'react';
 import {
   MessageSquare,
   CheckSquare,
@@ -22,7 +22,7 @@ type View = 'chat' | 'tasks' | 'autonomy' | 'memory' | 'github' | 'settings';
 interface NavItem {
   id: View;
   label: string;
-  icon: React.ElementType;
+  icon: ElementType;
   enabled: boolean;
 }
 

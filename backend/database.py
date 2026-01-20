@@ -4,6 +4,7 @@ Provides async SQLAlchemy with connection pooling and optimization
 """
 
 import os
+import time
 from collections.abc import AsyncGenerator
 
 from config import get_settings
@@ -41,7 +42,10 @@ class DatabaseConfig:
 
     def get_sync_url(self) -> str:
         """Get sync database URL (for migrations)"""
-        return get_settings().DATABASE_URL.replace("+asyncpg", "")
+        url = get_settings().DATABASE_URL
+        if "sqlite" in url:
+            return url.replace("aiosqlite", "sqlite").replace("sqlite+sqlite", "sqlite")
+        return url.replace("+asyncpg", "")
 
 
 class DatabaseManager:

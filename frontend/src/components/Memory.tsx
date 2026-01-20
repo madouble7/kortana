@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { Database, Search, Loader2, Brain } from 'lucide-react';
 import { api } from '../lib/api';
 import { formatRelativeTime } from '../lib/utils';
@@ -18,7 +18,7 @@ export default function MemoryPanel() {
     try {
       setLoading(true);
       const data = await api.getMemories();
-      setMemories(Array.isArray(data) ? data : data.memories || []);
+      setMemories(data);
     } catch (error) {
       console.error('Failed to fetch memories:', error);
     } finally {
@@ -26,7 +26,7 @@ export default function MemoryPanel() {
     }
   };
 
-  const searchMemories = async (e: React.FormEvent) => {
+  const searchMemories = async (e: FormEvent) => {
     e.preventDefault();
     if (!searchQuery.trim()) {
       fetchMemories();
@@ -36,7 +36,7 @@ export default function MemoryPanel() {
     try {
       setSearching(true);
       const data = await api.searchMemory(searchQuery);
-      setMemories(Array.isArray(data) ? data : data.results || []);
+      setMemories(data);
     } catch (error) {
       console.error('Failed to search memories:', error);
     } finally {

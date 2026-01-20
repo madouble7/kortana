@@ -41,7 +41,7 @@ class Settings:
     # CORS Configuration
     CORS_ORIGINS: list[str] = os.getenv(
         "CORS_ORIGINS",
-        "http://localhost:3000,http://localhost:8000,http://localhost:8080,http://localhost:5173",
+        "http://localhost:3000,http://localhost:8000,http://127.0.0.1:8000,http://localhost:8080,http://localhost:5173",
     ).split(",")
     CORS_CREDENTIALS: bool = True
     CORS_METHODS: list[str] = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
@@ -55,9 +55,7 @@ class Settings:
     OPENROUTER_API_KEY: str | None = os.getenv("OPENROUTER_API_KEY")
     GROQ_API_KEY: str | None = os.getenv("GROQ_API_KEY")
     # Gemini uses GEMINI_API_KEY or falls back to GOOGLE_API_KEY
-    GEMINI_API_KEY: str = (
-        os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or ""
-    )
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or ""
 
     # Vector Database
     PINECONE_API_KEY: str | None = os.getenv("PINECONE_API_KEY")
@@ -71,9 +69,7 @@ class Settings:
         "GOOGLE_REDIRECT_URI", "http://localhost:3000/oauth/callback"
     )
     GOOGLE_REFRESH_TOKEN: str | None = os.getenv("GOOGLE_REFRESH_TOKEN")
-    GOOGLE_APPLICATION_CREDENTIALS: str | None = os.getenv(
-        "GOOGLE_APPLICATION_CREDENTIALS"
-    )
+    GOOGLE_APPLICATION_CREDENTIALS: str | None = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
 
     # GitHub Integration
     GITHUB_TOKEN: str | None = os.getenv("GITHUB_TOKEN")
@@ -110,6 +106,10 @@ class Settings:
     @property
     def DATABASE_URL(self) -> str:
         """Constructs the async database URL from settings."""
+        env_url = os.getenv("DATABASE_URL")
+        if env_url:
+            return env_url
+
         return f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
 
     # Logging
@@ -117,9 +117,7 @@ class Settings:
     LOG_FORMAT: str = os.getenv("LOG_FORMAT", "json")
 
     # Security
-    ALLOWED_HOSTS: list[str] = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(
-        ","
-    )
+    ALLOWED_HOSTS: list[str] = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
     SECRET_KEY: str = os.getenv("SECRET_KEY", "change-me-in-production")
 
     # Rate Limiting
@@ -165,7 +163,7 @@ class Settings:
                 missing.append(f"{key} ({desc})")
 
         if missing:
-            print("⚠️  Warning: Missing critical API keys:")
+            print("[#] Warning: Missing critical API keys:")
             for item in missing:
                 print(f"   - {item}")
             if cls.ENVIRONMENT == "production":
@@ -173,16 +171,16 @@ class Settings:
                     f"Missing required environment variables in production: {', '.join([m.split()[0] for m in missing])}"
                 )
         else:
-            print("✅ All critical API keys validated and loaded")
+            print("[+] All critical API keys validated and loaded")
 
         # Validate database connection string
         try:
             inst = cls()
             db_url = inst.DATABASE_URL
             if not db_url or "supersecretpassword" in db_url:
-                print("⚠️  Warning: Database password is using default value")
+                print("[!] Warning: Database password is using default value")
         except Exception as e:
-            print(f"⚠️  Warning: Database configuration issue: {e}")
+            print(f"[!] Warning: Database configuration issue: {e}")
 
     def to_dict(self) -> dict[str, Any]:
         """Convert settings to dictionary (excluding sensitive values)"""

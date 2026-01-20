@@ -49,3 +49,4 @@ python-dotenv==1.0.0
 
 # Note: For development and testing, install requirements-dev.txt
 # Note: For development, also install: requirements-dev.txt
+google-genai==0.3.0

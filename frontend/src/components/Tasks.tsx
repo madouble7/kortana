@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import {
   CheckCircle2,
   Circle,
@@ -29,7 +29,7 @@ export default function Tasks() {
     try {
       setLoading(true);
       const data = await api.getTasks(filter === 'all' ? undefined : filter);
-      setTasks(Array.isArray(data) ? data : data.tasks || []);
+      setTasks(data);
     } catch (error) {
       console.error('Failed to fetch tasks:', error);
     } finally {
@@ -37,7 +37,7 @@ export default function Tasks() {
     }
   };
 
-  const createTask = async (e: React.FormEvent) => {
+  const createTask = async (e: FormEvent) => {
     e.preventDefault();
     if (!newTask.title.trim()) return;
 
