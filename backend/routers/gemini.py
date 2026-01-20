@@ -59,8 +59,7 @@ async def chat_with_gemini(payload: dict[str, Any]) -> dict[str, Any]:
             print(f"Gemini fallback failed: {e}")
 
     raise HTTPException(
-        status_code=503,
-        detail="No AI services available. Check backend configuration."
+        status_code=503, detail="No AI services available. Check backend configuration."
     )
 
 
