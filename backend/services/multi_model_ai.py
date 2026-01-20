@@ -14,18 +14,18 @@ class MultiModelAIService:
         """Initialize all available AI services"""
         self.providers = {}
         self.primary_provider = None
-        
+
         # Try to initialize each provider
         self._init_gemini()
         self._init_openai()
         self._init_anthropic()
         self._init_groq()
         self._init_openrouter()
-        
+
         # Set primary (first available)
         if self.providers:
             self.primary_provider = list(self.providers.keys())[0]
-            print(f"✅ Multi-Model Service initialized")
+            print("✅ Multi-Model Service initialized")
             print(f"   Available providers: {', '.join(self.providers.keys())}")
             print(f"   Primary: {self.primary_provider}")
         else:
@@ -37,13 +37,14 @@ class MultiModelAIService:
             api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
             if not api_key:
                 return
-            
+
             from google.genai import Client
+
             client = Client(api_key=api_key)
             self.providers["gemini"] = {
                 "client": client,
                 "model": "gemini-2.0-flash-exp",
-                "type": "google"
+                "type": "google",
             }
             print("✅ Gemini provider initialized")
         except Exception as e:
@@ -55,13 +56,14 @@ class MultiModelAIService:
             api_key = os.getenv("OPENAI_API_KEY")
             if not api_key:
                 return
-            
+
             import openai
+
             openai.api_key = api_key
             self.providers["openai"] = {
                 "client": openai,
                 "model": "gpt-3.5-turbo",
-                "type": "openai"
+                "type": "openai",
             }
             print("✅ OpenAI provider initialized")
         except Exception as e:
@@ -73,12 +75,13 @@ class MultiModelAIService:
             api_key = os.getenv("ANTHROPIC_API_KEY")
             if not api_key:
                 return
-            
+
             import anthropic
+
             self.providers["anthropic"] = {
                 "client": anthropic.Anthropic(api_key=api_key),
                 "model": "claude-3-5-sonnet-20241022",
-                "type": "anthropic"
+                "type": "anthropic",
             }
             print("✅ Anthropic Claude provider initialized")
         except Exception as e:
@@ -90,12 +93,13 @@ class MultiModelAIService:
             api_key = os.getenv("GROQ_API_KEY")
             if not api_key:
                 return
-            
+
             import groq
+
             self.providers["groq"] = {
                 "client": groq.Groq(api_key=api_key),
                 "model": "mixtral-8x7b-32768",
-                "type": "groq"
+                "type": "groq",
             }
             print("✅ Groq provider initialized")
         except Exception as e:
@@ -107,15 +111,15 @@ class MultiModelAIService:
             api_key = os.getenv("OPENROUTER_API_KEY")
             if not api_key:
                 return
-            
+
             import openai as openai_module
+
             self.providers["openrouter"] = {
                 "client": openai_module.OpenAI(
-                    api_key=api_key,
-                    base_url="https://openrouter.ai/api/v1"
+                    api_key=api_key, base_url="https://openrouter.ai/api/v1"
                 ),
                 "model": "meta-llama/llama-2-70b-chat",
-                "type": "openrouter"
+                "type": "openrouter",
             }
             print("✅ OpenRouter provider initialized")
         except Exception as e:
@@ -141,18 +145,57 @@ class MultiModelAIService:
     async def _call_provider(self, provider_name: str, text: str) -> Optional[str]:
         """Call a specific provider"""
         provider = self.providers.get(provider_name)
-        if not provider_name == "gemini":
-            raise ValueError(f"Provider {provider_name} not implemented yet")
+        if not provider:
+            return None
 
-        # Gemini
-        if provider_name == "gemini":
-            from google.genai import Client
-            client = provider["client"]
-            response = client.models.generate_content(
-                model=f"models/{provider['model']}",
-                contents=text,
-            )
-            return response.text if response else None
+        try:
+            # Gemini
+            if provider_name == "gemini":
+                response = provider["client"].models.generate_content(
+                    model=f"models/{provider['model']}",
+                    contents=text,
+                )
+                return response.text if response else None
+
+            # OpenAI
+            elif provider_name == "openai":
+                response = provider["client"].chat.completions.create(
+                    model=provider["model"],
+                    messages=[{"role": "user", "content": text}],
+                    max_tokens=500
+                )
+                return response.choices[0].message.content if response.choices else None
+
+            # Anthropic Claude
+            elif provider_name == "anthropic":
+                response = provider["client"].messages.create(
+                    model=provider["model"],
+                    max_tokens=500,
+                    messages=[{"role": "user", "content": text}]
+                )
+                return response.content[0].text if response.content else None
+
+            # Groq
+            elif provider_name == "groq":
+                response = provider["client"].chat.completions.create(
+                    model=provider["model"],
+                    messages=[{"role": "user", "content": text}],
+                    max_tokens=500
+                )
+                return response.choices[0].message.content if response.choices else None
+
+            # OpenRouter
+            elif provider_name == "openrouter":
+                response = provider["client"].chat.completions.create(
+                    model=provider["model"],
+                    messages=[{"role": "user", "content": text}],
+                    max_tokens=500
+                )
+                return response.choices[0].message.content if response.choices else None
+
+        except Exception as e:
+            print(f"Error calling {provider_name}: {e}")
+            return None
 
         return None
 
