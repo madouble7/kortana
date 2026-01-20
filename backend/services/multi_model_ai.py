@@ -162,7 +162,7 @@ class MultiModelAIService:
                 response = provider["client"].chat.completions.create(
                     model=provider["model"],
                     messages=[{"role": "user", "content": text}],
-                    max_tokens=500
+                    max_tokens=500,
                 )
                 return response.choices[0].message.content if response.choices else None
 
@@ -171,7 +171,7 @@ class MultiModelAIService:
                 response = provider["client"].messages.create(
                     model=provider["model"],
                     max_tokens=500,
-                    messages=[{"role": "user", "content": text}]
+                    messages=[{"role": "user", "content": text}],
                 )
                 return response.content[0].text if response.content else None
 
@@ -180,7 +180,7 @@ class MultiModelAIService:
                 response = provider["client"].chat.completions.create(
                     model=provider["model"],
                     messages=[{"role": "user", "content": text}],
-                    max_tokens=500
+                    max_tokens=500,
                 )
                 return response.choices[0].message.content if response.choices else None
 
@@ -189,7 +189,7 @@ class MultiModelAIService:
                 response = provider["client"].chat.completions.create(
                     model=provider["model"],
                     messages=[{"role": "user", "content": text}],
-                    max_tokens=500
+                    max_tokens=500,
                 )
                 return response.choices[0].message.content if response.choices else None
 
