@@ -8,6 +8,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.kortana.api.routers import core_router, goal_router
+from src.kortana.api.routers.conversation_router import router as conversation_router
 from src.kortana.core.scheduler import (
     get_scheduler_status,
     start_scheduler,
@@ -50,6 +51,7 @@ app.add_middleware(
 app.include_router(memory_router)
 app.include_router(core_router.router)
 app.include_router(goal_router.router)
+app.include_router(conversation_router)
 
 
 @app.get("/health")
