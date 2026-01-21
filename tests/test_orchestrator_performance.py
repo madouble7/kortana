@@ -5,6 +5,7 @@ Tests throughput and response times to ensure appropriate thresholds are met.
 
 import asyncio
 import time
+from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -245,8 +246,9 @@ Thresholds:
 
             print(report)
 
-            # Write report to file
-            report_path = "/home/runner/work/kortana/kortana/tests/performance_report.txt"
+            # Write report to file (use relative path for portability)
+            report_dir = Path(__file__).parent
+            report_path = report_dir / "performance_report.txt"
             with open(report_path, "w") as f:
                 f.write(report)
 
