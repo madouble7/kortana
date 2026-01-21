@@ -1,3 +1,8 @@
+import hashlib
+import time
+from functools import lru_cache
+from typing import Any
+
 import numpy as np
 from sqlalchemy.orm import Session, joinedload
 
@@ -18,9 +23,22 @@ def cosine_similarity(v1, v2):
     return np.dot(v1, v2) / (norm_v1 * norm_v2)
 
 
+# Smart cache for frequently accessed queries
+@lru_cache(maxsize=256)
+def _cached_query_hash(query: str) -> str:
+    """Generate a hash for a query to use as cache key."""
+    return hashlib.md5(query.encode()).hexdigest()
+
+
 class MemoryCoreService:
     def __init__(self, db: Session):
         self.db = db
+        # Cache for frequently accessed memories (memory_id -> (memory, timestamp))
+        self._memory_cache: dict[int, tuple[models.CoreMemory, float]] = {}
+        # Cache for search results (query_hash -> (results, timestamp))
+        self._search_cache: dict[str, tuple[list[dict], float]] = {}
+        # Cache expiry in seconds (5 minutes)
+        self._cache_ttl = 300
 
     def create_memory(
         self, memory_create: schemas.CoreMemoryCreate
@@ -55,17 +73,35 @@ class MemoryCoreService:
         self.db.refresh(db_memory)
         return db_memory
 
-    def get_memory_by_id(self, memory_id: int) -> models.CoreMemory | None:
+    def get_memory_by_id(self, memory_id: int, use_cache: bool = True) -> models.CoreMemory | None:
         """
         Retrieves a specific memory by its ID, including its sentiments.
         Updates accessed_at timestamp via SQLAlchemy's onupdate.
+        
+        Args:
+            memory_id: ID of the memory to retrieve
+            use_cache: Whether to use the cache (default: True)
         """
+        # Check cache first if enabled
+        if use_cache and memory_id in self._memory_cache:
+            cached_memory, cache_time = self._memory_cache[memory_id]
+            if time.time() - cache_time < self._cache_ttl:
+                return cached_memory
+            else:
+                # Cache expired, remove it
+                del self._memory_cache[memory_id]
+        
         memory = (
             self.db.query(models.CoreMemory)
             .options(joinedload(models.CoreMemory.sentiments))
             .filter(models.CoreMemory.id == memory_id)
             .first()
         )
+        
+        # Store in cache
+        if memory and use_cache:
+            self._memory_cache[memory_id] = (memory, time.time())
+        
         return memory
 
     def get_all_memories(
@@ -114,15 +150,35 @@ class MemoryCoreService:
         self.db.commit()
         return db_memory
 
-    def search_memories_semantic(self, query: str, top_k: int = 5) -> list[dict]:
+    def search_memories_semantic(
+        self, query: str, top_k: int = 5, use_cache: bool = True
+    ) -> list[dict]:
         """
-        Performs a semantic search for memories based on a text query.
+        Performs a semantic search for memories based on a text query with caching.
 
-        Note: This is a brute-force implementation for demonstration. It's inefficient
-        and will be slow with many memories. A real implementation would use a vector
-        database (e.g., Pinecone, Weaviate) or a DB extension (pgvector).
+        Args:
+            query: Search query text
+            top_k: Number of top results to return
+            use_cache: Whether to use cached results (default: True)
+
+        Returns:
+            List of memory results with scores and relevance metadata
         """
-        print(f"Performing brute-force semantic search for query: '{query}'")
+        # Generate cache key
+        cache_key = f"{_cached_query_hash(query)}_{top_k}"
+        
+        # Check cache first if enabled
+        if use_cache and cache_key in self._search_cache:
+            cached_results, cache_time = self._search_cache[cache_key]
+            if time.time() - cache_time < self._cache_ttl:
+                return cached_results
+            else:
+                # Cache expired, remove it
+                del self._search_cache[cache_key]
+        
+        print(f"Performing semantic search for query: '{query}' (top_k={top_k})")
+        start_time = time.time()
+        
         query_embedding = embedding_service.get_embedding_for_text(query)
         if not query_embedding:
             return []
@@ -148,11 +204,34 @@ class MemoryCoreService:
                 and all(isinstance(x, int | float) for x in mem.embedding)
             ):
                 similarity = cosine_similarity(query_embedding, mem.embedding)
-                scored_memories.append({"memory": mem, "score": similarity})
+                scored_memories.append({
+                    "memory": mem,
+                    "score": similarity,
+                    "relevance_rank": 0,  # Will be set after sorting
+                })
 
         # Sort by similarity score in descending order and take the top_k
         sorted_memories = sorted(
             scored_memories, key=lambda x: x["score"], reverse=True
-        )
-
-        return sorted_memories[:top_k]
+        )[:top_k]
+        
+        # Add relevance ranking
+        for idx, mem_result in enumerate(sorted_memories):
+            mem_result["relevance_rank"] = idx + 1
+        
+        search_time = time.time() - start_time
+        print(f"Search completed in {search_time:.3f}s, found {len(sorted_memories)} results")
+        
+        # Cache results if enabled
+        if use_cache:
+            self._search_cache[cache_key] = (sorted_memories, time.time())
+        
+        return sorted_memories
+    
+    def clear_cache(self) -> dict[str, int]:
+        """Clear all cached data and return counts."""
+        memory_count = len(self._memory_cache)
+        search_count = len(self._search_cache)
+        self._memory_cache.clear()
+        self._search_cache.clear()
+        return {"memories_cleared": memory_count, "searches_cleared": search_count}
