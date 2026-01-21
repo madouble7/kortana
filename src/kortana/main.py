@@ -3,11 +3,15 @@ Kor'tana Main FastAPI Application
 """
 
 from contextlib import asynccontextmanager  # For lifespan events
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 from src.kortana.api.routers import core_router, goal_router
+from src.kortana.api.routers.core_router import openai_adapter_router
 from src.kortana.core.scheduler import (
     get_scheduler_status,
     start_scheduler,
@@ -50,6 +54,21 @@ app.add_middleware(
 app.include_router(memory_router)
 app.include_router(core_router.router)
 app.include_router(goal_router.router)
+app.include_router(openai_adapter_router)
+
+# Mount static files
+static_dir = Path(__file__).parent.parent.parent / "static"
+if static_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
+
+@app.get("/")
+def read_root():
+    """Serve the chat interface."""
+    static_file = static_dir / "chat.html"
+    if static_file.exists():
+        return FileResponse(static_file)
+    return {"message": "Kor'tana API is running. Use /docs for API documentation."}
 
 
 @app.get("/health")
@@ -87,10 +106,37 @@ def test_db():
 
 @app.post("/chat")
 async def chat(message: dict):
+    """Enhanced chat endpoint using full orchestrator capabilities."""
     try:
+        from src.kortana.services.database import get_db_sync
+        from src.kortana.core.orchestrator import KorOrchestrator
+        
         user_message = message.get("message", "")
-        response = f"Kor'tana received: {user_message}"
-        return {"response": response, "status": "success"}
+        if not user_message:
+            raise HTTPException(status_code=400, detail="Message is required")
+        
+        # Use a database session for this request
+        db = next(get_db_sync())
+        try:
+            orchestrator = KorOrchestrator(db=db)
+            result = await orchestrator.process_query(query=user_message)
+            
+            # Extract the final response
+            final_response = result.get("final_kortana_response", 
+                                      result.get("response", 
+                                                "I'm having trouble processing that right now."))
+            
+            return {
+                "response": final_response,
+                "status": "success",
+                "conversation_id": message.get("conversation_id"),
+                "metadata": {
+                    "model": result.get("llm_metadata", {}).get("model"),
+                    "context_used": len(result.get("context_from_memory", [])) > 0
+                }
+            }
+        finally:
+            db.close()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -108,12 +154,53 @@ def system_status():
 
 @app.post("/adapters/lobechat/chat")
 async def lobechat_adapter(request: dict):
+    """LobeChat adapter endpoint using full orchestrator capabilities."""
     try:
+        from src.kortana.services.database import get_db_sync
+        from src.kortana.core.orchestrator import KorOrchestrator
+        
         messages = request.get("messages", [])
-        user_message = messages[-1].get("content", "") if messages else "Hello"
-        response = f"Kor'tana (via LobeChat): {user_message}"
-
-        return {"choices": [{"message": {"role": "assistant", "content": response}}]}
+        if not messages:
+            raise HTTPException(status_code=400, detail="No messages provided")
+        
+        # Extract the last user message
+        user_message = None
+        for msg in reversed(messages):
+            if msg.get("role") == "user":
+                user_message = msg.get("content", "")
+                break
+        
+        if not user_message:
+            raise HTTPException(status_code=400, detail="No user message found")
+        
+        # Use a database session for this request
+        db = next(get_db_sync())
+        try:
+            orchestrator = KorOrchestrator(db=db)
+            result = await orchestrator.process_query(query=user_message)
+            
+            # Extract the final response
+            final_response = result.get("final_kortana_response", 
+                                      result.get("response", 
+                                                "I'm having trouble processing that right now."))
+            
+            # Return in OpenAI-compatible format
+            return {
+                "choices": [{
+                    "message": {
+                        "role": "assistant",
+                        "content": final_response
+                    },
+                    "finish_reason": "stop",
+                    "index": 0
+                }],
+                "model": result.get("llm_metadata", {}).get("model", "kortana-custom"),
+                "usage": result.get("llm_metadata", {}).get("usage", {})
+            }
+        finally:
+            db.close()
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
