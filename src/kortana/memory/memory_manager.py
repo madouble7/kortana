@@ -332,8 +332,10 @@ class MemoryManager:
             logger.warning("Pinecone is not enabled or index is not initialized.")
             return []
 
-        # Create a cache key from the query vector (using first few dimensions)
-        cache_key = f"search_{hash(tuple(query_vector[:10]))}_{top_k}"
+        # Create a deterministic cache key from the query vector
+        # Use a string representation to ensure consistency across sessions
+        vector_str = ",".join(f"{v:.6f}" for v in query_vector[:10])
+        cache_key = f"search_{vector_str}_{top_k}"
         
         # Check cache first
         cached_result = self.memory_cache.get(cache_key)

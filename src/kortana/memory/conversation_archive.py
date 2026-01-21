@@ -16,6 +16,23 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
+def _parse_timestamp(timestamp: Any) -> datetime:
+    """Parse a timestamp from string or datetime object.
+    
+    Args:
+        timestamp: Either a datetime object or an ISO format string
+        
+    Returns:
+        datetime object
+    """
+    if isinstance(timestamp, str):
+        return datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+    elif isinstance(timestamp, datetime):
+        return timestamp
+    else:
+        raise ValueError(f"Invalid timestamp type: {type(timestamp)}")
+
+
 class ConversationArchive:
     """Manager for archiving conversation history."""
     
@@ -77,9 +94,9 @@ class ConversationArchive:
         """
         try:
             # Create a subdirectory for the year-month
-            timestamp = conversation_data.get("timestamp", datetime.now())
-            if isinstance(timestamp, str):
-                timestamp = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+            timestamp = _parse_timestamp(
+                conversation_data.get("timestamp", datetime.now())
+            )
             
             year_month = timestamp.strftime("%Y-%m")
             archive_subdir = self.archive_dir / year_month
@@ -177,11 +194,16 @@ class ConversationArchive:
             remaining_conversations = []
             
             for conv in active_conversations:
-                timestamp = conv.get("timestamp")
-                if isinstance(timestamp, str):
-                    timestamp = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
-                elif not isinstance(timestamp, datetime):
+                timestamp_value = conv.get("timestamp")
+                if timestamp_value is None:
                     # If no valid timestamp, keep it active
+                    remaining_conversations.append(conv)
+                    continue
+                
+                try:
+                    timestamp = _parse_timestamp(timestamp_value)
+                except (ValueError, TypeError):
+                    # If parsing fails, keep it active
                     remaining_conversations.append(conv)
                     continue
                 
@@ -228,12 +250,13 @@ class ConversationArchive:
                 
                 month_count = 0
                 for file_path in subdir.iterdir():
-                    if file_path.is_file() and (
-                        file_path.suffix == ".json" or str(file_path).endswith(".json.gz")
-                    ):
-                        total_archives += 1
-                        month_count += 1
-                        total_size_bytes += file_path.stat().st_size
+                    if file_path.is_file():
+                        # Check if file ends with .json or .json.gz
+                        file_name = str(file_path)
+                        if file_name.endswith(".json") or file_name.endswith(".json.gz"):
+                            total_archives += 1
+                            month_count += 1
+                            total_size_bytes += file_path.stat().st_size
                 
                 if month_count > 0:
                     archives_by_month[subdir.name] = month_count
