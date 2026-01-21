@@ -333,8 +333,8 @@ class MemoryManager:
             return []
 
         # Create a deterministic cache key from the query vector
-        # Use a string representation to ensure consistency across sessions
-        vector_str = ",".join(f"{v:.6f}" for v in query_vector[:10])
+        # Use string representation of the entire vector to avoid collisions
+        vector_str = ",".join(f"{v:.6f}" for v in query_vector)
         cache_key = f"search_{vector_str}_{top_k}"
         
         # Check cache first

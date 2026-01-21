@@ -24,9 +24,23 @@ def _parse_timestamp(timestamp: Any) -> datetime:
         
     Returns:
         datetime object
+        
+    Raises:
+        ValueError: If timestamp cannot be parsed
     """
     if isinstance(timestamp, str):
-        return datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+        # Handle various timestamp formats
+        # First try with 'Z' suffix (common UTC format)
+        timestamp_str = timestamp.replace("Z", "+00:00")
+        try:
+            return datetime.fromisoformat(timestamp_str)
+        except ValueError:
+            # If that fails, try other common formats
+            # This is a simple fallback - for production, consider using dateutil.parser
+            try:
+                return datetime.fromisoformat(timestamp)
+            except ValueError:
+                raise ValueError(f"Unable to parse timestamp: {timestamp}")
     elif isinstance(timestamp, datetime):
         return timestamp
     else:
@@ -251,9 +265,10 @@ class ConversationArchive:
                 month_count = 0
                 for file_path in subdir.iterdir():
                     if file_path.is_file():
-                        # Check if file ends with .json or .json.gz
-                        file_name = str(file_path)
-                        if file_name.endswith(".json") or file_name.endswith(".json.gz"):
+                        # Use suffixes for more reliable extension checking
+                        # .suffixes returns ['.json'] for 'file.json' and ['.json', '.gz'] for 'file.json.gz'
+                        suffixes = file_path.suffixes
+                        if ".json" in suffixes or (len(suffixes) >= 2 and suffixes[-2:] == [".json", ".gz"]):
                             total_archives += 1
                             month_count += 1
                             total_size_bytes += file_path.stat().st_size
