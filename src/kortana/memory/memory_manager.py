@@ -2,11 +2,14 @@
 Memory Manager (Pinecone)
 
 This module provides a memory system for Kor'tana using Pinecone as the vector database.
+Enhanced with caching layer for performance optimization.
 """
 
 import json
 import logging
 import os
+from collections import OrderedDict
+from datetime import datetime
 from functools import lru_cache
 from typing import Any
 
@@ -44,8 +47,89 @@ def _cached_embedding_lookup(text_hash: int) -> list[float] | None:
     return None
 
 
+class MemoryCache:
+    """LRU cache for frequently accessed memories."""
+    
+    def __init__(self, max_size: int = 100):
+        """Initialize the memory cache.
+        
+        Args:
+            max_size: Maximum number of items to cache
+        """
+        self.max_size = max_size
+        self.cache: OrderedDict[str, dict[str, Any]] = OrderedDict()
+        self.access_counts: dict[str, int] = {}
+        self.last_accessed: dict[str, datetime] = {}
+        
+    def get(self, key: str) -> dict[str, Any] | None:
+        """Get an item from the cache.
+        
+        Args:
+            key: The cache key
+            
+        Returns:
+            The cached item or None if not found
+        """
+        if key in self.cache:
+            # Move to end (most recently used)
+            self.cache.move_to_end(key)
+            self.access_counts[key] = self.access_counts.get(key, 0) + 1
+            self.last_accessed[key] = datetime.now()
+            logger.debug(f"Cache hit for key: {key}")
+            return self.cache[key]
+        logger.debug(f"Cache miss for key: {key}")
+        return None
+    
+    def put(self, key: str, value: dict[str, Any]) -> None:
+        """Add an item to the cache.
+        
+        Args:
+            key: The cache key
+            value: The value to cache
+        """
+        if key in self.cache:
+            # Update existing item and move to end
+            self.cache.move_to_end(key)
+        else:
+            # Add new item
+            if len(self.cache) >= self.max_size:
+                # Remove least recently used item
+                removed_key, _ = self.cache.popitem(last=False)
+                self.access_counts.pop(removed_key, None)
+                self.last_accessed.pop(removed_key, None)
+                logger.debug(f"Evicted from cache: {removed_key}")
+        
+        self.cache[key] = value
+        self.access_counts[key] = self.access_counts.get(key, 0) + 1
+        self.last_accessed[key] = datetime.now()
+        logger.debug(f"Cached item with key: {key}")
+    
+    def clear(self) -> None:
+        """Clear the entire cache."""
+        self.cache.clear()
+        self.access_counts.clear()
+        self.last_accessed.clear()
+        logger.info("Cache cleared")
+    
+    def get_stats(self) -> dict[str, Any]:
+        """Get cache statistics.
+        
+        Returns:
+            Dictionary with cache statistics
+        """
+        return {
+            "size": len(self.cache),
+            "max_size": self.max_size,
+            "total_accesses": sum(self.access_counts.values()),
+            "most_accessed": max(self.access_counts.items(), key=lambda x: x[1]) if self.access_counts else None,
+        }
+
+
 class MemoryManager:
-    """Memory manager for Kor'tana using Pinecone as the vector database."""
+    """Memory manager for Kor'tana using Pinecone as the vector database.
+    
+    Enhanced with caching layer for improved performance on frequently accessed memories.
+    """
 
     pinecone_enabled: bool = False
     pinecone_namespace: str | None = None
@@ -54,8 +138,12 @@ class MemoryManager:
         None  # Pinecone client instance, type Any to avoid linter issues with conditional import
     )
 
-    def __init__(self, settings: KortanaConfig):
+    def __init__(self, settings: KortanaConfig, cache_size: int = 100):
         self.settings = settings
+        
+        # Initialize memory cache
+        self.memory_cache = MemoryCache(max_size=cache_size)
+        
         logger.info(f"MemoryManager received settings of type: {type(settings)}")
         try:
             settings_json = settings.model_dump_json(indent=2)
@@ -231,10 +319,27 @@ class MemoryManager:
     def search_memory(
         self, query_vector: list[float], top_k: int = 5
     ) -> list[dict[str, Any]]:
-        """Search for similar memories using Pinecone."""
+        """Search for similar memories using Pinecone with caching support.
+        
+        Args:
+            query_vector: The query embedding vector
+            top_k: Number of top results to return
+            
+        Returns:
+            List of similar memory entries
+        """
         if not self.pinecone_enabled or not self.index:
             logger.warning("Pinecone is not enabled or index is not initialized.")
             return []
+
+        # Create a cache key from the query vector (using first few dimensions)
+        cache_key = f"search_{hash(tuple(query_vector[:10]))}_{top_k}"
+        
+        # Check cache first
+        cached_result = self.memory_cache.get(cache_key)
+        if cached_result is not None:
+            logger.info(f"Returning cached search results for query")
+            return cached_result
 
         try:
             results = self.index.query(
@@ -244,7 +349,7 @@ class MemoryManager:
                 namespace=self.pinecone_namespace,
             )
 
-            return [
+            formatted_results = [
                 {
                     "id": match["id"],
                     "score": match["score"],
@@ -255,6 +360,11 @@ class MemoryManager:
                 }
                 for match in results.matches
             ]
+            
+            # Cache the results
+            self.memory_cache.put(cache_key, formatted_results)
+            
+            return formatted_results
         except Exception as e:
             logger.error(f"Failed to search Pinecone: {e}")
             return []
@@ -279,3 +389,16 @@ class MemoryManager:
         except Exception as e:
             logger.error(f"Failed to add memory to journal: {e}")
             return False
+    
+    def get_cache_stats(self) -> dict[str, Any]:
+        """Get statistics about the memory cache.
+        
+        Returns:
+            Dictionary containing cache statistics
+        """
+        return self.memory_cache.get_stats()
+    
+    def clear_cache(self) -> None:
+        """Clear the memory cache."""
+        self.memory_cache.clear()
+        logger.info("Memory cache cleared")
