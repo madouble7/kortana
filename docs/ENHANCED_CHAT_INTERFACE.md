@@ -2,20 +2,21 @@
 
 ## Overview
 
-The Kor'tana chat interface has been significantly enhanced to provide a rich, modern user experience with full integration of the orchestrator's capabilities including memory search, ethical evaluation, and LLM-powered responses.
+The Kor'tana chat interface has been significantly enhanced to provide a rich, modern user experience with full integration of the orchestrator's capabilities including memory search, ethical evaluation, LLM-powered responses, conversation history, and streaming support.
 
 ## What's New
 
 ### 1. Enhanced Chat API (`/chat`)
 
-The `/chat` endpoint now uses the full `KorOrchestrator` capabilities instead of just echoing messages.
+The `/chat` endpoint now uses the full `KorOrchestrator` capabilities with conversation history tracking.
 
 **Features:**
 - Full memory search integration
 - Ethical evaluation of responses
 - LLM-powered responses with context awareness
-- Conversation tracking via `conversation_id`
-- Metadata about model usage and context
+- Automatic conversation tracking and persistence
+- Metadata about model usage, context, and memories accessed
+- Memory visualization showing which memories were used
 
 **Request:**
 ```json
@@ -30,11 +31,111 @@ The `/chat` endpoint now uses the full `KorOrchestrator` capabilities instead of
 {
   "response": "Based on our conversations, I remember that...",
   "status": "success",
-  "conversation_id": "conv_12345",
+  "conversation_id": "uuid-generated-if-not-provided",
   "metadata": {
     "model": "gpt-4.1-nano",
-    "context_used": true
+    "context_used": true,
+    "memories_accessed": [
+      {
+        "content": "Project goals discussion from June...",
+        "relevance": "high"
+      }
+    ]
   }
+}
+```
+
+### 2. Streaming Chat API (`/chat/stream`)
+
+For real-time, progressive response display using Server-Sent Events.
+
+**Features:**
+- Server-Sent Events (SSE) streaming
+- Progressive token-by-token display
+- Real-time status updates
+- Smooth user experience
+
+**Request:**
+```json
+{
+  "message": "Tell me about artificial intelligence",
+  "conversation_id": "optional-conversation-id"
+}
+```
+
+**Response Stream:**
+```javascript
+// Event 1 - Start
+data: {"type": "start", "status": "processing"}
+
+// Event 2-N - Content chunks
+data: {"type": "chunk", "content": "Artificial intelligence "}
+data: {"type": "chunk", "content": "is a field of "}
+data: {"type": "chunk", "content": "computer science..."}
+
+// Final event - Completion with metadata
+data: {"type": "done", "metadata": {"model": "gpt-4.1-nano", "context_used": true}}
+```
+
+### 3. Conversation Management APIs
+
+#### List Conversations (`GET /conversations`)
+
+**Query Parameters:**
+- `user_id` (optional): Filter by user
+
+**Response:**
+```json
+{
+  "conversations": [
+    {
+      "id": "conv-uuid",
+      "user_id": "default",
+      "message_count": 15,
+      "created_at": "2025-01-21T10:00:00",
+      "updated_at": "2025-01-21T15:30:00",
+      "preview": "What do you remember about..."
+    }
+  ]
+}
+```
+
+#### Get Conversation (`GET /conversations/{conversation_id}`)
+
+**Response:**
+```json
+{
+  "id": "conv-uuid",
+  "user_id": "default",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Hello",
+      "timestamp": "2025-01-21T10:00:00",
+      "metadata": {}
+    },
+    {
+      "role": "assistant",
+      "content": "Hello! How can I help?",
+      "timestamp": "2025-01-21T10:00:01",
+      "metadata": {
+        "model": "gpt-4.1-nano",
+        "context_used": false
+      }
+    }
+  ],
+  "created_at": "2025-01-21T10:00:00",
+  "updated_at": "2025-01-21T10:00:01"
+}
+```
+
+#### Delete Conversation (`DELETE /conversations/{conversation_id}`)
+
+**Response:**
+```json
+{
+  "status": "deleted",
+  "conversation_id": "conv-uuid"
 }
 ```
 
@@ -85,18 +186,27 @@ For compatibility with tools like LobeChat and other OpenAI-compatible clients.
 A beautiful, responsive web interface available at the root URL (`/`).
 
 **Features:**
-- Modern gradient design with smooth animations
-- Real-time typing indicators
-- Health status monitoring
-- Error handling with user-friendly messages
-- Auto-scrolling message history
-- Keyboard shortcuts (Enter to send)
-- Mobile-responsive design
+- **Conversation Sidebar**: Browse and switch between past conversations
+- **New Chat Button**: Start fresh conversations anytime
+- **Modern Design**: Gradient theme with smooth animations
+- **Real-time Typing Indicators**: Shows when AI is thinking
+- **Health Status Monitoring**: Connection health indicator
+- **Error Handling**: User-friendly error messages
+- **Auto-scrolling**: Message history auto-scrolls
+- **Keyboard Shortcuts**: Enter to send messages
+- **Mobile-responsive**: Works on all device sizes
+- **Streaming Toggle**: Switch between normal and streaming modes
+- **Memory Visualization**: See which memories were used in responses
+- **Memory Popup**: Click memory badge to see details
+- **Auto-save**: All messages automatically saved with metadata
 
 **UI Elements:**
-- **Status Indicator**: Shows connection health (green = healthy, yellow = degraded, red = offline)
-- **Message Bubbles**: User messages in purple gradient, AI responses in white
-- **Typing Indicator**: Animated dots while waiting for response
+- **Status Indicator**: Connection health (green/yellow/red)
+- **Conversation List**: All past conversations with previews
+- **Message Bubbles**: User (purple) and AI (white) messages
+- **Typing Indicator**: Animated dots while waiting
+- **Memory Badge**: Shows count of memories accessed
+- **Stream Toggle**: Enable/disable progressive responses
 - **Input Field**: Clean, rounded input with send button
 
 ### 4. LobeChat Adapter Enhancement
