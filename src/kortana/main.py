@@ -112,10 +112,19 @@ async def chat(message: dict):
     try:
         from src.kortana.services.database import get_db_sync
         from src.kortana.core.orchestrator import KorOrchestrator
+        from src.kortana.services.conversation_history import conversation_history
         
         user_message = message.get("message", "")
         if not user_message:
             raise HTTPException(status_code=400, detail="Message is required")
+        
+        # Get or create conversation
+        conv_id = message.get("conversation_id")
+        if not conv_id:
+            conv_id = conversation_history.create_conversation()
+        
+        # Save user message to history
+        conversation_history.add_message(conv_id, "user", user_message)
         
         # Use a database session for this request
         db = next(get_db_sync())
@@ -128,14 +137,27 @@ async def chat(message: dict):
                                       result.get("response", 
                                                 "I'm having trouble processing that right now."))
             
+            # Prepare metadata
+            metadata = {
+                "model": result.get("llm_metadata", {}).get("model"),
+                "context_used": len(result.get("context_from_memory", [])) > 0,
+                "memories_accessed": [
+                    {
+                        "content": mem,
+                        "relevance": "high"
+                    }
+                    for mem in result.get("context_from_memory", [])[:3]
+                ]
+            }
+            
+            # Save assistant response to history
+            conversation_history.add_message(conv_id, "assistant", final_response, metadata)
+            
             return {
                 "response": final_response,
                 "status": "success",
-                "conversation_id": message.get("conversation_id"),
-                "metadata": {
-                    "model": result.get("llm_metadata", {}).get("model"),
-                    "context_used": len(result.get("context_from_memory", [])) > 0
-                }
+                "conversation_id": conv_id,
+                "metadata": metadata
             }
         finally:
             db.close()
@@ -279,6 +301,32 @@ async def lobechat_adapter(request: dict):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/conversations")
+def list_conversations(user_id: str | None = None):
+    """List all conversations, optionally filtered by user."""
+    from src.kortana.services.conversation_history import conversation_history
+    return {"conversations": conversation_history.list_conversations(user_id=user_id)}
+
+
+@app.get("/conversations/{conversation_id}")
+def get_conversation(conversation_id: str):
+    """Get a specific conversation by ID."""
+    from src.kortana.services.conversation_history import conversation_history
+    conversation = conversation_history.get_conversation(conversation_id)
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return conversation
+
+
+@app.delete("/conversations/{conversation_id}")
+def delete_conversation(conversation_id: str):
+    """Delete a conversation."""
+    from src.kortana.services.conversation_history import conversation_history
+    if conversation_history.delete_conversation(conversation_id):
+        return {"status": "deleted", "conversation_id": conversation_id}
+    raise HTTPException(status_code=404, detail="Conversation not found")
 
 
 if __name__ == "__main__":
