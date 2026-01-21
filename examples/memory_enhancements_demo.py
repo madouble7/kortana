@@ -146,9 +146,12 @@ def example_conversation_archiving():
     # Show archive structure
     print(f"\n4. Archive structure (year-month organization):")
     for conv in to_archive:
-        timestamp = datetime.fromisoformat(conv["timestamp"])
-        year_month = timestamp.strftime("%Y-%m")
-        print(f"   data/archives/{year_month}/{conv['id']}.json.gz")
+        try:
+            timestamp = datetime.fromisoformat(conv["timestamp"].replace("Z", "+00:00"))
+            year_month = timestamp.strftime("%Y-%m")
+            print(f"   data/archives/{year_month}/{conv['id']}.json.gz")
+        except (ValueError, KeyError) as e:
+            print(f"   Error processing {conv['id']}: {e}")
 
 
 def example_metadata_tracking():
