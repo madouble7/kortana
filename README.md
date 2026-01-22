@@ -131,6 +131,13 @@ PowerShell:
 - **Context-Aware Responses**: Integrates memory and ethical considerations in responses
 - **LLM Integration**: Uses OpenAI's GPT models for natural language processing
 - **LobeChat Frontend Support**: Seamlessly integrates with LobeChat for a user-friendly interface
+- **Multimodal AI Capabilities**: Support for text, voice, images, video, and simulation-based queries
+  - Text processing with context awareness
+  - Voice/audio transcription and analysis
+  - Image understanding with GPT-4 Vision
+  - Video content processing
+  - Simulation-based scenario analysis
+  - Mixed multimodal prompts
 
 ## LobeChat Integration
 
@@ -151,6 +158,10 @@ For troubleshooting, see `docs/LOBECHAT_TROUBLESHOOTING.md`.
 - Memory Core details: `docs/MEMORY_CORE.md`
 - LobeChat integration: `docs/LOBECHAT_CONNECTION.md`
 - LobeChat troubleshooting: `docs/LOBECHAT_TROUBLESHOOTING.md`
+- **Multimodal Capabilities**: `docs/MULTIMODAL_CAPABILITIES.md`
+- **Multimodal Usage Examples**: `docs/MULTIMODAL_USAGE_EXAMPLES.md`
+- **Multimodal API Reference**: `docs/MULTIMODAL_API_REFERENCE.md`
+- **Multimodal Integration Guide**: `docs/MULTIMODAL_INTEGRATION_GUIDE.md`
 
 ## Development
 

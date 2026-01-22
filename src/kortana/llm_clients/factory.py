@@ -13,6 +13,7 @@ from .genai_client import GoogleGenAIClient
 from .google_client import (
     GoogleGeminiClient,  # Changed to use the more robust GoogleGeminiClient
 )
+from .multimodal_openai_client import MultimodalOpenAIClient
 from .openai_client import OpenAIClient
 from .openrouter_client import OpenRouterClient
 from .xai_client import XAIClient
@@ -268,6 +269,46 @@ class LLMClientFactory:
                 f"Failed to create ADE client for {task_type} (model {model_id}): {e}"
             )
             return LLMClientFactory.get_default_client(models_config)
+
+    @staticmethod
+    def get_multimodal_client(
+        models_config: dict[str, Any], 
+        model_id: str | None = None,
+        api_key_env: str = "OPENAI_API_KEY"
+    ) -> BaseLLMClient | None:
+        """
+        Get a multimodal-capable LLM client.
+
+        Args:
+            models_config: Models configuration dictionary
+            model_id: Model identifier (if None, uses GPT-4 Vision)
+            api_key_env: Environment variable name for API key
+
+        Returns:
+            Multimodal client instance or None
+        """
+        # If model_id provided, try to get from config
+        if model_id:
+            model_conf = models_config.get("models", {}).get(model_id)
+            if model_conf:
+                api_key_env = model_conf.get("api_key_env", api_key_env)
+                model_name = model_conf.get("model_name", model_id)
+        else:
+            # Use default vision model
+            model_name = "gpt-4-vision-preview"
+            
+        api_key = os.getenv(api_key_env)
+        if not api_key:
+            logger.error(f"{api_key_env} not found for multimodal client")
+            return None
+
+        try:
+            client = MultimodalOpenAIClient(api_key=api_key, model_name=model_name)
+            logger.info(f"Multimodal client created: {model_name}")
+            return client
+        except Exception as e:
+            logger.error(f"Failed to create multimodal client: {e}")
+            return None
 
     @staticmethod
     def validate_configuration(settings: KortanaConfig) -> bool:
