@@ -5,6 +5,8 @@ This test suite validates the integration between frontend and backend,
 ensuring stability, responsiveness, and proper communication.
 """
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -15,6 +17,14 @@ from src.kortana.services.database import Base, get_db_sync
 
 # Test database setup
 SQLALCHEMY_DATABASE_URL_TEST = "sqlite:///./test_kortana_comprehensive.db"
+
+# OpenAI adapter orchestrator mock path
+ORCHESTRATOR_PROCESS_QUERY_PATH = "src.kortana.core.orchestrator.KorOrchestrator.process_query"
+
+# =============================================================================
+# Test Fixtures
+# =============================================================================
+
 engine_test = create_engine(
     SQLALCHEMY_DATABASE_URL_TEST, connect_args={"check_same_thread": False}
 )
@@ -218,15 +228,13 @@ def test_list_goals_with_pagination(client: TestClient):
 
 def test_openai_adapter_basic_chat(client: TestClient):
     """Test OpenAI-compatible chat completions endpoint."""
-    from unittest.mock import AsyncMock, patch
-    
     # Mock the orchestrator to avoid network calls
     mock_response = {
         "response": "Hello! I'm doing great, thank you for asking!",
         "content": "Hello! I'm doing great, thank you for asking!"
     }
     
-    with patch("src.kortana.core.orchestrator.KorOrchestrator.process_query", new_callable=AsyncMock, return_value=mock_response):
+    with patch(ORCHESTRATOR_PROCESS_QUERY_PATH, new_callable=AsyncMock, return_value=mock_response):
         request_data = {
             "model": "kortana-custom",
             "messages": [
