@@ -131,18 +131,41 @@ PowerShell:
 - **Context-Aware Responses**: Integrates memory and ethical considerations in responses
 - **LLM Integration**: Uses OpenAI's GPT models for natural language processing
 - **LobeChat Frontend Support**: Seamlessly integrates with LobeChat for a user-friendly interface
+- **Dify Platform Integration**: Connect with Dify for no-code prompt engineering and workflow automation
 
-## LobeChat Integration
+## Frontend Integrations
+
+Kor'tana supports multiple frontend options for flexible deployment:
+
+### LobeChat Integration
 
 Kor'tana integrates with [LobeChat](https://github.com/lobehub/lobe-chat) to provide an intuitive chat interface.
 
-### Setting Up LobeChat Connection
+#### Setting Up LobeChat Connection
 
 1. Follow the guide in `docs/LOBECHAT_CONNECTION.md` to configure LobeChat.
 2. Set your API key in the `.env` file.
 3. Run the Kor'tana API server.
 
 For troubleshooting, see `docs/LOBECHAT_TROUBLESHOOTING.md`.
+
+### Dify Platform Integration
+
+Kor'tana integrates with [Dify](https://dify.ai) for advanced no-code LLM application development.
+
+#### Key Dify Features
+
+- **No-code prompt engineering** - Design and test prompts visually
+- **Workflow automation** - Build complex AI workflows
+- **Multi-model support** - Switch between LLM providers easily
+- **Agent orchestration** - Create autonomous AI agents
+
+#### Quick Start with Dify
+
+1. Add Dify configuration to your `.env` file (see `.env.example`)
+2. Start Kor'tana server: `python -m uvicorn src.kortana.main:app --reload`
+3. Configure Dify to use Kor'tana as a custom model provider
+4. For detailed setup: `docs/DIFY_INTEGRATION.md`
 
 ## Documentation
 
@@ -151,6 +174,7 @@ For troubleshooting, see `docs/LOBECHAT_TROUBLESHOOTING.md`.
 - Memory Core details: `docs/MEMORY_CORE.md`
 - LobeChat integration: `docs/LOBECHAT_CONNECTION.md`
 - LobeChat troubleshooting: `docs/LOBECHAT_TROUBLESHOOTING.md`
+- Dify platform integration: `docs/DIFY_INTEGRATION.md`
 
 ## Development
 
