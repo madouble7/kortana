@@ -99,3 +99,28 @@ dist/
 .DS_Store
 
 archive/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary and test files in root (should be in scripts/)
+/test_*.py
+/check_*.py
+/launch_*.py
+/monitor_*.py
+/run_*.py
+/start_*.py
+/validate_*.py
+/verify_*.py
+/*_test.py
+/*_check.py
+/*_validation.py
+/*_verification.py
+
+# Status and report files (should be in archive/reports/)
+/*_REPORT*.md
+/*_STATUS*.md
+/*_COMPLETION*.md
+/*_SUCCESS*.md
