@@ -5,9 +5,35 @@ Pydantic schemas for request/response validation.
 """
 
 from datetime import datetime
+from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
+
+
+class EnvironmentType(str, Enum):
+    """Valid environment types"""
+
+    IMMERSIVE_SIMULATION = "immersive_simulation"
+    REAL_WORLD_OVERLAY = "real_world_overlay"
+    MIXED_REALITY = "mixed_reality"
+
+
+class SessionType(str, Enum):
+    """Valid session types"""
+
+    AR = "ar"
+    VR = "vr"
+    MIXED = "mixed"
+
+
+class ObjectType(str, Enum):
+    """Valid spatial object types"""
+
+    MODEL_3D = "3d_model"
+    HOLOGRAM = "hologram"
+    POINT_CLOUD = "point_cloud"
+    ANNOTATION = "annotation"
 
 
 # Environment Schemas
@@ -16,9 +42,8 @@ class ARVREnvironmentBase(BaseModel):
 
     name: str = Field(..., description="Name of the environment")
     description: Optional[str] = Field(None, description="Description of the environment")
-    environment_type: str = Field(
-        ...,
-        description="Type: 'immersive_simulation', 'real_world_overlay', 'mixed_reality'",
+    environment_type: EnvironmentType = Field(
+        ..., description="Type of environment"
     )
     scene_data: Optional[Dict[str, Any]] = Field(None, description="Scene graph data")
     spatial_anchors: Optional[Dict[str, Any]] = Field(
@@ -58,7 +83,7 @@ class ARVRSessionBase(BaseModel):
 
     environment_id: int = Field(..., description="ID of the environment")
     user_id: Optional[str] = Field(None, description="User identifier")
-    session_type: str = Field(..., description="Session type: 'ar', 'vr', 'mixed'")
+    session_type: SessionType = Field(..., description="Session type")
     device_type: Optional[str] = Field(None, description="Device type information")
 
 
@@ -102,10 +127,7 @@ class SpatialObjectBase(BaseModel):
 
     environment_id: int = Field(..., description="ID of the environment")
     object_name: str = Field(..., description="Name of the object")
-    object_type: str = Field(
-        ...,
-        description="Type: '3d_model', 'hologram', 'point_cloud', 'annotation'",
-    )
+    object_type: ObjectType = Field(..., description="Type of object")
     position_x: float = Field(..., description="X position")
     position_y: float = Field(..., description="Y position")
     position_z: float = Field(..., description="Z position")

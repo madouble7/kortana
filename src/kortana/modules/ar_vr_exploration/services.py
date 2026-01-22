@@ -82,6 +82,11 @@ class ARVRExplorationService:
         self, session: schemas.ARVRSessionCreate
     ) -> models.ARVRSession:
         """Create a new AR/VR session"""
+        # Validate that environment exists
+        environment = self.get_environment(session.environment_id)
+        if not environment:
+            raise ValueError(f"Environment with id {session.environment_id} not found")
+
         db_session = models.ARVRSession(
             environment_id=session.environment_id,
             user_id=session.user_id,
@@ -133,6 +138,13 @@ class ARVRExplorationService:
         self, spatial_object: schemas.SpatialObjectCreate
     ) -> models.SpatialObject:
         """Create a new spatial object in an environment"""
+        # Validate that environment exists
+        environment = self.get_environment(spatial_object.environment_id)
+        if not environment:
+            raise ValueError(
+                f"Environment with id {spatial_object.environment_id} not found"
+            )
+
         db_object = models.SpatialObject(
             environment_id=spatial_object.environment_id,
             object_name=spatial_object.object_name,
@@ -281,6 +293,12 @@ class ARVRExplorationService:
         """
         Query spatial objects within a radius of a position
         Useful for proximity-based interactions
+
+        Note: Current implementation uses Python-side filtering for simplicity.
+        For production with large object counts, consider implementing:
+        1. Database-level spatial indexes (PostGIS for PostgreSQL)
+        2. Bounding box pre-filtering in SQL
+        3. R-tree or quad-tree spatial indexing
         """
         objects = self.list_spatial_objects(environment_id)
 

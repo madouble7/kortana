@@ -7,7 +7,7 @@ Database models for storing spatial data, environments, and AR/VR sessions.
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import JSON, Column, DateTime, Float, Integer, String, Text
+from sqlalchemy import JSON, Column, DateTime, Float, ForeignKey, Integer, String, Text
 
 from src.kortana.services.database import Base
 
@@ -35,7 +35,9 @@ class ARVRSession(Base):
     __tablename__ = "ar_vr_sessions"
 
     id = Column(Integer, primary_key=True, index=True)
-    environment_id = Column(Integer, nullable=False)  # Reference to environment
+    environment_id = Column(
+        Integer, ForeignKey("ar_vr_environments.id", ondelete="CASCADE"), nullable=False
+    )
     user_id = Column(String, nullable=True)  # User identifier
     session_type = Column(String, nullable=False)  # 'ar', 'vr', 'mixed'
     device_type = Column(String, nullable=True)  # Device information
@@ -54,7 +56,9 @@ class SpatialObject(Base):
     __tablename__ = "spatial_objects"
 
     id = Column(Integer, primary_key=True, index=True)
-    environment_id = Column(Integer, nullable=False)
+    environment_id = Column(
+        Integer, ForeignKey("ar_vr_environments.id", ondelete="CASCADE"), nullable=False
+    )
     object_name = Column(String, nullable=False)
     object_type = Column(
         String, nullable=False

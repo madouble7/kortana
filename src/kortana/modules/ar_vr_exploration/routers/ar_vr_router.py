@@ -77,7 +77,10 @@ def create_session(
 ):
     """Create a new AR/VR session"""
     service = services.ARVRExplorationService(db=db)
-    return service.create_session(session)
+    try:
+        return service.create_session(session)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.get("/sessions/{session_id}", response_model=schemas.ARVRSessionDisplay)
@@ -121,7 +124,10 @@ def create_spatial_object(
 ):
     """Create a new spatial object in an environment"""
     service = services.ARVRExplorationService(db=db)
-    return service.create_spatial_object(spatial_object)
+    try:
+        return service.create_spatial_object(spatial_object)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.get("/objects/{object_id}", response_model=schemas.SpatialObjectDisplay)
