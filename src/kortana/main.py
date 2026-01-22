@@ -17,6 +17,8 @@ from src.kortana.core.scheduler import (
 from src.kortana.modules.memory_core.routers.memory_router import (
     router as memory_router,
 )
+from src.kortana.adapters.lobechat_openai_adapter import router as lobechat_router
+from src.kortana.adapters.lobe_chat_adapter import router as lobe_legacy_router
 
 
 # Lifespan context manager
@@ -42,7 +44,12 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:3210",  # Default LobeChat port
+        "http://localhost:8080",
+        "*"  # Allow all origins in development
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -53,6 +60,10 @@ app.include_router(conversation_router)  # Add conversation history router
 app.include_router(core_router.router)
 app.include_router(core_router.openai_adapter_router)
 app.include_router(goal_router.router)
+# OpenAI-compatible API for LobeChat integration (primary)
+app.include_router(lobechat_router)
+# Legacy LobeChat adapter (for backward compatibility)
+app.include_router(lobe_legacy_router)
 
 
 @app.get("/health")

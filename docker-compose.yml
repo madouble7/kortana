@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # Kor'tana Backend API
+  kortana-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: kortana-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - PINECONE_API_KEY=${PINECONE_API_KEY}
+      - PINECONE_ENV=${PINECONE_ENV}
+      - PINECONE_INDEX=${PINECONE_INDEX}
+      - KORTANA_API_KEY=${KORTANA_API_KEY:-kortana_dev_key}
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///./kortana.db}
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./kortana.db:/app/kortana.db
+    networks:
+      - kortana-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # LobeChat Frontend
+  lobechat-frontend:
+    image: lobehub/lobe-chat:latest
+    container_name: lobechat-frontend
+    ports:
+      - "3210:3210"
+    environment:
+      # OpenAI-compatible endpoint configuration
+      - OPENAI_API_KEY=not_required_use_kortana_key
+      # Point to Kor'tana's OpenAI-compatible API
+      - API_KEY_SELECT_MODE=random
+      # LobeChat configuration
+      - ACCESS_CODE=${LOBECHAT_ACCESS_CODE:-}
+      - DEFAULT_AGENT_CONFIG={}
+    depends_on:
+      - kortana-backend
+    networks:
+      - kortana-network
+    restart: unless-stopped
+
+networks:
+  kortana-network:
+    driver: bridge
+
+volumes:
+  kortana-data:
+    driver: local

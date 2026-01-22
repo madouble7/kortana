@@ -22,6 +22,12 @@ dependencies = [
     "pinecone>=3.2.2",
 ]
 
+[project.optional-dependencies]
+# For accurate token counting in LobeChat integration
+lobechat = [
+    "tiktoken>=0.5.0",
+]
+
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
