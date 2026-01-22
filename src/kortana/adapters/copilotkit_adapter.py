@@ -64,10 +64,8 @@ def verify_api_key(authorization: str | None = Header(None)) -> bool:
             detail="Invalid API key format",
         )
     
-    # Get the API key from environment or settings
-    api_key = os.environ.get(
-        "KORTANA_API_KEY", getattr(settings, "KORTANA_API_KEY", None)
-    )
+    # Get the API key from environment
+    api_key = os.environ.get("KORTANA_API_KEY")
 
     if api_key and api_key_parts[1] != api_key:
         raise HTTPException(

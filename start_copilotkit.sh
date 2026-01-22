@@ -9,11 +9,17 @@ echo ""
 # Check if required dependencies are installed
 echo "Checking dependencies..."
 
-# Check Python
-if ! command -v python &> /dev/null; then
-    echo "❌ Python is not installed"
+# Check Python (try python3 first, then python)
+if command -v python3 &> /dev/null; then
+    PYTHON_CMD=python3
+elif command -v python &> /dev/null; then
+    PYTHON_CMD=python
+else
+    echo "❌ Python is not installed (tried python3 and python)"
     exit 1
 fi
+
+echo "Using Python: $PYTHON_CMD"
 
 # Check Node
 if ! command -v node &> /dev/null; then
@@ -75,7 +81,7 @@ trap cleanup INT TERM
 
 # Start backend
 echo "🔧 Starting backend server..."
-python -m uvicorn src.kortana.main:app --host 0.0.0.0 --port 8000 --reload &
+$PYTHON_CMD -m uvicorn src.kortana.main:app --host 0.0.0.0 --port 8000 --reload &
 BACKEND_PID=$!
 
 # Wait a bit for backend to start
