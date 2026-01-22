@@ -5,6 +5,7 @@ This module defines the data structures for handling various types of content
 including text, voice, video, and simulation-based queries.
 """
 
+import uuid
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
@@ -89,7 +90,7 @@ class MultimodalPrompt(BaseModel):
         context: Contextual information
     """
 
-    prompt_id: str = Field(default_factory=lambda: str(datetime.utcnow().timestamp()))
+    prompt_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     contents: List[MultimodalContent] = Field(default_factory=list)
     primary_content_type: ContentType = ContentType.TEXT
     instruction: Optional[str] = None
@@ -169,7 +170,7 @@ class MultimodalResponse(BaseModel):
         metadata: Additional metadata
     """
 
-    response_id: str = Field(default_factory=lambda: str(datetime.utcnow().timestamp()))
+    response_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     prompt_id: str
     content: Union[str, Dict[str, Any]]
     content_type: ContentType = ContentType.TEXT

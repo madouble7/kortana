@@ -12,7 +12,13 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from src.kortana.core.multimodal import (
+    ContentType,
+    MultimodalPromptGenerator,
+    SimulationQuery,
+)
 from src.kortana.services.database import get_db_sync
+from src.kortana.services.multimodal_service import MultimodalService
 
 logger = logging.getLogger(__name__)
 
@@ -131,9 +137,6 @@ async def process_text_prompt(
         Multimodal response
     """
     try:
-        from src.kortana.core.multimodal import MultimodalPromptGenerator
-        from src.kortana.services.multimodal_service import MultimodalService
-
         # Create text prompt
         generator = MultimodalPromptGenerator()
         prompt = generator.create_text_prompt(request.text, request.context)
@@ -171,9 +174,6 @@ async def process_voice_prompt(
         Multimodal response
     """
     try:
-        from src.kortana.core.multimodal import MultimodalPromptGenerator
-        from src.kortana.services.multimodal_service import MultimodalService
-
         if not request.audio_url and not request.transcription:
             raise HTTPException(
                 status_code=400,
@@ -223,9 +223,6 @@ async def process_image_prompt(
         Multimodal response
     """
     try:
-        from src.kortana.core.multimodal import MultimodalPromptGenerator
-        from src.kortana.services.multimodal_service import MultimodalService
-
         # Create image prompt
         generator = MultimodalPromptGenerator()
         prompt = generator.create_image_prompt(
@@ -268,9 +265,6 @@ async def process_video_prompt(
         Multimodal response
     """
     try:
-        from src.kortana.core.multimodal import MultimodalPromptGenerator
-        from src.kortana.services.multimodal_service import MultimodalService
-
         # Create video prompt
         generator = MultimodalPromptGenerator()
         prompt = generator.create_video_prompt(
@@ -313,9 +307,6 @@ async def process_simulation_prompt(
         Multimodal response
     """
     try:
-        from src.kortana.core.multimodal import MultimodalPromptGenerator, SimulationQuery
-        from src.kortana.services.multimodal_service import MultimodalService
-
         # Create simulation query
         simulation_query = SimulationQuery(
             scenario=request.scenario,
@@ -362,9 +353,6 @@ async def process_mixed_prompt(
         Multimodal response
     """
     try:
-        from src.kortana.core.multimodal import ContentType, MultimodalPromptGenerator
-        from src.kortana.services.multimodal_service import MultimodalService
-
         # Create mixed prompt
         generator = MultimodalPromptGenerator()
         prompt = generator.create_mixed_prompt(

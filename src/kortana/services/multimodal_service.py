@@ -175,7 +175,10 @@ class MultimodalService:
             import os
             from pathlib import Path
 
-            config_path = Path("config/models_config.json")
+            # Try environment variable first, fallback to default path
+            config_path_str = os.getenv("MODELS_CONFIG_PATH", "config/models_config.json")
+            config_path = Path(config_path_str)
+            
             if not config_path.exists():
                 logger.error(f"Models config not found at {config_path}")
                 return None

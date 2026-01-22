@@ -272,27 +272,39 @@ class LLMClientFactory:
 
     @staticmethod
     def get_multimodal_client(
-        models_config: dict[str, Any], model_id: str = "gpt-4-vision-preview"
+        models_config: dict[str, Any], 
+        model_id: str | None = None,
+        api_key_env: str = "OPENAI_API_KEY"
     ) -> BaseLLMClient | None:
         """
         Get a multimodal-capable LLM client.
 
         Args:
             models_config: Models configuration dictionary
-            model_id: Model identifier (defaults to GPT-4 Vision)
+            model_id: Model identifier (if None, uses GPT-4 Vision)
+            api_key_env: Environment variable name for API key
 
         Returns:
             Multimodal client instance or None
         """
-        # For now, use MultimodalOpenAIClient for vision tasks
-        api_key = os.getenv("OPENAI_API_KEY")
+        # If model_id provided, try to get from config
+        if model_id:
+            model_conf = models_config.get("models", {}).get(model_id)
+            if model_conf:
+                api_key_env = model_conf.get("api_key_env", api_key_env)
+                model_name = model_conf.get("model_name", model_id)
+        else:
+            # Use default vision model
+            model_name = "gpt-4-vision-preview"
+            
+        api_key = os.getenv(api_key_env)
         if not api_key:
-            logger.error("OPENAI_API_KEY not found for multimodal client")
+            logger.error(f"{api_key_env} not found for multimodal client")
             return None
 
         try:
-            client = MultimodalOpenAIClient(api_key=api_key, model_name=model_id)
-            logger.info(f"Multimodal client created: {model_id}")
+            client = MultimodalOpenAIClient(api_key=api_key, model_name=model_name)
+            logger.info(f"Multimodal client created: {model_name}")
             return client
         except Exception as e:
             logger.error(f"Failed to create multimodal client: {e}")
