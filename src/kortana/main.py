@@ -16,6 +16,15 @@ from src.kortana.core.scheduler import (
 from src.kortana.modules.memory_core.routers.memory_router import (
     router as memory_router,
 )
+from src.kortana.modules.product_categorization.routers.category_router import (
+    router as category_router,
+)
+from src.kortana.modules.inventory_analysis.routers.inventory_router import (
+    router as inventory_router,
+)
+from src.kortana.modules.recommendation_engine.routers.recommendation_router import (
+    router as recommendation_router,
+)
 
 
 # Lifespan context manager
@@ -50,6 +59,10 @@ app.add_middleware(
 app.include_router(memory_router)
 app.include_router(core_router.router)
 app.include_router(goal_router.router)
+# E-commerce AI modules
+app.include_router(category_router)
+app.include_router(inventory_router)
+app.include_router(recommendation_router)
 
 
 @app.get("/health")
