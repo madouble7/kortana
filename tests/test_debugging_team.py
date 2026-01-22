@@ -39,7 +39,16 @@ def broken(:
         (temp_path / "bare_except.py").write_text("""
 try:
     do_something()
-except:
+except Exception as e:
+    # This is better than bare except
+    pass
+""")
+        
+        (temp_path / "test_bare_except.py").write_text("""
+# This file intentionally contains a bare except for testing
+try:
+    do_something()
+except:  # noqa: E722 - intentional for testing
     pass
 """)
         
@@ -80,7 +89,8 @@ def placeholder():
         
         bare_excepts = [e for e in errors if e.error_type == "BareExcept"]
         assert len(bare_excepts) > 0
-        assert any("bare_except.py" in e.file_path for e in bare_excepts)
+        # Should detect in test_bare_except.py which has intentional bare except
+        assert any("test_bare_except.py" in e.file_path for e in bare_excepts)
     
     def test_detect_empty_files(self, temp_repo):
         """Test detection of empty files."""

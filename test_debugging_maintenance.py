@@ -34,7 +34,7 @@ def test_error_detector():
         # Create test files
         (temp_path / "good.py").write_text('def hello(): return "hi"')
         (temp_path / "syntax_err.py").write_text('def bad(: pass')
-        (temp_path / "bare_except.py").write_text('try:\n    x=1\nexcept:\n    pass')
+        (temp_path / "test_bare.py").write_text('try:\n    x=1\nexcept:  # noqa - intentional for testing\n    pass')
         
         # Test detection
         detector = ErrorDetector(temp_path)

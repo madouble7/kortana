@@ -90,30 +90,40 @@ class ErrorDetector:
                     suggestion="Consider removing empty files or adding content."
                 ))
             
-            # Check for common anti-patterns
+            # Use AST to check for bare except clauses
+            try:
+                tree = ast.parse(content)
+                for node in ast.walk(tree):
+                    if isinstance(node, ast.ExceptHandler):
+                        # Bare except has no exception type specified
+                        if node.type is None:
+                            self.detected_errors.append(DetectedError(
+                                file_path=str(file_path),
+                                line_number=node.lineno,
+                                error_type="BareExcept",
+                                severity="medium",
+                                message="Bare except clause found",
+                                suggestion="Use specific exception types instead of bare 'except:'."
+                            ))
+            except SyntaxError:
+                # Already reported syntax error above
+                pass
+            
+            # Check for TODO/FIXME comments (in actual comments only)
             lines = content.split('\n')
             for i, line in enumerate(lines, 1):
-                # Check for bare excepts
-                if "except:" in line and "except Exception" not in line:
-                    self.detected_errors.append(DetectedError(
-                        file_path=str(file_path),
-                        line_number=i,
-                        error_type="BareExcept",
-                        severity="medium",
-                        message="Bare except clause found",
-                        suggestion="Use specific exception types instead of bare 'except:'."
-                    ))
-                
-                # Check for TODO/FIXME comments
-                if "TODO" in line or "FIXME" in line:
-                    self.detected_errors.append(DetectedError(
-                        file_path=str(file_path),
-                        line_number=i,
-                        error_type="TodoComment",
-                        severity="low",
-                        message=f"Found: {line.strip()}",
-                        suggestion="Address pending TODOs and FIXMEs."
-                    ))
+                stripped = line.strip()
+                # Only check in comments
+                if stripped.startswith('#'):
+                    if "TODO" in line or "FIXME" in line:
+                        self.detected_errors.append(DetectedError(
+                            file_path=str(file_path),
+                            line_number=i,
+                            error_type="TodoComment",
+                            severity="low",
+                            message=f"Found: {line.strip()}",
+                            suggestion="Address pending TODOs and FIXMEs."
+                        ))
         
         except Exception as e:
             self.logger.debug(f"Could not parse {file_path}: {e}")

@@ -117,46 +117,49 @@ class CodeCleaner:
                 self.logger.debug(f"Error analyzing imports in {py_file}: {e}")
     
     def _find_potentially_unused_imports(self):
-        """Basic detection of potentially unused imports."""
+        """Basic detection of potentially unused imports using AST."""
         for py_file in self.root_path.rglob("*.py"):
             if self._should_skip_file(py_file):
                 continue
             
             try:
                 with open(py_file, 'r', encoding='utf-8') as f:
-                    lines = f.readlines()
+                    content = f.read()
                 
-                # Simple heuristic: if import is only mentioned once (the import line)
-                # it might be unused (not foolproof, but useful for flagging)
-                for i, line in enumerate(lines):
-                    if line.strip().startswith('import ') or line.strip().startswith('from '):
-                        # Extract imported names
-                        if 'import ' in line:
-                            parts = line.split('import')[1].strip().split(',')
-                            for part in parts:
-                                name = part.split('as')[-1].strip()
-                                if name and self._check_usage_count(lines, name, i) <= 1:
-                                    self.cleanup_items.append(CleanupItem(
-                                        file_path=str(py_file),
-                                        item_type="import",
-                                        name=name,
-                                        reason=f"Import '{name}' appears unused",
-                                        recommendation="Verify usage and remove if not needed",
-                                        safe_to_remove=False  # Needs verification
-                                    ))
+                tree = ast.parse(content)
+                
+                # Collect imports
+                imports = {}
+                for node in ast.walk(tree):
+                    if isinstance(node, ast.Import):
+                        for alias in node.names:
+                            import_name = alias.asname if alias.asname else alias.name
+                            imports[import_name] = node.lineno
+                    elif isinstance(node, ast.ImportFrom):
+                        for alias in node.names:
+                            import_name = alias.asname if alias.asname else alias.name
+                            imports[import_name] = node.lineno
+                
+                # Check if imports are used in the AST
+                used_names = set()
+                for node in ast.walk(tree):
+                    if isinstance(node, ast.Name):
+                        used_names.add(node.id)
+                
+                # Flag potentially unused imports
+                for import_name, lineno in imports.items():
+                    if import_name not in used_names and import_name != '*':
+                        self.cleanup_items.append(CleanupItem(
+                            file_path=str(py_file),
+                            item_type="import",
+                            name=import_name,
+                            reason=f"Import '{import_name}' appears unused (AST analysis)",
+                            recommendation="Verify usage and remove if not needed",
+                            safe_to_remove=False  # Needs verification
+                        ))
             
             except Exception as e:
                 self.logger.debug(f"Error checking unused imports in {py_file}: {e}")
-    
-    def _check_usage_count(self, lines: List[str], name: str, import_line: int) -> int:
-        """Count how many times a name appears in the file."""
-        count = 0
-        for i, line in enumerate(lines):
-            if i == import_line:
-                continue
-            if name in line:
-                count += 1
-        return count
     
     def _should_skip_file(self, file_path: Path) -> bool:
         """Determine if a file should be skipped."""

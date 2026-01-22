@@ -58,9 +58,13 @@ class ResolutionEngine:
         """Suggest fix for bare except clauses."""
         return (
             f"File: {error.file_path}\n"
-            f"Line {error.line_number}: Replace 'except:' with specific exception.\n"
-            f"Example: except Exception as e:\n"
-            f"         or except (ValueError, TypeError) as e:"
+            f"Line {error.line_number}: Replace bare 'except:' with specific exception.\n"
+            f"Note: Choose the most specific exception type for your use case.\n"
+            f"Common options:\n"
+            f"  - ValueError, TypeError for data validation\n"
+            f"  - FileNotFoundError, IOError for file operations\n"
+            f"  - KeyError, IndexError for data access\n"
+            f"  - Use 'except Exception as e:' only as a last resort"
         )
     
     def _suggest_empty_file_fix(self, error: DetectedError) -> str:
@@ -101,10 +105,11 @@ class ResolutionEngine:
                 quick_fixes.append({
                     "file": error.file_path,
                     "line": error.line_number,
-                    "type": "replace",
-                    "old": "except:",
-                    "new": "except Exception as e:",
-                    "description": "Replace bare except with specific exception"
+                    "type": "review_required",
+                    "description": (
+                        "Replace bare except with appropriate specific exception types. "
+                        "Choose based on the operation being performed."
+                    )
                 })
         
         return quick_fixes

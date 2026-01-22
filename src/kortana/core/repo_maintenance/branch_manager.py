@@ -138,7 +138,8 @@ class BranchManager:
                 
                 merged_branches = result.stdout.split('\n')
                 return any(branch_name in branch for branch in merged_branches)
-            except:
+            except subprocess.CalledProcessError as e:
+                self.logger.debug(f"Could not check merge status for {branch_name}: {e}")
                 return False
     
     def _check_naming_convention(self, branch_name: str) -> bool:

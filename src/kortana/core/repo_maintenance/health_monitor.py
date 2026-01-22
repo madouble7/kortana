@@ -4,6 +4,7 @@ Health Monitor Module
 Real-time repository health monitoring and metrics collection.
 """
 
+import ast
 import logging
 from pathlib import Path
 from typing import Dict, Any, List
@@ -38,7 +39,7 @@ class HealthMonitor:
         return metrics
     
     def _measure_code_quality(self) -> Dict[str, Any]:
-        """Measure basic code quality metrics."""
+        """Measure basic code quality metrics using AST."""
         python_files = list(self.root_path.rglob("*.py"))
         
         # Filter out non-source files
@@ -61,12 +62,20 @@ class HealthMonitor:
                     lines = content.split('\n')
                     total_lines += len(lines)
                     
-                    # Count functions and classes (simple heuristic)
-                    total_functions += content.count('def ')
-                    total_classes += content.count('class ')
+                    # Use AST for accurate counting
+                    tree = ast.parse(content)
                     
-                    # Check for module docstring
-                    if content.strip().startswith('"""') or content.strip().startswith("'''"):
+                    for node in ast.walk(tree):
+                        if isinstance(node, ast.FunctionDef) or isinstance(node, ast.AsyncFunctionDef):
+                            total_functions += 1
+                        elif isinstance(node, ast.ClassDef):
+                            total_classes += 1
+                    
+                    # Check for module docstring (first statement is a string)
+                    if (tree.body and 
+                        isinstance(tree.body[0], ast.Expr) and 
+                        isinstance(tree.body[0].value, ast.Constant) and
+                        isinstance(tree.body[0].value.value, str)):
                         files_with_docstrings += 1
             
             except Exception as e:

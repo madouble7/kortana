@@ -40,7 +40,11 @@ def cmd_detect_errors(args):
     detector = ErrorDetector(Path.cwd())
     errors = detector.scan_directory()
     
-    reporter = ErrorReporter()
+    # Create output directory for reports
+    output_dir = Path("audit_results")
+    output_dir.mkdir(exist_ok=True)
+    
+    reporter = ErrorReporter(output_dir)
     reporter.print_summary(errors)
     
     if args.report:
