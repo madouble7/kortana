@@ -376,7 +376,7 @@ async def get_task_queue_status(db: Session = Depends(get_db)) -> dict[str, Any]
 
     # Optimized query: Use GROUP BY to count statuses in single query
     status_counts = (
-        db.query(GitHubTask.status, func.count(GitHubTask.id))
+        db.query(GitHubTask.status, func.count())
         .group_by(GitHubTask.status)
         .all()
     )

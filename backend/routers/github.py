@@ -87,7 +87,7 @@ async def get_repo_issues(
             raise HTTPException(status_code=404, detail="Repository not found")
         raise HTTPException(
             status_code=e.response.status_code,
-            detail=f"GitHub API error: {e.response.text}",
+            detail=f"GitHub API error: {e.response.status_code}",
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch issues: {str(e)}")
@@ -130,7 +130,7 @@ async def get_repo_pulls(
             raise HTTPException(status_code=404, detail="Repository not found")
         raise HTTPException(
             status_code=e.response.status_code,
-            detail=f"GitHub API error: {e.response.text}",
+            detail=f"GitHub API error: {e.response.status_code}",
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch PRs: {str(e)}")
