@@ -8,9 +8,8 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import JSON, Column, DateTime, Float, Integer, String, Text
-from sqlalchemy.ext.declarative import declarative_base
 
-from src.kortana.services.database_service import Base
+from src.kortana.services.database import Base
 
 
 class ARVREnvironment(Base):
