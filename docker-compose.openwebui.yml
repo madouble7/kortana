@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  # Open WebUI - Main frontend interface
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: kortana-open-webui
+    ports:
+      - "3000:8080"
+    environment:
+      # Connect to Kor'tana's OpenAI-compatible API
+      - OPENAI_API_BASE_URL=http://host.docker.internal:8000/api/openai/v1
+      - OPENAI_API_KEY=${KORTANA_API_KEY:-kortana-default-key}
+      
+      # WebUI Configuration
+      - WEBUI_AUTH=true
+      - WEBUI_NAME=Kor'tana AI
+      - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY:-generate-a-secret-key-here}
+      
+      # Enable MCP support
+      - ENABLE_MCP=true
+      - MCP_SERVER_URL=http://host.docker.internal:8001
+      
+      # Optional: Enable additional features
+      - ENABLE_RAG_WEB_SEARCH=true
+      - ENABLE_IMAGE_GENERATION=false
+      - DEFAULT_MODELS=gpt-4,gpt-3.5-turbo,claude-3-opus
+      
+    volumes:
+      - open-webui-data:/app/backend/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    depends_on:
+      - mcp-server
+    networks:
+      - kortana-network
+
+  # MCP (Model Context Protocol) Server
+  mcp-server:
+    image: ghcr.io/open-webui/mcpo:main
+    container_name: kortana-mcp-server
+    ports:
+      - "8001:8000"
+    environment:
+      - MCP_CONFIG=/app/config/mcp_config.json
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./config/mcp:/app/config
+      - mcp-data:/app/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    networks:
+      - kortana-network
+
+volumes:
+  open-webui-data:
+    driver: local
+  mcp-data:
+    driver: local
+
+networks:
+  kortana-network:
+    driver: bridge

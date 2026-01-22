@@ -131,10 +131,22 @@ PowerShell:
 - **Context-Aware Responses**: Integrates memory and ethical considerations in responses
 - **LLM Integration**: Uses OpenAI's GPT models for natural language processing
 - **LobeChat Frontend Support**: Seamlessly integrates with LobeChat for a user-friendly interface
+- **Open WebUI Integration**: Modern, feature-rich frontend with MCP (Model Context Protocol) support
+- **MCP Protocol**: Extends LLM functionality with memory, goals, and context tools
 
-## LobeChat Integration
+## Frontend Options
 
-Kor'tana integrates with [LobeChat](https://github.com/lobehub/lobe-chat) to provide an intuitive chat interface.
+Kor'tana supports multiple frontend interfaces:
+
+### Open WebUI (Recommended)
+Modern, self-hosted UI with advanced features and MCP support.
+- **Setup Guide**: [`docs/OPENWEBUI_INTEGRATION.md`](docs/OPENWEBUI_INTEGRATION.md)
+- **Quick Start**: `./scripts/start_openwebui.sh` (Linux/Mac) or `scripts\start_openwebui.bat` (Windows)
+- **Features**: MCP tools, memory access, goal management, streaming responses
+
+### LobeChat Integration
+
+Kor'tana also integrates with [LobeChat](https://github.com/lobehub/lobe-chat) to provide an intuitive chat interface.
 
 ### Setting Up LobeChat Connection
 
@@ -149,6 +161,7 @@ For troubleshooting, see `docs/LOBECHAT_TROUBLESHOOTING.md`.
 - Full API documentation: `docs/API_ENDPOINTS.md`
 - Architecture overview: `docs/ARCHITECTURE.md`
 - Memory Core details: `docs/MEMORY_CORE.md`
+- **Open WebUI integration**: `docs/OPENWEBUI_INTEGRATION.md`
 - LobeChat integration: `docs/LOBECHAT_CONNECTION.md`
 - LobeChat troubleshooting: `docs/LOBECHAT_TROUBLESHOOTING.md`
 
