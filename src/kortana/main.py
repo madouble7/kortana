@@ -49,6 +49,7 @@ app.add_middleware(
 
 app.include_router(memory_router)
 app.include_router(core_router.router)
+app.include_router(core_router.openai_adapter_router)
 app.include_router(goal_router.router)
 
 
