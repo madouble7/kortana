@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager  # For lifespan events
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.kortana.api.routers import core_router, goal_router
+from src.kortana.api.routers import core_router, goal_router, language_router
 from src.kortana.core.scheduler import (
     get_scheduler_status,
     start_scheduler,
@@ -49,7 +49,9 @@ app.add_middleware(
 
 app.include_router(memory_router)
 app.include_router(core_router.router)
+app.include_router(core_router.openai_adapter_router)
 app.include_router(goal_router.router)
+app.include_router(language_router.router)
 
 
 @app.get("/health")
@@ -59,6 +61,8 @@ def health_check():
         "service": "Kor'tana",
         "version": "1.0.0",
         "message": "The Warchief's companion is ready",
+        "multilingual_support": True,
+        "supported_languages": ["en", "es", "fr", "de", "zh", "ja", "ko", "pt", "it", "ru"],
     }
 
 
