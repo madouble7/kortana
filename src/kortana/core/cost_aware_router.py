@@ -62,6 +62,11 @@ class CostAwareRouter(EnhancedModelRouter):
     - Cost budgets and alerts
     """
 
+    # Configuration constants
+    DEFAULT_FALLBACK_MODEL = "deepseek/deepseek-r1-0528-qwen3-8b:free"
+    USAGE_STATS_FILE = "data/usage_stats.json"
+    TOKEN_ESTIMATION_MULTIPLIER = 1.5  # Words to tokens ratio (conservative estimate)
+
     def __init__(self, settings: KortanaConfig, cost_budget_daily: float = 1.0):
         """
         Initialize the cost-aware router.
@@ -89,10 +94,12 @@ class CostAwareRouter(EnhancedModelRouter):
     def _build_fallback_chains(self) -> dict[str, list[str]]:
         """Build fallback chains for each task type prioritizing free models."""
         routing = self.models_config.get("routing", {})
+        default_config = self.models_config.get("default", {})
+        default_model = default_config.get("model", self.DEFAULT_FALLBACK_MODEL)
 
         return {
             "general_chat": [
-                routing.get("general_chat", "deepseek/deepseek-r1-0528-qwen3-8b:free"),
+                routing.get("general_chat", default_model),
                 routing.get(
                     "general_chat_fallback", "meta-llama/llama-3.1-8b-instruct:free"
                 ),
@@ -117,7 +124,7 @@ class CostAwareRouter(EnhancedModelRouter):
             ],
             "creative_writing": [
                 routing.get("creative_writing", "google/gemma-2-9b-it:free"),
-                routing.get("general_chat", "deepseek/deepseek-r1-0528-qwen3-8b:free"),
+                routing.get("general_chat", default_model),
                 routing.get("creative_writing_premium", "x-ai/grok-3-mini-beta"),
             ],
             "vision": [
@@ -211,7 +218,7 @@ class CostAwareRouter(EnhancedModelRouter):
     def _save_usage_stats(self) -> None:
         """Save usage statistics to disk."""
         try:
-            stats_file = Path("data/usage_stats.json")
+            stats_file = Path(self.USAGE_STATS_FILE)
             stats_file.parent.mkdir(parents=True, exist_ok=True)
 
             stats_dict = {
@@ -239,7 +246,7 @@ class CostAwareRouter(EnhancedModelRouter):
     def _load_usage_stats(self) -> None:
         """Load usage statistics from disk."""
         try:
-            stats_file = Path("data/usage_stats.json")
+            stats_file = Path(self.USAGE_STATS_FILE)
             if stats_file.exists():
                 with open(stats_file) as f:
                     stats_dict = json.load(f)
@@ -320,8 +327,8 @@ class CostAwareRouter(EnhancedModelRouter):
                 )
                 continue
 
-            # Estimate cost for this request
-            estimated_tokens = len(user_input.split()) * 1.5  # Rough estimate
+            # Estimate cost for this request (words to tokens with conservative multiplier)
+            estimated_tokens = len(user_input.split()) * self.TOKEN_ESTIMATION_MULTIPLIER
             estimated_cost = self.estimate_cost(model_id, int(estimated_tokens), int(estimated_tokens * 2))
 
             # Check budget if this is a paid model
@@ -370,8 +377,9 @@ class CostAwareRouter(EnhancedModelRouter):
 
             return model_id, voice_style, model_params, routing_info
 
-        # Ultimate fallback
-        fallback_model = "deepseek/deepseek-r1-0528-qwen3-8b:free"
+        # Ultimate fallback to default configured model
+        default_config = self.models_config.get("default", {})
+        fallback_model = default_config.get("model", self.DEFAULT_FALLBACK_MODEL)
         voice_style = "presence"
         model_params = self.voice_styles["presence"].copy()
 
