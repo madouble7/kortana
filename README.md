@@ -131,8 +131,11 @@ PowerShell:
 - **Context-Aware Responses**: Integrates memory and ethical considerations in responses
 - **LLM Integration**: Uses OpenAI's GPT models for natural language processing
 - **LobeChat Frontend Support**: Seamlessly integrates with LobeChat for a user-friendly interface
+- **AutoGen Multi-Agent Support**: Integrates with Microsoft AutoGen for collaborative AI agent workflows
 
-## LobeChat Integration
+## Frontend Integrations
+
+### LobeChat Integration
 
 Kor'tana integrates with [LobeChat](https://github.com/lobehub/lobe-chat) to provide an intuitive chat interface.
 
@@ -144,6 +147,18 @@ Kor'tana integrates with [LobeChat](https://github.com/lobehub/lobe-chat) to pro
 
 For troubleshooting, see `docs/LOBECHAT_TROUBLESHOOTING.md`.
 
+### AutoGen Integration
+
+Kor'tana integrates with [Microsoft AutoGen](https://github.com/microsoft/autogen) to enable multi-agent collaboration and complex task orchestration.
+
+#### Setting Up AutoGen Connection
+
+1. Follow the guide in `docs/AUTOGEN_INTEGRATION.md` for detailed setup.
+2. The AutoGen adapter is available at `/adapters/autogen/chat` and `/adapters/autogen/collaborate`.
+3. Run the Kor'tana API server to access AutoGen endpoints.
+
+For detailed API documentation, see `docs/AUTOGEN_INTEGRATION.md`.
+
 ## Documentation
 
 - Full API documentation: `docs/API_ENDPOINTS.md`
@@ -151,6 +166,7 @@ For troubleshooting, see `docs/LOBECHAT_TROUBLESHOOTING.md`.
 - Memory Core details: `docs/MEMORY_CORE.md`
 - LobeChat integration: `docs/LOBECHAT_CONNECTION.md`
 - LobeChat troubleshooting: `docs/LOBECHAT_TROUBLESHOOTING.md`
+- AutoGen integration: `docs/AUTOGEN_INTEGRATION.md`
 
 ## Development
 

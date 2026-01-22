@@ -20,6 +20,7 @@ dependencies = [
     "httpx>=0.25.0",
     "apscheduler>=3.10.0",
     "pinecone>=3.2.2",
+    "pyautogen>=0.2.0",
 ]
 
 
