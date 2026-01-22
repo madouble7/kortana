@@ -9,6 +9,8 @@ This bot integrates:
 - Auto-react and auto-reply capabilities
 - Flask health check endpoint for production deployment
 - Comprehensive error handling and graceful degradation
+
+Note: Run this from the project root directory to avoid import conflicts.
 """
 
 import asyncio
@@ -19,12 +21,31 @@ import signal
 import sys
 import threading
 import time
+from pathlib import Path
 from typing import Any, Optional, Tuple
 
-import discord
-from discord import app_commands
-from discord.ext import commands
-from dotenv import load_dotenv
+# Load environment variables first  
+try:
+    from dotenv import load_dotenv
+    load_dotenv(override=True)
+except ImportError:
+    print("Warning: python-dotenv not installed. Environment variables from .env won't be loaded.")
+    def load_dotenv(*args, **kwargs):
+        pass
+
+# Add project root to path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
+try:
+    import discord
+    from discord import app_commands
+    from discord.ext import commands
+except ImportError as e:
+    print(f"Error importing discord.py: {e}")
+    print("Install it with: pip install discord.py>=2.3.0")
+    sys.exit(1)
+
 from flask import Flask, jsonify
 
 # Optional Hugging Face import
@@ -33,18 +54,12 @@ try:
 except ImportError:
     InferenceClient = None
 
-# Add project root to path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 # Try to import Kor'tana brain
 try:
     from kortana.brain import ChatEngine
 except ImportError:
     print("Warning: Kor'tana brain not found. Using Hugging Face fallback.")
     ChatEngine = None
-
-# Load environment variables
-load_dotenv(override=True)
 
 # --------------------
 # Configuration
