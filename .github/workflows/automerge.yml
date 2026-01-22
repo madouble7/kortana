@@ -14,6 +14,21 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository &&
       !github.event.pull_request.draft &&
       github.event.pull_request.user.login == 'kortana-autonomous[bot]'
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.KORTANA_AUTONOMOUS_TOKEN }}
+        fetch-depth: 0
+    
+    - name: Auto-update PR branch
+      run: |
+        echo "Checking if PR needs update..."
+        git config user.name "kortana-autonomous[bot]"
+        git config user.email "kortana-autonomous[bot]@users.noreply.github.com"
+        git fetch origin ${{ github.event.repository.default_branch }}
+        git merge --no-edit origin/${{ github.event.repository.default_branch }} || echo "No merge needed"
 
   automerge:
     runs-on: ubuntu-latest

@@ -12,9 +12,6 @@ ruff==0.2.1
 mypy==1.7.1
 types-requests==2.31.0.10
 
-# Documentation
-pydantic-docs==0.9.0
-
 # Debugging
 ipython==8.18.1
 ipdb==0.13.13
