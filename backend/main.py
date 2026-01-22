@@ -50,6 +50,12 @@ try:
         task_queue,
         test_orchestrator,
     )
+    from routers.adapters import (
+        autogen_adapter,
+        copilotkit_adapter,
+        lobechat_adapter,
+        openwebui_adapter,
+    )
 except ImportError as e:
     print(f"Error importing routers: {e}")
     raise
@@ -201,6 +207,28 @@ def create_app() -> FastAPI:
         app.include_router(pr_creation.router, prefix="/api/pr", tags=["pr-creation"])
         app.include_router(test_orchestrator.router, prefix="/api/testing", tags=["testing"])
         app.include_router(code_reviewer.router, prefix="/api/code-review", tags=["code-review"])
+
+        # Frontend Adapters
+        app.include_router(
+            autogen_adapter.router,
+            prefix="/api/adapters/autogen",
+            tags=["adapters", "autogen"],
+        )
+        app.include_router(
+            copilotkit_adapter.router,
+            prefix="/api/adapters/copilotkit",
+            tags=["adapters", "copilotkit"],
+        )
+        app.include_router(
+            openwebui_adapter.router,
+            prefix="/api/adapters/openwebui",
+            tags=["adapters", "openwebui"],
+        )
+        app.include_router(
+            lobechat_adapter.router,
+            prefix="/api/adapters/lobechat",
+            tags=["adapters", "lobechat"],
+        )
 
         # Basic API endpoints (defined before catch-all)
         @app.get("/api/health", tags=["system"])
