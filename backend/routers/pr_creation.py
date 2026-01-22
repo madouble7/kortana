@@ -299,18 +299,18 @@ async def get_pr_status(task_id: str, db: Session = Depends(get_db)) -> dict[str
                     "has_pr": True,
                     "pr_number": task.github_pr_number,
                     "pr_url": pr_data.get("html_url"),
-                "state": pr_data.get("state"),
-                "merged": pr_data.get("merged"),
-                "title": pr_data.get("title"),
-                "draft": pr_data.get("draft"),
-            }
-        else:
-            return {
-                "task_id": task_id,
-                "has_pr": True,
-                "pr_number": task.github_pr_number,
-                "message": "Could not fetch PR details",
-            }
+                    "state": pr_data.get("state"),
+                    "merged": pr_data.get("merged"),
+                    "title": pr_data.get("title"),
+                    "draft": pr_data.get("draft"),
+                }
+            else:
+                return {
+                    "task_id": task_id,
+                    "has_pr": True,
+                    "pr_number": task.github_pr_number,
+                    "message": "Could not fetch PR details",
+                }
     except Exception as e:
         return {
             "task_id": task_id,

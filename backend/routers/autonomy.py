@@ -557,19 +557,18 @@ async def get_recent_actions(db: Session = Depends(get_db)) -> dict[str, Any]:
     """Get recent autonomous actions for dashboard"""
     # Simply return recent tasks as actions for now
     tasks = db.query(GitHubTask).order_by(GitHubTask.updated_at.desc()).limit(10).all()
-    actions = []
-    for t in tasks:
-        actions.append(
-            {
-                "id": t.id,
-                "type": "task_update",
-                "message": f"Task {t.id} ({t.title}) moved to {t.status}",
-                "status": t.status,
-                "timestamp": t.updated_at.isoformat()
-                if t.updated_at
-                else datetime.utcnow().isoformat(),
-            }
-        )
+    actions = [
+        {
+            "id": t.id,
+            "type": "task_update",
+            "message": f"Task {t.id} ({t.title}) moved to {t.status}",
+            "status": t.status,
+            "timestamp": t.updated_at.isoformat()
+            if t.updated_at
+            else datetime.utcnow().isoformat(),
+        }
+        for t in tasks
+    ]
     return {"actions": actions}
 
 
