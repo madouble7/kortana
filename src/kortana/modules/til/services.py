@@ -160,7 +160,13 @@ class TILService:
         Returns:
             List of TIL notes with the tag
         """
-        # Search for tag in the JSON string
-        tag_pattern = f'%"{tag}"%'
-        query = self.db.query(TILNote).filter(TILNote.tags.ilike(tag_pattern))
+        # Search for exact tag match in the JSON array
+        # Pattern matches: ["tag"] or ["...", "tag", "..."]
+        # This ensures we match the complete tag, not substrings
+        tag_pattern_start = f'%["{tag}"%'  # Start of array or middle
+        tag_pattern_mid = f'%, "{tag}"%'    # Middle with leading comma
+        
+        query = self.db.query(TILNote).filter(
+            (TILNote.tags.ilike(tag_pattern_start)) | (TILNote.tags.ilike(tag_pattern_mid))
+        )
         return query.order_by(TILNote.created_at.desc()).offset(skip).limit(limit).all()

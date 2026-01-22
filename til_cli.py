@@ -61,24 +61,24 @@ def create_til_note(category: str, tags: Optional[list[str]] = None, db: Session
     tf.write("## ")
     tf.close()
 
-    # Get pre-edit file size
-    pre_size = os.path.getsize(tf.name)
-
     # Open editor
     call([EDITOR, tf.name])
-
-    # Get post-edit file size
-    post_size = os.path.getsize(tf.name)
-
-    # Check if user made meaningful changes
-    if abs(pre_size - post_size) < 10:
-        print("Note discarded (no meaningful content). Exiting.")
-        os.unlink(tf.name)
-        return
 
     # Read the note content
     with open(tf.name, "r", encoding="utf-8") as f:
         content = f.read()
+
+    # Check if user made meaningful changes
+    # Extract actual content (strip whitespace and markdown header)
+    actual_content = content.strip().lstrip("#").strip()
+    
+    # Minimum content length threshold (configurable)
+    MIN_CONTENT_LENGTH = 3  # At least 3 characters of actual content
+    
+    if len(actual_content) < MIN_CONTENT_LENGTH:
+        print(f"Note discarded (less than {MIN_CONTENT_LENGTH} characters). Exiting.")
+        os.unlink(tf.name)
+        return
 
     # Extract title from first line (markdown header)
     lines = content.split("\n")
