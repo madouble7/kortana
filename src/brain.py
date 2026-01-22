@@ -65,17 +65,17 @@ def ask_copilot(prompt: str) -> str:
         raise OSError("OPENAI_ORG_ID not set in environment.")
     client = openai.OpenAI(api_key=openai_api_key, organization=openai_org_id)
     system_prompt = "You are GitHub Copilot, a clear, concise, technical, and supportive AI coding assistant."
-    response = client.responses.create(
-        model="gpt-4.1",
-        input=[
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt},
         ],
     )
     return (
-        response.output_text.strip()
-        if hasattr(response, "output_text")
-        else str(response)
+        response.choices[0].message.content.strip()
+        if response.choices
+        else ""
     )
 
 
