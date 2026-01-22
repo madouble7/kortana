@@ -230,24 +230,39 @@ class OutcomePredictor:
         Returns:
             Dictionary of risk factors
         """
-        # Simplified risk prediction based on action type
+        # Base risk levels
         base_risks = {
-            "execution_failure": 0.1,
+            "execution_failure": 0.10,
             "resource_shortage": 0.08,
             "timing_issue": 0.12,
             "safety_concern": 0.05,
         }
 
-        # Adjust based on action
-        if "stop" in action or "wait" in action:
-            base_risks["timing_issue"] += 0.15
-        elif "accelerate" in action:
-            base_risks["safety_concern"] += 0.1
-            base_risks["execution_failure"] += 0.05
+        # Action-specific risk modifiers
+        action_risk_modifiers = {
+            "stop": {"timing_issue": 0.15, "execution_failure": 0.03},
+            "wait": {"timing_issue": 0.18, "resource_shortage": 0.05},
+            "accelerate": {"safety_concern": 0.10, "execution_failure": 0.05},
+            "decelerate": {"timing_issue": 0.08, "execution_failure": 0.02},
+        }
 
-        # Add some randomness (in production, use actual models)
+        # Apply action-specific modifiers
+        for action_keyword, modifiers in action_risk_modifiers.items():
+            if action_keyword in action.lower():
+                for risk_type, modifier in modifiers.items():
+                    base_risks[risk_type] += modifier
+
+        # Context-based adjustments
+        if "complexity" in context:
+            complexity_factor = float(context["complexity"]) / 10.0
+            base_risks["execution_failure"] += complexity_factor * 0.05
+
+        if "speed" in context:
+            speed_factor = float(context.get("speed", 0)) / 100.0
+            base_risks["safety_concern"] += speed_factor * 0.08
+
+        # Ensure values are in valid range
         for key in base_risks:
-            base_risks[key] += np.random.uniform(-0.03, 0.03)
             base_risks[key] = max(0.0, min(1.0, base_risks[key]))
 
         return base_risks

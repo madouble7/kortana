@@ -131,6 +131,11 @@ PowerShell:
 - **Context-Aware Responses**: Integrates memory and ethical considerations in responses
 - **LLM Integration**: Uses OpenAI's GPT models for natural language processing
 - **LobeChat Frontend Support**: Seamlessly integrates with LobeChat for a user-friendly interface
+- **AI-Powered Decision-Making**: ML-driven strategies for real-time autonomous decision-making
+  - Neural network-based decision engine
+  - Time-sensitive dataset analysis and trend detection
+  - Outcome prediction with confidence scoring
+  - Multi-objective optimization for optimal solutions
 
 ## LobeChat Integration
 
@@ -149,6 +154,7 @@ For troubleshooting, see `docs/LOBECHAT_TROUBLESHOOTING.md`.
 - Full API documentation: `docs/API_ENDPOINTS.md`
 - Architecture overview: `docs/ARCHITECTURE.md`
 - Memory Core details: `docs/MEMORY_CORE.md`
+- AI Decision-Making: `docs/AI_DECISION_MAKING.md`
 - LobeChat integration: `docs/LOBECHAT_CONNECTION.md`
 - LobeChat troubleshooting: `docs/LOBECHAT_TROUBLESHOOTING.md`
 

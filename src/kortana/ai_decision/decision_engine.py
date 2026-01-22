@@ -235,21 +235,43 @@ class DecisionEngine:
         Returns:
             Risk assessment dictionary
         """
-        # Simplified risk assessment
+        # Base risk assessment
         base_risk = 0.1
 
         # Increase risk for urgent decisions
-        if context.urgency == DecisionUrgency.CRITICAL:
-            base_risk += 0.2
-
-        # Risk factors
-        risks = {
-            "execution_failure": base_risk + np.random.uniform(0.0, 0.1),
-            "resource_exhaustion": base_risk + np.random.uniform(0.0, 0.15),
-            "timing_violation": base_risk + np.random.uniform(0.0, 0.1),
-            "constraint_violation": base_risk + np.random.uniform(0.0, 0.12),
-            "safety_concern": base_risk + np.random.uniform(0.0, 0.08),
+        urgency_risk_multiplier = {
+            DecisionUrgency.CRITICAL: 0.3,
+            DecisionUrgency.HIGH: 0.2,
+            DecisionUrgency.MEDIUM: 0.1,
+            DecisionUrgency.LOW: 0.05,
         }
+        base_risk += urgency_risk_multiplier.get(context.urgency, 0.1)
+
+        # Action-specific risk factors
+        action_risk_map = {
+            "stop": {"execution_failure": 0.05, "timing_violation": 0.15},
+            "accelerate": {"safety_concern": 0.12, "resource_exhaustion": 0.08},
+            "wait_for_clearance": {"timing_violation": 0.20, "resource_exhaustion": 0.10},
+            "request_assistance": {"execution_failure": 0.10, "timing_violation": 0.15},
+        }
+
+        action_risks = action_risk_map.get(action, {})
+
+        # Calculate risk factors deterministically based on context
+        num_constraints = len(context.constraints)
+        constraint_factor = min(num_constraints * 0.02, 0.12)
+
+        risks = {
+            "execution_failure": base_risk + action_risks.get("execution_failure", 0.05) + constraint_factor,
+            "resource_exhaustion": base_risk + action_risks.get("resource_exhaustion", 0.08),
+            "timing_violation": base_risk + action_risks.get("timing_violation", 0.10),
+            "constraint_violation": base_risk + constraint_factor * 1.5,
+            "safety_concern": base_risk * 0.8 + action_risks.get("safety_concern", 0.05),
+        }
+
+        # Ensure risks are in valid range
+        for key in risks:
+            risks[key] = max(0.0, min(1.0, risks[key]))
 
         return risks
 
