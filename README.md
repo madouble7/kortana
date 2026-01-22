@@ -131,6 +131,34 @@ PowerShell:
 - **Context-Aware Responses**: Integrates memory and ethical considerations in responses
 - **LLM Integration**: Uses OpenAI's GPT models for natural language processing
 - **LobeChat Frontend Support**: Seamlessly integrates with LobeChat for a user-friendly interface
+- **TIL (Today I Learned) Notes**: Structured note-taking system for capturing and organizing quick knowledge snippets with categories, tags, and full-text search
+
+## TIL (Today I Learned) Feature
+
+Kor'tana now includes a powerful note-taking system inspired by the [raivivek/til](https://github.com/raivivek/til) repository. Capture and organize your learning with:
+
+- 📝 **Quick Note Creation**: CLI tool and REST API for easy note creation
+- 🏷️ **Categories & Tags**: Organize notes by category and tag them for easy retrieval
+- 🔍 **Full-Text Search**: Search notes by title or content
+- 📊 **Statistics**: Track note counts by category
+- 🔄 **Memory Integration**: Connect TIL notes with Kor'tana's memory system
+
+### Quick Start
+
+```bash
+# Create a TIL note via CLI
+python til_cli.py -c python -t "tips,performance"
+
+# Or run the demo to see all features
+python demo_til.py
+
+# Use the REST API (see docs/TIL_FEATURE_GUIDE.md for details)
+curl -X POST "http://localhost:8000/til/notes" \
+  -H "Content-Type: application/json" \
+  -d '{"title": "My Learning", "content": "Today I learned...", "category": "general"}'
+```
+
+For full documentation, see [TIL Feature Guide](docs/TIL_FEATURE_GUIDE.md).
 
 ## LobeChat Integration
 
@@ -149,6 +177,7 @@ For troubleshooting, see `docs/LOBECHAT_TROUBLESHOOTING.md`.
 - Full API documentation: `docs/API_ENDPOINTS.md`
 - Architecture overview: `docs/ARCHITECTURE.md`
 - Memory Core details: `docs/MEMORY_CORE.md`
+- TIL Feature Guide: `docs/TIL_FEATURE_GUIDE.md`
 - LobeChat integration: `docs/LOBECHAT_CONNECTION.md`
 - LobeChat troubleshooting: `docs/LOBECHAT_TROUBLESHOOTING.md`
 
