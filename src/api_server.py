@@ -1,7 +1,6 @@
-\
-\"\"\"
-FastAPI server for Kor\'tana chat interface and API endpoints.
-\"\"\"
+"""
+FastAPI server for Kor'tana chat interface and API endpoints.
+"""
 
 import json
 import logging
@@ -78,7 +77,7 @@ def get_csrf_config() -> CsrfSettings:
 
 # NEW helper function to get the enhanced ChatEngine
 def get_enhanced_chat_engine() -> ChatEngine:
-    \"\"\"Get ChatEngine with autonomous awareness capabilities.\"\"\"
+    """Get ChatEngine with autonomous awareness capabilities."""
     # These services need to be correctly imported and instantiated
     # Assuming LLMService and MemoryManager can be instantiated without arguments
     # or that their configuration is handled internally/globally.
@@ -92,7 +91,7 @@ def get_enhanced_chat_engine() -> ChatEngine:
 async def chat_endpoint(
     request_data: MessageRequest, csrf_protect: CsrfProtect = Depends() # Changed to use MessageRequest directly
 ) -> MessageResponse:
-    \"\"\"Enhanced chat endpoint with autonomous awareness.\"\"\"
+    """Enhanced chat endpoint with autonomous awareness."""
     await csrf_protect.validate_csrf_for_json(request_data.model_dump()) # Adjusted CSRF for JSON payload
     try:
         chat_engine = get_enhanced_chat_engine()
@@ -105,7 +104,7 @@ async def chat_endpoint(
             user_id=request_data.user_id or "default" # Ensure user_id is passed
         )
 
-        logger.info(f\"Kor\'tana\'s brain generated response: \'{response_text}\'\")
+        logger.info(f"Kor'tana's brain generated response: '{response_text}'")
         return MessageResponse(
             response=response_text,
             timestamp=datetime.now().isoformat()
@@ -115,10 +114,10 @@ async def chat_endpoint(
         raise
     except Exception as e:
         logger.error(
-            f\"Error processing message in Kor\'tana\'s brain: {e}\", exc_info=True
+            f"Error processing message in Kor'tana's brain: {e}", exc_info=True
         )
         raise HTTPException(
-            status_code=500, detail=f\"Internal server error in Kor\'tana: {str(e)}\"
+            status_code=500, detail=f"Internal server error in Kor'tana: {str(e)}"
         ) from e
 
 # Alias for LobeChat or alternate frontend - THIS MIGHT ALSO NEED UPDATING
@@ -139,21 +138,21 @@ async def kortana_chat_alias(request: Request, csrf_protect: CsrfProtect = Depen
             user_id=message_request.user_id or "default"
         )
 
-        logger.info(f\"Kor\'tana\'s brain generated response for alias: \'{response}\'\")
+        logger.info(f"Kor'tana's brain generated response for alias: '{response}'")
         # Adjust response payload as needed, new ChatEngine doesn't directly return mode
-        response_payload = {\"reply\": response, \"timestamp\": datetime.now().isoformat()}
+        response_payload = {"reply": response, "timestamp": datetime.now().isoformat()}
         logger.info(
-            f\"Sending response payload for alias: {json.dumps(response_payload, indent=2)}\"
+            f"Sending response payload for alias: {json.dumps(response_payload, indent=2)}"
         )
         return response_payload
     except HTTPException:
         raise
     except Exception as e:
         logger.error(
-            f\"Error processing message in Kor\'tana\'s brain (alias): {e}\", exc_info=True
+            f"Error processing message in Kor'tana's brain (alias): {e}", exc_info=True
         )
         raise HTTPException(
-            status_code=500, detail=f\"Internal server error in Kor\'tana (alias): {str(e)}\"
+            status_code=500, detail=f"Internal server error in Kor'tana (alias): {str(e)}"
         ) from e
 
 # ... (rest of the file remains the same, including /health, /mode, /v1/chat/completions etc.)
@@ -162,7 +161,7 @@ async def kortana_chat_alias(request: Request, csrf_protect: CsrfProtect = Depen
 
 @app.get("/health")
 def health_check() -> dict:
-    return {"status": "Kor\'tana is awake and responsive"}
+    return {"status": "Kor'tana is awake and responsive"}
 
 @app.get("/mode")
 def get_mode_api() -> dict: # Renamed to avoid conflict if 'get_mode' is used elsewhere
@@ -174,7 +173,7 @@ def get_mode_api() -> dict: # Renamed to avoid conflict if 'get_mode' is used el
 def set_mode_api(data: dict) -> dict: # Renamed to avoid conflict
     # Mode setting logic needs to be re-evaluated with the new ChatEngine
     # The new ChatEngine doesn't have an explicit set_mode method in the provided snippet
-    logger.warning(\"set_mode API called, but mode management has changed with new ChatEngine.\")
+    logger.warning("set_mode API called, but mode management has changed with new ChatEngine.")
     return {"status": "Mode management updated", "requested_mode_change": data.get("mode")}
 
 
@@ -182,7 +181,7 @@ def set_mode_api(data: dict) -> dict: # Renamed to avoid conflict
 async def openai_compatible_chat(request: Request) -> JSONResponse: # Changed to JSONResponse
     # This endpoint likely needs significant rework to use the new ChatEngine
     # or a dedicated adapter. For now, logging a warning.
-    logger.warning(\"OpenAI compatible chat endpoint (/v1/chat/completions) called. Needs review for new ChatEngine.\")
+    logger.warning("OpenAI compatible chat endpoint (/v1/chat/completions) called. Needs review for new ChatEngine.")
     try:
         payload = await request.json()
         # Simplified: assuming the first message content is the user input
@@ -209,8 +208,8 @@ async def openai_compatible_chat(request: Request) -> JSONResponse: # Changed to
             "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0} # Placeholder usage
         })
     except Exception as e:
-        logger.error(f\"Error in OpenAI compatible chat endpoint: {e}\", exc_info=True)
-        raise HTTPException(status_code=500, detail=f\"Error in OpenAI adapter: {str(e)}\")
+        logger.error(f"Error in OpenAI compatible chat endpoint: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error in OpenAI adapter: {str(e)}")
 
 
 @app.get("/chat") # This is an SSE endpoint, different from the POST /chat
@@ -218,12 +217,12 @@ async def chat_sse(topic: str) -> EventSourceResponse:
     # This SSE endpoint would need its own logic, potentially also using ChatEngine
     # but in a streaming fashion if supported, or for different event types.
     # For now, it's not directly modified by the ChatEngine changes for POST /chat.
-    logger.warning(\"SSE /chat endpoint called. Not directly modified by new POST /chat ChatEngine.\")
+    logger.warning("SSE /chat endpoint called. Not directly modified by new POST /chat ChatEngine.")
     async def event_generator():
         # Placeholder SSE logic
-        yield {"event": "message", "data": json.dumps({\"topic\": topic, \"message\": \"SSE connection established\"})}
+        yield {"event": "message", "data": json.dumps({"topic": topic, "message": "SSE connection established"})}
         await asyncio.sleep(1) # Requires asyncio import
-        yield {"event": "message", "data": json.dumps({\"topic\": topic, \"message\": \"Still connected...\"})}
+        yield {"event": "message", "data": json.dumps({"topic": topic, "message": "Still connected..."})}
     return EventSourceResponse(event_generator())
 
 
