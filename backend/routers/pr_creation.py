@@ -8,7 +8,7 @@ import os
 from datetime import datetime
 from typing import Any
 
-import requests
+import httpx
 from database import get_db
 from fastapi import APIRouter, Depends, HTTPException
 from logger import setup_logging
@@ -112,7 +112,7 @@ class PRCreator:
 """
         return description
 
-    def create_pr(self, task_id: str) -> dict[str, Any]:
+    async def create_pr(self, task_id: str) -> dict[str, Any]:
         """Create a PR for a completed task"""
         self._validate_token()
 
@@ -157,13 +157,17 @@ class PRCreator:
         create_url = f"https://api.github.com/repos/{owner}/{repo}/pulls"
 
         try:
-            response = requests.post(create_url, headers=headers, json=pr_data, timeout=30)
-            response.raise_for_status()
-        except requests.RequestException as e:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(create_url, headers=headers, json=pr_data, timeout=30)
+                response.raise_for_status()
+                pr_result = response.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Failed to create PR for task {task_id}: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Failed to create PR: {str(e)}")
+        except Exception as e:
             logger.error(f"Failed to create PR for task {task_id}: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Failed to create PR: {str(e)}")
 
-        pr_result = response.json()
         pr_number = pr_result["number"]
         pr_url = pr_result["html_url"]
 
@@ -228,7 +232,7 @@ async def create_pr_endpoint(
 ) -> dict[str, Any]:
     """Create a PR for a completed task"""
     try:
-        result = pr_creator.create_pr(task_id)
+        result = await pr_creator.create_pr(task_id)
         return result
     except HTTPException:
         raise
@@ -286,26 +290,27 @@ async def get_pr_status(task_id: str, db: Session = Depends(get_db)) -> dict[str
     pr_url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{task.github_pr_number}"
 
     try:
-        response = requests.get(pr_url, headers=headers, timeout=10)
-        if response.status_code == 200:
-            pr_data = response.json()
-            return {
-                "task_id": task_id,
-                "has_pr": True,
-                "pr_number": task.github_pr_number,
-                "pr_url": pr_data.get("html_url"),
-                "state": pr_data.get("state"),
-                "merged": pr_data.get("merged"),
-                "title": pr_data.get("title"),
-                "draft": pr_data.get("draft"),
-            }
-        else:
-            return {
-                "task_id": task_id,
-                "has_pr": True,
-                "pr_number": task.github_pr_number,
-                "message": "Could not fetch PR details",
-            }
+        async with httpx.AsyncClient() as client:
+            response = await client.get(pr_url, headers=headers, timeout=10)
+            if response.status_code == 200:
+                pr_data = response.json()
+                return {
+                    "task_id": task_id,
+                    "has_pr": True,
+                    "pr_number": task.github_pr_number,
+                    "pr_url": pr_data.get("html_url"),
+                    "state": pr_data.get("state"),
+                    "merged": pr_data.get("merged"),
+                    "title": pr_data.get("title"),
+                    "draft": pr_data.get("draft"),
+                }
+            else:
+                return {
+                    "task_id": task_id,
+                    "has_pr": True,
+                    "pr_number": task.github_pr_number,
+                    "message": "Could not fetch PR details",
+                }
     except Exception as e:
         return {
             "task_id": task_id,
@@ -334,9 +339,10 @@ async def list_prs_for_repo(
     )
 
     try:
-        response = requests.get(prs_url, headers=headers, timeout=10)
-        response.raise_for_status()
-        prs = response.json()
+        async with httpx.AsyncClient() as client:
+            response = await client.get(prs_url, headers=headers, timeout=10)
+            response.raise_for_status()
+            prs = response.json()
 
         # Filter to only PRs from feature branches (our format)
         feature_prs = [
