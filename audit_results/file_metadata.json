@@ -52,9 +52,9 @@
   "/home/runner/work/kortana/kortana/test_routing_windows.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -63,9 +63,9 @@
   "/home/runner/work/kortana/kortana/test_server_fix.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -84,9 +84,9 @@
   "/home/runner/work/kortana/kortana/test_goal_engine_basic.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -135,9 +135,9 @@
   "/home/runner/work/kortana/kortana/test_simple.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -196,9 +196,9 @@
   "/home/runner/work/kortana/kortana/test_server_startup.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -267,8 +267,8 @@
   "/home/runner/work/kortana/kortana/setup_phase4_db.py": {
     "category": "other",
     "tags": [
-      "ext:py",
       "config",
+      "ext:py",
       "other"
     ],
     "purpose": "General purpose file",
@@ -278,9 +278,9 @@
   "/home/runner/work/kortana/kortana/test_goals_direct.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -289,9 +289,9 @@
   "/home/runner/work/kortana/kortana/test_simple_integration.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -320,8 +320,8 @@
   "/home/runner/work/kortana/kortana/simple_activation_test.py": {
     "category": "other",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "other"
     ],
     "purpose": "General purpose file",
@@ -341,8 +341,8 @@
   "/home/runner/work/kortana/kortana/genesis_goal.sql": {
     "category": "other",
     "tags": [
-      "other",
-      "ext:sql"
+      "ext:sql",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -421,9 +421,9 @@
   "/home/runner/work/kortana/kortana/learning_test_file_output.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -492,8 +492,8 @@
   "/home/runner/work/kortana/kortana/temp_core_test.py": {
     "category": "other",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "other"
     ],
     "purpose": "General purpose file",
@@ -504,8 +504,8 @@
     "category": "other",
     "tags": [
       "ext:md",
-      "other",
-      "entry-point"
+      "entry-point",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -514,9 +514,9 @@
   "/home/runner/work/kortana/kortana/test_code_scanning.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -575,9 +575,9 @@
   "/home/runner/work/kortana/kortana/test_full_system.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -597,8 +597,8 @@
     "category": "other",
     "tags": [
       "ext:md",
-      "other",
-      "config"
+      "config",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -627,8 +627,8 @@
   "/home/runner/work/kortana/kortana/setup_task_scheduler.py": {
     "category": "other",
     "tags": [
-      "ext:py",
       "config",
+      "ext:py",
       "other"
     ],
     "purpose": "General purpose file",
@@ -648,9 +648,9 @@
   "/home/runner/work/kortana/kortana/test_autonomous_refactor.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -699,8 +699,8 @@
   "/home/runner/work/kortana/kortana/.ruff.toml": {
     "category": "config",
     "tags": [
-      "ext:toml",
-      "config"
+      "config",
+      "ext:toml"
     ],
     "purpose": "Configuration",
     "is_critical": false,
@@ -719,9 +719,9 @@
   "/home/runner/work/kortana/kortana/create_test_goal.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -730,8 +730,8 @@
   "/home/runner/work/kortana/kortana/simple_router_test.py": {
     "category": "other",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "other"
     ],
     "purpose": "General purpose file",
@@ -741,9 +741,9 @@
   "/home/runner/work/kortana/kortana/test_proactive_review.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -763,20 +763,20 @@
   "/home/runner/work/kortana/kortana/test_debugging_maintenance.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
       "tests",
+      "ext:py",
       "entry-point"
     ],
     "purpose": "Test suite",
     "is_critical": false,
-    "last_modified": 1769062240.2387176
+    "last_modified": 1769062583.1038747
   },
   "/home/runner/work/kortana/kortana/quick_proactive_test.py": {
     "category": "other",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "other"
     ],
     "purpose": "General purpose file",
@@ -856,8 +856,8 @@
   "/home/runner/work/kortana/kortana/simple_proactive_test.py": {
     "category": "other",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "other"
     ],
     "purpose": "General purpose file",
@@ -867,8 +867,8 @@
   "/home/runner/work/kortana/kortana/quick_test.py": {
     "category": "other",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "other"
     ],
     "purpose": "General purpose file",
@@ -878,9 +878,9 @@
   "/home/runner/work/kortana/kortana/test_minimal_services.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -929,8 +929,8 @@
   "/home/runner/work/kortana/kortana/manual_proactive_test.py": {
     "category": "other",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "other"
     ],
     "purpose": "General purpose file",
@@ -1001,8 +1001,8 @@
   "/home/runner/work/kortana/kortana/run_test.bat": {
     "category": "other",
     "tags": [
-      "ext:bat",
       "test",
+      "ext:bat",
       "other"
     ],
     "purpose": "General purpose file",
@@ -1132,9 +1132,9 @@
   "/home/runner/work/kortana/kortana/test_autonomous_diagnostic.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -1143,9 +1143,9 @@
   "/home/runner/work/kortana/kortana/playwright.config.ts": {
     "category": "other",
     "tags": [
+      "ext:ts",
       "config",
-      "other",
-      "ext:ts"
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -1184,9 +1184,9 @@
   "/home/runner/work/kortana/kortana/test_basic_execution_engine.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -1205,8 +1205,8 @@
   "/home/runner/work/kortana/kortana/proving_ground_setup.py": {
     "category": "other",
     "tags": [
-      "ext:py",
       "config",
+      "ext:py",
       "other"
     ],
     "purpose": "General purpose file",
@@ -1216,9 +1216,9 @@
   "/home/runner/work/kortana/kortana/test_covenant.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -1227,9 +1227,9 @@
   "/home/runner/work/kortana/kortana/test_integration.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -1238,9 +1238,9 @@
   "/home/runner/work/kortana/kortana/test_final_integration.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -1319,9 +1319,9 @@
   "/home/runner/work/kortana/kortana/test_server.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -1330,9 +1330,9 @@
   "/home/runner/work/kortana/kortana/test_environmental_scanner.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -1411,9 +1411,9 @@
   "/home/runner/work/kortana/kortana/test_enhanced_routing.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -1443,8 +1443,8 @@
     "category": "other",
     "tags": [
       "ext:md",
-      "other",
-      "data-model"
+      "data-model",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -1462,9 +1462,9 @@
   "/home/runner/work/kortana/kortana/test_basic_insights.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -1473,10 +1473,10 @@
   "/home/runner/work/kortana/kortana/test_config_simple.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "config",
-      "tests"
+      "tests",
+      "ext:py",
+      "config"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -1495,9 +1495,9 @@
   "/home/runner/work/kortana/kortana/test_pinecone_fix.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -1526,9 +1526,9 @@
   "/home/runner/work/kortana/kortana/test_context_gathering.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -1537,9 +1537,9 @@
   "/home/runner/work/kortana/kortana/test_simple_imports.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -1577,8 +1577,8 @@
   "/home/runner/work/kortana/kortana/minimal_test.py": {
     "category": "other",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "other"
     ],
     "purpose": "General purpose file",
@@ -1598,8 +1598,8 @@
   "/home/runner/work/kortana/kortana/quick_api_test.py": {
     "category": "other",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "other"
     ],
     "purpose": "General purpose file",
@@ -1619,9 +1619,9 @@
   "/home/runner/work/kortana/kortana/test_proving_ground_manual.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -1660,9 +1660,9 @@
   "/home/runner/work/kortana/kortana/test_centralized_services.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -1671,9 +1671,9 @@
   "/home/runner/work/kortana/kortana/test_execution_engine_basic.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -1702,9 +1702,9 @@
   "/home/runner/work/kortana/kortana/test_clean_architecture.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -1713,9 +1713,9 @@
   "/home/runner/work/kortana/kortana/test_proactive_batch10.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -1784,8 +1784,8 @@
   "/home/runner/work/kortana/kortana/pyproject.toml": {
     "category": "config",
     "tags": [
-      "ext:toml",
-      "config"
+      "config",
+      "ext:toml"
     ],
     "purpose": "Configuration",
     "is_critical": true,
@@ -1834,9 +1834,9 @@
   "/home/runner/work/kortana/kortana/test_autonomous_awakening.bat": {
     "category": "tests",
     "tags": [
-      "ext:bat",
       "test",
-      "tests"
+      "tests",
+      "ext:bat"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -1845,9 +1845,9 @@
   "/home/runner/work/kortana/kortana/test_genesis_tools.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -1876,9 +1876,9 @@
   "/home/runner/work/kortana/kortana/test_architecture_focused.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -1997,9 +1997,9 @@
   "/home/runner/work/kortana/kortana/test_chatengine_settings.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -2018,9 +2018,9 @@
   "/home/runner/work/kortana/kortana/test_services_direct.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -2029,8 +2029,8 @@
   "/home/runner/work/kortana/kortana/covenant_test.py": {
     "category": "other",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "other"
     ],
     "purpose": "General purpose file",
@@ -2080,8 +2080,8 @@
   "/home/runner/work/kortana/kortana/.env.example": {
     "category": "config",
     "tags": [
-      "ext:example",
-      "config"
+      "config",
+      "ext:example"
     ],
     "purpose": "Configuration",
     "is_critical": false,
@@ -2100,9 +2100,9 @@
   "/home/runner/work/kortana/kortana/test_proactive_scheduling.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -2131,9 +2131,9 @@
   "/home/runner/work/kortana/kortana/check_schemas.py": {
     "category": "other",
     "tags": [
+      "data-model",
       "ext:py",
-      "other",
-      "data-model"
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -2152,9 +2152,9 @@
   "/home/runner/work/kortana/kortana/test_covenant_loading.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -2163,8 +2163,8 @@
   "/home/runner/work/kortana/kortana/debug_config_loading.py": {
     "category": "other",
     "tags": [
-      "ext:py",
       "config",
+      "ext:py",
       "other"
     ],
     "purpose": "General purpose file",
@@ -2195,9 +2195,9 @@
     "category": "other",
     "tags": [
       "test",
+      "ext:ts",
       "config",
-      "other",
-      "ext:ts"
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -2206,9 +2206,9 @@
   "/home/runner/work/kortana/kortana/test_strategic_insights.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -2217,9 +2217,9 @@
   "/home/runner/work/kortana/kortana/test_proactive_engineer.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -2308,9 +2308,9 @@
   "/home/runner/work/kortana/kortana/test_scan_tool.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -2349,9 +2349,9 @@
   "/home/runner/work/kortana/kortana/test_autonomous_capabilities.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -2380,8 +2380,8 @@
   "/home/runner/work/kortana/kortana/direct_router_test.py": {
     "category": "other",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "other"
     ],
     "purpose": "General purpose file",
@@ -2431,9 +2431,9 @@
   "/home/runner/work/kortana/kortana/test_minimal.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -2462,8 +2462,8 @@
   "/home/runner/work/kortana/kortana/genesis_protocol_test.py": {
     "category": "other",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "other"
     ],
     "purpose": "General purpose file",
@@ -2493,9 +2493,9 @@
   "/home/runner/work/kortana/kortana/test_phase5_simple.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -2544,9 +2544,9 @@
   "/home/runner/work/kortana/kortana/test_database_connectivity.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -2555,9 +2555,9 @@
   "/home/runner/work/kortana/kortana/test_env.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -2606,9 +2606,9 @@
   "/home/runner/work/kortana/kortana/test_proactive_live_phase2.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -2637,8 +2637,8 @@
   "/home/runner/work/kortana/kortana/manual_scan_test.py": {
     "category": "other",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "other"
     ],
     "purpose": "General purpose file",
@@ -2685,12 +2685,23 @@
     "is_critical": false,
     "last_modified": 1769061742.9001772
   },
+  "/home/runner/work/kortana/kortana/DEBUGGING_MAINTENANCE_IMPLEMENTATION.md": {
+    "category": "other",
+    "tags": [
+      "ext:md",
+      "entry-point",
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": false,
+    "last_modified": 1769062782.3516989
+  },
   "/home/runner/work/kortana/kortana/test_imports_simple.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -2699,9 +2710,9 @@
   "/home/runner/work/kortana/kortana/test_proactive_integration.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -2721,8 +2732,8 @@
     "category": "other",
     "tags": [
       "ext:md",
-      "other",
-      "entry-point"
+      "entry-point",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -2781,9 +2792,9 @@
   "/home/runner/work/kortana/kortana/test_proactive_code_review.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -2822,9 +2833,9 @@
   "/home/runner/work/kortana/kortana/test_brain_basic.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -2833,8 +2844,8 @@
   "/home/runner/work/kortana/kortana/batch8_learning_test.py": {
     "category": "other",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "other"
     ],
     "purpose": "General purpose file",
@@ -2874,9 +2885,9 @@
   "/home/runner/work/kortana/kortana/test_goal_submit.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -2895,10 +2906,10 @@
   "/home/runner/work/kortana/kortana/model_config_manager.py": {
     "category": "other",
     "tags": [
-      "ext:py",
       "config",
-      "other",
-      "data-model"
+      "data-model",
+      "ext:py",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -2917,9 +2928,9 @@
   "/home/runner/work/kortana/kortana/test_fixed_services.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -2948,8 +2959,8 @@
   "/home/runner/work/kortana/kortana/simple_learning_test.py": {
     "category": "other",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "other"
     ],
     "purpose": "General purpose file",
@@ -2959,8 +2970,8 @@
   "/home/runner/work/kortana/kortana/.cacheme/copilot-key.json": {
     "category": "other",
     "tags": [
-      "other",
-      "ext:json"
+      "ext:json",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -2969,8 +2980,8 @@
   "/home/runner/work/kortana/kortana/.cacheme/inception.enc": {
     "category": "other",
     "tags": [
-      "other",
-      "ext:enc"
+      "ext:enc",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -2983,7 +2994,7 @@
     ],
     "purpose": "General purpose file",
     "is_critical": true,
-    "last_modified": 1769061791.3516033
+    "last_modified": 1769062797.4308364
   },
   "/home/runner/work/kortana/kortana/.git/shallow": {
     "category": "other",
@@ -3001,7 +3012,7 @@
     ],
     "purpose": "General purpose file",
     "is_critical": true,
-    "last_modified": 1769061791.3506033
+    "last_modified": 1769062797.468837
   },
   "/home/runner/work/kortana/kortana/.git/packed-refs": {
     "category": "other",
@@ -3040,12 +3051,21 @@
     "is_critical": true,
     "last_modified": 1769061744.6751945
   },
+  "/home/runner/work/kortana/kortana/.git/COMMIT_EDITMSG": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062797.468837
+  },
   "/home/runner/work/kortana/kortana/discord/config.md": {
     "category": "other",
     "tags": [
       "ext:md",
-      "other",
-      "config"
+      "config",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -3114,8 +3134,8 @@
   "/home/runner/work/kortana/kortana/.vscode/keybindings.json": {
     "category": "other",
     "tags": [
-      "other",
-      "ext:json"
+      "ext:json",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -3124,8 +3144,8 @@
   "/home/runner/work/kortana/kortana/.vscode/settings.json": {
     "category": "other",
     "tags": [
-      "other",
-      "ext:json"
+      "ext:json",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -3134,8 +3154,8 @@
   "/home/runner/work/kortana/kortana/.vscode/tasks.json": {
     "category": "other",
     "tags": [
-      "other",
-      "ext:json"
+      "ext:json",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -3144,8 +3164,8 @@
   "/home/runner/work/kortana/kortana/.vscode/launch.json": {
     "category": "other",
     "tags": [
-      "other",
-      "ext:json"
+      "ext:json",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -3214,9 +3234,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_routing_windows.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -3225,8 +3245,8 @@
   "/home/runner/work/kortana/kortana/scripts/simple_endpoint_test.py": {
     "category": "scripts",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -3246,9 +3266,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_server_fix.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -3257,9 +3277,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_goal_engine_basic.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -3308,8 +3328,8 @@
   "/home/runner/work/kortana/kortana/scripts/run_tests.py": {
     "category": "scripts",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -3329,9 +3349,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_fastapi_final.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -3370,9 +3390,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_lobe_integration.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -3381,9 +3401,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_simple.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -3393,8 +3413,8 @@
     "category": "scripts",
     "tags": [
       "ext:py",
-      "config",
-      "scripts"
+      "scripts",
+      "config"
     ],
     "purpose": "Utility script",
     "is_critical": false,
@@ -3433,8 +3453,8 @@
   "/home/runner/work/kortana/kortana/scripts/comprehensive_api_test.py": {
     "category": "scripts",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -3454,9 +3474,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_server_startup.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -3475,9 +3495,9 @@
   "/home/runner/work/kortana/kortana/scripts/run_pytest_diagnostic.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -3517,8 +3537,8 @@
     "category": "scripts",
     "tags": [
       "ext:py",
-      "config",
-      "scripts"
+      "scripts",
+      "config"
     ],
     "purpose": "Utility script",
     "is_critical": false,
@@ -3537,9 +3557,9 @@
   "/home/runner/work/kortana/kortana/scripts/run_memory_agent.py": {
     "category": "scripts",
     "tags": [
+      "agent",
       "ext:py",
-      "scripts",
-      "agent"
+      "scripts"
     ],
     "purpose": "Utility script",
     "is_critical": false,
@@ -3559,8 +3579,8 @@
     "category": "scripts",
     "tags": [
       "ext:py",
-      "config",
-      "scripts"
+      "scripts",
+      "config"
     ],
     "purpose": "Utility script",
     "is_critical": false,
@@ -3589,9 +3609,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_goals_direct.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -3600,9 +3620,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_simple_integration.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -3611,9 +3631,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_server_start.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -3642,8 +3662,8 @@
   "/home/runner/work/kortana/kortana/scripts/simple_activation_test.py": {
     "category": "scripts",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -3674,8 +3694,8 @@
     "category": "scripts",
     "tags": [
       "ext:py",
-      "config",
-      "scripts"
+      "scripts",
+      "config"
     ],
     "purpose": "Utility script",
     "is_critical": false,
@@ -3694,9 +3714,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_imports_verbose.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -3715,9 +3735,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_connection.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -3756,9 +3776,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_basic_flow.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -3767,9 +3787,9 @@
   "/home/runner/work/kortana/kortana/scripts/learning_test_file_output.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -3828,8 +3848,8 @@
   "/home/runner/work/kortana/kortana/scripts/temp_core_test.py": {
     "category": "scripts",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -3849,9 +3869,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_code_scanning.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -3921,9 +3941,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_extensions.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -3932,9 +3952,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_full_system.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -3953,9 +3973,9 @@
   "/home/runner/work/kortana/kortana/scripts/start_kortana_agent.bat": {
     "category": "scripts",
     "tags": [
+      "agent",
       "ext:bat",
-      "scripts",
-      "agent"
+      "scripts"
     ],
     "purpose": "Utility script",
     "is_critical": false,
@@ -3964,9 +3984,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_autonomous_simple.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -3986,8 +4006,8 @@
     "category": "scripts",
     "tags": [
       "ext:py",
-      "config",
-      "scripts"
+      "scripts",
+      "config"
     ],
     "purpose": "Utility script",
     "is_critical": false,
@@ -4017,9 +4037,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_autonomous_refactor.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -4068,9 +4088,9 @@
   "/home/runner/work/kortana/kortana/scripts/create_test_goal.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -4099,8 +4119,8 @@
   "/home/runner/work/kortana/kortana/scripts/simple_router_test.py": {
     "category": "scripts",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -4110,9 +4130,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_proactive_review.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -4141,8 +4161,8 @@
   "/home/runner/work/kortana/kortana/scripts/quick_proactive_test.py": {
     "category": "scripts",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -4162,9 +4182,9 @@
   "/home/runner/work/kortana/kortana/scripts/run_pytest_diagnostic_new.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -4204,9 +4224,9 @@
   "/home/runner/work/kortana/kortana/scripts/run_pytest_batch.bat": {
     "category": "tests",
     "tags": [
-      "ext:bat",
       "test",
-      "tests"
+      "tests",
+      "ext:bat"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -4215,8 +4235,8 @@
   "/home/runner/work/kortana/kortana/scripts/load_env_test.py": {
     "category": "scripts",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -4256,8 +4276,8 @@
   "/home/runner/work/kortana/kortana/scripts/simple_proactive_test.py": {
     "category": "scripts",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -4277,8 +4297,8 @@
   "/home/runner/work/kortana/kortana/scripts/quick_test.py": {
     "category": "scripts",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -4308,9 +4328,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_scheduler.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -4319,9 +4339,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_minimal_services.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -4331,8 +4351,8 @@
     "category": "scripts",
     "tags": [
       "ext:py",
-      "config",
-      "scripts"
+      "scripts",
+      "config"
     ],
     "purpose": "Utility script",
     "is_critical": false,
@@ -4381,8 +4401,8 @@
   "/home/runner/work/kortana/kortana/scripts/simple_test.py": {
     "category": "scripts",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -4392,9 +4412,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_memory_brain_imports.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -4403,8 +4423,8 @@
   "/home/runner/work/kortana/kortana/scripts/run_config_tests.bat": {
     "category": "scripts",
     "tags": [
-      "ext:bat",
       "test",
+      "ext:bat",
       "config",
       "scripts"
     ],
@@ -4435,8 +4455,8 @@
   "/home/runner/work/kortana/kortana/scripts/manual_proactive_test.py": {
     "category": "scripts",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -4496,8 +4516,8 @@
   "/home/runner/work/kortana/kortana/scripts/run_test.bat": {
     "category": "scripts",
     "tags": [
-      "ext:bat",
       "test",
+      "ext:bat",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -4597,9 +4617,9 @@
   "/home/runner/work/kortana/kortana/scripts/genesis_test.py.backup_1749846254": {
     "category": "scripts",
     "tags": [
-      "ext:backup_1749846254",
       "test",
-      "scripts"
+      "scripts",
+      "ext:backup_1749846254"
     ],
     "purpose": "Utility script",
     "is_critical": false,
@@ -4668,9 +4688,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_autonomous_diagnostic.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -4749,8 +4769,8 @@
   "/home/runner/work/kortana/kortana/scripts/collect_tests.py": {
     "category": "scripts",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -4760,9 +4780,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_basic_execution_engine.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -4781,9 +4801,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_with_venv.bat": {
     "category": "tests",
     "tags": [
-      "ext:bat",
       "test",
-      "tests"
+      "tests",
+      "ext:bat"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -4803,8 +4823,8 @@
     "category": "scripts",
     "tags": [
       "ext:py",
-      "config",
-      "scripts"
+      "scripts",
+      "config"
     ],
     "purpose": "Utility script",
     "is_critical": false,
@@ -4813,9 +4833,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_covenant.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -4824,8 +4844,8 @@
   "/home/runner/work/kortana/kortana/scripts/run_import_test.bat": {
     "category": "scripts",
     "tags": [
-      "ext:bat",
       "test",
+      "ext:bat",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -4845,9 +4865,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_integration.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -4856,9 +4876,9 @@
   "/home/runner/work/kortana/kortana/scripts/arch_test_script.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -4877,9 +4897,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_final_integration.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -4928,9 +4948,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_autonomy.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -4939,9 +4959,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_exec.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -4992,8 +5012,8 @@
   "/home/runner/work/kortana/kortana/scripts/smoke_test.py": {
     "category": "scripts",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -5003,9 +5023,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_server.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -5014,9 +5034,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_environmental_scanner.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -5045,8 +5065,8 @@
   "/home/runner/work/kortana/kortana/scripts/diagnostic_import_test.py": {
     "category": "scripts",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -5106,9 +5126,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_enhanced_routing.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -5137,9 +5157,9 @@
   "/home/runner/work/kortana/kortana/scripts/import_test_script.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -5148,9 +5168,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_basic_insights.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -5169,9 +5189,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_critical_endpoints.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -5210,8 +5230,8 @@
   "/home/runner/work/kortana/kortana/scripts/simple_import_test.py": {
     "category": "scripts",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -5221,10 +5241,10 @@
   "/home/runner/work/kortana/kortana/scripts/test_config_simple.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "config",
-      "tests"
+      "tests",
+      "ext:py",
+      "config"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -5233,9 +5253,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_pinecone_fix.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -5244,10 +5264,10 @@
   "/home/runner/work/kortana/kortana/scripts/setup_test_env.bat": {
     "category": "tests",
     "tags": [
-      "ext:bat",
       "test",
-      "config",
-      "tests"
+      "tests",
+      "ext:bat",
+      "config"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -5286,9 +5306,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_context_gathering.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -5297,9 +5317,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_simple_imports.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -5358,8 +5378,8 @@
   "/home/runner/work/kortana/kortana/scripts/minimal_test.py": {
     "category": "scripts",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -5369,8 +5389,8 @@
   "/home/runner/work/kortana/kortana/scripts/quick_api_test.py": {
     "category": "scripts",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -5391,9 +5411,9 @@
   "/home/runner/work/kortana/kortana/scripts/arch_test_script_simple.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -5412,9 +5432,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_proving_ground_manual.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -5443,8 +5463,8 @@
   "/home/runner/work/kortana/kortana/scripts/quick_server_test.py": {
     "category": "scripts",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -5454,9 +5474,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_centralized_services.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -5535,9 +5555,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_goals.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -5546,9 +5566,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_clean_architecture.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -5557,9 +5577,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_proactive_batch10.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -5568,8 +5588,8 @@
   "/home/runner/work/kortana/kortana/scripts/standalone_activation_test.py": {
     "category": "scripts",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -5579,9 +5599,9 @@
   "/home/runner/work/kortana/kortana/scripts/covenant_test_direct.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -5590,9 +5610,9 @@
   "/home/runner/work/kortana/kortana/scripts/run_pytest_capture.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -5601,8 +5621,8 @@
   "/home/runner/work/kortana/kortana/scripts/temp_path_test.py": {
     "category": "scripts",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -5642,9 +5662,9 @@
   "/home/runner/work/kortana/kortana/scripts/verify_test_files.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -5703,9 +5723,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_activation.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -5734,9 +5754,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_autonomous_awakening.bat": {
     "category": "tests",
     "tags": [
-      "ext:bat",
       "test",
-      "tests"
+      "tests",
+      "ext:bat"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -5745,9 +5765,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_genesis_tools.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -5786,9 +5806,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_architecture_focused.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -5798,8 +5818,8 @@
     "category": "scripts",
     "tags": [
       "ext:py",
-      "config",
-      "scripts"
+      "scripts",
+      "config"
     ],
     "purpose": "Utility script",
     "is_critical": false,
@@ -5838,9 +5858,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_real_autonomous.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -5849,9 +5869,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_memory_service.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -5860,8 +5880,8 @@
   "/home/runner/work/kortana/kortana/scripts/run_tests.bat": {
     "category": "scripts",
     "tags": [
-      "ext:bat",
       "test",
+      "ext:bat",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -5881,10 +5901,10 @@
   "/home/runner/work/kortana/kortana/scripts/test_config.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "config",
-      "tests"
+      "tests",
+      "ext:py",
+      "config"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -5893,8 +5913,8 @@
   "/home/runner/work/kortana/kortana/scripts/run_evaluator_tests.py": {
     "category": "scripts",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -5964,8 +5984,8 @@
   "/home/runner/work/kortana/kortana/scripts/direct_autonomous_test.py": {
     "category": "scripts",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -5985,9 +6005,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_chatengine_settings.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -6017,9 +6037,9 @@
   "/home/runner/work/kortana/kortana/scripts/check_test_collection.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -6038,9 +6058,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_services_direct.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -6049,8 +6069,8 @@
   "/home/runner/work/kortana/kortana/scripts/covenant_test.py": {
     "category": "scripts",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -6060,8 +6080,8 @@
   "/home/runner/work/kortana/kortana/scripts/run_system_test.py": {
     "category": "scripts",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -6162,9 +6182,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_proactive_scheduling.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -6183,9 +6203,9 @@
   "/home/runner/work/kortana/kortana/scripts/Setup-TestEnv.ps1": {
     "category": "scripts",
     "tags": [
-      "test",
       "ext:ps1",
       "config",
+      "test",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -6216,8 +6236,8 @@
   "/home/runner/work/kortana/kortana/scripts/import_test.py": {
     "category": "scripts",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -6247,9 +6267,9 @@
   "/home/runner/work/kortana/kortana/scripts/check_schemas.py": {
     "category": "scripts",
     "tags": [
+      "data-model",
       "ext:py",
-      "scripts",
-      "data-model"
+      "scripts"
     ],
     "purpose": "Utility script",
     "is_critical": false,
@@ -6258,8 +6278,8 @@
   "/home/runner/work/kortana/kortana/scripts/run_all_tests.py": {
     "category": "scripts",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -6280,9 +6300,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_covenant_loading.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -6302,8 +6322,8 @@
     "category": "scripts",
     "tags": [
       "ext:py",
-      "config",
-      "scripts"
+      "scripts",
+      "config"
     ],
     "purpose": "Utility script",
     "is_critical": false,
@@ -6312,8 +6332,8 @@
   "/home/runner/work/kortana/kortana/scripts/ascii_import_test.py": {
     "category": "scripts",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -6373,9 +6393,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_strategic_insights.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -6394,9 +6414,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_proactive_engineer.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -6475,9 +6495,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_scan_tool.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -6526,9 +6546,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_autonomous_capabilities.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -6547,8 +6567,8 @@
   "/home/runner/work/kortana/kortana/scripts/comprehensive_import_test.py": {
     "category": "scripts",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -6559,8 +6579,8 @@
     "category": "scripts",
     "tags": [
       "ext:py",
-      "config",
-      "scripts"
+      "scripts",
+      "config"
     ],
     "purpose": "Utility script",
     "is_critical": false,
@@ -6589,9 +6609,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_api_error.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -6620,8 +6640,8 @@
   "/home/runner/work/kortana/kortana/scripts/direct_router_test.py": {
     "category": "scripts",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -6701,9 +6721,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_minimal.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -6752,8 +6772,8 @@
   "/home/runner/work/kortana/kortana/scripts/genesis_protocol_test.py": {
     "category": "scripts",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -6763,10 +6783,10 @@
   "/home/runner/work/kortana/kortana/scripts/test_covenant_config.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "config",
-      "tests"
+      "tests",
+      "ext:py",
+      "config"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -6775,9 +6795,9 @@
   "/home/runner/work/kortana/kortana/scripts/run_test_check.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -6807,8 +6827,8 @@
     "category": "scripts",
     "tags": [
       "ext:py",
-      "config",
-      "scripts"
+      "scripts",
+      "config"
     ],
     "purpose": "Utility script",
     "is_critical": false,
@@ -6817,10 +6837,10 @@
   "/home/runner/work/kortana/kortana/scripts/test_config_loading.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "config",
-      "tests"
+      "tests",
+      "ext:py",
+      "config"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -6829,9 +6849,9 @@
   "/home/runner/work/kortana/kortana/scripts/isolated_test_evaluator.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -6840,9 +6860,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_phase5_simple.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -6851,9 +6871,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_brain_import.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -6882,9 +6902,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_database_connectivity.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -6893,8 +6913,8 @@
   "/home/runner/work/kortana/kortana/scripts/simple_api_test.py": {
     "category": "scripts",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -6914,9 +6934,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_fastapi_endpoints.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -6935,9 +6955,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_env.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -6946,9 +6966,9 @@
   "/home/runner/work/kortana/kortana/scripts/agent_personality_manager.py": {
     "category": "scripts",
     "tags": [
+      "agent",
       "ext:py",
-      "scripts",
-      "agent"
+      "scripts"
     ],
     "purpose": "Utility script",
     "is_critical": false,
@@ -6967,9 +6987,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_server_quick.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -7008,9 +7028,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_proactive_live_phase2.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -7059,8 +7079,8 @@
   "/home/runner/work/kortana/kortana/scripts/manual_scan_test.py": {
     "category": "scripts",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -7090,10 +7110,10 @@
   "/home/runner/work/kortana/kortana/scripts/test_config_integrated.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "config",
-      "tests"
+      "tests",
+      "ext:py",
+      "config"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -7102,8 +7122,8 @@
   "/home/runner/work/kortana/kortana/scripts/run_arch_test.bat": {
     "category": "scripts",
     "tags": [
-      "ext:bat",
       "test",
+      "ext:bat",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -7133,10 +7153,10 @@
   "/home/runner/work/kortana/kortana/scripts/test_schema_import.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
       "tests",
-      "data-model"
+      "data-model",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -7145,9 +7165,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_imports_simple.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -7156,9 +7176,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_proactive_integration.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -7187,9 +7207,9 @@
   "/home/runner/work/kortana/kortana/scripts/run_test_collection.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -7208,9 +7228,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_import.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -7219,9 +7239,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_imports.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -7271,9 +7291,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_proactive_code_review.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -7292,9 +7312,9 @@
   "/home/runner/work/kortana/kortana/scripts/list_test_candidates.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -7323,9 +7343,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_app_import.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
       "tests",
+      "ext:py",
       "entry-point"
     ],
     "purpose": "Test suite",
@@ -7335,9 +7355,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_chat_engine_init.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -7346,8 +7366,8 @@
   "/home/runner/work/kortana/kortana/scripts/batch8_learning_test.py": {
     "category": "scripts",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -7397,9 +7417,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_goal_submit.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -7438,10 +7458,10 @@
   "/home/runner/work/kortana/kortana/scripts/model_config_manager.py": {
     "category": "scripts",
     "tags": [
+      "data-model",
       "ext:py",
-      "config",
       "scripts",
-      "data-model"
+      "config"
     ],
     "purpose": "Utility script",
     "is_critical": false,
@@ -7471,9 +7491,9 @@
   "/home/runner/work/kortana/kortana/scripts/test_fixed_services.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -7492,8 +7512,8 @@
   "/home/runner/work/kortana/kortana/scripts/simple_learning_test.py": {
     "category": "scripts",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -7504,8 +7524,8 @@
     "category": "other",
     "tags": [
       "ext:py",
-      "other",
-      "utility"
+      "utility",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -7514,9 +7534,9 @@
   "/home/runner/work/kortana/kortana/queues/test_agent_in.txt": {
     "category": "tests",
     "tags": [
-      "ext:txt",
       "test",
       "tests",
+      "ext:txt",
       "agent"
     ],
     "purpose": "Test suite",
@@ -7586,9 +7606,9 @@
   "/home/runner/work/kortana/kortana/.continue/config.json": {
     "category": "other",
     "tags": [
+      "ext:json",
       "config",
-      "other",
-      "ext:json"
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -7674,6 +7694,17 @@
     "purpose": "Documentation",
     "is_critical": false,
     "last_modified": 1769061742.8951771
+  },
+  "/home/runner/work/kortana/kortana/docs/DEBUGGING_MAINTENANCE_QUICKSTART.md": {
+    "category": "docs",
+    "tags": [
+      "ext:md",
+      "docs",
+      "entry-point"
+    ],
+    "purpose": "Documentation",
+    "is_critical": false,
+    "last_modified": 1769062387.375079
   },
   "/home/runner/work/kortana/kortana/docs/GOAL_FRAMEWORK_DESIGN.md": {
     "category": "docs",
@@ -7875,8 +7906,8 @@
   "/home/runner/work/kortana/kortana/test-results/.last-run.json": {
     "category": "other",
     "tags": [
-      "other",
-      "ext:json"
+      "ext:json",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -7904,8 +7935,8 @@
   "/home/runner/work/kortana/kortana/.pytest_cache/README.md": {
     "category": "tests",
     "tags": [
-      "ext:md",
-      "tests"
+      "tests",
+      "ext:md"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -7934,9 +7965,9 @@
   "/home/runner/work/kortana/kortana/audit_results/pytest_output.txt": {
     "category": "tests",
     "tags": [
-      "ext:txt",
       "test",
-      "tests"
+      "tests",
+      "ext:txt"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -7951,6 +7982,26 @@
     "purpose": "General purpose file",
     "is_critical": false,
     "last_modified": 1769061742.700175
+  },
+  "/home/runner/work/kortana/kortana/audit_results/health_dashboard.json": {
+    "category": "other",
+    "tags": [
+      "ext:json",
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": false,
+    "last_modified": 1769062306.2043297
+  },
+  "/home/runner/work/kortana/kortana/audit_results/file_metadata.json": {
+    "category": "other",
+    "tags": [
+      "ext:json",
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": false,
+    "last_modified": 1769062306.2143297
   },
   "/home/runner/work/kortana/kortana/audit_results/import_check_new.txt": {
     "category": "other",
@@ -7982,6 +8033,16 @@
     "is_critical": false,
     "last_modified": 1769061742.7011752
   },
+  "/home/runner/work/kortana/kortana/audit_results/error_report_20260122_061146.md": {
+    "category": "other",
+    "tags": [
+      "ext:md",
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": false,
+    "last_modified": 1769062306.0753286
+  },
   "/home/runner/work/kortana/kortana/audit_results/import_check.txt": {
     "category": "other",
     "tags": [
@@ -8006,10 +8067,10 @@
   "/home/runner/work/kortana/kortana/tests/test_model_router.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
       "tests",
-      "data-model"
+      "data-model",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8018,9 +8079,9 @@
   "/home/runner/work/kortana/kortana/tests/test_project_memory_integration.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8029,9 +8090,9 @@
   "/home/runner/work/kortana/kortana/tests/test_goal_engine.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8040,9 +8101,9 @@
   "/home/runner/work/kortana/kortana/tests/test_reporter.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8051,9 +8112,9 @@
   "/home/runner/work/kortana/kortana/tests/test_simple.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8062,9 +8123,9 @@
   "/home/runner/work/kortana/kortana/tests/test_simple_memory.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8073,9 +8134,9 @@
   "/home/runner/work/kortana/kortana/tests/test_memory_helpers.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
       "tests",
+      "ext:py",
       "utility"
     ],
     "purpose": "Test suite",
@@ -8085,9 +8146,9 @@
   "/home/runner/work/kortana/kortana/tests/test_output.txt": {
     "category": "tests",
     "tags": [
-      "ext:txt",
       "test",
-      "tests"
+      "tests",
+      "ext:txt"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8096,9 +8157,9 @@
   "/home/runner/work/kortana/kortana/tests/test_genai.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8107,9 +8168,9 @@
   "/home/runner/work/kortana/kortana/tests/test_autonomous_consciousness.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8118,9 +8179,9 @@
   "/home/runner/work/kortana/kortana/tests/test_trinity_integration.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8129,9 +8190,9 @@
   "/home/runner/work/kortana/kortana/tests/test_brain_integration.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8140,9 +8201,9 @@
   "/home/runner/work/kortana/kortana/tests/test_comprehensive_integration.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8151,20 +8212,20 @@
   "/home/runner/work/kortana/kortana/tests/test_debugging_team.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
-    "last_modified": 1769062003.9585392
+    "last_modified": 1769062575.7118068
   },
   "/home/runner/work/kortana/kortana/tests/test_scheduler.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8173,9 +8234,9 @@
   "/home/runner/work/kortana/kortana/tests/simple_test.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8184,9 +8245,9 @@
   "/home/runner/work/kortana/kortana/tests/test_enhanced_system.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8195,9 +8256,9 @@
   "/home/runner/work/kortana/kortana/tests/test_live_conversation.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8206,10 +8267,10 @@
   "/home/runner/work/kortana/kortana/tests/test_model_router_comprehensive.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
       "tests",
-      "data-model"
+      "data-model",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8218,9 +8279,9 @@
   "/home/runner/work/kortana/kortana/tests/test_brain_functionality.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8229,8 +8290,8 @@
   "/home/runner/work/kortana/kortana/tests/validation_report.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8239,9 +8300,9 @@
   "/home/runner/work/kortana/kortana/tests/test_autonomous_system.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8250,9 +8311,9 @@
   "/home/runner/work/kortana/kortana/tests/test_text_encoding.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8261,9 +8322,9 @@
   "/home/runner/work/kortana/kortana/tests/test_repo_maintenance.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
       "tests",
+      "ext:py",
       "entry-point"
     ],
     "purpose": "Test suite",
@@ -8283,9 +8344,9 @@
   "/home/runner/work/kortana/kortana/tests/test_brain.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8294,9 +8355,9 @@
   "/home/runner/work/kortana/kortana/tests/test_memory_integration.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8305,9 +8366,9 @@
   "/home/runner/work/kortana/kortana/tests/test_execution_engine.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8316,9 +8377,9 @@
   "/home/runner/work/kortana/kortana/tests/test_goals.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8327,9 +8388,9 @@
   "/home/runner/work/kortana/kortana/tests/test_task_coordinator.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8338,9 +8399,9 @@
   "/home/runner/work/kortana/kortana/tests/test_sacred_trinity.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8349,9 +8410,9 @@
   "/home/runner/work/kortana/kortana/tests/multi_line_test_out.txt": {
     "category": "tests",
     "tags": [
-      "ext:txt",
       "test",
-      "tests"
+      "tests",
+      "ext:txt"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8360,9 +8421,9 @@
   "/home/runner/work/kortana/kortana/tests/test_brain_minimal.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8371,9 +8432,9 @@
   "/home/runner/work/kortana/kortana/tests/test_write.txt": {
     "category": "tests",
     "tags": [
-      "ext:txt",
       "test",
-      "tests"
+      "tests",
+      "ext:txt"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8382,9 +8443,9 @@
   "/home/runner/work/kortana/kortana/tests/test_goal_framework.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8393,9 +8454,9 @@
   "/home/runner/work/kortana/kortana/tests/test_helpers.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
       "tests",
+      "ext:py",
       "utility"
     ],
     "purpose": "Test suite",
@@ -8405,9 +8466,9 @@
   "/home/runner/work/kortana/kortana/tests/test_relay_once.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8416,9 +8477,9 @@
   "/home/runner/work/kortana/kortana/tests/test_text_analysis.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8427,9 +8488,9 @@
   "/home/runner/work/kortana/kortana/tests/test_demo.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8438,14 +8499,25 @@
   "/home/runner/work/kortana/kortana/tests/test_timestamp_utils.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
       "tests",
+      "ext:py",
       "utility"
     ],
     "purpose": "Test suite",
     "is_critical": false,
     "last_modified": 1769061742.9501777
+  },
+  "/home/runner/work/kortana/kortana/tests/conftest.py": {
+    "category": "tests",
+    "tags": [
+      "test",
+      "tests",
+      "ext:py"
+    ],
+    "purpose": "Test suite",
+    "is_critical": false,
+    "last_modified": 1769061742.9471776
   },
   "/home/runner/work/kortana/kortana/tests/e2e.spec.ts": {
     "category": "tests",
@@ -8460,8 +8532,8 @@
   "/home/runner/work/kortana/kortana/tests/__init__.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8470,9 +8542,9 @@
   "/home/runner/work/kortana/kortana/tests/test_torch_integration.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8481,9 +8553,9 @@
   "/home/runner/work/kortana/kortana/tests/test_memory.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8492,31 +8564,20 @@
   "/home/runner/work/kortana/kortana/tests/test_brain_core.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
     "last_modified": 1769061742.9481776
   },
-  "/home/runner/work/kortana/kortana/tests/conftest.py.bak": {
-    "category": "tests",
-    "tags": [
-      "ext:bak",
-      "test",
-      "tests"
-    ],
-    "purpose": "Test suite",
-    "is_critical": false,
-    "last_modified": 1769061742.9471776
-  },
   "/home/runner/work/kortana/kortana/tests/test_db.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8525,9 +8586,9 @@
   "/home/runner/work/kortana/kortana/tests/test_failure_demo.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8536,9 +8597,9 @@
   "/home/runner/work/kortana/kortana/tests/ai_test_results.json": {
     "category": "tests",
     "tags": [
-      "test",
+      "ext:json",
       "tests",
-      "ext:json"
+      "test"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8547,9 +8608,9 @@
   "/home/runner/work/kortana/kortana/tests/test_smoke.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8568,8 +8629,8 @@
   "/home/runner/work/kortana/kortana/config/fixed_persona.json": {
     "category": "config",
     "tags": [
-      "config",
-      "ext:json"
+      "ext:json",
+      "config"
     ],
     "purpose": "Configuration",
     "is_critical": false,
@@ -8578,8 +8639,8 @@
   "/home/runner/work/kortana/kortana/config/persona.json": {
     "category": "config",
     "tags": [
-      "config",
-      "ext:json"
+      "ext:json",
+      "config"
     ],
     "purpose": "Configuration",
     "is_critical": false,
@@ -8588,8 +8649,8 @@
   "/home/runner/work/kortana/kortana/config/persona_template.json": {
     "category": "config",
     "tags": [
-      "config",
-      "ext:json"
+      "ext:json",
+      "config"
     ],
     "purpose": "Configuration",
     "is_critical": false,
@@ -8598,8 +8659,8 @@
   "/home/runner/work/kortana/kortana/config/persona_Matt.json": {
     "category": "config",
     "tags": [
-      "config",
-      "ext:json"
+      "ext:json",
+      "config"
     ],
     "purpose": "Configuration",
     "is_critical": false,
@@ -8618,8 +8679,8 @@
   "/home/runner/work/kortana/kortana/config/identity.json": {
     "category": "config",
     "tags": [
-      "config",
-      "ext:json"
+      "ext:json",
+      "config"
     ],
     "purpose": "Configuration",
     "is_critical": false,
@@ -8638,9 +8699,9 @@
   "/home/runner/work/kortana/kortana/config/models_config.json": {
     "category": "config",
     "tags": [
-      "config",
       "ext:json",
-      "data-model"
+      "data-model",
+      "config"
     ],
     "purpose": "Configuration",
     "is_critical": false,
@@ -8649,8 +8710,8 @@
   "/home/runner/work/kortana/kortana/config/sacred_trinity_config.json": {
     "category": "config",
     "tags": [
-      "config",
-      "ext:json"
+      "ext:json",
+      "config"
     ],
     "purpose": "Configuration",
     "is_critical": false,
@@ -8659,8 +8720,8 @@
   "/home/runner/work/kortana/kortana/config/memory_patterns.json": {
     "category": "config",
     "tags": [
-      "config",
-      "ext:json"
+      "ext:json",
+      "config"
     ],
     "purpose": "Configuration",
     "is_critical": false,
@@ -8670,8 +8731,8 @@
     "category": "config",
     "tags": [
       "ext:py",
-      "config",
-      "data-model"
+      "data-model",
+      "config"
     ],
     "purpose": "Configuration",
     "is_critical": false,
@@ -8690,8 +8751,8 @@
   "/home/runner/work/kortana/kortana/config/llm_switching_rules.json": {
     "category": "config",
     "tags": [
-      "config",
-      "ext:json"
+      "ext:json",
+      "config"
     ],
     "purpose": "Configuration",
     "is_critical": false,
@@ -8700,8 +8761,8 @@
   "/home/runner/work/kortana/kortana/config/memory_config.json": {
     "category": "config",
     "tags": [
-      "config",
-      "ext:json"
+      "ext:json",
+      "config"
     ],
     "purpose": "Configuration",
     "is_critical": false,
@@ -8728,8 +8789,8 @@
   "/home/runner/work/kortana/kortana/kortana.core/soul.index": {
     "category": "other",
     "tags": [
-      "other",
-      "ext:index"
+      "ext:index",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -8798,9 +8859,9 @@
   "/home/runner/work/kortana/kortana/relays/agent_interface.py": {
     "category": "other",
     "tags": [
+      "agent",
       "ext:py",
-      "other",
-      "agent"
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -8829,9 +8890,9 @@
   "/home/runner/work/kortana/kortana/relays/relay_agent_output.py": {
     "category": "other",
     "tags": [
+      "agent",
       "ext:py",
-      "other",
-      "agent"
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -8870,9 +8931,9 @@
   "/home/runner/work/kortana/kortana/relays/test_autonomy.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -8961,9 +9022,9 @@
   "/home/runner/work/kortana/kortana/relays/relay_agent_orchestrator.py": {
     "category": "other",
     "tags": [
+      "agent",
       "ext:py",
-      "other",
-      "agent"
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -9051,8 +9112,8 @@
   "/home/runner/work/kortana/kortana/src/admin_setup.py": {
     "category": "other",
     "tags": [
-      "ext:py",
       "config",
+      "ext:py",
       "other"
     ],
     "purpose": "General purpose file",
@@ -9072,9 +9133,9 @@
   "/home/runner/work/kortana/kortana/src/test_python_path.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -9083,8 +9144,8 @@
   "/home/runner/work/kortana/kortana/src/ruff_check_results.json": {
     "category": "other",
     "tags": [
-      "other",
-      "ext:json"
+      "ext:json",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -9103,9 +9164,9 @@
   "/home/runner/work/kortana/kortana/src/test_modes.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -9134,8 +9195,8 @@
   "/home/runner/work/kortana/kortana/src/api_server.py": {
     "category": "api",
     "tags": [
-      "api",
-      "ext:py"
+      "ext:py",
+      "api"
     ],
     "purpose": "API endpoint or service",
     "is_critical": false,
@@ -9145,8 +9206,8 @@
     "category": "other",
     "tags": [
       "ext:py",
-      "other",
-      "entry-point"
+      "entry-point",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -9155,9 +9216,9 @@
   "/home/runner/work/kortana/kortana/src/dev_agent.py": {
     "category": "other",
     "tags": [
+      "agent",
       "ext:py",
-      "other",
-      "agent"
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -9176,9 +9237,9 @@
   "/home/runner/work/kortana/kortana/src/model_optimizer.py": {
     "category": "other",
     "tags": [
+      "data-model",
       "ext:py",
-      "other",
-      "data-model"
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -9197,9 +9258,9 @@
   "/home/runner/work/kortana/kortana/src/agents_sdk_integration.py": {
     "category": "other",
     "tags": [
+      "agent",
       "ext:py",
-      "other",
-      "agent"
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -9218,8 +9279,8 @@
   "/home/runner/work/kortana/kortana/src/strategic_config.py": {
     "category": "other",
     "tags": [
-      "ext:py",
       "config",
+      "ext:py",
       "other"
     ],
     "purpose": "General purpose file",
@@ -9229,8 +9290,8 @@
   "/home/runner/work/kortana/kortana/src/activate_venv.cmd": {
     "category": "other",
     "tags": [
-      "other",
-      "ext:cmd"
+      "ext:cmd",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -9244,7 +9305,7 @@
     ],
     "purpose": "General purpose file",
     "is_critical": false,
-    "last_modified": 1769062272.2880163
+    "last_modified": 1769062562.2946837
   },
   "/home/runner/work/kortana/kortana/src/brain.py": {
     "category": "other",
@@ -9269,9 +9330,9 @@
   "/home/runner/work/kortana/kortana/src/model_resolver.py": {
     "category": "other",
     "tags": [
+      "data-model",
       "ext:py",
-      "other",
-      "data-model"
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -9280,9 +9341,9 @@
   "/home/runner/work/kortana/kortana/src/agent_manager.py": {
     "category": "other",
     "tags": [
+      "agent",
       "ext:py",
-      "other",
-      "agent"
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -9301,9 +9362,9 @@
   "/home/runner/work/kortana/kortana/src/agents_sdk_integration_corrupted.py": {
     "category": "other",
     "tags": [
+      "agent",
       "ext:py",
-      "other",
-      "agent"
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -9362,9 +9423,9 @@
   "/home/runner/work/kortana/kortana/src/agents_sdk_integration_clean.py": {
     "category": "other",
     "tags": [
+      "agent",
       "ext:py",
-      "other",
-      "agent"
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -9383,8 +9444,8 @@
   "/home/runner/work/kortana/kortana/src/python_test.py": {
     "category": "other",
     "tags": [
-      "ext:py",
       "test",
+      "ext:py",
       "other"
     ],
     "purpose": "General purpose file",
@@ -9394,9 +9455,9 @@
   "/home/runner/work/kortana/kortana/src/model_router.py": {
     "category": "other",
     "tags": [
+      "data-model",
       "ext:py",
-      "other",
-      "data-model"
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -9425,9 +9486,9 @@
   "/home/runner/work/kortana/kortana/src/test_environment_final.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -9456,9 +9517,9 @@
   "/home/runner/work/kortana/kortana/src/dev_agent_stub.py": {
     "category": "other",
     "tags": [
+      "agent",
       "ext:py",
-      "other",
-      "agent"
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -9467,8 +9528,8 @@
   "/home/runner/work/kortana/kortana/src/setup_directories.py": {
     "category": "other",
     "tags": [
-      "ext:py",
       "config",
+      "ext:py",
       "other"
     ],
     "purpose": "General purpose file",
@@ -9478,9 +9539,9 @@
   "/home/runner/work/kortana/kortana/src/autonomous_agents.py": {
     "category": "agents",
     "tags": [
+      "agent",
       "ext:py",
-      "agents",
-      "agent"
+      "agents"
     ],
     "purpose": "Autonomous agent implementation",
     "is_critical": false,
@@ -9559,9 +9620,9 @@
   "/home/runner/work/kortana/kortana/demos/test_ai_integration.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -9570,8 +9631,8 @@
   "/home/runner/work/kortana/kortana/demos/validate_genai_setup.py": {
     "category": "other",
     "tags": [
-      "ext:py",
       "config",
+      "ext:py",
       "other"
     ],
     "purpose": "General purpose file",
@@ -9621,8 +9682,8 @@
   "/home/runner/work/kortana/kortana/state/torch_Arch_2025-05-31T07-17-41-376622.json": {
     "category": "other",
     "tags": [
-      "other",
-      "ext:json"
+      "ext:json",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -9631,8 +9692,8 @@
   "/home/runner/work/kortana/kortana/state/torch_arch_2025-05-30T22-41-58-125083.json": {
     "category": "other",
     "tags": [
-      "other",
-      "ext:json"
+      "ext:json",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -9641,10 +9702,10 @@
   "/home/runner/work/kortana/kortana/state/torch_test-agent_2025-05-31T07-09-32-971275.json": {
     "category": "other",
     "tags": [
+      "ext:json",
       "agent",
       "test",
-      "other",
-      "ext:json"
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -9653,10 +9714,10 @@
   "/home/runner/work/kortana/kortana/state/torch_test-agent_2025-05-30T23-08-41-722615.json": {
     "category": "other",
     "tags": [
+      "ext:json",
       "agent",
       "test",
-      "other",
-      "ext:json"
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -9665,10 +9726,10 @@
   "/home/runner/work/kortana/kortana/state/torch_test-agent_2025-05-30T23-03-13-063611.json": {
     "category": "other",
     "tags": [
+      "ext:json",
       "agent",
       "test",
-      "other",
-      "ext:json"
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -9677,8 +9738,8 @@
   "/home/runner/work/kortana/kortana/state/torch_arch_2025-05-30T22-41-41-061267.json": {
     "category": "other",
     "tags": [
-      "other",
-      "ext:json"
+      "ext:json",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -9687,8 +9748,8 @@
   "/home/runner/work/kortana/kortana/kortana.team/personas/architect.json": {
     "category": "other",
     "tags": [
-      "other",
-      "ext:json"
+      "ext:json",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -9697,8 +9758,8 @@
   "/home/runner/work/kortana/kortana/kortana.team/personas/flash.json": {
     "category": "other",
     "tags": [
-      "other",
-      "ext:json"
+      "ext:json",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -9707,8 +9768,8 @@
   "/home/runner/work/kortana/kortana/kortana.team/personas/weaver.json": {
     "category": "other",
     "tags": [
-      "other",
-      "ext:json"
+      "ext:json",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -9717,8 +9778,8 @@
   "/home/runner/work/kortana/kortana/kortana.team/personas/Observer.json": {
     "category": "other",
     "tags": [
-      "other",
-      "ext:json"
+      "ext:json",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -9727,8 +9788,8 @@
   "/home/runner/work/kortana/kortana/test_outputs/mode_tests/fire_threshold_prompts.json": {
     "category": "tests",
     "tags": [
-      "tests",
-      "ext:json"
+      "ext:json",
+      "tests"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -9737,8 +9798,8 @@
   "/home/runner/work/kortana/kortana/test_outputs/mode_tests/2025-05-22/default.txt": {
     "category": "tests",
     "tags": [
-      "ext:txt",
-      "tests"
+      "tests",
+      "ext:txt"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -9747,8 +9808,8 @@
   "/home/runner/work/kortana/kortana/test_outputs/mode_tests/2025-05-22/intimacy.txt": {
     "category": "tests",
     "tags": [
-      "ext:txt",
-      "tests"
+      "tests",
+      "ext:txt"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -9757,8 +9818,8 @@
   "/home/runner/work/kortana/kortana/test_outputs/mode_tests/2025-05-23/default.txt": {
     "category": "tests",
     "tags": [
-      "ext:txt",
-      "tests"
+      "tests",
+      "ext:txt"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -9767,8 +9828,8 @@
   "/home/runner/work/kortana/kortana/test_outputs/mode_tests/2025-05-23/intimacy_multi.txt": {
     "category": "tests",
     "tags": [
-      "ext:txt",
-      "tests"
+      "tests",
+      "ext:txt"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -9777,8 +9838,8 @@
   "/home/runner/work/kortana/kortana/test_outputs/mode_tests/2025-05-23/intimacy.txt": {
     "category": "tests",
     "tags": [
-      "ext:txt",
-      "tests"
+      "tests",
+      "ext:txt"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -9787,9 +9848,9 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/pytest_output.txt": {
     "category": "tests",
     "tags": [
-      "ext:txt",
       "test",
-      "tests"
+      "tests",
+      "ext:txt"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -9798,10 +9859,10 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/mypy_agents_test.txt": {
     "category": "archive",
     "tags": [
-      "archive",
       "test",
       "ext:txt",
-      "agent"
+      "agent",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -9810,9 +9871,9 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/temp_config_output.txt": {
     "category": "archive",
     "tags": [
-      "archive",
+      "ext:txt",
       "config",
-      "ext:txt"
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -9821,9 +9882,9 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/full_test_output.txt": {
     "category": "tests",
     "tags": [
-      "ext:txt",
       "test",
-      "tests"
+      "tests",
+      "ext:txt"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -9832,8 +9893,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/conn.cursor()": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:cursor()"
+      "ext:cursor()",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -9842,8 +9903,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/audit_results.zip": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:zip"
+      "ext:zip",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -9852,8 +9913,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/PHASE1_FINAL_COMPLETION_REPORT.md": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:md"
+      "ext:md",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -9862,8 +9923,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/mypy_report.txt": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:txt"
+      "ext:txt",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -9872,8 +9933,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/mypy_report_final_pass1.txt": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:txt"
+      "ext:txt",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -9882,8 +9943,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/ruff_audit.json": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:json"
+      "ext:json",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -9892,8 +9953,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/mypy_comprehensive_final.txt": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:txt"
+      "ext:txt",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -9902,9 +9963,9 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/import_test_memory_brain.txt": {
     "category": "tests",
     "tags": [
-      "ext:txt",
       "test",
-      "tests"
+      "tests",
+      "ext:txt"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -9913,8 +9974,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/codex_runner_debug_output.txt": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:txt"
+      "ext:txt",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -9923,9 +9984,9 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/import_test_output_v4.txt": {
     "category": "tests",
     "tags": [
-      "ext:txt",
       "test",
-      "tests"
+      "tests",
+      "ext:txt"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -9934,9 +9995,9 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/import_test_output.txt": {
     "category": "tests",
     "tags": [
-      "ext:txt",
       "test",
-      "tests"
+      "tests",
+      "ext:txt"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -9945,8 +10006,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/mypy_report_final_pass4.txt": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:txt"
+      "ext:txt",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -9955,8 +10016,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/mypy_analysis.txt": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:txt"
+      "ext:txt",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -9965,8 +10026,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/mypy_current.txt": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:txt"
+      "ext:txt",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -9975,8 +10036,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/pip_output.txt": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:txt"
+      "ext:txt",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -9985,9 +10046,9 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/import_test_final_output.txt": {
     "category": "tests",
     "tags": [
-      "ext:txt",
       "test",
-      "tests"
+      "tests",
+      "ext:txt"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -9996,9 +10057,9 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/verification_test_output.txt": {
     "category": "tests",
     "tags": [
-      "ext:txt",
       "test",
-      "tests"
+      "tests",
+      "ext:txt"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -10007,8 +10068,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/mypy_report_final_pass2.txt": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:txt"
+      "ext:txt",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10017,8 +10078,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/ruff_analysis.json": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:json"
+      "ext:json",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10027,10 +10088,10 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/mypy_config_test.txt": {
     "category": "archive",
     "tags": [
-      "archive",
       "test",
+      "ext:txt",
       "config",
-      "ext:txt"
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10039,9 +10100,9 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/ascii_import_test_output.txt": {
     "category": "tests",
     "tags": [
-      "ext:txt",
       "test",
-      "tests"
+      "tests",
+      "ext:txt"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -10050,8 +10111,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/pylint_output.txt": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:txt"
+      "ext:txt",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10060,8 +10121,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/mypy_final_check.txt": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:txt"
+      "ext:txt",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10070,8 +10131,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/mypy_report_final_pass5.txt": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:txt"
+      "ext:txt",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10080,8 +10141,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/covenant_check_output.txt": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:txt"
+      "ext:txt",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10090,8 +10151,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/mypy_report_final_pass3.txt": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:txt"
+      "ext:txt",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10100,8 +10161,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/mypy_final_scan.txt": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:txt"
+      "ext:txt",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10110,8 +10171,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/mypy_final_comprehensive.txt": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:txt"
+      "ext:txt",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10120,9 +10181,9 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/covenant_test_output.txt": {
     "category": "tests",
     "tags": [
-      "ext:txt",
       "test",
-      "tests"
+      "tests",
+      "ext:txt"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -10131,8 +10192,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/BATCH2_SUCCESS_SUMMARY.md": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:md"
+      "ext:md",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10141,9 +10202,9 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/mypy_agents_fixed.txt": {
     "category": "archive",
     "tags": [
-      "archive",
+      "agent",
       "ext:txt",
-      "agent"
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10152,8 +10213,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/pip_upgrade_output.txt": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:txt"
+      "ext:txt",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10162,8 +10223,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/verification_output.txt": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:txt"
+      "ext:txt",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10172,9 +10233,9 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/import_test_fixed.txt": {
     "category": "tests",
     "tags": [
-      "ext:txt",
       "test",
-      "tests"
+      "tests",
+      "ext:txt"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -10183,8 +10244,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/PHASE_1_PROGRESS_REPORT.md": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:md"
+      "ext:md",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10193,8 +10254,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/codex_runner_output.txt": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:txt"
+      "ext:txt",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10203,9 +10264,9 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/import_test_output_venv311.txt": {
     "category": "tests",
     "tags": [
-      "ext:txt",
       "test",
-      "tests"
+      "tests",
+      "ext:txt"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -10214,8 +10275,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/pip_install_output.txt": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:txt"
+      "ext:txt",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10224,8 +10285,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/diagnostic_output.txt": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:txt"
+      "ext:txt",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10234,9 +10295,9 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/import_test_result.txt": {
     "category": "tests",
     "tags": [
-      "ext:txt",
       "test",
-      "tests"
+      "tests",
+      "ext:txt"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -10245,9 +10306,9 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/comprehensive_import_test_output.txt": {
     "category": "tests",
     "tags": [
-      "ext:txt",
       "test",
-      "tests"
+      "tests",
+      "ext:txt"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -10256,8 +10317,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/BATCH2_COMPLETION_REPORT.md": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:md"
+      "ext:md",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10266,8 +10327,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/verify_brain_init_output.txt": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:txt"
+      "ext:txt",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10276,9 +10337,9 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/import_test_output_v3.txt": {
     "category": "tests",
     "tags": [
-      "ext:txt",
       "test",
-      "tests"
+      "tests",
+      "ext:txt"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -10287,8 +10348,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/mypy_progress.txt": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:txt"
+      "ext:txt",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10297,9 +10358,9 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/import_test_output_v2.txt": {
     "category": "tests",
     "tags": [
-      "ext:txt",
       "test",
-      "tests"
+      "tests",
+      "ext:txt"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -10308,8 +10369,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/mypy_report_updated.txt": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:txt"
+      "ext:txt",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10318,8 +10379,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/PHASE1_REFACTORING_COMPLETE.md": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:md"
+      "ext:md",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10328,9 +10389,9 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/arch_test_script_output.txt": {
     "category": "tests",
     "tags": [
-      "ext:txt",
       "test",
-      "tests"
+      "tests",
+      "ext:txt"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -10339,8 +10400,8 @@
   "/home/runner/work/kortana/kortana/archive/legacy_keep/monitoring_dashboard_legacy.py": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:py"
+      "ext:py",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10349,8 +10410,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/archive_2025_05_30_backup/Kor'tana.State.md": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:md"
+      "ext:md",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10359,8 +10420,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/archive_2025_05_30_backup/torch_template.json": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:json"
+      "ext:json",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10369,8 +10430,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/archive_2025_05_30_backup/project_files.txt": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:txt"
+      "ext:txt",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10379,8 +10440,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/archive_2025_05_30_backup/root_directory.txt": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:txt"
+      "ext:txt",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10389,8 +10450,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/archive_2025_05_30_backup/workflow.md": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:md"
+      "ext:md",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10399,8 +10460,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/archive_2025_05_30_backup/write_dashboard.py": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:py"
+      "ext:py",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10470,8 +10531,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/archive_2025_05_30_backup/scripts/rename-tests.ps1": {
     "category": "scripts",
     "tags": [
-      "test",
       "ext:ps1",
+      "test",
       "scripts"
     ],
     "purpose": "Utility script",
@@ -10553,8 +10614,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/archive_2025_05_30_backup/docs/persona_template.json": {
     "category": "docs",
     "tags": [
-      "docs",
-      "ext:json"
+      "ext:json",
+      "docs"
     ],
     "purpose": "Documentation",
     "is_critical": false,
@@ -10574,8 +10635,8 @@
     "category": "tests",
     "tags": [
       "test",
-      "ext:md",
-      "tests"
+      "tests",
+      "ext:md"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -10624,9 +10685,9 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/archive_2025_05_30_backup/tests_legacy_disabled/test_live_consciousness.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -10635,8 +10696,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/archive_2025_05_30_backup/tests_legacy_disabled/fix_syntax_errors.py": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:py"
+      "ext:py",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10645,8 +10706,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/archive_2025_05_30_backup/tests_legacy_disabled/trinity_activation.py": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:py"
+      "ext:py",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10655,9 +10716,9 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/archive_2025_05_30_backup/tests_legacy_disabled/test_genai.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -10666,9 +10727,9 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/archive_2025_05_30_backup/tests_legacy_disabled/test_autonomous_consciousness.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -10677,8 +10738,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/archive_2025_05_30_backup/tests_legacy_disabled/validate_router.py": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:py"
+      "ext:py",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10687,8 +10748,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/archive_2025_05_30_backup/tests_legacy_disabled/validate_sacred_trinity.py": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:py"
+      "ext:py",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10697,9 +10758,9 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/archive_2025_05_30_backup/tests_legacy_disabled/test_google_genai_integration.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -10708,9 +10769,9 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/archive_2025_05_30_backup/tests_legacy_disabled/test_agents_sdk.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
       "tests",
+      "ext:py",
       "agent"
     ],
     "purpose": "Test suite",
@@ -10720,9 +10781,9 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/archive_2025_05_30_backup/tests_legacy_disabled/test_fixed_google_client.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -10731,10 +10792,10 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/archive_2025_05_30_backup/tests_legacy_disabled/test_openai_setup.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "config",
-      "tests"
+      "tests",
+      "ext:py",
+      "config"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -10743,9 +10804,9 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/archive_2025_05_30_backup/tests_legacy_disabled/test_autonomous_repair.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -10754,9 +10815,9 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/archive_2025_05_30_backup/tests_legacy_disabled/test-venv.py": {
     "category": "archive",
     "tags": [
-      "archive",
+      "test",
       "ext:py",
-      "test"
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10765,9 +10826,9 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/archive_2025_05_30_backup/tests_legacy_disabled/test_sanity.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -10776,9 +10837,9 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/archive_2025_05_30_backup/tests_legacy_disabled/test_ws.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -10787,8 +10848,8 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/archive_2025_05_30_backup/tests_legacy_disabled/validate_sacred_architecture.py": {
     "category": "archive",
     "tags": [
-      "archive",
-      "ext:py"
+      "ext:py",
+      "archive"
     ],
     "purpose": "Archived/deprecated code",
     "is_critical": false,
@@ -10797,10 +10858,10 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/archive_2025_05_30_backup/tests_legacy_disabled/test_trinity_models.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
       "tests",
-      "data-model"
+      "data-model",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -10809,9 +10870,9 @@
   "/home/runner/work/kortana/kortana/archive/cleanup_20250610/archive_2025_05_30_backup/tests_legacy_disabled/test_ade.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -10910,8 +10971,8 @@
     "category": "other",
     "tags": [
       "ext:sample",
-      "other",
-      "entry-point"
+      "entry-point",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": true,
@@ -10961,8 +11022,8 @@
     "category": "other",
     "tags": [
       "ext:sample",
-      "other",
-      "entry-point"
+      "entry-point",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": true,
@@ -10975,7 +11036,16 @@
     ],
     "purpose": "General purpose file",
     "is_critical": true,
-    "last_modified": 1769061791.3516033
+    "last_modified": 1769062797.469837
+  },
+  "/home/runner/work/kortana/kortana/.git/refs/remotes/origin/copilot/establish-debugging-tools-team": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062798.2508466
   },
   "/home/runner/work/kortana/kortana/.git/refs/heads/copilot/establish-debugging-tools-team": {
     "category": "other",
@@ -10984,7 +11054,16 @@
     ],
     "purpose": "General purpose file",
     "is_critical": true,
-    "last_modified": 1769061742.6711748
+    "last_modified": 1769062797.469837
+  },
+  "/home/runner/work/kortana/kortana/.git/logs/refs/remotes/origin/copilot/establish-debugging-tools-team": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062798.2508466
   },
   "/home/runner/work/kortana/kortana/.git/logs/refs/heads/copilot/establish-debugging-tools-team": {
     "category": "other",
@@ -10993,13 +11072,112 @@
     ],
     "purpose": "General purpose file",
     "is_critical": true,
-    "last_modified": 1769061742.6711748
+    "last_modified": 1769062797.469837
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/6d/9f12556560ba6d567f6f4ea14eb434c7b0a7e7": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062360.0738282
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/80/dd74d4ea39f04bdec20b2fa9bba6ec735325be": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062620.2622151
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/70/03f5614e3be24a99d8beaf801e54ddd0ef5733": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062620.2622151
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/18/5642ef491ab61460c0fb232175073b6f3d352b": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062404.2042334
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/c7/e4607dc73f710280120fa63a0bf67ec202c6d1": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062360.0738282
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/76/d22feba3ae8c816e6ab0014683933f35bc992f": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062360.0858283
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/e0/1416e455e8cb3ca4a1c6be056e2247dc0595e1": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062360.0868285
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/8a/acfbc8f55debdf0356eeff692befc312fd8011": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062360.0728283
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/94/a83ea0c31a63e6879f724b57830faf06e3b034": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062620.2492151
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/7d/39aa79079c88f7518414d895b7f86be0951171": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062360.0718281
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/a0/d6b16783933e3aaafe0e5f4c34d7361b38a507": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062360.0758283
   },
   "/home/runner/work/kortana/kortana/.git/objects/pack/pack-6d9ef621fda0eb3e3c135c0cb6dea0146e666b17.rev": {
     "category": "other",
     "tags": [
-      "other",
-      "ext:rev"
+      "ext:rev",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": true,
@@ -11008,8 +11186,8 @@
   "/home/runner/work/kortana/kortana/.git/objects/pack/pack-6d9ef621fda0eb3e3c135c0cb6dea0146e666b17.pack": {
     "category": "other",
     "tags": [
-      "other",
-      "ext:pack"
+      "ext:pack",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": true,
@@ -11025,11 +11203,344 @@
     "is_critical": true,
     "last_modified": 1769061742.6521747
   },
+  "/home/runner/work/kortana/kortana/.git/objects/1f/87cd8d858180cacccbb065a2d7b75ecedd46ec": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062360.0868285
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/72/b21256a5ea67a9342009579c662dd65b7f481e": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062620.2492151
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/87/fcf7512d38782ff6cb437859b9d7bbbaf5b95c": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062360.0858283
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/d7/079871b4b4005550c2d0dfa1c4ac5bb148b52a": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062620.248215
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/a9/a67857f85b7a370a7e8f78f50a76cbdd111478": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062360.0888283
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/1d/8dfd54324cfc94c87973ae7bbb9db8658f51cb": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062360.0748281
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/13/13121d71c6855e7c4d02c1189070f92a0931d4": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062620.266215
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/fc/f4bad1a77903bb829d0eb92bc61003fc6723f9": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062620.263215
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/f5/38946f36771827f5bcba6819a3854fe9939c95": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062797.4678369
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/74/eac42d7a1f74d796dff13c5090e5f43b088413": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062360.0738282
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/ef/404c156b60913f38d3049297e481f6942c8b54": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062620.248215
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/09/0fd6d5c62d8fbf0b982e0952537207241fa45b": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062620.2492151
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/99/918e8142c6a23a6a2b314130947f3172a11e6f": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062360.0728283
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/06/b1cd89c76725f4cdb20e8f814f0ffd7d799341": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062360.0718281
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/e4/30ac5fc535d1ecc8cab83cf457d03d2f4dffb9": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062360.0728283
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/2d/02dc8f46463033b4df13ebd6f51d92574d2edf": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062620.248215
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/43/f76a6a3a7d179eaf97489ebf7e0e423bfd8049": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062360.068828
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/24/d2ecb6d926839f751c7f2fc2e68819cea656dc": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062620.263215
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/47/1380949d623605682d47196a1880c4c81813b1": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062797.4568367
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/1b/457ad38c2ce73884cfa4917497fdbb28dfe1e5": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062360.0878284
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/0e/6389a8418055bde1b6e4f55b7571ba8fb3e3bb": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062360.0728283
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/0e/1277593553c3bec083115a542d4f75d4813476": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062360.0868285
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/8d/ca2b8e2729bc3de7914992dee67d513fe09cab": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062620.248215
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/de/e9d1b08949571d7013e700e1c5e47e16c91293": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062360.0738282
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/78/d27911dc86856c2a9a5897c2c98035860eedcd": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062360.0738282
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/49/44cf83f4e637aef309ea8e8cf8fa50c41b68d4": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062360.0758283
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/e8/6269f8babcdd4ffe1809b1ac82b9eebc15aad5": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062360.0748281
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/f7/4c9ba34148a20e1c1ab5e51a0a7694fdb51e2f": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062620.250215
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/10/019fd6a2007058470f4c473fd5eca0c6a3e38d": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062360.0858283
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/67/fbaf9e66146c5e61c494c952d7aa219c9ca4b4": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062360.0678282
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/2c/a55bf1e057b60bc34749f29d4aa3b2064abcc1": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062620.263215
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/2a/e949b6bc629b98b656241d949f104fded6194f": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062620.2642152
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/aa/986f1caa7b7900f5011257979e00dbdace8cda": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062360.0858283
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/45/34d68c1409461e86ca8cb33074cb9c89937783": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062360.0748281
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/45/3c9a5e2391476a38a87bd149db443278e0ea72": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062797.468837
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/91/b4d2d6ba9739c7ea125ae120c0f3f5ccd2a69d": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062620.2622151
+  },
+  "/home/runner/work/kortana/kortana/.git/objects/b7/6889d0805e3e9e8217a92b7b25f8aa30acd83b": {
+    "category": "other",
+    "tags": [
+      "other"
+    ],
+    "purpose": "General purpose file",
+    "is_critical": true,
+    "last_modified": 1769062620.2642152
+  },
   "/home/runner/work/kortana/kortana/.kortana_config_test_env/Scripts/pythonw_d.exe": {
     "category": "tests",
     "tags": [
-      "ext:exe",
-      "tests"
+      "tests",
+      "ext:exe"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -11038,8 +11549,8 @@
   "/home/runner/work/kortana/kortana/.kortana_config_test_env/Scripts/pip.exe": {
     "category": "tests",
     "tags": [
-      "ext:exe",
-      "tests"
+      "tests",
+      "ext:exe"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -11048,8 +11559,8 @@
   "/home/runner/work/kortana/kortana/.kortana_config_test_env/Scripts/python_d.exe": {
     "category": "tests",
     "tags": [
-      "ext:exe",
-      "tests"
+      "tests",
+      "ext:exe"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -11058,8 +11569,8 @@
   "/home/runner/work/kortana/kortana/.kortana_config_test_env/Scripts/python.exe": {
     "category": "tests",
     "tags": [
-      "ext:exe",
-      "tests"
+      "tests",
+      "ext:exe"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -11068,8 +11579,8 @@
   "/home/runner/work/kortana/kortana/.kortana_config_test_env/Scripts/activate.bat": {
     "category": "tests",
     "tags": [
-      "ext:bat",
-      "tests"
+      "tests",
+      "ext:bat"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -11088,8 +11599,8 @@
   "/home/runner/work/kortana/kortana/.kortana_config_test_env/Scripts/pip3.exe": {
     "category": "tests",
     "tags": [
-      "ext:exe",
-      "tests"
+      "tests",
+      "ext:exe"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -11098,8 +11609,8 @@
   "/home/runner/work/kortana/kortana/.kortana_config_test_env/Scripts/pip3.11.exe": {
     "category": "tests",
     "tags": [
-      "ext:exe",
-      "tests"
+      "tests",
+      "ext:exe"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -11108,8 +11619,8 @@
   "/home/runner/work/kortana/kortana/.kortana_config_test_env/Scripts/pythonw.exe": {
     "category": "tests",
     "tags": [
-      "ext:exe",
-      "tests"
+      "tests",
+      "ext:exe"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -11118,8 +11629,8 @@
   "/home/runner/work/kortana/kortana/.kortana_config_test_env/Scripts/deactivate.bat": {
     "category": "tests",
     "tags": [
-      "ext:bat",
-      "tests"
+      "tests",
+      "ext:bat"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -11137,8 +11648,8 @@
   "/home/runner/work/kortana/kortana/.github/workflows/ci.yml": {
     "category": "other",
     "tags": [
-      "other",
-      "ext:yml"
+      "ext:yml",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": true,
@@ -11157,10 +11668,10 @@
   "/home/runner/work/kortana/kortana/tools/codex/tasks/test_brain_utils.json": {
     "category": "tests",
     "tags": [
-      "test",
+      "ext:json",
       "tests",
       "utility",
-      "ext:json"
+      "test"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -11169,9 +11680,9 @@
   "/home/runner/work/kortana/kortana/tools/codex/tasks/test_memory_manager.json": {
     "category": "tests",
     "tags": [
-      "test",
+      "ext:json",
       "tests",
-      "ext:json"
+      "test"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -11181,9 +11692,9 @@
     "category": "tests",
     "tags": [
       "test",
-      "ext:md",
       "tests",
-      "utility"
+      "utility",
+      "ext:md"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -11219,8 +11730,8 @@
   "/home/runner/work/kortana/kortana/data/chat_history/cursor_optimizing_kor_tana_development.md": {
     "category": "data",
     "tags": [
-      "data",
-      "ext:md"
+      "ext:md",
+      "data"
     ],
     "purpose": "Data storage or processing",
     "is_critical": false,
@@ -11249,8 +11760,8 @@
   "/home/runner/work/kortana/kortana/data/chat_history/ghcopilot_claude_05282025.json": {
     "category": "data",
     "tags": [
-      "data",
-      "ext:json"
+      "ext:json",
+      "data"
     ],
     "purpose": "Data storage or processing",
     "is_critical": false,
@@ -11259,9 +11770,9 @@
   "/home/runner/work/kortana/kortana/data/chat_history/github_copilot_vscode_setup_20240528_170000.json": {
     "category": "data",
     "tags": [
+      "ext:json",
       "data",
-      "config",
-      "ext:json"
+      "config"
     ],
     "purpose": "Data storage or processing",
     "is_critical": false,
@@ -11430,9 +11941,9 @@
   "/home/runner/work/kortana/kortana/tests/integration/test_chat_engine.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -11441,9 +11952,9 @@
   "/home/runner/work/kortana/kortana/tests/integration/test_core_api.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -11452,8 +11963,8 @@
   "/home/runner/work/kortana/kortana/tests/integration/__init__.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -11506,9 +12017,9 @@
   "/home/runner/work/kortana/kortana/tests/unit/test_memory_integration.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -11517,9 +12028,9 @@
   "/home/runner/work/kortana/kortana/tests/unit/test_brain_refactoring.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -11528,9 +12039,9 @@
   "/home/runner/work/kortana/kortana/tests/unit/test_embedding_functions.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -11539,9 +12050,9 @@
   "/home/runner/work/kortana/kortana/tests/unit/test_basic.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -11550,9 +12061,9 @@
   "/home/runner/work/kortana/kortana/tests/unit/test_embedding_service.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -11561,9 +12072,9 @@
   "/home/runner/work/kortana/kortana/tests/unit/test_orchestrator.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -11572,9 +12083,9 @@
   "/home/runner/work/kortana/kortana/tests/unit/test_text_analysis.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -11583,9 +12094,9 @@
   "/home/runner/work/kortana/kortana/tests/unit/test_lobe_chat_adapter.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -11594,9 +12105,9 @@
   "/home/runner/work/kortana/kortana/tests/unit/test_brain_utils.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
       "tests",
+      "ext:py",
       "utility"
     ],
     "purpose": "Test suite",
@@ -11606,8 +12117,8 @@
   "/home/runner/work/kortana/kortana/tests/unit/__init__.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -11616,9 +12127,9 @@
   "/home/runner/work/kortana/kortana/tests/core/goals/test_goal_engine.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -11627,9 +12138,9 @@
   "/home/runner/work/kortana/kortana/tests/unit/core/test_brain.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -11638,8 +12149,8 @@
   "/home/runner/work/kortana/kortana/tests/unit/core/__init__.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -11648,9 +12159,9 @@
   "/home/runner/work/kortana/kortana/tests/unit/memory/test_memory_manager.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -11659,8 +12170,8 @@
   "/home/runner/work/kortana/kortana/tests/unit/memory/__init__.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -11669,9 +12180,9 @@
   "/home/runner/work/kortana/kortana/tests/unit/modules/ethical_discernment_module/test_evaluators.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -11680,10 +12191,10 @@
   "/home/runner/work/kortana/kortana/relays/.seen/test_agent.log.seen": {
     "category": "tests",
     "tags": [
-      "agent",
-      "ext:seen",
       "test",
-      "tests"
+      "tests",
+      "agent",
+      "ext:seen"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -11733,8 +12244,8 @@
     "category": "other",
     "tags": [
       "ext:py",
-      "other",
-      "utility"
+      "utility",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -11773,8 +12284,8 @@
   "/home/runner/work/kortana/kortana/src/.vscode/settings.json": {
     "category": "other",
     "tags": [
-      "other",
-      "ext:json"
+      "ext:json",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -11783,8 +12294,8 @@
   "/home/runner/work/kortana/kortana/src/.vscode/tasks.json": {
     "category": "other",
     "tags": [
-      "other",
-      "ext:json"
+      "ext:json",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -11793,8 +12304,8 @@
   "/home/runner/work/kortana/kortana/src/.vscode/launch.json": {
     "category": "other",
     "tags": [
-      "other",
-      "ext:json"
+      "ext:json",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -11843,8 +12354,8 @@
   "/home/runner/work/kortana/kortana/src/__pycache__/__init__.cpython-312.pyc": {
     "category": "temporary",
     "tags": [
-      "ext:pyc",
-      "temporary"
+      "temporary",
+      "ext:pyc"
     ],
     "purpose": "Temporary file",
     "is_critical": false,
@@ -11913,9 +12424,9 @@
   "/home/runner/work/kortana/kortana/src/autonomous_agents_pkg_alt/coding_agent.py": {
     "category": "agents",
     "tags": [
+      "agent",
       "ext:py",
-      "agents",
-      "agent"
+      "agents"
     ],
     "purpose": "Autonomous agent implementation",
     "is_critical": false,
@@ -11924,9 +12435,9 @@
   "/home/runner/work/kortana/kortana/src/autonomous_agents_pkg_alt/planning_agent.py": {
     "category": "agents",
     "tags": [
+      "agent",
       "ext:py",
-      "agents",
-      "agent"
+      "agents"
     ],
     "purpose": "Autonomous agent implementation",
     "is_critical": false,
@@ -11935,9 +12446,9 @@
   "/home/runner/work/kortana/kortana/src/autonomous_agents_pkg_alt/monitoring_agent.py": {
     "category": "agents",
     "tags": [
+      "agent",
       "ext:py",
-      "agents",
-      "agent"
+      "agents"
     ],
     "purpose": "Autonomous agent implementation",
     "is_critical": false,
@@ -11956,10 +12467,10 @@
   "/home/runner/work/kortana/kortana/src/autonomous_agents_pkg_alt/testing_agent.py": {
     "category": "agents",
     "tags": [
-      "ext:py",
-      "agents",
       "test",
-      "agent"
+      "agent",
+      "ext:py",
+      "agents"
     ],
     "purpose": "Autonomous agent implementation",
     "is_critical": false,
@@ -11978,8 +12489,8 @@
   "/home/runner/work/kortana/kortana/src/core/project_memory.jsonl": {
     "category": "other",
     "tags": [
-      "other",
-      "ext:jsonl"
+      "ext:jsonl",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -11998,9 +12509,9 @@
   "/home/runner/work/kortana/kortana/src/agents/memory_agent.py": {
     "category": "other",
     "tags": [
+      "agent",
       "ext:py",
-      "other",
-      "agent"
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -12009,9 +12520,9 @@
   "/home/runner/work/kortana/kortana/src/tests/test_execution_engine.py": {
     "category": "tests",
     "tags": [
-      "ext:py",
       "test",
-      "tests"
+      "tests",
+      "ext:py"
     ],
     "purpose": "Test suite",
     "is_critical": false,
@@ -12021,8 +12532,8 @@
     "category": "config",
     "tags": [
       "ext:py",
-      "config",
-      "data-model"
+      "data-model",
+      "config"
     ],
     "purpose": "Configuration",
     "is_critical": false,
@@ -12051,8 +12562,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/brain.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -12072,8 +12583,8 @@
     "category": "other",
     "tags": [
       "ext:py",
-      "other",
-      "entry-point"
+      "entry-point",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": true,
@@ -12083,8 +12594,8 @@
     "category": "other",
     "tags": [
       "ext:py",
-      "other",
-      "utility"
+      "utility",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -12093,8 +12604,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/config.py": {
     "category": "other",
     "tags": [
-      "ext:py",
       "config",
+      "ext:py",
       "other"
     ],
     "purpose": "General purpose file",
@@ -12114,9 +12625,9 @@
   "/home/runner/work/kortana/kortana/src/kortana/brain_utils.py": {
     "category": "core",
     "tags": [
+      "core",
       "ext:py",
-      "utility",
-      "core"
+      "utility"
     ],
     "purpose": "Core system functionality",
     "is_critical": false,
@@ -12125,8 +12636,8 @@
   "/home/runner/work/kortana/kortana/src/core/.vscode/settings.json": {
     "category": "other",
     "tags": [
-      "other",
-      "ext:json"
+      "ext:json",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -12135,8 +12646,8 @@
   "/home/runner/work/kortana/kortana/src/agents/.vscode/settings.json": {
     "category": "other",
     "tags": [
-      "other",
-      "ext:json"
+      "ext:json",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -12146,8 +12657,8 @@
     "category": "other",
     "tags": [
       "ext:py",
-      "other",
-      "utility"
+      "utility",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -12265,8 +12776,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/__pycache__/__init__.cpython-312.pyc": {
     "category": "temporary",
     "tags": [
-      "ext:pyc",
-      "temporary"
+      "temporary",
+      "ext:pyc"
     ],
     "purpose": "Temporary file",
     "is_critical": false,
@@ -12416,8 +12927,8 @@
     "category": "other",
     "tags": [
       "ext:py",
-      "other",
-      "entry-point"
+      "entry-point",
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -12536,8 +13047,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/services_minimal.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -12546,8 +13057,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/orchestrator.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -12556,8 +13067,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/memory.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -12566,9 +13077,9 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/yaml_model_router.py": {
     "category": "core",
     "tags": [
-      "ext:py",
+      "core",
       "data-model",
-      "core"
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -12577,8 +13088,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/brain.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -12587,8 +13098,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/prompts.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -12597,8 +13108,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/covenant_enforcer.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -12607,8 +13118,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/project_memory.jsonl": {
     "category": "core",
     "tags": [
-      "ext:jsonl",
-      "core"
+      "core",
+      "ext:jsonl"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -12617,8 +13128,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/execution_engine.new.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -12627,8 +13138,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/scheduler.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -12637,8 +13148,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/execution_engine.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -12647,8 +13158,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/covenant.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -12657,8 +13168,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/environmental_scanner.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -12667,8 +13178,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/autonomous_tasks.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -12677,8 +13188,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/planning_engine.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -12687,8 +13198,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/services_old.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -12697,8 +13208,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/services.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -12707,8 +13218,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/goal_engine.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -12717,9 +13228,9 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/schemas.py": {
     "category": "core",
     "tags": [
-      "ext:py",
+      "core",
       "data-model",
-      "core"
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -12728,8 +13239,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/goal_framework.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -12738,8 +13249,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/autonomous_development_engine.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -12748,9 +13259,9 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/test_proactive_target.py": {
     "category": "core",
     "tags": [
+      "core",
       "ext:py",
-      "test",
-      "core"
+      "test"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -12759,8 +13270,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/common_logging.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -12769,8 +13280,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/core_rituals.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -12779,9 +13290,9 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/enhanced_model_router.py": {
     "category": "core",
     "tags": [
-      "ext:py",
+      "core",
       "data-model",
-      "core"
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -12790,8 +13301,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/goal_manager.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -12800,8 +13311,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/services_clean.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -12810,8 +13321,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/__init__.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -12820,9 +13331,9 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/models.py": {
     "category": "core",
     "tags": [
-      "ext:py",
+      "core",
       "data-model",
-      "core"
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -12831,9 +13342,9 @@
   "/home/runner/work/kortana/kortana/src/kortana/agents/coding_agent.py": {
     "category": "agents",
     "tags": [
+      "agent",
       "ext:py",
-      "agents",
-      "agent"
+      "agents"
     ],
     "purpose": "Autonomous agent implementation",
     "is_critical": false,
@@ -12842,9 +13353,9 @@
   "/home/runner/work/kortana/kortana/src/kortana/agents/planning_agent.py": {
     "category": "agents",
     "tags": [
+      "agent",
       "ext:py",
-      "agents",
-      "agent"
+      "agents"
     ],
     "purpose": "Autonomous agent implementation",
     "is_critical": false,
@@ -12853,9 +13364,9 @@
   "/home/runner/work/kortana/kortana/src/kortana/agents/monitoring_agent.py": {
     "category": "agents",
     "tags": [
+      "agent",
       "ext:py",
-      "agents",
-      "agent"
+      "agents"
     ],
     "purpose": "Autonomous agent implementation",
     "is_critical": false,
@@ -12864,9 +13375,9 @@
   "/home/runner/work/kortana/kortana/src/kortana/agents/autonomous_agents.py": {
     "category": "agents",
     "tags": [
+      "agent",
       "ext:py",
-      "agents",
-      "agent"
+      "agents"
     ],
     "purpose": "Autonomous agent implementation",
     "is_critical": false,
@@ -12885,10 +13396,10 @@
   "/home/runner/work/kortana/kortana/src/kortana/agents/testing_agent.py": {
     "category": "agents",
     "tags": [
-      "ext:py",
-      "agents",
       "test",
-      "agent"
+      "agent",
+      "ext:py",
+      "agents"
     ],
     "purpose": "Autonomous agent implementation",
     "is_critical": false,
@@ -12918,8 +13429,8 @@
     "category": "config",
     "tags": [
       "ext:yaml",
-      "config",
-      "data-model"
+      "data-model",
+      "config"
     ],
     "purpose": "Configuration",
     "is_critical": false,
@@ -12929,8 +13440,8 @@
     "category": "config",
     "tags": [
       "ext:py",
-      "config",
-      "data-model"
+      "data-model",
+      "config"
     ],
     "purpose": "Configuration",
     "is_critical": false,
@@ -13068,8 +13579,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/api/routers/core_router.py": {
     "category": "api",
     "tags": [
-      "api",
-      "ext:py"
+      "ext:py",
+      "api"
     ],
     "purpose": "API endpoint or service",
     "is_critical": false,
@@ -13078,8 +13589,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/api/routers/memory_router.py": {
     "category": "api",
     "tags": [
-      "api",
-      "ext:py"
+      "ext:py",
+      "api"
     ],
     "purpose": "API endpoint or service",
     "is_critical": false,
@@ -13088,8 +13599,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/api/routers/goal_router.py": {
     "category": "api",
     "tags": [
-      "api",
-      "ext:py"
+      "ext:py",
+      "api"
     ],
     "purpose": "API endpoint or service",
     "is_critical": false,
@@ -13098,8 +13609,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/api/services/goal_service.py": {
     "category": "api",
     "tags": [
-      "api",
-      "ext:py"
+      "ext:py",
+      "api"
     ],
     "purpose": "API endpoint or service",
     "is_critical": false,
@@ -13108,8 +13619,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/api/services/__init__.py": {
     "category": "api",
     "tags": [
-      "api",
-      "ext:py"
+      "ext:py",
+      "api"
     ],
     "purpose": "API endpoint or service",
     "is_critical": false,
@@ -13118,8 +13629,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/services/__pycache__/llm_service.cpython-312.pyc": {
     "category": "temporary",
     "tags": [
-      "ext:pyc",
-      "temporary"
+      "temporary",
+      "ext:pyc"
     ],
     "purpose": "Temporary file",
     "is_critical": false,
@@ -13128,8 +13639,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/services/__pycache__/__init__.cpython-312.pyc": {
     "category": "temporary",
     "tags": [
-      "ext:pyc",
-      "temporary"
+      "temporary",
+      "ext:pyc"
     ],
     "purpose": "Temporary file",
     "is_critical": false,
@@ -13138,9 +13649,9 @@
   "/home/runner/work/kortana/kortana/src/kortana/migrations/versions/7076235fa3b6_initial_kortana_schema.py": {
     "category": "other",
     "tags": [
+      "data-model",
       "ext:py",
-      "other",
-      "data-model"
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -13159,9 +13670,9 @@
   "/home/runner/work/kortana/kortana/src/kortana/migrations/versions/daae8c594417_add_goal_and_memory_models.py": {
     "category": "other",
     "tags": [
+      "data-model",
       "ext:py",
-      "other",
-      "data-model"
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -13190,8 +13701,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/goals/covenant.py.new": {
     "category": "core",
     "tags": [
-      "ext:new",
-      "core"
+      "core",
+      "ext:new"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -13200,8 +13711,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/goals/covenant.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -13210,8 +13721,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/goals/prioritizer.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -13220,9 +13731,9 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/goals/test_goals.py": {
     "category": "core",
     "tags": [
+      "core",
       "ext:py",
-      "test",
-      "core"
+      "test"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -13231,8 +13742,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/goals/generator.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -13241,8 +13752,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/goals/manager.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -13251,8 +13762,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/goals/goal.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -13261,8 +13772,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/goals/engine.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -13271,8 +13782,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/goals/__init__.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -13281,8 +13792,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/goals/scanner.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -13291,8 +13802,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/.vscode/settings.json": {
     "category": "core",
     "tags": [
-      "ext:json",
-      "core"
+      "core",
+      "ext:json"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -13301,8 +13812,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/services/goal_service.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -13311,8 +13822,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/__pycache__/execution_engine.cpython-312.pyc": {
     "category": "core",
     "tags": [
-      "ext:pyc",
-      "core"
+      "core",
+      "ext:pyc"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -13321,8 +13832,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/__pycache__/autonomous_development_engine.cpython-312.pyc": {
     "category": "core",
     "tags": [
-      "ext:pyc",
-      "core"
+      "core",
+      "ext:pyc"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -13331,8 +13842,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/__pycache__/__init__.cpython-312.pyc": {
     "category": "core",
     "tags": [
-      "ext:pyc",
-      "core"
+      "core",
+      "ext:pyc"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -13341,9 +13852,9 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/__pycache__/schemas.cpython-312.pyc": {
     "category": "core",
     "tags": [
+      "core",
       "data-model",
-      "ext:pyc",
-      "core"
+      "ext:pyc"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -13352,8 +13863,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/__pycache__/planning_engine.cpython-312.pyc": {
     "category": "core",
     "tags": [
-      "ext:pyc",
-      "core"
+      "core",
+      "ext:pyc"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -13362,8 +13873,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/__pycache__/services.cpython-312.pyc": {
     "category": "core",
     "tags": [
-      "ext:pyc",
-      "core"
+      "core",
+      "ext:pyc"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -13372,8 +13883,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/__pycache__/memory.cpython-312.pyc": {
     "category": "core",
     "tags": [
-      "ext:pyc",
-      "core"
+      "core",
+      "ext:pyc"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -13382,8 +13893,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/__pycache__/covenant.cpython-312.pyc": {
     "category": "core",
     "tags": [
-      "ext:pyc",
-      "core"
+      "core",
+      "ext:pyc"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -13392,8 +13903,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/task_management/coordinator.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -13402,29 +13913,39 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/task_management/models.py": {
     "category": "core",
     "tags": [
-      "ext:py",
+      "core",
       "data-model",
-      "core"
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
     "last_modified": 1769061742.9391775
   },
-  "/home/runner/work/kortana/kortana/src/kortana/core/debugging_team/resolution_engine.py": {
+  "/home/runner/work/kortana/kortana/src/kortana/core/debugging_team/README.md": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:md"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
-    "last_modified": 1769061847.3661058
+    "last_modified": 1769062346.7297058
+  },
+  "/home/runner/work/kortana/kortana/src/kortana/core/debugging_team/resolution_engine.py": {
+    "category": "core",
+    "tags": [
+      "core",
+      "ext:py"
+    ],
+    "purpose": "Core system functionality",
+    "is_critical": true,
+    "last_modified": 1769062486.374987
   },
   "/home/runner/work/kortana/kortana/src/kortana/core/debugging_team/__init__.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -13433,18 +13954,18 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/debugging_team/error_detector.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
-    "last_modified": 1769061828.302932
+    "last_modified": 1769062469.6388347
   },
   "/home/runner/work/kortana/kortana/src/kortana/core/debugging_team/error_reporter.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -13453,28 +13974,28 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/repo_maintenance/health_monitor.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
-    "last_modified": 1769061944.0399854
+    "last_modified": 1769062518.8472848
   },
   "/home/runner/work/kortana/kortana/src/kortana/core/repo_maintenance/branch_manager.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
-    "last_modified": 1769061915.2257211
+    "last_modified": 1769062551.430584
   },
   "/home/runner/work/kortana/kortana/src/kortana/core/repo_maintenance/file_classifier.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -13483,8 +14004,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/repo_maintenance/__init__.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -13493,18 +14014,18 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/repo_maintenance/code_cleaner.py": {
     "category": "core",
     "tags": [
-      "ext:py",
-      "core"
+      "core",
+      "ext:py"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
-    "last_modified": 1769061871.2043242
+    "last_modified": 1769062500.557117
   },
   "/home/runner/work/kortana/kortana/src/kortana/core/goals/__pycache__/goal.cpython-312.pyc": {
     "category": "core",
     "tags": [
-      "ext:pyc",
-      "core"
+      "core",
+      "ext:pyc"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -13513,8 +14034,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/goals/__pycache__/manager.cpython-312.pyc": {
     "category": "core",
     "tags": [
-      "ext:pyc",
-      "core"
+      "core",
+      "ext:pyc"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -13523,8 +14044,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/goals/__pycache__/__init__.cpython-312.pyc": {
     "category": "core",
     "tags": [
-      "ext:pyc",
-      "core"
+      "core",
+      "ext:pyc"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -13533,8 +14054,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/goals/__pycache__/generator.cpython-312.pyc": {
     "category": "core",
     "tags": [
-      "ext:pyc",
-      "core"
+      "core",
+      "ext:pyc"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -13543,8 +14064,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/goals/__pycache__/covenant.cpython-312.pyc": {
     "category": "core",
     "tags": [
-      "ext:pyc",
-      "core"
+      "core",
+      "ext:pyc"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -13553,8 +14074,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/goals/__pycache__/engine.cpython-312.pyc": {
     "category": "core",
     "tags": [
-      "ext:pyc",
-      "core"
+      "core",
+      "ext:pyc"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -13563,8 +14084,8 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/debugging_team/__pycache__/error_reporter.cpython-312.pyc": {
     "category": "core",
     "tags": [
-      "ext:pyc",
-      "core"
+      "core",
+      "ext:pyc"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -13573,18 +14094,18 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/debugging_team/__pycache__/error_detector.cpython-312.pyc": {
     "category": "core",
     "tags": [
-      "ext:pyc",
-      "core"
+      "core",
+      "ext:pyc"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
-    "last_modified": 1769062258.325884
+    "last_modified": 1769062588.949928
   },
   "/home/runner/work/kortana/kortana/src/kortana/core/debugging_team/__pycache__/__init__.cpython-312.pyc": {
     "category": "core",
     "tags": [
-      "ext:pyc",
-      "core"
+      "core",
+      "ext:pyc"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -13593,38 +14114,38 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/debugging_team/__pycache__/resolution_engine.cpython-312.pyc": {
     "category": "core",
     "tags": [
-      "ext:pyc",
-      "core"
+      "core",
+      "ext:pyc"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
-    "last_modified": 1769062293.192211
+    "last_modified": 1769062588.9519281
   },
   "/home/runner/work/kortana/kortana/src/kortana/core/repo_maintenance/__pycache__/code_cleaner.cpython-312.pyc": {
     "category": "core",
     "tags": [
-      "ext:pyc",
-      "core"
+      "core",
+      "ext:pyc"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
-    "last_modified": 1769062293.194211
+    "last_modified": 1769062588.9539282
   },
   "/home/runner/work/kortana/kortana/src/kortana/core/repo_maintenance/__pycache__/branch_manager.cpython-312.pyc": {
     "category": "core",
     "tags": [
-      "ext:pyc",
-      "core"
+      "core",
+      "ext:pyc"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
-    "last_modified": 1769062293.198211
+    "last_modified": 1769062588.955928
   },
   "/home/runner/work/kortana/kortana/src/kortana/core/repo_maintenance/__pycache__/__init__.cpython-312.pyc": {
     "category": "core",
     "tags": [
-      "ext:pyc",
-      "core"
+      "core",
+      "ext:pyc"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -13633,18 +14154,18 @@
   "/home/runner/work/kortana/kortana/src/kortana/core/repo_maintenance/__pycache__/health_monitor.cpython-312.pyc": {
     "category": "core",
     "tags": [
-      "ext:pyc",
-      "core"
+      "core",
+      "ext:pyc"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
-    "last_modified": 1769062293.201211
+    "last_modified": 1769062588.958928
   },
   "/home/runner/work/kortana/kortana/src/kortana/core/repo_maintenance/__pycache__/file_classifier.cpython-312.pyc": {
     "category": "core",
     "tags": [
-      "ext:pyc",
-      "core"
+      "core",
+      "ext:pyc"
     ],
     "purpose": "Core system functionality",
     "is_critical": true,
@@ -13663,9 +14184,9 @@
   "/home/runner/work/kortana/kortana/src/kortana/config/__pycache__/schema.cpython-312.pyc": {
     "category": "config",
     "tags": [
+      "data-model",
       "config",
-      "ext:pyc",
-      "data-model"
+      "ext:pyc"
     ],
     "purpose": "Configuration",
     "is_critical": false,
@@ -13694,9 +14215,9 @@
   "/home/runner/work/kortana/kortana/src/kortana/modules/memory_core/schemas.py": {
     "category": "other",
     "tags": [
+      "data-model",
       "ext:py",
-      "other",
-      "data-model"
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
@@ -13715,9 +14236,9 @@
   "/home/runner/work/kortana/kortana/src/kortana/modules/memory_core/models.py": {
     "category": "other",
     "tags": [
+      "data-model",
       "ext:py",
-      "other",
-      "data-model"
+      "other"
     ],
     "purpose": "General purpose file",
     "is_critical": false,
