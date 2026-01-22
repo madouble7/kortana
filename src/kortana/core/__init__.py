@@ -6,10 +6,20 @@ Contains the core functionality of the Kor'tana system, including:
 - Goal Framework for autonomous operation
 - Sacred Covenant enforcement
 - Memory and persistence systems
+- Debugging and Maintenance Tools
 """
 
-from . import schemas  # Corrected import path for schemas
-from .goals import Goal, GoalManager, GoalStatus, GoalType
+# Lazy imports to avoid circular dependencies
+def __getattr__(name):
+    """Lazy loading of modules to prevent circular import issues."""
+    if name == "schemas":
+        from . import schemas
+        return schemas
+    elif name in ["Goal", "GoalManager", "GoalStatus", "GoalType"]:
+        from .goals import Goal, GoalManager, GoalStatus, GoalType
+        return locals()[name]
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
+
 
 __all__ = [
     # Goal Framework
@@ -17,5 +27,5 @@ __all__ = [
     "GoalManager",
     "GoalStatus",
     "GoalType",
-    "schemas", # Re-export schemas
+    "schemas",
 ]

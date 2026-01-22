@@ -1,0 +1,46 @@
+{
+  "timestamp": "2026-01-22T06:11:46.076611",
+  "health_score": 75.2,
+  "health_status": "Good",
+  "metrics": {
+    "timestamp": "2026-01-22T06:11:46.076611",
+    "code_quality": {
+      "total_python_files": 837,
+      "total_lines_of_code": 96837,
+      "total_functions": 2866,
+      "total_classes": 435,
+      "documentation_rate": "25.6%",
+      "avg_lines_per_file": 115
+    },
+    "repository_stats": {
+      "total_files": 1332,
+      "total_directories": 130,
+      "total_size_mb": 64.81,
+      "file_types": 39,
+      "most_common_extensions": {
+        ".py": 857,
+        ".md": 113,
+        ".bat": 76,
+        ".txt": 74,
+        ".json": 44
+      }
+    },
+    "file_organization": {
+      "required_files_present": 3,
+      "required_files_total": 3,
+      "required_dirs_present": 3,
+      "required_dirs_total": 3,
+      "organization_score": "100.0%"
+    },
+    "health_score": 75.2
+  },
+  "trend": {
+    "trend": "stable",
+    "score_change": 0.0,
+    "data_points": 4,
+    "time_span": "2026-01-22T06:11:45.938035 to 2026-01-22T06:11:46.141436"
+  },
+  "recommendations": [
+    "Improve documentation: Less than 50% of files have docstrings"
+  ]
+}
