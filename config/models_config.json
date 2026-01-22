@@ -144,16 +144,110 @@
         "temperature": 0.7,
         "max_tokens": 4096
       }
+    },
+    "mistralai/mistral-7b-instruct:free": {
+      "provider": "openrouter",
+      "api": "openrouter",
+      "api_key_env": "OPENROUTER_API_KEY",
+      "model_name": "mistralai/mistral-7b-instruct:free",
+      "base_url": "https://openrouter.ai/api/v1",
+      "style": "tactical",
+      "cost_per_1m_input": 0.0,
+      "cost_per_1m_output": 0.0,
+      "context_window": 32768,
+      "capabilities": [
+        "text",
+        "coding",
+        "free",
+        "fast"
+      ],
+      "default_params": {
+        "temperature": 0.7,
+        "max_tokens": 4096
+      }
+    },
+    "google/gemma-2-9b-it:free": {
+      "provider": "openrouter",
+      "api": "openrouter",
+      "api_key_env": "OPENROUTER_API_KEY",
+      "model_name": "google/gemma-2-9b-it:free",
+      "base_url": "https://openrouter.ai/api/v1",
+      "style": "presence",
+      "cost_per_1m_input": 0.0,
+      "cost_per_1m_output": 0.0,
+      "context_window": 8192,
+      "capabilities": [
+        "text",
+        "general_chat",
+        "free"
+      ],
+      "default_params": {
+        "temperature": 0.7,
+        "max_tokens": 4096
+      }
+    },
+    "meta-llama/llama-3.1-8b-instruct:free": {
+      "provider": "openrouter",
+      "api": "openrouter",
+      "api_key_env": "OPENROUTER_API_KEY",
+      "model_name": "meta-llama/llama-3.1-8b-instruct:free",
+      "base_url": "https://openrouter.ai/api/v1",
+      "style": "presence",
+      "cost_per_1m_input": 0.0,
+      "cost_per_1m_output": 0.0,
+      "context_window": 131072,
+      "capabilities": [
+        "text",
+        "general_chat",
+        "coding",
+        "free",
+        "long_context"
+      ],
+      "default_params": {
+        "temperature": 0.7,
+        "max_tokens": 4096
+      }
+    },
+    "qwen/qwen-2-7b-instruct:free": {
+      "provider": "openrouter",
+      "api": "openrouter",
+      "api_key_env": "OPENROUTER_API_KEY",
+      "model_name": "qwen/qwen-2-7b-instruct:free",
+      "base_url": "https://openrouter.ai/api/v1",
+      "style": "tactical",
+      "cost_per_1m_input": 0.0,
+      "cost_per_1m_output": 0.0,
+      "context_window": 131072,
+      "capabilities": [
+        "text",
+        "analysis",
+        "free",
+        "long_context"
+      ],
+      "default_params": {
+        "temperature": 0.7,
+        "max_tokens": 4096
+      }
     }
   },
   "routing": {
-    "general_chat": "openai/gpt-4.1-nano",
+    "general_chat": "deepseek/deepseek-r1-0528-qwen3-8b:free",
+    "general_chat_fallback": "meta-llama/llama-3.1-8b-instruct:free",
     "reasoning_tasks": "deepseek/deepseek-r1-0528:free",
-    "analysis": "meta-llama/llama-4-maverick",
-    "creative_writing": "x-ai/grok-3-mini-beta",
+    "reasoning_fallback": "qwen/qwen-2-7b-instruct:free",
+    "coding": "mistralai/mistral-7b-instruct:free",
+    "coding_fallback": "meta-llama/llama-3.1-8b-instruct:free",
+    "analysis": "deepseek/deepseek-r1-0528:free",
+    "analysis_fallback": "qwen/qwen-2-7b-instruct:free",
+    "creative_writing": "google/gemma-2-9b-it:free",
+    "creative_writing_premium": "x-ai/grok-3-mini-beta",
     "vision_tasks": "google/gemini-2.5-flash-preview-05-20",
+    "vision_fallback": "google/gemini-2.0-flash-001",
     "fast_free": "deepseek/deepseek-r1-0528-qwen3-8b:free",
-    "free_tier": "deepseek/deepseek-r1-0528:free"
+    "free_tier": "deepseek/deepseek-r1-0528:free",
+    "premium_general": "openai/gpt-4.1-nano",
+    "premium_analysis": "meta-llama/llama-4-maverick",
+    "long_context_free": "meta-llama/llama-3.1-8b-instruct:free"
   },
   "default": {
     "model": "deepseek/deepseek-r1-0528-qwen3-8b:free",
