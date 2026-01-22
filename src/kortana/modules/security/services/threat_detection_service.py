@@ -21,8 +21,11 @@ class ThreatDetectionService:
         """Initialize threat detection service."""
         self._request_history: dict[str, list[datetime]] = defaultdict(list)
         self._blocked_ips: set[str] = set()
+        # NOTE: These patterns are basic examples for demonstration
+        # In production, use more sophisticated context-aware detection
+        # or specialized security libraries like sqlparse for SQL injection
         self._suspicious_patterns = [
-            r"(?i)(union|select|insert|update|delete|drop|exec|script)",  # SQL injection
+            r"(?i)(union|select|insert|update|delete|drop|exec|script)",  # SQL injection (basic)
             r"<script[^>]*>.*?</script>",  # XSS
             r"\.\./",  # Path traversal
             r"(?i)(eval\(|exec\(|system\()",  # Code injection

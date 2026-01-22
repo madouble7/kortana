@@ -37,12 +37,15 @@ class EncryptionService:
         Args:
             password: Password to derive key from
             salt: Salt for key derivation. If None, uses fixed salt.
+                  Note: In production, use a unique salt per user/encryption
+                  and store it securely. The fixed salt here is for demo purposes.
 
         Returns:
             Derived encryption key
         """
         if salt is None:
-            # Use a fixed salt for consistency (in production, store salt securely)
+            # Use a fixed salt for consistency in this demo
+            # WARNING: In production, generate and store unique salts per encryption
             salt = b"kortana_security_salt_v1"
 
         kdf = PBKDF2HMAC(

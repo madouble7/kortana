@@ -3,11 +3,12 @@ Security API router for Kor'tana security module.
 Provides endpoints for security monitoring, alerts, and threat detection.
 """
 
+import ipaddress
 from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from ..models.security_models import (
     AlertSeverity,
@@ -51,7 +52,17 @@ class VulnerabilityScanRequest(BaseModel):
 
 
 class IPAddressRequest(BaseModel):
-    ip_address: str = Field(..., pattern=r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
+    ip_address: str
+
+    @field_validator("ip_address")
+    @classmethod
+    def validate_ip(cls, v: str) -> str:
+        """Validate IP address format."""
+        try:
+            ipaddress.ip_address(v)
+            return v
+        except ValueError:
+            raise ValueError(f"Invalid IP address: {v}")
 
 
 # Alert endpoints
@@ -132,11 +143,23 @@ async def analyze_threat(request: Request):
         headers=headers,
     )
     
+    # Map threat level to alert severity
+    threat_to_severity_map = {
+        "low": AlertSeverity.LOW,
+        "medium": AlertSeverity.MEDIUM,
+        "high": AlertSeverity.HIGH,
+        "critical": AlertSeverity.CRITICAL,
+    }
+    
     # Create alert if threat detected
     if detection.threat_level.value != "none" and detection.confidence_score > 0.5:
+        severity = threat_to_severity_map.get(
+            detection.threat_level.value,
+            AlertSeverity.MEDIUM  # Default to medium if not found
+        )
         alert_service.create_alert(
             alert_type=AlertType.THREAT_DETECTED,
-            severity=AlertSeverity(detection.threat_level.value) if detection.threat_level.value in ["low", "medium", "high", "critical"] else AlertSeverity.MEDIUM,
+            severity=severity,
             title=f"Threat detected from {client_ip}",
             description=f"Threats: {', '.join(detection.detected_threats)}",
             source="threat_detection",
