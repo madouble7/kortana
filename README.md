@@ -171,8 +171,11 @@ start-lobechat-integration.bat
    - **API Key**: (from your `.env` file)
 4. Select model: `kortana-default` (recommended)
 
+📋 **Quick Reference**: See [`LOBECHAT_QUICK_START.md`](LOBECHAT_QUICK_START.md) for commands and troubleshooting
+
 For detailed setup instructions, troubleshooting, and advanced configuration, see:
 - **Complete Guide**: [`docs/LOBECHAT_INTEGRATION_GUIDE.md`](docs/LOBECHAT_INTEGRATION_GUIDE.md)
+- **Frontend Setup**: [`lobechat-frontend/README.md`](lobechat-frontend/README.md)
 - **Legacy Connection Guide**: [`docs/LOBECHAT_CONNECTION.md`](docs/LOBECHAT_CONNECTION.md)
 - **Troubleshooting**: [`docs/LOBECHAT_TROUBLESHOOTING.md`](docs/LOBECHAT_TROUBLESHOOTING.md)
 
