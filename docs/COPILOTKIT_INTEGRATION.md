@@ -240,6 +240,17 @@ For production deployment:
 - Implement proper CORS policies for production
 - Regular security audits of dependencies
 
+### Known Security Notes
+
+**CopilotKit Dependencies (as of January 2026)**:
+- CopilotKit includes dependencies (prismjs, react-syntax-highlighter) with moderate security advisories related to DOM clobbering
+- These vulnerabilities are in optional syntax highlighting features
+- Impact is limited as these features are not directly exposed in the basic chat interface
+- Monitor CopilotKit releases for updates that address these dependencies
+- Consider running `npm audit fix --force` if syntax highlighting is not needed (may introduce breaking changes)
+
+For the latest security status: `cd frontend && npm audit`
+
 ## Troubleshooting
 
 ### Frontend Can't Connect to Backend
