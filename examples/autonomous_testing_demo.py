@@ -7,11 +7,16 @@ and its various modules.
 
 import asyncio
 import logging
+import sys
+from pathlib import Path
 
-from src.kortana.core.autonomous_testing_framework import (
+# Add parent directory to path
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+
+from kortana.core.autonomous_testing_framework import (
     AutonomousTestingFramework
 )
-from src.kortana.core.autonomous_testing_config import (
+from kortana.core.autonomous_testing_config import (
     FrameworkConfig
 )
 
