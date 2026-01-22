@@ -16,6 +16,9 @@ from src.kortana.core.scheduler import (
 from src.kortana.modules.memory_core.routers.memory_router import (
     router as memory_router,
 )
+from src.kortana.modules.security.routers.security_router import (
+    router as security_router,
+)
 
 
 # Lifespan context manager
@@ -50,6 +53,7 @@ app.add_middleware(
 app.include_router(memory_router)
 app.include_router(core_router.router)
 app.include_router(goal_router.router)
+app.include_router(security_router)
 
 
 @app.get("/health")
