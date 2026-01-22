@@ -10,6 +10,11 @@ from sqlalchemy.orm import Session
 from . import models, schemas
 
 
+# Get project root directory
+PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.parent
+ML_MODELS_DIR = PROJECT_ROOT / "data" / "ml_models"
+
+
 class InventoryAnalysisService:
     """Service for analyzing inventory using financial metrics and ML model."""
 
@@ -31,10 +36,8 @@ class InventoryAnalysisService:
     def _load_models(self):
         """Load the pre-trained ML models."""
         try:
-            # Find the models directory
-            base_path = Path(__file__).parent.parent.parent.parent.parent / "data" / "ml_models"
-            model_path = base_path / "model.pkl"
-            scaler_path = base_path / "scaler.pkl"
+            model_path = ML_MODELS_DIR / "model.pkl"
+            scaler_path = ML_MODELS_DIR / "scaler.pkl"
 
             if model_path.exists():
                 with open(model_path, "rb") as f:
