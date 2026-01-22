@@ -201,8 +201,8 @@ class HealthChecker:
             },
         ))
 
-        # CPU check
-        cpu_percent = psutil.cpu_percent(interval=1)
+        # CPU check (non-blocking - instant snapshot without interval sleep)
+        cpu_percent = psutil.cpu_percent(interval=0)  # interval=0 returns instant value
         cpu_status = HealthStatus.HEALTHY
         if cpu_percent > 90:
             cpu_status = HealthStatus.UNHEALTHY

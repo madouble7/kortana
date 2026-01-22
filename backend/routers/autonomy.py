@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from logger import setup_logging
 from models import GitHubTask
 from services.gemini import gemini_service
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 # Import CodeGenerator from same routers package
@@ -59,22 +60,26 @@ class AutonomousTaskQueue:
         issues = response.json()
         queued_tasks = []
 
+        # Batch query: Get all issue numbers to check for existing tasks
+        issue_numbers = [issue["number"] for issue in issues if "pull_request" not in issue]
+        
+        existing_tasks = (
+            self.db.query(GitHubTask.github_issue_number)
+            .filter(
+                GitHubTask.github_issue_number.in_(issue_numbers),
+                GitHubTask.github_repo == f"{owner}/{name}",
+            )
+            .all()
+        )
+        existing_issue_numbers = {task.github_issue_number for task in existing_tasks}
+
         for issue in issues:
             # Skip pull requests
             if "pull_request" in issue:
                 continue
 
-            # Check if task already exists
-            existing = (
-                self.db.query(GitHubTask)
-                .filter(
-                    GitHubTask.github_issue_number == issue["number"],
-                    GitHubTask.github_repo == f"{owner}/{name}",
-                )
-                .first()
-            )
-
-            if existing:
+            # Check if task already exists (now in-memory check)
+            if issue["number"] in existing_issue_numbers:
                 continue
 
             task = GitHubTask(
@@ -225,7 +230,7 @@ FILE_CHANGES:
 
         return task
 
-    def execute_task(self, task_id: str, dry_run: bool = False) -> GitHubTask:
+    async def execute_task(self, task_id: str, dry_run: bool = False) -> GitHubTask:
         """Execute task (create branch and code)"""
         task = self.db.query(GitHubTask).filter(GitHubTask.id == task_id).first()
         if not task:
@@ -240,7 +245,7 @@ FILE_CHANGES:
 
         try:
             # Create branch
-            if not self._create_branch(task):
+            if not await self._create_branch(task):
                 raise Exception("Failed to create branch")
 
             # Generate code from plan
@@ -278,45 +283,44 @@ FILE_CHANGES:
 
         return task
 
-    def _create_branch(self, task: GitHubTask) -> bool:
-        """Create GitHub branch for task"""
+    async def _create_branch(self, task: GitHubTask) -> bool:
+        """Create GitHub branch for task using async httpx"""
         if not GITHUB_TOKEN:
             return False
 
         try:
             owner, repo = task.github_repo.split("/")
-            # Synchronous request here is fine as it's a small helper inside execute_task
-            import requests
 
             headers = {
                 "Authorization": f"token {GITHUB_TOKEN}",
                 "Accept": "application/vnd.github.v3+json",
             }
 
-            # Get main branch SHA
-            ref_url = f"https://api.github.com/repos/{owner}/{repo}/git/ref/heads/main"
-            ref_response = requests.get(ref_url, headers=headers, timeout=10)
+            async with httpx.AsyncClient() as client:
+                # Get main branch SHA
+                ref_url = f"https://api.github.com/repos/{owner}/{repo}/git/ref/heads/main"
+                ref_response = await client.get(ref_url, headers=headers, timeout=10)
 
-            if ref_response.status_code != 200:
-                # Try master branch
-                ref_url = (
-                    f"https://api.github.com/repos/{owner}/{repo}/git/ref/heads/master"
-                )
-                ref_response = requests.get(ref_url, headers=headers, timeout=10)
                 if ref_response.status_code != 200:
-                    return False
+                    # Try master branch
+                    ref_url = (
+                        f"https://api.github.com/repos/{owner}/{repo}/git/ref/heads/master"
+                    )
+                    ref_response = await client.get(ref_url, headers=headers, timeout=10)
+                    if ref_response.status_code != 200:
+                        return False
 
-            main_sha = ref_response.json()["object"]["sha"]
+                main_sha = ref_response.json()["object"]["sha"]
 
-            # Create branch
-            branch_data = {"ref": f"refs/heads/{task.branch_name}", "sha": main_sha}
+                # Create branch
+                branch_data = {"ref": f"refs/heads/{task.branch_name}", "sha": main_sha}
 
-            create_url = f"https://api.github.com/repos/{owner}/{repo}/git/refs"
-            create_response = requests.post(
-                create_url, headers=headers, json=branch_data, timeout=10
-            )
+                create_url = f"https://api.github.com/repos/{owner}/{repo}/git/refs"
+                create_response = await client.post(
+                    create_url, headers=headers, json=branch_data, timeout=10
+                )
 
-            return create_response.status_code == 201
+                return create_response.status_code == 201
         except Exception as e:
             logger.error(f"Branch creation failed: {str(e)}")
             return False
@@ -359,6 +363,7 @@ async def queue_github_tasks(
 @router.get("/status")
 async def get_task_queue_status(db: Session = Depends(get_db)) -> dict[str, Any]:
     """Get current task queue status with statistics"""
+    # Initialize status counts
     statuses: dict[str, int] = {
         "pending": 0,
         "analyzing": 0,
@@ -369,16 +374,32 @@ async def get_task_queue_status(db: Session = Depends(get_db)) -> dict[str, Any]
         "failed": 0,
     }
 
-    tasks = db.query(GitHubTask).all()
-    for task in tasks:
-        task_status = str(task.status)
-        if task_status in statuses:
-            statuses[task_status] += 1
+    # Optimized query: Use GROUP BY to count statuses in single query
+    status_counts = (
+        db.query(GitHubTask.status, func.count(GitHubTask.id))
+        .group_by(GitHubTask.status)
+        .all()
+    )
+    
+    # Update status counts from query results
+    total = 0
+    for status, count in status_counts:
+        status_str = str(status)
+        if status_str in statuses:
+            statuses[status_str] = count
+        total += count
 
     # Calculate completion rate
-    total = len(tasks)
     completed = statuses["completed"]
     completion_rate = (completed / total * 100) if total > 0 else 0
+
+    # Fetch recent tasks in a single query
+    recent_tasks = (
+        db.query(GitHubTask)
+        .order_by(GitHubTask.updated_at.desc())
+        .limit(10)
+        .all()
+    )
 
     return {
         "total_tasks": total,
@@ -392,9 +413,7 @@ async def get_task_queue_status(db: Session = Depends(get_db)) -> dict[str, Any]
                 "status": str(t.status),
                 "updated_at": t.updated_at.isoformat() if t.updated_at else None,
             }
-            for t in db.query(GitHubTask)
-            .order_by(GitHubTask.updated_at.desc())
-            .limit(10)
+            for t in recent_tasks
         ],
     }
 
@@ -447,7 +466,7 @@ async def execute_task_endpoint(
 ) -> dict[str, Any]:
     """Execute a specific autonomous task."""
     try:
-        result = task_queue.execute_task(task_id, dry_run=dry_run)
+        result = await task_queue.execute_task(task_id, dry_run=dry_run)
         return {
             "message": "Task execution completed",
             "task_id": str(result.id),
