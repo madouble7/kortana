@@ -74,7 +74,7 @@ def ask_copilot(prompt: str) -> str:
     )
     return (
         response.choices[0].message.content.strip()
-        if response.choices
+        if response.choices and len(response.choices) > 0
         else ""
     )
 
