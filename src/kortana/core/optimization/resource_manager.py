@@ -152,9 +152,16 @@ class ResourcePool(Generic[T]):
             new_pool = []
 
             for resource, timestamp in self._pool:
-                if current_time - timestamp < self.timeout and len(
-                    new_pool
-                ) + len(self._active_resources) > self.min_size:
+                # Calculate total resources if we keep this one
+                total_if_kept = len(new_pool) + 1 + len(self._active_resources)
+                
+                # Keep resource if it hasn't timed out OR if removing it would go below min_size
+                should_keep = (
+                    current_time - timestamp < self.timeout or 
+                    total_if_kept <= self.min_size
+                )
+                
+                if should_keep:
                     # Keep resource
                     new_pool.append((resource, timestamp))
                 else:
