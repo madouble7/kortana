@@ -131,6 +131,9 @@ PowerShell:
 - **Context-Aware Responses**: Integrates memory and ethical considerations in responses
 - **LLM Integration**: Uses OpenAI's GPT models for natural language processing
 - **LobeChat Frontend Support**: Seamlessly integrates with LobeChat for a user-friendly interface
+- **External Services Integration**: Modular AI agents for Spotify and GitHub with MCP support
+  - **Spotify Agent**: Music search, playlist management, playback control
+  - **GitHub Agent**: Repository management, issues, pull requests
 
 ## LobeChat Integration
 
@@ -151,6 +154,7 @@ For troubleshooting, see `docs/LOBECHAT_TROUBLESHOOTING.md`.
 - Memory Core details: `docs/MEMORY_CORE.md`
 - LobeChat integration: `docs/LOBECHAT_CONNECTION.md`
 - LobeChat troubleshooting: `docs/LOBECHAT_TROUBLESHOOTING.md`
+- External services integration: `docs/EXTERNAL_SERVICES.md`
 
 ## Development
 
