@@ -98,7 +98,14 @@ def verify_api_key(authorization: Optional[str] = Header(None)) -> bool:
     api_key = os.environ.get("KORTANA_API_KEY")
     
     if not api_key:
-        # If no API key is configured, allow access (development mode)
+        # Log warning about open access in development mode
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(
+            "KORTANA_API_KEY not configured - API is accessible without authentication. "
+            "This is acceptable for development but should NEVER be used in production. "
+            "Set KORTANA_API_KEY in your .env file to enable authentication."
+        )
         return True
     
     # Check Authorization header
@@ -207,9 +214,12 @@ async def create_chat_completion(
         # Create OpenAI-compatible response
         completion_id = f"chatcmpl-{uuid.uuid4().hex[:24]}"
         
-        # Estimate token counts (simplified)
-        prompt_tokens = sum(len(msg.content.split()) for msg in request.messages)
-        completion_tokens = len(response_content.split())
+        # Estimate token counts (simplified approximation)
+        # NOTE: This is a rough approximation using word count * 1.3
+        # For accurate token counting, consider using tiktoken library
+        # Real token count may vary depending on the model's tokenizer
+        prompt_tokens = int(sum(len(msg.content.split()) for msg in request.messages) * 1.3)
+        completion_tokens = int(len(response_content.split()) * 1.3)
         
         return ChatCompletionResponse(
             id=completion_id,

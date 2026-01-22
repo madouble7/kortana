@@ -200,6 +200,27 @@ ModelInfo(
 )
 ```
 
+### Token Counting Accuracy
+
+The current implementation uses a simplified token estimation (word count × 1.3). For production deployments requiring accurate token counting:
+
+1. **Install tiktoken** (optional dependency):
+   ```bash
+   pip install tiktoken
+   ```
+
+2. **Update the token counting logic** in `lobechat_openai_adapter.py`:
+   ```python
+   import tiktoken
+   
+   # In create_chat_completion function:
+   encoding = tiktoken.encoding_for_model("gpt-4")
+   prompt_tokens = sum(len(encoding.encode(msg.content)) for msg in request.messages)
+   completion_tokens = len(encoding.encode(response_content))
+   ```
+
+3. Or accept the approximation for non-billing use cases where exact counts aren't critical.
+
 ### Environment Variables
 
 Key environment variables for LobeChat integration:
