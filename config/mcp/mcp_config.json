@@ -1,0 +1,132 @@
+{
+  "version": "1.0",
+  "description": "MCP Server Configuration for Kor'tana",
+  "servers": [
+    {
+      "id": "kortana-memory",
+      "name": "Kor'tana Memory System",
+      "description": "Access to Kor'tana's memory and context system",
+      "type": "http",
+      "url": "http://host.docker.internal:8000/api/mcp/memory",
+      "authentication": {
+        "type": "bearer",
+        "token_env": "KORTANA_API_KEY"
+      },
+      "tools": [
+        {
+          "name": "search_memory",
+          "description": "Search Kor'tana's memory for relevant context",
+          "parameters": {
+            "query": {
+              "type": "string",
+              "description": "Search query"
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum number of results",
+              "default": 5
+            }
+          }
+        },
+        {
+          "name": "store_memory",
+          "description": "Store new information in Kor'tana's memory",
+          "parameters": {
+            "content": {
+              "type": "string",
+              "description": "Content to store"
+            },
+            "tags": {
+              "type": "array",
+              "description": "Tags for categorization",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "kortana-goals",
+      "name": "Kor'tana Goal System",
+      "description": "Access to Kor'tana's autonomous goal management",
+      "type": "http",
+      "url": "http://host.docker.internal:8000/api/mcp/goals",
+      "authentication": {
+        "type": "bearer",
+        "token_env": "KORTANA_API_KEY"
+      },
+      "tools": [
+        {
+          "name": "list_goals",
+          "description": "List current goals and their status",
+          "parameters": {
+            "status": {
+              "type": "string",
+              "description": "Filter by status: pending, active, completed",
+              "enum": ["pending", "active", "completed"]
+            }
+          }
+        },
+        {
+          "name": "create_goal",
+          "description": "Create a new goal for Kor'tana",
+          "parameters": {
+            "title": {
+              "type": "string",
+              "description": "Goal title"
+            },
+            "description": {
+              "type": "string",
+              "description": "Detailed goal description"
+            },
+            "priority": {
+              "type": "integer",
+              "description": "Priority level (1-10)",
+              "minimum": 1,
+              "maximum": 10
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "kortana-context",
+      "name": "Kor'tana Context System",
+      "description": "Real-time context gathering and analysis",
+      "type": "http",
+      "url": "http://host.docker.internal:8000/api/mcp/context",
+      "authentication": {
+        "type": "bearer",
+        "token_env": "KORTANA_API_KEY"
+      },
+      "tools": [
+        {
+          "name": "gather_context",
+          "description": "Gather contextual information for a query",
+          "parameters": {
+            "query": {
+              "type": "string",
+              "description": "Query to gather context for"
+            },
+            "sources": {
+              "type": "array",
+              "description": "Context sources to use",
+              "items": {
+                "type": "string",
+                "enum": ["memory", "files", "web"]
+              }
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "settings": {
+    "hot_reload": true,
+    "log_level": "INFO",
+    "max_concurrent_requests": 10,
+    "timeout_seconds": 30
+  }
+}
