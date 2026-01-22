@@ -16,7 +16,7 @@ class ProductBase(BaseModel):
 class ProductCreate(ProductBase):
     """Schema for creating a product."""
     category: CategoryType | None = None
-    metadata: dict[str, Any] | None = None
+    product_metadata: dict[str, Any] | None = None
 
 
 class ProductCategorizeRequest(BaseModel):
@@ -49,4 +49,4 @@ class ProductUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=255)
     description: str | None = None
     category: CategoryType | None = None
-    metadata: dict[str, Any] | None = None
+    product_metadata: dict[str, Any] | None = None

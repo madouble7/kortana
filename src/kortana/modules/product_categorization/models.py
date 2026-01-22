@@ -36,7 +36,7 @@ class Product(Base):
     )
     confidence_score = Column(Float, nullable=True)
     embedding = Column(JSON, nullable=True)
-    metadata = Column(JSON, nullable=True)
+    product_metadata = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

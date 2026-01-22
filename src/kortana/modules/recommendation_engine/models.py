@@ -35,7 +35,7 @@ class Recommendation(Base):
     product_name = Column(String(255), nullable=False)
     recommendation_score = Column(Float, nullable=False)
     reasoning = Column(Text, nullable=True)
-    metadata = Column(JSON, nullable=True)
+    recommendation_metadata = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     def __repr__(self):

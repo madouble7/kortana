@@ -44,7 +44,7 @@ def upgrade() -> None:
         ),
         sa.Column("confidence_score", sa.Float(), nullable=True),
         sa.Column("embedding", sa.JSON(), nullable=True),
-        sa.Column("metadata", sa.JSON(), nullable=True),
+        sa.Column("product_metadata", sa.JSON(), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -88,7 +88,7 @@ def upgrade() -> None:
         sa.Column("roa", sa.Float(), nullable=True),
         sa.Column("recommendation", sa.String(length=50), nullable=True),
         sa.Column("confidence_score", sa.Float(), nullable=True),
-        sa.Column("metadata", sa.JSON(), nullable=True),
+        sa.Column("inventory_metadata", sa.JSON(), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -141,7 +141,7 @@ def upgrade() -> None:
         sa.Column("product_name", sa.String(length=255), nullable=False),
         sa.Column("recommendation_score", sa.Float(), nullable=False),
         sa.Column("reasoning", sa.Text(), nullable=True),
-        sa.Column("metadata", sa.JSON(), nullable=True),
+        sa.Column("recommendation_metadata", sa.JSON(), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),

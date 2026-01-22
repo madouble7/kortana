@@ -98,7 +98,7 @@ Example: ELECTRONICS|0.95|This is clearly an electronic device based on the desc
             category=category,
             confidence_score=confidence,
             embedding=generated_embedding,
-            metadata=product_create.metadata
+            product_metadata=product_create.product_metadata
         )
 
         self.db.add(db_product)

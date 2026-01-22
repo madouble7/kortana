@@ -17,7 +17,7 @@ class InventoryBase(BaseModel):
 class InventoryCreate(InventoryBase):
     """Schema for creating inventory."""
     status: StockStatus = StockStatus.IN_STOCK
-    metadata: dict[str, Any] | None = None
+    inventory_metadata: dict[str, Any] | None = None
 
 
 class InventoryAnalysisRequest(BaseModel):
@@ -61,4 +61,4 @@ class InventoryUpdate(BaseModel):
     sku: str | None = Field(None, max_length=100)
     quantity: int | None = Field(None, ge=0)
     status: StockStatus | None = None
-    metadata: dict[str, Any] | None = None
+    inventory_metadata: dict[str, Any] | None = None

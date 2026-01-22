@@ -166,7 +166,7 @@ class InventoryAnalysisService:
             sku=inventory_create.sku,
             quantity=inventory_create.quantity,
             status=inventory_create.status,
-            metadata=inventory_create.metadata
+            inventory_metadata=inventory_create.inventory_metadata
         )
 
         self.db.add(db_inventory)
@@ -193,7 +193,7 @@ class InventoryAnalysisService:
             roa=request.roa,
             recommendation=analysis.recommendation,
             confidence_score=analysis.confidence_score,
-            metadata={"analysis": analysis.analysis}
+            inventory_metadata={"analysis": analysis.analysis}
         )
 
         self.db.add(db_inventory)

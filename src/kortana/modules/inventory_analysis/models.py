@@ -39,7 +39,7 @@ class Inventory(Base):
     roa = Column(Float, nullable=True)
     recommendation = Column(String(50), nullable=True)  # "Buy" or "Do not buy"
     confidence_score = Column(Float, nullable=True)
-    metadata = Column(JSON, nullable=True)
+    inventory_metadata = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
