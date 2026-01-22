@@ -146,9 +146,22 @@ For troubleshooting, see `docs/LOBECHAT_TROUBLESHOOTING.md`.
 
 ## Documentation
 
-- Full API documentation: `docs/API_ENDPOINTS.md`
+### Getting Started
+- Quick reference guide: `docs/DEVELOPMENT_QUICK_REFERENCE.md`
+- Getting started guide: `docs/GETTING_STARTED.md`
+
+### Architecture & Design
 - Architecture overview: `docs/ARCHITECTURE.md`
-- Memory Core details: `docs/MEMORY_CORE.md`
+- Sacred Trinity design: `docs/sacred_trinity_architecture.md`
+- Goal Framework: `docs/GOAL_FRAMEWORK_DESIGN.md`
+
+### Development Strategy
+- **Test & Performance Matrix:** `docs/TEST_PERFORMANCE_MATRIX.md`
+- **Expansion Strategy Playbook:** `docs/EXPANSION_STRATEGY_PLAYBOOK.md`
+- Project map: `docs/KORTANA_PROJECT_MAP.md`
+
+### API & Integration
+- Full API documentation: `docs/API_ENDPOINTS.md`
 - LobeChat integration: `docs/LOBECHAT_CONNECTION.md`
 - LobeChat troubleshooting: `docs/LOBECHAT_TROUBLESHOOTING.md`
 
