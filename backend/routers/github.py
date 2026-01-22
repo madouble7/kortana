@@ -3,7 +3,7 @@ import time
 from datetime import datetime
 from typing import Any
 
-import requests
+import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
@@ -76,21 +76,21 @@ async def get_repo_issues(
     url = f"https://api.github.com/repos/{owner}/{repo}/issues?state={state}&page={page}&per_page={per_page}"
 
     try:
-        response = requests.get(url, headers=headers, timeout=10)
-        response.raise_for_status()
-    except requests.exceptions.Timeout:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            issues = response.json()
+    except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="GitHub API request timed out")
-    except requests.exceptions.HTTPError:
-        if response.status_code == 404:
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 404:
             raise HTTPException(status_code=404, detail="Repository not found")
         raise HTTPException(
-            status_code=response.status_code,
-            detail=f"GitHub API error: {response.text}",
+            status_code=e.response.status_code,
+            detail=f"GitHub API error: {e.response.text}",
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch issues: {str(e)}")
-
-    issues = response.json()
 
     # Return issues directly for frontend compatibility
     return issues
@@ -119,21 +119,21 @@ async def get_repo_pulls(
     url = f"https://api.github.com/repos/{owner}/{repo}/pulls?state={state}&page={page}&per_page={per_page}"
 
     try:
-        response = requests.get(url, headers=headers, timeout=10)
-        response.raise_for_status()
-    except requests.exceptions.Timeout:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            pulls = response.json()
+    except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="GitHub API request timed out")
-    except requests.exceptions.HTTPError:
-        if response.status_code == 404:
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 404:
             raise HTTPException(status_code=404, detail="Repository not found")
         raise HTTPException(
-            status_code=response.status_code,
-            detail=f"GitHub API error: {response.text}",
+            status_code=e.response.status_code,
+            detail=f"GitHub API error: {e.response.text}",
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch PRs: {str(e)}")
-
-    pulls = response.json()
 
     # Return pulls directly for frontend compatibility
     return pulls
