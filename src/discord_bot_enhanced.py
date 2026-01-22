@@ -386,6 +386,7 @@ async def help_command(interaction: discord.Interaction):
 # --------------------
 
 # Trivia
+# TODO: Move trivia questions to a separate config file or database for easier maintenance
 TRIVIA_QUESTIONS = [
     {"q": "What is the capital of France?", "a": "paris"},
     {"q": "Which planet is known as the Red Planet?", "a": "mars"},
@@ -414,27 +415,45 @@ async def trivia_cmd(ctx):
     active_trivia[ctx.channel.id] = (q["a"].lower(), ctx.author.id)
     await ctx.send(f"🧠 **Trivia:** {q['q']}\nReply in chat with your answer!")
 
-# Rock-Paper-Scissors
+# Rock-Paper-Scissors Helper
+def play_rps(user_choice: str) -> tuple[str, str, str]:
+    """
+    Play rock-paper-scissors game.
+    
+    Args:
+        user_choice: User's choice (rock, paper, or scissors)
+    
+    Returns:
+        Tuple of (user_choice, bot_choice, result_message)
+    """
+    options = ["rock", "paper", "scissors"]
+    if user_choice.lower() not in options:
+        return user_choice, "", "Invalid choice"
+    
+    user_choice = user_choice.lower()
+    bot_choice = random.choice(options)
+    
+    if user_choice == bot_choice:
+        result = "It's a tie!"
+    elif (user_choice == "rock" and bot_choice == "scissors") or \
+         (user_choice == "paper" and bot_choice == "rock") or \
+         (user_choice == "scissors" and bot_choice == "paper"):
+        result = "You win! 🎉"
+    else:
+        result = "I win! 😈"
+    
+    return user_choice, bot_choice, result
+
 @bot.tree.command(name="rps", description="Play rock-paper-scissors")
 @app_commands.describe(choice="Your choice: rock, paper, or scissors")
 async def rps_slash(interaction: discord.Interaction, choice: str):
     """Play rock-paper-scissors."""
-    choice = choice.lower()
-    options = ["rock", "paper", "scissors"]
-    if choice not in options:
+    user_choice, bot_choice, result = play_rps(choice)
+    if bot_choice == "":
         await interaction.response.send_message("Choose rock, paper, or scissors.")
         return
-    bot_choice = random.choice(options)
-    if choice == bot_choice:
-        res = "It's a tie!"
-    elif (choice == "rock" and bot_choice == "scissors") or \
-         (choice == "paper" and bot_choice == "rock") or \
-         (choice == "scissors" and bot_choice == "paper"):
-        res = "You win! 🎉"
-    else:
-        res = "I win! 😈"
     await interaction.response.send_message(
-        f"You chose **{choice}**. I chose **{bot_choice}**. {res}"
+        f"You chose **{user_choice}**. I chose **{bot_choice}**. {result}"
     )
 
 @bot.command(name="rps")
@@ -443,21 +462,11 @@ async def rps_cmd(ctx, choice: str = ""):
     if not choice:
         await ctx.send("Usage: `!rps <rock|paper|scissors>`")
         return
-    choice = choice.lower()
-    options = ["rock", "paper", "scissors"]
-    if choice not in options:
+    user_choice, bot_choice, result = play_rps(choice)
+    if bot_choice == "":
         await ctx.send("Choose rock, paper, or scissors.")
         return
-    bot_choice = random.choice(options)
-    if choice == bot_choice:
-        res = "It's a tie!"
-    elif (choice == "rock" and bot_choice == "scissors") or \
-         (choice == "paper" and bot_choice == "rock") or \
-         (choice == "scissors" and bot_choice == "paper"):
-        res = "You win! 🎉"
-    else:
-        res = "I win! 😈"
-    await ctx.send(f"You chose **{choice}**. I chose **{bot_choice}**. {res}")
+    await ctx.send(f"You chose **{user_choice}**. I chose **{bot_choice}**. {result}")
 
 # Poll
 NUMBER_EMOJIS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"]
@@ -522,9 +531,15 @@ async def poll_slash(
 # Auto-React and Auto-Reply Configuration
 # --------------------
 AUTO_REACT_CHANNELS = os.environ.get("AUTO_REACT_CHANNELS", "")
-AUTO_REACT_CHANNEL_IDS = [
-    int(x) for x in AUTO_REACT_CHANNELS.split(",") if x.strip().isdigit()
-]
+# Safely parse channel IDs, ignoring invalid values
+AUTO_REACT_CHANNEL_IDS = []
+for x in AUTO_REACT_CHANNELS.split(","):
+    try:
+        if x.strip():
+            AUTO_REACT_CHANNEL_IDS.append(int(x.strip()))
+    except ValueError:
+        logger.warning(f"Invalid channel ID in AUTO_REACT_CHANNELS: {x}")
+
 AUTO_REACT_EMOJIS = [
     e.strip() for e in os.environ.get("AUTO_REACT_EMOJIS", "👍,🤖,🔥").split(",")
     if e.strip()
@@ -537,9 +552,14 @@ AUTO_REACT_KEYWORDS = [
 AUTO_REACT_COOLDOWN = int(os.environ.get("AUTO_REACT_COOLDOWN", "10"))
 
 AUTO_REPLY_CHANNELS = os.environ.get("AUTO_REPLY_CHANNELS", "")
-AUTO_REPLY_CHANNEL_IDS = [
-    int(x) for x in AUTO_REPLY_CHANNELS.split(",") if x.strip().isdigit()
-]
+# Safely parse channel IDs, ignoring invalid values
+AUTO_REPLY_CHANNEL_IDS = []
+for x in AUTO_REPLY_CHANNELS.split(","):
+    try:
+        if x.strip():
+            AUTO_REPLY_CHANNEL_IDS.append(int(x.strip()))
+    except ValueError:
+        logger.warning(f"Invalid channel ID in AUTO_REPLY_CHANNELS: {x}")
 AUTO_REPLY_KEYWORDS = [
     k.strip().lower()
     for k in os.environ.get("AUTO_REPLY_KEYWORDS", "").split(",")
