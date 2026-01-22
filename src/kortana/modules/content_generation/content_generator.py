@@ -70,9 +70,13 @@ class ContentGenerator:
             f"that takes into account multiple perspectives."
         )
 
-        return elaborated[:target_length] if len(elaborated) > target_length else elaborated
+        if len(elaborated) > target_length:
+            return elaborated[:target_length]
+        return elaborated
 
-    def rewrite(self, text: str, style: ContentStyle = ContentStyle.PROFESSIONAL) -> str:
+    def rewrite(
+        self, text: str, style: ContentStyle = ContentStyle.PROFESSIONAL
+    ) -> str:
         """
         Rewrite text in specified style
 

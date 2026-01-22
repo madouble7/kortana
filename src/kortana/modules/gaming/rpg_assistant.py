@@ -36,7 +36,9 @@ class RPGAssistant:
         self.active_campaign = campaign_id
         return self.campaigns[campaign_id]
 
-    def add_player(self, player_name: str, character_name: str, character_class: str) -> dict[str, Any]:
+    def add_player(
+        self, player_name: str, character_name: str, character_class: str
+    ) -> dict[str, Any]:
         """
         Add a player to the active campaign
 

@@ -62,7 +62,7 @@ class StorytellingEngine:
 
         return {
             "previous_action": player_action,
-            "current_scene": f"Your action leads to new developments...",
+            "current_scene": "Your action leads to new developments...",
             "choices": ["Investigate further", "Retreat", "Talk to someone"],
         }
 
