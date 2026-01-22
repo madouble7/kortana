@@ -131,6 +131,7 @@ PowerShell:
 - **Context-Aware Responses**: Integrates memory and ethical considerations in responses
 - **LLM Integration**: Uses OpenAI's GPT models for natural language processing
 - **LobeChat Frontend Support**: Seamlessly integrates with LobeChat for a user-friendly interface
+- **Multilingual Support**: Respond in 10+ languages with language detection and switching (see [Multilingual Documentation](docs/MULTILINGUAL_SUPPORT.md))
 
 ## LobeChat Integration
 
@@ -151,6 +152,7 @@ For troubleshooting, see `docs/LOBECHAT_TROUBLESHOOTING.md`.
 - Memory Core details: `docs/MEMORY_CORE.md`
 - LobeChat integration: `docs/LOBECHAT_CONNECTION.md`
 - LobeChat troubleshooting: `docs/LOBECHAT_TROUBLESHOOTING.md`
+- Multilingual support: `docs/MULTILINGUAL_SUPPORT.md`
 
 ## Development
 
