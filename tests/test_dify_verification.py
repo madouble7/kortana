@@ -6,9 +6,13 @@ This test doesn't start the server but checks the route registration.
 
 import sys
 import os
+from pathlib import Path
+
+# Get the repository root dynamically
+REPO_ROOT = Path(__file__).parent.parent.absolute()
 
 # Add src to path
-sys.path.insert(0, '/home/runner/work/kortana/kortana')
+sys.path.insert(0, str(REPO_ROOT))
 
 def test_import_structure():
     """Test that imports work correctly."""
@@ -30,7 +34,7 @@ def test_file_contents():
     checks = []
     
     # Check dify_adapter.py
-    adapter_file = '/home/runner/work/kortana/kortana/src/kortana/adapters/dify_adapter.py'
+    adapter_file = REPO_ROOT / 'src' / 'kortana' / 'adapters' / 'dify_adapter.py'
     with open(adapter_file, 'r') as f:
         adapter_content = f.read()
     
@@ -41,7 +45,7 @@ def test_file_contents():
     checks.append(("get_adapter_info method exists", "def get_adapter_info" in adapter_content))
     
     # Check dify_router.py
-    router_file = '/home/runner/work/kortana/kortana/src/kortana/adapters/dify_router.py'
+    router_file = REPO_ROOT / 'src' / 'kortana' / 'adapters' / 'dify_router.py'
     with open(router_file, 'r') as f:
         router_content = f.read()
     
@@ -53,7 +57,7 @@ def test_file_contents():
     checks.append(("Info endpoint exists", '@router.get("/info"' in router_content))
     
     # Check main.py
-    main_file = '/home/runner/work/kortana/kortana/src/kortana/main.py'
+    main_file = REPO_ROOT / 'src' / 'kortana' / 'main.py'
     with open(main_file, 'r') as f:
         main_content = f.read()
     
@@ -74,7 +78,7 @@ def test_api_models():
     """Test that Pydantic models are properly defined."""
     print("\nTesting API models...")
     
-    router_file = '/home/runner/work/kortana/kortana/src/kortana/adapters/dify_router.py'
+    router_file = REPO_ROOT / 'src' / 'kortana' / 'adapters' / 'dify_router.py'
     with open(router_file, 'r') as f:
         content = f.read()
     
@@ -102,7 +106,7 @@ def test_security_features():
     """Test that security features are implemented."""
     print("\nTesting security features...")
     
-    router_file = '/home/runner/work/kortana/kortana/src/kortana/adapters/dify_router.py'
+    router_file = REPO_ROOT / 'src' / 'kortana' / 'adapters' / 'dify_router.py'
     with open(router_file, 'r') as f:
         content = f.read()
     
@@ -126,7 +130,7 @@ def test_documentation():
     print("\nTesting documentation...")
     
     # Check integration guide
-    doc_file = '/home/runner/work/kortana/kortana/docs/DIFY_INTEGRATION.md'
+    doc_file = REPO_ROOT / 'docs' / 'DIFY_INTEGRATION.md'
     with open(doc_file, 'r') as f:
         doc_content = f.read()
     
@@ -140,7 +144,7 @@ def test_documentation():
     ]
     
     # Check config example
-    config_file = '/home/runner/work/kortana/kortana/config/dify_config_example.md'
+    config_file = REPO_ROOT / 'config' / 'dify_config_example.md'
     with open(config_file, 'r') as f:
         config_content = f.read()
     
@@ -151,7 +155,7 @@ def test_documentation():
     ]
     
     # Check README update
-    readme_file = '/home/runner/work/kortana/kortana/README.md'
+    readme_file = REPO_ROOT / 'README.md'
     with open(readme_file, 'r') as f:
         readme_content = f.read()
     

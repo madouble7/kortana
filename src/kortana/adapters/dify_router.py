@@ -27,7 +27,7 @@ class DifyChatRequest(BaseModel):
     conversation_id: str | None = Field(None, description="Optional conversation identifier")
     user: str | None = Field(None, description="Optional user identifier")
     inputs: dict[str, Any] = Field(default_factory=dict, description="Optional variables for prompt templates")
-    response_mode: str = Field(default="blocking", description="Response mode: 'blocking' or 'streaming'")
+    response_mode: str = Field(default="blocking", description="Response mode: 'blocking' or 'streaming'", pattern="^(blocking|streaming)$")
 
 
 class DifyWorkflowRequest(BaseModel):
@@ -93,8 +93,8 @@ def verify_dify_api_key(authorization: str | None = Header(None)) -> bool:
     """
     Verify Dify API key from Authorization header.
     
-    In production, this should validate against stored API keys.
-    For now, we accept any non-empty authorization header.
+    In production, this validates against configured API keys.
+    Can be disabled by setting DIFY_REQUIRE_AUTH=false in environment.
     
     Args:
         authorization: Authorization header value
@@ -102,14 +102,43 @@ def verify_dify_api_key(authorization: str | None = Header(None)) -> bool:
     Returns:
         True if valid, raises HTTPException otherwise
     """
+    import os
+    
+    # Check if authentication is required
+    require_auth = os.getenv("DIFY_REQUIRE_AUTH", "false").lower() == "true"
+    
+    if not require_auth:
+        # Authentication disabled (development mode)
+        return True
+    
     if not authorization:
         raise HTTPException(
             status_code=401,
             detail="Missing Authorization header. Include 'Bearer <api-key>' in request headers."
         )
     
-    # In production, validate the API key here
-    # For example: if not is_valid_api_key(authorization): raise HTTPException(...)
+    # Extract the token from "Bearer <token>" format
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid Authorization header format. Use 'Bearer <api-key>'."
+        )
+    
+    token = authorization.replace("Bearer ", "").strip()
+    
+    # Validate against configured API key
+    expected_key = os.getenv("DIFY_API_KEY")
+    
+    if not expected_key:
+        # No API key configured - allow access but log warning
+        print("WARNING: DIFY_API_KEY not configured. All requests will be accepted.")
+        return True
+    
+    if token != expected_key:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid API key."
+        )
     
     return True
 

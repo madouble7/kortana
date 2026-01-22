@@ -7,6 +7,10 @@ Tests the adapter interface and router structure.
 import sys
 import ast
 import os
+from pathlib import Path
+
+# Get the repository root dynamically
+REPO_ROOT = Path(__file__).parent.parent.absolute()
 
 def test_file_syntax(filepath):
     """Test if a Python file has valid syntax."""
@@ -56,7 +60,7 @@ def main():
     print("Dify Integration - Minimal Test Suite")
     print("=" * 60)
     
-    base_path = "/home/runner/work/kortana/kortana"
+    base_path = REPO_ROOT
     
     tests = [
         {

@@ -203,7 +203,10 @@ class DifyAdapter:
                 "metadata": {
                     "model": "kortana",
                     "usage": {
-                        "total_tokens": len(prompt.split()) + len(
+                        # Note: This is an approximate count using word splitting.
+                        # For accurate token counting, integrate a tokenizer library
+                        # specific to the LLM being used (e.g., tiktoken for OpenAI models)
+                        "approximate_tokens": len(prompt.split()) + len(
                             kortana_response.get("final_kortana_response", "").split()
                         ),
                     },
