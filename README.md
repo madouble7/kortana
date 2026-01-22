@@ -130,26 +130,59 @@ PowerShell:
 - **Ethical Discernment**: Evaluates responses for algorithmic arrogance and uncertainty
 - **Context-Aware Responses**: Integrates memory and ethical considerations in responses
 - **LLM Integration**: Uses OpenAI's GPT models for natural language processing
-- **LobeChat Frontend Support**: Seamlessly integrates with LobeChat for a user-friendly interface
+- **LobeChat Frontend**: Modern, intuitive chat interface with OpenAI-compatible API
+- **Multi-Model Support**: Intelligent routing between OpenAI, Anthropic, and Google AI models
 
 ## LobeChat Integration
 
-Kor'tana integrates with [LobeChat](https://github.com/lobehub/lobe-chat) to provide an intuitive chat interface.
+Kor'tana seamlessly integrates with [LobeChat](https://github.com/lobehub/lobe-chat), providing a modern, feature-rich chat interface.
 
-### Setting Up LobeChat Connection
+### Quick Start with LobeChat
 
-1. Follow the guide in `docs/LOBECHAT_CONNECTION.md` to configure LobeChat.
-2. Set your API key in the `.env` file.
-3. Run the Kor'tana API server.
+**Using Docker Compose (Recommended)**:
+```bash
+# Copy environment template and add your API keys
+cp .env.template .env
+# Edit .env with your API keys
 
-For troubleshooting, see `docs/LOBECHAT_TROUBLESHOOTING.md`.
+# Start both Kor'tana backend and LobeChat frontend
+docker-compose up -d
+
+# Access LobeChat at http://localhost:3210
+# Access Kor'tana API at http://localhost:8000
+```
+
+**Or use the convenience script**:
+```bash
+# Linux/Mac
+./start-lobechat-integration.sh
+
+# Windows
+start-lobechat-integration.bat
+```
+
+### Configuration
+
+1. Open LobeChat at http://localhost:3210
+2. Go to Settings → Language Model
+3. Add custom provider:
+   - **Name**: Kor'tana
+   - **Base URL**: `http://localhost:8000/v1`
+   - **API Key**: (from your `.env` file)
+4. Select model: `kortana-default` (recommended)
+
+For detailed setup instructions, troubleshooting, and advanced configuration, see:
+- **Complete Guide**: [`docs/LOBECHAT_INTEGRATION_GUIDE.md`](docs/LOBECHAT_INTEGRATION_GUIDE.md)
+- **Legacy Connection Guide**: [`docs/LOBECHAT_CONNECTION.md`](docs/LOBECHAT_CONNECTION.md)
+- **Troubleshooting**: [`docs/LOBECHAT_TROUBLESHOOTING.md`](docs/LOBECHAT_TROUBLESHOOTING.md)
 
 ## Documentation
 
+- **LobeChat Integration** (Primary): [`docs/LOBECHAT_INTEGRATION_GUIDE.md`](docs/LOBECHAT_INTEGRATION_GUIDE.md)
 - Full API documentation: `docs/API_ENDPOINTS.md`
 - Architecture overview: `docs/ARCHITECTURE.md`
 - Memory Core details: `docs/MEMORY_CORE.md`
-- LobeChat integration: `docs/LOBECHAT_CONNECTION.md`
+- LobeChat legacy guide: `docs/LOBECHAT_CONNECTION.md`
 - LobeChat troubleshooting: `docs/LOBECHAT_TROUBLESHOOTING.md`
 
 ## Development
