@@ -74,14 +74,15 @@ class RPGAssistant:
         import random
         import re
 
-        # Parse dice notation (e.g., 2d6+3)
+        # Parse dice notation (e.g., 2d6+3 or 2d6-2)
         match = re.match(r"(\d+)d(\d+)([\+\-]\d+)?", dice_notation)
         if not match:
             return {"error": "Invalid dice notation"}
 
         num_dice = int(match.group(1))
         die_size = int(match.group(2))
-        modifier = int(match.group(3)) if match.group(3) else 0
+        modifier_str = match.group(3)
+        modifier = int(modifier_str) if modifier_str else 0
 
         rolls = [random.randint(1, die_size) for _ in range(num_dice)]
         total = sum(rolls) + modifier

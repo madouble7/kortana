@@ -3,7 +3,7 @@ Module Registry for Kor'tana Marketplace
 Manages module metadata and installations
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 
@@ -26,8 +26,8 @@ class ModuleMetadata:
         self.downloads = 0
         self.rating = 0.0
         self.ratings_count = 0
-        self.created_at = datetime.now().isoformat()
-        self.updated_at = datetime.now().isoformat()
+        self.created_at = datetime.now(timezone.utc).isoformat()
+        self.updated_at = datetime.now(timezone.utc).isoformat()
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""

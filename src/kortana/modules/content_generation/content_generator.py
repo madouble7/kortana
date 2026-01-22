@@ -15,11 +15,20 @@ class ContentStyle(str, Enum):
 
 
 class ContentGenerator:
-    """Service for adaptive content generation"""
+    """
+    Service for adaptive content generation
+    
+    Note: This implementation uses simplified text processing.
+    For production use, consider integrating NLP libraries or LLM-based
+    generation for better quality results.
+    """
 
     def summarize(self, text: str, max_length: int = 100) -> str:
         """
         Summarize text to specified maximum length
+        
+        Note: Uses simple sentence splitting. May not handle abbreviations
+        or complex punctuation correctly.
 
         Args:
             text: Text to summarize

@@ -74,7 +74,15 @@ class PluginRegistry:
 
         Args:
             plugin: Plugin instance to register
+            
+        Raises:
+            ValueError: If plugin with same name already exists
         """
+        if plugin.name in self._plugins:
+            raise ValueError(
+                f"Plugin {plugin.name} already registered. "
+                "Unregister it first or use a different name."
+            )
         self._plugins[plugin.name] = plugin
 
     def unregister(self, plugin_name: str):
