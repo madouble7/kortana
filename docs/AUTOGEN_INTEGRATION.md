@@ -2,7 +2,30 @@
 
 ## Overview
 
-Kor'tana now supports integration with Microsoft's AutoGen framework as a frontend option. This integration enables multi-agent collaboration, where multiple AI agents can work together to solve complex tasks.
+Kor'tana now supports integration with Microsoft's AutoGen framework as a frontend option. This integration provides an AutoGen-compatible interface layer that enables AutoGen-based applications to communicate with Kor'tana's backend systems.
+
+### Current Implementation
+
+This initial release provides:
+- **AutoGen-Compatible API**: Endpoints that accept and return data in AutoGen's format
+- **Seamless Backend Integration**: Translates AutoGen requests to work with Kor'tana's orchestrator
+- **Multi-Agent Response Format**: Structures responses in AutoGen's multi-agent format
+- **Frontend Flexibility**: Enables AutoGen-based frontends to use Kor'tana without modification
+
+### Architectural Approach
+
+The integration follows an adapter pattern where:
+1. AutoGen-formatted requests are received
+2. Requests are translated to Kor'tana's internal format
+3. Kor'tana's orchestrator processes the request
+4. Responses are formatted in AutoGen's expected structure
+5. Responses are returned to the AutoGen client
+
+This approach prioritizes:
+- **Compatibility**: AutoGen clients work without modification
+- **Backend Stability**: Uses Kor'tana's proven orchestrator
+- **Minimal Changes**: Follows existing adapter pattern (LobeChat)
+- **Future Extensibility**: Architecture supports native AutoGen agents in future releases
 
 ## What is AutoGen?
 
@@ -386,13 +409,36 @@ Use the interactive API docs at `http://localhost:8000/docs` to test all endpoin
 
 ## Future Enhancements
 
-Planned improvements:
+The following enhancements are planned for future releases:
 
-1. **Native AutoGen Integration**: Full AutoGen agent orchestration
-2. **Streaming Responses**: Support for streaming multi-agent conversations
-3. **Agent Marketplace**: Pre-configured specialized agents
+1. **Native AutoGen Agents**: Full AutoGen agent orchestration with actual multi-agent collaboration
+2. **Agent Marketplace**: Pre-configured specialized agents (coding, planning, testing, etc.)
+3. **Streaming Responses**: Support for streaming multi-agent conversations
 4. **Visual Workflow Builder**: UI for designing agent workflows
 5. **Advanced Memory**: Shared memory across agent conversations
+6. **Custom Agent Creation**: API for defining and deploying custom agents
+7. **Agent-to-Agent Communication**: Direct communication between AutoGen agents
+8. **Workflow Templates**: Pre-built workflows for common multi-agent tasks
+
+### Roadmap to Native AutoGen
+
+The migration path to native AutoGen functionality:
+
+**Phase 1 (Current)**: AutoGen-compatible interface layer
+- ✓ API endpoints accepting AutoGen format
+- ✓ Response formatting in AutoGen structure
+- ✓ Integration with Kor'tana orchestrator
+
+**Phase 2 (Planned)**: Basic AutoGen agent support
+- Create native AutoGen agent instances
+- Simple agent-to-agent communication
+- Basic workflow coordination
+
+**Phase 3 (Future)**: Advanced multi-agent features
+- Complex workflow orchestration
+- Dynamic agent creation and coordination
+- Advanced memory and context sharing
+- Full AutoGen framework capabilities
 
 ## Support
 

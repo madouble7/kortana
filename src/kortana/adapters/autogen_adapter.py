@@ -24,8 +24,13 @@ class AutoGenAdapter:
     """
     Adapter for integrating Microsoft AutoGen multi-agent framework with Kor'tana.
     
-    This adapter orchestrates multiple AI agents to collaborate on complex tasks,
-    providing a frontend interface for multi-agent interactions.
+    This adapter provides an AutoGen-compatible interface for Kor'tana's orchestrator.
+    It accepts requests in AutoGen format and returns responses in AutoGen format,
+    while using Kor'tana's backend for processing.
+    
+    Note: This is a compatibility layer. Full native AutoGen agent orchestration
+    is planned for future releases. Currently, the adapter translates between
+    AutoGen's request/response format and Kor'tana's orchestrator.
     """
 
     def __init__(self):
@@ -46,14 +51,19 @@ class AutoGenAdapter:
         self, request_data: dict[str, Any], db: Session
     ) -> dict[str, Any]:
         """
-        Process a request from AutoGen frontend using Kor'tana's orchestrator.
+        Process a request in AutoGen format using Kor'tana's orchestrator.
+        
+        This method accepts AutoGen-formatted requests and translates them
+        to work with Kor'tana's backend, then formats responses in AutoGen's
+        expected format. This provides compatibility with AutoGen clients
+        while leveraging Kor'tana's existing capabilities.
         
         Args:
-            request_data: Request data from AutoGen frontend
+            request_data: Request data in AutoGen format
             db: Database session
             
         Returns:
-            Formatted response for AutoGen
+            Response formatted for AutoGen clients
         """
         logger.info(f"AutoGenAdapter received request: {request_data}")
 
@@ -137,16 +147,21 @@ class AutoGenAdapter:
         self, request_data: dict[str, Any], db: Session
     ) -> dict[str, Any]:
         """
-        Handle multi-agent collaboration requests using AutoGen framework.
+        Handle multi-agent collaboration requests using AutoGen-compatible format.
         
-        This method enables multiple agents to work together on complex tasks.
+        This method provides an AutoGen-compatible interface for complex tasks.
+        Currently, it uses Kor'tana's orchestrator and formats the response to
+        simulate multi-agent collaboration structure that AutoGen clients expect.
+        
+        Future Enhancement: This will be upgraded to use native AutoGen agents
+        for true multi-agent orchestration and collaboration.
         
         Args:
             request_data: Request data containing task and agent configuration
             db: Database session
             
         Returns:
-            Collaborative response from multiple agents
+            Collaborative response formatted for AutoGen clients
         """
         logger.info(f"Multi-agent collaboration request: {request_data}")
 
@@ -165,8 +180,9 @@ class AutoGenAdapter:
             # Process the task through orchestrator
             result = await orchestrator.process_query(query=task)
 
-            # Simulate multi-agent collaboration response
-            # In a full implementation, this would coordinate multiple AutoGen agents
+            # Format response in AutoGen's multi-agent collaboration structure
+            # Note: Currently uses Kor'tana's single orchestrator response
+            # Future: Will coordinate actual AutoGen agents
             multi_agent_response = {
                 "collaboration_result": result.get("final_kortana_response"),
                 "agents_involved": ["planning_agent", "reasoning_agent", "memory_agent"],

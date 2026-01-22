@@ -103,10 +103,14 @@ async def handle_autogen_chat(
     request: AutoGenRequest, db: Session = Depends(get_db_sync)
 ):
     """
-    Endpoint to receive messages from AutoGen frontend and respond via Kor'tana.
+    Endpoint to receive AutoGen-formatted messages and respond via Kor'tana.
     
-    This endpoint enables single-agent or multi-agent conversations using
-    the AutoGen framework integrated with Kor'tana's orchestrator.
+    This endpoint provides an AutoGen-compatible interface, accepting requests
+    in AutoGen's format and returning responses formatted for AutoGen clients.
+    The backend processing uses Kor'tana's orchestrator.
+    
+    This enables AutoGen-based frontends to communicate with Kor'tana without
+    requiring modifications to either system.
     """
     try:
         # Pass the database session to the adapter method
