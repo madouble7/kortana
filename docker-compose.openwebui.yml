@@ -10,7 +10,7 @@ services:
     environment:
       # Connect to Kor'tana's OpenAI-compatible API
       - OPENAI_API_BASE_URL=http://host.docker.internal:8000/api/openai/v1
-      - OPENAI_API_KEY=${KORTANA_API_KEY:-kortana-default-key}
+      - OPENAI_API_KEY=${KORTANA_API_KEY:?KORTANA_API_KEY environment variable is required}
       
       # WebUI Configuration
       - WEBUI_AUTH=true

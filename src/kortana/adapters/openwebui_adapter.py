@@ -203,6 +203,8 @@ class OpenWebUIAdapter:
         content = response.choices[0].message.content
         
         # Send the complete chunk
+        import json
+        
         chunk = {
             "id": response_id,
             "object": "chat.completion.chunk",
@@ -216,7 +218,7 @@ class OpenWebUIAdapter:
                 }
             ],
         }
-        yield f"data: {chunk}\n\n"
+        yield f"data: {json.dumps(chunk)}\n\n"
 
         # Send the final chunk
         final_chunk = {
@@ -226,7 +228,7 @@ class OpenWebUIAdapter:
             "model": request.model,
             "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
         }
-        yield f"data: {final_chunk}\n\n"
+        yield f"data: {json.dumps(final_chunk)}\n\n"
         yield "data: [DONE]\n\n"
 
 

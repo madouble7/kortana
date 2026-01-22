@@ -12,9 +12,10 @@ if not exist .env (
     exit /b 1
 )
 
-REM Start Kor'tana backend
-echo Starting Kor'tana backend...
-start "Kor'tana Backend" cmd /k "python -m uvicorn src.kortana.main:app --host 0.0.0.0 --port 8000"
+REM Start Kor'tana backend (use 127.0.0.1 for security, or set HOST env var for production)
+if "%HOST%"=="" set HOST=127.0.0.1
+echo Starting Kor'tana backend on %HOST%:8000...
+start "Kor'tana Backend" cmd /k "python -m uvicorn src.kortana.main:app --host %HOST% --port 8000"
 
 REM Wait for backend to be ready
 echo Waiting for backend to be ready...

@@ -95,11 +95,11 @@ async def mcp_search_memory(
             result={
                 "memories": [
                     {
-                        "id": memory.id,
-                        "content": memory.content,
-                        "relevance_score": memory.relevance_score,
+                        "id": memory.id if hasattr(memory, "id") else None,
+                        "content": memory.content if hasattr(memory, "content") else "",
+                        "relevance_score": memory.relevance_score if hasattr(memory, "relevance_score") else 0.0,
                         "created_at": memory.created_at.isoformat()
-                        if hasattr(memory, "created_at")
+                        if hasattr(memory, "created_at") and memory.created_at
                         else None,
                     }
                     for memory in results

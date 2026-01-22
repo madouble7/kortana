@@ -15,7 +15,9 @@ fi
 
 # Start Kor'tana backend
 echo "🔧 Starting Kor'tana backend..."
-python -m uvicorn src.kortana.main:app --host 0.0.0.0 --port 8000 &
+# Use 127.0.0.1 for security (local only), or set HOST env var for production
+HOST=${HOST:-127.0.0.1}
+python -m uvicorn src.kortana.main:app --host "$HOST" --port 8000 &
 BACKEND_PID=$!
 
 # Wait for backend to be ready
