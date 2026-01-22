@@ -65,10 +65,24 @@ class KorOrchestrator:
             "default": {"model": "gpt-4.1-nano"},
         }
 
-    async def process_query(self, query: str) -> dict[str, Any]:
+    async def process_query(self, query: str, language: str | None = None) -> dict[str, Any]:
         """
         The main thinking loop for Kor'tana, now with a live LLM call.
+        Supports multilingual responses via the language parameter.
+        
+        Args:
+            query: The user's query
+            language: Optional ISO 639-1 language code for the response
         """
+        # Validate and normalize language if provided
+        from src.kortana.utils.language_utils import (
+            get_system_prompt_for_language,
+            validate_language_code,
+        )
+        
+        target_language = validate_language_code(language) if language else "en"
+        language_instruction = get_system_prompt_for_language(target_language)
+        
         # 1. Search memory for relevant context (no change here)
         relevant_memories = self.memory_service.search_memories_semantic(query, top_k=3)
 
@@ -95,8 +109,12 @@ class KorOrchestrator:
             }
 
         # Call the LLM client with the prompt
+        # Build system prompt with language instruction if needed
+        base_system_prompt = "You are responding as Kor'tana, a unique AI with a developing identity."
+        system_prompt = f"{base_system_prompt} {language_instruction}".strip()
+        
         llm_result = await llm_client.generate_response(
-            system_prompt="You are responding as Kor'tana, a unique AI with a developing identity.",
+            system_prompt=system_prompt,
             messages=[{"role": "user", "content": prompt_for_llm}],
         )
 
@@ -144,6 +162,7 @@ class KorOrchestrator:
         # Return the structured response for debugging and visibility
         return {
             "original_query": query,
+            "language": target_language,
             "context_from_memory": [mem["memory"].content for mem in relevant_memories],
             "prompt_sent_to_llm": prompt_for_llm,
             "raw_llm_response": llm_response_content,
