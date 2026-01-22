@@ -13,6 +13,7 @@ from .genai_client import GoogleGenAIClient
 from .google_client import (
     GoogleGeminiClient,  # Changed to use the more robust GoogleGeminiClient
 )
+from .multimodal_openai_client import MultimodalOpenAIClient
 from .openai_client import OpenAIClient
 from .openrouter_client import OpenRouterClient
 from .xai_client import XAIClient
@@ -268,6 +269,34 @@ class LLMClientFactory:
                 f"Failed to create ADE client for {task_type} (model {model_id}): {e}"
             )
             return LLMClientFactory.get_default_client(models_config)
+
+    @staticmethod
+    def get_multimodal_client(
+        models_config: dict[str, Any], model_id: str = "gpt-4-vision-preview"
+    ) -> BaseLLMClient | None:
+        """
+        Get a multimodal-capable LLM client.
+
+        Args:
+            models_config: Models configuration dictionary
+            model_id: Model identifier (defaults to GPT-4 Vision)
+
+        Returns:
+            Multimodal client instance or None
+        """
+        # For now, use MultimodalOpenAIClient for vision tasks
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            logger.error("OPENAI_API_KEY not found for multimodal client")
+            return None
+
+        try:
+            client = MultimodalOpenAIClient(api_key=api_key, model_name=model_id)
+            logger.info(f"Multimodal client created: {model_id}")
+            return client
+        except Exception as e:
+            logger.error(f"Failed to create multimodal client: {e}")
+            return None
 
     @staticmethod
     def validate_configuration(settings: KortanaConfig) -> bool:

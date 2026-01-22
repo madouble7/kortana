@@ -125,6 +125,53 @@ class BaseLLMClient(ABC):
         """Check if the client supports streaming responses"""
         return False
 
+    def supports_multimodal(self) -> bool:
+        """Check if the client supports multimodal inputs (images, audio, video)"""
+        return False
+
+    def supports_vision(self) -> bool:
+        """Check if the client supports vision/image inputs"""
+        return False
+
+    def supports_audio(self) -> bool:
+        """Check if the client supports audio inputs"""
+        return False
+
+    def supports_video(self) -> bool:
+        """Check if the client supports video inputs"""
+        return False
+
     def get_model_info(self) -> dict[str, Any]:
         """Get information about the current model"""
         return {"name": self.model_name, "provider": "unknown"}
+
+    def generate_multimodal_response(
+        self,
+        system_prompt: str,
+        messages: list,
+        multimodal_content: dict[str, Any] | None = None,
+        **kwargs,
+    ) -> dict[str, Any]:
+        """
+        Generate a response with multimodal content.
+
+        Args:
+            system_prompt: The system instructions for the LLM
+            messages: List of conversation messages
+            multimodal_content: Optional multimodal content (images, audio, etc.)
+            **kwargs: Additional parameters
+
+        Returns:
+            Dict containing response data
+
+        Note:
+            Default implementation falls back to text-only processing.
+            Subclasses should override this for true multimodal support.
+        """
+        if not self.supports_multimodal():
+            logging.warning(
+                f"{self.__class__.__name__} does not support multimodal inputs. "
+                "Falling back to text-only processing."
+            )
+
+        return self.generate_response(system_prompt, messages, **kwargs)
