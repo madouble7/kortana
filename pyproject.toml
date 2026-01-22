@@ -20,6 +20,10 @@ dependencies = [
     "httpx>=0.25.0",
     "apscheduler>=3.10.0",
     "pinecone>=3.2.2",
+    "scikit-learn>=1.2.2",
+    "xgboost>=1.7.0",
+    "pandas>=2.0.0",
+    "plotly>=5.14.0",
 ]
 
 
