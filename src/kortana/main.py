@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager  # For lifespan events
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from src.kortana.adapters.autogen_router import router as autogen_router
 from src.kortana.api.routers import core_router, goal_router
 from src.kortana.api.routers.conversation_router import router as conversation_router
 from src.kortana.core.scheduler import (
@@ -53,6 +54,7 @@ app.include_router(conversation_router)  # Add conversation history router
 app.include_router(core_router.router)
 app.include_router(core_router.openai_adapter_router)
 app.include_router(goal_router.router)
+app.include_router(autogen_router)
 
 
 @app.get("/health")
