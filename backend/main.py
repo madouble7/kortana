@@ -37,7 +37,6 @@ try:
         agents,
         auth,
         autonomy,
-        code_generator,
         code_reviewer,
         gemini,
         github,
@@ -202,7 +201,6 @@ def create_app() -> FastAPI:
         app.include_router(pr_creation.router, prefix="/api/pr", tags=["pr-creation"])
         app.include_router(test_orchestrator.router, prefix="/api/testing", tags=["testing"])
         app.include_router(code_reviewer.router, prefix="/api/code-review", tags=["code-review"])
-        app.include_router(code_generator.router, prefix="/api/code-generator", tags=["code-generator"])
 
         # Basic API endpoints (defined before catch-all)
         @app.get("/api/health", tags=["system"])
