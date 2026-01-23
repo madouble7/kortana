@@ -17,6 +17,16 @@ from src.kortana.core.scheduler import (
 from src.kortana.modules.memory_core.routers.memory_router import (
     router as memory_router,
 )
+# Import new module routers
+from src.kortana.modules.multilingual.router import router as multilingual_router
+from src.kortana.modules.emotional_intelligence.router import (
+    router as emotional_intelligence_router,
+)
+from src.kortana.modules.content_generation.router import router as content_router
+from src.kortana.modules.plugin_framework.router import router as plugin_router
+from src.kortana.modules.ethical_transparency.router import router as ethics_router
+from src.kortana.modules.gaming.router import router as gaming_router
+from src.kortana.modules.marketplace.router import router as marketplace_router
 
 
 # Lifespan context manager
@@ -53,6 +63,15 @@ app.include_router(conversation_router)  # Add conversation history router
 app.include_router(core_router.router)
 app.include_router(core_router.openai_adapter_router)
 app.include_router(goal_router.router)
+
+# Include new module routers
+app.include_router(multilingual_router)
+app.include_router(emotional_intelligence_router)
+app.include_router(content_router)
+app.include_router(plugin_router)
+app.include_router(ethics_router)
+app.include_router(gaming_router)
+app.include_router(marketplace_router)
 
 
 @app.get("/health")
