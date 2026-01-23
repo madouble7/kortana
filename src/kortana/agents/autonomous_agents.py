@@ -10,6 +10,7 @@ import logging
 from typing import Any
 
 from kortana.config.schema import KortanaConfig
+from kortana.memory.memory_manager import MemoryManager
 
 logger = logging.getLogger(__name__)
 
@@ -131,6 +132,10 @@ class PlanningAgent:
         self.llm_client = llm_client
         self.covenant_enforcer = covenant_enforcer
         self.settings = settings
+        # Initialize memory manager if not provided through chat engine
+        self.memory_manager = getattr(chat_engine_instance, "memory_manager", None)
+        if self.memory_manager is None:
+            self.memory_manager = MemoryManager(settings=settings)
 
     async def create_plan(
         self, objective: str, constraints: list[str] | None = None
@@ -176,6 +181,41 @@ The plan should include:
             "status": "success",
             "plan": response.get("content", "Error creating plan"),
         }
+
+    def plan_day(self) -> dict[str, Any]:
+        """
+        Create a prioritized plan for today's tasks based on memory records.
+
+        Returns:
+            Dict[str, Any]: A dictionary containing today's date and prioritized tasks.
+        """
+        from datetime import UTC, datetime
+
+        logger.info("Generating daily plan from memory")
+
+        # Load all memory entries
+        all_entries = self.memory_manager.load_project_memory()
+
+        # Filter for incomplete tasks - checking common tags
+        tasks = [
+            entry
+            for entry in all_entries
+            if any(
+                tag in entry.get("tags", [])
+                for tag in ["incomplete_task", "todo", "pending"]
+            )
+        ]
+
+        # Score & sort by significance/emotional_gravity in metadata if present
+        prioritized = sorted(
+            tasks,
+            key=lambda x: x.get("metadata", {}).get("significance_score", 0),
+            reverse=True,
+        )
+
+        # Generate a to-do list (top 5)
+        today = [t.get("text", t.get("content", "")) for t in prioritized[:5]]
+        return {"date": datetime.now(UTC).date().isoformat(), "today": today}
 
 
 class TestingAgent:

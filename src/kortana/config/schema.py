@@ -78,10 +78,19 @@ class MemoryConfig(BaseModel):
     backup_enabled: bool = True
     enable_persistent: bool = True
     pinecone_api_key: str | None = Field(default=None, description="Pinecone API key")
-    pinecone_environment: str | None = Field(default=None, description="Pinecone environment")
-    pinecone_index_name: str = Field(default="kortana-memory", description="Pinecone index name")
-    pinecone_namespace: str = Field(default="{user}", description="Pinecone namespace template. {user} will be replaced with username")
-    local_memory_path: str = Field(default="data/project_memory.jsonl", description="Local memory file path")
+    pinecone_environment: str | None = Field(
+        default=None, description="Pinecone environment"
+    )
+    pinecone_index_name: str = Field(
+        default="kortana-memory", description="Pinecone index name"
+    )
+    pinecone_namespace: str = Field(
+        default="{user}",
+        description="Pinecone namespace template. {user} will be replaced with username",
+    )
+    local_memory_path: str = Field(
+        default="data/project_memory.jsonl", description="Local memory file path"
+    )
 
 
 class AgentTypeConfig(BaseModel):
@@ -90,7 +99,9 @@ class AgentTypeConfig(BaseModel):
     enabled: bool = True
     max_tasks: int = Field(default=10, ge=1, le=100)
     agent_model_mapping: dict[str, str] = Field(default_factory=dict)
-    llm_id: str | None = Field(default=None, description="Override LLM ID for this agent type")
+    llm_id: str | None = Field(
+        default=None, description="Override LLM ID for this agent type"
+    )
     coding: dict[str, Any] = {}
     planning: dict[str, Any] = {}
     testing: dict[str, Any] = {}
@@ -119,10 +130,16 @@ class PersonaConfig(BaseModel):
 
     name: str = Field(default="Kor'tana", description="Persona name")
     voice_style: str = Field(default="presence", description="Default voice style")
-    temperature: float = Field(default=0.7, description="Default temperature for responses")
+    temperature: float = Field(
+        default=0.7, description="Default temperature for responses"
+    )
     max_tokens: int = Field(default=4000, description="Maximum tokens per response")
-    wisdom_weight: float = Field(default=0.33, description="Weight for wisdom principle")
-    compassion_weight: float = Field(default=0.33, description="Weight for compassion principle")
+    wisdom_weight: float = Field(
+        default=0.33, description="Weight for wisdom principle"
+    )
+    compassion_weight: float = Field(
+        default=0.33, description="Weight for compassion principle"
+    )
     truth_weight: float = Field(default=0.34, description="Weight for truth principle")
 
 
@@ -174,14 +191,14 @@ class PathsConfig(BaseModel):
     models_dir: str = "models"
     config_dir: str = "config"
     temp_dir: str = "tmp"
-    
+
     # Core configuration files
     persona_file_path: str = "config/persona.json"
     identity_file_path: str = "config/identity.json"
     models_config_file_path: str = "config/models_config.json"
     sacred_trinity_config_file_path: str = "config/sacred_trinity_config.json"
     covenant_file_path: str = "covenant.yaml"
-    
+
     # Memory and log paths (with user templating support)
     project_memory_file_path: str = "data/project_memory.jsonl"
     memory_journal_path: str = "data/memory/{user}/memory_journal.jsonl"
@@ -258,7 +275,7 @@ class KortanaConfig(BaseSettings):
                     if path.suffix == "" or path_name.endswith("_dir"):
                         path.mkdir(parents=True, exist_ok=True)
                 except Exception:
-                    pass # Non-critical if creation fails here
+                    pass  # Non-critical if creation fails here
         return paths
 
     @field_validator("api_keys", mode="before")
@@ -270,7 +287,11 @@ class KortanaConfig(BaseSettings):
         if isinstance(v, dict):
             resolved = {}
             for key, value in v.items():
-                if isinstance(value, str) and value.startswith("${") and value.endswith("}"):
+                if (
+                    isinstance(value, str)
+                    and value.startswith("${")
+                    and value.endswith("}")
+                ):
                     env_var = value[2:-1]
                     resolved[key] = os.getenv(env_var)
                 else:

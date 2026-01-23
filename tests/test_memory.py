@@ -1,51 +1,16 @@
-# C:\kortana\tests\test_memory.py
-import json
 import os
-from datetime import UTC, datetime
+import pytest
 from pathlib import Path
 
-import pytest
+from kortana.memory.memory_manager import MemoryManager
+from kortana.config import load_kortana_config
 
-# Adjust import based on how you run tests
-try:
-    from src.memory import MemoryManager
-except ImportError:
-    import sys
-    from pathlib import Path
-
-    src_path = str(Path(__file__).parent.parent / "src")
-    if src_path not in sys.path:
-        sys.path.append(src_path)
-    from src.memory import MemoryManager
-
-# Define test paths relative to this test file's location
-TEST_CORE_LOGS_PATH = Path(__file__).parent.parent / "kortana.core" / "test_logs_memory"
-TEST_DATA_PATH = Path(__file__).parent.parent / "data" / "test_data_memory"
-
-
-@pytest.fixture(
-    scope="function"
-)  # Use function scope to ensure clean state for each test
+@pytest.fixture(scope="function")
 def memory_manager_instance():
-    """Provides a MemoryManager instance with dedicated test log paths."""
-    TEST_CORE_LOGS_PATH.mkdir(parents=True, exist_ok=True)
-    TEST_DATA_PATH.mkdir(parents=True, exist_ok=True)
-
-    manager = MemoryManager(
-        memory_journal_path=str(TEST_DATA_PATH / "test_journal.jsonl"),
-        heart_log_path=str(TEST_CORE_LOGS_PATH / "test_heart.log"),
-        soul_index_path=str(TEST_CORE_LOGS_PATH / "test_soul.index"),
-        lit_log_path=str(TEST_CORE_LOGS_PATH / "test_lit.log"),
-    )
-    # Clear files before each test if they exist
-    for p in [
-        manager.memory_journal_path,
-        manager.heart_log_path,
-        manager.soul_index_path,
-        manager.lit_log_path,
-    ]:
-        if os.path.exists(p):
-            os.remove(p)
+    """Provides a MemoryManager instance with test config."""
+    settings = load_kortana_config()
+    # Override paths for testing if needed, though load_kortana_config might suffice
+    manager = MemoryManager(settings=settings)
     return manager
 
 

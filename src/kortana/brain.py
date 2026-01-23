@@ -11,8 +11,6 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from kortana.config.schema import KortanaConfig
-
 # Corrected imports for sanitize_user_input and extract_keywords_from_text
 from kortana.brain_utils import (
     append_to_memory_journal,
@@ -20,6 +18,7 @@ from kortana.brain_utils import (
     load_json_config,
     sanitize_user_input,
 )
+from kortana.config.schema import KortanaConfig
 from kortana.memory.memory import MemoryEntry
 from kortana.memory.memory_manager import MemoryManager
 from llm_clients.factory import LLMClientFactory

@@ -16,6 +16,7 @@ from typing import Any
 # Modern Pinecone SDK import
 try:
     from pinecone import Pinecone  # Main import for Pinecone client v3+
+
     PINECONE_SDK_AVAILABLE = True
 except ImportError:
     # Disable Pinecone for now to avoid import issues
@@ -49,10 +50,10 @@ def _cached_embedding_lookup(text_hash: int) -> list[float] | None:
 
 class MemoryCache:
     """LRU cache for frequently accessed memories."""
-    
+
     def __init__(self, max_size: int = 100):
         """Initialize the memory cache.
-        
+
         Args:
             max_size: Maximum number of items to cache
         """
@@ -60,13 +61,13 @@ class MemoryCache:
         self.cache: OrderedDict[str, dict[str, Any]] = OrderedDict()
         self.access_counts: dict[str, int] = {}
         self.last_accessed: dict[str, datetime] = {}
-        
+
     def get(self, key: str) -> dict[str, Any] | None:
         """Get an item from the cache.
-        
+
         Args:
             key: The cache key
-            
+
         Returns:
             The cached item or None if not found
         """
@@ -79,10 +80,10 @@ class MemoryCache:
             return self.cache[key]
         logger.debug(f"Cache miss for key: {key}")
         return None
-    
+
     def put(self, key: str, value: dict[str, Any]) -> None:
         """Add an item to the cache.
-        
+
         Args:
             key: The cache key
             value: The value to cache
@@ -98,22 +99,22 @@ class MemoryCache:
                 self.access_counts.pop(removed_key, None)
                 self.last_accessed.pop(removed_key, None)
                 logger.debug(f"Evicted from cache: {removed_key}")
-        
+
         self.cache[key] = value
         self.access_counts[key] = self.access_counts.get(key, 0) + 1
         self.last_accessed[key] = datetime.now()
         logger.debug(f"Cached item with key: {key}")
-    
+
     def clear(self) -> None:
         """Clear the entire cache."""
         self.cache.clear()
         self.access_counts.clear()
         self.last_accessed.clear()
         logger.info("Cache cleared")
-    
+
     def get_stats(self) -> dict[str, Any]:
         """Get cache statistics.
-        
+
         Returns:
             Dictionary with cache statistics
         """
@@ -121,13 +122,15 @@ class MemoryCache:
             "size": len(self.cache),
             "max_size": self.max_size,
             "total_accesses": sum(self.access_counts.values()),
-            "most_accessed": max(self.access_counts.items(), key=lambda x: x[1]) if self.access_counts else None,
+            "most_accessed": max(self.access_counts.items(), key=lambda x: x[1])
+            if self.access_counts
+            else None,
         }
 
 
 class MemoryManager:
     """Memory manager for Kor'tana using Pinecone as the vector database.
-    
+
     Enhanced with caching layer for improved performance on frequently accessed memories.
     """
 
@@ -140,10 +143,10 @@ class MemoryManager:
 
     def __init__(self, settings: KortanaConfig, cache_size: int = 100):
         self.settings = settings
-        
+
         # Initialize memory cache
         self.memory_cache = MemoryCache(max_size=cache_size)
-        
+
         logger.info(f"MemoryManager received settings of type: {type(settings)}")
         try:
             settings_json = settings.model_dump_json(indent=2)
@@ -320,11 +323,11 @@ class MemoryManager:
         self, query_vector: list[float], top_k: int = 5
     ) -> list[dict[str, Any]]:
         """Search for similar memories using Pinecone with caching support.
-        
+
         Args:
             query_vector: The query embedding vector
             top_k: Number of top results to return
-            
+
         Returns:
             List of similar memory entries
         """
@@ -336,11 +339,11 @@ class MemoryManager:
         # Use string representation of the entire vector to avoid collisions
         vector_str = ",".join(f"{v:.6f}" for v in query_vector)
         cache_key = f"search_{vector_str}_{top_k}"
-        
+
         # Check cache first
         cached_result = self.memory_cache.get(cache_key)
         if cached_result is not None:
-            logger.info(f"Returning cached search results for query")
+            logger.info("Returning cached search results for query")
             return cached_result
 
         try:
@@ -362,10 +365,10 @@ class MemoryManager:
                 }
                 for match in results.matches
             ]
-            
+
             # Cache the results
             self.memory_cache.put(cache_key, formatted_results)
-            
+
             return formatted_results
         except Exception as e:
             logger.error(f"Failed to search Pinecone: {e}")
@@ -391,15 +394,15 @@ class MemoryManager:
         except Exception as e:
             logger.error(f"Failed to add memory to journal: {e}")
             return False
-    
+
     def get_cache_stats(self) -> dict[str, Any]:
         """Get statistics about the memory cache.
-        
+
         Returns:
             Dictionary containing cache statistics
         """
         return self.memory_cache.get_stats()
-    
+
     def clear_cache(self) -> None:
         """Clear the memory cache."""
         self.memory_cache.clear()

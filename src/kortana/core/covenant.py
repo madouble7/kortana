@@ -658,3 +658,30 @@ class CovenantEnforcer:
 
         # Cap scores at 1.0
         return {k: min(v, 1.0) for k, v in scores.items()}
+
+    def enforce(self, message: str) -> tuple[bool, str]:
+        """
+        Check if a message adheres to the covenant.
+        Maintains backward compatibility with simple enforcement calls.
+
+        Args:
+            message: The message to check.
+
+        Returns:
+            A tuple containing (is_compliant, explanation).
+        """
+        if not message:
+            return False, "Empty message"
+
+        # Check against forbidden content patterns in rules
+        for pattern in self.rules.get("forbidden_content", []):
+            if re.search(pattern, message, re.IGNORECASE):
+                return False, f"Message violates covenant rule: {pattern}"
+
+        # Check against "do not" boundaries for compatibility with simpler enforcers
+        boundaries = self.rules.get("boundaries", {}).get("do_not", [])
+        for boundary in boundaries:
+            if boundary.lower() in message.lower():
+                return False, f"Message violates boundary: {boundary}"
+
+        return True, "Message is compliant with covenant"
