@@ -11,19 +11,19 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from config.schema import KortanaConfig  # Corrected import path
+from src.kortana.config.schema import KortanaConfig
 
 # Corrected imports for sanitize_user_input and extract_keywords_from_text
-from kortana.brain_utils import (
+from src.kortana.brain_utils import (
     append_to_memory_journal,
     extract_keywords_from_text,
     load_json_config,
     sanitize_user_input,
 )
-from kortana.memory.memory import MemoryEntry
-from kortana.memory.memory_manager import MemoryManager
-from llm_clients.factory import LLMClientFactory
-from model_router import SacredModelRouter
+from src.kortana.memory.memory import MemoryEntry
+from src.kortana.memory.memory_manager import MemoryManager
+from src.kortana.llm_clients.factory import LLMClientFactory
+from src.model_router import SacredModelRouter
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -106,7 +106,7 @@ class ChatEngine:
             List of relevant memory entries
         """
         try:
-            from kortana.brain_utils import generate_embedding
+            from src.kortana.brain_utils import generate_embedding
 
             # Generate embedding vector for the query text
             query_vector = generate_embedding(query)
@@ -278,7 +278,7 @@ class ChatEngine:
             List of memory entries
         """
         try:
-            from kortana.brain_utils import generate_embedding
+            from src.kortana.brain_utils import generate_embedding
 
             # Generate embedding vector for the query using our optimized utility function
             query_vector = generate_embedding(user_message)

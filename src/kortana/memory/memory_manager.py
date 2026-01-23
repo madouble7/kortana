@@ -25,7 +25,7 @@ except ImportError:
         "Pinecone SDK not found. Pinecone features will be disabled."
     )
 
-from config.schema import KortanaConfig  # Assuming this path is now correct
+from src.kortana.config.schema import KortanaConfig
 
 from .memory import MemoryEntry
 
