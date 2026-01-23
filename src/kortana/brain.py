@@ -11,7 +11,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from config.schema import KortanaConfig  # Corrected import path
+from kortana.config.schema import KortanaConfig
 
 # Corrected imports for sanitize_user_input and extract_keywords_from_text
 from kortana.brain_utils import (
