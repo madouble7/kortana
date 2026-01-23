@@ -4,10 +4,10 @@ Genesis Protocol Real-time Monitor
 Tracks the autonomous execution progress
 """
 
-import requests
 import time
-import json
 from datetime import datetime
+
+import requests
 
 
 def monitor_genesis_protocol():
@@ -63,7 +63,7 @@ def monitor_genesis_protocol():
 
                         # Show details for active goals
                         if active_goals:
-                            print(f"\n🔄 Active Goals:")
+                            print("\n🔄 Active Goals:")
                             for goal in active_goals:
                                 goal_id = goal.get('id', 'Unknown')
                                 description = goal.get('description', 'No description')[:80] + "..."

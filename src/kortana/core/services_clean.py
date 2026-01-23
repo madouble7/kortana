@@ -136,7 +136,7 @@ def _create_memory_core_service():
 def _create_sacred_model_router():
     """Factory function for Sacred Model Router."""
     try:
-        from model_router import SacredModelRouter
+        from kortana.model_router import SacredModelRouter
 
         if _config is None:
             raise RuntimeError("Services not initialized with configuration")

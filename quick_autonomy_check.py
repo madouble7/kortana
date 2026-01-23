@@ -5,11 +5,11 @@ Quick Autonomy Check - Is Kor'tana Working?
 Simple, immediate verification of autonomous activity
 """
 
-import requests
 import json
-import os
 from datetime import datetime
 from pathlib import Path
+
+import requests
 
 BASE_URL = "http://localhost:8000"
 PROJECT_ROOT = Path(r"C:\project-kortana")
@@ -107,7 +107,7 @@ def quick_autonomy_check():
     status_file = PROJECT_ROOT / "data" / "autonomous_status.json"
     if status_file.exists():
         try:
-            with open(status_file, 'r') as f:
+            with open(status_file) as f:
                 status = json.load(f)
 
             if status:

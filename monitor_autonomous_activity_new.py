@@ -4,12 +4,13 @@ Autonomous Activity Monitor for Kor'tana
 Provides real-time monitoring of autonomous system state through API/Database
 """
 
-import requests
-import time
-import json
-from datetime import datetime, timedelta
-from typing import Dict, List, Any
 import sys
+import time
+from datetime import datetime
+from typing import Any
+
+import requests
+
 
 class AutonomousMonitor:
     def __init__(self, base_url: str = "http://localhost:8000"):
@@ -17,7 +18,7 @@ class AutonomousMonitor:
         self.previous_state = {}
         self.start_time = datetime.now()
 
-    def get_goals_state(self) -> List[Dict[str, Any]]:
+    def get_goals_state(self) -> list[dict[str, Any]]:
         """Get current goals and their states"""
         try:
             response = requests.get(f"{self.base_url}/goals/")
@@ -28,7 +29,7 @@ class AutonomousMonitor:
             print(f"❌ Error fetching goals: {e}")
             return []
 
-    def get_tasks_for_goal(self, goal_id: int) -> List[Dict[str, Any]]:
+    def get_tasks_for_goal(self, goal_id: int) -> list[dict[str, Any]]:
         """Get tasks for a specific goal"""
         try:
             response = requests.get(f"{self.base_url}/goals/{goal_id}/tasks")
@@ -39,7 +40,7 @@ class AutonomousMonitor:
             print(f"❌ Error fetching tasks for goal {goal_id}: {e}")
             return []
 
-    def get_recent_memories(self, limit: int = 10) -> List[Dict[str, Any]]:
+    def get_recent_memories(self, limit: int = 10) -> list[dict[str, Any]]:
         """Get recent memories, especially CORE_BELIEF types"""
         try:
             response = requests.get(f"{self.base_url}/memories/?limit={limit}")
@@ -50,7 +51,7 @@ class AutonomousMonitor:
             print(f"❌ Error fetching memories: {e}")
             return []
 
-    def detect_state_changes(self, current_state: Dict) -> List[str]:
+    def detect_state_changes(self, current_state: dict) -> list[str]:
         """Detect changes in system state"""
         changes = []
 

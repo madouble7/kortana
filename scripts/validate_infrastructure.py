@@ -42,9 +42,10 @@ def validate_imports():
     """Validate key package imports."""
     print("\n[CHECKING] Validating Package Imports")
     try:
-        import alembic
         import fastapi
         import sqlalchemy
+
+        import alembic
 
         print("[SUCCESS] All critical imports successful")
         print(f"   SQLAlchemy: {sqlalchemy.__version__}")

@@ -4,8 +4,9 @@ Genesis Protocol - Combined Server Start and Goal Submission
 """
 import os
 import sys
-import time
 import threading
+import time
+
 import requests
 
 # Set up environment
@@ -15,8 +16,9 @@ sys.path.insert(0, r"c:\project-kortana")
 def start_server():
     """Start the FastAPI server"""
     try:
-        from src.kortana.main import app
         import uvicorn
+
+        from src.kortana.main import app
 
         print("🚀 Starting Kor'tana Genesis Protocol Server...")
         uvicorn.run(

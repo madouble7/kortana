@@ -10,13 +10,13 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from pytz import UTC
 
+from kortana.core.autonomous_tasks import run_performance_analysis_task
 from kortana.core.covenant import CovenantEnforcer
 from kortana.core.environmental_scanner import run_environmental_scan_cycle
-from src.kortana.core.autonomous_tasks import run_performance_analysis_task
-from src.kortana.core.goal_manager import (
+from kortana.core.goal_manager import (
     GoalManager as CoreGoalManager,  # Alias to avoid confusion
 )
-from src.kortana.core.memory import MemoryManager
+from kortana.core.memory import MemoryManager
 
 logger = logging.getLogger(__name__)
 
@@ -179,8 +179,8 @@ def start_scheduler():
     def run_proactive_code_review_wrapper():
         """Wrapper to handle database dependency for proactive code review."""
         try:
-            from src.kortana.services.database import get_db_sync
             from src.kortana.core.autonomous_tasks import run_proactive_code_review_task
+            from src.kortana.services.database import get_db_sync
 
             db_gen = get_db_sync()
             db = next(db_gen)  # Get the actual session from the generator

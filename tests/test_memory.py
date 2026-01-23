@@ -8,7 +8,7 @@ import pytest
 
 # Adjust import based on how you run tests
 try:
-    from src.memory import MemoryManager
+    from kortana.memory.memory_manager import MemoryManager
 except ImportError:
     import sys
     from pathlib import Path
@@ -16,7 +16,7 @@ except ImportError:
     src_path = str(Path(__file__).parent.parent / "src")
     if src_path not in sys.path:
         sys.path.append(src_path)
-    from src.memory import MemoryManager
+    from kortana.memory.memory_manager import MemoryManager
 
 # Define test paths relative to this test file's location
 TEST_CORE_LOGS_PATH = Path(__file__).parent.parent / "kortana.core" / "test_logs_memory"

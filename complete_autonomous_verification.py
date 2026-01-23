@@ -4,12 +4,14 @@ Complete Autonomous Verification System
 Launches Kor'tana with comprehensive monitoring across all four channels
 """
 
-import subprocess
-import time
-import requests
 import os
+import subprocess
 import sys
+import time
 from datetime import datetime
+
+import requests
+
 
 class AutonomousVerificationSystem:
     def __init__(self):
@@ -113,7 +115,7 @@ class AutonomousVerificationSystem:
         runtime = datetime.now() - self.start_time
 
         print(f"\n{'='*80}")
-        print(f"🤖 KOR'TANA AUTONOMOUS VERIFICATION DASHBOARD")
+        print("🤖 KOR'TANA AUTONOMOUS VERIFICATION DASHBOARD")
         print(f"⏱️  Runtime: {runtime}")
         print(f"🌐 Server: {self.base_url}")
         print(f"{'='*80}")

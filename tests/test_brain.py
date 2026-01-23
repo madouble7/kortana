@@ -6,13 +6,14 @@ import pytest
 # Adjust import based on how you run tests (e.g., from project root)
 # If running pytest from project root, 'from src.brain import ChatEngine' should work if src/__init__.py exists.
 try:
-    from src.brain import ChatEngine
+    from kortana.core.brain import ChatEngine
+    from kortana.config import load_config as load_kortana_config
 except ImportError:
     # Fallback if running test_brain.py directly from tests/ for some reason
     import sys
-
-    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-    from src.brain import ChatEngine
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
+    from kortana.core.brain import ChatEngine
+    from kortana.config import load_config as load_kortana_config
 
 # Minimal setup for ChatEngine, assuming dummy configs will be created by brain.py's __main__
 # or that actual configs are present and valid.
@@ -22,19 +23,19 @@ except ImportError:
 @pytest.fixture
 def chat_engine_instance():
     """Provides a ChatEngine instance for testing."""
-    # This relies on .env being configured and config files being present
-    # or the dummy config creation in brain.py's __main__ if that's how it's structured.
-    # For isolated unit tests, mocking external dependencies (LLM calls, file I/O) is better.
-    # For now, this is an integration-style test.
+    from kortana.config.schema import KortanaConfig
+    
+    # Minimal test config
+    config = KortanaConfig(
+        default_llm_id="test-model",
+        models={"test-model": {"provider": "openai", "model": "gpt-4"}}
+    )
+    
     try:
-        engine = ChatEngine(session_id="test_session_brain")
+        engine = ChatEngine(settings=config, session_id="test_session_brain")
         return engine
-    except FileNotFoundError as e:
-        pytest.skip(f"Skipping ChatEngine tests: Config file not found - {e}")
-    except ValueError as e:
-        pytest.skip(f"Skipping ChatEngine tests: Initialization failed - {e}")
     except Exception as e:
-        pytest.skip(f"Skipping ChatEngine tests due to unexpected error: {e}")
+        pytest.skip(f"Skipping ChatEngine tests due to initialization error: {e}")
 
 
 def test_chat_engine_initialization(chat_engine_instance: ChatEngine):

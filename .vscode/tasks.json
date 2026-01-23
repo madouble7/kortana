@@ -1,12 +1,32 @@
 {
-    "version": "2.0.0",
-    "tasks": [
-        {
-            "label": "Start LobeChat Frontend",
-            "type": "shell",
-            "command": "npm run dev -- --port 3010",
-            "group": "none",
-            "isBackground": true
-        }
-    ]
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Start LobeChat Frontend",
+			"type": "shell",
+			"command": "npm run dev -- --port 3010",
+			"group": "none",
+			"isBackground": true
+		},
+		{
+			"label": "Run Pytest",
+			"type": "shell",
+			"command": "c:/kortana/.kortana_config_test_env/Scripts/python.exe -m pytest tests"
+		},
+		{
+			"label": "Run Pytest Brain",
+			"type": "shell",
+			"command": "c:\\kortana\\.kortana_config_test_env\\Scripts\\python.exe -m pytest tests/test_brain.py"
+		},
+		{
+			"label": "Run Pytest Simple",
+			"type": "shell",
+			"command": "pytest tests/test_brain.py"
+		},
+		{
+			"label": "Move Core Files",
+			"type": "shell",
+			"command": "powershell Move-Item -Path src/model_router.py -Destination src/kortana/model_router.py -Force ; powershell Move-Item -Path src/strategic_config.py -Destination src/kortana/strategic_config.py -Force"
+		}
+	]
 }

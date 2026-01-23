@@ -4,12 +4,11 @@ File System Monitor for Autonomous Activity
 Tracks file changes made by Kor'tana's autonomous operations
 """
 
+import hashlib
 import os
 import time
-import hashlib
-from pathlib import Path
 from datetime import datetime
-from typing import Dict, Set
+
 
 class FileSystemMonitor:
     def __init__(self, watch_dirs: list[str] = None):
@@ -25,7 +24,7 @@ class FileSystemMonitor:
         else:
             self.watch_dirs = watch_dirs
 
-        self.baseline: Dict[str, str] = {}
+        self.baseline: dict[str, str] = {}
         self.start_time = datetime.now()
         self.change_count = 0
 
@@ -37,7 +36,7 @@ class FileSystemMonitor:
         except Exception:
             return ""
 
-    def scan_files(self) -> Set[str]:
+    def scan_files(self) -> set[str]:
         """Scan all files in watch directories"""
         current_files = set()
 
@@ -63,7 +62,7 @@ class FileSystemMonitor:
         for file_path in current_files:
             self.baseline[file_path] = self.get_file_hash(file_path)
 
-        print(f"📁 File System Monitor Initialized")
+        print("📁 File System Monitor Initialized")
         print(f"🔍 Watching {len(self.baseline)} files for autonomous changes")
         print(f"📂 Monitoring directories: {', '.join(self.watch_dirs)}")
         print("-" * 60)

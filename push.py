@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Iterable, Literal
+from typing import Literal
 
 DB_PATH = Path(__file__).resolve().with_name("kortana.db")
 _Priority = Literal["low", "med", "high"]
@@ -64,7 +65,7 @@ def push_notification(
                 title,
                 message,
                 resolved_priority,
-                datetime.now(timezone.utc).isoformat(),
+                datetime.now(UTC).isoformat(),
             ),
         )
         conn.commit()
