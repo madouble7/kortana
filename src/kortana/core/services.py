@@ -64,7 +64,7 @@ def get_service(service_name: str, factory_func=None, *args, **kwargs) -> Any:
 
 def _create_llm_client_factory():
     """Factory function for LLM client factory."""
-    from src.kortana.llm_clients.factory import LLMClientFactory
+    from kortana.llm_clients.factory import LLMClientFactory
 
     if _config is None:
         raise RuntimeError("Services not initialized with configuration")
@@ -76,7 +76,7 @@ def _create_llm_client_factory():
 
 def _create_enhanced_model_router():
     """Factory function for Enhanced Model Router."""
-    from src.kortana.core.enhanced_model_router import EnhancedModelRouter
+    from kortana.core.enhanced_model_router import EnhancedModelRouter
 
     if _config is None:
         raise RuntimeError("Services not initialized with configuration")
@@ -86,14 +86,14 @@ def _create_enhanced_model_router():
 
 def _create_planning_engine():
     """Factory function for Planning Engine."""
-    from src.kortana.core.planning_engine import PlanningEngine
+    from kortana.core.planning_engine import PlanningEngine
 
     return PlanningEngine()
 
 
 def _create_execution_engine():
     """Factory function for Execution Engine."""
-    from src.kortana.core.execution_engine import ExecutionEngine
+    from kortana.core.execution_engine import ExecutionEngine
 
     if _config is None:
         raise RuntimeError("Services not initialized with configuration")
@@ -109,7 +109,7 @@ def _create_execution_engine():
 
 def _create_covenant_enforcer():
     """Factory function for Covenant Enforcer."""
-    from src.kortana.core.covenant_enforcer import CovenantEnforcer
+    from kortana.core.covenant_enforcer import CovenantEnforcer
 
     if _config is None:
         raise RuntimeError("Services not initialized with configuration")
@@ -155,7 +155,7 @@ def _create_sacred_model_router():
 def _create_chat_engine():
     """Factory function for Chat Engine."""
     try:
-        from src.kortana.modules.chat.chat_engine import ChatEngine
+        from kortana.modules.chat.chat_engine import ChatEngine
 
         if _config is None:
             raise RuntimeError("Services not initialized with configuration")
