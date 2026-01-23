@@ -59,17 +59,16 @@ async def switch_language(request: LanguageSwitchRequest):
                    f"Supported languages: {', '.join(SUPPORTED_LANGUAGES.keys())}",
         )
     
-    validated_lang = validate_language_code(requested_lang)
-    language_name = get_language_name(validated_lang)
+    language_name = get_language_name(requested_lang)
     
     # In a full implementation, we would store the language preference
     # in the session or user profile. For now, we just acknowledge the switch.
     
     return LanguageResponse(
         success=True,
-        language=validated_lang,
+        language=requested_lang,
         language_name=language_name,
-        message=f"Language switched to {language_name} ({validated_lang})",
+        message=f"Language switched to {language_name} ({requested_lang})",
     )
 
 
