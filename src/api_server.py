@@ -2,6 +2,7 @@
 FastAPI server for Kor'tana chat interface and API endpoints.
 """
 
+import asyncio
 import json
 import logging
 import os
@@ -260,6 +261,4 @@ async def websocket_endpoint(websocket: WebSocket):
         await websocket.send_text(f"Message text was: {data}")
 
 if __name__ == "__main__":
-    # Ensure to import asyncio if not already for SSE example
-    import asyncio
     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 7777)))
