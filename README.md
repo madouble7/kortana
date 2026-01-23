@@ -132,6 +132,13 @@ PowerShell:
 - **Context-Aware Responses**: Integrates memory and ethical considerations in responses
 - **LLM Integration**: Uses OpenAI's GPT models for natural language processing
 - **LobeChat Frontend Support**: Seamlessly integrates with LobeChat for a user-friendly interface
+- **Advanced Security Module**: Comprehensive cybersecurity features including:
+  - Real-time threat detection and prevention
+  - Security alerts and monitoring
+  - Vulnerability scanning and management
+  - Advanced encryption utilities
+  - Secure API communication
+  - Security analytics dashboard
 
 ### New Features (2026)
 
@@ -165,6 +172,7 @@ For troubleshooting, see `docs/LOBECHAT_TROUBLESHOOTING.md`.
 - Full API documentation: `docs/API_ENDPOINTS.md`
 - Architecture overview: `docs/ARCHITECTURE.md`
 - Memory Core details: `docs/MEMORY_CORE.md`
+- Security Module: `docs/SECURITY_MODULE.md`
 - LobeChat integration: `docs/LOBECHAT_CONNECTION.md`
 - LobeChat troubleshooting: `docs/LOBECHAT_TROUBLESHOOTING.md`
 
@@ -183,6 +191,7 @@ This project uses Black for formatting and Pylint for linting.
 - **Memory Core**: Stores, retrieves, and manages memories
 - **Reasoning Core**: Processes user queries and generates responses
 - **Ethical Discernment Module**: Ensures responses are ethical and reflective
+- **Security Module**: Advanced cybersecurity features for system protection
 - **API Adapters**: Connect to frontend interfaces (including LobeChat)
 
 ## License

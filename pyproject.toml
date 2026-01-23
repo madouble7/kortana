@@ -20,6 +20,7 @@ dependencies = [
     "httpx>=0.25.0",
     "apscheduler>=3.10.0",
     "pinecone>=3.2.2",
+    "cryptography>=41.0.0",
 ]
 
 

@@ -26,6 +26,9 @@ from src.kortana.modules.marketplace.router import router as marketplace_router
 from src.kortana.modules.memory_core.routers.memory_router import (
     router as memory_router,
 )
+from src.kortana.modules.security.routers.security_router import (
+    router as security_router,
+)
 
 # Import new module routers
 from src.kortana.modules.multilingual.router import router as multilingual_router
@@ -70,6 +73,7 @@ app.include_router(conversation_router)  # Add conversation history router
 app.include_router(core_router.router)
 app.include_router(core_router.openai_adapter_router)
 app.include_router(goal_router.router)
+app.include_router(security_router)
 
 # Include new module routers
 app.include_router(multilingual_router)
