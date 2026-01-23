@@ -25,18 +25,14 @@ settings = get_settings()
 class GitHubAutonomyService:
     """Service for autonomous GitHub-driven development"""
 
-    def __init__(self, db_session: AsyncSession | None = None):
-        self.db = db_session
+    def __init__(self, db_session=None):
+        self.db = db_session or SessionLocal()
         self.code_gen = CodeGenerator()
         self.settings = get_settings()
         self.github_token = os.getenv("GITHUB_TOKEN") or self.settings.GITHUB_TOKEN
         self.repo_owner = self.settings.GITHUB_OWNER
         self.repo_name = self.settings.GITHUB_REPO
         self.max_retries = self.settings.TASK_MAX_RETRIES
-
-    def _ensure_db(self):
-        if self.db is None:
-            raise RuntimeError("Database session not initialized in GitHubAutonomyService")
 
     def _validate_token(self) -> None:
         """Validate GitHub token is configured"""
