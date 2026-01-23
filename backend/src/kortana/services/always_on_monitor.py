@@ -105,21 +105,22 @@ class AlwaysOnMonitor:
         """Fetch new GitHub issues and queue them as tasks"""
         try:
             logger.info("📥 Fetching new GitHub issues...")
-            db = await self.db_manager.get_session()
-            try:
-                self.github_service = GitHubAutonomyService(db)
-                new_tasks = await self.github_service.fetch_and_queue_issues()
+            async with self.db_manager.get_session() as db:
+                try:
+                    self.github_service = GitHubAutonomyService(db)
+                    new_tasks = await self.github_service.fetch_and_queue_issues()
 
-                if new_tasks:
-                    logger.info(f"✅ Found {len(new_tasks)} new issues to process")
-                    for task in new_tasks:
-                        logger.info(f"   📋 Task: #{task.github_issue_number} - {task.title}")
-                else:
-                    logger.info("📭 No new issues found")
+                    if new_tasks:
+                        logger.info(f"✅ Found {len(new_tasks)} new issues to process")
+                        for task in new_tasks:
+                            logger.info(f"   📋 Task: #{task.github_issue_number} - {task.title}")
+                    else:
+                        logger.info("📭 No new issues found")
 
-                return new_tasks
-            finally:
-                await db.close()
+                    return new_tasks
+                except Exception as e:
+                    logger.error(f"❌ Failed in fetch cycle: {str(e)}")
+                    return []
 
         except Exception as e:
             logger.error(f"❌ Failed to fetch issues: {str(e)}")
@@ -130,21 +131,22 @@ class AlwaysOnMonitor:
         try:
             logger.info("⚙️ Processing task pipeline...")
 
-            db = await self.db_manager.get_session()
-            try:
+            async with self.db_manager.get_session() as db:
                 # Get pending tasks (limit based on concurrency setting)
-                pending_tasks = (
-                    db.query(GitHubTask)
-                    .filter(GitHubTask.status == "pending")
-                    .limit(self.max_concurrent_tasks)
-                    .all()
-                )
+                # Note: We need to use select() for async session
+                from sqlalchemy import select
+                stmt = select(GitHubTask).filter(GitHubTask.status == "pending").limit(self.max_concurrent_tasks)
+                result = await db.execute(stmt)
+                pending_tasks = result.scalars().all()
 
                 if not pending_tasks:
                     logger.info("📭 No pending tasks to process")
                     return
 
                 logger.info(f"🚀 Processing {len(pending_tasks)} pending tasks")
+
+                # Initialize HOP service
+                self.hop_service = HOPAutonomyService(db)
 
                 # Process each task through the pipeline
                 for task in pending_tasks:
@@ -233,30 +235,30 @@ class AlwaysOnMonitor:
     async def get_task_status(self) -> Dict[str, Any]:
         """Get current task status across all stages"""
         try:
+            from sqlalchemy import select, func
             async with self.db_manager.get_session() as db:
-                # Count tasks by status
-                total_tasks = db.query(GitHubTask).count()
-                pending = db.query(GitHubTask).filter(GitHubTask.status == "pending").count()
-                analyzing = db.query(GitHubTask).filter(GitHubTask.status == "analyzing").count()
-                planning = db.query(GitHubTask).filter(GitHubTask.status == "planning").count()
-                planning_complete = (
-                    db.query(GitHubTask).filter(GitHubTask.status == "planning_complete").count()
-                )
-                executing = db.query(GitHubTask).filter(GitHubTask.status == "executing").count()
-                completed = db.query(GitHubTask).filter(GitHubTask.status == "completed").count()
-                failed = db.query(GitHubTask).filter(GitHubTask.status == "failed").count()
-                waiting_ho = (
-                    db.query(GitHubTask).filter(GitHubTask.status == "waiting_for_ho").count()
-                )
+                # Optimized counting
+                async def count_filtered(filter_expr=None):
+                    stmt = select(func.count()).select_from(GitHubTask)
+                    if filter_expr is not None:
+                        stmt = stmt.where(filter_expr)
+                    result = await db.execute(stmt)
+                    return result.scalar_one()
+
+                total_tasks = await count_filtered()
+                pending = await count_filtered(GitHubTask.status == "pending")
+                analyzing = await count_filtered(GitHubTask.status == "analyzing")
+                planning = await count_filtered(GitHubTask.status == "planning")
+                planning_complete = await count_filtered(GitHubTask.status == "planning_complete")
+                executing = await count_filtered(GitHubTask.status == "executing")
+                completed = await count_filtered(GitHubTask.status == "completed")
+                failed = await count_filtered(GitHubTask.status == "failed")
+                waiting_ho = await count_filtered(GitHubTask.status == "waiting_for_ho")
 
                 # Count by classification
-                auto_tasks = (
-                    db.query(GitHubTask).filter(GitHubTask.classification == "auto").count()
-                )
-                ho_tasks = db.query(GitHubTask).filter(GitHubTask.classification == "ho").count()
-                approval_tasks = (
-                    db.query(GitHubTask).filter(GitHubTask.classification == "approval").count()
-                )
+                auto_tasks = await count_filtered(GitHubTask.classification == "auto")
+                ho_tasks = await count_filtered(GitHubTask.classification == "ho")
+                approval_tasks = await count_filtered(GitHubTask.classification == "approval")
 
                 return {
                     "total_tasks": total_tasks,

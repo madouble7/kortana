@@ -26,7 +26,7 @@ class CodeReviewer:
 
     # Security patterns to check
     SECURITY_PATTERNS = {
-        "sql_injection": r"(execute|query|sql)\s*\(\s*['\"].*\$|f\"|format\(",
+        "sql_injection": r"(SELECT|INSERT|UPDATE|DELETE|execute|query|sql).*(['\"]|\+|f\"|format\(|\%)",
         "hardcoded_secrets": r"(password|api_key|token|secret)\s*=\s*['\"][^'\"]+['\"]",
         "unsafe_eval": r"(eval|exec|__import__)\s*\(",
         "insecure_deserialization": r"(pickle|yaml|eval)\.loads?",
@@ -167,6 +167,9 @@ class CodeReviewer:
         if review.get("improvements"):
             comment += "### Suggested Improvements\n"
             for imp in review["improvements"]:
+                if isinstance(imp, str):
+                    comment += f"- {imp}\n"
+                    continue
                 area = imp.get("area", "Unknown")
                 suggestion = imp.get("suggestion", "")
                 severity = imp.get("severity", "low")

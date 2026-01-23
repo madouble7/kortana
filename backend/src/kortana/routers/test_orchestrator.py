@@ -181,12 +181,13 @@ class TestOrchestrator:
 
     def parse_coverage(self) -> dict[str, Any]:
         """Parse coverage report from JSON file"""
-        coverage_file = self.backend_path / "coverage.json"
+        coverage_file = self.repo_path / "coverage.json"
 
         if not coverage_file.exists():
             return {
                 "coverage": 0.0,
                 "percent_covered": 0.0,
+                "num_statements": 0,
                 "success": False,
                 "message": "Coverage file not found",
                 "error": "File not found",
@@ -198,15 +199,21 @@ class TestOrchestrator:
             with open(coverage_file) as f:
                 data = json.load(f)
                 percent = data["totals"]["percent_covered"]
+                statements = data["totals"]["num_statements"]
+                files_count = len(data.get("files", {}))
                 return {
                     "coverage": percent,
                     "percent_covered": percent,
+                    "num_statements": statements,
+                    "files": files_count,
                     "success": True,
                 }
         except Exception as e:
             return {
                 "coverage": 0.0,
                 "percent_covered": 0.0,
+                "num_statements": 0,
+                "files": 0,
                 "success": False,
                 "message": str(e),
                 "error": str(e),
@@ -240,9 +247,16 @@ class TestOrchestrator:
     ) -> dict[str, Any]:
         """Run specific tests by name"""
         if dry_run:
-            return {"success": True, "message": "Dry run successful", "dry_run": True}
+            return {
+                "success": True,
+                "message": "Dry run successful",
+                "dry_run": True,
+                "tests": test_names,
+            }
         markers = " or ".join(test_names)
-        return self.run_tests(markers=markers)
+        result = self.run_tests(markers=markers)
+        result["tests"] = test_names
+        return result
 
     def run_linting(self, dry_run: bool = False) -> dict[str, Any]:
         """Run linter (ruff) and return results"""
@@ -346,7 +360,18 @@ async def orchestra_run_tests(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/discover")
+async def orchestra_discover_tests() -> dict[str, Any]:
+    """Alias for discovering tests"""
+    try:
+        tests = test_orchestrator.discover_tests()
+        return {"success": True, "tests": tests, "count": len(tests)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/coverage")
+@router.post("/coverage")  # Support both for test compatibility
 async def orchestra_check_coverage(
     target: float = 80.0, fail_under: float = 70.0
 ) -> dict[str, Any]:
@@ -373,6 +398,7 @@ async def orchestra_run_type_check() -> dict[str, Any]:
 
 
 @router.post("/validate")
+@router.post("/pipeline")  # Alias for pipeline
 async def orchestra_run_full_validation() -> dict[str, Any]:
     try:
         return test_orchestrator.run_full_pipeline()

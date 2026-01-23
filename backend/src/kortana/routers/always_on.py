@@ -22,16 +22,30 @@ logger = get_logger(__name__)
 
 @router.post("/start")
 async def start_monitoring() -> Dict[str, Any]:
-    """Start the always-on monitoring system"""
+    """Start the always-on monitoring system in the background"""
     try:
-        await start_always_on_monitor()
+        import asyncio
+        from src.kortana.services.always_on_monitor import get_always_on_monitor
+        
+        monitor = get_always_on_monitor()
+        if monitor.is_running:
+            return {
+                "message": "Always-on monitoring is already running",
+                "status": "running",
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+            
+        # Start in background using asyncio.create_task
+        # This allows the request to return immediately
+        asyncio.create_task(start_always_on_monitor())
+        
         return {
-            "message": "Always-on monitoring started successfully",
-            "status": "started",
+            "message": "Always-on monitoring start initiated in background",
+            "status": "starting",
             "timestamp": datetime.utcnow().isoformat(),
         }
     except Exception as e:
-        logger.error(f"Failed to start monitoring: {str(e)}")
+        logger.error(f"Failed to initiate monitoring start: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to start monitoring: {str(e)}")
 
 

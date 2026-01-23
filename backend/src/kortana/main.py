@@ -38,6 +38,7 @@ from src.kortana.middleware.security import (
 try:
     from src.kortana.routers import (
         agents,
+        always_on,
         auth,
         autonomy,
         code_reviewer,
@@ -223,6 +224,9 @@ def create_app() -> FastAPI:
         )
         app.include_router(rclone.router, prefix="/api/rclone", tags=["rclone"])
         app.include_router(system.router, prefix="/api/system", tags=["system"])
+        app.include_router(
+            always_on.router, prefix="/api/always-on", tags=["always-on"]
+        )
 
         # Phase 2: PR Creation, Testing, and Code Review
         app.include_router(pr_creation.router, prefix="/api/pr", tags=["pr-creation"])
@@ -267,6 +271,7 @@ def create_app() -> FastAPI:
                 "timestamp": datetime.now().isoformat(),
             }
 
+        @app.get("/", tags=["system"])
         @app.get("/api/info", tags=["system"])
         async def api_info():
             """Basic API information"""

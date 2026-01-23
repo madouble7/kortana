@@ -29,46 +29,62 @@ class TestGitHubRouter:
 
     def test_get_issues_pagination(self, client):
         """Test issue fetching with pagination"""
-        with patch("requests.get") as mock_get:
-            mock_response = Mock()
+        with patch("httpx.AsyncClient.get") as mock_get:
+            mock_response = MagicMock()
             mock_response.status_code = 200
             mock_response.json.return_value = [
                 {"number": 1, "title": "Test issue", "body": "Test body"}
             ]
-            mock_get.return_value = mock_response
+            mock_response.raise_for_status = MagicMock()
 
-            response = client.get(
-                "/api/github/repos/test/repo/issues?page=1&per_page=10"
-            )
-            assert response.status_code == 200
-            assert "pagination" in response.json()
+            # Make it awaitable for AsyncClient
+            async def mock_awaitable(*args, **kwargs):
+                return mock_response
+            mock_get.side_effect = mock_awaitable
+
+            with patch.dict("os.environ", {"GITHUB_TOKEN": "test-token"}):
+                response = client.get(
+                    "/api/github/repos/test/repo/issues?page=1&per_page=10"
+                )
+                assert response.status_code == 200
+                assert "pagination" in response.json()
 
     def test_get_issues_invalid_pagination(self, client):
         """Test issue fetching with invalid pagination params"""
-        with patch("requests.get") as mock_get:
-            mock_response = Mock()
+        with patch("httpx.AsyncClient.get") as mock_get:
+            mock_response = MagicMock()
             mock_response.status_code = 200
             mock_response.json.return_value = []
-            mock_get.return_value = mock_response
+            mock_response.raise_for_status = MagicMock()
 
-            # per_page should be capped at 100
-            response = client.get("/api/github/repos/test/repo/issues?per_page=500")
-            assert response.status_code == 200
+            async def mock_awaitable(*args, **kwargs):
+                return mock_response
+            mock_get.side_effect = mock_awaitable
+
+            with patch.dict("os.environ", {"GITHUB_TOKEN": "test-token"}):
+                # per_page should be capped at 100
+                response = client.get("/api/github/repos/test/repo/issues?per_page=500")
+                assert response.status_code == 200
 
     def test_get_pulls_success(self, client):
         """Test fetching pull requests"""
-        with patch("requests.get") as mock_get:
-            mock_response = Mock()
+        with patch("httpx.AsyncClient.get") as mock_get:
+            mock_response = MagicMock()
             mock_response.status_code = 200
             mock_response.json.return_value = [
                 {"number": 1, "title": "Test PR", "body": "Test body"}
             ]
-            mock_get.return_value = mock_response
+            mock_response.raise_for_status = MagicMock()
 
-            response = client.get("/api/github/repos/test/repo/pulls")
-            assert response.status_code == 200
-            data = response.json()
-            assert "pull_requests" in data
+            async def mock_awaitable(*args, **kwargs):
+                return mock_response
+            mock_get.side_effect = mock_awaitable
+
+            with patch.dict("os.environ", {"GITHUB_TOKEN": "test-token"}):
+                response = client.get("/api/github/repos/test/repo/pulls")
+                assert response.status_code == 200
+                data = response.json()
+                assert "pull_requests" in data
 
     def test_analyze_github_issue_success(self, client):
         """Test analyzing a GitHub issue with Gemini"""
@@ -114,20 +130,25 @@ class TestAutonomyRouter:
 
     def test_queue_github_tasks_success(self, client):
         """Test queueing tasks from GitHub issues"""
-        with patch("requests.get") as mock_get:
-            mock_response = Mock()
+        with patch("httpx.AsyncClient.get") as mock_get:
+            mock_response = MagicMock()
             mock_response.status_code = 200
             mock_response.json.return_value = [
                 {"number": 1, "title": "Test Issue", "body": "Test body", "labels": []}
             ]
-            mock_get.return_value = mock_response
+            mock_response.raise_for_status = MagicMock()
+
+            async def mock_awaitable(*args, **kwargs):
+                return mock_response
+            mock_get.side_effect = mock_awaitable
 
             with patch("src.kortana.database.SessionLocal"):
-                response = client.post("/api/autonomy/task-queue")
-                assert response.status_code == 200
-                data = response.json()
-                assert "count" in data
-                assert "tasks" in data
+                 with patch.dict("os.environ", {"GITHUB_TOKEN": "test-token"}):
+                    response = client.post("/api/autonomy/task-queue")
+                    assert response.status_code == 200
+                    data = response.json()
+                    assert "count" in data
+                    assert "tasks" in data
 
     def test_get_task_queue_status(self, client):
         """Test getting task queue status"""

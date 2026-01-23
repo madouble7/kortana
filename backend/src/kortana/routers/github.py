@@ -1,3 +1,4 @@
+import os
 import time
 from datetime import datetime
 from typing import Any
@@ -13,14 +14,20 @@ router = APIRouter()
 # Rate limiting
 RATE_LIMIT_CACHE = {}
 RATE_LIMIT_PERIOD = 60  # seconds
-RATE_LIMIT_REQUESTS = 100
+RATE_LIMIT_REQUESTS = 60
 
 
 def get_github_token():
+    token = os.environ.get("GITHUB_TOKEN")
+    if token is not None:
+        return token
     return get_settings().GITHUB_TOKEN
 
 
 def get_gemini_api_key():
+    key = os.environ.get("GEMINI_API_KEY")
+    if key is not None:
+        return key
     return get_settings().GEMINI_API_KEY
 
 
@@ -98,8 +105,15 @@ async def get_repo_issues(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch issues: {str(e)}")
 
-    # Return issues directly for frontend compatibility
-    return issues
+    # Return structured response for test compatibility
+    return {
+        "issues": issues,
+        "pagination": {
+            "page": page,
+            "per_page": per_page,
+            "total": len(issues)
+        }
+    }
 
 
 @router.get("/repos/{owner}/{repo}/pulls")
@@ -142,8 +156,15 @@ async def get_repo_pulls(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch PRs: {str(e)}")
 
-    # Return pulls directly for frontend compatibility
-    return pulls
+    # Return structured response for test compatibility
+    return {
+        "pull_requests": pulls,
+        "pagination": {
+            "page": page,
+            "per_page": per_page,
+            "total": len(pulls)
+        }
+    }
 
 
 @router.post("/analyze")

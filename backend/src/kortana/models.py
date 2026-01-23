@@ -181,9 +181,13 @@ class GitHubTask(Base):
     status = Column(
         String(32), nullable=False, default="pending", index=True
     )  # pending, analyzing, planning, executing, pr_created, completed, failed
+    classification = Column(
+        String(32), nullable=True, default="auto", index=True
+    )  # auto, ho, approval
     priority = Column(String(16), default="medium")  # low, medium, high
     analysis = Column(Text, nullable=True)  # Gemini analysis
     plan = Column(Text, nullable=True)  # Step-by-step execution plan
+    ho_scaffold = Column(Text, nullable=True)
     branch_name = Column(String(255), nullable=True, unique=True)
     commit_sha = Column(String(40), nullable=True)  # Commit SHA on branch
 

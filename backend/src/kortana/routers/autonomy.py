@@ -18,13 +18,6 @@ from src.kortana.services.github_autonomy_service import GitHubAutonomyService
 router = APIRouter()
 logger = setup_logging()
 
-settings = get_settings()
-GITHUB_TOKEN = settings.GITHUB_TOKEN
-REPO_OWNER = settings.GITHUB_OWNER
-REPO_NAME = settings.GITHUB_REPO
-MAX_RETRIES = settings.TASK_MAX_RETRIES
-RETRY_DELAY_SECONDS = settings.TASK_RETRY_DELAY
-
 
 # Dependency for service
 def get_autonomy_service(db: Session = Depends(get_db)) -> GitHubAutonomyService:
@@ -237,8 +230,8 @@ async def health_check() -> dict[str, Any]:
         "status": "healthy",
         "service": "autonomy",
         "timestamp": datetime.utcnow().isoformat(),
-        "github_configured": bool(GITHUB_TOKEN),
-        "gemini_configured": bool(os.getenv("GEMINI_API_KEY")),
+        "github_configured": bool(os.getenv("GITHUB_TOKEN") or get_settings().GITHUB_TOKEN),
+        "gemini_configured": bool(os.getenv("GEMINI_API_KEY") or get_settings().GEMINI_API_KEY),
     }
 
 

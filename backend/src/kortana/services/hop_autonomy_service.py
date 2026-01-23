@@ -6,7 +6,9 @@ Manages autonomous task classification, execution, and oversight
 from datetime import datetime
 from typing import Any
 
-from src.kortana.database import SessionLocal
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from src.kortana.database import get_db_manager
 from src.kortana.logger import log_error, log_request
 from src.kortana.models import Task
 from src.kortana.services.gemini import gemini_service
@@ -16,8 +18,12 @@ from src.kortana.tasks import run_autonomy_cycle
 class HOPAutonomyService:
     """Service for HOP autonomy operations"""
 
-    def __init__(self):
-        self.db = SessionLocal()
+    def __init__(self, db_session: AsyncSession | None = None):
+        self.db = db_session
+
+    def _ensure_db(self):
+        if self.db is None:
+            raise RuntimeError("Database session not initialized in HOPAutonomyService")
 
     async def run_hop_cycle(self) -> dict[str, Any]:
         """
@@ -88,17 +94,19 @@ Respond with ONLY the classification word.
             # Update task
             task.classification = classification
             task.updated_at = datetime.utcnow()
-            self.db.commit()
+            if self.db:
+                await self.db.commit()
 
             log_request("hop_autonomy", f"Task {task.id} classified as: {classification}")
 
             return classification
 
         except Exception as e:
-            log_error("hop_autonomy", f"Classification failed for task {task.id}: {str(e)}")
+            log_error("hop_autonomy", f"Classification failed for task getattr(task, 'id', 'unknown'): {str(e)}")
             # Default to human oversight on error
             task.classification = "ho"
-            self.db.commit()
+            if self.db:
+                await self.db.commit()
             return "ho"
 
     async def get_autonomy_status(self) -> dict[str, Any]:
@@ -108,22 +116,34 @@ Respond with ONLY the classification word.
         Returns:
             dict with system status and statistics
         """
+        self._ensure_db()
         try:
+            from sqlalchemy import func
+            
+            async def count_tasks(filter_expr=None):
+                stmt = select(func.count()).select_from(Task)
+                if filter_expr is not None:
+                    stmt = stmt.where(filter_expr)
+                result = await self.db.execute(stmt)
+                return result.scalar_one()
+
             # Count tasks by status
-            total_tasks = self.db.query(Task).count()
-            pending_tasks = self.db.query(Task).filter(Task.status == "pending").count()
-            running_tasks = self.db.query(Task).filter(Task.status == "running").count()
-            completed_tasks = self.db.query(Task).filter(Task.status == "completed").count()
-            failed_tasks = self.db.query(Task).filter(Task.status == "failed").count()
-            waiting_for_ho = self.db.query(Task).filter(Task.status == "waiting_for_ho").count()
+            total_tasks = await count_tasks()
+            pending_tasks = await count_tasks(Task.status == "pending")
+            running_tasks = await count_tasks(Task.status == "running")
+            completed_tasks = await count_tasks(Task.status == "completed")
+            failed_tasks = await count_tasks(Task.status == "failed")
+            waiting_for_ho = await count_tasks(Task.status == "waiting_for_ho")
 
             # Count by classification
-            auto_tasks = self.db.query(Task).filter(Task.classification == "auto").count()
-            ho_tasks = self.db.query(Task).filter(Task.classification == "ho").count()
-            approval_tasks = self.db.query(Task).filter(Task.classification == "approval").count()
+            auto_tasks = await count_tasks(Task.classification == "auto")
+            ho_tasks = await count_tasks(Task.classification == "ho")
+            approval_tasks = await count_tasks(Task.classification == "approval")
 
             # Get recent task
-            recent_task = self.db.query(Task).order_by(Task.updated_at.desc()).first()
+            stmt = select(Task).order_by(Task.updated_at.desc()).limit(1)
+            result = await self.db.execute(stmt)
+            recent_task = result.scalar_one_or_none()
 
             return {
                 "status": "active",
@@ -213,14 +233,15 @@ Format as markdown for readability.
             # Save scaffold to task
             task.ho_scaffold = scaffold
             task.updated_at = datetime.utcnow()
-            self.db.commit()
+            if self.db:
+                await self.db.commit()
 
-            log_request("hop_autonomy", f"Generated HO scaffold for task {task.id}")
+            log_request("hop_autonomy", f"Generated HO scaffold for task {getattr(task, 'id', 'unknown')}")
 
             return scaffold
 
         except Exception as e:
-            log_error("hop_autonomy", f"Scaffold generation failed for task {task.id}: {str(e)}")
+            log_error("hop_autonomy", f"Scaffold generation failed for task {getattr(task, 'id', 'unknown')}: {str(e)}")
             raise
 
     async def approve_task(self, task_id: str, approved: bool, notes: str | None = None) -> Task:
@@ -235,8 +256,11 @@ Format as markdown for readability.
         Returns:
             Updated Task object
         """
+        self._ensure_db()
         try:
-            task = self.db.query(Task).filter(Task.id == task_id).first()
+            stmt = select(Task).where(Task.id == task_id)
+            result = await self.db.execute(stmt)
+            task = result.scalar_one_or_none()
             if not task:
                 raise ValueError(f"Task {task_id} not found")
 
@@ -260,21 +284,26 @@ Format as markdown for readability.
             }
 
             task.updated_at = datetime.utcnow()
-            self.db.commit()
-            self.db.refresh(task)
+            await self.db.commit()
+            
+            # Refresh task
+            stmt = select(Task).where(Task.id == task_id)
+            result = await self.db.execute(stmt)
+            task = result.scalar_one()
 
             log_request("hop_autonomy", f"Task {task_id} approval: {approved}")
 
             return task
 
         except Exception as e:
-            self.db.rollback()
+            await self.db.rollback()
             log_error("hop_autonomy", f"Approval failed for task {task_id}: {str(e)}")
             raise
 
     def close(self):
         """Close database session"""
-        self.db.close()
+        # In async mode, we don't close here, we let the context manager handle it
+        pass
 
 
 # Singleton instance
