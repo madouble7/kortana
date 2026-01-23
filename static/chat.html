@@ -281,14 +281,24 @@
             const div = document.createElement('div');
             div.className = `message ${role}`;
             let metaInfo = '';
+            let memoriesForClick = null;
             if (metadata.model) {
                 metaInfo += `<div class="message-meta">Model: ${metadata.model}`;
                 if (metadata.memories_accessed && metadata.memories_accessed.length > 0) {
-                    metaInfo += `<span class="memories-badge" onclick="showMemories(event, ${JSON.stringify(metadata.memories_accessed).replace(/"/g, '&quot;')})">🧠 ${metadata.memories_accessed.length} memories</span>`;
+                    memoriesForClick = metadata.memories_accessed;
+                    metaInfo += `<span class="memories-badge">🧠 ${metadata.memories_accessed.length} memories</span>`;
                 }
                 metaInfo += `</div>`;
             }
             div.innerHTML = `<div class="message-content"><div>${escapeHtml(content)}</div>${metaInfo}</div>`;
+            if (memoriesForClick) {
+                const badge = div.querySelector('.memories-badge');
+                if (badge) {
+                    badge.addEventListener('click', function(event) {
+                        showMemories(event, memoriesForClick);
+                    });
+                }
+            }
             container.appendChild(div);
             if (scroll) container.scrollTop = container.scrollHeight;
             return div;
@@ -298,7 +308,11 @@
             event.stopPropagation();
             const popup = document.getElementById('memoriesPopup');
             popup.innerHTML = `<strong>Memories Used:</strong><br>` + 
-                memories.map((m, i) => `${i+1}. ${escapeHtml(m.content.substring(0, 100))}...`).join('<br>');
+                memories.map((m, i) => {
+                    const content = m.content || '';
+                    const display = content.length > 100 ? content.substring(0, 100) + '...' : content;
+                    return `${i+1}. ${escapeHtml(display)}`;
+                }).join('<br>');
             popup.style.left = event.pageX + 'px';
             popup.style.top = event.pageY + 'px';
             popup.classList.add('active');
@@ -318,24 +332,90 @@
             
             addMessage('user', message);
             input.value = '';
-            document.getElementById('sendButton').disabled = true;
+            const sendButton = document.getElementById('sendButton');
+            sendButton.disabled = true;
             
             try {
-                const response = await fetch('/chat', {
+                if (streamingEnabled) {
+                    await sendMessageStreaming(message);
+                } else {
+                    const response = await fetch('/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ message, conversation_id: conversationId })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    conversationId = data.conversation_id;
+                    addMessage('assistant', data.response, data.metadata || {});
+                    loadConversations();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                addMessage('assistant', 'Error: ' + error.message);
+            } finally {
+                sendButton.disabled = false;
+                input.focus();
+            }
+        }
+        
+        async function sendMessageStreaming(message) {
+            try {
+                const response = await fetch('/chat/stream', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message, conversation_id: conversationId })
+                    body: JSON.stringify({ message: message, conversation_id: conversationId })
                 });
-                const data = await response.json();
-                conversationId = data.conversation_id;
-                addMessage('assistant', data.response, data.metadata || {});
-                loadConversations();
+                
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let streamedContent = '';
+                
+                const messageDiv = addMessage('assistant', '');
+                const contentDiv = messageDiv.querySelector('.message-content > div');
+                
+                while (true) {
+                    const {value, done} = await reader.read();
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = JSON.parse(line.slice(6));
+                            
+                            if (data.type === 'chunk') {
+                                streamedContent += data.content;
+                                contentDiv.textContent = streamedContent;
+                                document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
+                            } else if (data.type === 'done') {
+                                if (data.conversation_id) {
+                                    conversationId = data.conversation_id;
+                                }
+                                if (data.metadata?.model) {
+                                    const metaDiv = document.createElement('div');
+                                    metaDiv.className = 'message-meta';
+                                    metaDiv.textContent = `Model: ${data.metadata.model}`;
+                                    messageDiv.querySelector('.message-content').appendChild(metaDiv);
+                                }
+                                loadConversations();
+                            } else if (data.type === 'error') {
+                                throw new Error(data.error);
+                            }
+                        }
+                    }
+                }
             } catch (error) {
-                addMessage('assistant', 'Error: ' + error.message);
+                console.error('Streaming error:', error);
+                throw error;
             }
-            
-            document.getElementById('sendButton').disabled = false;
-            input.focus();
         }
         
         document.getElementById('sendButton').addEventListener('click', sendMessage);
@@ -343,8 +423,12 @@
             if (e.key === 'Enter') sendMessage();
         });
         
-        document.addEventListener('click', () => {
-            document.getElementById('memoriesPopup').classList.remove('active');
+        document.addEventListener('click', (event) => {
+            const popup = document.getElementById('memoriesPopup');
+            if (!popup) return;
+            if (!popup.contains(event.target) && !event.target.classList.contains('memories-badge')) {
+                popup.classList.remove('active');
+            }
         });
         
         loadConversations();

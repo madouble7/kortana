@@ -159,7 +159,7 @@ class ConversationHistory:
         return False
     
     def _save_conversation(self, conversation_id: str) -> None:
-        """Save conversation to disk.
+        """Save conversation to disk using atomic write.
         
         Args:
             conversation_id: Conversation ID
@@ -168,11 +168,23 @@ class ConversationHistory:
             return
         
         conv_path = self.storage_path / f"{conversation_id}.json"
-        with open(conv_path, 'w', encoding='utf-8') as f:
-            json.dump(self.conversations[conversation_id], f, indent=2, ensure_ascii=False)
+        temp_path = self.storage_path / f"{conversation_id}.json.tmp"
+        
+        try:
+            # Write to temporary file first
+            with open(temp_path, 'w', encoding='utf-8') as f:
+                json.dump(self.conversations[conversation_id], f, indent=2, ensure_ascii=False)
+            
+            # Atomic rename (on POSIX systems this is atomic)
+            temp_path.replace(conv_path)
+        except Exception as e:
+            # Clean up temp file if it exists
+            if temp_path.exists():
+                temp_path.unlink()
+            raise Exception(f"Failed to save conversation {conversation_id}: {e}")
     
     def _load_conversation(self, conversation_id: str) -> None:
-        """Load conversation from disk.
+        """Load conversation from disk with error handling.
         
         Args:
             conversation_id: Conversation ID
@@ -184,6 +196,9 @@ class ConversationHistory:
         try:
             with open(conv_path, 'r', encoding='utf-8') as f:
                 self.conversations[conversation_id] = json.load(f)
+        except json.JSONDecodeError as e:
+            print(f"Error: Corrupted conversation file {conversation_id}: {e}")
+            # Don't load corrupted data
         except Exception as e:
             print(f"Error loading conversation {conversation_id}: {e}")
     
@@ -200,13 +215,19 @@ class ConversationHistory:
         if not messages:
             return "No messages"
         
-        # Get first user message as preview
+        # Prefer first user message as preview
         for msg in messages:
             if msg.get("role") == "user":
                 content = msg.get("content", "")
                 return content[:100] + "..." if len(content) > 100 else content
         
-        return "New conversation"
+        # Fallback: use first non-empty message content from any role
+        for msg in messages:
+            content = msg.get("content", "")
+            if content:
+                return content[:100] + "..." if len(content) > 100 else content
+        
+        return "No messages"
 
 
 # Global instance

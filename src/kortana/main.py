@@ -129,7 +129,19 @@ def test_db():
 
 @app.post("/chat")
 async def chat(message: dict):
-    """Enhanced chat endpoint using full orchestrator capabilities."""
+    """Enhanced chat endpoint using full orchestrator capabilities.
+    
+    Validates input, processes through orchestrator, and saves to conversation history.
+    
+    Args:
+        message: Dictionary containing 'message' (required) and optional 'conversation_id'
+        
+    Returns:
+        JSON response with assistant reply, conversation_id, and metadata
+        
+    Raises:
+        HTTPException: If message is empty, too long, or processing fails
+    """
     try:
         from src.kortana.services.database import get_db_sync
         from src.kortana.core.orchestrator import KorOrchestrator
@@ -138,6 +150,10 @@ async def chat(message: dict):
         user_message = message.get("message", "")
         if not user_message:
             raise HTTPException(status_code=400, detail="Message is required")
+        
+        # Validate message length (max 10000 characters)
+        if len(user_message) > 10000:
+            raise HTTPException(status_code=400, detail="Message too long (max 10000 characters)")
         
         # Get or create conversation
         conv_id = message.get("conversation_id")
@@ -190,13 +206,38 @@ async def chat(message: dict):
 
 @app.post("/chat/stream")
 async def chat_stream(message: dict):
-    """Streaming chat endpoint for progressive responses."""
+    """Streaming chat endpoint for progressive responses with conversation history integration.
+    
+    Validates input, streams response through orchestrator, and saves to conversation history.
+    
+    Args:
+        message: Dictionary containing 'message' (required) and optional 'conversation_id'
+        
+    Returns:
+        StreamingResponse with Server-Sent Events
+        
+    Raises:
+        HTTPException: If message is empty, too long, or processing fails
+    """
     from src.kortana.services.database import get_db_sync
     from src.kortana.core.orchestrator import KorOrchestrator
+    from src.kortana.services.conversation_history import conversation_history
     
     user_message = message.get("message", "")
     if not user_message:
         raise HTTPException(status_code=400, detail="Message is required")
+    
+    # Validate message length (max 10000 characters)
+    if len(user_message) > 10000:
+        raise HTTPException(status_code=400, detail="Message too long (max 10000 characters)")
+    
+    # Get or create conversation
+    conv_id = message.get("conversation_id")
+    if not conv_id:
+        conv_id = conversation_history.create_conversation()
+    
+    # Save user message to history
+    conversation_history.add_message(conv_id, "user", user_message)
     
     async def generate_response():
         """Generator function for streaming response."""
@@ -215,9 +256,12 @@ async def chat_stream(message: dict):
                                       result.get("response", 
                                                 "I'm having trouble processing that right now."))
             
-            # Simulate streaming by splitting response into chunks
+            # Stream response in chunks with better chunk sizing
             words = final_response.split()
-            chunk_size = max(1, len(words) // 20)  # Stream in ~20 chunks
+            if len(words) <= 20:
+                chunk_size = 3
+            else:
+                chunk_size = max(3, len(words) // 20)
             
             for i in range(0, len(words), chunk_size):
                 chunk = " ".join(words[i:i+chunk_size])
@@ -228,16 +272,29 @@ async def chat_stream(message: dict):
                         'content': chunk
                     }
                     yield f"data: {json.dumps(event_data)}\n\n"
-                    await asyncio.sleep(0.05)  # Small delay for streaming effect
+                    await asyncio.sleep(0.05)
+            
+            # Prepare metadata
+            metadata = {
+                'model': result.get("llm_metadata", {}).get("model"),
+                'context_used': len(result.get("context_from_memory", [])) > 0,
+                'memories_accessed': [
+                    {
+                        "content": mem,
+                        "relevance": "high"
+                    }
+                    for mem in result.get("context_from_memory", [])[:3]
+                ]
+            }
+            
+            # Save assistant response to history
+            conversation_history.add_message(conv_id, "assistant", final_response, metadata)
             
             # Send completion event with metadata
             completion_data = {
                 'type': 'done',
-                'metadata': {
-                    'model': result.get("llm_metadata", {}).get("model"),
-                    'context_used': len(result.get("context_from_memory", [])) > 0,
-                    'conversation_id': message.get("conversation_id")
-                }
+                'conversation_id': conv_id,
+                'metadata': metadata
             }
             yield f"data: {json.dumps(completion_data)}\n\n"
             
