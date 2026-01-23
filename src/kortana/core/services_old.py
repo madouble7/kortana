@@ -13,14 +13,14 @@ from typing import Any
 # Import necessary service classes
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from src.kortana.config.schema import KortanaConfig
-from src.kortana.core.brain import ChatEngine
-from src.kortana.core.covenant_enforcer import CovenantEnforcer
-from src.kortana.core.enhanced_model_router import EnhancedModelRouter
-from src.kortana.core.execution_engine import ExecutionEngine
-from src.kortana.core.planning_engine import PlanningEngine
-from src.kortana.llm_clients.factory import LLMClientFactory
-from src.kortana.modules.memory_core.services import MemoryCoreService
+from kortana.config.schema import KortanaConfig
+from kortana.core.brain import ChatEngine
+from kortana.core.covenant_enforcer import CovenantEnforcer
+from kortana.core.enhanced_model_router import EnhancedModelRouter
+from kortana.core.execution_engine import ExecutionEngine
+from kortana.core.planning_engine import PlanningEngine
+from kortana.llm_clients.factory import LLMClientFactory
+from kortana.modules.memory_core.services import MemoryCoreService
 
 # Assuming SacredModelRouter path is correct, adjust if needed
 try:
