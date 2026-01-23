@@ -92,18 +92,7 @@ def list_all_goals(skip: int = 0, limit: int = 20, db: Session = Depends(get_db_
 @router.get("/{goal_id}", response_model=schemas.GoalDisplay)
 def get_goal_details(goal_id: int, db: Session = Depends(get_db_sync)):
     """Get detailed status and plan steps for a specific goal."""
-    try:
-        goal = db.query(models.Goal).filter(models.Goal.id == goal_id).first()
-        if not goal:
-            raise HTTPException(status_code=404, detail="Goal not found")
-        return goal
-    except Exception as e:
-        print(f"ERROR in get_goal_details endpoint: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "error_type": type(e).__name__,
-                "error_message": str(e),
-                "traceback": traceback.format_exc().splitlines(),
-            },
-        )
+    goal = db.query(models.Goal).filter(models.Goal.id == goal_id).first()
+    if not goal:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    return goal
