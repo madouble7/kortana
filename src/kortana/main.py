@@ -26,6 +26,15 @@ from src.kortana.modules.marketplace.router import router as marketplace_router
 from src.kortana.modules.memory_core.routers.memory_router import (
     router as memory_router,
 )
+from src.kortana.modules.product_categorization.routers.category_router import (
+    router as category_router,
+)
+from src.kortana.modules.inventory_analysis.routers.inventory_router import (
+    router as inventory_router,
+)
+from src.kortana.modules.recommendation_engine.routers.recommendation_router import (
+    router as recommendation_router,
+)
 
 # Import new module routers
 from src.kortana.modules.multilingual.router import router as multilingual_router
@@ -70,6 +79,10 @@ app.include_router(conversation_router)  # Add conversation history router
 app.include_router(core_router.router)
 app.include_router(core_router.openai_adapter_router)
 app.include_router(goal_router.router)
+# E-commerce AI modules
+app.include_router(category_router)
+app.include_router(inventory_router)
+app.include_router(recommendation_router)
 
 # Include new module routers
 app.include_router(multilingual_router)
