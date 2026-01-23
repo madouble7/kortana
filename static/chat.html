@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kor'tana - AI Companion</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .main-container {
+            display: flex;
+            gap: 20px;
+            width: 100%;
+            max-width: 1400px;
+            height: 85vh;
+        }
+        .sidebar {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            width: 300px;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .sidebar h2 {
+            font-size: 18px;
+            margin-bottom: 10px;
+            color: #667eea;
+        }
+        .new-chat-btn {
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        .conversation-item {
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            border: 1px solid #e0e0e0;
+        }
+        .conversation-item:hover {
+            background: #f8f9fa;
+        }
+        .conversation-item.active {
+            background: #e6e1f0;
+            border-color: #667eea;
+        }
+        .conversation-preview {
+            font-size: 12px;
+            color: #666;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .chat-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 20px 20px 0 0;
+        }
+        .chat-header h1 { font-size: 24px; margin-bottom: 5px; }
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: #4ade80;
+            border-radius: 50%;
+            margin-left: 10px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        .message {
+            display: flex;
+            margin-bottom: 20px;
+            animation: fadeIn 0.3s ease-in;
+            flex-direction: column;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .message.user { align-items: flex-end; }
+        .message-content {
+            max-width: 70%;
+            padding: 15px 20px;
+            border-radius: 20px;
+            word-wrap: break-word;
+        }
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+        .message.assistant .message-content {
+            background: white;
+            color: #333;
+            border-bottom-left-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .message-meta {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+        .memories-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            background: #e6e1f0;
+            color: #667eea;
+            border-radius: 12px;
+            font-size: 10px;
+            margin-left: 8px;
+            cursor: help;
+        }
+        .memories-popup {
+            display: none;
+            position: absolute;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            max-width: 300px;
+            z-index: 1000;
+            font-size: 12px;
+        }
+        .memories-popup.active { display: block; }
+        .chat-input-container { padding: 20px; background: white; }
+        .chat-input-wrapper { display: flex; gap: 10px; align-items: center; }
+        .chat-input {
+            flex: 1;
+            padding: 15px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            outline: none;
+        }
+        .send-button, .stream-toggle {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+        }
+        .stream-toggle {
+            padding: 10px 20px;
+            font-size: 12px;
+        }
+        .stream-toggle.active {
+            background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="sidebar">
+            <h2>Conversations</h2>
+            <button class="new-chat-btn" onclick="startNewConversation()">+ New Chat</button>
+            <div id="conversationsList"></div>
+        </div>
+        <div class="chat-container">
+            <div class="chat-header">
+                <h1>Kor'tana <span class="status-indicator" id="statusIndicator"></span></h1>
+                <p>Your AI companion with memory and ethical discernment</p>
+            </div>
+            <div class="chat-messages" id="chatMessages">
+                <div class="message assistant">
+                    <div class="message-content">
+                        <div>Hello! I'm Kor'tana. How can I assist you today?</div>
+                    </div>
+                </div>
+            </div>
+            <div class="chat-input-container">
+                <div class="chat-input-wrapper">
+                    <button class="stream-toggle" id="streamToggle">Stream: OFF</button>
+                    <input type="text" class="chat-input" id="chatInput" placeholder="Type here..."/>
+                    <button class="send-button" id="sendButton">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="memories-popup" id="memoriesPopup"></div>
+    <script>
+        let conversationId = null;
+        let streamingEnabled = false;
+        
+        document.getElementById('streamToggle').addEventListener('click', function() {
+            streamingEnabled = !streamingEnabled;
+            this.classList.toggle('active', streamingEnabled);
+            this.textContent = streamingEnabled ? 'Stream: ON' : 'Stream: OFF';
+        });
+        
+        async function loadConversations() {
+            try {
+                const response = await fetch('/conversations');
+                const data = await response.json();
+                const list = document.getElementById('conversationsList');
+                list.innerHTML = '';
+                data.conversations.forEach(conv => {
+                    const item = document.createElement('div');
+                    item.className = 'conversation-item';
+                    if (conv.id === conversationId) item.classList.add('active');
+                    item.innerHTML = `
+                        <div style="font-weight: 600; font-size: 13px;">${conv.message_count} messages</div>
+                        <div class="conversation-preview">${conv.preview}</div>
+                    `;
+                    item.onclick = () => loadConversation(conv.id);
+                    list.appendChild(item);
+                });
+            } catch (error) {
+                console.error('Error loading conversations:', error);
+            }
+        }
+        
+        async function loadConversation(id) {
+            try {
+                const response = await fetch(`/conversations/${id}`);
+                const conv = await response.json();
+                conversationId = id;
+                const container = document.getElementById('chatMessages');
+                container.innerHTML = '';
+                conv.messages.forEach(msg => {
+                    addMessage(msg.role, msg.content, msg.metadata || {}, false);
+                });
+                loadConversations();
+            } catch (error) {
+                console.error('Error loading conversation:', error);
+            }
+        }
+        
+        function startNewConversation() {
+            conversationId = null;
+            document.getElementById('chatMessages').innerHTML = `
+                <div class="message assistant">
+                    <div class="message-content">
+                        <div>Hello! I'm Kor'tana. How can I assist you today?</div>
+                    </div>
+                </div>
+            `;
+            loadConversations();
+        }
+        
+        function addMessage(role, content, metadata = {}, scroll = true) {
+            const container = document.getElementById('chatMessages');
+            const div = document.createElement('div');
+            div.className = `message ${role}`;
+            let metaInfo = '';
+            if (metadata.model) {
+                metaInfo += `<div class="message-meta">Model: ${metadata.model}`;
+                if (metadata.memories_accessed && metadata.memories_accessed.length > 0) {
+                    metaInfo += `<span class="memories-badge" onclick="showMemories(event, ${JSON.stringify(metadata.memories_accessed).replace(/"/g, '&quot;')})">🧠 ${metadata.memories_accessed.length} memories</span>`;
+                }
+                metaInfo += `</div>`;
+            }
+            div.innerHTML = `<div class="message-content"><div>${escapeHtml(content)}</div>${metaInfo}</div>`;
+            container.appendChild(div);
+            if (scroll) container.scrollTop = container.scrollHeight;
+            return div;
+        }
+        
+        function showMemories(event, memories) {
+            event.stopPropagation();
+            const popup = document.getElementById('memoriesPopup');
+            popup.innerHTML = `<strong>Memories Used:</strong><br>` + 
+                memories.map((m, i) => `${i+1}. ${escapeHtml(m.content.substring(0, 100))}...`).join('<br>');
+            popup.style.left = event.pageX + 'px';
+            popup.style.top = event.pageY + 'px';
+            popup.classList.add('active');
+            setTimeout(() => popup.classList.remove('active'), 5000);
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        async function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            if (!message) return;
+            
+            addMessage('user', message);
+            input.value = '';
+            document.getElementById('sendButton').disabled = true;
+            
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message, conversation_id: conversationId })
+                });
+                const data = await response.json();
+                conversationId = data.conversation_id;
+                addMessage('assistant', data.response, data.metadata || {});
+                loadConversations();
+            } catch (error) {
+                addMessage('assistant', 'Error: ' + error.message);
+            }
+            
+            document.getElementById('sendButton').disabled = false;
+            input.focus();
+        }
+        
+        document.getElementById('sendButton').addEventListener('click', sendMessage);
+        document.getElementById('chatInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+        
+        document.addEventListener('click', () => {
+            document.getElementById('memoriesPopup').classList.remove('active');
+        });
+        
+        loadConversations();
+    </script>
+</body>
+</html>
