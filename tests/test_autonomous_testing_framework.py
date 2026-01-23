@@ -9,22 +9,19 @@ Tests all five core modules:
 5. Ethical compliance self-audit
 """
 
-import pytest
-from datetime import datetime
 
+import pytest
+
+from kortana.core.autonomous_testing_config import DEFAULT_CONFIG, FrameworkConfig
 from kortana.core.autonomous_testing_framework import (
-    AutonomousTestingFramework,
-    SelfTestingModule,
     AutonomousDebuggingModule,
+    AutonomousTestingFramework,
+    DebugStatus,
+    EthicalComplianceModule,
     FeatureSelfExpansionModule,
     PerformanceMonitoringModule,
-    EthicalComplianceModule,
+    SelfTestingModule,
     TestStatus,
-    DebugStatus
-)
-from kortana.core.autonomous_testing_config import (
-    FrameworkConfig,
-    DEFAULT_CONFIG
 )
 
 
@@ -36,7 +33,7 @@ class TestSelfTestingModule:
         """Test that we can generate a test case"""
         module = SelfTestingModule()
         test_case = await module.generate_test("sample_function", "unit")
-        
+
         assert test_case is not None
         assert test_case.test_type == "unit"
         assert "sample_function" in test_case.name
@@ -48,9 +45,9 @@ class TestSelfTestingModule:
         """Test that we can execute a test case"""
         module = SelfTestingModule()
         test_case = await module.generate_test("sample_function", "unit")
-        
+
         result = await module.execute_test(test_case.test_id)
-        
+
         assert result["success"] is True
         assert module.test_cases[test_case.test_id].status == TestStatus.PASSED
         assert len(module.test_history) == 1
@@ -60,7 +57,7 @@ class TestSelfTestingModule:
         """Test executing a test that doesn't exist"""
         module = SelfTestingModule()
         result = await module.execute_test("nonexistent_test_id")
-        
+
         assert result["success"] is False
         assert "error" in result
 
@@ -70,9 +67,9 @@ class TestSelfTestingModule:
         module = SelfTestingModule()
         test_case = await module.generate_test("sample_function", "unit")
         await module.execute_test(test_case.test_id)
-        
+
         analysis = await module.analyze_test_results(test_case.test_id)
-        
+
         assert analysis is not None
         assert analysis["test_id"] == test_case.test_id
         assert analysis["status"] == TestStatus.PASSED.value
@@ -87,7 +84,7 @@ class TestAutonomousDebuggingModule:
         """Test scanning for issues"""
         module = AutonomousDebuggingModule()
         issues = await module.scan_for_issues("test/path")
-        
+
         assert isinstance(issues, list)
         assert len(issues) > 0
         assert issues[0].issue_id in module.issues
@@ -98,9 +95,9 @@ class TestAutonomousDebuggingModule:
         module = AutonomousDebuggingModule()
         issues = await module.scan_for_issues()
         issue_id = issues[0].issue_id
-        
+
         analysis = await module.analyze_issue(issue_id)
-        
+
         assert "issue_id" in analysis
         assert analysis["issue_id"] == issue_id
         assert "root_cause" in analysis
@@ -112,12 +109,12 @@ class TestAutonomousDebuggingModule:
         module = AutonomousDebuggingModule()
         issues = await module.scan_for_issues()
         issue_id = issues[0].issue_id
-        
+
         # Set issue to low severity so it can be auto-fixed
         module.issues[issue_id].severity = "low"
-        
+
         fix_result = await module.attempt_fix(issue_id)
-        
+
         assert "success" in fix_result
         assert len(module.issues[issue_id].fix_attempts) == 1
         assert len(module.fix_history) == 1
@@ -131,9 +128,9 @@ class TestFeatureSelfExpansionModule:
         """Test setting guidelines"""
         module = FeatureSelfExpansionModule()
         guidelines = {"quality": {"min_score": 0.8}}
-        
+
         module.set_guidelines(guidelines)
-        
+
         assert "quality" in module.guidelines
 
     @pytest.mark.asyncio
@@ -141,7 +138,7 @@ class TestFeatureSelfExpansionModule:
         """Test codebase analysis"""
         module = FeatureSelfExpansionModule()
         opportunities = await module.analyze_codebase()
-        
+
         assert isinstance(opportunities, list)
         assert len(opportunities) > 0
 
@@ -150,7 +147,7 @@ class TestFeatureSelfExpansionModule:
         """Test suggesting improvements"""
         module = FeatureSelfExpansionModule()
         suggestion = await module.suggest_improvement("performance")
-        
+
         assert suggestion is not None
         assert suggestion.suggestion_id in module.suggestions
         assert "performance" in suggestion.title.lower()
@@ -161,9 +158,9 @@ class TestFeatureSelfExpansionModule:
         """Test that unapproved suggestions cannot be implemented"""
         module = FeatureSelfExpansionModule()
         suggestion = await module.suggest_improvement("performance")
-        
+
         result = await module.implement_suggestion(suggestion.suggestion_id)
-        
+
         assert "error" in result
         assert "not approved" in result["error"]
 
@@ -172,12 +169,12 @@ class TestFeatureSelfExpansionModule:
         """Test implementing an approved suggestion"""
         module = FeatureSelfExpansionModule()
         suggestion = await module.suggest_improvement("performance")
-        
+
         # Approve the suggestion
         module.suggestions[suggestion.suggestion_id].approved = True
-        
+
         result = await module.implement_suggestion(suggestion.suggestion_id)
-        
+
         assert result["success"] is True
         assert module.suggestions[suggestion.suggestion_id].implemented is True
 
@@ -190,7 +187,7 @@ class TestPerformanceMonitoringModule:
         """Test setting a performance threshold"""
         module = PerformanceMonitoringModule()
         module.set_threshold("response_time", 100.0)
-        
+
         assert "response_time" in module.thresholds
         assert module.thresholds["response_time"] == 100.0
 
@@ -199,7 +196,7 @@ class TestPerformanceMonitoringModule:
         """Test recording a performance metric"""
         module = PerformanceMonitoringModule()
         metric = await module.record_metric("response_time", 50.0, "ms")
-        
+
         assert metric is not None
         assert metric.name == "response_time"
         assert metric.value == 50.0
@@ -211,23 +208,23 @@ class TestPerformanceMonitoringModule:
         """Test recording a metric that exceeds threshold"""
         module = PerformanceMonitoringModule()
         module.set_threshold("response_time", 100.0)
-        
+
         metric = await module.record_metric("response_time", 150.0, "ms")
-        
+
         assert metric.status == "warning"
 
     @pytest.mark.asyncio
     async def test_analyze_trends(self):
         """Test analyzing performance trends"""
         module = PerformanceMonitoringModule()
-        
+
         # Record multiple metrics
         await module.record_metric("response_time", 50.0, "ms")
         await module.record_metric("response_time", 60.0, "ms")
         await module.record_metric("response_time", 55.0, "ms")
-        
+
         analysis = await module.analyze_trends("response_time")
-        
+
         assert analysis is not None
         assert analysis["metric_name"] == "response_time"
         assert analysis["count"] == 3
@@ -240,13 +237,13 @@ class TestPerformanceMonitoringModule:
         """Test suggesting optimizations"""
         module = PerformanceMonitoringModule()
         module.set_threshold("response_time", 100.0)
-        
+
         # Record metrics near threshold
         for _ in range(10):
             await module.record_metric("response_time", 85.0, "ms")
-        
+
         optimizations = await module.suggest_optimizations()
-        
+
         assert isinstance(optimizations, list)
         assert len(optimizations) > 0
         assert optimizations[0]["metric"] == "response_time"
@@ -259,7 +256,7 @@ class TestEthicalComplianceModule:
     async def test_default_guidelines(self):
         """Test that default guidelines are loaded"""
         module = EthicalComplianceModule()
-        
+
         assert len(module.guidelines) > 0
         assert "transparency" in module.guidelines
         assert "no_harm" in module.guidelines
@@ -270,21 +267,20 @@ class TestEthicalComplianceModule:
         """Test updating guidelines"""
         module = EthicalComplianceModule()
         new_guidelines = {"custom_rule": {"description": "Test rule"}}
-        
+
         module.update_guidelines(new_guidelines)
-        
+
         assert "custom_rule" in module.guidelines
 
     @pytest.mark.asyncio
     async def test_audit_action_compliant(self):
         """Test auditing a compliant action"""
         module = EthicalComplianceModule()
-        
+
         result = await module.audit_action(
-            "read_file",
-            {"logged": True, "user_approved": True}
+            "read_file", {"logged": True, "user_approved": True}
         )
-        
+
         assert result["compliant"] is True
         assert len(result["violations"]) == 0
         assert result["compliance_score"] >= 0.8
@@ -293,12 +289,9 @@ class TestEthicalComplianceModule:
     async def test_audit_action_not_logged(self):
         """Test auditing an action that's not logged"""
         module = EthicalComplianceModule()
-        
-        result = await module.audit_action(
-            "read_file",
-            {"logged": False}
-        )
-        
+
+        result = await module.audit_action("read_file", {"logged": False})
+
         assert result["compliant"] is False
         assert len(result["violations"]) > 0
 
@@ -306,12 +299,11 @@ class TestEthicalComplianceModule:
     async def test_audit_action_destructive_without_approval(self):
         """Test auditing a destructive action without approval"""
         module = EthicalComplianceModule()
-        
+
         result = await module.audit_action(
-            "delete_file",
-            {"logged": True, "user_approved": False}
+            "delete_file", {"logged": True, "user_approved": False}
         )
-        
+
         assert result["compliant"] is False
         assert any(v["guideline"] == "user_consent" for v in result["violations"])
 
@@ -319,9 +311,9 @@ class TestEthicalComplianceModule:
     async def test_perform_self_audit(self):
         """Test performing a self-audit"""
         module = EthicalComplianceModule()
-        
+
         audit_result = await module.perform_self_audit()
-        
+
         assert audit_result is not None
         assert len(audit_result.guidelines_checked) > 0
         assert audit_result.compliance_score >= 0.0
@@ -336,7 +328,7 @@ class TestAutonomousTestingFramework:
     async def test_framework_initialization(self):
         """Test framework initialization"""
         framework = AutonomousTestingFramework()
-        
+
         assert framework is not None
         assert framework.self_testing is not None
         assert framework.debugging is not None
@@ -349,10 +341,10 @@ class TestAutonomousTestingFramework:
     async def test_start_stop(self):
         """Test starting and stopping the framework"""
         framework = AutonomousTestingFramework()
-        
+
         await framework.start()
         assert framework.active is True
-        
+
         await framework.stop()
         assert framework.active is False
 
@@ -361,9 +353,9 @@ class TestAutonomousTestingFramework:
         """Test running a complete autonomous cycle"""
         framework = AutonomousTestingFramework()
         await framework.start()
-        
+
         results = await framework.run_cycle()
-        
+
         assert results is not None
         assert results["cycle_number"] == 1
         assert "modules" in results
@@ -377,9 +369,9 @@ class TestAutonomousTestingFramework:
     async def test_run_cycle_not_active(self):
         """Test that cycle fails when framework is not active"""
         framework = AutonomousTestingFramework()
-        
+
         results = await framework.run_cycle()
-        
+
         assert "error" in results
 
     @pytest.mark.asyncio
@@ -388,9 +380,9 @@ class TestAutonomousTestingFramework:
         framework = AutonomousTestingFramework()
         await framework.start()
         await framework.run_cycle()
-        
+
         status = await framework.get_status()
-        
+
         assert status is not None
         assert status["active"] is True
         assert status["cycles_completed"] == 1
@@ -404,7 +396,7 @@ class TestFrameworkConfig:
     def test_default_config(self):
         """Test default configuration"""
         config = FrameworkConfig()
-        
+
         assert config.enabled is True
         assert config.self_testing.enabled is True
         assert config.debugging.enabled is True
@@ -417,14 +409,11 @@ class TestFrameworkConfig:
         config_dict = {
             "enabled": True,
             "cycle_interval_minutes": 30,
-            "self_testing": {
-                "enabled": True,
-                "auto_generate_tests": False
-            }
+            "self_testing": {"enabled": True, "auto_generate_tests": False},
         }
-        
+
         config = FrameworkConfig.from_dict(config_dict)
-        
+
         assert config.enabled is True
         assert config.cycle_interval_minutes == 30
         assert config.self_testing.auto_generate_tests is False
@@ -433,7 +422,7 @@ class TestFrameworkConfig:
         """Test converting config to dictionary"""
         config = FrameworkConfig()
         config_dict = config.to_dict()
-        
+
         assert "enabled" in config_dict
         assert "self_testing" in config_dict
         assert "debugging" in config_dict
