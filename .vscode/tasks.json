@@ -1,12 +1,42 @@
 {
-    "version": "2.0.0",
-    "tasks": [
-        {
-            "label": "Start LobeChat Frontend",
-            "type": "shell",
-            "command": "npm run dev -- --port 3010",
-            "group": "none",
-            "isBackground": true
-        }
-    ]
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Start LobeChat Frontend",
+			"type": "shell",
+			"command": "npm run dev -- --port 3010",
+			"group": "none",
+			"isBackground": true
+		},
+		{
+			"label": "Run Pytest",
+			"type": "shell",
+			"command": "c:/kortana/.kortana_config_test_env/Scripts/python.exe -m pytest tests/"
+		},
+		{
+			"label": "Run Pytest Backslash",
+			"type": "shell",
+			"command": ".kortana_config_test_env\\Scripts\\python.exe -m pytest tests/"
+		},
+		{
+			"label": "Run Pytest Direct",
+			"type": "shell",
+			"command": "pytest tests/"
+		},
+		{
+			"label": "Run Core Tests",
+			"type": "shell",
+			"command": ".kortana_config_test_env\\Scripts\\python.exe -m pytest tests/test_model_router.py tests/test_brain.py"
+		},
+		{
+			"label": "Run Manual Pytest Script",
+			"type": "shell",
+			"command": ".kortana_config_test_env\\Scripts\\python.exe run_tests_manual.py"
+		},
+		{
+			"label": "Run Manual Pytest Relative",
+			"type": "shell",
+			"command": ".\\.kortana_config_test_env\\Scripts\\python.exe run_tests_manual.py"
+		}
+	]
 }

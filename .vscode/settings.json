@@ -1,6 +1,6 @@
 {
     // Core Python configuration
-    "python.defaultInterpreterPath": "C:\\\\project-kortana\\\\venv311\\\\Scripts\\\\python.exe",
+    "python.defaultInterpreterPath": "c:\\\\kortana\\\\.kortana_config_test_env\\\\Scripts\\\\python.exe",
     "python.terminal.activateEnvironment": true,
     "python.terminal.activateEnvInCurrentTerminal": true,
     // Performance optimizations - File handling
@@ -138,7 +138,7 @@
             "path": "cmd.exe",
             "args": [
                 "/k",
-                "C:\\project-kortana\\venv311\\Scripts\\activate.bat && set PYTHONPATH=C:\\project-kortana;C:\\project-kortana\\src"
+                "c:\\kortana\\.kortana_config_test_env\\Scripts\\activate.bat && set PYTHONPATH=c:\\kortana;c:\\kortana\\src"
             ],
             "icon": "snake"
         }

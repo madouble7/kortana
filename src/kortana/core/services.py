@@ -152,6 +152,28 @@ def _create_sacred_model_router():
         return SacredModelRouterStub(settings=_config)
 
 
+def _create_memory_manager():
+    """Factory function for Memory Manager."""
+    try:
+        from src.kortana.services.memory_system import memory_manager
+        return memory_manager
+    except ImportError as e:
+        logger.warning(f"MemoryManager not found: {e}, using stub")
+
+        class MemoryManagerStub:
+            def __init__(self):
+                self.recent_interactions = []
+
+            def get_recent_interactions(self, limit: int = 100) -> list[str]:
+                """Get recent interaction history"""
+                return self.recent_interactions[-limit:]
+
+            def store_research_topic(self, topic: str, description: str) -> None:
+                """Store a research topic in memory"""
+                logger.info(f"Storing research topic: {topic}")
+
+        return MemoryManagerStub()
+
 def _create_chat_engine():
     """Factory function for Chat Engine."""
     try:
@@ -224,6 +246,10 @@ def get_scheduler():
 def get_memory_core_service():
     """Get the Memory Core Service instance."""
     return get_service("memory_core_service", _create_memory_core_service)
+
+def get_memory_manager():
+    """Get the Memory Manager instance."""
+    return get_service("memory_manager", _create_memory_manager)
 
 
 def get_sacred_model_router():

@@ -14,8 +14,8 @@ from unittest.mock import patch
 
 import pytest
 
-from src.model_router import AugmentedModelConfig, ModelArchetype, SacredModelRouter
-from src.strategic_config import SacredPrinciple, TaskCategory
+from kortana.model_router import AugmentedModelConfig, ModelArchetype, SacredModelRouter
+from kortana.strategic_config import SacredPrinciple, TaskCategory
 
 
 class TestSacredModelRouter:
