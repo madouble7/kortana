@@ -1,0 +1,4 @@
+# Discord bot dependencies
+discord.py>=2.3.0
+Flask>=3.0.0
+huggingface_hub>=0.20.0
