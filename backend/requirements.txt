@@ -27,7 +27,7 @@ alembic==1.13.0
 asyncpg==0.29.0
 
 # Security & Authentication
-python-jose[cryptography]==3.3.0
+
 passlib[bcrypt]==1.7.4
 python-multipart==0.0.7
 PyJWT==2.10.1

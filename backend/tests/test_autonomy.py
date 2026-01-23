@@ -5,17 +5,9 @@ Unit and integration tests for GitHub autonomy system
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-from fastapi.testclient import TestClient
 
 # Import the app and models
-from main import app
-from models import GitHubTask
-
-
-@pytest.fixture
-def client():
-    """FastAPI test client"""
-    return TestClient(app)
+from src.kortana.models import GitHubTask
 
 
 @pytest.fixture
@@ -33,7 +25,7 @@ class TestGitHubRouter:
         with patch.dict("os.environ", {"GITHUB_TOKEN": ""}):
             response = client.get("/api/github/repos/test/repo/issues")
             assert response.status_code == 500
-            assert "GitHub token not configured" in response.json()["detail"]
+            assert "GitHub token not configured" in response.json()["message"]
 
     def test_get_issues_pagination(self, client):
         """Test issue fetching with pagination"""
@@ -45,7 +37,9 @@ class TestGitHubRouter:
             ]
             mock_get.return_value = mock_response
 
-            response = client.get("/api/github/repos/test/repo/issues?page=1&per_page=10")
+            response = client.get(
+                "/api/github/repos/test/repo/issues?page=1&per_page=10"
+            )
             assert response.status_code == 200
             assert "pagination" in response.json()
 
@@ -128,7 +122,7 @@ class TestAutonomyRouter:
             ]
             mock_get.return_value = mock_response
 
-            with patch("database.SessionLocal"):
+            with patch("src.kortana.database.SessionLocal"):
                 response = client.post("/api/autonomy/task-queue")
                 assert response.status_code == 200
                 data = response.json()
@@ -137,7 +131,7 @@ class TestAutonomyRouter:
 
     def test_get_task_queue_status(self, client):
         """Test getting task queue status"""
-        with patch("database.SessionLocal"):
+        with patch("src.kortana.database.SessionLocal"):
             response = client.get("/api/autonomy/status")
             assert response.status_code == 200
             data = response.json()
@@ -159,7 +153,7 @@ class TestCodeGenerator:
 
     def test_parse_plan_json_format(self):
         """Test parsing Gemini plan in JSON format"""
-        from routers.code_generator import CodeGenerator
+        from src.kortana.services.code_generator import CodeGenerator
 
         gen = CodeGenerator()
         plan_text = """
@@ -181,34 +175,43 @@ class TestCodeGenerator:
 
     def test_validate_plan_structure(self):
         """Test plan validation"""
-        from routers.code_generator import CodeGenerator
+        from src.kortana.services.code_generator import CodeGenerator
 
         gen = CodeGenerator()
-        valid_plan = {"files": [{"path": "test.py", "action": "create", "content": "test"}]}
+        valid_plan = {
+            "files": [{"path": "test.py", "action": "create", "content": "test"}]
+        }
         assert gen.validate_plan(valid_plan)
 
     def test_validate_plan_invalid_action(self):
         """Test plan validation with invalid action"""
-        from routers.code_generator import CodeGenerator
+        from src.kortana.services.code_generator import CodeGenerator
 
         gen = CodeGenerator()
-        invalid_plan = {"files": [{"path": "test.py", "action": "invalid", "content": "test"}]}
+        invalid_plan = {
+            "files": [{"path": "test.py", "action": "invalid", "content": "test"}]
+        }
         assert not gen.validate_plan(invalid_plan)
 
     def test_path_traversal_protection(self):
         """Test protection against path traversal attacks"""
-        from routers.code_generator import CodeGenerationError, CodeGenerator
+        from src.kortana.services.code_generator import (
+            CodeGenerationError,
+            CodeGenerator,
+        )
 
         gen = CodeGenerator()
         malicious_plan = {
-            "files": [{"path": "../../../etc/passwd", "action": "create", "content": "test"}]
+            "files": [
+                {"path": "../../../etc/passwd", "action": "create", "content": "test"}
+            ]
         }
         with pytest.raises(CodeGenerationError):
             gen.validate_plan(malicious_plan)
 
     def test_format_python_code(self):
         """Test Python code formatting"""
-        from routers.code_generator import CodeGenerator
+        from src.kortana.services.code_generator import CodeGenerator
 
         gen = CodeGenerator()
         code = "def test( ):\n\n\n    pass"
@@ -265,6 +268,7 @@ class TestGitHubTaskModel:
             title="Test",
             description="Test",
             branch_name="feature/1",
+            error_count=0,
             max_retries=3,
         )
 
@@ -278,7 +282,7 @@ class TestRateLimiting:
 
     def test_rate_limit_check_within_limit(self, client):
         """Test rate limit check within acceptable range"""
-        from routers.github import rate_limit_check
+        from src.kortana.routers.github import rate_limit_check
 
         # Should pass for first 60 requests
         for i in range(60):
@@ -286,7 +290,7 @@ class TestRateLimiting:
 
     def test_rate_limit_check_exceeded(self, client):
         """Test rate limit check when exceeded"""
-        from routers.github import rate_limit_check
+        from src.kortana.routers.github import rate_limit_check
 
         endpoint = "test_endpoint_limit"
         for i in range(61):

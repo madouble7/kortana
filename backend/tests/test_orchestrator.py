@@ -9,7 +9,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
-from routers.test_orchestrator import TestOrchestrationError, TestOrchestrator
+from src.kortana.routers.test_orchestrator import (
+    TestOrchestrationError,
+    TestOrchestrator,
+)
 
 
 class TestTestOrchestrator:
@@ -305,7 +308,7 @@ class TestTestOrchestrationAPI:
         """Create test client"""
         return TestClient(app_fixture)
 
-    @patch("routers.test_orchestrator.TestOrchestrator.run_tests")
+    @patch("src.kortana.routers.test_orchestrator.TestOrchestrator.run_tests")
     def test_run_tests_endpoint(self, mock_run, client):
         """Test POST /tests/run endpoint"""
         mock_run.return_value = {
@@ -313,41 +316,41 @@ class TestTestOrchestrationAPI:
             "return_code": 0,
         }
 
-        response = client.post("/tests/run", json={"test_dir": "tests", "coverage": True})
+        response = client.post("/api/testing/run", json={"test_dir": "tests", "coverage": True})
 
         assert response.status_code == 200
 
-    @patch("routers.test_orchestrator.TestOrchestrator.discover_tests")
+    @patch("src.kortana.routers.test_orchestrator.TestOrchestrator.discover_tests")
     def test_discover_tests_endpoint(self, mock_discover, client):
         """Test GET /tests/discover endpoint"""
         mock_discover.return_value = ["test_example.py", "test_other.py"]
 
-        response = client.get("/tests/discover")
+        response = client.get("/api/testing/discover")
 
         assert response.status_code == 200
         assert len(response.json()) >= 0
 
-    @patch("routers.test_orchestrator.TestOrchestrator.run_full_pipeline")
+    @patch("src.kortana.routers.test_orchestrator.TestOrchestrator.run_full_pipeline")
     def test_full_pipeline_endpoint(self, mock_pipeline, client):
         """Test POST /tests/pipeline endpoint"""
         mock_pipeline.return_value = {"success": True, "steps": []}
 
-        response = client.post("/tests/pipeline")
+        response = client.post("/api/testing/pipeline")
 
         assert response.status_code == 200
 
-    @patch("routers.test_orchestrator.TestOrchestrator.check_coverage_threshold")
+    @patch("src.kortana.routers.test_orchestrator.TestOrchestrator.check_coverage_threshold")
     def test_coverage_endpoint(self, mock_coverage, client):
         """Test POST /tests/coverage endpoint"""
         mock_coverage.return_value = True
 
-        response = client.post("/tests/coverage", json={"threshold": 80.0})
+        response = client.post("/api/testing/coverage", json={"threshold": 80.0})
 
         assert response.status_code == 200
 
     def test_orchestration_health_endpoint(self, client):
         """Test GET /tests/health endpoint"""
-        response = client.get("/tests/health")
+        response = client.get("/api/testing/health")
         assert response.status_code == 200
         assert response.json()["status"] == "healthy"
 

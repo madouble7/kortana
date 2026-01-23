@@ -7,9 +7,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
-from models import GitHubTask
-from routers.pr_creation import PRCreationError, PRCreator
 from sqlalchemy.orm import Session
+from src.kortana.models import GitHubTask
+from src.kortana.routers.pr_creation import PRCreationError, PRCreator
 
 
 class TestPRCreator:
@@ -24,11 +24,13 @@ class TestPRCreator:
     def mock_task(self, db: Session) -> GitHubTask:
         """Create mock GitHub task"""
         task = GitHubTask(
-            issue_number=42,
+            github_issue_number=42,
+            github_repo="user/repo",
+            title="Test PR Task",
+            description="Test description",
             status="completed",
-            branch="feature/test-branch",
+            branch_name="feature/test-branch",
             plan="Test plan for PR",
-            code_changes="def hello(): pass",
         )
         db.add(task)
         db.commit()
@@ -104,7 +106,7 @@ class TestPRCreator:
 
         with patch.dict("os.environ", {"GITHUB_TOKEN": "test_token"}):
             result = pr_creator.create_pr_from_issue(
-                issue_number=42,
+                github_issue_number=42,
                 repo="user/repo",
             )
 
@@ -162,7 +164,7 @@ class TestPRCreator:
         """Test auto-creation of PRs for completed tasks"""
         # Add another completed task
         task2 = GitHubTask(
-            issue_number=43,
+            github_issue_number=43,
             status="completed",
             branch="feature/another",
             plan="Another plan",
@@ -188,7 +190,7 @@ class TestPRCreationAPI:
         """Create test client"""
         return TestClient(app_fixture)
 
-    @patch("routers.pr_creation.PRCreator.create_pr")
+    @patch("src.kortana.routers.pr_creation.PRCreator.create_pr")
     def test_create_pr_endpoint(self, mock_create, client):
         """Test POST /create/{task_id} endpoint"""
         mock_create.return_value = {
@@ -199,14 +201,14 @@ class TestPRCreationAPI:
 
         with patch.dict("os.environ", {"GITHUB_TOKEN": "test_token"}):
             response = client.post(
-                "/pr/create/1?repo=user/repo",
+                "/api/pr/create/1?repo=user/repo",
                 json={"code_changes": "# code"},
             )
 
         assert response.status_code == 200
         assert response.json()["success"] is True
 
-    @patch("routers.pr_creation.PRCreator.get_pr_status")
+    @patch("src.kortana.routers.pr_creation.PRCreator.get_pr_status")
     def test_get_pr_status_endpoint(self, mock_status, client):
         """Test GET /status/{task_id} endpoint"""
         mock_status.return_value = {
@@ -216,12 +218,12 @@ class TestPRCreationAPI:
         }
 
         with patch.dict("os.environ", {"GITHUB_TOKEN": "test_token"}):
-            response = client.get("/pr/status/1?repo=user/repo")
+            response = client.get("/api/pr/status/1?repo=user/repo")
 
         assert response.status_code == 200
         assert response.json()["pr_number"] == 123
 
-    @patch("routers.pr_creation.PRCreator.list_prs_for_repo")
+    @patch("src.kortana.routers.pr_creation.PRCreator.list_prs_for_repo")
     def test_list_prs_endpoint(self, mock_list, client):
         """Test GET /list/{repo} endpoint"""
         mock_list.return_value = [
@@ -229,12 +231,12 @@ class TestPRCreationAPI:
         ]
 
         with patch.dict("os.environ", {"GITHUB_TOKEN": "test_token"}):
-            response = client.get("/pr/list/user/repo")
+            response = client.get("/api/pr/list/user/repo")
 
         assert response.status_code == 200
         assert len(response.json()) >= 0
 
-    @patch("routers.pr_creation.PRCreator.auto_create_prs_for_completed")
+    @patch("src.kortana.routers.pr_creation.PRCreator.auto_create_prs_for_completed")
     def test_auto_create_prs_endpoint(self, mock_auto, client):
         """Test POST /auto-create-all endpoint"""
         mock_auto.return_value = {
@@ -244,7 +246,7 @@ class TestPRCreationAPI:
 
         with patch.dict("os.environ", {"GITHUB_TOKEN": "test_token"}):
             response = client.post(
-                "/pr/auto-create-all?repo=user/repo",
+                "/api/pr/auto-create-all?repo=user/repo",
             )
 
         assert response.status_code == 200
@@ -252,20 +254,20 @@ class TestPRCreationAPI:
 
     def test_pr_health_endpoint(self, client):
         """Test GET /pr/health endpoint"""
-        response = client.get("/pr/health")
+        response = client.get("/api/pr/health")
         assert response.status_code == 200
         assert response.json()["status"] == "healthy"
 
     def test_missing_token_error(self, client):
         """Test error when GitHub token is missing"""
         with patch.dict("os.environ", {}, clear=True):
-            response = client.post("/pr/create/1?repo=user/repo")
+            response = client.post("/api/pr/create/1?repo=user/repo")
             assert response.status_code >= 400
 
     def test_invalid_repo_format_error(self, client):
         """Test error with invalid repo format"""
         with patch.dict("os.environ", {"GITHUB_TOKEN": "test"}):
-            response = client.post("/pr/create/1?repo=invalid")
+            response = client.post("/api/pr/create/1?repo=invalid")
             assert response.status_code >= 400
 
 
@@ -301,7 +303,7 @@ class TestPRCreationIntegration:
     def test_pr_creation_database_persistence(self, db: Session):
         """Test PR creation is persisted to database"""
         task = GitHubTask(
-            issue_number=42,
+            github_issue_number=42,
             status="completed",
             github_pr_number=123,
             branch="feature/test",

@@ -5,7 +5,7 @@ Tests for authentication module
 from datetime import timedelta
 
 import pytest
-from auth import (
+from src.kortana.auth import (
     create_access_token,
     decode_token,
     get_password_hash,
@@ -77,7 +77,7 @@ class TestTokenGeneration:
         decoded = decode_token(test_token)
 
         assert decoded is not None
-        assert decoded.username is not None or decoded.email is not None
+        assert decoded.user_id is not None
 
     def test_decode_invalid_token(self):
         """Test decoding invalid token"""
@@ -101,17 +101,17 @@ class TestAuthDependencies:
 
     def test_oauth2_scheme_exists(self):
         """Test OAuth2 scheme is configured"""
-        from auth import oauth2_scheme
+        from src.kortana.auth import oauth2_scheme
 
         assert oauth2_scheme is not None
 
     def test_password_context_exists(self):
         """Test password context is configured"""
-        from auth import pwd_context
+        from src.kortana.auth import pwd_context
 
         assert pwd_context is not None
         schemes = pwd_context.schemes()
-        assert "bcrypt" in schemes
+        assert "pbkdf2_sha256" in schemes
 
     def test_full_auth_cycle(self):
         """Test complete authentication cycle"""
@@ -127,7 +127,7 @@ class TestAuthDependencies:
 
         # Decode token
         decoded = decode_token(token)
-        assert decoded.username == "testuser" or decoded.email == "testuser"
+        assert decoded.user_id == "testuser"
 
     def test_user_login_simulation(self):
         """Simulate user login process"""
