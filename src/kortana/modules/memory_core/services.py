@@ -1,7 +1,7 @@
 import numpy as np
 from sqlalchemy.orm import Session, joinedload
 
-from src.kortana.services.embedding_service import embedding_service
+from kortana.services.embedding_service import embedding_service
 
 from . import models, schemas
 
