@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 class PerformanceMetrics:
     """
     Performance metrics tracker for monitoring system performance.
-    
+
     Inspired by Chromium's telemetry and tracing capabilities.
     """
 
@@ -144,7 +144,7 @@ class PerformanceMetrics:
 class MetricsCollector:
     """
     Central metrics collector managing multiple performance metrics.
-    
+
     Provides unified metrics collection across the system.
     """
 
@@ -194,7 +194,7 @@ class MetricsCollector:
 class Timer:
     """
     Context manager for timing operations.
-    
+
     Example:
         with Timer(metrics, "operation"):
             # ... code to time ...

@@ -11,9 +11,10 @@ import heapq
 import logging
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import IntEnum
-from typing import Any, Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,7 @@ class PriorityTask:
 class PriorityQueue:
     """
     Thread-safe priority queue for task scheduling.
-    
+
     Inspired by Chromium's task scheduler for efficient processing.
     """
 
@@ -164,7 +165,7 @@ class PriorityQueue:
 class TaskProcessor:
     """
     Task processor with worker threads for parallel execution.
-    
+
     Provides efficient task processing with priority-based scheduling.
     """
 
@@ -248,7 +249,7 @@ class TaskProcessor:
 class DecisionQueue:
     """
     High-level decision queue for managing AI decision-making tasks.
-    
+
     Provides a convenient interface for Kortana's decision processing.
     """
 

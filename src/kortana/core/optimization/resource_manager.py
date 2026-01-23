@@ -10,8 +10,8 @@ This module provides:
 import logging
 import threading
 import time
-from collections import defaultdict
-from typing import Any, Callable, Generic, TypeVar
+from collections.abc import Callable
+from typing import Any, Generic, TypeVar
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ T = TypeVar("T")
 class ResourcePool(Generic[T]):
     """
     Thread-safe resource pool for managing reusable resources.
-    
+
     Inspired by Chromium's process/tab management for efficient resource use.
     """
 
@@ -154,13 +154,13 @@ class ResourcePool(Generic[T]):
             for resource, timestamp in self._pool:
                 # Calculate total resources if we keep this one
                 total_if_kept = len(new_pool) + 1 + len(self._active_resources)
-                
+
                 # Keep resource if it hasn't timed out OR if removing it would go below min_size
                 should_keep = (
-                    current_time - timestamp < self.timeout or 
+                    current_time - timestamp < self.timeout or
                     total_if_kept <= self.min_size
                 )
-                
+
                 if should_keep:
                     # Keep resource
                     new_pool.append((resource, timestamp))
@@ -201,7 +201,7 @@ class ResourcePool(Generic[T]):
 class ResourceManager:
     """
     Central resource manager coordinating multiple resource pools.
-    
+
     Provides unified resource management across the system.
     """
 

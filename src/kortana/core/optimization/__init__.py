@@ -5,10 +5,10 @@ This module provides memory optimization, resource management,
 and performance enhancements for Kortana.
 """
 
-from .memory_optimizer import MemoryOptimizer, CacheStrategy
+from .memory_optimizer import CacheStrategy, MemoryOptimizer
+from .performance_metrics import MetricsCollector, PerformanceMetrics
+from .priority_queue import DecisionQueue, Priority, PriorityQueue, TaskProcessor
 from .resource_manager import ResourceManager, ResourcePool
-from .performance_metrics import PerformanceMetrics, MetricsCollector
-from .priority_queue import PriorityQueue, Priority, DecisionQueue, TaskProcessor
 
 __all__ = [
     "MemoryOptimizer",

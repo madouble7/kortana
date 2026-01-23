@@ -10,8 +10,9 @@ This module provides efficient memory management through:
 import logging
 import time
 from collections import OrderedDict
+from collections.abc import Callable
 from enum import Enum
-from typing import Any, Callable, Generic, TypeVar
+from typing import Any, Generic, TypeVar
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ class CacheStrategy(str, Enum):
 class LRUCache(Generic[T]):
     """
     LRU (Least Recently Used) cache implementation.
-    
+
     Inspired by Chromium's caching mechanisms for efficient memory usage.
     """
 
@@ -109,7 +110,7 @@ class LRUCache(Generic[T]):
 class MemoryPool(Generic[T]):
     """
     Memory pool for object reuse to reduce allocation overhead.
-    
+
     Inspired by Chromium's memory pooling strategies.
     """
 
@@ -176,7 +177,7 @@ class MemoryPool(Generic[T]):
 class MemoryOptimizer:
     """
     Main memory optimizer coordinating caching and pooling strategies.
-    
+
     Provides a unified interface for memory optimization features.
     """
 
