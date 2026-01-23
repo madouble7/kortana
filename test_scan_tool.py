@@ -6,6 +6,7 @@ Part of Batch 10: The Proactive Engineer Initiative
 
 import asyncio
 import logging
+
 from src.kortana.core.execution_engine import ExecutionEngine
 
 # Set up logging
@@ -38,7 +39,7 @@ async def test_scan_tool():
 
     if result.success:
         issues = result.data
-        logger.info(f"✅ Scan completed successfully!")
+        logger.info("✅ Scan completed successfully!")
         logger.info(f"📊 Found {len(issues)} issues:")
 
         for issue in issues[:5]:  # Show first 5 issues

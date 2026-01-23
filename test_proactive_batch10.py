@@ -6,8 +6,8 @@ Part of Batch 10: The Proactive Engineer Initiative
 
 import asyncio
 import logging
-import sys
 import os
+import sys
 
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -21,8 +21,8 @@ async def test_proactive_review():
 
     try:
         # Import database utilities
-        from src.kortana.services.database import get_db_sync
         from src.kortana.core.autonomous_tasks import run_proactive_code_review_task
+        from src.kortana.services.database import get_db_sync
 
         logger.info("🚀 BATCH 10: Testing Proactive Engineer Initiative")
         logger.info("🔍 Starting proactive code review task...")

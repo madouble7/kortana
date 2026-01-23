@@ -6,16 +6,16 @@ This script tests Kor'tana's proactive code scanning and goal generation capabil
 """
 
 import asyncio
-import sys
 import logging
+import sys
 from pathlib import Path
 
 # Add project root to path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
-from src.kortana.database.database import get_database_session
 from src.kortana.core.autonomous_tasks import run_proactive_code_review_task
+from src.kortana.database.database import get_database_session
 from src.kortana.models.models import Goal, GoalStatus
 
 # Configure logging

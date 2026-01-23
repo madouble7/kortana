@@ -110,7 +110,7 @@ else:
     print("❌ Services file not found")
 
 # Summary
-print(f"\n📊 INTEGRATION TEST SUMMARY")
+print("\n📊 INTEGRATION TEST SUMMARY")
 print("=" * 30)
 print(f"✅ Passed: {success_count}/{total_checks}")
 print(f"❌ Failed: {total_checks - success_count}/{total_checks}")
@@ -125,5 +125,5 @@ if success_count == total_checks:
     print("3. 📝 Observe autonomous goal generation")
     print("4. 🎯 Validate self-improvement workflow")
 else:
-    print(f"\n⚠️  INTEGRATION INCOMPLETE")
+    print("\n⚠️  INTEGRATION INCOMPLETE")
     print(f"Fix the {total_checks - success_count} failed checks before proceeding")

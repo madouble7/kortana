@@ -4,10 +4,12 @@ Memory and Learning Verification Script
 Monitors Kor'tana's autonomous learning and memory formation
 """
 
-import requests
 import time
 from datetime import datetime, timedelta
 from typing import Any
+
+import requests
+
 
 class LearningVerifier:
     def __init__(self, base_url: str = "http://localhost:8000"):
@@ -141,12 +143,12 @@ class LearningVerifier:
         # Analyze core beliefs
         belief_analysis = self.analyze_core_beliefs()
 
-        print(f"\n📚 CORE BELIEF FORMATION:")
+        print("\n📚 CORE BELIEF FORMATION:")
         print(f"   Total Beliefs: {belief_analysis['total_beliefs']}")
         print(f"   Recent Beliefs: {len(belief_analysis['recent_beliefs'])}")
 
         if belief_analysis['recent_beliefs']:
-            print(f"\n🆕 RECENT LEARNING ACTIVITY:")
+            print("\n🆕 RECENT LEARNING ACTIVITY:")
             for belief in belief_analysis['recent_beliefs']:
                 content = belief.get('content', '')[:100] + "..."
                 confidence = belief.get('confidence_score', 0.0)
@@ -164,14 +166,14 @@ class LearningVerifier:
         # Confidence analysis
         if belief_analysis['confidence_scores']:
             avg_confidence = sum(belief_analysis['confidence_scores']) / len(belief_analysis['confidence_scores'])
-            print(f"\n📊 CONFIDENCE METRICS:")
+            print("\n📊 CONFIDENCE METRICS:")
             print(f"   Average Confidence: {avg_confidence:.2f}")
             print(f"   High Confidence (>0.8): {sum(1 for c in belief_analysis['confidence_scores'] if c > 0.8)}")
             print(f"   Low Confidence (<0.5): {sum(1 for c in belief_analysis['confidence_scores'] if c < 0.5)}")
 
         # Knowledge graph
         graph_info = self.check_knowledge_graph()
-        print(f"\n🕸️  KNOWLEDGE GRAPH:")
+        print("\n🕸️  KNOWLEDGE GRAPH:")
         if graph_info['status'] == 'available':
             print(f"   Concepts: {graph_info['nodes']}")
             print(f"   Connections: {graph_info['edges']}")
@@ -185,7 +187,7 @@ class LearningVerifier:
 
         # Learning progression
         progression = self.verify_learning_progression()
-        print(f"\n📈 LEARNING PROGRESSION:")
+        print("\n📈 LEARNING PROGRESSION:")
         print(f"   Total Memories: {progression['total_memories']}")
         print(f"   Last Hour: {progression['last_hour']}")
         print(f"   Last Day: {progression['last_day']}")

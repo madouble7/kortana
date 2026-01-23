@@ -8,7 +8,6 @@ Moves scripts to 'scripts/', archives logs and old files, and updates the README
 
 import shutil
 from pathlib import Path
-import os
 
 # Define paths
 project_root = Path("c:/project-kortana")

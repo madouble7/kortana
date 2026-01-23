@@ -4,10 +4,9 @@ GENESIS PROTOCOL RESUMPTION: POST-FIX AUTONOMOUS RESTART
 Re-initiate autonomous brain with corrected imports for Genesis Protocol demonstration
 """
 
+import os
 import subprocess
 import sys
-import os
-import time
 from datetime import datetime
 
 print("🔥 GENESIS PROTOCOL: RESUMING AFTER IMPORT FIX")

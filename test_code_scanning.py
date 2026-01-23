@@ -6,8 +6,8 @@ This script tests Kor'tana's code scanning capabilities directly.
 """
 
 import asyncio
-import sys
 import logging
+import sys
 from pathlib import Path
 
 # Add project root to path
@@ -48,7 +48,7 @@ async def test_code_scanning():
 
         if result.success:
             issues = result.data
-            print(f"✅ Scan completed successfully!")
+            print("✅ Scan completed successfully!")
             print(f"📊 Found {len(issues)} functions missing docstrings")
 
             # Show first few issues

@@ -7,18 +7,18 @@ Instead of waiting 6 hours, we'll trigger the proactive cycle manually for testi
 """
 
 import asyncio
-import sys
 import logging
+import sys
+from datetime import UTC, datetime
 from pathlib import Path
-from datetime import datetime, UTC
 
 # Add project root to path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
-from src.kortana.services.database import get_db_sync
 from src.kortana.core.autonomous_tasks import run_proactive_code_review_task
 from src.kortana.core.models import Goal, GoalStatus
+from src.kortana.services.database import get_db_sync
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -49,7 +49,7 @@ async def test_proactive_live_cycle():
         print(f"🔧 Existing proactive goals: {proactive_goals}")
 
         # Step 2: Execute Proactive Cycle
-        print(f"\n🤖 STEP 2: EXECUTING PROACTIVE CODE REVIEW CYCLE")
+        print("\n🤖 STEP 2: EXECUTING PROACTIVE CODE REVIEW CYCLE")
         print("-" * 50)
         print("⚡ Triggering proactive autonomous behavior...")
 
@@ -61,7 +61,7 @@ async def test_proactive_live_cycle():
         print(f"⏱️  Proactive cycle completed in {duration:.2f} seconds")
 
         # Step 3: Results Analysis
-        print(f"\n📋 STEP 3: ANALYZING PROACTIVE RESULTS")
+        print("\n📋 STEP 3: ANALYZING PROACTIVE RESULTS")
         print("-" * 40)
 
         # Count goals after proactive cycle
@@ -79,7 +79,7 @@ async def test_proactive_live_cycle():
         print(f"🔧 Proactive goals after cycle: {new_proactive_goals} (+{proactive_created})")
 
         # Step 4: Validation & Assessment
-        print(f"\n✅ STEP 4: PROACTIVE BEHAVIOR VALIDATION")
+        print("\n✅ STEP 4: PROACTIVE BEHAVIOR VALIDATION")
         print("-" * 45)
 
         if goals_created > 0:
@@ -88,7 +88,7 @@ async def test_proactive_live_cycle():
 
             # Show the newly created goals
             if proactive_created > 0:
-                print(f"\n📝 NEW SELF-IMPROVEMENT GOALS:")
+                print("\n📝 NEW SELF-IMPROVEMENT GOALS:")
                 newest_goals = db.query(Goal).filter(
                     Goal.description.contains("Add docstring")
                 ).order_by(Goal.created_at.desc()).limit(proactive_created)
@@ -108,7 +108,7 @@ async def test_proactive_live_cycle():
             print("🔄 This is normal if Kor'tana has already addressed quality issues")
 
         # Step 5: Future Behavior Prediction
-        print(f"\n🔮 STEP 5: AUTONOMOUS FUTURE BEHAVIOR")
+        print("\n🔮 STEP 5: AUTONOMOUS FUTURE BEHAVIOR")
         print("-" * 40)
         print("📅 In live operation, Kor'tana will:")
         print("   🔄 Run this proactive cycle every 6 hours")
@@ -136,7 +136,7 @@ def main():
     try:
         success = asyncio.run(test_proactive_live_cycle())
 
-        print(f"\n🏁 BATCH 10 PHASE 2 TEST RESULTS")
+        print("\n🏁 BATCH 10 PHASE 2 TEST RESULTS")
         print("=" * 40)
 
         if success:

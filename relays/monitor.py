@@ -35,7 +35,7 @@ class KortanaEnhancedMonitor:
         self.logs_dir.mkdir(parents=True, exist_ok=True)
         self.data_dir.mkdir(parents=True, exist_ok=True)        # Initialize monitoring tables
         self.init_monitor_tables()
-        
+
     def count_tokens(self, text: str, encoding_name: str = "cl100k_base") -> int:
         """Count tokens in text using tiktoken with fallback."""
         try:
@@ -169,7 +169,7 @@ class KortanaEnhancedMonitor:
             conn.close()
         except sqlite3.Error as e:
             logger.error(f"Database error while getting active agents: {str(e)}")
-            
+
         return list(set(agents))
 
     def get_token_usage_stats(self) -> dict[str, Any]:
@@ -394,7 +394,7 @@ class KortanaEnhancedMonitor:
             conn.close()
         except sqlite3.Error as e:
             health["issues"].append(f"Database error: {str(e)}")
-        
+
         # Determine overall status
         active_agents = len(self.get_active_agents())
         if active_agents > 0:
@@ -439,7 +439,7 @@ class KortanaEnhancedMonitor:
     def _display_model_usage(self) -> None:
         """Display model-specific usage details"""
         usage = self.get_token_usage_stats()
-        
+
         for model, data in usage.items():
             if isinstance(data, dict) and "used" in data and "limit" in data:
                 print(self._format_usage_line(model, data))
@@ -452,7 +452,7 @@ class KortanaEnhancedMonitor:
         """Display formatted usage summary"""
         print("\n=== KOR'TANA SYSTEM USAGE ===")
         print(f"[TIME] {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC")
-        
+
         self._display_model_usage()
         print("\n" + "=" * 80)
 

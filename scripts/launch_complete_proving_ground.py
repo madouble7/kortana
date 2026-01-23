@@ -55,7 +55,7 @@ def launch_proving_ground():
         print("   ✅ Server process started")
         print("   🔍 Waiting for server to be ready...")        # Wait for server to be ready
         import requests
-        
+
         for attempt in range(30):
             try:
                 response = requests.get("http://localhost:8000/health", timeout=2)
@@ -122,7 +122,7 @@ def launch_proving_ground():
     except Exception as e:
         print(f"\n❌ Launch sequence failed: {e}")
         return False
-        
+
     finally:
         # Cleanup
         if server_process:

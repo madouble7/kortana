@@ -4,9 +4,9 @@ Simple Genesis Protocol Demo
 Tests the new development tools with minimal dependencies
 """
 
-import sys
-import os
 import asyncio
+import os
+import sys
 
 print("🚀 GENESIS PROTOCOL TOOLS DEMO")
 print("=" * 50)
