@@ -1,4 +1,5 @@
 import json
+import time
 from pathlib import Path
 from typing import Any
 
@@ -67,10 +68,16 @@ class KorOrchestrator:
 
     async def process_query(self, query: str) -> dict[str, Any]:
         """
-        The main thinking loop for Kor'tana, now with a live LLM call.
+        The main thinking loop for Kor'tana, now with performance tracking and enhanced metadata.
         """
-        # 1. Search memory for relevant context (no change here)
+        # Track overall performance
+        process_start = time.time()
+        performance_metrics = {}
+        
+        # 1. Search memory for relevant context
+        memory_start = time.time()
         relevant_memories = self.memory_service.search_memories_semantic(query, top_k=3)
+        performance_metrics["memory_search_ms"] = int((time.time() - memory_start) * 1000)
 
         # 2. Build the prompt for the LLM
         prompt_for_llm = prompts.build_core_query_prompt(query, relevant_memories)
@@ -92,13 +99,16 @@ class KorOrchestrator:
                 "error": "Failed to initialize LLM service.",
                 "error_detail": error_message,
                 "final_kortana_response": "I'm having trouble connecting to my reasoning core right now. Please try again in a moment.",
+                "performance_metrics": performance_metrics,
             }
 
         # Call the LLM client with the prompt
+        llm_start = time.time()
         llm_result = await llm_client.generate_response(
             system_prompt="You are responding as Kor'tana, a unique AI with a developing identity.",
             messages=[{"role": "user", "content": prompt_for_llm}],
         )
+        performance_metrics["llm_call_ms"] = int((time.time() - llm_start) * 1000)
 
         # Extract the content and metadata from the result
         llm_response_content = llm_result.get("content")
@@ -117,6 +127,7 @@ class KorOrchestrator:
                 "error": "Failed to get response from reasoning core.",
                 "error_detail": error_message,
                 "final_kortana_response": "I'm having trouble connecting to my reasoning core right now. Please try again in a moment.",
+                "performance_metrics": performance_metrics,
             }
 
         print(
@@ -124,30 +135,45 @@ class KorOrchestrator:
         )  # Log the raw response
 
         # 4. Evaluate the LLM response for ethical alignment
+        eval_start = time.time()
         evaluation = await self.arrogance_evaluator.evaluate_response(
             response_text=llm_response_content,
             llm_metadata=llm_response_metadata,
             original_query_context=query,
         )
+        performance_metrics["ethical_eval_ms"] = int((time.time() - eval_start) * 1000)
         print(f"--- Ethical Evaluation ---\n{evaluation}")  # Log evaluation
 
         # 5. Form Kor'tana's final response
+        uncertainty_start = time.time()
         final_response = await self.uncertainty_handler.manage_uncertainty(
             original_query=query,
             llm_response=llm_response_content,
             evaluation_results=evaluation,
         )
+        performance_metrics["uncertainty_handling_ms"] = int((time.time() - uncertainty_start) * 1000)
         print(
             f"--- Final Kor'tana Response ---\n{final_response}"
         )  # Log final response
 
-        # Return the structured response for debugging and visibility
+        # Calculate total time
+        performance_metrics["total_ms"] = int((time.time() - process_start) * 1000)
+
+        # Return the structured response for debugging and visibility with enhanced metadata
         return {
             "original_query": query,
-            "context_from_memory": [mem["memory"].content for mem in relevant_memories],
+            "context_from_memory": [
+                {
+                    "content": mem["memory"].content,
+                    "relevance_score": mem.get("score", 0),
+                    "relevance_rank": mem.get("relevance_rank", 0),
+                }
+                for mem in relevant_memories
+            ],
             "prompt_sent_to_llm": prompt_for_llm,
             "raw_llm_response": llm_response_content,
             "llm_metadata": llm_response_metadata,
             "ethical_evaluation": evaluation,
             "final_kortana_response": final_response,
+            "performance_metrics": performance_metrics,
         }
