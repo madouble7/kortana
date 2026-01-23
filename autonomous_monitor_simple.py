@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-🤖 Kor'tana Autonomous Monitor Daemon
-Always-on autonomous development and monitoring system
+Kor'tana Autonomous Monitor - Simple Version
+Always-on monitoring system compatible with current environment
 """
 
 import os
@@ -13,18 +13,18 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
-# Configure logging
+# Configure logging without Unicode characters
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('autonomous_monitor.log'),
+        logging.FileHandler('autonomous_monitor_simple.log'),
         logging.StreamHandler()
     ]
 )
-logger = logging.getLogger('KortanaAutonomousMonitor')
+logger = logging.getLogger('KortanaSimpleMonitor')
 
-class AutonomousMonitorDaemon:
+class SimpleAutonomousMonitor:
     def __init__(self):
         self.running = False
         self.processes = {}
@@ -33,7 +33,7 @@ class AutonomousMonitorDaemon:
         self.config = self._load_config()
 
     def _load_config(self):
-        """Load configuration from config files"""
+        """Load configuration"""
         config = {
             'monitoring_interval': 60,
             'max_errors_before_alert': 5,
@@ -53,8 +53,6 @@ class AutonomousMonitorDaemon:
             cmd = [sys.executable, str(script_path)]
             if args:
                 cmd.extend(args)
-            if continuous:
-                cmd.append('--continuous')
 
             logger.info(f"Starting process: {' '.join(cmd)}")
             process = subprocess.Popen(
@@ -150,7 +148,7 @@ class AutonomousMonitorDaemon:
 
         # Start new process
         script_name = process_info['script']
-        new_process_id = self.start_monitoring_process(script_name, continuous=True)
+        new_process_id = self.start_monitoring_process(script_name)
 
         if new_process_id:
             # Update the process ID mapping
@@ -159,44 +157,116 @@ class AutonomousMonitorDaemon:
         else:
             logger.error(f"Failed to restart {script_name}")
 
-    def start_all_monitoring(self):
-        """Start all monitoring processes"""
-        logger.info("🚀 Starting Kor'tana Autonomous Monitor Daemon")
+    def start_available_monitoring(self):
+        """Start monitoring with available scripts"""
+        logger.info("Starting Kor'tana Simple Autonomous Monitor")
 
-        # Core monitoring processes
-        core_processes = [
+        # List of scripts to try (in priority order)
+        scripts_to_try = [
+            # Core monitoring
+            'autonomous_monitor.py',
+            'monitor_autonomous_activity_new.py',
             'monitor_autonomous_activity.py',
-            'monitor_autonomous_intelligence.py',
-            'monitor_autonomous_development.py',
-            'monitor_genesis_protocol.py'
-        ]
 
-        # System health monitoring
-        health_processes = [
+            # System health
             'file_system_monitor.py',
             'check_server.py',
-            'status_check.py'
-        ]
+            'status_check.py',
 
-        # Development automation
-        dev_processes = [
+            # Development
             'code_review_analysis.py',
             'comprehensive_system_fix.py',
+            'complete_autonomous_verification.py',
+
+            # Genesis protocol
+            'monitor_genesis_protocol.py',
+            'check_genesis_status.py',
+
+            # Validation
+            'autonomous_validation_silent.py',
             'complete_autonomous_verification.py'
         ]
 
-        # Start all processes
-        all_processes = core_processes + health_processes + dev_processes
+        started_processes = 0
 
-        for script in all_processes:
-            self.start_monitoring_process(script, continuous=True)
-            time.sleep(1)  # Stagger startup
+        for script in scripts_to_try:
+            if (self.base_dir / script).exists():
+                process_id = self.start_monitoring_process(script)
+                if process_id:
+                    started_processes += 1
+                    time.sleep(1)  # Stagger startup
+            else:
+                logger.info(f"Script not available: {script}")
 
-        logger.info(f"🎯 All monitoring processes started. Total: {len(all_processes)}")
+        logger.info(f"Started {started_processes} monitoring processes")
+
+        # Always start the simple directory analysis
+        if (self.base_dir / 'simple_directory_analysis.py').exists():
+            self.start_monitoring_process('simple_directory_analysis.py')
+            started_processes += 1
+
+        return started_processes
+
+    def start_continuous_audit(self):
+        """Start continuous code quality monitoring"""
+        logger.info("Starting continuous code quality monitoring")
+
+        # Run Ruff check periodically
+        def ruff_monitor():
+            while self.running:
+                try:
+                    logger.info("Running Ruff code quality check...")
+                    result = subprocess.run(
+                        ['python', '-m', 'ruff', 'check', '.', '--statistics'],
+                        capture_output=True,
+                        text=True,
+                        cwd=self.base_dir
+                    )
+                    logger.info(f"Ruff check completed. Return code: {result.returncode}")
+
+                    # Log summary if available
+                    if result.stdout:
+                        lines = result.stdout.split('\n')
+                        for line in lines[-10:]:  # Last 10 lines
+                            if line.strip():
+                                logger.info(f"RUFF: {line.strip()}")
+
+                except Exception as e:
+                    logger.error(f"Ruff monitoring error: {str(e)}")
+
+                # Sleep for 5 minutes between checks
+                time.sleep(300)
+
+        # Start Ruff monitoring thread
+        ruff_thread = threading.Thread(target=ruff_monitor, daemon=True)
+        ruff_thread.start()
+        self.monitoring_threads.append(ruff_thread)
+
+    def monitor_system_health(self):
+        """Monitor overall system health"""
+        while self.running:
+            try:
+                # Check process health
+                active_processes = sum(1 for p in self.processes.values() if p['status'] == 'running')
+                total_processes = len(self.processes)
+
+                logger.info(f"System Health: {active_processes}/{total_processes} processes active")
+
+                # Check for failed processes
+                failed_processes = [p for p in self.processes.values() if p['status'] == 'failed']
+                if failed_processes:
+                    logger.warning(f"{len(failed_processes)} processes in failed state")
+
+                # Sleep for monitoring interval
+                time.sleep(self.config['monitoring_interval'])
+
+            except Exception as e:
+                logger.error(f"System health monitoring error: {str(e)}")
+                time.sleep(10)
 
     def stop_all_processes(self):
         """Stop all monitoring processes"""
-        logger.info("🛑 Stopping all monitoring processes")
+        logger.info("Stopping all monitoring processes")
 
         for process_id, process_info in self.processes.items():
             try:
@@ -212,63 +282,46 @@ class AutonomousMonitorDaemon:
                 logger.error(f"Error stopping {process_id}: {str(e)}")
 
         self.processes.clear()
-        logger.info("✅ All processes stopped")
-
-    def monitor_system_health(self):
-        """Monitor overall system health"""
-        while self.running:
-            try:
-                # Check process health
-                active_processes = sum(1 for p in self.processes.values() if p['status'] == 'running')
-                total_processes = len(self.processes)
-
-                logger.info(f"📊 System Health: {active_processes}/{total_processes} processes active")
-
-                # Check for failed processes
-                failed_processes = [p for p in self.processes.values() if p['status'] == 'failed']
-                if failed_processes:
-                    logger.warning(f"⚠️ {len(failed_processes)} processes in failed state")
-
-                # Sleep for monitoring interval
-                time.sleep(self.config['monitoring_interval'])
-
-            except Exception as e:
-                logger.error(f"System health monitoring error: {str(e)}")
-                time.sleep(10)
+        logger.info("All processes stopped")
 
     def run(self):
         """Main daemon loop"""
         try:
             self.running = True
-            logger.info("🤖 Kor'tana Autonomous Monitor Daemon started")
+            logger.info("Kor'tana Simple Autonomous Monitor started")
 
-            # Start all monitoring processes
-            self.start_all_monitoring()
+            # Start available monitoring processes
+            started_count = self.start_available_monitoring()
+
+            # Start continuous audit
+            self.start_continuous_audit()
 
             # Start system health monitoring
             health_thread = threading.Thread(target=self.monitor_system_health, daemon=True)
             health_thread.start()
+
+            logger.info(f"Monitoring system active with {started_count} processes")
 
             # Keep main thread alive
             while self.running:
                 time.sleep(1)
 
         except KeyboardInterrupt:
-            logger.info("🛑 Received shutdown signal")
+            logger.info("Received shutdown signal")
         except Exception as e:
             logger.error(f"Daemon error: {str(e)}")
         finally:
             self.stop_all_processes()
-            logger.info("✅ Kor'tana Autonomous Monitor Daemon stopped")
+            logger.info("Kor'tana Simple Autonomous Monitor stopped")
 
 def main():
     """Main entry point"""
-    daemon = AutonomousMonitorDaemon()
+    monitor = SimpleAutonomousMonitor()
 
     try:
-        daemon.run()
+        monitor.run()
     except Exception as e:
-        logger.error(f"Fatal error in autonomous monitor: {str(e)}")
+        logger.error(f"Fatal error in simple monitor: {str(e)}")
         return 1
 
     return 0

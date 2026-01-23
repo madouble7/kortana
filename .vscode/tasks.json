@@ -37,6 +37,16 @@
 			"label": "Run Manual Pytest Relative",
 			"type": "shell",
 			"command": ".\\.kortana_config_test_env\\Scripts\\python.exe run_tests_manual.py"
+		},
+		{
+			"label": "Move Model Router",
+			"type": "shell",
+			"command": "powershell Move-Item -Path c:\\kortana\\src\\model_router.py -Destination c:\\kortana\\src\\kortana\\model_router.py -Force"
+		},
+		{
+			"label": "FINAL Pytest Trial",
+			"type": "shell",
+			"command": "c:\\kortana\\.kortana_config_test_env\\Scripts\\python.exe -m pytest tests/test_brain.py"
 		}
 	]
 }
