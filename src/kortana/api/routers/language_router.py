@@ -50,15 +50,16 @@ async def switch_language(request: LanguageSwitchRequest):
     This endpoint allows users to change the language that Kor'tana
     will use for responses in subsequent interactions.
     """
-    validated_lang = validate_language_code(request.language)
+    requested_lang = request.language.lower()
     
-    if validated_lang != request.language.lower():
+    if requested_lang not in SUPPORTED_LANGUAGES:
         raise HTTPException(
             status_code=400,
             detail=f"Unsupported language code: {request.language}. "
                    f"Supported languages: {', '.join(SUPPORTED_LANGUAGES.keys())}",
         )
     
+    validated_lang = validate_language_code(requested_lang)
     language_name = get_language_name(validated_lang)
     
     # In a full implementation, we would store the language preference
@@ -83,20 +84,16 @@ async def get_supported_languages():
 
 
 @router.get("/detect", response_model=dict[str, Any])
-async def detect_message_language(text: str = ""):
+async def detect_message_language(text: str):
     """
     Detect the language of a given text.
     
-    This is a simple heuristic-based detection for demonstration.
-    In production, this would use a proper language detection library.
+    Note: This is a simple heuristic-based detection that only works for non-Latin scripts
+    (Chinese, Japanese, Korean, Russian). Latin-script languages will be detected as English.
+    
+    For production use, consider a proper language detection library.
     """
     from src.kortana.utils.language_utils import detect_language
-    
-    if not text:
-        raise HTTPException(
-            status_code=400,
-            detail="Text parameter is required for language detection",
-        )
     
     detected_lang = detect_language(text)
     language_name = get_language_name(detected_lang)

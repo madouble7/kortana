@@ -2,7 +2,6 @@
 Integration tests for language API endpoints.
 """
 
-import pytest
 from fastapi.testclient import TestClient
 
 from src.kortana.main import app
@@ -90,11 +89,11 @@ class TestLanguageEndpoints:
         assert data["detected_language"] == "zh"
         assert data["language_name"] == "Chinese"
 
-    def test_detect_language_empty(self):
-        """Test detecting language with empty text."""
+    def test_detect_language_missing_parameter(self):
+        """Test detecting language with missing text parameter."""
         response = client.get("/language/detect")
-        assert response.status_code == 400
-        assert "required" in response.json()["detail"].lower()
+        # FastAPI will return 422 for missing required parameter
+        assert response.status_code == 422
 
     def test_health_check_includes_languages(self):
         """Test that health check reports multilingual support."""

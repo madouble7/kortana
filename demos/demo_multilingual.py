@@ -42,23 +42,27 @@ async def demo_language_detection():
     """Demo: Detect language from text samples."""
     print_section("2. Language Detection")
     
+    print("\nNote: Detection only works for non-Latin scripts.")
+    print("Latin-script languages (EN/ES/FR/DE/PT/IT) are detected as English.\n")
+    
     test_texts = [
-        "Hello, how are you?",
-        "Bonjour, comment allez-vous?",
-        "Hola, ¿cómo estás?",
-        "你好，你好吗？",
-        "こんにちは",
+        ("Hello, how are you?", "en", "English"),
+        ("Bonjour, comment allez-vous?", "en", "English (Latin script limitation)"),
+        ("Hola, ¿cómo estás?", "en", "English (Latin script limitation)"),
+        ("你好，你好吗？", "zh", "Chinese"),
+        ("こんにちは", "ja", "Japanese"),
     ]
     
     async with httpx.AsyncClient() as client:
-        for text in test_texts:
+        for text, expected_code, expected_desc in test_texts:
             response = await client.get(
                 f"{BASE_URL}/language/detect",
                 params={"text": text}
             )
             result = response.json()
-            print(f"  '{text[:30]}'")
-            print(f"    → Detected: {result['language_name']} ({result['detected_language']})")
+            match = "✓" if result['detected_language'] == expected_code else "✗"
+            print(f"  {match} '{text[:30]}'")
+            print(f"    → Detected: {result['language_name']} ({result['detected_language']}) - Expected: {expected_desc}")
 
 
 async def demo_language_switching():

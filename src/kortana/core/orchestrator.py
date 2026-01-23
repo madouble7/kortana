@@ -12,6 +12,10 @@ from src.kortana.modules.ethical_discernment_module.evaluators import (
     UncertaintyHandler,
 )
 from src.kortana.modules.memory_core.services import MemoryCoreService
+from src.kortana.utils.language_utils import (
+    get_system_prompt_for_language,
+    validate_language_code,
+)
 
 
 class KorOrchestrator:
@@ -75,11 +79,6 @@ class KorOrchestrator:
             language: Optional ISO 639-1 language code for the response
         """
         # Validate and normalize language if provided
-        from src.kortana.utils.language_utils import (
-            get_system_prompt_for_language,
-            validate_language_code,
-        )
-        
         target_language = validate_language_code(language) if language else "en"
         language_instruction = get_system_prompt_for_language(target_language)
         
@@ -111,7 +110,10 @@ class KorOrchestrator:
         # Call the LLM client with the prompt
         # Build system prompt with language instruction if needed
         base_system_prompt = "You are responding as Kor'tana, a unique AI with a developing identity."
-        system_prompt = f"{base_system_prompt} {language_instruction}".strip()
+        if language_instruction:
+            system_prompt = f"{base_system_prompt} {language_instruction}"
+        else:
+            system_prompt = base_system_prompt
         
         llm_result = await llm_client.generate_response(
             system_prompt=system_prompt,

@@ -68,17 +68,19 @@ Content-Type: application/json
 ### 3. Detect Language
 
 ```http
-GET /language/detect?text=Bonjour le monde
+GET /language/detect?text=你好世界
 ```
 
 **Response:**
 ```json
 {
-  "text": "Bonjour le monde",
-  "detected_language": "fr",
-  "language_name": "French"
+  "text": "你好世界",
+  "detected_language": "zh",
+  "language_name": "Chinese"
 }
 ```
+
+**Note:** The detection endpoint uses simple heuristics and can only distinguish non-Latin scripts (Chinese, Japanese, Korean, Russian). Latin-script languages (English, Spanish, French, German, Portuguese, Italian) will all be detected as English. For production use, consider integrating a proper language detection library like `langdetect` or `fasttext`.
 
 ## Using Multilingual Features
 

@@ -2,8 +2,6 @@
 Unit tests for language utilities.
 """
 
-import pytest
-
 from src.kortana.utils.language_utils import (
     SUPPORTED_LANGUAGES,
     detect_language,
