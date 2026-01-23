@@ -47,6 +47,11 @@
 			"label": "FINAL Pytest Trial",
 			"type": "shell",
 			"command": "c:\\kortana\\.kortana_config_test_env\\Scripts\\python.exe -m pytest tests/test_brain.py"
+		},
+		{
+			"label": "Run Cleanup Script",
+			"type": "shell",
+			"command": "c:\\kortana\\.kortana_config_test_env\\Scripts\\python.exe c:\\kortana\\scripts\\root_cleanup.py"
 		}
 	]
 }
