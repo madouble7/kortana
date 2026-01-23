@@ -33,9 +33,13 @@ class LLMClientFactory:
         "meta-llama/llama-4-maverick": OpenRouterClient,
         "google/gemini-2.0-flash-001": OpenRouterClient,
         "x-ai/grok-3-mini-beta": OpenRouterClient,
-        # Free models via OpenRouter
+        # Free models via OpenRouter (High Priority)
         "deepseek/deepseek-r1-0528:free": OpenRouterClient,
         "deepseek/deepseek-r1-0528-qwen3-8b:free": OpenRouterClient,
+        "mistralai/mistral-7b-instruct:free": OpenRouterClient,
+        "google/gemma-2-9b-it:free": OpenRouterClient,
+        "meta-llama/llama-3.1-8b-instruct:free": OpenRouterClient,
+        "qwen/qwen-2-7b-instruct:free": OpenRouterClient,
         # Legacy models for backward compatibility
         "anthropic/claude-3-haiku": OpenRouterClient,
         "gpt-4.1-nano": OpenAIClient,
