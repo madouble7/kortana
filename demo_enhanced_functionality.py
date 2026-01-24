@@ -5,7 +5,6 @@ Shows conversation history, ethical evaluation, and performance features.
 """
 
 import sys
-import json
 from pathlib import Path
 import asyncio
 
