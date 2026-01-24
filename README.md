@@ -254,6 +254,10 @@ gcloud run deploy kortana \
 - Use minimal required scopes for GitHub tokens
 - Enable 2FA on your GitHub account
 - Review Cloud Run IAM permissions regularly
+- GitHub tokens are stored in sessionStorage (cleared when browser tab closes)
+- Rate limiting is enabled (100 requests per 15 minutes per IP)
+- CORS is configured to restrict origins in production
+- Input validation on all API endpoints
 
 ## Secrets Configuration
 

@@ -87,7 +87,7 @@ All API endpoints are prefixed with `/api/github` and require GitHub authenticat
 ### Authentication Flow
 
 1. User provides GitHub Personal Access Token
-2. Token stored in localStorage (frontend)
+2. Token stored in sessionStorage (frontend) - clears when browser tab closes for improved security
 3. Token sent as Bearer token in Authorization header
 4. Backend validates token with GitHub API
 5. Backend forwards authenticated requests to GitHub

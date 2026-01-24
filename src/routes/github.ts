@@ -132,6 +132,12 @@ router.post('/analyze', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Owner and repo parameters required' });
     }
 
+    // Validate owner and repo format (alphanumeric, hyphens, underscores, dots)
+    const validPattern = /^[a-zA-Z0-9._-]+$/;
+    if (!validPattern.test(owner) || !validPattern.test(repo)) {
+      return res.status(400).json({ error: 'Invalid owner or repo format' });
+    }
+
     const connector = new GitHubConnector(authToken);
     const kortanaAI = new KortanaAI(geminiApiKey);
 

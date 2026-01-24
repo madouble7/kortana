@@ -72,7 +72,7 @@ const GitHubDashboard: React.FC = () => {
       }
 
       setIsAuthenticated(true);
-      localStorage.setItem('github_token', token);
+      sessionStorage.setItem('github_token', token);
       await fetchRepositories();
     } catch (err) {
       setError('Failed to authenticate. Please check your token.');
@@ -178,7 +178,7 @@ const GitHubDashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    const savedToken = localStorage.getItem('github_token');
+    const savedToken = sessionStorage.getItem('github_token');
     if (savedToken) {
       setToken(savedToken);
     }
