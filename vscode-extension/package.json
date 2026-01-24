@@ -1,0 +1,106 @@
+{
+    "name": "kortana-vscode",
+    "displayName": "Kor'tana Control Panel",
+    "description": "VS Code extension for Kor'tana autonomy - access AI Studio, deploy page, and runtime controls",
+    "version": "0.1.0",
+    "engines": {
+        "vscode": "^1.85.0"
+    },
+    "publisher": "KOR-TANA",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/KOR-TANA/kortana"
+    },
+    "categories": [
+        "Other",
+        "Debuggers",
+        "Notebooks"
+    ],
+    "activationEvents": [
+        "onStartupFinished"
+    ],
+    "main": "./out/extension.js",
+    "contributes": {
+        "commands": [
+            {
+                "command": "kortana.elevation.iam",
+                "title": "Kor'tana: I AM (Elevation Ritual)",
+                "category": "Kor'tana"
+            },
+            {
+                "command": "kortana.elevation.dashboard",
+                "title": "Kor'tana: Open Local Dashboard",
+                "category": "Kor'tana"
+            },
+            {
+                "command": "kortana.elevation.deploy",
+                "title": "Kor'tana: Deploy & Orchestrate",
+                "category": "Kor'tana"
+            },
+            {
+                "command": "kortana.ensemble.orchestrate",
+                "title": "Kor'tana: Ensemble Orchestration",
+                "category": "Kor'tana"
+            },
+            {
+                "command": "kortana.ai.studio.open",
+                "title": "Kor'tana: Open AI Studio Workspace",
+                "category": "Kor'tana"
+            },
+            {
+                "command": "kortana.autonomy.audit.open",
+                "title": "Kor'tana: Open Autonomy Audit",
+                "category": "Kor'tana"
+            }
+        ],
+        "viewsContainers": {
+            "activitybar": [
+                {
+                    "id": "kortana-control",
+                    "title": "Kor'tana",
+                    "icon": "media/kor-tana.svg"
+                }
+            ]
+        },
+        "views": {
+            "kortana-control": [
+                {
+                    "id": "kortana-dashboard",
+                    "name": "Dashboard",
+                    "type": "webview"
+                }
+            ]
+        },
+        "keybindings": [
+            {
+                "command": "kortana.openAIStudio",
+                "key": "ctrl+shift+a",
+                "mac": "cmd+shift+a",
+                "when": "editorFocus"
+            },
+            {
+                "command": "kortana.openDeployPage",
+                "key": "ctrl+shift+d",
+                "mac": "cmd+shift+d",
+                "when": "editorFocus"
+            }
+        ]
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./",
+        "lint": "eslint src",
+        "test": "node ./out/test/runTest.js"
+    },
+    "devDependencies": {
+        "@types/vscode": "^1.85.0",
+        "@types/node": "^20.10.0",
+        "typescript": "^5.3.0",
+        "eslint": "^8.55.0"
+    },
+    "dependencies": {
+        "axios": "^1.6.0",
+        "puppeteer": "^21.6.0"
+    }
+}

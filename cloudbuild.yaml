@@ -22,6 +22,9 @@ steps:
     dir: 'client'
     
   # Build Docker image
+# Google Cloud Build configuration for Kor'tana
+steps:
+  # Build backend Docker image
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'build'
@@ -43,6 +46,69 @@ steps:
       - 'gcr.io/$PROJECT_ID/kortana:latest'
       
   # Deploy to Cloud Run
+      - 'gcr.io/$PROJECT_ID/kortana-backend:$COMMIT_SHA'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/kortana-backend:latest'
+      - '-f'
+      - 'kortana/backend/Dockerfile'
+      - 'kortana/backend'
+    id: 'build-backend'
+
+  # Build frontend Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/kortana-frontend:$COMMIT_SHA'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/kortana-frontend:latest'
+      - '-f'
+      - 'kortana/frontend/Dockerfile'
+      - 'kortana/frontend'
+    id: 'build-frontend'
+
+  # Push backend image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/kortana-backend:$COMMIT_SHA'
+    waitFor: ['build-backend']
+
+  # Push frontend image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/kortana-frontend:$COMMIT_SHA'
+    waitFor: ['build-frontend']
+
+  # Deploy backend to Cloud Run
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'kortana-backend'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/kortana-backend:$COMMIT_SHA'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--set-env-vars'
+      - 'ENVIRONMENT=production'
+      - '--min-instances'
+      - '0'
+      - '--max-instances'
+      - '10'
+      - '--memory'
+      - '2Gi'
+      - '--cpu'
+      - '2'
+      - '--port'
+      - '8000'
+    waitFor: ['build-backend']
+
+  # Deploy frontend to Cloud Run
   - name: 'gcr.io/cloud-builders/gcloud'
     args:
       - 'run'
@@ -62,3 +128,34 @@ images:
 options:
   logging: CLOUD_LOGGING_ONLY
   machineType: 'N1_HIGHCPU_8'
+      - 'kortana-frontend'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/kortana-frontend:$COMMIT_SHA'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--min-instances'
+      - '0'
+      - '--max-instances'
+      - '5'
+      - '--memory'
+      - '512Mi'
+      - '--cpu'
+      - '1'
+      - '--port'
+      - '80'
+    waitFor: ['build-frontend']
+
+images:
+  - 'gcr.io/$PROJECT_ID/kortana-backend:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/kortana-backend:latest'
+  - 'gcr.io/$PROJECT_ID/kortana-frontend:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/kortana-frontend:latest'
+
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: '1200s'

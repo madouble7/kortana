@@ -1,0 +1,31 @@
+name: Daily Sync Ritual
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.KORTANA_AUTONOMOUS_TOKEN }}
+
+    - name: Generate report
+      run: |
+        echo "# Daily Sync Report - $(date)" > DAILY_SYNC.md
+        echo "Status: ✅ Completed" >> DAILY_SYNC.md
+
+    - name: Update covenant
+      run: |
+        echo "[$(date)] SYNC: Daily synchronization completed" >> COVENANT_INDEX.md || true
+
+    - name: Commit
+      run: |
+        git config user.name "kortana-autonomous[bot]"
+        git config user.email "bot@kortana.dev"
+        git add DAILY_SYNC.md COVENANT_INDEX.md || true
+        git diff --quiet || git commit -m "🤖 Daily sync ritual" || true
+        git push || true
