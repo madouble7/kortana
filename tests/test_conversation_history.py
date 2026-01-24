@@ -5,7 +5,6 @@ Validates UI consistency requirements including tag filtering, keyword search, a
 
 import json
 from datetime import datetime, timedelta
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
