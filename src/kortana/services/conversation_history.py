@@ -85,14 +85,14 @@ class ConversationHistoryService:
             return None
 
         with open(file_path, "r") as f:
-            data = json.load(f)
-            return Conversation.model_validate(data)
+            json_data = f.read()
+            return Conversation.model_validate_json(json_data)
 
     def save_conversation(self, conversation: Conversation) -> None:
         """Save a conversation to storage."""
         file_path = self.storage_path / f"{conversation.id}.json"
         with open(file_path, "w") as f:
-            json.dump(conversation.model_dump(mode="json"), f, indent=2, default=str)
+            f.write(conversation.model_dump_json(indent=2))
 
     def delete_conversation(self, conversation_id: str) -> bool:
         """Delete a conversation."""
