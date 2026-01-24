@@ -258,6 +258,7 @@ gcloud run deploy kortana \
 - Rate limiting is enabled (100 requests per 15 minutes per IP)
 - CORS is configured to restrict origins in production
 - Input validation on all API endpoints
+- Optional API key protection for production deployments (set API_KEY env var)
 
 ## Secrets Configuration
 
@@ -268,6 +269,14 @@ gcloud run deploy kortana \
 | `GITHUB_TOKEN` | GitHub Personal Access Token | https://github.com/settings/tokens/new |
 | `GEMINI_API_KEY` | Google Gemini API Key | https://makersuite.google.com/app/apikey |
 | `GCP_PROJECT_ID` | Google Cloud Project ID | Your GCP Console |
+| `GCP_SA_KEY` | Service Account JSON Key | GCP IAM & Admin |
+
+### Optional Secrets
+
+| Secret Name | Description | Purpose |
+|-------------|-------------|---------|
+| `API_KEY` | Random secure string | Require X-API-Key header on API requests in production |
+| `ALLOWED_ORIGINS` | Comma-separated URLs | Restrict CORS to specific domains |
 | `GCP_SA_KEY` | Service Account JSON Key | GCP IAM & Admin |
 
 ### Local Development

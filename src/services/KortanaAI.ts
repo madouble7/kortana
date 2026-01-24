@@ -35,7 +35,8 @@ Keep your analysis concise and actionable.`;
       const response = await result.response;
       return response.text();
     } catch (error) {
-      throw new Error(`Failed to analyze issues: ${error}`);
+      console.error('Gemini API error:', error);
+      throw new Error('Failed to analyze issues');
     }
   }
 
@@ -64,7 +65,8 @@ Keep your analysis concise and actionable.`;
       const response = await result.response;
       return response.text();
     } catch (error) {
-      throw new Error(`Failed to analyze pull requests: ${error}`);
+      console.error('Gemini API error:', error);
+      throw new Error('Failed to analyze pull requests');
     }
   }
 
@@ -100,7 +102,8 @@ Based on this data, what is the current health and activity level of this reposi
         overallInsights,
       };
     } catch (error) {
-      throw new Error(`Failed to analyze repository: ${error}`);
+      console.error('Gemini API error:', error);
+      throw new Error('Failed to analyze repository');
     }
   }
 }

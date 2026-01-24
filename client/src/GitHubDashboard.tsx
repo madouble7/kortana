@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import './GitHubDashboard.css';
 
+// Helper function to sanitize errors before logging
+const sanitizeError = (err: unknown): string => {
+  if (err instanceof Error) {
+    return err.message;
+  }
+  return 'An error occurred';
+};
+
 interface Issue {
   number: number;
   title: string;
@@ -76,7 +84,7 @@ const GitHubDashboard: React.FC = () => {
       await fetchRepositories();
     } catch (err) {
       setError('Failed to authenticate. Please check your token.');
-      console.error(err);
+      console.error('Authentication error:', sanitizeError(err));
     } finally {
       setLoading(false);
     }
@@ -99,7 +107,7 @@ const GitHubDashboard: React.FC = () => {
       setRepos(data);
     } catch (err) {
       setError('Failed to fetch repositories');
-      console.error(err);
+      console.error('Repository fetch error:', sanitizeError(err));
     } finally {
       setLoading(false);
     }
@@ -131,7 +139,7 @@ const GitHubDashboard: React.FC = () => {
       setPullRequests(prsData);
     } catch (err) {
       setError('Failed to fetch repository data');
-      console.error(err);
+      console.error('Repository data fetch error:', sanitizeError(err));
     } finally {
       setLoading(false);
     }
@@ -171,7 +179,7 @@ const GitHubDashboard: React.FC = () => {
       setAnalysis(data.analysis);
     } catch (err) {
       setError('Failed to analyze repository. Make sure GEMINI_API_KEY is configured.');
-      console.error(err);
+      console.error('Analysis error:', sanitizeError(err));
     } finally {
       setLoading(false);
     }

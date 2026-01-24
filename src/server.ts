@@ -28,14 +28,26 @@ const limiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Optional API key middleware for production
+const apiKeyAuth = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  // Only enforce API key in production and if API_KEY is set
+  if (process.env.NODE_ENV === 'production' && process.env.API_KEY) {
+    const apiKey = req.headers['x-api-key'];
+    if (!apiKey || apiKey !== process.env.API_KEY) {
+      return res.status(401).json({ error: 'Invalid or missing API key' });
+    }
+  }
+  next();
+};
+
 // Middleware
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(limiter);
 
-// API Routes
-app.use('/api/github', githubRoutes);
+// API Routes with optional API key protection
+app.use('/api/github', apiKeyAuth, githubRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

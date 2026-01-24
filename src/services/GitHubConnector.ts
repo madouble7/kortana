@@ -52,7 +52,8 @@ export class GitHubConnector {
       const { data } = await this.octokit.users.getAuthenticated();
       return data;
     } catch (error) {
-      throw new Error(`Failed to get authenticated user: ${error}`);
+      console.error('GitHub API error:', error);
+      throw new Error('Failed to get authenticated user');
     }
   }
 
@@ -74,7 +75,8 @@ export class GitHubConnector {
         open_issues_count: data.open_issues_count,
       };
     } catch (error) {
-      throw new Error(`Failed to get repository: ${error}`);
+      console.error('GitHub API error:', error);
+      throw new Error('Failed to get repository');
     }
   }
 
@@ -106,7 +108,8 @@ export class GitHubConnector {
           body: issue.body || null,
         }));
     } catch (error) {
-      throw new Error(`Failed to get issues: ${error}`);
+      console.error('GitHub API error:', error);
+      throw new Error('Failed to get issues');
     }
   }
 
@@ -135,7 +138,8 @@ export class GitHubConnector {
         body: pr.body || null,
       }));
     } catch (error) {
-      throw new Error(`Failed to get pull requests: ${error}`);
+      console.error('GitHub API error:', error);
+      throw new Error('Failed to get pull requests');
     }
   }
 
@@ -159,7 +163,8 @@ export class GitHubConnector {
         return data;
       }
     } catch (error) {
-      throw new Error(`Failed to get repositories: ${error}`);
+      console.error('GitHub API error:', error);
+      throw new Error('Failed to get repositories');
     }
   }
 }
