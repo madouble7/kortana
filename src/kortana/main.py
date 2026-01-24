@@ -69,13 +69,13 @@ app.add_middleware(
 )
 
 app.include_router(memory_router)
-app.include_router(conversation_router)  # Add conversation history router
 app.include_router(core_router.router)
 app.include_router(core_router.openai_adapter_router)
 app.include_router(goal_router.router)
-app.include_router(security_router)
+app.include_router(conversation_router)  # Add conversation history router
 
-# Include new module routers
+# Include module routers
+app.include_router(security_router)
 app.include_router(multilingual_router)
 app.include_router(emotional_intelligence_router)
 app.include_router(content_router)
