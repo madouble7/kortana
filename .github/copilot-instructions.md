@@ -52,8 +52,11 @@ python -m pytest --cov=. --cov-report=html  # With coverage (takes ~15-40 second
 cd backend
 ruff check .  # Fast linter (takes ~2-5 seconds)
 ruff check . --fix  # Auto-fix issues
-# Type checking specific files (adjust paths as needed)
+
+# Type checking - files are in src/kortana/ directory
+# Note: CI workflow may use different paths if symlinks are present
 mypy src/kortana/main.py src/kortana/auth.py src/kortana/schemas.py src/kortana/config.py
+# OR if working from within src/kortana: mypy main.py auth.py schemas.py config.py
 ```
 
 **Note:** Type checking is strict. All functions must have type hints.
