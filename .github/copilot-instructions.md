@@ -125,6 +125,7 @@ async def process_user_input(user_input: str, request: Request) -> dict:
         raise HTTPException(status_code=400, detail="Invalid input detected")
     
     # Process safely...
+    result = {"status": "success", "data": user_input}
     return result
 ```
 
@@ -300,6 +301,36 @@ Detailed parameter and return value documentation.
 Real-world usage scenarios.
 ```
 
+Example for Kor'tana-specific features:
+```markdown
+# Memory Storage Enhancement
+
+## Overview
+This enhancement adds hierarchical memory organization with improved 
+semantic search capabilities using Pinecone vector database.
+
+## Usage
+```python
+from src.kortana.modules.memory_core.services import MemoryCoreService
+
+# Create hierarchical memory
+memory_service = MemoryCoreService()
+parent_memory = memory_service.create_memory(
+    content="Learning about neural networks",
+    memory_type="knowledge"
+)
+child_memory = memory_service.create_memory(
+    content="CNNs excel at image recognition",
+    memory_type="knowledge",
+    parent_id=parent_memory.id
+)
+```
+
+## Security Considerations
+Ensure all stored memories are encrypted at rest and follow
+data retention policies outlined in the covenant.yaml file.
+```
+
 ## Git Practices
 
 ### Commit Messages
@@ -425,8 +456,19 @@ When implementing autonomous behaviors:
 
 ```python
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from src.kortana.services.database import get_db
 from sqlalchemy.orm import Session
+
+# Define request and response schemas
+class RequestSchema(BaseModel):
+    content: str
+    user_id: int
+
+class ResponseSchema(BaseModel):
+    status: str
+    message: str
+    data: dict
 
 router = APIRouter(prefix="/api/v1/feature", tags=["feature"])
 
@@ -446,10 +488,19 @@ async def process_request(
         Processed response
     """
     # Validate input
+    if not data.content:
+        raise HTTPException(status_code=400, detail="Content required")
+    
     # Apply security checks
     # Process request
+    result = {"processed": data.content}
+    
     # Return response
-    pass
+    return ResponseSchema(
+        status="success",
+        message="Request processed",
+        data=result
+    )
 ```
 
 ### Adding a New Module
