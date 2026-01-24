@@ -12,9 +12,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from src.kortana.services.conversation_history import (
-    Conversation,
     ConversationHistoryService,
-    ConversationMessage,
 )
 
 
