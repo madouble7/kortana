@@ -69,7 +69,7 @@ def test_filtering_by_tags():
     service = ConversationHistoryService("/tmp/test_conversations_standalone_filter")
     
     conv1 = service.create_conversation(tags=["python", "ai"])
-    conv2 = service.create_conversation(tags=["javascript", "web"])
+    service.create_conversation(tags=["javascript", "web"])
     service.create_conversation(tags=["python", "web"])
     
     # Filter by python tag
