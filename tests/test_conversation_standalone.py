@@ -70,7 +70,7 @@ def test_filtering_by_tags():
     
     conv1 = service.create_conversation(tags=["python", "ai"])
     conv2 = service.create_conversation(tags=["javascript", "web"])
-    conv3 = service.create_conversation(tags=["python", "web"])
+    service.create_conversation(tags=["python", "web"])
     
     # Filter by python tag
     results = service.list_conversations(tags=["python"])
