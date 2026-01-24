@@ -10,7 +10,7 @@ jobs:
         runs-on: ubuntu-latest
 
         permissions:
-            contents: read
+            contents: write
             issues: write
 
         steps:
@@ -102,6 +102,12 @@ jobs:
                           labels: ['autonomy-alert', 'critical']
                         });
                       }
+
+            - name: Set up Python for recovery
+              if: steps.check-logs.outputs.heartbeat_ok == 'false'
+              uses: actions/setup-python@v4
+              with:
+                  python-version: "3.11"
 
             - name: Attempt automated recovery
               if: steps.check-logs.outputs.heartbeat_ok == 'false'
