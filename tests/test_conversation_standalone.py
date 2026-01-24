@@ -3,7 +3,6 @@ Standalone test for conversation history functionality without complex dependenc
 """
 
 import sys
-import json
 from pathlib import Path
 from datetime import datetime, timedelta
 
