@@ -232,7 +232,10 @@ class AlgorithmicArroganceEvaluator:
             )
 
         # Score: appropriate uncertainty is good
-        score = min((transparency_count / 3) + (0.2 if has_metadata_transparency else 0), 1.0)
+        # Text-based transparency contributes up to 0.8; metadata transparency adds up to 0.2.
+        base_score = min(transparency_count / 4, 0.8)
+        metadata_bonus = 0.2 if has_metadata_transparency else 0.0
+        score = base_score + metadata_bonus
 
         if score < 0.3:
             result.add_flag(
