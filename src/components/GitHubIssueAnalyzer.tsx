@@ -29,12 +29,16 @@ interface GitHubIssue {
  * the analysis delay.
  * 
  * @param title - The title of the GitHub issue to analyze
- * @param _body - The body content of the GitHub issue (currently unused in placeholder)
+ * @param _body - The body content of the GitHub issue (underscore prefix indicates
+ *                 parameter is intentionally unused in current placeholder implementation)
  * @returns A Promise that resolves to a string containing the analysis result
  * 
  * @example
  * ```typescript
- * const result = await analyzeIssueWithGemini("Bug in authentication", "Users cannot log in...");
+ * const result = await analyzeIssueWithGemini(
+ *   "Bug in authentication", 
+ *   "Users cannot log in..."
+ * );
  * console.log(result); // "Analysis ready for: Bug in authentication"
  * ```
  * 
@@ -73,12 +77,6 @@ export default function GitHubIssueAnalyzer() {
    * @throws {Error} When the repository is not found (404)
    * @throws {Error} When the API rate limit is exceeded (403)
    * @throws {Error} When the API request fails for other reasons
-   * 
-   * @example
-   * ```typescript
-   * // Called automatically on form submit
-   * <form onSubmit={fetchIssues}>
-   * ```
    */
   const fetchIssues = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -161,14 +159,6 @@ export default function GitHubIssueAnalyzer() {
    * 
    * @param issue - The GitHubIssue object to analyze
    * @returns A Promise that resolves when the analysis is complete
-   * 
-   * @example
-   * ```typescript
-   * // Called when user clicks "Analyze with Kor'tana" button
-   * <button onClick={() => handleAnalyzeIssue(issue)}>
-   *   Analyze with Kor'tana
-   * </button>
-   * ```
    */
   const handleAnalyzeIssue = async (issue: GitHubIssue) => {
     setAnalyzingIssue(issue.id)
