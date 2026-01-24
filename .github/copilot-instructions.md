@@ -115,6 +115,7 @@ When adding new API endpoints:
 
 Example:
 ```python
+from fastapi import Request, HTTPException
 from src.kortana.modules.security.services import ThreatDetectionService
 
 async def process_user_input(user_input: str, request: Request) -> dict:
@@ -123,6 +124,10 @@ async def process_user_input(user_input: str, request: Request) -> dict:
     threat_service = ThreatDetectionService()
     if threat_service.detect_sql_injection(user_input):
         raise HTTPException(status_code=400, detail="Invalid input detected")
+    
+    # Log the request source for auditing (request param used here)
+    client_ip = request.client.host
+    print(f"Processing request from {client_ip}")
     
     # Process safely...
     result = {"status": "success", "data": user_input}
@@ -491,8 +496,10 @@ async def process_request(
     if not data.content:
         raise HTTPException(status_code=400, detail="Content required")
     
-    # Apply security checks
-    # Process request
+    # TODO: Apply security checks here
+    # Example: threat_service.detect_threats(data.content)
+    
+    # Process request (implement your business logic here)
     result = {"processed": data.content}
     
     # Return response
