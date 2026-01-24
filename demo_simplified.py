@@ -5,7 +5,6 @@ Shows core functionality of conversation history and ethical evaluation.
 """
 
 import json
-from pathlib import Path
 from datetime import datetime
 import asyncio
 import re
