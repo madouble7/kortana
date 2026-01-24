@@ -3,13 +3,10 @@ Billing Router - Stripe Integration
 Handles customer management, subscriptions, and payment processing
 """
 
-import os
-from typing import Any
 import logging
 
 import stripe
-from fastapi import APIRouter, HTTPException, Header, Request, Depends
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, HTTPException, Header, Request
 
 from config import get_settings
 from schemas import (
@@ -92,7 +89,8 @@ async def create_customer(customer_data: CustomerCreate):
             metadata=customer.metadata
         )
     except stripe.error.StripeError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Failed to create customer: {str(e)}")
+        raise HTTPException(status_code=400, detail="Failed to create customer")
 
 
 @router.get("/customers/{customer_id}", response_model=Customer)
@@ -111,7 +109,8 @@ async def get_customer(customer_id: str):
             metadata=customer.metadata
         )
     except stripe.error.StripeError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        logger.error(f"Failed to retrieve customer {customer_id}: {str(e)}")
+        raise HTTPException(status_code=404, detail="Customer not found")
 
 
 @router.post("/subscriptions", response_model=Subscription)
@@ -137,7 +136,8 @@ async def create_subscription(subscription_data: SubscriptionCreate):
             metadata=subscription.metadata
         )
     except stripe.error.StripeError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Failed to create subscription: {str(e)}")
+        raise HTTPException(status_code=400, detail="Failed to create subscription")
 
 
 @router.get("/subscriptions/{subscription_id}", response_model=Subscription)
@@ -158,7 +158,8 @@ async def get_subscription(subscription_id: str):
             metadata=subscription.metadata
         )
     except stripe.error.StripeError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        logger.error(f"Failed to retrieve subscription {subscription_id}: {str(e)}")
+        raise HTTPException(status_code=404, detail="Subscription not found")
 
 
 @router.post("/subscriptions/{subscription_id}/cancel")
@@ -181,7 +182,8 @@ async def cancel_subscription(subscription_id: str, at_period_end: bool = True):
             "cancel_at_period_end": subscription.cancel_at_period_end
         }
     except stripe.error.StripeError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Failed to cancel subscription {subscription_id}: {str(e)}")
+        raise HTTPException(status_code=400, detail="Failed to cancel subscription")
 
 
 @router.post("/payment-intents", response_model=PaymentIntent)
@@ -208,7 +210,8 @@ async def create_payment_intent(payment_data: PaymentIntentCreate):
             description=payment_intent.description
         )
     except stripe.error.StripeError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Failed to create payment intent: {str(e)}")
+        raise HTTPException(status_code=400, detail="Failed to create payment intent")
 
 
 @router.post("/webhooks")
@@ -221,6 +224,9 @@ async def handle_webhook(request: Request, stripe_signature: str = Header(None, 
             status_code=503,
             detail="Webhook secret not configured"
         )
+    
+    if not stripe_signature:
+        raise HTTPException(status_code=400, detail="Missing Stripe-Signature header")
     
     payload = await request.body()
     
@@ -260,9 +266,6 @@ async def get_billing_info(customer_id: str):
     verify_stripe_configured()
     
     try:
-        # Get customer
-        customer = stripe.Customer.retrieve(customer_id)
-        
         # Get active subscriptions
         subscriptions = stripe.Subscription.list(
             customer=customer_id,
@@ -273,8 +276,7 @@ async def get_billing_info(customer_id: str):
         if subscriptions.data:
             subscription = subscriptions.data[0]
             
-            # Determine plan type from subscription metadata or price
-            plan_type = BillingPlanType.FREE
+            # Determine plan type from subscription metadata
             if subscription.metadata and "plan_type" in subscription.metadata:
                 plan_type_str = subscription.metadata["plan_type"]
                 try:
@@ -302,5 +304,8 @@ async def get_billing_info(customer_id: str):
                 customer_id=customer_id,
                 plan_type=BillingPlanType.FREE
             )
+    except stripe.error.StripeError as e:
+        logger.error(f"Failed to retrieve billing info for customer {customer_id}: {str(e)}")
+        raise HTTPException(status_code=404, detail="Failed to retrieve billing information")
     except stripe.error.StripeError as e:
         raise HTTPException(status_code=404, detail=str(e))

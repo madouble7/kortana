@@ -427,7 +427,13 @@ class PaymentIntentCreate(BaseModel):
     """Create payment intent"""
 
     amount: int = Field(..., ge=1, description="Amount in cents")
-    currency: str = Field("usd", max_length=3)
+    currency: str = Field(
+        "usd",
+        min_length=3,
+        max_length=3,
+        pattern="^[a-z]{3}$",
+        description="ISO 4217 currency code (3 lowercase letters, e.g., usd, eur)",
+    )
     customer_id: str | None = None
     description: str | None = None
     metadata: dict | None = None

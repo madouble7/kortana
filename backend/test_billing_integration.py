@@ -5,7 +5,6 @@ Tests billing functionality with mock Stripe configuration
 
 import os
 import sys
-import json
 
 # Add backend directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -89,7 +88,6 @@ if __name__ == "__main__":
     # Test dependencies should be installed via requirements-dev.txt
     # but we'll check if they're available
     try:
-        import fastapi
         from fastapi.testclient import TestClient
     except ImportError:
         print("❌ Missing test dependencies. Please install:")
