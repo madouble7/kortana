@@ -91,7 +91,7 @@ class TestOrchestratorPerformance:
             # Assertions
             assert result is not None
             assert "final_kortana_response" in result
-            assert execution_time_ms < 5000, f"Query took {execution_time_ms:.2f}ms, should be < 5000ms"
+            assert execution_time_ms < 1000, f"Query took {execution_time_ms:.2f}ms, should be < 1000ms"
 
             print(f"\n✓ Single query performance: {execution_time_ms:.2f}ms")
 
