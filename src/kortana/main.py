@@ -9,14 +9,34 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.kortana.api.routers import core_router, goal_router
 from src.kortana.api.routers.conversation_router import router as conversation_router
+from src.kortana.brain import ChatEngine
+from src.kortana.config import load_kortana_config
 from src.kortana.core.scheduler import (
     get_scheduler_status,
     start_scheduler,
     stop_scheduler,
 )
+from src.kortana.modules.content_generation.router import router as content_router
+from src.kortana.modules.emotional_intelligence.router import (
+    router as emotional_intelligence_router,
+)
+from src.kortana.modules.ethical_transparency.router import router as ethics_router
+from src.kortana.modules.gaming.router import router as gaming_router
+from src.kortana.modules.marketplace.router import router as marketplace_router
 from src.kortana.modules.memory_core.routers.memory_router import (
     router as memory_router,
 )
+from src.kortana.modules.security.routers.security_router import (
+    router as security_router,
+)
+
+# Import new module routers
+from src.kortana.modules.multilingual.router import router as multilingual_router
+from src.kortana.modules.plugin_framework.router import router as plugin_router
+
+# Global configuration and engine
+settings = load_kortana_config()
+chat_engine = ChatEngine(settings=settings)
 
 
 # Lifespan context manager
@@ -50,8 +70,19 @@ app.add_middleware(
 
 app.include_router(memory_router)
 app.include_router(core_router.router)
+app.include_router(core_router.openai_adapter_router)
 app.include_router(goal_router.router)
-app.include_router(conversation_router)
+app.include_router(conversation_router)  # Add conversation history router
+
+# Include module routers
+app.include_router(security_router)
+app.include_router(multilingual_router)
+app.include_router(emotional_intelligence_router)
+app.include_router(content_router)
+app.include_router(plugin_router)
+app.include_router(ethics_router)
+app.include_router(gaming_router)
+app.include_router(marketplace_router)
 
 
 @app.get("/health")
@@ -91,7 +122,8 @@ def test_db():
 async def chat(message: dict):
     try:
         user_message = message.get("message", "")
-        response = f"Kor'tana received: {user_message}"
+        # Use simple get_response from ChatEngine
+        response = chat_engine.get_response(user_message)
         return {"response": response, "status": "success"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -113,7 +145,8 @@ async def lobechat_adapter(request: dict):
     try:
         messages = request.get("messages", [])
         user_message = messages[-1].get("content", "") if messages else "Hello"
-        response = f"Kor'tana (via LobeChat): {user_message}"
+
+        response = chat_engine.get_response(user_message)
 
         return {"choices": [{"message": {"role": "assistant", "content": response}}]}
     except Exception as e:
