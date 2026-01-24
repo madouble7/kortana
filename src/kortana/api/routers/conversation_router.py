@@ -61,12 +61,12 @@ def get_conversation(conversation_id: str):
 
 @router.delete("/{conversation_id}", status_code=204)
 def delete_conversation(conversation_id: str):
-    """Delete a conversation."""
-    success = conversation_service.delete_conversation(conversation_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="Conversation not found")
+    """Delete a conversation.
 
-
+    This operation is idempotent: a 204 status is returned even if the
+    conversation does not exist.
+    """
+    conversation_service.delete_conversation(conversation_id)
 @router.post("/{conversation_id}/messages")
 def add_message(conversation_id: str, request: AddMessageRequest):
     """Add a message to a conversation."""
