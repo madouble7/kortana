@@ -181,10 +181,10 @@ When adding new features:
 
 Comprehensive cybersecurity features:
 
-- **Threat Detection** (`threat_detection.py`): Real-time monitoring
-- **Alert Service** (`alert_service.py`): Security event management
-- **Vulnerability Scanner** (`vulnerability_scanner.py`): Security assessments
-- **Encryption Service** (`encryption_service.py`): Data protection
+- **Threat Detection** (`services/threat_detection_service.py`): Real-time monitoring
+- **Alert Service** (`services/alert_service.py`): Security event management
+- **Vulnerability Scanner** (`services/vulnerability_service.py`): Security assessments
+- **Encryption Service** (`services/encryption_service.py`): Data protection
 - **Security Dashboard**: Analytics and monitoring
 
 ### 5. LLM Integrations (`src/kortana/llm_clients/`)
@@ -220,10 +220,18 @@ response = await client.generate(prompt)
 - **Test Structure**: Follow existing patterns
   ```python
   import pytest
+  from sqlalchemy.orm import Session
   from src.kortana.modules.memory_core.services import MemoryCoreService
   
   @pytest.fixture
-  def memory_service():
+  def test_db(tmpdir):
+      """Fixture providing a test database session."""
+      # Setup test database
+      from src.kortana.services.database import get_test_db
+      return get_test_db()
+  
+  @pytest.fixture
+  def memory_service(test_db: Session):
       """Fixture providing a test memory service."""
       return MemoryCoreService(db_session=test_db)
   
@@ -529,7 +537,7 @@ from src.kortana.modules.memory_core.models import CoreMemory
 
 def create_memory(db: Session, content: str, memory_type: str) -> CoreMemory:
     """Create a new memory with proper session handling."""
-    memory = CoreMemory(content=content, type=memory_type)
+    memory = CoreMemory(content=content, memory_type=memory_type)
     db.add(memory)
     db.commit()
     db.refresh(memory)
