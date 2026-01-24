@@ -5,7 +5,6 @@ Highlights security and core modules that require higher coverage.
 """
 
 import sys
-import subprocess
 from pathlib import Path
 
 
@@ -33,25 +32,6 @@ CRITICAL_MODULES = {
 }
 
 
-def run_coverage(module_path):
-    """Run coverage for a specific module."""
-    cmd = [
-        "pytest",
-        f"--cov={module_path}",
-        "--cov-report=term-missing",
-        "--cov-report=json",
-        "-v",
-    ]
-    
-    result = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-    )
-    
-    return result
-
-
 def main():
     """Check coverage for critical modules."""
     project_root = Path(__file__).parent.parent
@@ -76,8 +56,6 @@ def main():
         print(f"   Description: {info['description']}")
         print()
         
-        # For now, just note that this would run coverage
-        # In a real scenario, this would parse the output
         print(f"   Run: pytest --cov={info['path']}")
         print()
         

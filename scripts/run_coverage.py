@@ -14,6 +14,8 @@ def main():
     
     # Change to project root
     project_root = Path(__file__).parent.parent
+    import os
+    os.chdir(project_root)
     
     print("=" * 70)
     print("Kor'tana Test Coverage Report")
@@ -37,7 +39,7 @@ def main():
     print(f"Running: {' '.join(cmd)}")
     print()
     
-    result = subprocess.run(cmd, cwd=project_root)
+    result = subprocess.run(cmd)
     
     print()
     print("=" * 70)
