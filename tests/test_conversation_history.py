@@ -3,7 +3,6 @@ Tests for conversation history service and API endpoints.
 Validates UI consistency requirements including tag filtering, keyword search, and timestamp queries.
 """
 
-import json
 from datetime import datetime, timedelta
 from unittest.mock import patch
 
