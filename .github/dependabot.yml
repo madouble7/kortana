@@ -1,6 +1,6 @@
 version: 2
 updates:
-  # Enable version updates for Poetry
+  # Enable version updates for pip (requirements.txt)
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
