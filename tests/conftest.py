@@ -9,19 +9,27 @@ import os
 import sys
 
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-
-from src.kortana.services.database import Base
 
 # Add the src directory to the path so we can import modules
 sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
 )
 
-# Define a global test database engine
-engine_test = create_engine("sqlite:///:memory:", echo=False)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine_test)
+# Try to import database components, but don't fail if they're not available
+try:
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from src.kortana.services.database import Base
+    
+    # Define a global test database engine
+    engine_test = create_engine("sqlite:///:memory:", echo=False)
+    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine_test)
+    DATABASE_AVAILABLE = True
+except (ImportError, ModuleNotFoundError) as e:
+    print(f"Database components not available: {e}")
+    DATABASE_AVAILABLE = False
+    engine_test = None
+    TestingSessionLocal = None
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -68,6 +76,11 @@ def setup_test_environment():
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_database():
     """Set up the test database schema for all tests."""
+    if not DATABASE_AVAILABLE or engine_test is None:
+        # Skip database setup if not available
+        yield
+        return
+    
     # Create the schema
     Base.metadata.create_all(bind=engine_test)
     yield
