@@ -282,6 +282,22 @@ class UncertaintyHandler:
         # Handle bias detection
         bias_flags = [f for f in flags if f.get("category") == "bias" and f.get("severity") == "error"]
         if bias_flags:
-            modified_response = "[Content filtered due to potential bias concerns. Please rephrase your question.]"
+            # Provide more informative feedback while still filtering biased content
+            reasons = {f.get("reason") for f in bias_flags if f.get("reason")}
+            if reasons:
+                reason_text = "; ".join(sorted(reasons))
+            else:
+                reason_text = "The request or draft response appears to involve potentially biased or discriminatory content."
 
+            guidance = (
+                "To proceed, please remove or rephrase any language that targets individuals or groups based on "
+                "protected characteristics (for example, race, ethnicity, gender, religion, nationality, disability, "
+                "or similar attributes), and focus on neutral, respectful wording."
+            )
+
+            modified_response = (
+                "Content filtered due to potential bias concerns.\n\n"
+                f"Why this was filtered: {reason_text}\n\n"
+                f"How to continue: {guidance}"
+            )
         return modified_response
