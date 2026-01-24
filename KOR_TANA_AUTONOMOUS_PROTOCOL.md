@@ -9,6 +9,7 @@
 ## 🎯 CORE AUTONOMY PRINCIPLES
 
 ### 1. Auto-Approval Framework
+
 ```
 IF task is automatable:
     EXECUTE immediately
@@ -38,6 +39,7 @@ ENDIF
 ### ✅ FULLY AUTOMATABLE (Auto-Execute)
 
 #### HO-3: Create Database
+
 - **Classification**: Deterministic
 - **Approval**: Auto ✅
 - **Automation**: `autonomous_execution.py --create-db`
@@ -47,6 +49,7 @@ ENDIF
 - **Rollback**: Simple database drop
 
 #### HO-4: Populate .env
+
 - **Classification**: Template + credential injection
 - **Approval**: Auto ✅ (once credentials provided)
 - **Automation**: `autonomous_execution.py --populate-env`
@@ -56,6 +59,7 @@ ENDIF
 - **Rollback**: Restore from .env.example
 
 #### HO-5: Run Migration
+
 - **Classification**: Deterministic database operation
 - **Approval**: Auto ✅
 - **Automation**: `autonomous_execution.py --run-migration`
@@ -65,6 +69,7 @@ ENDIF
 - **Rollback**: `alembic downgrade base`
 
 #### HO-6: Install Dependencies
+
 - **Classification**: Package management
 - **Approval**: Auto ✅
 - **Automation**: `autonomous_execution.py --install-deps`
@@ -74,6 +79,7 @@ ENDIF
 - **Rollback**: Delete venv, recreate
 
 #### HO-7: Start Server
+
 - **Classification**: Process launch
 - **Approval**: Auto ✅
 - **Automation**: `autonomous_execution.py --start-server`
@@ -83,6 +89,7 @@ ENDIF
 - **Rollback**: Kill process
 
 #### HO-8: Verify Health
+
 - **Classification**: Read-only validation
 - **Approval**: Auto ✅
 - **Automation**: `autonomous_execution.py --verify-health`
@@ -94,21 +101,23 @@ ENDIF
 ### ⏸️ HUMAN-ONLY (Require Input)
 
 #### HO-1: Create GitHub Token
+
 - **Classification**: Human-exclusive (account access)
 - **Approval**: Manual ⏸️
 - **Cannot automate**: Requires human GitHub account login
 - **KOR'TANA role**: Provide link, scaffold instructions
-- **Link**: https://github.com/settings/tokens
+- **Link**: <https://github.com/settings/tokens>
 - **Scaffolding**: See SCAFFOLDED_HO_STEPS.md HO-1
 - **Delivery method**: User creates, then provides to KOR'TANA via input prompt
 - **Storage**: Secure input → immediate use → minimal retention
 
 #### HO-2: Create Gemini API Key
+
 - **Classification**: Human-exclusive (account access)
 - **Approval**: Manual ⏸️
 - **Cannot automate**: Requires human Google account access
 - **KOR'TANA role**: Provide link, scaffold instructions
-- **Link**: https://makersuite.google.com/app/apikey
+- **Link**: <https://makersuite.google.com/app/apikey>
 - **Scaffolding**: See SCAFFOLDED_HO_STEPS.md HO-2
 - **Delivery method**: User creates, then provides to KOR'TANA via input prompt
 - **Storage**: Secure input → immediate use → minimal retention
@@ -156,34 +165,42 @@ START: User runs autonomous_execution.py
 ### Autonomy Modes
 
 **Mode 1: FULL AUTO (Default)**
+
 ```
 python autonomous_execution.py --all
 ```
+
 - Executes all automatable steps (HO-3 through HO-8)
 - Prompts for human-only credentials (HO-1, HO-2)
 - Logs all operations
 - Returns status
 
 **Mode 2: SELECTIVE AUTO**
+
 ```
 python autonomous_execution.py --create-db --populate-env --run-migration
 ```
+
 - Execute specific steps only
 - Same auto-approval logic
 - Useful for troubleshooting
 
 **Mode 3: INTERACTIVE**
+
 ```
 python autonomous_execution.py --interactive
 ```
+
 - Step-by-step execution
 - Confirm before each step
 - Good for learning
 
 **Mode 4: DRY RUN**
+
 ```
 python autonomous_execution.py --all --dry-run
 ```
+
 - Show what would execute
 - Don't actually run
 - Useful for verification
@@ -210,11 +227,13 @@ python autonomous_execution.py --all --dry-run
 ## 🛡️ SAFETY MECHANISMS
 
 ### 1. Idempotency Guarantees
+
 - All automatable tasks are idempotent
 - Safe to rerun without data loss
 - Failed steps can be retried
 
 ### 2. Rollback Capability
+
 ```
 Database error? → Drop DB, recreate from migration
 Migration error? → alembic downgrade base
@@ -222,18 +241,21 @@ Server error? → Kill process, restart
 ```
 
 ### 3. Validation Checks
+
 - Prerequisites verified before execution
 - File paths confirmed to exist
 - Credentials validated before use
 - Health checks after each major step
 
 ### 4. Credential Security
+
 - Never logged to disk
 - Never output in logs
 - Stored only in .env (git-ignored)
 - Minimal handling time
 
 ### 5. Error Handling
+
 ```python
 TRY: Execute task
 CATCH: Database error → Provide guidance
@@ -247,6 +269,7 @@ CATCH: Permission error → Request escalation
 ## 📋 LOGGING & MONITORING
 
 ### What Gets Logged
+
 ```
 ✅ Task start/end times
 ✅ Success/failure status
@@ -258,11 +281,13 @@ CATCH: Permission error → Request escalation
 ```
 
 ### Log File
+
 ```
 c:\KOR-TANA\kortana\AUTONOMY_EXECUTION.log
 ```
 
 ### Log Format
+
 ```
 [2026-01-18 14:30:00] ✅ HO-3: Database created successfully (2.1s)
 [2026-01-18 14:30:02] ✅ HO-4: .env populated (0.3s)
@@ -277,6 +302,7 @@ c:\KOR-TANA\kortana\AUTONOMY_EXECUTION.log
 ## 🎯 WHEN KOR'TANA INTERACTS WITH MATT
 
 ### Scenario 1: Initial Setup
+
 ```
 MATT: "Run HO-1 through HO-8"
 KOR'TANA: "I need your GitHub token and Gemini API key"
@@ -286,6 +312,7 @@ KOR'TANA: "✅ All systems online. Server at http://localhost:8000"
 ```
 
 ### Scenario 2: Missing Credentials
+
 ```
 MATT: "Run HO-4"
 KOR'TANA: "Missing GitHub token. Need it from HO-1 first.
@@ -296,6 +323,7 @@ KOR'TANA: [Continues execution]
 ```
 
 ### Scenario 3: Error During Auto-Execution
+
 ```
 [Automated HO-5 migration fails]
 KOR'TANA: "❌ Migration error - database locked
@@ -306,6 +334,7 @@ KOR'TANA: [Retries HO-5 automatically]
 ```
 
 ### Scenario 4: Verification Required
+
 ```
 [After HO-8 verification]
 KOR'TANA: "✅ All 3 health endpoints responding
@@ -319,17 +348,20 @@ KOR'TANA: "✅ All 3 health endpoints responding
 ## 🚀 AUTONOMY LEVELS
 
 ### Level 1: Complete Automation (Current)
+
 - KOR'TANA: Auto-execute HO-3 through HO-8
 - Matt: Provide HO-1 and HO-2 credentials only
 - Interruption: Only on errors or errors
 
 ### Level 2: Monitoring & Self-Healing (Future)
+
 - Monitor server health continuously
 - Auto-restart on failure
 - Self-heal common issues
 - Report status periodically
 
 ### Level 3: Proactive Management (Future)
+
 - Auto-rotate credentials on expiry
 - Auto-update dependencies
 - Auto-scale resources
@@ -371,6 +403,7 @@ WAIT for human (only if unresolvable)
 **KOR'TANA Autonomous Status**: 🟢 FULLY ACTIVE
 
 **Autonomy Metrics**:
+
 - Auto-execution capability: 6/8 steps (75%)
 - Error recovery: 100%
 - Idempotency: 100%
@@ -381,4 +414,3 @@ WAIT for human (only if unresolvable)
 ---
 
 **Next Action**: Run `python autonomous_execution.py --all` to begin full autonomous deployment
-
