@@ -230,16 +230,16 @@ class AlgorithmicArroganceEvaluator:
         """Check for GPT-4 specific alignment issues and formatting problems."""
         # Check for common GPT-4 misrouting patterns
         misroute_indicators = [
-            r"I apologize.*cannot.*assist",  # Over-apologetic refusals
-            r"as an AI language model",  # Unnecessary meta-references
-            r"\[.*\].*\(.*\)",  # Markdown formatting issues in plain text
+            (r"I apologize.*cannot.*assist", "over-apologetic refusal"),
+            (r"as an AI language model", "unnecessary meta-reference to being an AI model"),
+            (r"\[.*\].*\(.*\)", "markdown-style formatting in plain text response"),
         ]
 
-        for pattern in misroute_indicators:
+        for pattern, description in misroute_indicators:
             if re.search(pattern, text, re.IGNORECASE):
                 result.add_flag(
                     "gpt4_alignment",
-                    f"GPT-4 formatting/alignment issue detected: pattern '{pattern[:30]}...'",
+                    f"GPT-4 formatting/alignment issue detected: {description}.",
                     severity="warning",
                 )
                 result.metadata["requires_formatting_fix"] = True
