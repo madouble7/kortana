@@ -4,7 +4,6 @@ Simplified demonstration bypassing complex imports.
 Shows core functionality of conversation history and ethical evaluation.
 """
 
-import json
 from datetime import datetime
 import asyncio
 import re
