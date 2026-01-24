@@ -13,6 +13,8 @@ jobs:
   # ==================== Dependency Scanning ====================
   dependency-scan:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
     - uses: actions/checkout@v4
 
@@ -46,6 +48,8 @@ jobs:
   # ==================== Container Scanning ====================
   container-scan:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
     - uses: actions/checkout@v4
 
@@ -78,6 +82,8 @@ jobs:
   # ==================== Secret Detection ====================
   secret-detection:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
     - uses: actions/checkout@v4
 
@@ -96,6 +102,8 @@ jobs:
   # ==================== Code Security Scanning ====================
   code-security:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
     - uses: actions/checkout@v4
 
@@ -133,6 +141,7 @@ jobs:
   vulnerability-summary:
     needs: [dependency-scan, container-scan, secret-detection, code-security]
     runs-on: ubuntu-latest
+    permissions: {}
     if: always()
     steps:
     - name: Download all reports
@@ -158,6 +167,7 @@ jobs:
   security-gate:
     needs: [vulnerability-summary]
     runs-on: ubuntu-latest
+    permissions: {}
     if: failure()
     steps:
     - name: Fail on critical security issues
