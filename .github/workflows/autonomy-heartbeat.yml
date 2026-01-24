@@ -131,7 +131,7 @@ jobs:
               if: steps.check-logs.outputs.heartbeat_ok == 'false' && steps.recovery-check.outputs.recovery_successful == 'true'
               run: |
                   git config user.name "Kor'tana Autonomous"
-                  git config user.email "kor-tana@example.com"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
                   git add logs/autonomy/
                   git commit -m "fix: restore autonomy heartbeat - automated recovery"
                   git push origin main
@@ -183,7 +183,7 @@ jobs:
               if: steps.check-logs.outputs.heartbeat_ok == 'true'
               run: |
                   git config user.name "Kor'tana Autonomous"
-                  git config user.email "kor-tana@example.com"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
                   if ! git diff --quiet; then
                     git add logs/metrics/*.json

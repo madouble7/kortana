@@ -195,6 +195,8 @@ Press F5 to debug
 - `POST /api/autonomy/enable` - Enable autonomous mode
 - `POST /api/autonomy/disable` - Disable autonomous mode
 
+**Autonomy Heartbeat Monitoring**: Kor'tana includes an automated heartbeat system that monitors autonomous operations and alerts on failures. See [docs/AUTONOMY_HEARTBEAT.md](docs/AUTONOMY_HEARTBEAT.md) for details.
+
 ### Task Queue
 
 - `GET /api/task-queue/` - List tasks
