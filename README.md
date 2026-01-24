@@ -169,6 +169,7 @@ For troubleshooting, see `docs/LOBECHAT_TROUBLESHOOTING.md`.
 
 - **New Features**: `docs/NEW_FEATURES.md` - Comprehensive guide to all new features
 - **Quick Start**: `docs/QUICK_START_NEW_FEATURES.md` - Quick examples and tutorials
+- **Code Coverage**: `docs/COVERAGE.md` - Guide to test coverage and best practices
 - Full API documentation: `docs/API_ENDPOINTS.md`
 - Architecture overview: `docs/ARCHITECTURE.md`
 - Memory Core details: `docs/MEMORY_CORE.md`
@@ -182,6 +183,36 @@ For troubleshooting, see `docs/LOBECHAT_TROUBLESHOOTING.md`.
 ```bash
 python -m pytest tests
 ```
+
+### Code Coverage
+
+Kor'tana uses pytest-cov for comprehensive test coverage reporting.
+
+**Quick start:**
+```bash
+# Run all tests with coverage
+pytest
+
+# View HTML coverage report
+open htmlcov/index.html  # macOS
+xdg-open htmlcov/index.html  # Linux
+```
+
+**Critical modules coverage targets:**
+- Security Module: 90%+ (authentication, authorization, encryption)
+- Core Module: 85%+ (brain, model_router, core functionality)
+- Overall Project: 70% minimum
+
+**Helpful scripts:**
+```bash
+# Run coverage with helper script
+python scripts/run_coverage.py
+
+# Check critical modules coverage
+python scripts/check_critical_coverage.py
+```
+
+📚 **See [docs/COVERAGE.md](docs/COVERAGE.md) for detailed coverage documentation**
 
 ### Code Style
 This project uses Black for formatting and Pylint for linting.
