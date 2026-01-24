@@ -56,6 +56,13 @@ router.get('/repos/:owner/:repo', async (req: Request, res: Response) => {
     }
 
     const { owner, repo } = req.params;
+    
+    // Validate owner and repo format
+    const validPattern = /^[a-zA-Z0-9._-]+$/;
+    if (!validPattern.test(owner) || !validPattern.test(repo)) {
+      return res.status(400).json({ error: 'Invalid owner or repo format' });
+    }
+    
     const connector = new GitHubConnector(authToken);
     const repository = await connector.getRepository(owner, repo);
     res.json(repository);
@@ -79,6 +86,12 @@ router.get('/repos/:owner/:repo/issues', async (req: Request, res: Response) => 
     const { owner, repo } = req.params;
     const state = (req.query.state as 'open' | 'closed' | 'all') || 'open';
     
+    // Validate owner and repo format
+    const validPattern = /^[a-zA-Z0-9._-]+$/;
+    if (!validPattern.test(owner) || !validPattern.test(repo)) {
+      return res.status(400).json({ error: 'Invalid owner or repo format' });
+    }
+    
     const connector = new GitHubConnector(authToken);
     const issues = await connector.getIssues(owner, repo, state);
     res.json(issues);
@@ -101,6 +114,12 @@ router.get('/repos/:owner/:repo/pulls', async (req: Request, res: Response) => {
 
     const { owner, repo } = req.params;
     const state = (req.query.state as 'open' | 'closed' | 'all') || 'open';
+    
+    // Validate owner and repo format
+    const validPattern = /^[a-zA-Z0-9._-]+$/;
+    if (!validPattern.test(owner) || !validPattern.test(repo)) {
+      return res.status(400).json({ error: 'Invalid owner or repo format' });
+    }
     
     const connector = new GitHubConnector(authToken);
     const pullRequests = await connector.getPullRequests(owner, repo, state);
