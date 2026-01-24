@@ -27,6 +27,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install -e .[dev]
+        pip install pytest pytest-cov pytest-asyncio
 
     - name: Lint with ruff
       run: |
@@ -40,13 +41,21 @@ jobs:
 
     - name: Test with pytest
       run: |
-        pytest --cov=src --cov-report=xml
+        pytest
+    
+    - name: Generate coverage badge
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      run: |
+        pip install coverage-badge
+        coverage-badge -o coverage.svg -f
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
       with:
         file: ./coverage.xml
         fail_ci_if_error: false
+        flags: unittests
+        name: codecov-kortana
 
   build:
     runs-on: ubuntu-latest
