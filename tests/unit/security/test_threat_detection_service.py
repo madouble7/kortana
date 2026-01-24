@@ -5,8 +5,6 @@ Tests threat detection, rate limiting, IP blocking, and pattern matching
 with extensive edge cases and attack scenarios.
 """
 
-import time
-
 import pytest
 
 from src.kortana.modules.security.models.security_models import ThreatLevel
@@ -125,10 +123,15 @@ class TestThreatDetectionService:
             body="SELECT * FROM users WHERE password='abc'",
         )
         
-        # Should detect both SQL injection and credential exposure
-        detected_types = detection.detected_threats
-        assert len(detected_types) > 0
-        assert any("sql_injection" in t for t in detected_types) or any("credential_exposure" in t for t in detected_types)
+        # Should detect at least one threat (SQL injection or credential exposure)
+        assert len(detection.detected_threats) > 0
+        # Check for expected threat types
+        threat_types = ["sql_injection", "credential_exposure"]
+        has_expected_threat = any(
+            any(expected in threat for expected in threat_types)
+            for threat in detection.detected_threats
+        )
+        assert has_expected_threat, f"Expected one of {threat_types}, got {detection.detected_threats}"
 
     def test_block_ip(self):
         """Test blocking an IP address."""

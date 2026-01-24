@@ -6,7 +6,6 @@ edge cases and error scenarios.
 """
 
 import pytest
-from cryptography.fernet import InvalidToken
 
 from src.kortana.modules.security.services.encryption_service import EncryptionService
 
