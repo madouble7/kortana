@@ -4,6 +4,35 @@ import { useState } from 'react'
 const GITHUB_API_BASE = 'https://api.github.com'
 const DEFAULT_ISSUES_PER_PAGE = 15
 
+// Custom exception types for specific error scenarios
+class RepositoryNotFoundError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'RepositoryNotFoundError'
+  }
+}
+
+class RateLimitExceededError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'RateLimitExceededError'
+  }
+}
+
+class InvalidRepositoryFormatError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'InvalidRepositoryFormatError'
+  }
+}
+
+class GitHubAPIError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'GitHubAPIError'
+  }
+}
+
 interface GitHubIssue {
   id: number
   number: number
@@ -21,7 +50,23 @@ interface GitHubIssue {
   created_at: string
 }
 
-// Placeholder function for Gemini API integration
+/**
+ * Analyzes a GitHub issue using the Gemini API for AI-powered insights.
+ * 
+ * This is a placeholder function that will be integrated with the Gemini API
+ * to provide intelligent analysis of GitHub issues, including sentiment analysis,
+ * priority suggestions, and actionable recommendations.
+ * 
+ * @param title - The title of the GitHub issue to analyze
+ * @param _body - The body/description of the GitHub issue (currently unused, prefixed with _ to indicate intentional non-use)
+ * @returns A Promise that resolves to a string containing the analysis results
+ * 
+ * @example
+ * const result = await analyzeIssueWithGemini('Bug: Login fails', 'Users cannot login...');
+ * console.log(result); // "Analysis ready for: Bug: Login fails"
+ * 
+ * @throws {Error} If the Gemini API request fails (future implementation)
+ */
 async function analyzeIssueWithGemini(title: string, _body: string): Promise<string> {
   // TODO: Integrate with Gemini API
   // This is where you would call the Gemini API to analyze the issue
@@ -40,6 +85,32 @@ export default function GitHubIssueAnalyzer() {
   const [analyzingIssue, setAnalyzingIssue] = useState<number | null>(null)
   const [analysisResult, setAnalysisResult] = useState<string | null>(null)
 
+  /**
+   * Fetches open issues from a GitHub repository using the GitHub REST API.
+   * 
+   * Handles both shorthand format (owner/repo) and full GitHub URLs. Validates
+   * the repository URL, fetches the most recent open issues, and filters out
+   * pull requests from the results.
+   * 
+   * @param e - The form submit event from the user interface
+   * 
+   * @throws {InvalidRepositoryFormatError} If the repository URL format is invalid
+   * @throws {RepositoryNotFoundError} If the repository doesn't exist (404)
+   * @throws {RateLimitExceededError} If GitHub API rate limit is exceeded (403)
+   * @throws {GitHubAPIError} If the GitHub API returns any other error
+   * 
+   * @example
+   * // Called on form submission
+   * <form onSubmit={fetchIssues}>
+   *   <input value="facebook/react" />
+   *   <button type="submit">Fetch</button>
+   * </form>
+   * 
+   * @remarks
+   * - Fetches up to 15 issues by default (configurable via DEFAULT_ISSUES_PER_PAGE)
+   * - Only fetches open issues, sorted by creation date (newest first)
+   * - Automatically filters out pull requests which GitHub API includes in issues endpoint
+   */
   const fetchIssues = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -55,22 +126,22 @@ export default function GitHubIssueAnalyzer() {
         // Parse as URL
         const url = new URL(repoUrl)
         if (url.hostname !== 'github.com') {
-          throw new Error('Only github.com URLs are supported')
+          throw new InvalidRepositoryFormatError('Only github.com URLs are supported')
         }
         const pathParts = url.pathname.split('/').filter(part => part.length > 0)
         if (pathParts.length < 2) {
-          throw new Error('Invalid GitHub URL format')
+          throw new InvalidRepositoryFormatError('Invalid GitHub URL format')
         }
         owner = pathParts[0]
         repo = pathParts[1]
       } else if (repoUrl.includes('/')) {
         [owner, repo] = repoUrl.split('/')
       } else {
-        throw new Error('Invalid format')
+        throw new InvalidRepositoryFormatError('Invalid format')
       }
       
       if (!owner || !repo) {
-        throw new Error('Invalid repository format')
+        throw new InvalidRepositoryFormatError('Invalid repository format')
       }
       
       setLoading(true)
@@ -87,11 +158,11 @@ export default function GitHubIssueAnalyzer() {
       
       if (!response.ok) {
         if (response.status === 404) {
-          throw new Error('Repository not found')
+          throw new RepositoryNotFoundError('Repository not found')
         } else if (response.status === 403) {
-          throw new Error('Rate limit exceeded. Please try again later.')
+          throw new RateLimitExceededError('Rate limit exceeded. Please try again later.')
         } else {
-          throw new Error(`Failed to fetch issues: ${response.statusText}`)
+          throw new GitHubAPIError(`Failed to fetch issues: ${response.statusText}`)
         }
       }
       
@@ -106,12 +177,42 @@ export default function GitHubIssueAnalyzer() {
         setError('No open issues found in this repository')
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
+      if (err instanceof InvalidRepositoryFormatError) {
+        setError(err.message)
+      } else if (err instanceof RepositoryNotFoundError) {
+        setError(err.message)
+      } else if (err instanceof RateLimitExceededError) {
+        setError(err.message)
+      } else if (err instanceof GitHubAPIError) {
+        setError(err.message)
+      } else {
+        setError('An unexpected error occurred')
+      }
     } finally {
       setLoading(false)
     }
   }
 
+  /**
+   * Handles the analysis of a GitHub issue using the Kor'tana AI system.
+   * 
+   * Triggers the Gemini API integration to analyze issue content and provide
+   * intelligent insights. Updates UI state to show loading and result states.
+   * 
+   * @param issue - The GitHub issue object to analyze
+   * 
+   * @example
+   * // Called when user clicks "Analyze with Kor'tana" button
+   * <button onClick={() => handleAnalyzeIssue(issue)}>
+   *   Analyze with Kor'tana
+   * </button>
+   * 
+   * @remarks
+   * - Sets loading state while analysis is in progress
+   * - Displays result in a toast notification
+   * - Handles errors gracefully with user-friendly messages
+   * - Uses issue body if available, otherwise sends placeholder text
+   */
   const handleAnalyzeIssue = async (issue: GitHubIssue) => {
     setAnalyzingIssue(issue.id)
     setAnalysisResult(null)
