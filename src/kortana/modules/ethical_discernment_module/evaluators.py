@@ -53,7 +53,7 @@ class AlgorithmicArroganceEvaluator:
         self.bias_patterns = [
             r"\b(all (men|women|people from|members of))\b",
             r"\b(every (man|woman|person from|member of))\b",
-            r"\b(inherently|naturally|by nature)\b.*\b(superior|inferior|better|worse)\b",
+            r"(?:\b(men|women|people|groups?|races?|ethnicities|religions?|nationalities)\b(?:\W+\w+){0,3}?\W+\b(inherently|naturally|by nature)\b(?:\W+\w+){0,3}?\W+\b(superior|inferior|better|worse)\b|\b(inherently|naturally|by nature)\b(?:\W+\w+){0,3}?\W+\b(superior|inferior|better|worse)\b(?:\W+\w+){0,3}?\W+\b(men|women|people|groups?|races?|ethnicities|religions?|nationalities)\b)",
         ]
 
         # Edge case patterns that need careful handling
