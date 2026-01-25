@@ -176,6 +176,11 @@ def create_app() -> FastAPI:
         
         # Billing router
         app.include_router(billing.router, prefix="/api/billing", tags=["billing"])
+        
+        # Human Only Protocol router (if available)
+        if HOP_AVAILABLE and hop_router:
+            app.include_router(hop_router, prefix="/api/autonomy/hop", tags=["human-only-protocol"])
+            print("✅ Human Only Protocol router mounted")
     except Exception as e:
         log_error("router_error", f"Error including routers: {e}")
         raise

@@ -41,11 +41,11 @@ services:
   # Backend API
   backend:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
     container_name: kortana-backend
     env_file:
-      - ./backend/.env
+      - .env
     environment:
       DATABASE_URL: postgresql://${DB_USER:-kortana}:${DB_PASSWORD:-kortana_dev}@postgres:5432/${DB_NAME:-kortana_db}
       REDIS_URL: redis://redis:6379
