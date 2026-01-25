@@ -27,7 +27,6 @@ alembic==1.13.0
 asyncpg==0.29.0
 
 # Security & Authentication
-
 passlib[bcrypt]==1.7.4
 python-multipart==0.0.18
 PyJWT==2.10.1
@@ -49,3 +48,6 @@ python-dotenv==1.0.0
 
 # Google Gemini API
 google-genai==1.60.0
+
+# Payment Processing
+stripe==7.9.0

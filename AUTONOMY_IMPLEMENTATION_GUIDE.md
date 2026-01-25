@@ -1,0 +1,548 @@
+# GitHub Autonomy System - Implementation Guide
+
+**Date:** January 17, 2026
+**Status:** Implementation Complete (Phase 1)
+
+---
+
+## Overview
+
+This guide documents the improvements made to KOR'TANA's GitHub autonomy system to address critical gaps identified in the audit.
+
+### What Changed
+
+1. ✅ **Database Persistence** - Tasks now persist in SQLAlchemy database
+2. ✅ **Code Generation** - New module to parse and generate actual code from AI plans
+3. ✅ **Error Handling** - Comprehensive error recovery with retry logic
+4. ✅ **Security** - Token validation, rate limiting, path traversal protection
+5. ✅ **Testing** - Full test suite with mocked GitHub/Gemini APIs
+6. ✅ **Pagination** - Proper GitHub API pagination support
+
+---
+
+## Database Schema Changes
+
+### New Table: `github_tasks`
+
+```sql
+CREATE TABLE github_tasks (
+    id VARCHAR(36) PRIMARY KEY,
+    github_issue_number INTEGER NOT NULL,
+    github_repo VARCHAR(255) NOT NULL,
+    github_pr_number INTEGER,
+    title VARCHAR(512) NOT NULL,
+    description TEXT NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    priority VARCHAR(16),
+    analysis TEXT,
+    plan TEXT,
+    branch_name VARCHAR(255) UNIQUE,
+    commit_sha VARCHAR(40),
+    error_message TEXT,
+    error_count INTEGER DEFAULT 0,
+    max_retries INTEGER DEFAULT 3,
+    execution_time_ms INTEGER,
+    estimated_effort VARCHAR(64),
+    created_at DATETIME DEFAULT NOW(),
+    updated_at DATETIME DEFAULT NOW(),
+    analyzed_at DATETIME,
+    executed_at DATETIME,
+    completed_at DATETIME,
+    INDEX idx_issue (github_issue_number),
+    INDEX idx_status (status),
+    INDEX idx_pr (github_pr_number),
+    INDEX idx_created (created_at)
+);
+```
+
+### Migration Steps
+
+1. **Generate Migration**
+
+   ```bash
+   cd backend
+   alembic revision --autogenerate -m "Add github_tasks table"
+   ```
+
+2. **Apply Migration**
+
+   ```bash
+   alembic upgrade head
+   ```
+
+---
+
+## New Files
+
+### 1. `backend/routers/code_generator.py`
+
+Handles code generation from AI-generated plans.
+
+**Key Classes:**
+
+- `CodeGenerator` - Main code generation engine
+- `CodeGenerationError` - Custom exception
+
+**Key Methods:**
+
+- `parse_plan(plan_text)` - Parse Gemini plan into structure
+- `generate_files(parsed_plan, dry_run)` - Generate/modify files
+- `validate_python_syntax(file_path)` - Validate Python files
+- `generate_from_gemini_plan()` - End-to-end generation
+
+**Usage Example:**
+
+```python
+from routers.code_generator import CodeGenerator
+
+gen = CodeGenerator()
+results = gen.generate_from_gemini_plan(
+    gemini_plan_text,
+    repo_path=".",
+    dry_run=True,  # Don't actually write files
+    validate_syntax=True
+)
+print(results)  # {'created': [...], 'modified': [...], 'errors': [...]}
+```
+
+### 2. Updated `backend/routers/autonomy.py`
+
+**Changes:**
+
+- Removed in-memory task queue
+- Implemented database-backed `AutonomousTaskQueue` class
+- Added dependency injection for database session
+- Implemented proper task lifecycle (pending → analyzing → planning → executing → completed)
+- Added retry logic with configurable max retries
+- Added comprehensive error tracking
+
+**New Endpoints:**
+
+```
+POST   /api/autonomy/task-queue           Queue tasks from GitHub
+GET    /api/autonomy/status                Get queue status
+POST   /api/autonomy/analyze/{task_id}    Analyze specific task
+POST   /api/autonomy/plan/{task_id}       Generate execution plan
+POST   /api/autonomy/execute/{task_id}    Execute task (with dry_run option)
+GET    /api/autonomy/tasks/{task_id}      Get task details
+POST   /api/autonomy/tasks/{task_id}/retry Retry failed task
+GET    /api/autonomy/health               Health check
+```
+
+**Configuration Environment Variables:**
+
+```bash
+TASK_MAX_RETRIES=3              # Max retry attempts per task
+TASK_RETRY_DELAY=300            # Delay between retries (seconds)
+GITHUB_REPO_OWNER=KOR-TANA      # GitHub repo owner
+GITHUB_REPO_NAME=kortana        # GitHub repo name
+```
+
+### 3. Updated `backend/routers/github.py`
+
+**Improvements:**
+
+- Added rate limiting (60 req/min per endpoint)
+- Added pagination support (page, per_page params)
+- Improved error handling with timeout protection
+- Better JSON parsing for Gemini responses
+- Removed duplicate analyze endpoints
+- Added input validation
+
+**Rate Limiting:**
+
+```python
+# Automatically enforced on all endpoints
+# Returns 429 Too Many Requests if exceeded
+```
+
+### 4. New Test Suite: `backend/tests/test_autonomy.py`
+
+**Test Classes:**
+
+- `TestGitHubRouter` - GitHub API integration tests
+- `TestAutonomyRouter` - Task management tests
+- `TestCodeGenerator` - Code generation tests
+- `TestGitHubTaskModel` - Database model tests
+- `TestRateLimiting` - Rate limiting tests
+
+**Run Tests:**
+
+```bash
+pytest backend/tests/test_autonomy.py -v
+pytest backend/tests/test_autonomy.py::TestCodeGenerator -v  # Specific class
+pytest backend/tests/test_autonomy.py -k "rate_limit"       # Specific test
+```
+
+---
+
+## Updated Models
+
+### `backend/models.py`
+
+**New GitHubTask Model:**
+
+Fields track the complete task lifecycle:
+
+- `github_issue_number` - GitHub issue ID
+- `github_repo` - "owner/repo" format
+- `status` - Current task status
+- `analysis` - Gemini analysis output
+- `plan` - Generated execution plan
+- `branch_name` - Feature branch for task
+- `github_pr_number` - Associated PR (when created)
+- `error_message` - Last error message
+- `error_count` - Number of failed attempts
+- `max_retries` - Max retry attempts before failing
+- Timestamps for created/analyzed/executed/completed
+
+---
+
+## API Examples
+
+### Queue Tasks from GitHub
+
+```bash
+curl -X POST http://localhost:8000/api/autonomy/task-queue \
+  -H "Content-Type: application/json" \
+  -d '{"repo": "KOR-TANA/kortana"}'
+```
+
+**Response:**
+
+```json
+{
+  "message": "Queued 5 new tasks",
+  "count": 5,
+  "tasks": [
+    {
+      "id": "task-123",
+      "issue_number": 42,
+      "title": "Add feature X",
+      "status": "pending",
+      "priority": "high"
+    }
+  ]
+}
+```
+
+### Analyze a Task
+
+```bash
+curl -X POST http://localhost:8000/api/autonomy/analyze/task-123 \
+  -H "Content-Type: application/json"
+```
+
+### Execute Task (Dry Run)
+
+```bash
+curl -X POST "http://localhost:8000/api/autonomy/execute/task-123?dry_run=true" \
+  -H "Content-Type: application/json"
+```
+
+### Get Task Details
+
+```bash
+curl http://localhost:8000/api/autonomy/tasks/task-123
+```
+
+### Retry Failed Task
+
+```bash
+curl -X POST http://localhost:8000/api/autonomy/tasks/task-123/retry
+```
+
+---
+
+## Security Improvements
+
+### 1. Token Protection
+
+- Tokens validated at startup
+- Tokens never logged in errors
+- Consider token rotation (future)
+
+### 2. Rate Limiting
+
+- 60 requests per endpoint per minute
+- Per-endpoint tracking
+- Returns 429 when exceeded
+
+### 3. Path Traversal Protection
+
+```python
+# Blocks paths with ".."
+# Validates paths stay within repo
+# Raises CodeGenerationError if violation detected
+```
+
+### 4. Input Validation
+
+- GitHub owner/repo format validation
+- Pagination parameter bounds checking
+- State parameter enum validation
+- Branch name sanitization
+
+---
+
+## Task Lifecycle
+
+```
+┌─────────┐
+│ pending │
+└────┬────┘
+     │
+     v
+┌──────────┐
+│analyzing │  (Gemini analysis)
+└────┬─────┘
+     │
+     v
+┌─────────┐
+│planning │  (Generate plan)
+└────┬────┘
+     │
+     v
+┌─────────────────┐
+│ready_to_execute │
+└────┬────────────┘
+     │
+     v
+┌──────────┐
+│executing │  (Create files, commit)
+└────┬─────┘
+     │
+     ├─────► completed  ✓
+     │
+     └─────► failed  ✗  → (retry if error_count < max_retries)
+```
+
+---
+
+## Configuration Checklist
+
+### Environment Variables (Required)
+
+```bash
+# GitHub
+GITHUB_TOKEN=ghp_xxxxx
+GITHUB_REPO_OWNER=KOR-TANA
+GITHUB_REPO_NAME=kortana
+
+# Gemini
+GEMINI_API_KEY=AIzaSy_xxxxx
+GOOGLE_API_KEY=AIzaSy_xxxxx  # Fallback
+
+# Database
+DATABASE_URL=sqlite:///./test.db
+# or
+DATABASE_URL=postgresql://user:pass@localhost/kortana
+
+# Autonomy Settings
+TASK_MAX_RETRIES=3
+TASK_RETRY_DELAY=300
+```
+
+### Database Migration
+
+```bash
+cd backend
+alembic upgrade head
+```
+
+### Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+Key new dependencies:
+
+- `sqlalchemy` (already installed)
+- `google-generativeai` (ensure latest version)
+- `requests` (ensure >=2.28)
+
+---
+
+## Monitoring & Debugging
+
+### Check System Health
+
+```bash
+curl http://localhost:8000/api/autonomy/health
+```
+
+### View Task Queue Status
+
+```bash
+curl http://localhost:8000/api/autonomy/status
+```
+
+**Response includes:**
+
+```json
+{
+  "total_tasks": 25,
+  "stats": {
+    "pending": 5,
+    "analyzing": 2,
+    "planning": 1,
+    "ready_to_execute": 3,
+    "executing": 1,
+    "completed": 13,
+    "failed": 0
+  },
+  "completion_rate": "52.0%",
+  "recent_tasks": [...]
+}
+```
+
+### Logs
+
+All operations logged to:
+
+- `backend/logs/autonomy.log`
+- `backend/logs/github.log`
+
+---
+
+## Performance Considerations
+
+### Database Indexing
+
+The `github_tasks` table has indexes on:
+
+- `github_issue_number` - Quick task lookup
+- `status` - Filter by status
+- `github_pr_number` - PR association lookup
+- `created_at` - Time-based queries
+
+### Query Optimization
+
+For large task lists, use pagination:
+
+```python
+tasks = db.query(GitHubTask)\
+  .filter(GitHubTask.status == "pending")\
+  .order_by(GitHubTask.created_at)\
+  .offset(0)\
+  .limit(100)\
+  .all()
+```
+
+### Rate Limiting Impact
+
+- Client should respect 429 responses
+- Exponential backoff recommended: `delay = 2^attempt` seconds
+
+---
+
+## Troubleshooting
+
+### Task Stuck in "analyzing" Status
+
+Check logs for Gemini API errors:
+
+```bash
+tail -f backend/logs/autonomy.log | grep "Analysis failed"
+```
+
+Reset task:
+
+```python
+db.query(GitHubTask).filter(GitHubTask.id == task_id)\
+  .update({"status": "pending", "error_count": 0})
+db.commit()
+```
+
+### Rate Limit 429 Errors
+
+Implement exponential backoff in client:
+
+```python
+import time
+attempt = 0
+while attempt < max_retries:
+    response = requests.post(url, ...)
+    if response.status_code == 429:
+        wait_time = 2 ** attempt
+        print(f"Rate limited. Waiting {wait_time}s...")
+        time.sleep(wait_time)
+        attempt += 1
+    else:
+        break
+```
+
+### Code Generation Errors
+
+Check generated code with dry run:
+
+```bash
+curl -X POST "http://localhost:8000/api/autonomy/execute/task-id?dry_run=true"
+```
+
+Inspect error details in response for specific file issues.
+
+---
+
+## Next Steps
+
+### Phase 2 (Recommended)
+
+1. **Pull Request Automation**
+   - Implement PR creation endpoint
+   - Auto-link to original issue
+   - Generate PR descriptions
+
+2. **Code Review Integration**
+   - Implement PR code review
+   - Security scanning
+   - Auto-approval for safe changes
+
+3. **Test Automation**
+   - Integrate pytest runner
+   - Coverage analysis
+   - CI/CD integration
+
+4. **Deployment Pipeline**
+   - Cloud Run integration
+   - Deployment health checks
+   - Rollback capabilities
+
+### Metrics to Track
+
+- Task completion rate
+- Average task time
+- Error rate by type
+- API rate limit usage
+- Code generation success rate
+- PR merge rate
+
+---
+
+## Support & Documentation
+
+- **Audit Report:** [GITHUB_AUTONOMY_AUDIT.md](GITHUB_AUTONOMY_AUDIT.md)
+- **API Docs:** Swagger at `http://localhost:8000/docs`
+- **Usage Guide:** [KOR_TANA_USAGE_GUIDE.md](KOR_TANA_USAGE_GUIDE.md)
+- **Tests:** [backend/tests/test_autonomy.py](backend/tests/test_autonomy.py)
+
+---
+
+## Rollback Instructions
+
+If issues occur, revert changes:
+
+```bash
+# Revert database migration
+alembic downgrade -1
+
+# Revert code (git)
+git revert HEAD
+```
+
+---
+
+**Implementation Date:** January 17, 2026
+**Author:** GitHub Copilot
+**Status:** Ready for testing
