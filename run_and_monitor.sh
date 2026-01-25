@@ -91,8 +91,8 @@ check_prerequisites() {
         print_success "httpx: Available"
     else
         print_warning "httpx not installed (required for monitoring)"
-        print_step "Installing httpx..."
-        pip3 install httpx --quiet
+        print_step "Installing httpx to user directory..."
+        pip3 install --user httpx --quiet
         print_success "httpx installed"
     fi
     
@@ -210,6 +210,7 @@ start_backend_local() {
     source venv/bin/activate
     
     print_step "Starting FastAPI backend on port ${BACKEND_PORT}..."
+    print_warning "⚠️  Server will bind to 0.0.0.0 (all interfaces) - ensure firewall is configured"
     
     # Start backend in background
     nohup python3 -m uvicorn main:app --host 0.0.0.0 --port ${BACKEND_PORT} --reload > backend.log 2>&1 &
@@ -286,7 +287,10 @@ start_monitoring() {
 cleanup() {
     print_header "🧹 CLEANUP"
     
-    if [ "$USE_DOCKER" = true ]; then
+    # Check if USE_DOCKER is set, default to false if not
+    USE_DOCKER_VAR="${USE_DOCKER:-false}"
+    
+    if [ "$USE_DOCKER_VAR" = true ]; then
         print_step "Stopping Docker services..."
         docker compose down
         print_success "Docker services stopped"

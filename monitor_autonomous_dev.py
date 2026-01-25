@@ -9,7 +9,7 @@ import json
 import os
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict
 
 import httpx
@@ -27,7 +27,15 @@ class AutonomousMonitor:
         self.backend_url = backend_url.rstrip("/")
         self.client = httpx.AsyncClient(timeout=30.0)
         self.last_stats = None
-        self.start_time = datetime.now(datetime.UTC) if hasattr(datetime, 'UTC') else datetime.utcnow()
+        self.start_time = self._get_utc_now()
+    
+    def _get_utc_now(self) -> datetime:
+        """Get current UTC time in a version-compatible way"""
+        try:
+            return datetime.now(timezone.utc)
+        except AttributeError:
+            # Python < 3.11 compatibility
+            return datetime.utcnow().replace(tzinfo=timezone.utc)
 
     def clear_screen(self):
         """Clear terminal screen"""
@@ -46,7 +54,7 @@ class AutonomousMonitor:
 
     def print_header(self):
         """Print dashboard header"""
-        now = datetime.now(datetime.UTC) if hasattr(datetime, 'UTC') else datetime.utcnow()
+        now = self._get_utc_now()
         uptime = (now - self.start_time).total_seconds()
         print("=" * 80)
         print("🤖 KOR'TANA - AUTONOMOUS DEVELOPMENT MONITOR")
@@ -229,7 +237,7 @@ class AutonomousMonitor:
         self.print_autonomy_status(autonomy_status)
         self.print_instructions()
         
-        now = datetime.now(datetime.UTC) if hasattr(datetime, 'UTC') else datetime.utcnow()
+        now = self._get_utc_now()
         print(f"⏰ Last Updated: {now.strftime('%Y-%m-%d %H:%M:%S UTC')}")
 
     async def start_monitoring(self):
@@ -272,48 +280,51 @@ class AutonomousMonitor:
 
     async def quick_status(self):
         """Display a quick status snapshot (non-looping)"""
-        try:
-            health = await self.get_health()
-            hop_status = await self.get_hop_status()
-            
-            print("=" * 80)
-            print("📊 KOR'TANA QUICK STATUS")
-            print("=" * 80)
-            print()
-            
-            self.print_health_status(health)
-            self.print_hop_status(hop_status)
-            
-        finally:
-            await self.client.aclose()
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            self.client = client
+            try:
+                health = await self.get_health()
+                hop_status = await self.get_hop_status()
+                
+                print("=" * 80)
+                print("📊 KOR'TANA QUICK STATUS")
+                print("=" * 80)
+                print()
+                
+                self.print_health_status(health)
+                self.print_hop_status(hop_status)
+            finally:
+                pass  # Client cleanup handled by context manager
 
     async def trigger_cycle(self):
         """Trigger one autonomous cycle and show results"""
-        try:
-            print("🔄 Triggering autonomous HOP cycle...")
-            print()
-            
-            result = await self.run_hop_cycle()
-            
-            if "error" in result:
-                print(f"❌ Cycle failed: {result['error']}")
-            else:
-                print("✅ Cycle completed!")
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            self.client = client
+            try:
+                print("🔄 Triggering autonomous HOP cycle...")
                 print()
-                print(f"Executed: {len(result.get('executed', []))}")
-                print(f"Failed: {len(result.get('failed', []))}")
                 
-                if result.get("pending_ho"):
-                    print(f"⚠️  Human action required:")
-                    ho = result["pending_ho"]
-                    print(f"   Task: {ho.get('name')}")
+                result = await self.run_hop_cycle()
+                
+                if "error" in result:
+                    print(f"❌ Cycle failed: {result['error']}")
+                else:
+                    print("✅ Cycle completed!")
                     print()
-                    if ho.get('scaffold'):
-                        print("📋 HO Scaffold:")
-                        print(ho['scaffold'])
-        
-        finally:
-            await self.client.aclose()
+                    print(f"Executed: {len(result.get('executed', []))}")
+                    print(f"Failed: {len(result.get('failed', []))}")
+                    
+                    if result.get("pending_ho"):
+                        print(f"⚠️  Human action required:")
+                        ho = result["pending_ho"]
+                        print(f"   Task: {ho.get('name')}")
+                        print()
+                        if ho.get('scaffold'):
+                            print("📋 HO Scaffold:")
+                            print(ho['scaffold'])
+            
+            finally:
+                pass  # Client cleanup handled by context manager
 
 
 async def main():
