@@ -2,6 +2,19 @@
 
 Kor'tana is a Node.js + TypeScript service with a React frontend that connects to GitHub and uses Google's Gemini AI to analyze repositories, issues, and pull requests.
 
+## 🎯 Quick Start: Run & Monitor Autonomous Development
+
+**Start KOR'TANA with real-time monitoring in one command:**
+
+```bash
+./run_and_monitor.sh
+```
+
+This launches the backend and starts monitoring autonomous development progress. See:
+- 📖 **[RUNNING_GUIDE.md](RUNNING_GUIDE.md)** - Quick start guide with examples
+- 📖 **[MONITORING_GUIDE.md](MONITORING_GUIDE.md)** - Complete monitoring documentation
+- 📖 **[DEMO_OUTPUT.md](DEMO_OUTPUT.md)** - Live demo outputs and examples
+
 ## Features
 
 - 🔐 **GitHub Authentication**: Secure OAuth-based GitHub integration
