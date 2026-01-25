@@ -179,6 +179,10 @@ Thumbs.db
 # Logs
 *.log
 
+# Allow autonomy heartbeat logs to be committed
+!logs/autonomy/*.md
+!logs/autonomy/.gitkeep
+
 # Temporary files
 *.tmp
 *.temp

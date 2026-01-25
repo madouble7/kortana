@@ -102,6 +102,24 @@ GEMINI_API_KEY=your_gemini_api_key_here
 3. Click "Create API Key"
 4. Copy the API key and add it to your `.env` file
 
+## Terminal & Shell Integration (VS Code) 🔧
+
+To enable full terminal-aware features in VS Code (command detection, decorations, IntelliSense, current working directory detection), install VS Code's shell integration for your shell and enable the workspace settings we provide.
+
+Quick steps:
+
+1. Install the `code` command in PATH from the VS Code Command Palette: `Shell Command: Install 'code' command in PATH`.
+2. Run the helper script for your shell (idempotent):
+   - Git Bash / WSL / Linux: `bash scripts/install_shell_integration.sh`
+   - Windows PowerShell: `powershell -ExecutionPolicy Bypass -File .\scripts\install_shell_integration.ps1`
+3. Restart your integrated terminal and hover the terminal tab. You should see **Quality: Rich** or **Basic**.
+4. If desired, inline the script path for faster startup:
+   - `code --locate-shell-integration-path <shell>` and paste the path directly into your shell profile.
+
+We included workspace settings in `.vscode/settings.json` tuned for Git Bash and PowerShell to enable suggestions, sticky scroll, decorations, and optimized defaults for development.
+
+---
+
 ## Running the Application
 
 ### Development Mode
@@ -528,6 +546,8 @@ Press F5 to debug
 - `GET /api/autonomy/status` - System status
 - `POST /api/autonomy/enable` - Enable autonomous mode
 - `POST /api/autonomy/disable` - Disable autonomous mode
+
+**Autonomy Heartbeat Monitoring**: Kor'tana includes an automated heartbeat system that monitors autonomous operations and alerts on failures. See [docs/AUTONOMY_HEARTBEAT.md](docs/AUTONOMY_HEARTBEAT.md) for details.
 
 ### Task Queue
 

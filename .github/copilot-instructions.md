@@ -252,6 +252,13 @@ kortana/
 ├── docker-compose.yml             # Full stack orchestration
 ├── pyproject.toml                 # Python project metadata
 └── README.md                      # Project documentation
+backend/
+├── human_only_protocol.py    # Core autonomy engine
+├── routers/                  # API endpoints
+├── models.py                 # Database models
+├── config.py                 # Configuration management
+├── config.py                 # configuration management
+└── main.py                   # FastAPI application
 ```
 
 ### Key Configuration Files
