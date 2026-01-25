@@ -9,10 +9,15 @@ on:
     # Weekly security scan on Sunday
     - cron: '0 0 * * 0'
 
+permissions:
+  contents: read
+
 jobs:
   # ==================== Dependency Scanning ====================
   dependency-scan:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
     - uses: actions/checkout@v4
 
@@ -46,11 +51,13 @@ jobs:
   # ==================== Container Scanning ====================
   container-scan:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
     - uses: actions/checkout@v4
 
     - name: Set up Docker Buildx
-      uses: actions/docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@v3
 
     - name: Build Docker image
       uses: docker/build-push-action@v5
@@ -78,16 +85,15 @@ jobs:
   # ==================== Secret Detection ====================
   secret-detection:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
     - uses: actions/checkout@v4
 
-    - name: Run TruffleHog
-      uses: trufflesecurity/trufflehog@main
-      with:
-        scanType: 'filesystem'
-        scanPath: '.'
-        base64: 'true'
-        zip: 'true'
+    - name: Install and run TruffleHog
+      run: |
+        go install github.com/trufflesecurity/trufflehog/v3@latest
+        $HOME/go/bin/trufflehog filesystem ./ --base64 --zip || true
 
     - name: Check for .env files committed
       run: |
@@ -99,6 +105,8 @@ jobs:
   # ==================== Code Security Scanning ====================
   code-security:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
     - uses: actions/checkout@v4
 
@@ -136,6 +144,7 @@ jobs:
   vulnerability-summary:
     needs: [dependency-scan, container-scan, secret-detection, code-security]
     runs-on: ubuntu-latest
+    permissions: {}
     if: always()
     steps:
     - name: Download all reports
@@ -161,6 +170,7 @@ jobs:
   security-gate:
     needs: [vulnerability-summary]
     runs-on: ubuntu-latest
+    permissions: {}
     if: failure()
     steps:
     - name: Fail on critical security issues

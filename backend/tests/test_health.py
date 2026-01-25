@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 @pytest.fixture
 def client():
     """FastAPI test client fixture."""
-    from main import app
+    from src.kortana.main import app
 
     return TestClient(app)
 
