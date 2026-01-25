@@ -11,16 +11,19 @@ from fastapi.testclient import TestClient
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from auth import create_access_token
-from config import Settings
-from main import app
-from schemas import Agent, Task, User
+from src.kortana.auth import create_access_token
+from src.kortana.config import Settings
+from src.kortana.database import get_db
+from src.kortana.main import app
+from src.kortana.schemas import Agent, Task, User
 
 
 @pytest.fixture
-def app_fixture():
-    """Provide the FastAPI app"""
-    return app
+def app_fixture(db):
+    """Provide the FastAPI app with mocked database"""
+    app.dependency_overrides[get_db] = lambda: db
+    yield app
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture
@@ -33,9 +36,9 @@ def test_settings():
 
 
 @pytest.fixture
-def client():
+def client(app_fixture):
     """Provide FastAPI test client"""
-    return TestClient(app)
+    return TestClient(app_fixture)
 
 
 @pytest.fixture
@@ -54,7 +57,9 @@ def test_user():
 @pytest.fixture
 def test_token(test_user):
     """Provide a valid test JWT token"""
-    return create_access_token(data={"sub": test_user.username, "scopes": ["read", "write"]})
+    return create_access_token(
+        data={"sub": test_user.username, "scopes": ["read", "write"]}
+    )
 
 
 @pytest.fixture
@@ -114,14 +119,25 @@ def test_database():
 def db():
     """Provide database session for tests"""
     # Returns a mock session for testing
-    from unittest.mock import MagicMock
+    from unittest.mock import AsyncMock, MagicMock
 
     mock_db = MagicMock()
+    # Mock traditional query method for backward compatibility
     mock_db.query = MagicMock()
+    # Mock new async execute method
+    mock_db.execute = AsyncMock()
+
+    # Configure return value for execute to be a mock result that can be iterated or awaited
+    mock_result = MagicMock()
+    mock_db.execute.return_value = mock_result
+
     mock_db.add = MagicMock()
-    mock_db.commit = MagicMock()
-    mock_db.rollback = MagicMock()
-    mock_db.close = MagicMock()
+    mock_db.commit = AsyncMock()
+    mock_db.rollback = AsyncMock()
+    mock_db.close = AsyncMock()
+    mock_db.refresh = AsyncMock()
+    mock_db.scalar = AsyncMock()
+    mock_db.scalars = AsyncMock()
     return mock_db
 
 

@@ -6,7 +6,7 @@ from datetime import datetime
 
 import pytest
 from pydantic import ValidationError
-from schemas import (
+from src.kortana.schemas import (
     AgentCreate,
     AgentStatus,
     ErrorResponse,
@@ -27,7 +27,9 @@ class TestUserSchemas:
 
     def test_create_valid_user(self):
         """Test creating valid user"""
-        user = UserCreate(username="testuser", email="test@example.com", password="securepass123")
+        user = UserCreate(
+            username="testuser", email="test@example.com", password="securepass123"
+        )
         assert user.username == "testuser"
         assert user.email == "test@example.com"
 
@@ -39,7 +41,9 @@ class TestUserSchemas:
     def test_user_requires_valid_email(self):
         """Test that email must be valid"""
         with pytest.raises(ValidationError):
-            UserCreate(username="testuser", email="invalid-email", password="securepass123")
+            UserCreate(
+                username="testuser", email="invalid-email", password="securepass123"
+            )
 
     def test_full_user_model(self):
         """Test full user model"""
@@ -62,7 +66,10 @@ class TestAgentSchemas:
     def test_create_valid_agent(self):
         """Test creating valid agent"""
         agent = AgentCreate(
-            name="Test Agent", description="A test agent", model="gpt-4", temperature=0.7
+            name="Test Agent",
+            description="A test agent",
+            model="gpt-4",
+            temperature=0.7,
         )
         assert agent.name == "Test Agent"
         assert agent.temperature == 0.7
@@ -89,17 +96,19 @@ class TestTaskSchemas:
 
     def test_create_valid_task(self):
         """Test creating valid task"""
-        task = TaskCreate(title="Test Task", description="A test task", agent_id=1, priority=1)
+        task = TaskCreate(
+            title="Test Task", description="A test task", agent_id="1", priority=1
+        )
         assert task.title == "Test Task"
         assert task.priority == 1
 
     def test_task_priority_bounds(self):
         """Test priority must be 1-5"""
         with pytest.raises(ValidationError):
-            TaskCreate(title="Test Task", agent_id=1, priority=10)
+            TaskCreate(title="Test Task", agent_id="1", priority=11)
 
         with pytest.raises(ValidationError):
-            TaskCreate(title="Test Task", agent_id=1, priority=0)
+            TaskCreate(title="Test Task", agent_id="1", priority=0)
 
     def test_task_status_enum(self):
         """Test task status enum"""
@@ -116,7 +125,9 @@ class TestAuthSchemas:
 
     def test_token_schema(self):
         """Test token response schema"""
-        token = Token(access_token="test.token.here", token_type="bearer", expires_in=1800)
+        token = Token(
+            access_token="test.token.here", token_type="bearer", expires_in=1800
+        )
         assert token.token_type == "bearer"
 
     def test_login_request(self):
@@ -142,7 +153,9 @@ class TestHealthSchemas:
 
     def test_error_response(self):
         """Test error response schema"""
-        error = ErrorResponse(error="NOT_FOUND", status_code=404, message="Resource not found")
+        error = ErrorResponse(
+            error="NOT_FOUND", status_code=404, message="Resource not found"
+        )
         assert error.status_code == 404
         assert error.timestamp is not None
 
@@ -165,6 +178,6 @@ class TestSchemaDefaults:
 
     def test_task_status_default(self):
         """Test task status defaults to pending"""
-        task = TaskCreate(title="New Task", agent_id=1)
+        task = TaskCreate(title="New Task", agent_id="1")
         # Task model would have default status
         assert task is not None

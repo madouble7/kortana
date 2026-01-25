@@ -39,6 +39,7 @@ backend/
 ├── routers/                  # API endpoints
 ├── models.py                 # Database models
 ├── config.py                 # Configuration management
+├── config.py                 # configuration management
 └── main.py                   # FastAPI application
 ```
 
