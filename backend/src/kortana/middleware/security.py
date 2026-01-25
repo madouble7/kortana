@@ -56,6 +56,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             encoding="utf-8",
             decode_responses=True,
         )
+    """Rate limiting middleware - limits requests per IP"""
+
+    def __init__(self, app: Any, requests_per_minute: int = 60):
+        super().__init__(app)
+        self.requests_per_minute = requests_per_minute
+        self.requests: dict[str, list[float]] = defaultdict(list)
+        self.last_cleanup = time.time()
 
     async def dispatch(
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
@@ -105,6 +112,66 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         )
 
         return response
+        """Process request and apply rate limiting"""
+        client_ip = request.client.host if request.client else "unknown"
+
+        now = time.time()
+        minute_ago = now - 60
+
+        # Periodic cleanup of the entire dictionary to prevent memory leaks
+        if now - self.last_cleanup > 3600:  # Every hour
+            self._cleanup_all(now)
+
+        # Initialize request list for IP if needed
+        # (defaultdict(list) handles this automatically, but we might want to manually prune)
+
+        # Remove old requests outside the time window for this specific IP
+        self.requests[client_ip] = [
+            req_time for req_time in self.requests[client_ip] if req_time > minute_ago
+        ]
+
+        # Check if rate limit exceeded
+        if len(self.requests[client_ip]) >= self.requests_per_minute:
+            log_error(
+                "RATE_LIMIT_EXCEEDED",
+                f"IP {client_ip} exceeded {self.requests_per_minute} requests/minute",
+                details={"client_ip": client_ip},
+            )
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Rate limit exceeded. Maximum requests exceeded.",
+            )
+
+        # Record this request
+        self.requests[client_ip].append(now)
+
+        # Continue processing
+        response = await call_next(request)
+
+        # Add rate limit headers
+        response.headers["X-RateLimit-Limit"] = str(self.requests_per_minute)
+        response.headers["X-RateLimit-Remaining"] = str(
+            max(0, self.requests_per_minute - len(self.requests[client_ip]))
+        )
+
+        return response
+
+    def _cleanup_all(self, now: float) -> None:
+        """Remove all IPs that haven't made a request in the last minute"""
+        minute_ago = now - 60
+        keys_to_delete = []
+        for ip, timestamps in self.requests.items():
+            new_timestamps = [t for t in timestamps if t > minute_ago]
+            if not new_timestamps:
+                keys_to_delete.append(ip)
+            else:
+                self.requests[ip] = new_timestamps
+
+        for ip in keys_to_delete:
+            del self.requests[ip]
+        self.last_cleanup = now
+
+
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Add security headers to all responses"""
 
