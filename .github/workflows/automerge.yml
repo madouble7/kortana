@@ -12,6 +12,8 @@ on:
 jobs:
   autoupdate:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     if: >
       github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
@@ -35,6 +37,8 @@ jobs:
 
   automerge:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     if: >
       github.event_name == 'check_suite' &&
       github.event.check_suite.conclusion == 'success' &&
@@ -142,6 +146,7 @@ jobs:
 
   notify-failure:
     runs-on: ubuntu-latest
+    permissions: {}
     if: failure() && github.event_name == 'check_suite'
     needs: automerge
 
