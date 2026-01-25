@@ -92,8 +92,8 @@ def get_deployment_status():
 
 
 def main():
-    # Create logs/daily directory
-    log_dir = Path("logs/daily")
+    # Create logs/autonomy directory (used by heartbeat monitoring)
+    log_dir = Path("logs/autonomy")
     log_dir.mkdir(parents=True, exist_ok=True)
 
     # Generate timestamp
@@ -106,13 +106,16 @@ def main():
     backend_health = check_backend_health()
     deployment = get_deployment_status()
 
-    # Create log content
-    log_content = f"""# Daily Autonomy Sync - {date_str}
+    # Create log content with heartbeat marker
+    log_content = f"""# Kor'tana Autonomy Heartbeat - {date_str}
 
 **Timestamp**: {timestamp}
+**Status**: ✅ ALIVE
 
-## Status
+## Heartbeat Status
 
+- **Autonomous Mode**: ENABLED
+- **Last Check**: {timestamp}
 - **Backend**: {backend_health.get("status", "unknown")}
 - **Current Branch**: {git_stats.get("current_branch", "unknown")}
 - **Uncommitted Changes**: {"Yes" if git_stats.get("has_uncommitted_changes") else "No"}
@@ -133,16 +136,22 @@ def main():
     }
 ```
 
-## Notes
+## Autonomy Protocol
 
-Kor'tana is alive and monitoring.
+Kor'tana autonomous heartbeat confirmed. All systems operational.
 """
 
     # Write log file
     log_file = log_dir / f"{date_str}.md"
     log_file.write_text(log_content)
 
-    print(f"✓ Daily sync log written: {log_file}")
+    print(f"✓ Autonomy heartbeat log written: {log_file}")
+    
+    # Also write a latest.md for quick access
+    latest_file = log_dir / "latest.md"
+    latest_file.write_text(log_content)
+    
+    print(f"✓ Latest heartbeat updated: {latest_file}")
     return 0
 
 

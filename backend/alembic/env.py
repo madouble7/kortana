@@ -5,12 +5,14 @@ from logging.config import fileConfig
 from alembic import context
 
 # Add backend directory to sys.path so we can import config
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, backend_dir)
+
+from sqlalchemy import engine_from_config, pool
 
 # Import our models and config
-from config import get_settings
-from models import Base
-from sqlalchemy import engine_from_config, pool
+from src.kortana.config import get_settings
+from src.kortana.models import Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
