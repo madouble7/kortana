@@ -1,10 +1,18 @@
+import os
+import sys
 from logging.config import fileConfig
 
 from alembic import context
 
-# Import our models
-from models import Base
+# Add backend directory to sys.path so we can import config
+backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, backend_dir)
+
 from sqlalchemy import engine_from_config, pool
+
+# Import our models and config
+from src.kortana.config import get_settings
+from src.kortana.models import Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -14,6 +22,18 @@ config = context.config
 # This line sets up loggers basically.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
+
+# Get settings
+settings = get_settings()
+
+# Set sqlalchemy.url dynamically from settings
+db_url = settings.DATABASE_URL
+if "sqlite" in db_url:
+    sync_url = db_url.replace("aiosqlite", "sqlite").replace("sqlite+sqlite", "sqlite")
+else:
+    sync_url = db_url.replace("+asyncpg", "")
+
+config.set_main_option("sqlalchemy.url", sync_url)
 
 # add your model's MetaData object here
 # for 'autogenerate' support
