@@ -6,6 +6,9 @@ fastapi==0.109.0
 uvicorn[standard]==0.27.0
 
 # API & HTTP
+requests==2.31.0
+httpx==0.25.2
+aiohttp==3.13.3
 requests==2.32.3
 httpx==0.28.1
 aiohttp==3.10.10
@@ -29,6 +32,7 @@ asyncpg==0.29.0
 # Security & Authentication
 
 passlib[bcrypt]==1.7.4
+python-multipart==0.0.18
 python-multipart==0.0.7
 PyJWT==2.10.1
 
