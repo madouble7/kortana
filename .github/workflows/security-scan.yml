@@ -9,6 +9,9 @@ on:
     # Weekly security scan on Sunday
     - cron: '0 0 * * 0'
 
+permissions:
+  contents: read
+
 jobs:
   # ==================== Dependency Scanning ====================
   dependency-scan:

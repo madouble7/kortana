@@ -29,7 +29,7 @@ asyncpg==0.29.0
 # Security & Authentication
 
 passlib[bcrypt]==1.7.4
-python-multipart==0.0.7
+python-multipart==0.0.18
 PyJWT==2.10.1
 
 # Caching

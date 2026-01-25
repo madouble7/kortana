@@ -10,11 +10,52 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 from fastapi import HTTPException, Request, Response, status
+from redis.asyncio import Redis
+from redis.exceptions import RedisError
 from src.kortana.logger import log_error, log_request
 from starlette.middleware.base import BaseHTTPMiddleware
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
+    """Rate limiting middleware - limits requests per IP using Redis.
+
+    This implementation uses a distributed Redis counter per client IP to ensure
+    consistent rate limiting across multiple application instances and workers.
+
+    The time window is 60 seconds, and the maximum number of requests within
+    that window is defined by ``requests_per_minute``.
+    """
+
+    def __init__(
+        self,
+        app: Any,
+        requests_per_minute: int = 60,
+        redis_url: str | None = None,
+    ) -> None:
+        """Initialize the rate limiting middleware.
+
+        Args:
+            app: The ASGI application.
+            requests_per_minute: Maximum allowed requests per IP per minute.
+            redis_url: Optional Redis connection URL. If not provided, a
+                sane default of ``redis://localhost:6379/0`` is used.
+
+        Examples:
+            >>> # Basic usage with default Redis URL
+            >>> RateLimitMiddleware(app)
+            >>> # Custom Redis URL
+            >>> RateLimitMiddleware(app, requests_per_minute=120, redis_url="redis://redis:6379/1")
+        """
+        super().__init__(app)
+        self.requests_per_minute: int = requests_per_minute
+        # Use a shared Redis instance to support distributed rate limiting across
+        # multiple processes and application instances.
+        effective_redis_url = redis_url or "redis://localhost:6379/0"
+        self.redis: Redis = Redis.from_url(
+            effective_redis_url,
+            encoding="utf-8",
+            decode_responses=True,
+        )
     """Rate limiting middleware - limits requests per IP"""
 
     def __init__(self, app: Any, requests_per_minute: int = 60):
@@ -26,6 +67,51 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
+        """Process request and apply Redis-backed rate limiting."""
+        client_ip = request.client.host if request.client else "unknown"
+        key = f"ratelimit:{client_ip}"
+
+        try:
+            # Atomically increment the request count for this IP.
+            current_count = await self.redis.incr(key)
+            # On first request in the window, set the TTL to 60 seconds.
+            if current_count == 1:
+                await self.redis.expire(key, 60)
+
+            # Check if rate limit is exceeded.
+            if current_count > self.requests_per_minute:
+                log_error(
+                    "RATE_LIMIT_EXCEEDED",
+                    f"IP {client_ip} exceeded {self.requests_per_minute} requests/minute",
+                    details={"client_ip": client_ip, "current_count": current_count},
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail="Rate limit exceeded. Maximum requests exceeded.",
+                )
+        except RedisError as exc:
+            # Security-first approach: if Redis is unavailable, fail safely and log.
+            log_error(
+                "RATE_LIMIT_REDIS_ERROR",
+                f"Failed to apply rate limiting for IP {client_ip}: {exc}",
+                details={"client_ip": client_ip},
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Rate limiting service unavailable. Please try again later.",
+            )
+
+        # Continue processing the request.
+        response = await call_next(request)
+
+        # Add rate limit headers to the response. We reuse the `current_count`
+        # from this request to compute the remaining quota.
+        response.headers["X-RateLimit-Limit"] = str(self.requests_per_minute)
+        response.headers["X-RateLimit-Remaining"] = str(
+            max(0, self.requests_per_minute - current_count)
+        )
+
+        return response
         """Process request and apply rate limiting"""
         client_ip = request.client.host if request.client else "unknown"
 
