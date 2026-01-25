@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 env:
   PYTHON_VERSION: "3.11"
   DOCKER_BUILDKIT: 1
@@ -14,6 +17,8 @@ jobs:
   test:
     name: Run Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
@@ -57,6 +62,8 @@ jobs:
     name: Build Docker Image
     runs-on: ubuntu-latest
     needs: test
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
@@ -83,6 +90,8 @@ jobs:
   security:
     name: Security Scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
@@ -97,6 +106,7 @@ jobs:
     name: Deploy to Staging
     runs-on: ubuntu-latest
     needs: [test, docker, security]
+    permissions: {}
     if: github.ref == 'refs/heads/develop'
 
     steps:
@@ -109,6 +119,7 @@ jobs:
     name: Deploy to Production
     runs-on: ubuntu-latest
     needs: [test, docker, security]
+    permissions: {}
     if: github.ref == 'refs/heads/main'
     environment: production
 

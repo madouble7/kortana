@@ -51,6 +51,27 @@ interface GitHubIssue {
 }
 
 /**
+ * Analyzes a GitHub issue using Gemini API (placeholder implementation).
+ * 
+ * This function is designed to integrate with the Gemini API to provide AI-powered
+ * analysis of GitHub issues. Currently implements a placeholder that simulates
+ * the analysis delay.
+ * 
+ * @param title - The title of the GitHub issue to analyze
+ * @param _body - The body content of the GitHub issue (underscore prefix indicates
+ *                 parameter is intentionally unused in current placeholder implementation)
+ * @returns A Promise that resolves to a string containing the analysis result
+ * 
+ * @example
+ * ```typescript
+ * const result = await analyzeIssueWithGemini(
+ *   "Bug in authentication", 
+ *   "Users cannot log in..."
+ * );
+ * console.log(result); // "Analysis ready for: Bug in authentication"
+ * ```
+ * 
+ * TODO: Integrate with actual Gemini API endpoint
  * Analyzes a GitHub issue using the Gemini API for AI-powered insights.
  * 
  * This is a placeholder function that will be integrated with the Gemini API
@@ -86,6 +107,20 @@ export default function GitHubIssueAnalyzer() {
   const [analysisResult, setAnalysisResult] = useState<string | null>(null)
 
   /**
+   * Fetches open issues from a GitHub repository.
+   * 
+   * Handles both "owner/repo" format and full GitHub URLs. Parses the input,
+   * validates the repository format, and fetches the 15 most recent open issues
+   * from the GitHub REST API. Filters out pull requests as they are returned
+   * by the issues endpoint.
+   * 
+   * @param e - The form submission event
+   * @returns A Promise that resolves when issues are fetched and state is updated
+   * 
+   * @throws {Error} When the repository URL format is invalid
+   * @throws {Error} When the repository is not found (404)
+   * @throws {Error} When the API rate limit is exceeded (403)
+   * @throws {Error} When the API request fails for other reasons
    * Fetches open issues from a GitHub repository using the GitHub REST API.
    * 
    * Handles both shorthand format (owner/repo) and full GitHub URLs. Validates
@@ -194,6 +229,14 @@ export default function GitHubIssueAnalyzer() {
   }
 
   /**
+   * Handles the analysis of a specific GitHub issue using Gemini AI.
+   * 
+   * Triggers the AI analysis for a selected issue, manages loading states,
+   * and handles errors during the analysis process. Updates the UI with
+   * the analysis result or error message.
+   * 
+   * @param issue - The GitHubIssue object to analyze
+   * @returns A Promise that resolves when the analysis is complete
    * Handles the analysis of a GitHub issue using the Kor'tana AI system.
    * 
    * Triggers the Gemini API integration to analyze issue content and provide

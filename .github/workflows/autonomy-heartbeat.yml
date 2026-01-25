@@ -10,7 +10,7 @@ jobs:
         runs-on: ubuntu-latest
 
         permissions:
-            contents: read
+            contents: write
             issues: write
 
         steps:
@@ -43,6 +43,40 @@ jobs:
                   echo "✓ Kor'tana heartbeat confirmed"
                   echo "Recent activity detected in logs/autonomy/"
 
+            - name: Close heartbeat alerts if healthy
+              if: steps.check-logs.outputs.heartbeat_ok == 'true'
+              uses: actions/github-script@v7
+              with:
+                  github-token: ${{ secrets.GITHUB_TOKEN }}
+                  script: |
+                      // Find any open heartbeat alert issues and close them
+                      const issues = await github.rest.issues.listForRepo({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        labels: ['autonomy-alert'],
+                        state: 'open'
+                      });
+
+                      const heartbeatIssues = issues.data.filter(i => i.title.includes('Heartbeat'));
+
+                      if (heartbeatIssues.length > 0) {
+                        for (const issue of heartbeatIssues) {
+                          await github.rest.issues.createComment({
+                            owner: context.repo.owner,
+                            repo: context.repo.repo,
+                            issue_number: issue.number,
+                            body: '✅ Heartbeat confirmed healthy. Recent autonomy logs detected. Closing alert.'
+                          });
+                          
+                          await github.rest.issues.update({
+                            owner: context.repo.owner,
+                            repo: context.repo.repo,
+                            issue_number: issue.number,
+                            state: 'closed'
+                          });
+                        }
+                      }
+
             - name: Create alert issue on heartbeat failure
               if: steps.check-logs.outputs.heartbeat_ok == 'false'
               uses: actions/github-script@v7
@@ -64,8 +98,73 @@ jobs:
                           owner: context.repo.owner,
                           repo: context.repo.repo,
                           title: '⚠️ Kor\'tana Autonomy Heartbeat Missing',
-                          body: 'No recent autonomy logs found. Check autonomous processes.',
+                          body: 'No recent autonomy logs found. Check autonomous processes.\n\n**Action Required:**\n- Check if daily-sync workflow is running\n- Verify logs/autonomy/ directory exists\n- Run daily_sync.py manually if needed',
                           labels: ['autonomy-alert', 'critical']
+                        });
+                      }
+
+            - name: Set up Python for recovery
+              if: steps.check-logs.outputs.heartbeat_ok == 'false'
+              uses: actions/setup-python@v4
+              with:
+                  python-version: "3.11"
+
+            - name: Attempt automated recovery
+              if: steps.check-logs.outputs.heartbeat_ok == 'false'
+              run: |
+                  echo "🔧 Attempting automated recovery..."
+                  python scripts/deployment/daily_sync.py || echo "Failed to generate heartbeat"
+
+            - name: Check if recovery succeeded
+              if: steps.check-logs.outputs.heartbeat_ok == 'false'
+              id: recovery-check
+              run: |
+                  if [ -f "logs/autonomy/latest.md" ]; then
+                    echo "recovery_successful=true" >> $GITHUB_OUTPUT
+                    echo "✅ Recovery successful - heartbeat generated"
+                  else
+                    echo "recovery_successful=false" >> $GITHUB_OUTPUT
+                    echo "❌ Recovery failed"
+                  fi
+
+            - name: Commit recovered heartbeat
+              if: steps.check-logs.outputs.heartbeat_ok == 'false' && steps.recovery-check.outputs.recovery_successful == 'true'
+              run: |
+                  git config user.name "Kor'tana Autonomous"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                  git add logs/autonomy/
+                  git commit -m "fix: restore autonomy heartbeat - automated recovery"
+                  git push origin main
+
+            - name: Close heartbeat alert if recovered
+              if: steps.check-logs.outputs.heartbeat_ok == 'false' && steps.recovery-check.outputs.recovery_successful == 'true'
+              uses: actions/github-script@v7
+              with:
+                  github-token: ${{ secrets.GITHUB_TOKEN }}
+                  script: |
+                      // Find and close existing heartbeat issues
+                      const issues = await github.rest.issues.listForRepo({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        labels: ['autonomy-alert'],
+                        state: 'open'
+                      });
+
+                      const heartbeatIssues = issues.data.filter(i => i.title.includes('Heartbeat'));
+
+                      for (const issue of heartbeatIssues) {
+                        await github.rest.issues.createComment({
+                          owner: context.repo.owner,
+                          repo: context.repo.repo,
+                          issue_number: issue.number,
+                          body: '✅ Heartbeat restored through automated recovery. Closing issue.'
+                        });
+                        
+                        await github.rest.issues.update({
+                          owner: context.repo.owner,
+                          repo: context.repo.repo,
+                          issue_number: issue.number,
+                          state: 'closed'
                         });
                       }
 
@@ -84,7 +183,7 @@ jobs:
               if: steps.check-logs.outputs.heartbeat_ok == 'true'
               run: |
                   git config user.name "Kor'tana Autonomous"
-                  git config user.email "kor-tana@example.com"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
                   if ! git diff --quiet; then
                     git add logs/metrics/*.json

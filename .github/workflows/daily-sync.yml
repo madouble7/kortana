@@ -2,30 +2,35 @@ name: Daily Sync Ritual
 
 on:
   schedule:
-    - cron: '0 6 * * *'
+    - cron: '0 6 * * *'  # Run daily at 6 AM UTC
   workflow_dispatch:
+
+permissions:
+  contents: write  # Need write permission to commit logs
 
 jobs:
   sync:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
     - uses: actions/checkout@v4
       with:
-        token: ${{ secrets.KORTANA_AUTONOMOUS_TOKEN }}
+        token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Generate report
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Generate autonomy heartbeat log
       run: |
-        echo "# Daily Sync Report - $(date)" > DAILY_SYNC.md
-        echo "Status: ✅ Completed" >> DAILY_SYNC.md
+        python scripts/deployment/daily_sync.py
 
-    - name: Update covenant
-      run: |
-        echo "[$(date)] SYNC: Daily synchronization completed" >> COVENANT_INDEX.md || true
-
-    - name: Commit
+    - name: Commit autonomy logs
       run: |
         git config user.name "kortana-autonomous[bot]"
         git config user.email "bot@kortana.dev"
-        git add DAILY_SYNC.md COVENANT_INDEX.md || true
-        git diff --quiet || git commit -m "🤖 Daily sync ritual" || true
+        git add logs/autonomy/ || true
+        git diff --quiet || git commit -m "🤖 Autonomy heartbeat: $(date +%Y-%m-%d)" || true
         git push || true
