@@ -9,6 +9,8 @@ on:
 jobs:
   test-backend:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python
@@ -26,6 +28,8 @@ jobs:
 
   test-frontend:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
     - uses: actions/checkout@v4
     - name: Set up Node.js
@@ -44,6 +48,8 @@ jobs:
   build-and-deploy:
     needs: [test-backend, test-frontend]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     if: github.ref == 'refs/heads/main'
     steps:
     - uses: actions/checkout@v4
