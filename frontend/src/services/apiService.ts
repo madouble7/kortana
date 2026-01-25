@@ -1,7 +1,4 @@
-// API Service for Kor'tana Frontend
-// Connects to FastAPI backend running on localhost:8001
-
-const API_BASE_URL = (window as any).ENV?.REACT_APP_API_URL || 'http://localhost:8001';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export interface HealthResponse {
   status: string;
@@ -141,27 +138,20 @@ class ApiService {
     });
   }
 
-  // Gemini AI
-  async analyzeWithGemini(text: string): Promise<any> {
-    return this.request('/api/gemini/analyze', {
-      method: 'POST',
-      body: JSON.stringify({ text }),
-    });
-  }
+  // System & Management
+  async getSystemInfo(): Promise<any> { return this.request('/api/system/info'); }
+  async getLogs(lines: number = 100): Promise<any> { return this.request(`/api/system/logs?lines=${lines}`); }
+  async getSettings(): Promise<any> { return this.request('/api/system/settings'); }
 
-  async generateWithGemini(description: string): Promise<any> {
-    return this.request('/api/gemini/generate', {
-      method: 'POST',
-      body: JSON.stringify({ description }),
-    });
-  }
+  // Rclone Cloud Storage
+  async getRcloneRemotes(): Promise<any> { return this.request('/api/rclone/list'); }
+  async getRcloneFiles(remote: string, path: string = ""): Promise<any> { return this.request(`/api/rclone/files/${remote}?path=${path}`); }
 
-  async chatWithGemini(message: string): Promise<any> {
-    return this.request('/api/gemini/chat', {
-      method: 'POST',
-      body: JSON.stringify({ message }),
-    });
-  }
+  // Human Only Protocol (HOP)
+  async getProtocolStatus(): Promise<any> { return this.request('/api/protocol/status'); }
+  async runAutonomousCycle(): Promise<any> { return this.request('/api/protocol/auto/cycle', { method: 'POST' }); }
+  async getNextHoTask(): Promise<any> { return this.request('/api/protocol/ho/next'); }
+  async completeHoTask(taskId: string): Promise<any> { return this.request(`/api/protocol/ho/complete/${taskId}`, { method: 'POST' }); }
 
   // Agent Operations
   async listAgents(): Promise<any[]> {
@@ -209,10 +199,6 @@ class ApiService {
 
   async getDetailedHealth(): Promise<any> {
     return this.request('/api/health/detailed');
-  }
-
-  async getSystemInfo(): Promise<any> {
-    return this.request('/api/health/system');
   }
 }
 

@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
-from routers.code_reviewer import CodeReviewer
+from src.kortana.routers.code_reviewer import CodeReviewer
 
 
 class TestCodeReviewer:
@@ -258,19 +258,19 @@ class TestCodeReviewAPI:
         """Create test client"""
         return TestClient(app_fixture)
 
-    @patch("routers.code_reviewer.CodeReviewer.scan_for_security_issues")
+    @patch("src.kortana.routers.code_reviewer.CodeReviewer.scan_for_security_issues")
     def test_scan_security_endpoint(self, mock_scan, client):
         """Test POST /scan-security endpoint"""
         mock_scan.return_value = ["SQL injection detected"]
 
         response = client.post(
-            "/review/scan-security", json={"code": "SELECT * FROM users WHERE id = 'test'"}
+            "/api/code-review/scan-security", json={"code": "SELECT * FROM users WHERE id = 'test'"}
         )
 
         assert response.status_code == 200
         assert len(response.json()["issues"]) > 0
 
-    @patch("routers.code_reviewer.CodeReviewer.check_code_quality")
+    @patch("src.kortana.routers.code_reviewer.CodeReviewer.check_code_quality")
     def test_check_quality_endpoint(self, mock_quality, client):
         """Test POST /check-quality endpoint"""
         mock_quality.return_value = {
@@ -278,12 +278,12 @@ class TestCodeReviewAPI:
             "avg_line_length": 40,
         }
 
-        response = client.post("/review/check-quality", json={"code": "def hello(): pass"})
+        response = client.post("/api/code-review/check-quality", json={"code": "def hello(): pass"})
 
         assert response.status_code == 200
         assert "line_count" in response.json()
 
-    @patch("routers.code_reviewer.CodeReviewer.generate_review")
+    @patch("src.kortana.routers.code_reviewer.CodeReviewer.generate_review")
     def test_generate_review_endpoint(self, mock_generate, client):
         """Test POST /generate-review endpoint"""
         mock_generate.return_value = {
@@ -293,20 +293,20 @@ class TestCodeReviewAPI:
         }
 
         response = client.post(
-            "/review/generate-review",
+            "/api/code-review/generate-review",
             json={"code": "def hello(): pass", "plan": "Add hello function"},
         )
 
         assert response.status_code == 200
         assert response.json()["score"] >= 0
 
-    @patch("routers.code_reviewer.CodeReviewer.post_review")
+    @patch("src.kortana.routers.code_reviewer.CodeReviewer.post_review")
     def test_post_review_endpoint(self, mock_post, client):
         """Test POST /post-review endpoint"""
         mock_post.return_value = {"success": True}
 
         response = client.post(
-            "/review/post-review",
+            "/api/code-review/post-review",
             json={
                 "owner": "testuser",
                 "repo": "testrepo",
@@ -317,13 +317,13 @@ class TestCodeReviewAPI:
 
         assert response.status_code == 200
 
-    @patch("routers.code_reviewer.CodeReviewer.should_auto_approve")
+    @patch("src.kortana.routers.code_reviewer.CodeReviewer.should_auto_approve")
     def test_auto_approve_endpoint(self, mock_approve, client):
         """Test POST /auto-approve endpoint"""
         mock_approve.return_value = True
 
         response = client.post(
-            "/review/auto-approve", json={"score": 9, "recommendation": "approve"}
+            "/api/code-review/auto-approve", json={"score": 9, "recommendation": "approve"}
         )
 
         assert response.status_code == 200
@@ -331,7 +331,7 @@ class TestCodeReviewAPI:
 
     def test_review_health_endpoint(self, client):
         """Test GET /review/health endpoint"""
-        response = client.get("/review/health")
+        response = client.get("/api/code-review/health")
         assert response.status_code == 200
         assert response.json()["status"] == "healthy"
 
