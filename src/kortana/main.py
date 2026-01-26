@@ -274,21 +274,13 @@ async def chat_stream(message: dict):
                     yield f"data: {json.dumps(event_data)}\n\n"
                     await asyncio.sleep(0.05)
             
-            # Prepare metadata
-            metadata = {
-                'model': result.get("llm_metadata", {}).get("model"),
-                'context_used': len(result.get("context_from_memory", [])) > 0,
-                'memories_accessed': [
-                    {
-                        "content": mem,
-                        "relevance": "high"
-                    }
-                    for mem in result.get("context_from_memory", [])[:3]
-                ]
+
+            # Send the full response as a single chunk event
+            event_data = {
+                'type': 'chunk',
+                'content': final_response
             }
-            
-            # Save assistant response to history
-            conversation_history.add_message(conv_id, "assistant", final_response, metadata)
+            yield f"data: {json.dumps(event_data)}\n\n"
             
             # Send completion event with metadata
             completion_data = {
