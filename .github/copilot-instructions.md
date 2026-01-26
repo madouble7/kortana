@@ -28,7 +28,7 @@ This is a Python-based autonomous AI agent project called **Kor'tana** - a highl
   - `core/`: Core functionality (brain, reasoning, ethical evaluation)
   - `agents/`: Autonomous agents and agent management
   - `memory/`: Memory systems (storage, retrieval, semantic search)
-  - `api_server.py`: FastAPI server entry point
+- `src/api_server.py`: FastAPI server entry point
 - `src/llm_clients/`: LLM API client implementations
 - `tests/`: Test suite
   - `unit/`: Unit tests
@@ -44,7 +44,6 @@ This is a Python-based autonomous AI agent project called **Kor'tana** - a highl
 - `docs/`: Project documentation
 - `alembic/`: Database migration scripts
 - `archive/`: Archived/deprecated code (do not modify)
-- `logs/`: Active log files (recent logs only)
 
 ## Key Guidelines
 
@@ -121,7 +120,7 @@ This is a Python-based autonomous AI agent project called **Kor'tana** - a highl
 
 ### 12. Error Handling and Logging
 - Use structured logging with appropriate log levels
-- Log files stored in `/logs/` (active) or `/archive/logs/` (historical)
+- Log to stdout/stderr or application-specific log files
 - Include context in error messages for debugging
 - Use try-except blocks for external API calls and file operations
 
