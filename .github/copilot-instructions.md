@@ -28,8 +28,9 @@ This is a Python-based autonomous AI agent project called **Kor'tana** - a highl
   - `core/`: Core functionality (brain, reasoning, ethical evaluation)
   - `agents/`: Autonomous agents and agent management
   - `memory/`: Memory systems (storage, retrieval, semantic search)
-  - `main.py`: FastAPI application entry point
-- `src/api_server.py`: Alternative API server implementation
+  - `main.py`: Primary FastAPI application entry point
+  - `api/`: API routers and endpoints
+- `src/api_server.py`: Legacy API server (use src/kortana/main.py instead)
 - `src/llm_clients/`: LLM API client implementations
 - `tests/`: Test suite
   - `unit/`: Unit tests
