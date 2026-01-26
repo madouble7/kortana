@@ -283,6 +283,8 @@
             let metaInfo = '';
             let memoriesForClick = null;
             if (metadata.model) {
+            let memoriesForClick = null;
+            if (metadata.model) {
                 metaInfo += `<div class="message-meta">Model: ${metadata.model}`;
                 if (metadata.memories_accessed && metadata.memories_accessed.length > 0) {
                     memoriesForClick = metadata.memories_accessed;
@@ -291,6 +293,14 @@
                 metaInfo += `</div>`;
             }
             div.innerHTML = `<div class="message-content"><div>${escapeHtml(content)}</div>${metaInfo}</div>`;
+            if (memoriesForClick) {
+                const badge = div.querySelector('.memories-badge');
+                if (badge) {
+                    badge.addEventListener('click', function(event) {
+                        showMemories(event, memoriesForClick);
+                    });
+                }
+            }
             if (memoriesForClick) {
                 const badge = div.querySelector('.memories-badge');
                 if (badge) {
