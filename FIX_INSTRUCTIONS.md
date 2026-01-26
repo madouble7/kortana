@@ -8,9 +8,23 @@ PR #14 (`copilot/enhance-ai-chat-interface`) is not mergeable due to unrelated g
 
 The PR branch was created with a shallow or grafted history, missing the necessary parent commits to establish a proper connection to the main branch.
 
-## Solution
+## ⚡ Quick Fix (Recommended)
 
-The fix has been prepared in this PR with proper history. To apply it to PR #14:
+Run the automated script:
+
+```bash
+./apply_pr14_fix.sh
+```
+
+This script will:
+1. Create a branch from main with the fix
+2. Apply the patch with proper history
+3. Verify the fix is mergeable
+4. Show next steps to push to PR #14
+
+## Manual Solutions
+
+Choose one of these options if you prefer to apply the fix manually:
 
 ### Option A: Force Push to PR Branch (Recommended)
 
