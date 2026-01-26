@@ -28,7 +28,8 @@ This is a Python-based autonomous AI agent project called **Kor'tana** - a highl
   - `core/`: Core functionality (brain, reasoning, ethical evaluation)
   - `agents/`: Autonomous agents and agent management
   - `memory/`: Memory systems (storage, retrieval, semantic search)
-- `src/api_server.py`: FastAPI server entry point
+  - `main.py`: FastAPI application entry point
+- `src/api_server.py`: Alternative API server implementation
 - `src/llm_clients/`: LLM API client implementations
 - `tests/`: Test suite
   - `unit/`: Unit tests
@@ -79,7 +80,7 @@ This is a Python-based autonomous AI agent project called **Kor'tana** - a highl
 - Follow RESTful conventions for endpoints
 - Include proper error handling and validation with Pydantic models
 - Document endpoints with FastAPI's automatic OpenAPI documentation
-- API entry point: `src/kortana/api_server.py`
+- Main API entry point: `src/kortana/main.py`
 
 ### 6. LLM Integration
 - Support multiple LLM providers (OpenAI, Anthropic, local models)
@@ -175,7 +176,7 @@ alembic current                # Show current migration
 alembic revision --autogenerate -m "description"  # Create migration
 
 # Run the application
-python -m uvicorn src.kortana.api_server:app --reload
+python -m uvicorn src.kortana.main:app --reload
 python -m src.kortana.core.brain              # Run brain module
 python awaken_kortana.py                       # Awaken Kor'tana
 
