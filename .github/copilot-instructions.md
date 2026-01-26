@@ -65,7 +65,7 @@ This is a Python-based autonomous AI agent project called **Kor'tana** - a highl
 - The project uses **SQLAlchemy** with Alembic migrations
 - Memory database: `MEMORY_DB_URL` (default: SQLite)
 - **Never** modify database schema without creating an Alembic migration
-- Database is locked and stable - validate with `python validate_infrastructure.py`
+- Database is locked and stable - validate with `python scripts/validate_infrastructure.py`
 - Memory operations should preserve integrity and ethical considerations
 
 ### 4. Testing Philosophy
@@ -181,7 +181,7 @@ python -m src.kortana.core.brain              # Run brain module
 python awaken_kortana.py                       # Awaken Kor'tana
 
 # Validation
-python validate_infrastructure.py              # Validate database setup
+python scripts/validate_infrastructure.py         # Validate database setup
 ```
 
 ## Special Notes
