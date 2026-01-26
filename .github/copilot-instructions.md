@@ -10,7 +10,7 @@ This is a Python-based autonomous AI agent project called **Kor'tana** - a highl
 - Run `pytest` to ensure all tests pass
 
 ### Development Flow
-- **Setup**: Create Python 3.11+ virtual environment and run `pip install -e .`
+- **Setup**: Create Python 3.11+ virtual environment and run `poetry install` or `pip install -e .`
 - **Build**: Not applicable (interpreted Python)
 - **Test**: `pytest tests/` (runs unit and integration tests)
 - **Lint**: `ruff check .` (check for issues) or `ruff check --fix .` (auto-fix)
@@ -40,10 +40,11 @@ This is a Python-based autonomous AI agent project called **Kor'tana** - a highl
   - `launchers/`: Application launchers
   - `utilities/`: General utilities
 - `config/`: Configuration files
-- `data/`: Runtime data (databases, logs)
+- `data/`: Runtime data (databases)
 - `docs/`: Project documentation
 - `alembic/`: Database migration scripts
 - `archive/`: Archived/deprecated code (do not modify)
+- `logs/`: Active log files (recent logs only)
 
 ## Key Guidelines
 
@@ -152,7 +153,9 @@ This is a Python-based autonomous AI agent project called **Kor'tana** - a highl
 python -m venv venv311
 source venv311/bin/activate  # Linux/Mac
 venv311\Scripts\activate.bat  # Windows
-pip install -e .
+poetry install               # Preferred: uses lock file
+# OR
+pip install -e .             # Alternative: direct install
 
 # Run tests
 pytest                         # All tests
