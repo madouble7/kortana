@@ -1,6 +1,6 @@
 """Tests for enhanced ethical evaluation."""
 import pytest
-from src.kortana.modules.ethical_discernment_module.evaluators import (
+from kortana.modules.ethical_discernment_module.evaluators import (
     AlgorithmicArroganceEvaluator,
     UncertaintyHandler
 )

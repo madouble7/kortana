@@ -34,8 +34,8 @@ print("\n🔍 TESTING SERVICES WITH CONFIGURATION")
 print("=" * 50)
 
 try:
-    from src.config.schema import create_default_config
-    from src.kortana.core.services import get_enhanced_model_router, initialize_services
+    from kortana.config.schema import create_default_config
+    from kortana.core.services import get_enhanced_model_router, initialize_services
 
     print("5. Creating default configuration...")
     config = create_default_config()

@@ -15,7 +15,7 @@ sys.path.insert(0, r"c:\project-kortana")
 def start_server():
     """Start the FastAPI server"""
     try:
-        from src.kortana.main import app
+        from kortana.main import app
         import uvicorn
 
         print("🚀 Starting Kor'tana Genesis Protocol Server...")

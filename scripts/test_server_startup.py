@@ -16,7 +16,7 @@ print("=" * 50)
 
 try:
     print("📦 Importing main application...")
-    from src.kortana.main import app
+    from kortana.main import app
 
     print("✅ Main application imported successfully!")
 

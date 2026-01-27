@@ -10,7 +10,7 @@ from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 # Import modules for testing
-from src.kortana.brain_fixed import ChatEngine
+from kortana.brain import ChatEngine
 
 
 class TestMemoryIntegration(unittest.TestCase):

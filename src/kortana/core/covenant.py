@@ -12,7 +12,7 @@ from datetime import datetime
 from typing import Any
 
 # Avoid circular import
-# from src.kortana.config import load_config
+# from kortana.config import load_config
 
 
 class CovenantEnforcer:

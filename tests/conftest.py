@@ -12,7 +12,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.kortana.services.database import Base
+from kortana.services.database import Base
 
 # Add the src directory to the path so we can import modules
 sys.path.insert(

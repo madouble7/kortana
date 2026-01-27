@@ -11,7 +11,7 @@ from discord.ext import commands
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 try:
-    from src.kortana.brain import ChatEngine
+    from kortana.brain import ChatEngine
 except ImportError:
     print("Warning: Kor'tana brain not found. Using simple echo responses.")
     ChatEngine = None

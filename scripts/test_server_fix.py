@@ -17,7 +17,7 @@ def test_main_import():
     """Test if the main module can be imported without errors."""
     try:
         print("Testing main.py import...")
-        from src.kortana.main import app
+        from kortana.main import app
 
         print("✅ Main module imported successfully!")
         print(f"✅ App type: {type(app)}")

@@ -25,7 +25,7 @@ def get_project_root() -> Path:
     return Path(__file__).parent.parent.parent.parent
 
 
-def load_config(config_path: str | None = None) -> KortanaConfig:  # Changed return type
+def load_config(config_path: str | None = None) -> KortanaConfig:
     """
     Load configuration from config file and parse into KortanaConfig object.
 
@@ -68,6 +68,10 @@ def load_config(config_path: str | None = None) -> KortanaConfig:  # Changed ret
         print(f"Error loading or parsing config from {config_path}: {e}")
         print("Using default KortanaConfig due to an unexpected error.")
         return KortanaConfig()  # Return default config on other errors
+
+
+# Maintain backward compatibility with old function names
+load_kortana_config = load_config
 
 
 def get_config(key: str | None = None, config_path: str | None = None) -> Any:

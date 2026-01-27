@@ -1,6 +1,6 @@
 import unittest
 
-from src.utils import text_encoding
+from kortana.utils import text_encoding
 
 
 class TestTextEncodingUtils(unittest.TestCase):

@@ -6,7 +6,7 @@ This version only includes the most essential services.
 import logging
 
 # Only import what we absolutely need
-from src.config.schema import KortanaConfig
+from kortana.config.schema import KortanaConfig
 
 # Placeholder for service instances
 _config: KortanaConfig | None = None

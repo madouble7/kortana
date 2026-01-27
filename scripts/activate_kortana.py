@@ -42,7 +42,7 @@ sys.path.append(str(Path(__file__).parent))
 try:
     from kortana.config.schema import KortanaConfig
     from kortana.llm_clients.factory import LLMClientFactory
-    from src.kortana.services.database import get_db_sync
+    from kortana.services.database import get_db_sync
 except ImportError as e:
     logger.error(f"Failed to import required modules: {e}")
     print(f"ERROR: Failed to import required Kor'tana modules: {e}")

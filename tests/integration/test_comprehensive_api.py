@@ -12,8 +12,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.kortana.main import app
-from src.kortana.services.database import Base, get_db_sync
+from kortana.main import app
+from kortana.services.database import Base, get_db_sync
 
 # Test database setup
 SQLALCHEMY_DATABASE_URL_TEST = "sqlite:///./test_kortana_comprehensive.db"

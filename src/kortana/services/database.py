@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-from src.kortana.config.settings import settings
+from kortana.config.settings import settings
 
 sync_engine = create_engine(settings.ALEMBIC_DATABASE_URL, echo=True)
 SyncSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=sync_engine)

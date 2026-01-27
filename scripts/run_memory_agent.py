@@ -4,7 +4,7 @@ import sys
 sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
 )
-from src.agent_manager import AgentManager
+from kortana.agent_manager import AgentManager
 
 if __name__ == "__main__":
     _, mode, *args = sys.argv

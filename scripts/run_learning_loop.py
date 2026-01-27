@@ -1,7 +1,7 @@
 import asyncio
 
-from src.kortana.core.autonomous_tasks import run_performance_analysis_task
-from src.kortana.services.database import get_db_sync
+from kortana.core.autonomous_tasks import run_performance_analysis_task
+from kortana.services.database import get_db_sync
 
 
 async def main():

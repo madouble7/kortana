@@ -3,7 +3,7 @@ import pytest
 from unittest.mock import Mock, patch
 from sqlalchemy.orm import Session
 
-from src.kortana.modules.memory_core import models, schemas, services
+from kortana.modules.memory_core import models, schemas, services
 
 
 class TestMemoryCaching:

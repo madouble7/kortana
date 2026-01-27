@@ -8,7 +8,7 @@ identified by the EnvironmentalScanner and generating structured Goal objects.
 import logging
 import re
 
-from ...services.llm_service import llm_service
+from ...services.llm_service import get_llm_service
 from .goal import Goal, GoalType
 from .manager import GoalManager
 
@@ -116,6 +116,7 @@ class GoalGenerator:
         try:
             # Use llm_service directly
             # Assuming llm_service has a generate_response method that returns a dict-like object
+            llm_service = get_llm_service()
             response = await llm_service.generate_response(prompt)
 
             # Parse the LLM's response to extract structured data

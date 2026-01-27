@@ -22,8 +22,8 @@ project_root = r"c:\project-kortana"
 sys.path.insert(0, project_root)
 os.chdir(project_root)
 
-from src.kortana.core.autonomous_tasks import run_performance_analysis_task
-from src.kortana.services.database import get_db_sync
+from kortana.core.autonomous_tasks import run_performance_analysis_task
+from kortana.services.database import get_db_sync
 
 # FastAPI server configuration
 BASE_URL = "http://localhost:8000"

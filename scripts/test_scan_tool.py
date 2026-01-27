@@ -7,7 +7,7 @@ Part of Batch 10: The Proactive Engineer Initiative
 import asyncio
 import logging
 
-from src.kortana.core.execution_engine import ExecutionEngine
+from kortana.core.execution_engine import ExecutionEngine
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)

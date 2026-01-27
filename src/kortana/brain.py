@@ -21,8 +21,8 @@ from kortana.brain_utils import (
 from kortana.config.schema import KortanaConfig
 from kortana.memory.memory import MemoryEntry
 from kortana.memory.memory_manager import MemoryManager
-from llm_clients.factory import LLMClientFactory
-from model_router import SacredModelRouter
+from kortana.llm_clients.factory import LLMClientFactory
+from kortana.model_router import SacredModelRouter
 
 # Configure logging
 logger = logging.getLogger(__name__)

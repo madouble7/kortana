@@ -14,12 +14,12 @@ if PROJECT_ROOT not in sys.path:
 import asyncio
 import logging
 
-from src.kortana.core.autonomous_tasks import autonomous_goal_processing_cycle
-from src.kortana.core.covenant import CovenantEnforcer
-from src.kortana.core.goal_manager import GoalManager
-from src.kortana.core.memory import MemoryManager
-from src.kortana.core.models import GoalType
-from src.kortana.services.database import get_db_sync
+from kortana.core.autonomous_tasks import autonomous_goal_processing_cycle
+from kortana.core.covenant import CovenantEnforcer
+from kortana.core.goal_manager import GoalManager
+from kortana.core.memory import MemoryManager
+from kortana.core.models import GoalType
+from kortana.services.database import get_db_sync
 
 # Setup logging to a test log file
 logging.basicConfig(

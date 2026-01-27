@@ -53,7 +53,7 @@ def test_imports():
             traceback.print_exc()
 
         try:
-            from src.kortana.core.orchestrator import KorOrchestrator
+            from kortana.core.orchestrator import KorOrchestrator
 
             print("✓ KorOrchestrator imported")
         except ImportError as e:
@@ -61,7 +61,7 @@ def test_imports():
             traceback.print_exc()
 
         try:
-            from src.kortana.modules.memory_core.services import MemoryCoreService
+            from kortana.modules.memory_core.services import MemoryCoreService
 
             print("✓ MemoryCoreService imported")
         except ImportError as e:
@@ -69,7 +69,7 @@ def test_imports():
             traceback.print_exc()
 
         try:
-            from src.kortana.services.database import get_db_sync
+            from kortana.services.database import get_db_sync
 
             print("✓ get_db_sync imported")
         except ImportError as e:
@@ -125,7 +125,7 @@ def test_database():
     print("\nTesting database connection...")
 
     try:
-        from src.kortana.services.database import get_db_sync
+        from kortana.services.database import get_db_sync
 
         print("Getting database session...")
         db_session = next(get_db_sync())

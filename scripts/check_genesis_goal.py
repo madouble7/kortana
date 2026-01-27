@@ -6,8 +6,8 @@ Check Genesis Protocol Goal Status
 import sys
 sys.path.append("src")
 
-from src.kortana.services.database import SyncSessionLocal
-from src.kortana.core.models import Goal
+from kortana.services.database import SyncSessionLocal
+from kortana.core.models import Goal
 
 def check_genesis_goal():
     """Check if the Genesis Protocol goal was created"""

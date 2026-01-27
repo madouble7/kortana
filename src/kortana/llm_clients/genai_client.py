@@ -7,8 +7,6 @@ import logging
 import os
 from typing import Any
 
-from google.generativeai.types import GenerationConfig
-
 from .base_client import BaseLLMClient
 
 logger = logging.getLogger(__name__)
@@ -199,6 +197,7 @@ class GoogleGenAIClient(BaseLLMClient):
             # Create GenerationConfig object if parameters are provided
             generation_config = None
             if valid_genai_params:
+                from google.generativeai.types import GenerationConfig
                 generation_config = GenerationConfig(**valid_genai_params)
                 logger.info(f"Using generation config: {generation_config}")
 

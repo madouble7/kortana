@@ -6,7 +6,7 @@ from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
-from src.kortana.services.database import Base
+from kortana.services.database import Base
 
 
 class ConversationStatus(enum.Enum):
@@ -29,7 +29,7 @@ class Conversation(Base):
         default=ConversationStatus.ACTIVE,
         index=True,
     )
-    metadata = Column(JSON, nullable=True)
+    extra_info = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     updated_at = Column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -57,7 +57,7 @@ class ConversationMessage(Base):
     conversation_id = Column(Integer, ForeignKey("conversations.id"), nullable=False, index=True)
     role = Column(String(50), nullable=False, index=True)  # user, assistant, system
     content = Column(Text, nullable=False)
-    metadata = Column(JSON, nullable=True)  # Store performance stats, etc.
+    extra_info = Column(JSON, nullable=True)  # Store performance stats, etc.
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     
     # Relationship to conversation

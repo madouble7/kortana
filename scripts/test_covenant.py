@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 try:
     # Import the config module
-    from src.kortana.config import load_config
+    from kortana.config import load_config
 
     # Load the config
     print("Loading configuration...")

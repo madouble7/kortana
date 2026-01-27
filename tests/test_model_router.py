@@ -63,14 +63,14 @@ def test_sacred_model_router_initialization(mock_exists, mock_file):
     try:
         from kortana.model_router import SacredModelRouter
 
-            router = SacredModelRouter()
+        router = SacredModelRouter()
 
-            # Verify initialization
-            assert router is not None
-            assert hasattr(router, "loaded_models_config")
-            assert hasattr(router, "sacred_config")
-            assert hasattr(router, "routing_history")
-            assert hasattr(router, "category_to_archetype_map")
+        # Verify initialization
+        assert router is not None
+        assert hasattr(router, "loaded_models_config")
+        assert hasattr(router, "sacred_config")
+        assert hasattr(router, "routing_history")
+        assert hasattr(router, "category_to_archetype_map")
 
     except Exception as e:
         pytest.fail(f"SacredModelRouter initialization failed: {e}")

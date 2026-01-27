@@ -29,22 +29,22 @@ def test_core_imports():
     print("-" * 60)
 
     imports = [
-        ("Brain Module", "from src.kortana.core.brain import ChatEngine"),
+        ("Brain Module", "from kortana.core.brain import ChatEngine"),
         (
             "Planning Engine",
-            "from src.kortana.core.planning_engine import PlanningEngine",
+            "from kortana.core.planning_engine import PlanningEngine",
         ),
         (
             "Enhanced Router",
-            "from src.kortana.core.enhanced_model_router import EnhancedModelRouter",
+            "from kortana.core.enhanced_model_router import EnhancedModelRouter",
         ),
         (
             "Model Factory",
-            "from src.kortana.llm_clients.factory import LLMClientFactory",
+            "from kortana.llm_clients.factory import LLMClientFactory",
         ),
         (
             "Memory Manager",
-            "from src.kortana.memory.memory_manager import MemoryManager",
+            "from kortana.memory.memory_manager import MemoryManager",
         ),
     ]
 
@@ -78,8 +78,8 @@ def test_enhanced_router_with_settings():
     print("-" * 60)
 
     try:
-        from src.config.schema import create_default_config
-        from src.kortana.core.enhanced_model_router import EnhancedModelRouter
+        from kortana.config.schema import create_default_config
+        from kortana.core.enhanced_model_router import EnhancedModelRouter
 
         # Create configuration first
         settings = create_default_config()
@@ -103,8 +103,8 @@ def test_services_architecture_with_initialization():
     print("-" * 60)
 
     try:
-        from src.config.schema import create_default_config
-        from src.kortana.core.services import (
+        from kortana.config.schema import create_default_config
+        from kortana.core.services import (
             get_llm_service,
             get_model_router,
             initialize_services,
@@ -136,7 +136,7 @@ def test_configuration_system():
     print("-" * 60)
 
     try:
-        from src.config.schema import create_default_config
+        from kortana.config.schema import create_default_config
 
         config = create_default_config()
 
@@ -158,8 +158,8 @@ def test_chatengine_with_settings():
     print("-" * 60)
 
     try:
-        from src.config.schema import create_default_config
-        from src.kortana.core.brain import ChatEngine
+        from kortana.config.schema import create_default_config
+        from kortana.core.brain import ChatEngine
 
         # Create configuration
         settings = create_default_config()

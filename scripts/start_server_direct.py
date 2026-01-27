@@ -14,7 +14,7 @@ def start_server():
     try:
         import uvicorn
 
-        from src.kortana.main import app
+        from kortana.main import app
 
         print("✅ FastAPI app imported successfully")
         print("🔄 Starting server on http://127.0.0.1:8000...")

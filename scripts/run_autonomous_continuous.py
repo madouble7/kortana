@@ -56,7 +56,7 @@ def main():
             # Import and run the brain in autonomous mode
             from kortana.config import load_config
             from kortana.config.schema import KortanaConfig
-            from src.kortana.core.brain import ChatEngine
+            from kortana.core.brain import ChatEngine
 
             # Load configuration
             settings = KortanaConfig(**load_config())

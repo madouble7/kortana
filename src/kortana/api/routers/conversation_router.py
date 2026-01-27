@@ -4,8 +4,8 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from src.kortana.modules.conversation_history import models, schemas, services
-from src.kortana.services.database import get_db_sync
+from kortana.modules.conversation_history import models, schemas, services
+from kortana.services.database import get_db_sync
 
 router = APIRouter(
     prefix="/conversations",

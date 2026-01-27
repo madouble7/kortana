@@ -10,7 +10,7 @@ sys.path.insert(0, str(project_root))
 print("🔍 Starting simple code scanning test...")
 
 try:
-    from src.kortana.core.execution_engine import ExecutionEngine
+    from kortana.core.execution_engine import ExecutionEngine
     print("✅ ExecutionEngine imported successfully")
 
     # Create execution engine

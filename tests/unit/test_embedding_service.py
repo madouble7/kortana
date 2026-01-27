@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 import pytest
 
-from src.kortana.services.embedding_service import EmbeddingService, settings
+from kortana.services.embedding_service import EmbeddingService, settings
 
 
 # Test with a valid API key scenario

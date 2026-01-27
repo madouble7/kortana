@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 try:
     print("Importing config module...")
-    from src.kortana.config import load_config
+    from kortana.config import load_config
 
     print("Loading configuration...")
     config = load_config()

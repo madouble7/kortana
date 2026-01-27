@@ -12,7 +12,7 @@ try:
             )  # then add CWD which should make 'src.config' findable
 
     from config import (
-        load_config,  # Or use 'from src.config import load_config' if that's correct for your structure
+        load_config,  # Or use 'from kortana.config import load_config' if that's correct for your structure
     )
 
     print("Successfully imported load_config from config module.")

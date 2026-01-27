@@ -21,14 +21,14 @@ print("=" * 50)
 
 try:
     print("1. Testing database settings import...")
-    from src.kortana.config.settings import settings
+    from kortana.config.settings import settings
 
     print("✅ Settings imported")
     print(f"   Database URL: {settings.MEMORY_DB_URL}")
     print(f"   Alembic URL: {settings.ALEMBIC_DATABASE_URL}")
 
     print("2. Testing database service import...")
-    from src.kortana.services.database import SyncSessionLocal
+    from kortana.services.database import SyncSessionLocal
 
     print("✅ Database service imported")
 

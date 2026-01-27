@@ -12,7 +12,7 @@ from unittest.mock import mock_open, patch
 
 import pytest
 
-from src.kortana.brain_utils import (
+from kortana.brain_utils import (
     append_to_memory_journal,
     create_timestamp,
     ensure_directories_exist,

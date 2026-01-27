@@ -4,8 +4,8 @@ import traceback  # Import the traceback module
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from src.kortana.modules.memory_core import schemas, services
-from src.kortana.services.database import get_db_sync
+from kortana.modules.memory_core import schemas, services
+from kortana.services.database import get_db_sync
 
 router = APIRouter(
     prefix="/memories",

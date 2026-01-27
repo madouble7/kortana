@@ -10,8 +10,8 @@ import sys
 # Add the project root to the Python path
 sys.path.insert(0, os.path.abspath("."))
 
-from src.kortana.core.autonomous_tasks import run_proactive_code_review_task
-from src.kortana.services.database import get_db_sync
+from kortana.core.autonomous_tasks import run_proactive_code_review_task
+from kortana.services.database import get_db_sync
 
 
 async def main():

@@ -7,8 +7,8 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from src.kortana.core.orchestrator import KorOrchestrator
-from src.kortana.services.database import get_db_sync
+from kortana.core.orchestrator import KorOrchestrator
+from kortana.services.database import get_db_sync
 
 # Existing router for /core/query
 router = APIRouter(

@@ -7,32 +7,32 @@ from contextlib import asynccontextmanager  # For lifespan events
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.kortana.api.routers import core_router, goal_router
-from src.kortana.api.routers.conversation_router import router as conversation_router
-from src.kortana.brain import ChatEngine
-from src.kortana.config import load_kortana_config
-from src.kortana.core.scheduler import (
+from kortana.api.routers import core_router, goal_router
+from kortana.api.routers.conversation_router import router as conversation_router
+from kortana.brain import ChatEngine
+from kortana.config import load_kortana_config
+from kortana.core.scheduler import (
     get_scheduler_status,
     start_scheduler,
     stop_scheduler,
 )
-from src.kortana.modules.content_generation.router import router as content_router
-from src.kortana.modules.emotional_intelligence.router import (
+from kortana.modules.content_generation.router import router as content_router
+from kortana.modules.emotional_intelligence.router import (
     router as emotional_intelligence_router,
 )
-from src.kortana.modules.ethical_transparency.router import router as ethics_router
-from src.kortana.modules.gaming.router import router as gaming_router
-from src.kortana.modules.marketplace.router import router as marketplace_router
-from src.kortana.modules.memory_core.routers.memory_router import (
+from kortana.modules.ethical_transparency.router import router as ethics_router
+from kortana.modules.gaming.router import router as gaming_router
+from kortana.modules.marketplace.router import router as marketplace_router
+from kortana.modules.memory_core.routers.memory_router import (
     router as memory_router,
 )
-from src.kortana.modules.security.routers.security_router import (
+from kortana.modules.security.routers.security_router import (
     router as security_router,
 )
 
 # Import new module routers
-from src.kortana.modules.multilingual.router import router as multilingual_router
-from src.kortana.modules.plugin_framework.router import router as plugin_router
+from kortana.modules.multilingual.router import router as multilingual_router
+from kortana.modules.plugin_framework.router import router as plugin_router
 
 # Global configuration and engine
 settings = load_kortana_config()

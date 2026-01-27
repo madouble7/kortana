@@ -12,9 +12,9 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from src.kortana.config import settings
-from src.kortana.core.orchestrator import KorOrchestrator
-from src.kortana.services.database import get_db_sync
+from kortana.config import settings
+from kortana.core.orchestrator import KorOrchestrator
+from kortana.services.database import get_db_sync
 
 router = APIRouter(
     prefix="/api/lobe",

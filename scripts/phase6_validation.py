@@ -75,7 +75,7 @@ def main():
     # Test 1: Basic import test
     print("\n🧪 TEST 1: Basic Import Validation")
     success, stdout, stderr, duration = run_command(
-        "C:\\project-kortana\\venv311\\Scripts\\python.exe -c \"import src.kortana.main; print('✅ Main module imports successfully')\"",
+        "C:\\project-kortana\\venv311\\Scripts\\python.exe -c \"import kortana.main; print('✅ Main module imports successfully')\"",
         "Basic FastAPI import test",
         30,
     )

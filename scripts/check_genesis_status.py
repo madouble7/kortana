@@ -11,9 +11,9 @@ sys.path.append(".")
 
 def check_goal_status():
     try:
-        from src.kortana.core.goal_manager import GoalManager
-        from src.kortana.modules.memory_core.services import MemoryCoreService
-        from src.kortana.services.database import SessionLocal
+        from kortana.core.goal_manager import GoalManager
+        from kortana.modules.memory_core.services import MemoryCoreService
+        from kortana.services.database import SessionLocal
 
         db = SessionLocal()
         try:

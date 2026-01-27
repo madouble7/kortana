@@ -21,12 +21,12 @@ def test_circular_import_resolution():
     try:
         # This was previously failing due to circular imports
         print("Importing ChatEngine from brain.py...")
-        from src.kortana.core.brain import ChatEngine
+        from kortana.core.brain import ChatEngine
 
         print("SUCCESS: ChatEngine imported without circular dependency errors!")
 
         print("Importing services...")
-        from src.kortana.core.services import get_enhanced_model_router
+        from kortana.core.services import get_enhanced_model_router
 
         print("SUCCESS: Services imported without circular dependency errors!")
 
@@ -50,7 +50,7 @@ def test_service_architecture():
     print("\n=== Testing Service Architecture ===")
 
     try:
-        from src.kortana.core.services import get_service_status, reset_services
+        from kortana.core.services import get_service_status, reset_services
 
         print("Service functions imported successfully")
 

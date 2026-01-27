@@ -25,8 +25,8 @@ async def test_complete_integration():
     # Test 1: Services Architecture
     try:
         print("1. Testing clean services architecture...")
-        from src.kortana.config import load_config
-        from src.kortana.core.services import (
+        from kortana.config import load_config
+        from kortana.core.services import (
             get_enhanced_model_router,
             get_service_status,
             initialize_services,
@@ -50,7 +50,7 @@ async def test_complete_integration():
         models = router.get_available_models()
         print(f"   Available models: {len(models)}")
 
-        from src.kortana.core.enhanced_model_router import TaskType
+        from kortana.core.enhanced_model_router import TaskType
 
         selected = router.select_optimal_model(TaskType.REASONING, prefer_free=True)
         print(f"   Selected reasoning model: {selected}")
@@ -63,7 +63,7 @@ async def test_complete_integration():
     # Test 3: Planning Engine Integration
     try:
         print("3. Testing planning engine integration...")
-        from src.kortana.core.services import get_planning_engine
+        from kortana.core.services import get_planning_engine
 
         planning_engine = get_planning_engine()
 
@@ -82,7 +82,7 @@ async def test_complete_integration():
     try:
         print("4. Testing for circular import resolution...")
         # This should work without issues now
-        from src.kortana.core.brain import ChatEngine
+        from kortana.core.brain import ChatEngine
 
         print("   ChatEngine imported successfully")
 

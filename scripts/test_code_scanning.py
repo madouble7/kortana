@@ -14,7 +14,7 @@ from pathlib import Path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
-from src.kortana.core.execution_engine import ExecutionEngine
+from kortana.core.execution_engine import ExecutionEngine
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

@@ -9,9 +9,6 @@ import os
 import time
 from typing import Any
 
-import google.generativeai as genai
-from google.generativeai.types import HarmBlockThreshold, HarmCategory
-
 from .base_client import BaseLLMClient
 
 logger = logging.getLogger(__name__)
@@ -41,6 +38,9 @@ class GoogleGeminiClient(BaseLLMClient):
         self.default_params = kwargs
 
         # Configure the Gemini client
+        import google.generativeai as genai
+        from google.generativeai.types import HarmBlockThreshold, HarmCategory
+        
         genai.configure(api_key=self.api_key)
 
         # Initialize the model with safety settings
@@ -128,6 +128,7 @@ class GoogleGeminiClient(BaseLLMClient):
         **kwargs,
     ) -> dict[str, Any]:
         """Generate response using Google Gemini API"""
+        import google.generativeai as genai
         try:
             # Respect rate limits
             self._respect_rate_limits()

@@ -12,7 +12,7 @@ def test_full_system():
     # Test 1: Configuration System
     print("1. Testing configuration system...")
     try:
-        from src.kortana.config import load_config
+        from kortana.config import load_config
 
         settings = load_config()
         print(f"   ✓ Config loaded: {settings.app.name} v{settings.app.version}")
@@ -47,7 +47,7 @@ def test_full_system():
     # Test 3: ChatEngine with Configuration
     print("\n3. Testing ChatEngine with centralized config...")
     try:
-        from src.kortana.core.brain import ChatEngine
+        from kortana.core.brain import ChatEngine
 
         engine = ChatEngine(settings)
         print("   ✓ ChatEngine instantiated with settings")

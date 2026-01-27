@@ -3,10 +3,10 @@ import os
 from typing import Any
 
 # Assume necessary Kor'tana modules are importable from the project root
-# from src.brain import ChatEngine
-# from src.sacred_trinity_router import SacredTrinityRouter
-# from src.covenant_enforcer import CovenantEnforcer
-from src.utils import load_all_configs
+# from kortana.brain import ChatEngine
+# from kortana.sacred_trinity_router import SacredTrinityRouter
+# from kortana.covenant_enforcer import CovenantEnforcer
+from kortana.utils import load_all_configs
 
 # Setup logging
 logging.basicConfig(

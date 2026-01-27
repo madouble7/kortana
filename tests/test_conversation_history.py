@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from unittest.mock import Mock
 from sqlalchemy.orm import Session
 
-from src.kortana.modules.conversation_history import models, schemas, services
+from kortana.modules.conversation_history import models, schemas, services
 
 
 class TestConversationHistoryService:

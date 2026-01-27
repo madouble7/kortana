@@ -1,7 +1,7 @@
 import time
 import unittest
 
-from src.utils.timestamp_utils import get_iso_timestamp
+from kortana.utils.timestamp_utils import get_iso_timestamp
 
 
 class TestTimestampUtils(unittest.TestCase):

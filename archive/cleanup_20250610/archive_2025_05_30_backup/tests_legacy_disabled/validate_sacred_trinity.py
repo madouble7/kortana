@@ -4,9 +4,9 @@ import os
 from typing import Any
 
 # Assume necessary Kor'tana modules are importable from the project root
-# from src.brain import ChatEngine
-# from src.sacred_trinity_router import SacredTrinityRouter
-# from src.covenant_enforcer import CovenantEnforcer
+# from kortana.brain import ChatEngine
+# from kortana.sacred_trinity_router import SacredTrinityRouter
+# from kortana.covenant_enforcer import CovenantEnforcer
 # from config.sacred_trinity_config import SACRED_TRINITY_CONFIG
 # from tests.test_sacred_trinity import evaluate_trinity_alignment # Reuse evaluation logic
 

@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 def test_encryption_service():
     """Test encryption service."""
-    from src.kortana.modules.security.services.encryption_service import EncryptionService
+    from kortana.modules.security.services.encryption_service import EncryptionService
     
     service = EncryptionService(master_key="test_key_123")
     
@@ -38,8 +38,8 @@ def test_encryption_service():
 
 def test_alert_service():
     """Test alert service."""
-    from src.kortana.modules.security.services.alert_service import AlertService
-    from src.kortana.modules.security.models.security_models import AlertType, AlertSeverity
+    from kortana.modules.security.services.alert_service import AlertService
+    from kortana.modules.security.models.security_models import AlertType, AlertSeverity
     
     service = AlertService()
     
@@ -74,8 +74,8 @@ def test_alert_service():
 
 def test_threat_detection_service():
     """Test threat detection service."""
-    from src.kortana.modules.security.services.threat_detection_service import ThreatDetectionService
-    from src.kortana.modules.security.models.security_models import ThreatLevel
+    from kortana.modules.security.services.threat_detection_service import ThreatDetectionService
+    from kortana.modules.security.models.security_models import ThreatLevel
     
     service = ThreatDetectionService()
     
@@ -114,7 +114,7 @@ def test_threat_detection_service():
 
 def test_vulnerability_service():
     """Test vulnerability service."""
-    from src.kortana.modules.security.services.vulnerability_service import VulnerabilityService
+    from kortana.modules.security.services.vulnerability_service import VulnerabilityService
     
     service = VulnerabilityService()
     

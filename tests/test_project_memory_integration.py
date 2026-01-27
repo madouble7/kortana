@@ -27,8 +27,8 @@ logger.info(f"[FLASH_DIAG] CWD at {__name__} import: {os.getcwd()}")
 
 # Imports from src
 try:
-    from src.core import memory
-    from src.kortana.core.brain import ChatEngine
+    from kortana.core import memory
+    from kortana.core.brain import ChatEngine
 except ImportError as e:
     logger.error(f"Failed to import required modules: {e}")
     raise

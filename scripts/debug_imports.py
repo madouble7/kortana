@@ -17,8 +17,8 @@ for p in sys.path:
 print("\n=== Testing Core Imports ===")
 
 try:
-    print("Testing: from src.kortana.core.models import Goal, GoalStatus, PlanStep")
-    from src.kortana.core.models import Goal, GoalStatus, PlanStep
+    print("Testing: from kortana.core.models import Goal, GoalStatus, PlanStep")
+    from kortana.core.models import Goal, GoalStatus, PlanStep
 
     print("✅ Core models imported successfully")
     print(f"Goal: {Goal}")
@@ -30,9 +30,9 @@ except Exception as e:
 
 try:
     print(
-        "\nTesting: from src.kortana.core.autonomous_tasks import run_performance_analysis_task"
+        "\nTesting: from kortana.core.autonomous_tasks import run_performance_analysis_task"
     )
-    from src.kortana.core.autonomous_tasks import run_performance_analysis_task
+    from kortana.core.autonomous_tasks import run_performance_analysis_task
 
     print("✅ Autonomous tasks imported successfully")
     print(f"Function: {run_performance_analysis_task}")
@@ -41,8 +41,8 @@ except Exception as e:
     traceback.print_exc()
 
 try:
-    print("\nTesting: from src.kortana.services.database import get_db_sync")
-    from src.kortana.services.database import get_db_sync
+    print("\nTesting: from kortana.services.database import get_db_sync")
+    from kortana.services.database import get_db_sync
 
     print("✅ Database service imported successfully")
     print(f"Function: {get_db_sync}")

@@ -52,6 +52,31 @@
 			"label": "Run Cleanup Script",
 			"type": "shell",
 			"command": "c:\\kortana\\.kortana_config_test_env\\Scripts\\python.exe c:\\kortana\\scripts\\root_cleanup.py"
+		},
+		{
+			"label": "Run Brain Tests",
+			"type": "shell",
+			"command": "$env:PYTHONPATH=\"c:\\kortana\\src\"; c:\\kortana\\.kortana_config_test_env\\Scripts\\python.exe -m pytest c:\\kortana\\tests\\test_brain.py"
+		},
+		{
+			"label": "Run Brain Tests V2",
+			"type": "shell",
+			"command": "set PYTHONPATH=c:\\kortana\\src && c:\\kortana\\.kortana_config_test_env\\Scripts\\pytest.exe c:\\kortana\\tests\\test_brain.py"
+		},
+		{
+			"label": "Run Brain Tests V3",
+			"type": "shell",
+			"command": "set PYTHONPATH=c:\\kortana\\src && set PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python && c:\\kortana\\.kortana_config_test_env\\Scripts\\pytest.exe c:\\kortana\\tests\\test_brain.py"
+		},
+		{
+			"label": "Unify Imports",
+			"type": "shell",
+			"command": "c:\\kortana\\.kortana_config_test_env\\Scripts\\python.exe c:\\kortana\\scripts\\unify_kortana_imports.py"
+		},
+		{
+			"label": "Unify Imports Logged",
+			"type": "shell",
+			"command": "c:\\kortana\\.kortana_config_test_env\\Scripts\\python.exe c:\\kortana\\scripts\\unify_kortana_imports.py"
 		}
 	]
 }

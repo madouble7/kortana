@@ -1,8 +1,6 @@
 # src/kortana/services/llm_service.py
 from typing import Any
 
-import openai
-
 from ..config.settings import settings
 
 
@@ -15,6 +13,7 @@ class LLMService:
     def __init__(self, provider: str = "openai"):
         self.provider = provider
         if self.provider == "openai":
+            import openai
             if not settings.OPENAI_API_KEY:
                 raise ValueError(
                     "OPENAI_API_KEY must be set to use the OpenAI provider."
@@ -70,7 +69,13 @@ class LLMService:
 
 
 # Singleton instance for easy access
-llm_service = LLMService()
+_llm_service = None
+
+def get_llm_service():
+    global _llm_service
+    if _llm_service is None:
+        _llm_service = LLMService()
+    return _llm_service
 
 # Example for direct testing
 if __name__ == "__main__":
@@ -84,6 +89,7 @@ if __name__ == "__main__":
 
         print("Attempting to test LLMService...")
         test_prompt = "Explain the significance of the name 'Kor'tana' in one sentence, as if you were an AI."
+        llm_service = get_llm_service()
         result = await llm_service.generate_response(test_prompt)
         if result.get("content"):
             print("--- LLM Service Test Response ---")

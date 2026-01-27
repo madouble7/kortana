@@ -6,7 +6,7 @@ Test Pinecone Import Fix
 def test_memory_manager_import():
     """Test that MemoryManager can be imported without syntax errors."""
     try:
-        from src.kortana.memory.memory_manager import MemoryManager
+        from kortana.memory.memory_manager import MemoryManager
         print("✅ SUCCESS: MemoryManager imported successfully")
         return True
     except SyntaxError as e:

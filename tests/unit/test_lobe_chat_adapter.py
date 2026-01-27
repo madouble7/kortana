@@ -13,8 +13,8 @@ from fastapi.testclient import TestClient
 # Set test API key environment variable
 os.environ["KORTANA_API_KEY"] = "test-api-key"
 
-from src.kortana.adapters.lobe_chat_adapter import verify_api_key
-from src.kortana.main import app
+from kortana.adapters.lobe_chat_adapter import verify_api_key
+from kortana.main import app
 
 
 def test_verify_api_key_valid():

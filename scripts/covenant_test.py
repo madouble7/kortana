@@ -8,8 +8,8 @@ from typing import Any, Dict
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from src.kortana.config import load_config
-from src.kortana.core.covenant_enforcer import CovenantEnforcer
+from kortana.config import load_config
+from kortana.core.covenant_enforcer import CovenantEnforcer
 
 
 def validate_covenant_rules(rules: Dict[str, Any]) -> bool:

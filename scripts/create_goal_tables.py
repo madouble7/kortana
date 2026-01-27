@@ -3,8 +3,8 @@
 Create Goal and PlanStep tables for Kor'tana
 """
 
-from src.kortana.core.models import Goal, PlanStep
-from src.kortana.services.database import Base, sync_engine
+from kortana.core.models import Goal, PlanStep
+from kortana.services.database import Base, sync_engine
 
 
 def create_tables():

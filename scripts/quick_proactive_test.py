@@ -18,7 +18,7 @@ def test_scanner_directly():
     print("🔍 Testing Code Scanner...")
 
     try:
-        from src.kortana.core.execution_engine import ExecutionEngine
+        from kortana.core.execution_engine import ExecutionEngine
 
         # Create execution engine
         engine = ExecutionEngine(
@@ -74,8 +74,8 @@ def test_database_connection():
     try:
         from sqlalchemy import desc
 
-        from src.kortana.database.db_setup import SessionLocal
-        from src.kortana.models.goal import Goal
+        from kortana.database.db_setup import SessionLocal
+        from kortana.models.goal import Goal
 
         db = SessionLocal()
 

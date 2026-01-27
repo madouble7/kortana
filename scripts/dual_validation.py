@@ -21,7 +21,7 @@ try:
     import sys
 
     sys.path.append(".")
-    from src.kortana.core.brain import Brain
+    from kortana.core.brain import Brain
 
     print("   🎯 Brain module: LOADS SUCCESSFULLY")
 

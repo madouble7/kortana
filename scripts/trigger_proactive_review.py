@@ -19,8 +19,8 @@ async def trigger_proactive_review():
     print("=" * 50)
 
     try:
-        from src.kortana.core.autonomous_tasks import run_proactive_code_review_task
-        from src.kortana.services.database import get_db_sync
+        from kortana.core.autonomous_tasks import run_proactive_code_review_task
+        from kortana.services.database import get_db_sync
 
         # Get database session
         db_gen = get_db_sync()
@@ -32,7 +32,7 @@ async def trigger_proactive_review():
             print("✅ Proactive code review completed!")
 
             # Show created goals
-            from src.kortana.core.models import Goal
+            from kortana.core.models import Goal
 
             goals = (
                 db.query(Goal)

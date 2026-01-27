@@ -33,8 +33,8 @@ project_root = r"C:\project-kortana"
 sys.path.insert(0, project_root)
 os.chdir(project_root)
 
-from src.config.schema import create_default_config
-from src.kortana.core.services import (
+from kortana.config.schema import create_default_config
+from kortana.core.services import (
     get_chat_engine,
     get_covenant_enforcer,
     initialize_core_services,

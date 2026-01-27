@@ -45,7 +45,7 @@ def test_1_environment_and_config():
             print(f"  {status_emoji} {var}: {'SET' if status else 'NOT SET'}")
 
         # Load configuration
-        from src.config.schema import KortanaConfig, create_default_config
+        from kortana.config.schema import KortanaConfig, create_default_config
 
         config: KortanaConfig = create_default_config()  # Add type hint
         print("  ✅ KortanaConfig object created successfully.")
@@ -70,10 +70,10 @@ def test_2_services_with_proper_initialization():
     print("-" * 50)
 
     try:
-        from src.config.schema import (
+        from kortana.config.schema import (
             create_default_config,  # Ensure this is imported if not already
         )
-        from src.kortana.core.services import (
+        from kortana.core.services import (
             get_chat_engine,
             get_llm_service,
             get_model_router,
@@ -122,13 +122,13 @@ def test_3_core_components_with_settings():
     print("-" * 50)
 
     try:
-        from src.config.schema import create_default_config  # Ensure import
+        from kortana.config.schema import create_default_config  # Ensure import
 
         config_obj = create_default_config()  # Use consistent naming
 
         # Test ChatEngine with settings
         try:
-            from src.kortana.core.brain import ChatEngine
+            from kortana.core.brain import ChatEngine
 
             engine = ChatEngine(settings=config_obj)
             print(
@@ -139,7 +139,7 @@ def test_3_core_components_with_settings():
 
         # Test EnhancedModelRouter with settings
         try:
-            from src.kortana.core.enhanced_model_router import EnhancedModelRouter
+            from kortana.core.enhanced_model_router import EnhancedModelRouter
 
             router = EnhancedModelRouter(settings=config_obj)
             print(f"  ✅ EnhancedModelRouter: {type(router).__name__}")
@@ -163,7 +163,7 @@ def test_4_database_and_models():
 
     try:
         # Test database settings
-        from src.kortana.config.settings import settings
+        from kortana.config.settings import settings
 
         print(f"  ✅ Database URL: {settings.MEMORY_DB_URL}")
 

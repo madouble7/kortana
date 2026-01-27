@@ -6,7 +6,7 @@ import pytest
 from dotenv import load_dotenv
 
 # Import the Google GenAI client from your project structure
-from src.kortana.llm_clients.genai_client import GoogleGenAIClient
+from kortana.llm_clients.genai_client import GoogleGenAIClient
 
 
 @pytest.fixture(scope="module")

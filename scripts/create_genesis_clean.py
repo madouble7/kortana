@@ -9,8 +9,8 @@ import sys
 sys.path.append("src")
 
 
-from src.kortana.core.models import Goal, GoalStatus
-from src.kortana.services.database import SyncSessionLocal
+from kortana.core.models import Goal, GoalStatus
+from kortana.services.database import SyncSessionLocal
 
 
 def create_genesis_goal():

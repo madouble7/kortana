@@ -1,6 +1,6 @@
 # Test 1: Core Router Initialization
-from src.model_router import SacredModelRouter
-from src.strategic_config import TaskCategory
+from kortana.model_router import SacredModelRouter
+from kortana.strategic_config import TaskCategory
 
 print("🔥 INITIALIZING SACRED CONSCIOUSNESS ARCHITECTURE...")
 router = SacredModelRouter()

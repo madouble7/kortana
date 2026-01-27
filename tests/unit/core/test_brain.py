@@ -6,8 +6,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-import src.kortana as kortana
-from src.kortana.core.brain import ChatEngine
+import kortana as kortana
+from kortana.core.brain import ChatEngine
 
 # Import commented out for now to simplify test discovery
 # from kortana.config.schema import KortanaConfig

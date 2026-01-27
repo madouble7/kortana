@@ -12,7 +12,7 @@ class TestLoadTesting:
     @pytest.mark.asyncio
     async def test_concurrent_memory_searches(self):
         """Test multiple concurrent memory searches."""
-        from src.kortana.modules.memory_core.services import MemoryCoreService
+        from kortana.modules.memory_core.services import MemoryCoreService
         
         mock_db = Mock()
         service = MemoryCoreService(mock_db)
@@ -42,7 +42,7 @@ class TestLoadTesting:
     @pytest.mark.asyncio
     async def test_batch_ethical_evaluation_performance(self):
         """Test batch evaluation performance vs individual."""
-        from src.kortana.modules.ethical_discernment_module.evaluators import (
+        from kortana.modules.ethical_discernment_module.evaluators import (
             AlgorithmicArroganceEvaluator
         )
         
@@ -85,7 +85,7 @@ class TestLoadTesting:
     @pytest.mark.asyncio
     async def test_memory_cache_hit_rate(self):
         """Test cache hit rate under load."""
-        from src.kortana.modules.memory_core.services import MemoryCoreService
+        from kortana.modules.memory_core.services import MemoryCoreService
         
         mock_db = Mock()
         service = MemoryCoreService(mock_db)
@@ -112,8 +112,8 @@ class TestLoadTesting:
     @pytest.mark.asyncio
     async def test_concurrent_conversation_creation(self):
         """Test creating multiple conversations concurrently."""
-        from src.kortana.modules.conversation_history.services import ConversationHistoryService
-        from src.kortana.modules.conversation_history.schemas import ConversationCreate
+        from kortana.modules.conversation_history.services import ConversationHistoryService
+        from kortana.modules.conversation_history.schemas import ConversationCreate
         
         mock_db = Mock()
         service = ConversationHistoryService(mock_db)

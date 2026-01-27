@@ -2,7 +2,7 @@
 Test for text_analysis module.
 """
 
-from src.kortana.utils import text_analysis
+from kortana.utils import text_analysis
 
 
 def test_identify_important_message_for_context():
