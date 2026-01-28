@@ -135,7 +135,12 @@ class AlwaysOnMonitor:
                 # Get pending tasks (limit based on concurrency setting)
                 # Note: We need to use select() for async session
                 from sqlalchemy import select
-                stmt = select(GitHubTask).filter(GitHubTask.status == "pending").limit(self.max_concurrent_tasks)
+
+                stmt = (
+                    select(GitHubTask)
+                    .filter(GitHubTask.status == "pending")
+                    .limit(self.max_concurrent_tasks)
+                )
                 result = await db.execute(stmt)
                 pending_tasks = result.scalars().all()
 
@@ -157,8 +162,6 @@ class AlwaysOnMonitor:
                         logger.error(f"❌ Task {task.id} failed: {str(e)}")
                         self.stats["tasks_failed"] += 1
                         continue
-            finally:
-                await db.close()
 
         except Exception as e:
             logger.error(f"❌ Pipeline processing failed: {str(e)}")
@@ -235,7 +238,8 @@ class AlwaysOnMonitor:
     async def get_task_status(self) -> Dict[str, Any]:
         """Get current task status across all stages"""
         try:
-            from sqlalchemy import select, func
+            from sqlalchemy import func, select
+
             async with self.db_manager.get_session() as db:
                 # Optimized counting
                 async def count_filtered(filter_expr=None):
