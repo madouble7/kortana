@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """Agent interface for structured + legacy Kor'tana relay communication."""
 
+from __future__ import annotations
+
 import time
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
-from relays.protocol import AgentEvent, parse_event_line
+from relays.protocol import AgentEvent, append_text_line, parse_event_line, utc_now_iso
 
 
 class AgentInterface:
@@ -16,44 +19,41 @@ class AgentInterface:
     - structured JSON event envelopes via relays.protocol.AgentEvent
     """
 
-    def __init__(self, agent_name: str, project_root: str = None):
-        """Initialize agent interface"""
+    def __init__(self, agent_name: str, project_root: str | None = None):
         self.agent_name = agent_name
         self.project_root = (
             Path(project_root) if project_root else Path(__file__).parent.parent
         )
 
-        # File paths
         self.log_file = self.project_root / "logs" / f"{agent_name}.log"
         self.queue_file = self.project_root / "queues" / f"{agent_name}_in.txt"
+        self.coordinator_inbox = self.project_root / "queues" / "coordinator_in.txt"
         self.status_file = self.project_root / "data" / f"{agent_name}_status.json"
 
-        # Ensure directories exist
         self.log_file.parent.mkdir(exist_ok=True)
         self.queue_file.parent.mkdir(exist_ok=True)
+        self.coordinator_inbox.parent.mkdir(exist_ok=True)
         self.status_file.parent.mkdir(exist_ok=True)
 
-        # Touch files to ensure they exist
         self.log_file.touch(exist_ok=True)
         self.queue_file.touch(exist_ok=True)
+        self.coordinator_inbox.touch(exist_ok=True)
 
-        # Track last read position to avoid re-reading messages
-        self._last_queue_position = 0
+        # Byte offset cursor for efficient queue tails.
+        self._last_queue_offset = 0
+        self._queue_remainder = ""
 
-        print(f"🤖 Agent '{agent_name}' interface initialized")
+        print(f"Agent '{agent_name}' interface initialized")
 
-    def send_output(self, message: str, message_type: str = "output"):
-        """Send output message to log (will be relayed to other agents)"""
+    def send_output(self, message: str, message_type: str = "output") -> bool:
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         formatted_message = f"[{timestamp}] {message_type.upper()}: {message}"
 
         try:
-            with open(self.log_file, "a", encoding="utf-8") as f:
-                f.write(formatted_message + "\n")
-            print(f"📤 {self.agent_name}: {message}")
+            append_text_line(self.log_file, formatted_message)
             return True
         except Exception as e:
-            print(f"⚠️  Error writing to log: {e}")
+            print(f"Error writing to log: {e}")
             return False
 
     def send_event(
@@ -61,11 +61,10 @@ class AgentInterface:
         event_type: str,
         target: str = "all",
         task_id: str | None = None,
-        payload: dict | None = None,
+        payload: dict[str, Any] | None = None,
         requires_ack: bool = False,
         priority: str = "normal",
     ) -> bool:
-        """Send a structured AgentEvent to this agent log."""
         event = AgentEvent.new(
             source=self.agent_name,
             target=target,
@@ -76,15 +75,16 @@ class AgentInterface:
             priority=priority,
         )
         try:
-            with open(self.log_file, "a", encoding="utf-8") as f:
-                f.write(event.to_json_line() + "\n")
+            event_line = event.to_json_line()
+            append_text_line(self.log_file, event_line)
+            # Structured events are sent to the coordinator inbox for real-time routing.
+            append_text_line(self.coordinator_inbox, event_line)
             return True
         except Exception as e:
-            print(f"⚠️  Error writing structured event to log: {e}")
+            print(f"Error writing structured event to log: {e}")
             return False
 
     def heartbeat(self, task_id: str | None = None, details: str = "") -> bool:
-        """Emit heartbeat event for coordinator live status updates."""
         return self.send_event(
             event_type="HEARTBEAT",
             target="coordinator",
@@ -93,7 +93,6 @@ class AgentInterface:
         )
 
     def claim_task(self, task_id: str, details: str = "") -> bool:
-        """Attempt task lease/claim through coordinator."""
         return self.send_event(
             event_type="TASK_CLAIM",
             target="coordinator",
@@ -105,8 +104,7 @@ class AgentInterface:
     def update_task_status(
         self, task_id: str, status: str, details: str = "", progress: int | None = None
     ) -> bool:
-        """Send task update event for coordinator task graph updates."""
-        payload = {"status": status, "details": details}
+        payload: dict[str, Any] = {"status": status, "details": details}
         if progress is not None:
             payload["progress"] = progress
         return self.send_event(
@@ -116,27 +114,71 @@ class AgentInterface:
             payload=payload,
         )
 
-    def send_status(self, status: str, details: str = ""):
-        """Send status update"""
+    def send_status(self, status: str, details: str = "") -> bool:
         status_message = f"STATUS: {status}"
         if details:
             status_message += f" - {details}"
-        return self.send_output(status_message, "status")
+        ok = self.send_output(status_message, "status")
+        self._write_status_snapshot(status=status, details=details)
+        return ok
 
-    def send_intent(self, intent: str, target_agent: str = "all"):
-        """Send intent/request message"""
+    def send_intent(self, intent: str, target_agent: str = "all") -> bool:
         intent_message = f"INTENT: {intent}"
         if target_agent != "all":
             intent_message += f" @{target_agent}"
         return self.send_output(intent_message, "intent")
 
+    def _write_status_snapshot(self, status: str, details: str = "") -> None:
+        snapshot = {
+            "agent": self.agent_name,
+            "status": status,
+            "details": details,
+            "updated_at": utc_now_iso(),
+        }
+        try:
+            import json
+            import os
+
+            tmp = self.status_file.with_suffix(self.status_file.suffix + ".tmp")
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(snapshot, f, indent=2)
+                f.write("\n")
+            os.replace(tmp, self.status_file)
+        except Exception as e:
+            print(f"Error writing status snapshot: {e}")
+
     def get_new_messages(self) -> list[str]:
-        """Get new messages from queue since last check"""
         if not self.queue_file.exists():
             return []
 
+        try:
+            with open(self.queue_file, encoding="utf-8") as f:
+                # If file was truncated, reset cursor.
+                size = self.queue_file.stat().st_size
+                if self._last_queue_offset > size:
+                    self._last_queue_offset = 0
+                    self._queue_remainder = ""
+                f.seek(self._last_queue_offset)
+                chunk = f.read()
+                self._last_queue_offset = f.tell()
+
+            if not chunk and not self._queue_remainder:
+                return []
+
+            merged = f"{self._queue_remainder}{chunk}"
+            lines = merged.splitlines()
+            if merged and not merged.endswith(("\n", "\r")):
+                self._queue_remainder = lines.pop() if lines else merged
+            else:
+                self._queue_remainder = ""
+
+            return [line.strip() for line in lines if line.strip()]
+
+        except Exception as e:
+            print(f"Error reading queue: {e}")
+            return []
+
     def get_new_events(self) -> list[AgentEvent]:
-        """Get new structured events parsed from queue lines."""
         messages = self.get_new_messages()
         events: list[AgentEvent] = []
         for message in messages:
@@ -145,39 +187,22 @@ class AgentInterface:
                 events.append(event)
         return events
 
-        try:
-            with open(self.queue_file, encoding="utf-8") as f:
-                # Read all lines
-                all_lines = f.readlines()
-
-            # Get only new lines since last read
-            new_lines = all_lines[self._last_queue_position :]
-            self._last_queue_position = len(all_lines)
-
-            # Clean and filter messages
-            new_messages = []
-            for line in new_lines:
-                line = line.strip()
-                if line:
-                    new_messages.append(line)
-
-            if new_messages:
-                print(f"📨 {self.agent_name}: {len(new_messages)} new messages")
-                for msg in new_messages:
-                    print(f"   📝 {msg}")
-
-            return new_messages
-
-        except Exception as e:
-            print(f"⚠️  Error reading queue: {e}")
-            return []
-
-    def check_for_directives(self) -> list[str]:
+    def check_for_directives(self, messages: list[str] | None = None) -> list[str]:
         """Check for specific directive messages (INTENT, REQUEST, etc.)"""
-        messages = self.get_new_messages()
+        source_messages = messages if messages is not None else self.get_new_messages()
         directives = []
 
-        for message in messages:
+        for message in source_messages:
+            event = parse_event_line(message)
+            if event and event.event_type == "DIRECTIVE":
+                instruction = ""
+                if event.payload:
+                    instruction = str(event.payload.get("instruction") or "").strip()
+                if instruction:
+                    directives.append(instruction)
+                else:
+                    directives.append(message)
+                continue
             # Look for directive keywords
             if any(
                 keyword in message.upper()
@@ -190,11 +215,10 @@ class AgentInterface:
     def clear_queue(self):
         """Clear the agent's queue (mark all as read)"""
         try:
-            with open(self.queue_file, encoding="utf-8") as f:
-                line_count = len(f.readlines())
-            self._last_queue_position = line_count
+            self._last_queue_offset = self.queue_file.stat().st_size
+            self._queue_remainder = ""
             print(
-                f"🧹 {self.agent_name}: Queue cleared ({line_count} messages marked as read)"
+                f"🧹 {self.agent_name}: Queue cleared (offset={self._last_queue_offset})"
             )
         except Exception as e:
             print(f"⚠️  Error clearing queue: {e}")
@@ -205,11 +229,16 @@ class AgentInterface:
             with open(self.queue_file, encoding="utf-8") as f:
                 all_lines = f.readlines()
             total_messages = len(all_lines)
-            unread_messages = total_messages - self._last_queue_position
+            unread_messages = 0
+            with open(self.queue_file, encoding="utf-8") as f:
+                size = self.queue_file.stat().st_size
+                offset = min(self._last_queue_offset, size)
+                f.seek(offset)
+                unread_messages = len([ln for ln in f.readlines() if ln.strip()])
             return {
                 "total_messages": total_messages,
                 "unread_messages": unread_messages,
-                "last_position": self._last_queue_position,
+                "last_position": self._last_queue_offset,
             }
         except Exception:
             return {"total_messages": 0, "unread_messages": 0, "last_position": 0}
@@ -251,7 +280,7 @@ def agent_demo_loop(agent_name: str, duration: int = 30):
             messages = agent.get_new_messages()
 
             # Respond to directives
-            directives = agent.check_for_directives()
+            directives = agent.check_for_directives(messages=messages)
             for directive in directives:
                 response = f"Received directive: {directive}"
                 agent.send_output(response)

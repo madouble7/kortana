@@ -4,9 +4,11 @@
 from __future__ import annotations
 
 import json
+import os
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 
@@ -25,7 +27,25 @@ EVENT_TYPES = {
 
 
 def utc_now_iso() -> str:
-    return datetime.utcnow().isoformat()
+    return datetime.now(UTC).isoformat()
+
+
+def append_text_line(path: str | Path, line: str, encoding: str = "utf-8") -> None:
+    """Append a full line with one low-level write for safer multi-process usage."""
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    payload = line if line.endswith("\n") else f"{line}\n"
+    data = payload.encode(encoding)
+
+    flags = os.O_APPEND | os.O_CREAT | os.O_WRONLY
+    if hasattr(os, "O_BINARY"):
+        flags |= os.O_BINARY
+
+    fd = os.open(str(target), flags)
+    try:
+        os.write(fd, data)
+    finally:
+        os.close(fd)
 
 
 @dataclass

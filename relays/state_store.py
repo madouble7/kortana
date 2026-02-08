@@ -8,6 +8,8 @@ import os
 from pathlib import Path
 from typing import Any
 
+from relays.protocol import append_text_line
+
 
 class CoordinationStateStore:
     """Lightweight JSON/jsonl-backed shared state for coordinator and relays."""
@@ -27,7 +29,8 @@ class CoordinationStateStore:
     def _atomic_write_json(self, path: Path, payload: dict[str, Any]) -> None:
         tmp = path.with_suffix(path.suffix + ".tmp")
         with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(payload, f, indent=2)
+            json.dump(payload, f, indent=2, ensure_ascii=False, sort_keys=True)
+            f.write("\n")
         os.replace(tmp, path)
 
     def _read_json(self, path: Path, default: dict[str, Any]) -> dict[str, Any]:
@@ -68,5 +71,4 @@ class CoordinationStateStore:
         self._atomic_write_json(self.task_graph_file, graph)
 
     def append_event(self, event: dict[str, Any]) -> None:
-        with open(self.events_file, "a", encoding="utf-8") as f:
-            f.write(json.dumps(event, ensure_ascii=False) + "\n")
+        append_text_line(self.events_file, json.dumps(event, ensure_ascii=False))
