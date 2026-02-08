@@ -114,6 +114,11 @@
 			"type": "shell",
 			"command": "python diagnose_environment.py > diag_output.txt 2>&1",
 			"group": "none"
+		},
+		{
+			"label": "Diagnose Environment",
+			"type": "shell",
+			"command": "python c:\\kortana\\diagnose_test_env.py"
 		}
 	]
 }
