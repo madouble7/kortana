@@ -5,9 +5,12 @@ Handles execution of autonomous tasks.
 """
 
 import argparse
+import importlib
 import json
 import logging
 import os
+import re
+import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -20,6 +23,57 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(), logging.FileHandler("task_execution.log")],
 )
 logger = logging.getLogger(__name__)
+
+# Whitelist of allowed modules for task execution (security measure)
+ALLOWED_MODULES = {
+    "kortana.agents",
+    "kortana.core",
+    "kortana.tools",
+    "kortana.utils",
+}
+
+
+def validate_module_name(module_name: str) -> bool:
+    """
+    Validate that a module name is in the whitelist.
+    
+    Args:
+        module_name: The module name to validate
+        
+    Returns:
+        True if the module is allowed, False otherwise
+    """
+    # Check if module starts with any allowed prefix
+    for allowed in ALLOWED_MODULES:
+        if module_name.startswith(allowed):
+            return True
+    return False
+
+
+def validate_command_args(command: str) -> bool:
+    """
+    Validate command string for shell injection risks.
+    
+    Args:
+        command: The command string to validate
+        
+    Returns:
+        True if command appears safe, False otherwise
+    """
+    # Disallow common shell injection patterns
+    dangerous_patterns = [
+        r'[;&|`$()]',  # Shell metacharacters
+        r'\$\{',  # Variable expansion
+        r'>\s*\&',  # Redirection
+        r'<\s*\&',  # Redirection
+    ]
+    
+    for pattern in dangerous_patterns:
+        if re.search(pattern, command):
+            logger.warning(f"Potentially dangerous command pattern detected: {pattern}")
+            return False
+    
+    return True
 
 
 def load_task_config(task_id: str) -> dict[str, Any] | None:
@@ -67,9 +121,18 @@ def execute_task(task_id: str) -> dict[str, Any]:
         }
 
     try:
-        # Set up task environment
+        # Set up task environment (with validation)
         if "env_vars" in task_config:
             for key, value in task_config["env_vars"].items():
+                # Validate environment variable names to prevent injection
+                if not re.match(r'^[A-Z_][A-Z0-9_]*$', key):
+                    logger.error(f"Invalid environment variable name: {key}")
+                    return {
+                        "success": False,
+                        "error": f"Invalid environment variable name: {key}",
+                        "task_id": task_id,
+                        "timestamp": datetime.now().isoformat(),
+                    }
                 os.environ[key] = str(value)
 
         # Execute task module if specified
@@ -77,9 +140,40 @@ def execute_task(task_id: str) -> dict[str, Any]:
             module_name = task_config["module"]
             function_name = task_config.get("function", "execute")
 
-            sys.path.insert(0, str(Path("modules").resolve()))
-            module = __import__(module_name)
-            task_func = getattr(module, function_name)
+            # Security: Validate module name against whitelist
+            if not validate_module_name(module_name):
+                logger.error(
+                    f"Module '{module_name}' is not in the allowed modules list"
+                )
+                return {
+                    "success": False,
+                    "error": f"Module '{module_name}' is not allowed",
+                    "task_id": task_id,
+                    "timestamp": datetime.now().isoformat(),
+                }
+
+            # Security: Validate function name format
+            if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', function_name):
+                logger.error(f"Invalid function name: {function_name}")
+                return {
+                    "success": False,
+                    "error": f"Invalid function name: {function_name}",
+                    "task_id": task_id,
+                    "timestamp": datetime.now().isoformat(),
+                }
+
+            # Use importlib instead of __import__ for security
+            try:
+                module = importlib.import_module(module_name)
+                task_func = getattr(module, function_name)
+            except (ImportError, AttributeError) as e:
+                logger.error(f"Failed to import module or function: {e}")
+                return {
+                    "success": False,
+                    "error": f"Failed to import: {e}",
+                    "task_id": task_id,
+                    "timestamp": datetime.now().isoformat(),
+                }
 
             task_args = task_config.get("args", {})
             result = task_func(**task_args)
@@ -94,14 +188,36 @@ def execute_task(task_id: str) -> dict[str, Any]:
 
         # Execute shell command if specified
         elif "command" in task_config:
-            import subprocess
-
             command = task_config["command"]
             cwd = task_config.get("working_dir")
 
+            # Security: Validate command for injection risks
+            if not validate_command_args(command):
+                logger.error(f"Command contains potentially dangerous patterns: {command}")
+                return {
+                    "success": False,
+                    "error": "Command validation failed - potentially unsafe command",
+                    "task_id": task_id,
+                    "timestamp": datetime.now().isoformat(),
+                }
+
             logger.info(f"Executing command: {command}")
+            # Security: Use shell=False with list of arguments
+            # Split command into list (basic splitting - for production, use shlex.split)
+            try:
+                import shlex
+                command_list = shlex.split(command)
+            except ValueError as e:
+                logger.error(f"Failed to parse command: {e}")
+                return {
+                    "success": False,
+                    "error": f"Invalid command syntax: {e}",
+                    "task_id": task_id,
+                    "timestamp": datetime.now().isoformat(),
+                }
+            
             process = subprocess.run(
-                command, shell=True, cwd=cwd, capture_output=True, text=True
+                command_list, shell=False, cwd=cwd, capture_output=True, text=True
             )
 
             return {
