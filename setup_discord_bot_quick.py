@@ -35,12 +35,24 @@ def get_bot_token():
     print_step(1, "Discord Bot Token")
 
     print("""
-To get your bot token:
-  1. Go to https://discord.com/developers/applications
-  2. Click on "kor'tana" application
-  3. Go to "Bot" section (left sidebar)
-  4. Under "TOKEN", click "Copy"
-  5. Paste the token below
+YOU'RE ALREADY ON THE RIGHT PAGE! You should see:
+  ✅ Applications > kor'tana > Bot (selected)
+  ✅ Token section visible
+  ✅ "Reset Token" button
+
+WHAT TO DO RIGHT NOW:
+  1. In Discord Developer Portal (where you are):
+     → Scroll down to the "TOKEN" section
+     → Click the copy icon next to your token
+     
+  2. Come back here and paste the token below
+
+INTENTS TO ENABLE (while you're there):
+  ✅ Message Content Intent (needed for message reading)
+  
+CHECK THESE SETTINGS:
+  ✅ Public Bot = ON (so bot can be added)
+  ✅ Message Content Intent = ON (required!)
 
 Note: Keep this token secret! Never commit to git.
     """)
@@ -144,7 +156,7 @@ def run_validation():
     try:
         import discord
 
-        print(f"  ✅ discord.py {discord.__version__}")
+        print(f"  ✅ discord.py installed")
         discord_ok = True
     except ImportError:
         print(f"  ❌ discord.py not installed (run: pip install discord.py)")

@@ -1,0 +1,52 @@
+You're on the right page! Here's what to do next:
+
+═══════════════════════════════════════════════════════════════════════════════
+QUICK VERSION (30 seconds)
+═══════════════════════════════════════════════════════════════════════════════
+
+While you're on the Discord Bot page:
+
+1. COPY your token (you'll see TOKEN section - click copy)
+2. ENABLE Message Content Intent toggle (scroll down to find it)
+3. CHECK Public Bot checkbox (look for Authorization Flow)
+
+Then run:
+  python setup_discord_bot_quick.py
+
+And paste your token when asked.
+
+Done! ✅
+
+═══════════════════════════════════════════════════════════════════════════════
+DETAILED VERSION (read if you're stuck)
+═══════════════════════════════════════════════════════════════════════════════
+
+See: DISCORD_BOT_PAGE_GUIDE.md
+
+This file has step-by-step instructions with visual guides.
+
+═══════════════════════════════════════════════════════════════════════════════
+LIVE CHECKLIST (use while looking at the page)
+═══════════════════════════════════════════════════════════════════════════════
+
+See: BOT_PAGE_CHECKLIST.txt
+
+Print this and check items as you go!
+
+═══════════════════════════════════════════════════════════════════════════════
+SIMPLEST VERSION (just do this)
+═══════════════════════════════════════════════════════════════════════════════
+
+See: DO_THIS_NOW.txt
+
+Three simple things to do on this page.
+
+═══════════════════════════════════════════════════════════════════════════════
+
+YOUR NEXT COMMAND:
+
+  python setup_discord_bot_quick.py
+
+That's literally it. Run that, paste your token, and you're done!
+
+═══════════════════════════════════════════════════════════════════════════════

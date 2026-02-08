@@ -1,0 +1,64 @@
+🤖 KOR'TANA BOT - WHAT TO DO RIGHT NOW
+
+You're looking at: Discord Developer Portal > Applications > kor'tana > Bot
+
+Here's what you see and what to do:
+
+═══════════════════════════════════════════════════════════════════════════════
+
+PART 1: GET YOUR TOKEN (Do This Now)
+═══════════════════════════════════════════════════════════════════════════════
+
+On the page you're viewing:
+
+1. Scroll down until you see: TOKEN
+2. Click the COPY button next to it
+3. Your token is copied!
+
+That's it for part 1. ✅
+
+
+PART 2: ENABLE MESSAGE CONTENT (Do This Now)  
+═══════════════════════════════════════════════════════════════════════════════
+
+Keep scrolling down. You'll see: "Privileged Gateway Intents"
+
+Find: Message Content Intent
+Action: Toggle it ON ☑️ (if it's not already)
+
+That's it for part 2. ✅
+
+
+PART 3: CHECK PUBLIC BOT (Do This Now)
+═══════════════════════════════════════════════════════════════════════════════
+
+Scroll back up a bit. You'll see: "Authorization Flow"
+
+Find: Public Bot
+Action: Make sure it's checked ☑️
+
+That's it for part 3. ✅
+
+
+═══════════════════════════════════════════════════════════════════════════════
+
+THAT'S ALL YOU NEED TO DO ON THIS PAGE!
+
+You now have:
+  ✅ Bot token (copied to clipboard)
+  ✅ Message Content Intent (enabled)
+  ✅ Public Bot (checked)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+NEXT STEP: Run Setup Script
+
+Open terminal/command prompt and type:
+
+  python setup_discord_bot_quick.py
+
+Then paste your token when it asks.
+
+Done! 🎉
+
+═══════════════════════════════════════════════════════════════════════════════

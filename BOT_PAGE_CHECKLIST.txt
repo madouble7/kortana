@@ -1,0 +1,98 @@
+📋 DISCORD BOT PAGE - LIVE CHECKLIST
+
+You're on the Bot page. Use this checklist while you're there! ✓
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🔵 SECTION 1: BOT TOKEN (TOP OF PAGE)
+───────────────────────────────────────────────────────────────────────────────
+
+Look for:
+  Icon & Banner Section (skip this)
+  Username: kor'tana ← CHECK ✓
+
+Find the TOKEN section and:
+  ☐ Locate the TOKEN label
+  ☐ See the Copy button/icon (🔀)
+  ☐ CLICK TO COPY your token
+  ☐ Token is now in your clipboard
+
+✓ Token copied!
+
+
+🔵 SECTION 2: AUTHORIZATION FLOW (MIDDLE OF PAGE)
+───────────────────────────────────────────────────────────────────────────────
+
+You should see checkboxes:
+
+  ☑️ Public Bot
+     Status: Should be CHECKED ✓
+     What to do: If unchecked, click to CHECK it
+
+  ☐ Requires OAuth2 Code Grant  
+     Status: Should be UNCHECKED
+     What to do: Leave it unchecked (don't click)
+
+✓ Authorization flow set!
+
+
+🔵 SECTION 3: PRIVILEGED GATEWAY INTENTS (SCROLL DOWN)
+───────────────────────────────────────────────────────────────────────────────
+
+You should see three intents with toggles:
+
+  ☑️ Presence Intent
+     Status: Can be ON or OFF (either is fine)
+     Currently: [Your setting]
+
+  ☑️ Server Members Intent  
+     Status: Should be ON (toggle switch enabled)
+     Currently: [Your setting]
+     What to do: If OFF, click toggle to turn ON
+
+  ☑️ Message Content Intent ⭐ IMPORTANT!
+     Status: Should be ON (toggle switch enabled)
+     Currently: [Your setting]
+     What to do: If OFF, click toggle to turn ON ← THIS IS REQUIRED!
+
+✓ Intents configured!
+
+
+🔵 SECTION 4: BOT PERMISSIONS (BOTTOM OF PAGE - OPTIONAL)
+───────────────────────────────────────────────────────────────────────────────
+
+This shows which permissions your bot has.
+
+For now, you can skip this or just verify:
+  ☑️ Send Messages (enabled)
+  ☑️ Read Message History (enabled)
+  ☑️ Use Slash Commands (enabled)
+
+These are usually already set!
+
+✓ Permissions are fine (no changes needed)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ COMPLETE THIS CHECKLIST
+
+Right on this page, check these boxes:
+
+  ☐ Bot Token copied (in clipboard now)
+  ☐ Public Bot is CHECKED ☑️
+  ☐ Message Content Intent is turned ON ☑️
+  ☐ Server Members Intent is turned ON ☑️
+  ☐ I'm ready to run setup script
+
+═══════════════════════════════════════════════════════════════════════════════
+
+DONE WITH THIS PAGE? 
+
+Run this command in your terminal:
+
+  python setup_discord_bot_quick.py
+
+And paste your token when it asks!
+
+═══════════════════════════════════════════════════════════════════════════════
