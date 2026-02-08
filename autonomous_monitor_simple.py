@@ -4,25 +4,25 @@ Kor'tana Autonomous Monitor - Simple Version
 Always-on monitoring system compatible with current environment
 """
 
-import os
-import sys
-import time
-import subprocess
-import threading
 import logging
+import subprocess
+import sys
+import threading
+import time
 from datetime import datetime
 from pathlib import Path
 
 # Configure logging without Unicode characters
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
+    format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
-        logging.FileHandler('autonomous_monitor_simple.log'),
-        logging.StreamHandler()
-    ]
+        logging.FileHandler("autonomous_monitor_simple.log"),
+        logging.StreamHandler(),
+    ],
 )
-logger = logging.getLogger('KortanaSimpleMonitor')
+logger = logging.getLogger("KortanaSimpleMonitor")
+
 
 class SimpleAutonomousMonitor:
     def __init__(self):
@@ -30,23 +30,36 @@ class SimpleAutonomousMonitor:
         self.processes = {}
         self.monitoring_threads = []
         self.base_dir = Path.cwd()
+        self.script_search_dirs = [
+            self.base_dir,
+            self.base_dir / "scripts",
+            self.base_dir / "src",
+        ]
         self.config = self._load_config()
+
+    def _resolve_script_path(self, script_name):
+        """Resolve a script by searching known directories."""
+        for directory in self.script_search_dirs:
+            candidate = directory / script_name
+            if candidate.exists() and candidate.is_file():
+                return candidate
+        return None
 
     def _load_config(self):
         """Load configuration"""
         config = {
-            'monitoring_interval': 60,
-            'max_errors_before_alert': 5,
-            'auto_recovery': True,
-            'continuous_mode': True
+            "monitoring_interval": 60,
+            "max_errors_before_alert": 5,
+            "auto_recovery": True,
+            "continuous_mode": True,
         }
         return config
 
     def start_monitoring_process(self, script_name, args=None, continuous=False):
         """Start a monitoring process"""
         try:
-            script_path = self.base_dir / script_name
-            if not script_path.exists():
+            script_path = self._resolve_script_path(script_name)
+            if not script_path:
                 logger.error(f"Script not found: {script_name}")
                 return None
 
@@ -57,27 +70,25 @@ class SimpleAutonomousMonitor:
             logger.info(f"Starting process: {' '.join(cmd)}")
             process = subprocess.Popen(
                 cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
                 text=True,
-                cwd=self.base_dir
+                cwd=self.base_dir,
             )
 
             # Store process with metadata
             process_id = f"{script_name}_{process.pid}"
             self.processes[process_id] = {
-                'process': process,
-                'script': script_name,
-                'start_time': datetime.now(),
-                'status': 'running',
-                'restart_count': 0
+                "process": process,
+                "script": script_name,
+                "start_time": datetime.now(),
+                "status": "running",
+                "restart_count": 0,
             }
 
             # Start monitoring thread
             monitor_thread = threading.Thread(
-                target=self._monitor_process,
-                args=(process_id,),
-                daemon=True
+                target=self._monitor_process, args=(process_id,), daemon=True
             )
             monitor_thread.start()
             self.monitoring_threads.append(monitor_thread)
@@ -92,7 +103,7 @@ class SimpleAutonomousMonitor:
         """Monitor a single process"""
         while self.running and process_id in self.processes:
             process_info = self.processes[process_id]
-            process = process_info['process']
+            process = process_info["process"]
 
             # Check if process is still running
             if process.poll() is not None:
@@ -100,11 +111,11 @@ class SimpleAutonomousMonitor:
                 logger.warning(f"Process {process_id} exited with code {return_code}")
 
                 # Auto-recovery
-                if self.config['auto_recovery']:
+                if self.config["auto_recovery"]:
                     logger.info(f"Attempting to restart {process_id}")
                     self._restart_process(process_id)
                 else:
-                    process_info['status'] = 'stopped'
+                    process_info["status"] = "stopped"
                 return
 
             # Read output if available
@@ -115,20 +126,8 @@ class SimpleAutonomousMonitor:
 
     def _read_process_output(self, process):
         """Read and log process output"""
-        try:
-            # Read stdout
-            if process.stdout:
-                output = process.stdout.readline()
-                if output:
-                    logger.info(f"OUTPUT: {output.strip()}")
-
-            # Read stderr
-            if process.stderr:
-                error = process.stderr.readline()
-                if error:
-                    logger.error(f"ERROR: {error.strip()}")
-        except:
-            pass  # Process may have terminated
+        # Output is redirected to DEVNULL for daemon stability.
+        return
 
     def _restart_process(self, process_id):
         """Restart a failed process"""
@@ -136,18 +135,20 @@ class SimpleAutonomousMonitor:
             return
 
         process_info = self.processes[process_id]
-        process_info['restart_count'] += 1
+        process_info["restart_count"] += 1
         max_restarts = 3
 
-        if process_info['restart_count'] > max_restarts:
+        if process_info["restart_count"] > max_restarts:
             logger.error(f"Process {process_id} failed too many times, not restarting")
-            process_info['status'] = 'failed'
+            process_info["status"] = "failed"
             return
 
-        logger.info(f"Restarting {process_id} (attempt {process_info['restart_count']})")
+        logger.info(
+            f"Restarting {process_id} (attempt {process_info['restart_count']})"
+        )
 
         # Start new process
-        script_name = process_info['script']
+        script_name = process_info["script"]
         new_process_id = self.start_monitoring_process(script_name)
 
         if new_process_id:
@@ -164,33 +165,29 @@ class SimpleAutonomousMonitor:
         # List of scripts to try (in priority order)
         scripts_to_try = [
             # Core monitoring
-            'autonomous_monitor.py',
-            'monitor_autonomous_activity_new.py',
-            'monitor_autonomous_activity.py',
-
+            "autonomous_monitor.py",
+            "monitor_autonomous_activity_new.py",
+            "monitor_autonomous_activity.py",
             # System health
-            'file_system_monitor.py',
-            'check_server.py',
-            'status_check.py',
-
+            "file_system_monitor.py",
+            "check_server.py",
+            "status_check.py",
             # Development
-            'code_review_analysis.py',
-            'comprehensive_system_fix.py',
-            'complete_autonomous_verification.py',
-
+            "code_review_analysis.py",
+            "comprehensive_system_fix.py",
+            "complete_autonomous_verification.py",
             # Genesis protocol
-            'monitor_genesis_protocol.py',
-            'check_genesis_status.py',
-
+            "monitor_genesis_protocol.py",
+            "check_genesis_status.py",
             # Validation
-            'autonomous_validation_silent.py',
-            'complete_autonomous_verification.py'
+            "autonomous_validation_silent.py",
+            "complete_autonomous_verification.py",
         ]
 
         started_processes = 0
 
         for script in scripts_to_try:
-            if (self.base_dir / script).exists():
+            if self._resolve_script_path(script):
                 process_id = self.start_monitoring_process(script)
                 if process_id:
                     started_processes += 1
@@ -201,8 +198,8 @@ class SimpleAutonomousMonitor:
         logger.info(f"Started {started_processes} monitoring processes")
 
         # Always start the simple directory analysis
-        if (self.base_dir / 'simple_directory_analysis.py').exists():
-            self.start_monitoring_process('simple_directory_analysis.py')
+        if (self.base_dir / "simple_directory_analysis.py").exists():
+            self.start_monitoring_process("simple_directory_analysis.py")
             started_processes += 1
 
         return started_processes
@@ -217,16 +214,18 @@ class SimpleAutonomousMonitor:
                 try:
                     logger.info("Running Ruff code quality check...")
                     result = subprocess.run(
-                        ['python', '-m', 'ruff', 'check', '.', '--statistics'],
+                        ["python", "-m", "ruff", "check", ".", "--statistics"],
                         capture_output=True,
                         text=True,
-                        cwd=self.base_dir
+                        cwd=self.base_dir,
                     )
-                    logger.info(f"Ruff check completed. Return code: {result.returncode}")
+                    logger.info(
+                        f"Ruff check completed. Return code: {result.returncode}"
+                    )
 
                     # Log summary if available
                     if result.stdout:
-                        lines = result.stdout.split('\n')
+                        lines = result.stdout.split("\n")
                         for line in lines[-10:]:  # Last 10 lines
                             if line.strip():
                                 logger.info(f"RUFF: {line.strip()}")
@@ -247,18 +246,24 @@ class SimpleAutonomousMonitor:
         while self.running:
             try:
                 # Check process health
-                active_processes = sum(1 for p in self.processes.values() if p['status'] == 'running')
+                active_processes = sum(
+                    1 for p in self.processes.values() if p["status"] == "running"
+                )
                 total_processes = len(self.processes)
 
-                logger.info(f"System Health: {active_processes}/{total_processes} processes active")
+                logger.info(
+                    f"System Health: {active_processes}/{total_processes} processes active"
+                )
 
                 # Check for failed processes
-                failed_processes = [p for p in self.processes.values() if p['status'] == 'failed']
+                failed_processes = [
+                    p for p in self.processes.values() if p["status"] == "failed"
+                ]
                 if failed_processes:
                     logger.warning(f"{len(failed_processes)} processes in failed state")
 
                 # Sleep for monitoring interval
-                time.sleep(self.config['monitoring_interval'])
+                time.sleep(self.config["monitoring_interval"])
 
             except Exception as e:
                 logger.error(f"System health monitoring error: {str(e)}")
@@ -270,7 +275,7 @@ class SimpleAutonomousMonitor:
 
         for process_id, process_info in self.processes.items():
             try:
-                process = process_info['process']
+                process = process_info["process"]
                 if process.poll() is None:  # Still running
                     process.terminate()
                     process.wait(timeout=5)
@@ -297,7 +302,9 @@ class SimpleAutonomousMonitor:
             self.start_continuous_audit()
 
             # Start system health monitoring
-            health_thread = threading.Thread(target=self.monitor_system_health, daemon=True)
+            health_thread = threading.Thread(
+                target=self.monitor_system_health, daemon=True
+            )
             health_thread.start()
 
             logger.info(f"Monitoring system active with {started_count} processes")
@@ -314,6 +321,7 @@ class SimpleAutonomousMonitor:
             self.stop_all_processes()
             logger.info("Kor'tana Simple Autonomous Monitor stopped")
 
+
 def main():
     """Main entry point"""
     monitor = SimpleAutonomousMonitor()
@@ -325,6 +333,7 @@ def main():
         return 1
 
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())

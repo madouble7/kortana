@@ -10,7 +10,8 @@
     },
     "search.exclude": {
         "**/venv311": false
-    },    "python.analysis.extraPaths": [
+    },
+    "python.analysis.extraPaths": [
         ".",
         ".."
     ],

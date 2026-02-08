@@ -96,6 +96,12 @@
 			"type": "shell",
 			"command": "run_tests_simple.bat",
 			"group": "test"
+		},
+		{
+			"label": "Run Tests Direct",
+			"type": "shell",
+			"command": "\"C:\\Program Files\\Python311\\python.exe\" test_runner.py",
+			"group": "test"
 		}
 	]
 }
