@@ -15,7 +15,7 @@ import time
 from typing import Any
 
 from ..config.settings import settings
-from ..utils import ServiceError, TimeoutError
+from ..utils import ServiceError, KortanaTimeoutError
 
 logger = logging.getLogger(__name__)
 
@@ -150,7 +150,7 @@ class LLMService:
                     return {"content": content, "metadata": metadata}
 
                 except builtins.TimeoutError:
-                    raise TimeoutError(
+                    raise KortanaTimeoutError(
                         "LLM request exceeded timeout",
                         operation="llm_generate",
                         timeout_seconds=timeout

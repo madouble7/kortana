@@ -6,6 +6,7 @@ Provides structured exception hierarchy and error recovery strategies.
 
 import logging
 from enum import Enum
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -185,7 +186,7 @@ class ErrorContext:
     def __init__(
         self,
         operation: str,
-        on_error: callable | None = None,
+        on_error: Any | None = None,
         raise_on_error: bool = True,
     ):
         self.operation = operation
