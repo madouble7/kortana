@@ -132,6 +132,15 @@
 			"args": [
 				"c:\\kortana\\validate_improvements.py"
 			]
+		},
+		{
+			"label": "Run Isolated Tests",
+			"type": "shell",
+			"command": "python",
+			"args": [
+				"c:\\kortana\\isolated_test_runner.py"
+			],
+			"group": "test"
 		}
 	]
 }
