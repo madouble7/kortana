@@ -1,6 +1,6 @@
 # Kor'tana Performance Optimizations & Improvements
 
-**Date:** February 8, 2026  
+**Date:** February 8, 2026
 **Version:** 2.0 Enhanced Edition
 
 ---
@@ -12,29 +12,33 @@ Kor'tana has been enhanced with comprehensive performance optimizations, better 
 ## New Utility Modules
 
 ### 1. **Performance Module** (`utils/performance.py`)
+
 Provides performance optimization utilities:
 
-#### Key Classes:
+#### Key Classes
+
 - **`TTLCache`**: Time-To-Live cache for automatic expiration
   - LRU (Least Recently Used) eviction policy
   - Configurable TTL per entry
   - Thread-safe async operations
-  
+
 - **`CircuitBreaker`**: Prevents cascading failures
   - States: CLOSED (normal) → OPEN (failing) → HALF_OPEN (testing recovery)
   - Configurable failure threshold
   - Automatic recovery attempts
-  
+
 - **`MetricsCollector`**: Tracks performance metrics
   - Request counts, success rates
   - Min/max/average response times
   - Per-operation statistics
 
-#### Decorators:
+#### Decorators
+
 - `@cached_async()`: Cache async function results with TTL
 - `@timed_execution()`: Measure function execution time
 
-#### Example Usage:
+#### Example Usage
+
 ```python
 from kortana.utils import TTLCache, CircuitBreaker, CircuitBreakerConfig
 
@@ -58,9 +62,11 @@ async def fetch_user(user_id):
 ```
 
 ### 2. **Error Handling Module** (`utils/errors.py`)
+
 Structured exception hierarchy with recovery information:
 
-#### Key Exception Types:
+#### Key Exception Types
+
 - `ConfigurationError`: Configuration issu (unrecoverable)
 - `MemoryError`: Memory system failures (usually recoverable)
 - `ModelError`: LLM/model failures (usually recoverable)
@@ -69,13 +75,15 @@ Structured exception hierarchy with recovery information:
 - `TimeoutError`: Operation timeout (recoverable)
 - `RetryableError`: Explicit retry support with exponential backoff
 
-#### Features:
+#### Features
+
 - Severity levels: LOW, MEDIUM, HIGH, CRITICAL
 - Error codes for tracking
 - Recoverable flag for retry logic
 - Error context manager for graceful handling
 
-#### Example Usage:
+#### Example Usage
+
 ```python
 from kortana.utils import ModelError, ErrorContext, handle_error
 
@@ -97,10 +105,13 @@ is_recoverable, message = handle_error(some_exception)
 ```
 
 ### 3. **Async Utilities Module** (`utils/async_helpers.py`)
+
 Advanced async operations with concurrency control:
 
-#### Key Classes:
+#### Key Classes
+
 - **`AsyncBatchProcessor`**: Process items with rate limiting
+
   ```python
   processor = AsyncBatchProcessor(batch_size=10, max_concurrent=5)
   results = await processor.process(items, async_handler)
@@ -109,8 +120,9 @@ Advanced async operations with concurrency control:
 - **`ConnectionPool`**: Manage limited connections
   - Prevents resource exhaustion
   - Automatic connection reuse
-  
+
 - **`AsyncRetry`**: Exponential backoff retry decorator
+
   ```python
   @AsyncRetry(max_attempts=3, initial_delay=1.0, backoff_factor=2.0)
   async def flaky_operation():
@@ -119,14 +131,17 @@ Advanced async operations with concurrency control:
 
 - **`AsyncCache`**: Async-safe caching layer
 
-#### Utility Functions:
+#### Utility Functions
+
 - `gather_with_limit()`: Gather coroutines with concurrency limit
 - `gather_with_limit(*coros, limit=10)`
 
 ### 4. **Validation Module** (`utils/validation.py`)
+
 Input validation with composable validators:
 
-#### Validator Types:
+#### Validator Types
+
 - `MinLength(n)`: Minimum string length
 - `MaxLength(n)`: Maximum string length
 - `Pattern(regex, description)`: Regex matching
@@ -135,7 +150,8 @@ Input validation with composable validators:
 - `OneOf(values)`: Allowed values list
 - `Email()`: Email format
 
-#### Fluent API:
+#### Fluent API
+
 ```python
 from kortana.utils import Validator
 
@@ -158,6 +174,7 @@ def create_user(name: str, age: int):
 ```
 
 ### 5. **Utility Package** (`utils/__init__.py`)
+
 Centralized exports for all utilities - import from one place:
 
 ```python
@@ -178,16 +195,19 @@ from kortana.utils import (
 ## Core Module Enhancements
 
 ### ChatEngine (`brain.py`)
+
 **Status:** ✅ Enhanced with performance optimizations
 
-#### Improvements:
+#### Improvements
+
 1. **Per-request caching**: Identical queries cache responses (300s TTL)
 2. **Circuit breaker**: Protects against cascading LLM failures
 3. **Metrics tracking**: Monitors performance and failures
 4. **Better error handling**: Graceful degradation when services unavailable
 5. **Memory resilience**: Works even if memory system fails
 
-#### New Features:
+#### New Features
+
 ```python
 # Response caching - reuse results for identical queries
 result = await engine.get_response("What is 2+2?")  # Hits API
@@ -201,22 +221,26 @@ metrics_summary = engine.metrics.get_summary()
 # Automatically prevents hammering on failed services
 ```
 
-#### Configuration:
+#### Configuration
+
 - Circuit breaker opens after 5 failures
 - Attempts recovery after 60 seconds
 - Response cache: 100 items, 5-minute TTL
 
 ### LLMService (`services/llm_service.py`)
+
 **Status:** ✅ Redesigned with lazy initialization
 
-#### Improvements:
+#### Improvements
+
 1. **Lazy initialization**: Prevents circular import errors
 2. **Error handling**: Service-specific error codes and recovery info
 3. **Timeout support**: Configurable request timeouts
 4. **Performance metrics**: Response time tracking
 5. **Async support**: True async/await without blocking
 
-#### Code:
+#### Code
+
 ```python
 from kortana.services.llm_service import get_llm_service
 
@@ -238,21 +262,24 @@ else:
 ## Performance Improvements
 
 ### Memory Efficiency
+
 - **Response Caching**: 10-100x speedup for repeated queries
 - **LRU Eviction**: Automatically removes old entries
 - **TTL Expiration**: No stale cache pollution
 
 ### Request Efficiency
+
 - **Batch Processing**: Process multiple items with rate limiting
 - **Connection Pooling**: Reuse connections, reduce overhead
 - **Circuit Breaker**: Fail fast, reduce wasted requests
 
 ### Code Efficiency
+
 - **Async/Await**: Non-blocking I/O throughout
 - **Concurrency Limits**: Prevent resource exhaustion
 - **Metric Tracking**: Identify bottlenecks
 
-### Example Performance Gains:
+### Example Performance Gains
 
 ```
 Before:
@@ -272,20 +299,22 @@ Estimated 100-1000x improvement for cached operations
 
 ## Error Recovery Strategies
 
-### Automatic Recovery (No Code Changes Needed):
+### Automatic Recovery (No Code Changes Needed)
+
 1. **Transient Failures** (408, 429, 500-504)
    - Auto-retry with exponential backoff
    - Up to 3 attempts with 1-60s delays
-   
+
 2. **Service Failures**
    - Circuit breaker prevents hammering
    - Automatic recovery attempts after timeout
-   
+
 3. **Memory System Down**
    - ChatEngine continues to function
    - Graceful degradation without memory support
 
-### Manual Retry Using RetryableError:
+### Manual Retry Using RetryableError
+
 ```python
 from kortana.utils import RetryableError
 
@@ -319,7 +348,8 @@ logger.debug(f"Cache hit for {cache_key}")
 
 ## Testing & Validation
 
-### Input Validation:
+### Input Validation
+
 ```python
 from kortana.utils import sanitize_text, Validator
 
@@ -331,7 +361,8 @@ validator = Validator("api_key").min_length(20).not_empty()
 is_valid, errors = validator.validate(api_key)
 ```
 
-### Metrics Collection:
+### Metrics Collection
+
 ```python
 # Track custom metrics
 await engine.metrics.record("custom_operation", duration_ms, success=True)
@@ -346,9 +377,10 @@ for operation, stats in summary.items():
 
 ## Migration Guide
 
-### For Existing Code:
+### For Existing Code
 
 **Before:**
+
 ```python
 # Error handling
 try:
@@ -358,6 +390,7 @@ except Exception as e:
 ```
 
 **After:**
+
 ```python
 # With recovery info
 try:
@@ -371,7 +404,8 @@ except ServiceError as e:
         raise
 ```
 
-### No Breaking Changes:
+### No Breaking Changes
+
 - All existing imports still work
 - Backward compatible
 - New features are opt-in
@@ -380,7 +414,8 @@ except ServiceError as e:
 
 ## Configuration Options
 
-### CircuitBreaker:
+### CircuitBreaker
+
 ```python
 CircuitBreakerConfig(
     failure_threshold=5,      # Failures before opening
@@ -389,7 +424,8 @@ CircuitBreakerConfig(
 )
 ```
 
-### TTLCache:
+### TTLCache
+
 ```python
 cache = TTLCache(
     max_size=100,           # Maximum items
@@ -397,7 +433,8 @@ cache = TTLCache(
 )
 ```
 
-### AsyncBatchProcessor:
+### AsyncBatchProcessor
+
 ```python
 processor = AsyncBatchProcessor(
     batch_size=10,          # Items per batch
@@ -410,13 +447,15 @@ processor = AsyncBatchProcessor(
 
 ## Monitoring & Debugging
 
-### Enable Debug Logging:
+### Enable Debug Logging
+
 ```python
 import logging
 logging.basicConfig(level=logging.DEBUG)
 ```
 
-### Performance Metrics:
+### Performance Metrics
+
 ```python
 # Get detailed metrics
 summary = engine.metrics.get_summary()
@@ -432,7 +471,8 @@ summary = engine.metrics.get_summary()
 # }
 ```
 
-### Circuit Breaker Status:
+### Circuit Breaker Status
+
 ```python
 print(f"Circuit state: {engine.llm_circuit_breaker.state}")
 print(f"Failures: {engine.llm_circuit_breaker.failure_count}")

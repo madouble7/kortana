@@ -55,3 +55,98 @@ python autonomous_monitor_simple.py
   - `logs/autonomous_children/*.stderr.log`
 
 If a persistent child exits repeatedly, check its stderr file first.
+
+## Real-Time Multi-Agent Coordination
+
+Kor'tana now supports a filesystem-backed coordination mesh for concurrent agents.
+
+### Mesh components
+
+- Coordination core:
+  - `src/kortana/core/agent_mesh.py`
+- Operator/agent CLI:
+  - `scripts/agent_mesh.py`
+- Live dashboard monitor:
+  - `scripts/monitor_agent_mesh.py`
+
+`autonomous_monitor_simple.py` now supervises `monitor_agent_mesh.py` as a persistent monitor.
+
+### Agent operating protocol (required for all concurrent agents)
+
+1. Register once at session start:
+
+```bat
+python scripts/agent_mesh.py register --agent agent-coding-1 --role coding --branch feature/my-work
+```
+
+1. Send heartbeats every 30-60 seconds while working:
+
+```bat
+python scripts/agent_mesh.py heartbeat --agent agent-coding-1 --status busy --task-id task-123
+```
+
+1. Claim task ownership before coding:
+
+```bat
+python scripts/agent_mesh.py claim-task --agent agent-coding-1 --task-id task-123
+```
+
+1. If task has no mesh task entry yet, add then claim:
+
+```bat
+python scripts/agent_mesh.py add-task --task-id task-123 --title "Refactor model router" --description "..." --priority 80 --file src/kortana/model_router.py
+python scripts/agent_mesh.py claim-task --agent agent-coding-1 --task-id task-123
+```
+
+1. Release task and claims at completion:
+
+```bat
+python scripts/agent_mesh.py release-task --agent agent-coding-1 --task-id task-123 --outcome completed --note "All checks green"
+```
+
+1. Unregister when done:
+
+```bat
+python scripts/agent_mesh.py unregister --agent agent-coding-1 --reason "session_end"
+```
+
+### Live supervision commands
+
+- One-shot status:
+
+```bat
+python scripts/agent_mesh.py status
+```
+
+- Full raw state:
+
+```bat
+python scripts/agent_mesh.py show --json
+```
+
+- Suggested next task for one agent:
+
+```bat
+python scripts/agent_mesh.py recommend --agent agent-coding-1
+```
+
+- Suggested assignments across active agents:
+
+```bat
+python scripts/agent_mesh.py assignments --max 10
+```
+
+- Start live dashboard loop:
+
+```bat
+python scripts/monitor_agent_mesh.py --interval 5
+```
+
+### Stale ownership recovery
+
+If an agent crashes or stops heartbeating, stale claims are auto-cleaned by sweep cycles.
+Manual cleanup:
+
+```bat
+python scripts/agent_mesh.py sweep
+```

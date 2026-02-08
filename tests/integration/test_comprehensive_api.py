@@ -5,6 +5,7 @@ This test suite validates the integration between frontend and backend,
 ensuring stability, responsiveness, and proper communication.
 """
 
+import base64
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -19,7 +20,9 @@ from kortana.services.database import Base, get_db_sync
 SQLALCHEMY_DATABASE_URL_TEST = "sqlite:///./test_kortana_comprehensive.db"
 
 # OpenAI adapter orchestrator mock path
-ORCHESTRATOR_PROCESS_QUERY_PATH = "src.kortana.core.orchestrator.KorOrchestrator.process_query"
+ORCHESTRATOR_PROCESS_QUERY_PATH = (
+    "src.kortana.core.orchestrator.KorOrchestrator.process_query"
+)
 
 # =============================================================================
 # Test Fixtures
@@ -116,6 +119,50 @@ def test_chat_with_missing_message_field(client: TestClient):
     assert response.status_code == 200
     data = response.json()
     assert "response" in data
+
+
+def test_voice_transcribe_endpoint(client: TestClient):
+    """Test voice transcription endpoint with heuristic text payload."""
+    audio_payload = base64.b64encode(b"TEXT: hello from voice testing").decode("utf-8")
+    response = client.post(
+        "/voice/transcribe",
+        json={"audio_base64": audio_payload, "user_id": "voice-test-user"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert "transcript" in data
+    assert "metrics" in data
+
+
+def test_voice_chat_endpoint(client: TestClient):
+    """Test full voice chat endpoint with optional TTS output."""
+    audio_payload = base64.b64encode(b"TEXT: tell me something encouraging").decode(
+        "utf-8"
+    )
+    response = client.post(
+        "/voice/chat",
+        json={
+            "audio_base64": audio_payload,
+            "user_id": "voice-test-user",
+            "return_audio": True,
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert "transcript" in data
+    assert "response" in data
+    assert "metrics" in data
+
+
+def test_voice_chat_invalid_base64(client: TestClient):
+    """Test voice endpoint rejects malformed base64 payloads."""
+    response = client.post(
+        "/voice/chat",
+        json={"audio_base64": "@@@not-base64@@@", "user_id": "voice-test-user"},
+    )
+    assert response.status_code == 400
 
 
 # =============================================================================
@@ -231,15 +278,17 @@ def test_openai_adapter_basic_chat(client: TestClient):
     # Mock the orchestrator to avoid network calls
     mock_response = {
         "response": "Hello! I'm doing great, thank you for asking!",
-        "content": "Hello! I'm doing great, thank you for asking!"
+        "content": "Hello! I'm doing great, thank you for asking!",
     }
-    
-    with patch(ORCHESTRATOR_PROCESS_QUERY_PATH, new_callable=AsyncMock, return_value=mock_response):
+
+    with patch(
+        ORCHESTRATOR_PROCESS_QUERY_PATH,
+        new_callable=AsyncMock,
+        return_value=mock_response,
+    ):
         request_data = {
             "model": "kortana-custom",
-            "messages": [
-                {"role": "user", "content": "Hello, how are you?"}
-            ]
+            "messages": [{"role": "user", "content": "Hello, how are you?"}],
         }
         response = client.post("/v1/chat/completions", json=request_data)
         assert response.status_code == 200
@@ -258,9 +307,7 @@ def test_openai_adapter_no_user_message(client: TestClient):
     """Test OpenAI adapter handles missing user message."""
     request_data = {
         "model": "kortana-custom",
-        "messages": [
-            {"role": "system", "content": "You are a helpful assistant."}
-        ]
+        "messages": [{"role": "system", "content": "You are a helpful assistant."}],
     }
     response = client.post("/v1/chat/completions", json=request_data)
     assert response.status_code == 400
@@ -268,10 +315,7 @@ def test_openai_adapter_no_user_message(client: TestClient):
 
 def test_openai_adapter_empty_messages(client: TestClient):
     """Test OpenAI adapter handles empty messages list."""
-    request_data = {
-        "model": "kortana-custom",
-        "messages": []
-    }
+    request_data = {"model": "kortana-custom", "messages": []}
     response = client.post("/v1/chat/completions", json=request_data)
     assert response.status_code == 400
 
@@ -279,9 +323,7 @@ def test_openai_adapter_empty_messages(client: TestClient):
 def test_lobechat_adapter(client: TestClient):
     """Test legacy LobeChat adapter endpoint."""
     request_data = {
-        "messages": [
-            {"content": "Test message for LobeChat", "role": "user"}
-        ]
+        "messages": [{"content": "Test message for LobeChat", "role": "user"}]
     }
     response = client.post("/adapters/lobechat/chat", json=request_data)
     assert response.status_code == 200
@@ -310,9 +352,7 @@ def test_invalid_http_method(client: TestClient):
 def test_malformed_json(client: TestClient):
     """Test sending malformed JSON to endpoints."""
     response = client.post(
-        "/chat",
-        data="not valid json",
-        headers={"Content-Type": "application/json"}
+        "/chat", data="not valid json", headers={"Content-Type": "application/json"}
     )
     assert response.status_code == 422
 
@@ -389,6 +429,7 @@ def test_multiple_health_checks(client: TestClient):
 def test_health_endpoint_response_time(client: TestClient):
     """Test that health endpoint responds quickly."""
     import time
+
     start = time.time()
     response = client.get("/health")
     duration = time.time() - start
@@ -400,6 +441,7 @@ def test_health_endpoint_response_time(client: TestClient):
 def test_list_goals_response_time(client: TestClient):
     """Test that listing goals responds in reasonable time."""
     import time
+
     # Create some goals first
     for i in range(10):
         goal_data = {

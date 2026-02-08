@@ -43,6 +43,15 @@ class APIConfig(BaseModel):
     rate_limit: int = Field(default=100, ge=1)
 
 
+class VoiceConfig(BaseModel):
+    """Voice chat configuration."""
+
+    enabled: bool = True
+    max_audio_bytes: int = Field(default=10 * 1024 * 1024, ge=1024)
+    min_audio_seconds: float = Field(default=0.15, ge=0.0)
+    return_audio_by_default: bool = True
+
+
 class ModelProviderConfig(BaseModel):
     """Individual model provider configuration"""
 
@@ -242,6 +251,7 @@ class KortanaConfig(BaseSettings):
     app: AppConfig = AppConfig()
     logging: LoggingConfig = LoggingConfig()
     api: APIConfig = APIConfig()
+    voice: VoiceConfig = VoiceConfig()
     models: ModelsConfig = ModelsConfig()
     memory: MemoryConfig = MemoryConfig()
     agents: AgentsConfig = AgentsConfig()

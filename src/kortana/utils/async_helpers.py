@@ -11,8 +11,8 @@ from typing import Any, Generic, TypeVar
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar('T')
-R = TypeVar('R')
+T = TypeVar("T")
+R = TypeVar("R")
 
 
 class AsyncBatchProcessor(Generic[T, R]):
@@ -65,8 +65,7 @@ class AsyncBatchProcessor(Generic[T, R]):
             async with semaphore:
                 try:
                     result = await asyncio.wait_for(
-                        processor(item),
-                        timeout=self.timeout
+                        processor(item), timeout=self.timeout
                     )
                     results[index] = result
                 except TimeoutError:
@@ -81,6 +80,7 @@ class AsyncBatchProcessor(Generic[T, R]):
             bounded_processor(i, item)
             for i, item in enumerate(items)
         ]
+        tasks = [bounded_processor(i, item) for i, item in enumerate(items)]
 
         await asyncio.gather(*tasks, return_exceptions=False)
         return [r for r in results if r is not None]
@@ -111,7 +111,9 @@ class ConnectionPool:
         """Get a connection from the pool."""
         try:
             conn = self._pool.get_nowait()
-            logger.debug(f"Reused connection from pool. Available: {self._pool.qsize()}")
+            logger.debug(
+                f"Reused connection from pool. Available: {self._pool.qsize()}"
+            )
             return conn
         except asyncio.QueueEmpty:
             async with self._lock:
@@ -132,7 +134,7 @@ class ConnectionPool:
             logger.debug(f"Released connection. Available: {self._pool.qsize()}")
         except asyncio.QueueFull:
             logger.warning("Connection pool full, closing connection")
-            if hasattr(conn, 'close'):
+            if hasattr(conn, "close"):
                 conn.close()
 
     async def close_all(self):
@@ -140,7 +142,7 @@ class ConnectionPool:
         while not self._pool.empty():
             try:
                 conn = self._pool.get_nowait()
-                if hasattr(conn, 'close'):
+                if hasattr(conn, "close"):
                     conn.close()
             except asyncio.QueueEmpty:
                 break
@@ -176,6 +178,7 @@ class AsyncRetry:
 
     def __call__(self, func: Callable):
         """Apply retry decorator to function."""
+
         async def async_wrapper(*args, **kwargs):
             attempt = 0
             delay = self.initial_delay
@@ -224,8 +227,7 @@ async def gather_with_limit(
             return await coro
 
     return await asyncio.gather(
-        *(bounded_coro(coro) for coro in coros),
-        return_exceptions=False
+        *(bounded_coro(coro) for coro in coros), return_exceptions=False
     )
 
 

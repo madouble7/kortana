@@ -13,9 +13,10 @@ logger = logging.getLogger(__name__)
 
 class ErrorSeverity(Enum):
     """Severity levels for errors."""
-    LOW = "low"         # Can retry without issue
-    MEDIUM = "medium"   # May need intervention
-    HIGH = "high"       # Requires immediate attention
+
+    LOW = "low"  # Can retry without issue
+    MEDIUM = "medium"  # May need intervention
+    HIGH = "high"  # Requires immediate attention
     CRITICAL = "critical"  # System failure
 
 
@@ -36,8 +37,10 @@ class KortanaError(Exception):
         self.recoverable = recoverable
 
         logger.log(
-            level=logging.ERROR if severity == ErrorSeverity.CRITICAL else logging.WARNING,
-            msg=f"[{severity.value}] {self.__class__.__name__}: {message}"
+            level=logging.ERROR
+            if severity == ErrorSeverity.CRITICAL
+            else logging.WARNING,
+            msg=f"[{severity.value}] {self.__class__.__name__}: {message}",
         )
 
     def __str__(self) -> str:
@@ -55,7 +58,7 @@ class ConfigurationError(KortanaError):
             message=message,
             severity=ErrorSeverity.HIGH,
             error_code=f"CONFIG_{config_key.upper() if config_key else 'INVALID'}",
-            recoverable=False
+            recoverable=False,
         )
 
 
@@ -67,7 +70,7 @@ class MemoryError(KortanaError):
             message=message,
             severity=ErrorSeverity.MEDIUM,
             error_code="MEMORY_ERROR",
-            recoverable=recoverable
+            recoverable=recoverable,
         )
 
 
@@ -75,12 +78,15 @@ class ModelError(KortanaError):
     """Raised when model/LLM operations fail."""
 
     def __init__(self, message: str, model_name: str | None = None, recoverable: bool = True):
+    def __init__(
+        self, message: str, model_name: str | None = None, recoverable: bool = True
+    ):
         code = f"MODEL_{model_name.upper()}" if model_name else "MODEL_ERROR"
         super().__init__(
             message=message,
             severity=ErrorSeverity.MEDIUM,
             error_code=code,
-            recoverable=recoverable
+            recoverable=recoverable,
         )
 
 
@@ -88,12 +94,19 @@ class ServiceError(KortanaError):
     """Raised when external services fail."""
 
     def __init__(self, message: str, service_name: str | None = None, http_status: int | None = None):
+    def __init__(
+        self,
+        message: str,
+        service_name: str | None = None,
+        http_status: int | None = None,
+    ):
         code = f"SERVICE_{service_name.upper()}" if service_name else "SERVICE_ERROR"
         if http_status:
             code += f"_{http_status}"
 
         severity = (
-            ErrorSeverity.HIGH if http_status and http_status >= 500
+            ErrorSeverity.HIGH
+            if http_status and http_status >= 500
             else ErrorSeverity.MEDIUM
         )
 
@@ -101,7 +114,7 @@ class ServiceError(KortanaError):
             message=message,
             severity=severity,
             error_code=code,
-            recoverable=http_status in (408, 429, 500, 502, 503, 504)
+            recoverable=http_status in (408, 429, 500, 502, 503, 504),
         )
 
 
@@ -114,7 +127,7 @@ class ValidationError(KortanaError):
             message=message,
             severity=ErrorSeverity.LOW,
             error_code=code,
-            recoverable=False
+            recoverable=False,
         )
 
 
@@ -122,6 +135,12 @@ class TimeoutError(KortanaError):
     """Raised when operations timeout."""
 
     def __init__(self, message: str, operation: str | None = None, timeout_seconds: float | None = None):
+    def __init__(
+        self,
+        message: str,
+        operation: str | None = None,
+        timeout_seconds: float | None = None,
+    ):
         parts = ["Operation timed out"]
         if operation:
             parts.append(f"{operation}")
@@ -134,7 +153,7 @@ class TimeoutError(KortanaError):
             message=full_msg,
             severity=ErrorSeverity.MEDIUM,
             error_code="TIMEOUT",
-            recoverable=True
+            recoverable=True,
         )
 
 
@@ -151,7 +170,7 @@ class RetryableError(KortanaError):
             message=message,
             severity=ErrorSeverity.LOW,
             error_code="RETRYABLE_ERROR",
-            recoverable=True
+            recoverable=True,
         )
         self.max_retries = max_retries
         self.backoff_seconds = backoff_seconds
@@ -187,6 +206,7 @@ class ErrorContext:
         self,
         operation: str,
         on_error: Any | None = None,
+        on_error: callable | None = None,
         raise_on_error: bool = True,
     ):
         self.operation = operation

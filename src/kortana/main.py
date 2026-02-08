@@ -2,10 +2,13 @@
 Kor'tana Main FastAPI Application
 """
 
+import base64
 from contextlib import asynccontextmanager  # For lifespan events
+from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
 
 from kortana.api.routers import core_router, goal_router
 from kortana.api.routers.conversation_router import router as conversation_router
@@ -33,10 +36,30 @@ from kortana.modules.plugin_framework.router import router as plugin_router
 from kortana.modules.security.routers.security_router import (
     router as security_router,
 )
+from kortana.voice import VoiceChatOrchestrator, VoiceProcessingError
 
 # Global configuration and engine
 settings = load_kortana_config()
 chat_engine = ChatEngine(settings=settings)
+voice_orchestrator = VoiceChatOrchestrator(chat_engine=chat_engine)
+
+
+class VoiceChatRequest(BaseModel):
+    """Voice chat request payload."""
+
+    audio_base64: str = Field(..., description="Base64-encoded WAV/PCM audio payload")
+    session_id: str | None = Field(default=None)
+    user_id: str | None = Field(default="default")
+    user_name: str | None = Field(default=None)
+    return_audio: bool | None = Field(default=None)
+
+
+class VoiceTranscribeRequest(BaseModel):
+    """Voice transcription request payload."""
+
+    audio_base64: str = Field(..., description="Base64-encoded WAV/PCM audio payload")
+    session_id: str | None = Field(default=None)
+    user_id: str | None = Field(default="default")
 
 
 # Lifespan context manager
@@ -127,6 +150,62 @@ async def chat(message: dict):
         return {"response": response, "status": "success"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/voice/transcribe")
+async def voice_transcribe(payload: VoiceTranscribeRequest) -> dict[str, Any]:
+    """Transcribe voice payload into text with session context."""
+    if not settings.voice.enabled:
+        raise HTTPException(status_code=503, detail="Voice chat is disabled")
+
+    try:
+        audio_bytes = base64.b64decode(payload.audio_base64, validate=True)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400, detail="Invalid base64 audio payload"
+        ) from exc
+
+    try:
+        result = await voice_orchestrator.transcribe_only(
+            audio_bytes=audio_bytes,
+            session_id=payload.session_id,
+            user_id=payload.user_id,
+        )
+        return {"status": "success", **result}
+    except VoiceProcessingError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.to_dict()) from exc
+
+
+@app.post("/voice/chat")
+async def voice_chat(payload: VoiceChatRequest) -> dict[str, Any]:
+    """Process a complete voice turn (STT -> LLM -> optional TTS)."""
+    if not settings.voice.enabled:
+        raise HTTPException(status_code=503, detail="Voice chat is disabled")
+
+    try:
+        audio_bytes = base64.b64decode(payload.audio_base64, validate=True)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400, detail="Invalid base64 audio payload"
+        ) from exc
+
+    return_audio = (
+        payload.return_audio
+        if payload.return_audio is not None
+        else settings.voice.return_audio_by_default
+    )
+
+    try:
+        result = await voice_orchestrator.process_voice_turn(
+            audio_bytes=audio_bytes,
+            session_id=payload.session_id,
+            user_id=payload.user_id,
+            user_name=payload.user_name,
+            return_audio=return_audio,
+        )
+        return {"status": "success", **result}
+    except VoiceProcessingError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.to_dict()) from exc
 
 
 @app.get("/status")

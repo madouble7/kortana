@@ -11,7 +11,7 @@ from typing import Any, TypeVar
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class ValidationRule:
@@ -103,7 +103,7 @@ class Email(ValidationRule):
     """Validate email format."""
 
     def __init__(self):
-        self.pattern = re.compile(r'^[^\s@]+@[^\s@]+\.[^\s@]+$')
+        self.pattern = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
         super().__init__("Must be valid email address")
 
     def validate(self, value: Any) -> bool:
@@ -119,6 +119,7 @@ class Validator:
         self.errors: list[str] = []
 
     def add_rule(self, rule: ValidationRule) -> 'Validator':
+    def add_rule(self, rule: ValidationRule) -> "Validator":
         """Add validation rule."""
         self.rules.append(rule)
         return self
@@ -148,6 +149,31 @@ class Validator:
         return self.add_rule(OneOf(values))
 
     def is_email(self) -> 'Validator':
+    def min_length(self, min_len: int) -> "Validator":
+        """Add minimum length rule."""
+        return self.add_rule(MinLength(min_len))
+
+    def max_length(self, max_len: int) -> "Validator":
+        """Add maximum length rule."""
+        return self.add_rule(MaxLength(max_len))
+
+    def pattern(self, regex: str, description: str = "") -> "Validator":
+        """Add pattern rule."""
+        return self.add_rule(Pattern(regex, description))
+
+    def not_empty(self) -> "Validator":
+        """Add not empty rule."""
+        return self.add_rule(NotEmpty())
+
+    def in_range(self, min_val, max_val) -> "Validator":
+        """Add range rule."""
+        return self.add_rule(InRange(min_val, max_val))
+
+    def one_of(self, values: list) -> "Validator":
+        """Add one-of rule."""
+        return self.add_rule(OneOf(values))
+
+    def is_email(self) -> "Validator":
         """Add email validation."""
         return self.add_rule(Email())
 
@@ -164,6 +190,9 @@ class Validator:
             if not rule.validate(value):
                 self.errors.append(rule.error_message)
                 logger.debug(f"Validation failed for {self.field_name}: {rule.error_message}")
+                logger.debug(
+                    f"Validation failed for {self.field_name}: {rule.error_message}"
+                )
 
         return len(self.errors) == 0, self.errors
 
@@ -208,6 +237,7 @@ def sanitize_text(text: str, max_length: int = 10000) -> str:
 
     # Remove control characters
     text = ''.join(c for c in text if ord(c) >= 32 or c in '\n\t\r')
+    text = "".join(c for c in text if ord(c) >= 32 or c in "\n\t\r")
 
     return text
 
@@ -224,10 +254,12 @@ def with_validation(**validators: Callable[[Any], bool]):
         def user_action(name: str, age: int):
             pass
     """
+
     def decorator(func: Callable) -> Callable:
         def wrapper(*args, **kwargs):
             # Get function parameter names
             import inspect
+
             sig = inspect.signature(func)
 
             # Build mapping of parameter names to values

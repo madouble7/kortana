@@ -124,6 +124,30 @@
 			"label": "Test Environment Status",
 			"type": "shell",
 			"command": "python diagnose_test_env.py"
+		},
+		{
+			"label": "Validate Improvements",
+			"type": "shell",
+			"command": "c:\\kortana\\.kortana_config_test_env\\Scripts\\python.exe",
+			"args": [
+				"c:\\kortana\\validate_improvements.py"
+			]
+		},
+		{
+			"label": "Run Isolated Tests",
+			"type": "shell",
+			"command": "python",
+			"args": [
+				"c:\\kortana\\isolated_test_runner.py"
+			],
+			"group": "test"
+		},
+		{
+			"label": "Run Tests Direct Safe",
+			"type": "shell",
+			"command": "c:\\kortana\\run_tests_direct_safe.bat",
+			"args": [],
+			"group": "test"
 		}
 	]
 }

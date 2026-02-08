@@ -23,19 +23,21 @@ from typing import Any, Generic, TypeVar
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class CircuitState(Enum):
     """State of a circuit breaker."""
+
     CLOSED = "closed"  # Normal operation
-    OPEN = "open"      # Failing, reject requests
+    OPEN = "open"  # Failing, reject requests
     HALF_OPEN = "half_open"  # Testing recovery
 
 
 @dataclass
 class CacheEntry:
     """A cached response with TTL."""
+
     value: Any
     timestamp: datetime
     ttl_seconds: int | None = None
@@ -108,6 +110,7 @@ class TTLCache(Generic[T]):
 @dataclass
 class CircuitBreakerConfig:
     """Configuration for circuit breaker."""
+
     failure_threshold: int = 5  # Failures before opening
     recovery_timeout: int = 60  # Seconds before attempting recovery
     expected_exception: type = Exception
@@ -244,6 +247,7 @@ def timed_execution(name: str = ""):
         async def query_db():
             pass
     """
+
     def decorator(func: Callable) -> Callable:
         operation_name = name or func.__name__
 
@@ -280,11 +284,12 @@ def timed_execution(name: str = ""):
 @dataclass
 class PerfMetrics:
     """Performance metrics for a service."""
+
     total_requests: int = 0
     successful_requests: int = 0
     failed_requests: int = 0
     total_time_ms: float = 0.0
-    min_time_ms: float = float('inf')
+    min_time_ms: float = float("inf")
     max_time_ms: float = 0.0
 
     @property
@@ -322,6 +327,9 @@ class MetricsCollector:
         self._lock = asyncio.Lock()
 
     async def record(self, operation: str, duration_ms: float, success: bool = True) -> None:
+    async def record(
+        self, operation: str, duration_ms: float, success: bool = True
+    ) -> None:
         """Record an operation's performance."""
         async with self._lock:
             if operation not in self.metrics:
@@ -333,11 +341,11 @@ class MetricsCollector:
         """Get metrics summary."""
         return {
             op: {
-                'avg_time_ms': m.avg_time_ms,
-                'min_time_ms': m.min_time_ms,
-                'max_time_ms': m.max_time_ms,
-                'success_rate': m.success_rate,
-                'total_requests': m.total_requests,
+                "avg_time_ms": m.avg_time_ms,
+                "min_time_ms": m.min_time_ms,
+                "max_time_ms": m.max_time_ms,
+                "success_rate": m.success_rate,
+                "total_requests": m.total_requests,
             }
             for op, m in self.metrics.items()
         }

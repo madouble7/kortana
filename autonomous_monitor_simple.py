@@ -44,6 +44,11 @@ class SimpleAutonomousMonitor:
         # Long-running scripts that should be supervised continuously.
         self.persistent_profiles = [
             {
+                "script": "monitor_agent_mesh.py",
+                "requires_api": False,
+                "health_url": None,
+            },
+            {
                 "script": "file_system_monitor.py",
                 "requires_api": False,
                 "health_url": None,

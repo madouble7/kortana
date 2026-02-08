@@ -86,9 +86,7 @@ class ChatEngine:
         # Initialize circuit breaker for LLM calls (5 failures -> open, 60s timeout)
         self.llm_circuit_breaker = CircuitBreaker(
             CircuitBreakerConfig(
-                failure_threshold=5,
-                recovery_timeout=60,
-                expected_exception=Exception
+                failure_threshold=5, recovery_timeout=60, expected_exception=Exception
             )
         )
 
@@ -101,7 +99,7 @@ class ChatEngine:
         except Exception as e:
             raise ModelError(
                 f"Failed to initialize LLM client: {e}",
-                model_name=self.settings.default_llm_id
+                model_name=self.settings.default_llm_id,
             )
 
         # Initialize memory system - core focus of Phase 3
@@ -121,7 +119,9 @@ class ChatEngine:
         # Load persona and identity configurations
         try:
             self.persona_data = load_json_config(self.settings.paths.persona_file_path)
-            self.identity_data = load_json_config(self.settings.paths.identity_file_path)
+            self.identity_data = load_json_config(
+                self.settings.paths.identity_file_path
+            )
         except Exception as e:
             logger.warning(f"Could not load persona/identity configs: {e}")
             self.persona_data = {}
@@ -160,9 +160,7 @@ class ChatEngine:
         except Exception as e:
             logger.warning(f"Failed to load memories (non-critical): {e}")
             self.formatted_memories = []
-            asyncio.create_task(
-                self.metrics.record("memory_load", 0, success=False)
-            )
+            asyncio.create_task(self.metrics.record("memory_load", 0, success=False))
 
     def append_memory(self, interaction: dict[str, Any]) -> None:
         """Append a new memory entry to the journal."""
