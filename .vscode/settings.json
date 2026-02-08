@@ -1,8 +1,8 @@
 {
     // Core Python configuration
     "python.defaultInterpreterPath": "c:\\\\kortana\\\\.kortana_config_test_env\\\\Scripts\\\\python.exe",
-    "python.terminal.activateEnvironment": true,
-    "python.terminal.activateEnvInCurrentTerminal": true,
+    "python.terminal.activateEnvironment": false,
+    "python.terminal.activateEnvInCurrentTerminal": false,
     // Performance optimizations - File handling
     "files.autoSave": "afterDelay",
     "files.autoSaveDelay": 1000,

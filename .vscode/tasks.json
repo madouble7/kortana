@@ -77,6 +77,16 @@
 			"label": "Unify Imports Logged",
 			"type": "shell",
 			"command": "c:\\kortana\\.kortana_config_test_env\\Scripts\\python.exe c:\\kortana\\scripts\\unify_kortana_imports.py"
+		},
+		{
+			"label": "Run Full Test Suite - CMD",
+			"type": "shell",
+			"command": "cmd.exe",
+			"args": ["/c", "c:\\kortana\\run_tests.bat"],
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			}
 		}
 	]
 }
