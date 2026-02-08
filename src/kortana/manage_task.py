@@ -62,10 +62,11 @@ def validate_command_args(command: str) -> bool:
     """
     # Disallow common shell injection patterns
     dangerous_patterns = [
-        r'[;&|`$()]',  # Shell metacharacters
-        r'\$\{',  # Variable expansion
-        r'>\s*\&',  # Redirection
-        r'<\s*\&',  # Redirection
+        r'[;&|`]',  # Shell metacharacters for chaining/piping
+        r'\$\(',  # Command substitution $(...)
+        r'\$\{',  # Variable expansion ${...}
+        r'>\s*&',  # Redirection
+        r'<\s*&',  # Redirection
     ]
     
     for pattern in dangerous_patterns:
