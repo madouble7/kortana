@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import and_, func, or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from . import models, schemas
@@ -74,7 +74,7 @@ class ConversationHistoryService:
     ) -> list[models.Conversation]:
         """
         Advanced search for conversations with multiple filters.
-        
+
         Supports filtering by:
         - User ID
         - Date range

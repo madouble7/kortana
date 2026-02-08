@@ -4,7 +4,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from kortana.modules.conversation_history import models, schemas, services
+from kortana.modules.conversation_history import schemas, services
 from kortana.services.database import get_db_sync
 
 router = APIRouter(
@@ -21,7 +21,7 @@ def create_conversation(
     """Create a new conversation."""
     service = services.ConversationHistoryService(db)
     db_conversation = service.create_conversation(conversation)
-    
+
     # Add message count
     response_data = schemas.ConversationResponse.model_validate(db_conversation)
     response_data.message_count = 0
@@ -66,14 +66,14 @@ def list_conversations(
     """List conversations for a user."""
     service = services.ConversationHistoryService(db)
     conversations = service.get_user_conversations(user_id, skip=skip, limit=limit)
-    
+
     # Add message counts
     results = []
     for conv in conversations:
         conv_data = schemas.ConversationResponse.model_validate(conv)
         conv_data.message_count = len(conv.messages) if conv.messages else 0
         results.append(conv_data)
-    
+
     return results
 
 
@@ -86,7 +86,7 @@ def search_conversations(
 ):
     """
     Advanced search for conversations with multiple filters.
-    
+
     Supports filtering by:
     - User ID
     - Date range (start_date, end_date)
@@ -96,14 +96,14 @@ def search_conversations(
     """
     service = services.ConversationHistoryService(db)
     conversations = service.search_conversations(filters, skip=skip, limit=limit)
-    
+
     # Add message counts
     results = []
     for conv in conversations:
         conv_data = schemas.ConversationResponse.model_validate(conv)
         conv_data.message_count = len(conv.messages) if conv.messages else 0
         results.append(conv_data)
-    
+
     return results
 
 
@@ -117,7 +117,7 @@ def archive_conversation(
     conversation = service.archive_conversation(conversation_id)
     if not conversation:
         raise HTTPException(status_code=404, detail="Conversation not found")
-    
+
     conv_data = schemas.ConversationResponse.model_validate(conversation)
     conv_data.message_count = len(conversation.messages) if conversation.messages else 0
     return conv_data

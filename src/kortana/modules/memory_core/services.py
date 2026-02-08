@@ -1,7 +1,6 @@
 import hashlib
 import time
 from functools import lru_cache
-from typing import Any
 
 import numpy as np
 from sqlalchemy.orm import Session, joinedload
@@ -77,7 +76,7 @@ class MemoryCoreService:
         """
         Retrieves a specific memory by its ID, including its sentiments.
         Updates accessed_at timestamp via SQLAlchemy's onupdate.
-        
+
         Args:
             memory_id: ID of the memory to retrieve
             use_cache: Whether to use the cache (default: True)
@@ -90,18 +89,18 @@ class MemoryCoreService:
             else:
                 # Cache expired, remove it
                 del self._memory_cache[memory_id]
-        
+
         memory = (
             self.db.query(models.CoreMemory)
             .options(joinedload(models.CoreMemory.sentiments))
             .filter(models.CoreMemory.id == memory_id)
             .first()
         )
-        
+
         # Store in cache
         if memory and use_cache:
             self._memory_cache[memory_id] = (memory, time.time())
-        
+
         return memory
 
     def get_all_memories(
@@ -166,7 +165,7 @@ class MemoryCoreService:
         """
         # Generate cache key
         cache_key = f"{_cached_query_hash(query)}_{top_k}"
-        
+
         # Check cache first if enabled
         if use_cache and cache_key in self._search_cache:
             cached_results, cache_time = self._search_cache[cache_key]
@@ -175,10 +174,10 @@ class MemoryCoreService:
             else:
                 # Cache expired, remove it
                 del self._search_cache[cache_key]
-        
+
         print(f"Performing semantic search for query: '{query}' (top_k={top_k})")
         start_time = time.time()
-        
+
         query_embedding = embedding_service.get_embedding_for_text(query)
         if not query_embedding:
             return []
@@ -214,20 +213,20 @@ class MemoryCoreService:
         sorted_memories = sorted(
             scored_memories, key=lambda x: x["score"], reverse=True
         )[:top_k]
-        
+
         # Add relevance ranking
         for idx, mem_result in enumerate(sorted_memories):
             mem_result["relevance_rank"] = idx + 1
-        
+
         search_time = time.time() - start_time
         print(f"Search completed in {search_time:.3f}s, found {len(sorted_memories)} results")
-        
+
         # Cache results if enabled
         if use_cache:
             self._search_cache[cache_key] = (sorted_memories, time.time())
-        
+
         return sorted_memories
-    
+
     def clear_cache(self) -> dict[str, int]:
         """Clear all cached data and return counts."""
         memory_count = len(self._memory_cache)

@@ -1,6 +1,7 @@
 import time
 import uuid
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -81,12 +82,12 @@ async def stream_chat_response(
 ) -> AsyncIterator[str]:
     """
     Stream chat completion responses in SSE format.
-    
+
     This simulates streaming by breaking the response into chunks.
     In a production system, this would stream tokens as they're generated from the LLM.
     """
     import json
-    
+
     # Extract user query
     user_query: str | None = None
     if request.messages:
@@ -94,7 +95,7 @@ async def stream_chat_response(
             if msg.role == "user":
                 user_query = msg.content
                 break
-    
+
     if not user_query:
         # Send error as stream
         error_chunk = {
@@ -111,11 +112,11 @@ async def stream_chat_response(
         yield f"data: {json.dumps(error_chunk)}\n\n"
         yield "data: [DONE]\n\n"
         return
-    
+
     # Process query
     orchestrator = KorOrchestrator(db=db)
     kortana_response_data = await orchestrator.process_query(query=user_query)
-    
+
     # Extract response text
     response_text: str
     if isinstance(kortana_response_data, dict):
@@ -130,18 +131,18 @@ async def stream_chat_response(
         response_text = kortana_response_data
     else:
         response_text = "Sorry, I received an unexpected response format."
-    
+
     # Stream the response in chunks
     chunk_id = f"chatcmpl-{uuid.uuid4().hex}"
     created_time = int(time.time())
     model_name = request.model or "kortana-custom"
-    
+
     # Split response into words for streaming simulation
     words = response_text.split()
-    
+
     for i, word in enumerate(words):
         chunk_content = word + (" " if i < len(words) - 1 else "")
-        
+
         chunk = {
             "id": chunk_id,
             "object": "chat.completion.chunk",
@@ -153,9 +154,9 @@ async def stream_chat_response(
                 "finish_reason": None
             }]
         }
-        
+
         yield f"data: {json.dumps(chunk)}\n\n"
-    
+
     # Send final chunk with finish_reason
     final_chunk = {
         "id": chunk_id,
@@ -178,7 +179,7 @@ async def openai_chat_completions_adapter(
 ):
     """
     OpenAI-compatible chat completions endpoint for LobeChat integration.
-    
+
     Supports both streaming and non-streaming responses via the 'stream' parameter.
     """
     # Check if streaming is requested
@@ -188,7 +189,7 @@ async def openai_chat_completions_adapter(
             stream_chat_response(request, db),
             media_type="text/event-stream"
         )
-    
+
     # Non-streaming response (original logic)
     user_query: str | None = None
     if request.messages:

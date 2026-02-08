@@ -7,7 +7,7 @@ Detects the language of input text
 class LanguageDetector:
     """
     Service for detecting language of text
-    
+
     Note: This is a simplified implementation using character set heuristics.
     For production use, consider integrating a proper language detection library
     like 'langdetect' or 'pycld2' for more accurate results.

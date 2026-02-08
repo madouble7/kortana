@@ -132,17 +132,17 @@ async def get_alert_statistics():
 async def analyze_threat(request: Request):
     """Analyze current request for threats."""
     client_ip = request.client.host if request.client else "unknown"
-    
+
     # Get request details
     headers = dict(request.headers)
-    
+
     detection = threat_detection_service.analyze_request(
         endpoint=str(request.url.path),
         method=request.method,
         client_ip=client_ip,
         headers=headers,
     )
-    
+
     # Map threat level to alert severity
     threat_to_severity_map = {
         "low": AlertSeverity.LOW,
@@ -150,7 +150,7 @@ async def analyze_threat(request: Request):
         "high": AlertSeverity.HIGH,
         "critical": AlertSeverity.CRITICAL,
     }
-    
+
     # Create alert if threat detected
     if detection.threat_level.value != "none" and detection.confidence_score > 0.5:
         severity = threat_to_severity_map.get(
@@ -165,7 +165,7 @@ async def analyze_threat(request: Request):
             source="threat_detection",
             metadata=detection.analysis_details,
         )
-    
+
     return detection
 
 
@@ -212,7 +212,7 @@ async def start_vulnerability_scan(request: VulnerabilityScanRequest):
         target=request.target,
         scan_type=request.scan_type,
     )
-    
+
     # Create alert if vulnerabilities found
     if scan_result.vulnerabilities_found > 0:
         alert_service.create_alert(
@@ -223,7 +223,7 @@ async def start_vulnerability_scan(request: VulnerabilityScanRequest):
             source="vulnerability_scanner",
             metadata={"scan_id": scan_result.scan_id},
         )
-    
+
     return scan_result
 
 
@@ -263,17 +263,17 @@ async def get_security_metrics():
     """Get comprehensive security metrics for dashboard."""
     alert_stats = alert_service.get_alert_statistics()
     vuln_stats = vulnerability_service.get_vulnerability_statistics()
-    
+
     # Calculate uptime
     uptime = (datetime.utcnow() - _system_start_time).total_seconds()
-    
+
     # Determine system health
     critical_alerts = sum(
         1 for alert in alert_service.get_all_alerts(resolved=False)
         if alert.severity == AlertSeverity.CRITICAL
     )
     system_health = "critical" if critical_alerts > 0 else "healthy"
-    
+
     metrics = SecurityMetrics(
         total_alerts=alert_stats["total_alerts"],
         active_alerts=alert_stats["active_alerts"],
@@ -288,7 +288,7 @@ async def get_security_metrics():
         system_health=system_health,
         uptime_seconds=uptime,
     )
-    
+
     return metrics
 
 
@@ -298,12 +298,12 @@ async def get_dashboard_summary():
     alert_stats = alert_service.get_alert_statistics()
     vuln_stats = vulnerability_service.get_vulnerability_statistics()
     blocked_ips = threat_detection_service.get_blocked_ips()
-    
+
     recent_alerts = alert_service.get_all_alerts(resolved=False)[:5]
     recent_scans = vulnerability_service.get_all_scans(limit=5)
-    
+
     uptime = (datetime.utcnow() - _system_start_time).total_seconds()
-    
+
     return {
         "overview": {
             "system_status": "operational",

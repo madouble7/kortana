@@ -3,8 +3,8 @@ Module Registry for Kor'tana Marketplace
 Manages module metadata and installations
 """
 
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 
 class ModuleMetadata:
@@ -26,8 +26,8 @@ class ModuleMetadata:
         self.downloads = 0
         self.rating = 0.0
         self.ratings_count = 0
-        self.created_at = datetime.now(timezone.utc).isoformat()
-        self.updated_at = datetime.now(timezone.utc).isoformat()
+        self.created_at = datetime.now(UTC).isoformat()
+        self.updated_at = datetime.now(UTC).isoformat()
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""
@@ -77,12 +77,12 @@ class ModuleRegistry:
         self.modules[name] = module
         return module
 
-    def get_module(self, name: str) -> Optional[ModuleMetadata]:
+    def get_module(self, name: str) -> ModuleMetadata | None:
         """Get module metadata"""
         return self.modules.get(name)
 
     def list_modules(
-        self, category: Optional[str] = None
+        self, category: str | None = None
     ) -> list[dict[str, Any]]:
         """
         List all modules, optionally filtered by category

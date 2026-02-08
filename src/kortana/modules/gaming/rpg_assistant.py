@@ -3,7 +3,7 @@ RPG Assistant for Kor'tana
 Assists with tabletop RPG gameplay
 """
 
-from typing import Any, Optional
+from typing import Any
 
 
 class RPGAssistant:
@@ -11,7 +11,7 @@ class RPGAssistant:
 
     def __init__(self):
         self.campaigns: dict[str, dict[str, Any]] = {}
-        self.active_campaign: Optional[str] = None
+        self.active_campaign: str | None = None
 
     def create_campaign(self, name: str, system: str = "D&D 5e") -> dict[str, Any]:
         """

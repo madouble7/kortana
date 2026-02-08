@@ -3,10 +3,10 @@ Sentiment Analyzer for Kor'tana
 Analyzes sentiment of text input
 """
 
-from enum import Enum
+from enum import StrEnum
 
 
-class Sentiment(str, Enum):
+class Sentiment(StrEnum):
     POSITIVE = "positive"
     NEGATIVE = "negative"
     NEUTRAL = "neutral"

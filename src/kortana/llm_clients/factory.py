@@ -128,8 +128,8 @@ class LLMClientFactory:
             return None
         return self.create_client(model_id, self.models_config)  # models_config is dict
 
-    @staticmethod
     def create_client(
+        self,
         model_id: str,
         models_config: dict[str, Any],  # Ensure this expects dict
     ) -> BaseLLMClient | None:
@@ -198,7 +198,7 @@ class LLMClientFactory:
                     base_url=model_conf.get("base_url", "https://api.x.ai/v1"),
                 )  # Ensure model_name is passed if XAIClient expects it
             elif client_class == GoogleGeminiClient:  # Changed to GoogleGeminiClient
-                client = GoogleGenAIClient(
+                client = GoogleGeminiClient(
                     api_key=api_key,
                     model_name=model_conf.get("model_name", model_id),
                     base_url=model_conf.get(

@@ -3,13 +3,13 @@ Security data models for Kor'tana security module.
 """
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 
-class AlertSeverity(str, Enum):
+class AlertSeverity(StrEnum):
     """Security alert severity levels."""
 
     LOW = "low"
@@ -18,7 +18,7 @@ class AlertSeverity(str, Enum):
     CRITICAL = "critical"
 
 
-class AlertType(str, Enum):
+class AlertType(StrEnum):
     """Types of security alerts."""
 
     THREAT_DETECTED = "threat_detected"
@@ -29,7 +29,7 @@ class AlertType(str, Enum):
     ANOMALY_DETECTED = "anomaly_detected"
 
 
-class ThreatLevel(str, Enum):
+class ThreatLevel(StrEnum):
     """Threat assessment levels."""
 
     NONE = "none"

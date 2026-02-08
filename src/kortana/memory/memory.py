@@ -35,7 +35,7 @@ class MemoryEntry:
         self.source = source
         self.embedding = embedding or []
         self.id = id or f"{source}-{self.timestamp.isoformat()}"
-        
+
         # Enhanced metadata tracking
         self.metadata = metadata or {}
         if "created_at" not in self.metadata:
@@ -83,7 +83,7 @@ class MemoryEntry:
             embedding=interaction.get("embedding", []),
             metadata=interaction.get("metadata", {}),
         )
-    
+
     def update_access_metadata(self) -> None:
         """Update metadata when memory is accessed."""
         self.metadata["last_accessed"] = datetime.now().isoformat()

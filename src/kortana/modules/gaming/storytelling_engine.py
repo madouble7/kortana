@@ -3,11 +3,11 @@ Storytelling Engine for Kor'tana
 Generates interactive narratives and story elements
 """
 
-from enum import Enum
-from typing import Any, Optional
+from enum import StrEnum
+from typing import Any
 
 
-class StoryGenre(str, Enum):
+class StoryGenre(StrEnum):
     FANTASY = "fantasy"
     SCIFI = "scifi"
     MYSTERY = "mystery"
@@ -19,7 +19,7 @@ class StorytellingEngine:
     """Service for interactive storytelling"""
 
     def __init__(self):
-        self.current_story: Optional[dict[str, Any]] = None
+        self.current_story: dict[str, Any] | None = None
         self.story_history: list[dict[str, Any]] = []
 
     def start_story(self, genre: StoryGenre, setting: str) -> dict[str, Any]:

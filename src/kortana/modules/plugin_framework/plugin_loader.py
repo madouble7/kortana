@@ -55,7 +55,7 @@ class PluginLoader:
             List of plugin information dictionaries
         """
         plugins = []
-        for name, plugin in self.registry.get_all().items():
+        for _name, plugin in self.registry.get_all().items():
             info = plugin.get_info()
             info["enabled"] = plugin.is_enabled()
             plugins.append(info)

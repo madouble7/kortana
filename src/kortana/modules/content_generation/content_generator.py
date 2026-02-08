@@ -3,10 +3,10 @@ Content Generator for Kor'tana
 Provides summarization, elaboration, and rewriting capabilities
 """
 
-from enum import Enum
+from enum import StrEnum
 
 
-class ContentStyle(str, Enum):
+class ContentStyle(StrEnum):
     FORMAL = "formal"
     CASUAL = "casual"
     TECHNICAL = "technical"
@@ -17,7 +17,7 @@ class ContentStyle(str, Enum):
 class ContentGenerator:
     """
     Service for adaptive content generation
-    
+
     Note: This implementation uses simplified text processing.
     For production use, consider integrating NLP libraries or LLM-based
     generation for better quality results.
@@ -26,7 +26,7 @@ class ContentGenerator:
     def summarize(self, text: str, max_length: int = 100) -> str:
         """
         Summarize text to specified maximum length
-        
+
         Note: Uses simple sentence splitting. May not handle abbreviations
         or complex punctuation correctly.
 

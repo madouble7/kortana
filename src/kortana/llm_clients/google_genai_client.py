@@ -59,6 +59,9 @@ class GenAIClient(LLMClient):
             # Convert messages to Google GenAI format
             prompt = self._convert_messages_to_prompt(messages)
 
+            # Import genai in the method scope
+            import google.generativeai as genai
+
             # Extract parameters with defaults
             temperature = kwargs.get("temperature", 0.7)
             max_tokens = kwargs.get("max_tokens", 4096)

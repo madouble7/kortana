@@ -6,8 +6,8 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from kortana.config.schema import KortanaConfig
-from kortana.llm_clients.factory import LLMClientFactory
 from kortana.core import prompts
+from kortana.llm_clients.factory import LLMClientFactory
 from kortana.modules.ethical_discernment_module.evaluators import (
     AlgorithmicArroganceEvaluator,
     UncertaintyHandler,
@@ -73,7 +73,7 @@ class KorOrchestrator:
         # Track overall performance
         process_start = time.time()
         performance_metrics = {}
-        
+
         # 1. Search memory for relevant context
         memory_start = time.time()
         relevant_memories = self.memory_service.search_memories_semantic(query, top_k=3)

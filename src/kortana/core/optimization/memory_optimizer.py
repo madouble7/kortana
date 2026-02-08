@@ -11,7 +11,7 @@ import logging
 import time
 from collections import OrderedDict
 from collections.abc import Callable
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Generic, TypeVar
 
 logger = logging.getLogger(__name__)
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 
-class CacheStrategy(str, Enum):
+class CacheStrategy(StrEnum):
     """Cache eviction strategies."""
 
     LRU = "lru"  # Least Recently Used

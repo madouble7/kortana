@@ -3,10 +3,10 @@ Emotion Detector for Kor'tana
 Detects emotions in text
 """
 
-from enum import Enum
+from enum import StrEnum
 
 
-class Emotion(str, Enum):
+class Emotion(StrEnum):
     JOY = "joy"
     SADNESS = "sadness"
     ANGER = "anger"

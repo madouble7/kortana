@@ -3,7 +3,6 @@ Translation Service for Kor'tana
 Provides real-time translation capabilities
 """
 
-from typing import Optional
 
 
 class TranslationService:

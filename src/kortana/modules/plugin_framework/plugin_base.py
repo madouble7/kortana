@@ -3,7 +3,7 @@ Base Plugin Interface for Kor'tana
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any
 
 
 class BasePlugin(ABC):
@@ -74,7 +74,7 @@ class PluginRegistry:
 
         Args:
             plugin: Plugin instance to register
-            
+
         Raises:
             ValueError: If plugin with same name already exists
         """
@@ -95,7 +95,7 @@ class PluginRegistry:
         if plugin_name in self._plugins:
             del self._plugins[plugin_name]
 
-    def get(self, plugin_name: str) -> Optional[BasePlugin]:
+    def get(self, plugin_name: str) -> BasePlugin | None:
         """
         Get a plugin by name
 

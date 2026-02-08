@@ -17,7 +17,7 @@ import os
 import time
 import uuid
 from datetime import UTC, datetime
-from typing import Any, Optional
+from typing import Any
 
 # Core imports
 from kortana.brain_utils import (
@@ -34,15 +34,11 @@ from kortana.model_router import SacredModelRouter
 
 # Optimization and utility imports
 from kortana.utils import (
-    TTLCache,
     CircuitBreaker,
     CircuitBreakerConfig,
-    ErrorContext,
     MetricsCollector,
-    timed_execution,
-    cached_async,
     ModelError,
-    KortanaError,
+    TTLCache,
 )
 
 # Configure logging
@@ -57,7 +53,7 @@ class ChatEngine:
     - Minimal memory interface for read/write operations
     - Integration with existing memory infrastructure
     - Incremental memory reintroduction to brain functionality
-    
+
     Enhancements:
     - Response caching for identical queries
     - Circuit breaker for external service calls
@@ -65,14 +61,14 @@ class ChatEngine:
     - Comprehensive error handling
     """
 
-    def __init__(self, settings: KortanaConfig, session_id: Optional[str] = None):
+    def __init__(self, settings: KortanaConfig, session_id: str | None = None):
         """
         Initialize the chat engine with memory integration.
 
         Args:
             settings: Application configuration.
             session_id: Optional session identifier.
-            
+
         Raises:
             ModelError: If model initialization fails
         """
@@ -86,7 +82,7 @@ class ChatEngine:
         # Initialize performance tracking
         self.metrics = MetricsCollector()
         self.response_cache: TTLCache = TTLCache(max_size=100, default_ttl=300)
-        
+
         # Initialize circuit breaker for LLM calls (5 failures -> open, 60s timeout)
         self.llm_circuit_breaker = CircuitBreaker(
             CircuitBreakerConfig(
@@ -140,7 +136,7 @@ class ChatEngine:
     def _load_existing_memories(self) -> None:
         """
         Load and format existing conversation memories for context-aware responses.
-        
+
         Gracefully handles memory loading failures to allow ChatEngine to function
         even if memory system is unavailable.
         """
@@ -148,13 +144,13 @@ class ChatEngine:
             logger.debug("Memory manager not initialized, skipping memory load")
             self.formatted_memories = []
             return
-        
+
         try:
             start_time = time.perf_counter()
             memories = self.memory_manager.load_project_memory()
             self.formatted_memories = memories
             elapsed_ms = (time.perf_counter() - start_time) * 1000
-            
+
             logger.info(
                 f"Loaded {len(memories)} existing memories in {elapsed_ms:.1f}ms"
             )

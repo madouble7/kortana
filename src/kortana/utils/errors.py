@@ -6,7 +6,6 @@ Provides structured exception hierarchy and error recovery strategies.
 
 import logging
 from enum import Enum
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -21,12 +20,12 @@ class ErrorSeverity(Enum):
 
 class KortanaError(Exception):
     """Base exception for Kor'tana."""
-    
+
     def __init__(
         self,
         message: str,
         severity: ErrorSeverity = ErrorSeverity.MEDIUM,
-        error_code: Optional[str] = None,
+        error_code: str | None = None,
         recoverable: bool = False,
     ):
         super().__init__(message)
@@ -34,12 +33,12 @@ class KortanaError(Exception):
         self.severity = severity
         self.error_code = error_code
         self.recoverable = recoverable
-        
+
         logger.log(
             level=logging.ERROR if severity == ErrorSeverity.CRITICAL else logging.WARNING,
             msg=f"[{severity.value}] {self.__class__.__name__}: {message}"
         )
-    
+
     def __str__(self) -> str:
         """Return formatted error message."""
         if self.error_code:
@@ -49,8 +48,8 @@ class KortanaError(Exception):
 
 class ConfigurationError(KortanaError):
     """Raised when configuration is invalid or missing."""
-    
-    def __init__(self, message: str, config_key: Optional[str] = None):
+
+    def __init__(self, message: str, config_key: str | None = None):
         super().__init__(
             message=message,
             severity=ErrorSeverity.HIGH,
@@ -61,7 +60,7 @@ class ConfigurationError(KortanaError):
 
 class MemoryError(KortanaError):
     """Raised when memory operations fail."""
-    
+
     def __init__(self, message: str, recoverable: bool = True):
         super().__init__(
             message=message,
@@ -73,8 +72,8 @@ class MemoryError(KortanaError):
 
 class ModelError(KortanaError):
     """Raised when model/LLM operations fail."""
-    
-    def __init__(self, message: str, model_name: Optional[str] = None, recoverable: bool = True):
+
+    def __init__(self, message: str, model_name: str | None = None, recoverable: bool = True):
         code = f"MODEL_{model_name.upper()}" if model_name else "MODEL_ERROR"
         super().__init__(
             message=message,
@@ -86,17 +85,17 @@ class ModelError(KortanaError):
 
 class ServiceError(KortanaError):
     """Raised when external services fail."""
-    
-    def __init__(self, message: str, service_name: Optional[str] = None, http_status: Optional[int] = None):
+
+    def __init__(self, message: str, service_name: str | None = None, http_status: int | None = None):
         code = f"SERVICE_{service_name.upper()}" if service_name else "SERVICE_ERROR"
         if http_status:
             code += f"_{http_status}"
-        
+
         severity = (
             ErrorSeverity.HIGH if http_status and http_status >= 500
             else ErrorSeverity.MEDIUM
         )
-        
+
         super().__init__(
             message=message,
             severity=severity,
@@ -107,8 +106,8 @@ class ServiceError(KortanaError):
 
 class ValidationError(KortanaError):
     """Raised when input validation fails."""
-    
-    def __init__(self, message: str, field: Optional[str] = None):
+
+    def __init__(self, message: str, field: str | None = None):
         code = f"VALIDATION_{field.upper()}" if field else "VALIDATION_ERROR"
         super().__init__(
             message=message,
@@ -120,16 +119,16 @@ class ValidationError(KortanaError):
 
 class TimeoutError(KortanaError):
     """Raised when operations timeout."""
-    
-    def __init__(self, message: str, operation: Optional[str] = None, timeout_seconds: Optional[float] = None):
+
+    def __init__(self, message: str, operation: str | None = None, timeout_seconds: float | None = None):
         parts = ["Operation timed out"]
         if operation:
             parts.append(f"{operation}")
         if timeout_seconds:
             parts.append(f"({timeout_seconds}s)")
-        
+
         full_msg = " ".join(parts) if len(parts) > 1 else message
-        
+
         super().__init__(
             message=full_msg,
             severity=ErrorSeverity.MEDIUM,
@@ -140,7 +139,7 @@ class TimeoutError(KortanaError):
 
 class RetryableError(KortanaError):
     """Indicates an error that can be retried."""
-    
+
     def __init__(
         self,
         message: str,
@@ -156,7 +155,7 @@ class RetryableError(KortanaError):
         self.max_retries = max_retries
         self.backoff_seconds = backoff_seconds
         self.attempt = 0
-    
+
     def next_backoff(self) -> float:
         """Calculate next backoff duration (exponential)."""
         self.attempt += 1
@@ -166,46 +165,46 @@ class RetryableError(KortanaError):
 def handle_error(error: Exception) -> tuple[bool, str]:
     """
     Analyze an error and determine if it's recoverable.
-    
+
     Args:
         error: The exception to handle
-        
+
     Returns:
         Tuple of (is_recoverable, error_message)
     """
     if isinstance(error, KortanaError):
         return error.recoverable, str(error)
-    
+
     # Default handling for unknown errors
     return False, str(error)
 
 
 class ErrorContext:
     """Context manager for graceful error handling."""
-    
+
     def __init__(
         self,
         operation: str,
-        on_error: Optional[callable] = None,
+        on_error: callable | None = None,
         raise_on_error: bool = True,
     ):
         self.operation = operation
         self.on_error = on_error
         self.raise_on_error = raise_on_error
-        self.error: Optional[Exception] = None
-    
+        self.error: Exception | None = None
+
     def __enter__(self):
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None:
             self.error = exc_val
             logger.error(f"Error in {self.operation}: {exc_val}")
-            
+
             if self.on_error:
                 self.on_error(exc_val)
-            
+
             if not self.raise_on_error:
                 return True  # Suppress exception
-        
+
         return False

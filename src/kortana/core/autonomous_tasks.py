@@ -14,10 +14,15 @@ from sqlalchemy.sql import func
 from kortana.core.execution_engine import ExecutionEngine
 from kortana.core.models import Goal, GoalStatus, PlanStep
 from kortana.core.planning_engine import PlanningEngine
-from kortana.core.services import get_execution_engine, get_planning_engine
+from kortana.core.services import (
+    get_execution_engine,
+    get_llm_service,
+    get_planning_engine,
+)
 from kortana.modules.memory_core import models
 from kortana.modules.memory_core.models import MemoryType
 from kortana.modules.memory_core.schemas import CoreMemoryCreate
+from kortana.modules.memory_core.services import MemoryCoreService
 from kortana.services.database import get_db_sync
 
 logger = logging.getLogger(__name__)
@@ -260,6 +265,7 @@ async def run_performance_analysis_task(db: Session):
 
         # 3. REASON: Use the LLM to analyze the collected data.
         analysis_prompt = _build_self_analysis_prompt(recent_outcomes)
+        llm_service = get_llm_service()
         llm_result = await llm_service.generate_response(
             analysis_prompt, temperature=0.5
         )
@@ -575,7 +581,7 @@ async def run_proactive_code_review_task(db: Session):
 
     try:
         # Get execution engine instance
-        execution_engine = get_execution_engine_instance()
+        get_execution_engine_instance()
 
         # Define scan paths - focus on core Kor'tana code
         scan_paths = [
@@ -597,7 +603,7 @@ async def run_proactive_code_review_task(db: Session):
                 from pathlib import Path
 
                 # Walk through the directory and find Python files
-                for root, dirs, files in os.walk(scan_path):
+                for root, _dirs, files in os.walk(scan_path):
                     for file in files:
                         if file.endswith(".py"):
                             file_path = Path(root) / file

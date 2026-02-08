@@ -36,10 +36,10 @@ ALLOWED_MODULES = {
 def validate_module_name(module_name: str) -> bool:
     """
     Validate that a module name is in the whitelist.
-    
+
     Args:
         module_name: The module name to validate
-        
+
     Returns:
         True if the module is allowed, False otherwise
     """
@@ -53,10 +53,10 @@ def validate_module_name(module_name: str) -> bool:
 def validate_command_args(command: str) -> bool:
     """
     Validate command string for shell injection risks.
-    
+
     Args:
         command: The command string to validate
-        
+
     Returns:
         True if command appears safe, False otherwise
     """
@@ -68,12 +68,12 @@ def validate_command_args(command: str) -> bool:
         r'>\s*&',  # Redirection
         r'<\s*&',  # Redirection
     ]
-    
+
     for pattern in dangerous_patterns:
         if re.search(pattern, command):
             logger.warning(f"Potentially dangerous command pattern detected: {pattern}")
             return False
-    
+
     return True
 
 
@@ -216,7 +216,7 @@ def execute_task(task_id: str) -> dict[str, Any]:
                     "task_id": task_id,
                     "timestamp": datetime.now().isoformat(),
                 }
-            
+
             process = subprocess.run(
                 command_list, shell=False, cwd=cwd, capture_output=True, text=True
             )

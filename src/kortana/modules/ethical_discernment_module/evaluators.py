@@ -23,12 +23,12 @@ class AlgorithmicArroganceEvaluator:
     ) -> dict[str, Any]:
         """
         Evaluate a single response for ethical alignment with detailed traceability.
-        
+
         Returns:
             Dictionary with evaluation results and decision metadata
         """
         evaluation_start = time.time()
-        
+
         # Initialize evaluation results
         evaluation = {
             "flag": False,
@@ -40,9 +40,9 @@ class AlgorithmicArroganceEvaluator:
             "decision_trace": [],
             "evaluation_time_ms": 0,
         }
-        
+
         decision_trace = []
-        
+
         # 1. Check confidence score from metadata
         confidence = llm_metadata.get("confidence_score") if llm_metadata else None
         if confidence is not None:
@@ -68,7 +68,7 @@ class AlgorithmicArroganceEvaluator:
                     "result": "passed",
                     "reason": f"Confidence {confidence} < threshold {self.confidence_threshold}",
                 })
-        
+
         # 2. Check for arrogance keywords
         response_lower = response_text.lower()
         arrogance_found = [kw for kw in self.arrogance_keywords if kw in response_lower]
@@ -90,7 +90,7 @@ class AlgorithmicArroganceEvaluator:
                 "result": "passed",
                 "reason": "No arrogance indicators found",
             })
-        
+
         # 3. Check for uncertainty markers (positive indicator)
         uncertainty_found = [phrase for phrase in self.uncertainty_phrases if phrase in response_lower]
         evaluation["uncertainty_check"] = {
@@ -103,7 +103,7 @@ class AlgorithmicArroganceEvaluator:
             "result": "info",
             "reason": f"Found {len(uncertainty_found)} uncertainty markers (good practice)",
         })
-        
+
         # 4. Bias detection - check for absolute statements
         absolute_count = response_lower.count("always") + response_lower.count("never")
         evaluation["bias_check"] = {
@@ -123,7 +123,7 @@ class AlgorithmicArroganceEvaluator:
                 "result": "passed",
                 "reason": f"Absolute statements within acceptable range ({absolute_count})",
             })
-        
+
         # 5. Transparency check - does response acknowledge limitations?
         transparency_indicators = ["i don't know", "i'm not sure", "i cannot", "beyond my", "i cannot provide"]
         transparency_found = [ind for ind in transparency_indicators if ind in response_lower]
@@ -136,29 +136,29 @@ class AlgorithmicArroganceEvaluator:
             "result": "info",
             "reason": f"Transparency indicators: {len(transparency_found)}",
         })
-        
+
         # Store decision trace
         evaluation["decision_trace"] = decision_trace
         evaluation["evaluation_time_ms"] = int((time.time() - evaluation_start) * 1000)
-        
+
         return evaluation
-    
+
     async def evaluate_batch(
         self,
         responses: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
         """
         Batch evaluate multiple responses for improved throughput.
-        
+
         Args:
             responses: List of dicts with 'response_text', 'llm_metadata', 'query_context'
-        
+
         Returns:
             List of evaluation results in the same order
         """
         batch_start = time.time()
         results = []
-        
+
         for response_data in responses:
             eval_result = await self.evaluate_response(
                 response_text=response_data.get("response_text", ""),
@@ -166,10 +166,10 @@ class AlgorithmicArroganceEvaluator:
                 original_query_context=response_data.get("query_context"),
             )
             results.append(eval_result)
-        
+
         batch_time = time.time() - batch_start
         print(f"Batch evaluation completed: {len(responses)} responses in {batch_time:.3f}s")
-        
+
         return results
 
 
@@ -181,20 +181,20 @@ class UncertaintyHandler:
     ) -> str:
         """
         Manage uncertainty based on evaluation results.
-        
+
         In a real implementation, this would modify the response based on evaluation
         to add appropriate caveats or disclaimers.
         """
         # If flagged for arrogance or bias, add a caveat
         if evaluation_results.get("flag", False):
             flagged_reasons = [
-                trace["reason"] 
+                trace["reason"]
                 for trace in evaluation_results.get("decision_trace", [])
                 if trace["result"] == "flagged"
             ]
-            
+
             # For now, just return the original response
             # In production, you might want to add disclaimers or rephrase
             print(f"Response flagged in evaluation: {flagged_reasons}")
-        
+
         return llm_response

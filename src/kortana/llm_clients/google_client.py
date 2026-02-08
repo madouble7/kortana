@@ -215,6 +215,8 @@ class GoogleGeminiClient(BaseLLMClient):
     def get_completion(self, messages: list[dict[str, str]], **kwargs) -> Any:
         """Get completion from Gemini API - matches expected interface"""
         try:
+            import google.generativeai as genai
+
             # Respect rate limits
             self._respect_rate_limits()
 
@@ -284,6 +286,8 @@ class GoogleGeminiClient(BaseLLMClient):
     def validate_connection(self) -> bool:
         """Validate Gemini API connection"""
         try:
+            import google.generativeai as genai
+
             test_response = self.model.generate_content(
                 "Test connection",
                 generation_config=genai.types.GenerationConfig(max_output_tokens=5),
@@ -300,6 +304,8 @@ class GoogleGeminiClient(BaseLLMClient):
     def test_connection(self) -> bool:
         """Test connection to Gemini API"""
         try:
+            import google.generativeai as genai
+
             self._respect_rate_limits()
 
             test_response = self.model.generate_content(

@@ -1,6 +1,7 @@
 from kortana.core.goal_framework import Goal
 from kortana.modules.memory_core.services import MemoryCoreService
 
+
 class GoalService:
     def __init__(self, memory_service: MemoryCoreService):
         self.memory_service = memory_service

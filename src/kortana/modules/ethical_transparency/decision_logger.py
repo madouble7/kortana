@@ -3,13 +3,13 @@ Ethical Decision Logger for Kor'tana
 Logs ethical decisions and reasoning
 """
 
-from datetime import datetime, timezone
-from enum import Enum
-from typing import Any, Optional
 import uuid
+from datetime import UTC, datetime
+from enum import StrEnum
+from typing import Any
 
 
-class EthicalDecisionType(str, Enum):
+class EthicalDecisionType(StrEnum):
     CONTENT_MODERATION = "content_moderation"
     PRIVACY_PROTECTION = "privacy_protection"
     BIAS_MITIGATION = "bias_mitigation"
@@ -29,13 +29,13 @@ class EthicalDecision:
         confidence: float = 0.8,
     ):
         self.id = str(uuid.uuid4())
-        self.timestamp = datetime.now(timezone.utc).isoformat()
+        self.timestamp = datetime.now(UTC).isoformat()
         self.decision_type = decision_type
         self.context = context
         self.decision = decision
         self.reasoning = reasoning
         self.confidence = confidence
-        self.feedback: Optional[str] = None
+        self.feedback: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""
@@ -88,7 +88,7 @@ class EthicalDecisionLogger:
         self.decisions.append(ethical_decision)
         return ethical_decision.id
 
-    def get_decision(self, decision_id: str) -> Optional[EthicalDecision]:
+    def get_decision(self, decision_id: str) -> EthicalDecision | None:
         """Get a decision by ID"""
         for decision in self.decisions:
             if decision.id == decision_id:

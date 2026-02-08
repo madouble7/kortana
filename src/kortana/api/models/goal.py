@@ -1,9 +1,11 @@
 """
 Goal Model for Kortana API
 """
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime
+from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text
 from sqlalchemy.sql import func
+
 from kortana.services.database import Base
+
 
 class Goal(Base):
     """Goal database model representing autonomous development objectives."""
