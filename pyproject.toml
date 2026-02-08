@@ -1,7 +1,7 @@
 [project]
-name = "project-kortana"
+name = "kortana"
 version = "0.1.0"
-description = ""
+description = "Kor'tana - A highly autonomous AI agent with memory, ethical discernment, and context-aware responses"
 authors = [{ name = "codex-bot", email = "codex-bot@example.com" }]
 readme = "README.md"
 requires-python = ">=3.11"
@@ -23,6 +23,23 @@ dependencies = [
     "cryptography>=41.0.0",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+
+[tool.poetry]
+name = "kortana"
+version = "0.1.0"
+description = "Kor'tana - A highly autonomous AI agent with memory, ethical discernment, and context-aware responses"
+authors = ["codex-bot <codex-bot@example.com>"]
+packages = [
+    { include = "kortana", from = "src" }
+]
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
