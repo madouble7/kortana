@@ -1,4 +1,4 @@
-"""Voice chat orchestration pipeline."""
+""Voice chat orchestration pipeline."""
 
 from __future__ import annotations
 

@@ -48,6 +48,42 @@ def append_text_line(path: str | Path, line: str, encoding: str = "utf-8") -> No
         os.close(fd)
 
 
+def tail_text_lines(
+    path: str | Path,
+    offset: int,
+    remainder: str = "",
+    encoding: str = "utf-8",
+) -> tuple[list[str], int, str]:
+    """Read only newly appended complete lines from a text file."""
+    target = Path(path)
+    if not target.exists():
+        return [], 0, ""
+
+    next_offset = max(0, int(offset))
+    next_remainder = remainder
+
+    with open(target, encoding=encoding) as f:
+        size = target.stat().st_size
+        if next_offset > size:
+            next_offset = 0
+            next_remainder = ""
+        f.seek(next_offset)
+        chunk = f.read()
+        next_offset = f.tell()
+
+    if not chunk and not next_remainder:
+        return [], next_offset, next_remainder
+
+    merged = f"{next_remainder}{chunk}"
+    lines = merged.splitlines()
+    if merged and not merged.endswith(("\n", "\r")):
+        next_remainder = lines.pop() if lines else merged
+    else:
+        next_remainder = ""
+
+    return lines, next_offset, next_remainder
+
+
 @dataclass
 class AgentEvent:
     id: str

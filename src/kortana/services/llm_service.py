@@ -78,7 +78,7 @@ class LLMService:
         else:
             raise ServiceError(
                 f"Provider '{self.provider}' is not yet supported",
-                service_name=provider
+                service_name=self.provider
             )
 
     @property
@@ -222,10 +222,7 @@ if __name__ == "__main__":
             print(result["metadata"])
         else:
             print(f"Error: {result['error']}")
-
-            print(result["metadata"])
-        else:
-            print("--- LLM Service Test Error ---")
-            print(result.get("error"))
+            if "metadata" in result:
+                print(result["metadata"])
 
     asyncio.run(test_llm_service())
