@@ -1,27 +1,20 @@
 #!/usr/bin/env python3
-"""
-Agent Interface for Kor'tana Orchestration
-==========================================
-
-Simple interface for agents to read/write messages in the relay system.
-Each agent can use this to check for new directives and send outputs.
-
-Usage:
-    from relays.agent_interface import AgentInterface
-
-    agent = AgentInterface("claude")
-    messages = agent.get_new_messages()
-    agent.send_output("Task completed successfully")
-    agent.send_status("active", "Processing user request")
-"""
+"""Agent interface for structured + legacy Kor'tana relay communication."""
 
 import time
 from datetime import datetime
 from pathlib import Path
 
+from relays.protocol import AgentEvent, parse_event_line
+
 
 class AgentInterface:
-    """Simple interface for agent communication in Kor'tana system"""
+    """Interface for agent communication in Kor'tana system.
+
+    Supports both:
+    - legacy plain-text log/queue lines
+    - structured JSON event envelopes via relays.protocol.AgentEvent
+    """
 
     def __init__(self, agent_name: str, project_root: str = None):
         """Initialize agent interface"""
@@ -63,6 +56,66 @@ class AgentInterface:
             print(f"⚠️  Error writing to log: {e}")
             return False
 
+    def send_event(
+        self,
+        event_type: str,
+        target: str = "all",
+        task_id: str | None = None,
+        payload: dict | None = None,
+        requires_ack: bool = False,
+        priority: str = "normal",
+    ) -> bool:
+        """Send a structured AgentEvent to this agent log."""
+        event = AgentEvent.new(
+            source=self.agent_name,
+            target=target,
+            event_type=event_type,
+            task_id=task_id,
+            payload=payload or {},
+            requires_ack=requires_ack,
+            priority=priority,
+        )
+        try:
+            with open(self.log_file, "a", encoding="utf-8") as f:
+                f.write(event.to_json_line() + "\n")
+            return True
+        except Exception as e:
+            print(f"⚠️  Error writing structured event to log: {e}")
+            return False
+
+    def heartbeat(self, task_id: str | None = None, details: str = "") -> bool:
+        """Emit heartbeat event for coordinator live status updates."""
+        return self.send_event(
+            event_type="HEARTBEAT",
+            target="coordinator",
+            task_id=task_id,
+            payload={"details": details},
+        )
+
+    def claim_task(self, task_id: str, details: str = "") -> bool:
+        """Attempt task lease/claim through coordinator."""
+        return self.send_event(
+            event_type="TASK_CLAIM",
+            target="coordinator",
+            task_id=task_id,
+            payload={"details": details},
+            requires_ack=True,
+        )
+
+    def update_task_status(
+        self, task_id: str, status: str, details: str = "", progress: int | None = None
+    ) -> bool:
+        """Send task update event for coordinator task graph updates."""
+        payload = {"status": status, "details": details}
+        if progress is not None:
+            payload["progress"] = progress
+        return self.send_event(
+            event_type="TASK_UPDATE",
+            target="coordinator",
+            task_id=task_id,
+            payload=payload,
+        )
+
     def send_status(self, status: str, details: str = ""):
         """Send status update"""
         status_message = f"STATUS: {status}"
@@ -81,6 +134,16 @@ class AgentInterface:
         """Get new messages from queue since last check"""
         if not self.queue_file.exists():
             return []
+
+    def get_new_events(self) -> list[AgentEvent]:
+        """Get new structured events parsed from queue lines."""
+        messages = self.get_new_messages()
+        events: list[AgentEvent] = []
+        for message in messages:
+            event = parse_event_line(message)
+            if event:
+                events.append(event)
+        return events
 
         try:
             with open(self.queue_file, encoding="utf-8") as f:

@@ -5,3 +5,4 @@
 {"event_type": "mesh.sweep", "payload": {"requeued_tasks": 0, "stale_agents_removed": 0, "stale_claims_removed": 0}, "timestamp": "2026-02-08T16:41:55.108876+00:00"}
 {"event_type": "task.release", "payload": {"agent_id": "codex-main", "outcome": "completed", "success": true, "task_id": "mesh-bootstrap"}, "timestamp": "2026-02-08T16:41:55.201556+00:00"}
 {"event_type": "agent.unregister", "payload": {"agent_id": "codex-main", "reason": "smoke_done"}, "timestamp": "2026-02-08T16:41:55.296616+00:00"}
+{"event_type": "mesh.sweep", "payload": {"requeued_tasks": 0, "stale_agents_removed": 0, "stale_claims_removed": 0}, "timestamp": "2026-02-08T16:42:47.822933+00:00"}

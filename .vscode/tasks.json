@@ -141,6 +141,13 @@
 				"c:\\kortana\\isolated_test_runner.py"
 			],
 			"group": "test"
+		},
+		{
+			"label": "Run Tests Direct Safe",
+			"type": "shell",
+			"command": "c:\\kortana\\run_tests_direct_safe.bat",
+			"args": [],
+			"group": "test"
 		}
 	]
 }
