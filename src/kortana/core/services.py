@@ -124,13 +124,22 @@ def _create_scheduler():
 
 def _create_memory_core_service():
     """Factory function for Memory Core Service."""
-
-    # TODO: This needs proper database session initialization
-    # For now, return None as placeholder
-    logger.warning(
-        "MemoryCoreService factory not fully implemented - needs database session"
-    )
-    return None
+    try:
+        from kortana.modules.memory_core.services import MemoryCoreService
+        from kortana.services.database import get_db_sync
+        
+        # Get a database session
+        db = next(get_db_sync())
+        
+        # Create and return the memory service
+        logger.info("Creating MemoryCoreService with database session")
+        return MemoryCoreService(db)
+    except ImportError as e:
+        logger.warning(f"Failed to import MemoryCoreService dependencies: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"Failed to initialize MemoryCoreService: {e}")
+        return None
 
 
 def _create_sacred_model_router():

@@ -337,22 +337,33 @@ def load_all_configs(config_dir: str) -> dict[str, Any]:
 
 def count_tokens(text: str) -> int:
     """
-    Placeholder for counting tokens in text.
+    Count approximate tokens in text using a simple heuristic.
+    
+    This uses a simple word-based approximation since tiktoken may not be available.
+    For more accurate counting, integrate tiktoken library when available.
 
     Args:
         text (str): The input text string.
 
     Returns:
-        int: The number of tokens (approximate).
+        int: The approximate number of tokens.
     """
-    # TODO: Implement actual token counting logic (e.g., using tiktoken or a similar library)
-    # This is a mock implementation
-    return len(text.split())  # Very basic word count as a placeholder
+    # Use a simple heuristic: ~1.3 tokens per word on average for English text
+    # This is a reasonable approximation for most use cases
+    words = text.split()
+    
+    # Count punctuation and special characters as additional tokens
+    punctuation_count = sum(1 for char in text if char in ".,!?;:()[]{}\"'")
+    
+    # Approximate token count: words + 30% + punctuation/2
+    approximate_tokens = int(len(words) * 1.3 + punctuation_count * 0.5)
+    
+    return approximate_tokens
 
 
 def summarize_text(text: str, max_tokens: int) -> str:
     """
-    Placeholder for summarizing text.
+    Summarize text by truncating to approximate token limit with sentence boundaries.
 
     Args:
         text (str): The input text string.
@@ -361,21 +372,75 @@ def summarize_text(text: str, max_tokens: int) -> str:
     Returns:
         str: The summarized text.
     """
-    # TODO: Implement actual text summarization logic
-    # This is a mock implementation
-    return text  # Return original text as a placeholder
+    # If text is already short enough, return as-is
+    current_tokens = count_tokens(text)
+    if current_tokens <= max_tokens:
+        return text
+    
+    # Split into sentences
+    sentences = re.split(r'(?<=[.!?])\s+', text)
+    
+    # Build summary by adding sentences until we reach the limit
+    summary_parts = []
+    token_count = 0
+    
+    for sentence in sentences:
+        sentence_tokens = count_tokens(sentence)
+        if token_count + sentence_tokens <= max_tokens:
+            summary_parts.append(sentence)
+            token_count += sentence_tokens
+        else:
+            # If we haven't added any sentences yet, truncate the first sentence
+            if not summary_parts:
+                words = sentence.split()
+                # Estimate words per token (~0.77 words per token)
+                target_words = int(max_tokens * 0.77)
+                summary_parts.append(' '.join(words[:target_words]) + '...')
+            break
+    
+    summary = ' '.join(summary_parts)
+    
+    # Add ellipsis if we truncated
+    if summary != text and not summary.endswith('...'):
+        summary += '...'
+    
+    return summary
 
 
-def extract_keywords(text: str) -> list[str]:
+def extract_keywords(text: str, max_keywords: int = 10) -> list[str]:
     """
-    Placeholder for extracting keywords from text.
+    Extract keywords from text using frequency analysis with stop word filtering.
 
     Args:
         text (str): The input text string.
+        max_keywords (int): Maximum number of keywords to return.
 
     Returns:
         List[str]: A list of extracted keywords.
     """
-    # TODO: Implement actual keyword extraction logic
-    # This is a mock implementation
-    return []  # Return empty list as a placeholder
+    # Expanded stop words list for better filtering
+    stop_words = {
+        "the", "and", "a", "an", "in", "to", "of", "is", "for", "on", "that", 
+        "this", "with", "at", "from", "by", "as", "be", "are", "was", "were",
+        "been", "being", "have", "has", "had", "do", "does", "did", "will",
+        "would", "could", "should", "may", "might", "can", "or", "but", "if",
+        "then", "else", "when", "where", "who", "which", "what", "how", "why",
+        "there", "their", "they", "them", "these", "those", "it", "its", "he",
+        "she", "him", "her", "his", "your", "you", "we", "us", "our", "my",
+        "me", "i", "am"
+    }
+    
+    # Extract words (alphanumeric, 3+ characters)
+    words = re.findall(r'\b[a-zA-Z]{3,}\b', text.lower())
+    
+    # Filter out stop words
+    meaningful_words = [word for word in words if word not in stop_words]
+    
+    # Count frequency
+    from collections import Counter
+    word_freq = Counter(meaningful_words)
+    
+    # Get most common keywords
+    keywords = [word for word, _ in word_freq.most_common(max_keywords)]
+    
+    return keywords

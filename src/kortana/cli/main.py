@@ -196,11 +196,61 @@ Available commands:
                         f"System Health: {'✓ Healthy' if health else '✗ Issues detected'}"
                     )
                 elif user_input.lower() == "agents":
-                    # TODO: Implement agent listing
-                    print("Agent listing not yet implemented")
+                    # List active agents from the brain
+                    try:
+                        # Get agent information from the brain's components
+                        agents = []
+                        if hasattr(brain, 'planner') and brain.planner:
+                            agents.append(('Planning Agent', 'Active', 'Generates plans for goals'))
+                        if hasattr(brain, 'executor') and brain.executor:
+                            agents.append(('Execution Agent', 'Active', 'Executes plan steps'))
+                        if hasattr(brain, 'memory_manager') and brain.memory_manager:
+                            agents.append(('Memory Agent', 'Active', 'Manages memory storage and retrieval'))
+                        
+                        if agents:
+                            print("\nActive Agents:")
+                            print("-" * 60)
+                            for name, status, description in agents:
+                                print(f"  {name:20s} [{status}] - {description}")
+                            print("-" * 60)
+                            print(f"Total: {len(agents)} agent(s)")
+                        else:
+                            print("No agents currently active")
+                    except Exception as e:
+                        print(f"Error listing agents: {e}")
+                        
                 elif user_input.lower() == "memory":
-                    # TODO: Implement memory stats
-                    print("Memory statistics not yet implemented")
+                    # Show memory statistics
+                    try:
+                        print("\nMemory Statistics:")
+                        print("-" * 60)
+                        
+                        if hasattr(brain, 'memory_manager') and brain.memory_manager:
+                            # Try to get memory stats
+                            try:
+                                # Count memories if possible
+                                memory_count = 0
+                                if hasattr(brain.memory_manager, 'memories'):
+                                    memory_count = len(brain.memory_manager.memories)
+                                elif hasattr(brain.memory_manager, 'get_all_memories'):
+                                    memories = brain.memory_manager.get_all_memories()
+                                    memory_count = len(memories) if memories else 0
+                                
+                                print(f"  Total Memories: {memory_count}")
+                                print(f"  Status: Active")
+                                
+                                # Show memory manager type
+                                mem_type = type(brain.memory_manager).__name__
+                                print(f"  Manager Type: {mem_type}")
+                            except Exception as e:
+                                print(f"  Status: Active (unable to retrieve detailed stats)")
+                                print(f"  Error: {e}")
+                        else:
+                            print("  Memory Manager: Not initialized")
+                        
+                        print("-" * 60)
+                    except Exception as e:
+                        print(f"Error getting memory statistics: {e}")
                 elif user_input.startswith("think "):
                     thought = user_input[6:]
                     response = brain.think(thought)
