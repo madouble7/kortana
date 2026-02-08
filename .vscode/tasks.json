@@ -119,6 +119,11 @@
 			"label": "Diagnose Environment",
 			"type": "shell",
 			"command": "python c:\\kortana\\diagnose_test_env.py"
+		},
+		{
+			"label": "Test Environment Status",
+			"type": "shell",
+			"command": "python diagnose_test_env.py"
 		}
 	]
 }
