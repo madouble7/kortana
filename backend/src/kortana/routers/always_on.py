@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, HTTPException
+from sqlalchemy import select
 from src.kortana.database import get_db_manager
 from src.kortana.logger import get_logger
 from src.kortana.models import GitHubTask
@@ -108,8 +109,12 @@ async def get_recent_tasks(limit: int = 10) -> List[Dict[str, Any]]:
     """Get recent tasks for monitoring dashboard"""
     try:
         db_manager = get_db_manager()
-        async with db_manager.get_session() as db:
-            tasks = db.query(GitHubTask).order_by(GitHubTask.updated_at.desc()).limit(limit).all()
+        db = await db_manager.get_session().__anext__()
+        try:
+            result = await db.execute(
+                select(GitHubTask).order_by(GitHubTask.updated_at.desc()).limit(limit)
+            )
+            tasks = result.scalars().all()
 
             return [
                 {
@@ -125,6 +130,8 @@ async def get_recent_tasks(limit: int = 10) -> List[Dict[str, Any]]:
                 }
                 for task in tasks
             ]
+        finally:
+            await db.close()
     except Exception as e:
         logger.error(f"Failed to get recent tasks: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get tasks: {str(e)}")
@@ -160,8 +167,10 @@ async def retry_task(task_id: str) -> Dict[str, Any]:
     """Retry a failed task"""
     try:
         db_manager = get_db_manager()
-        async with db_manager.get_session() as db:
-            task = db.query(GitHubTask).filter(GitHubTask.id == task_id).first()
+        db = await db_manager.get_session().__anext__()
+        try:
+            result = await db.execute(select(GitHubTask).filter(GitHubTask.id == task_id))
+            task = result.scalar_one_or_none()
             if not task:
                 raise HTTPException(status_code=404, detail="Task not found")
 
@@ -178,6 +187,8 @@ async def retry_task(task_id: str) -> Dict[str, Any]:
                 "status": "pending",
                 "timestamp": datetime.utcnow().isoformat(),
             }
+        finally:
+            await db.close()
     except HTTPException:
         raise
     except Exception as e:
@@ -190,8 +201,12 @@ async def get_monitoring_actions(limit: int = 20) -> List[Dict[str, Any]]:
     """Get recent monitoring actions for dashboard"""
     try:
         db_manager = get_db_manager()
-        async with db_manager.get_session() as db:
-            tasks = db.query(GitHubTask).order_by(GitHubTask.updated_at.desc()).limit(limit).all()
+        db = await db_manager.get_session().__anext__()
+        try:
+            result = await db.execute(
+                select(GitHubTask).order_by(GitHubTask.updated_at.desc()).limit(limit)
+            )
+            tasks = result.scalars().all()
 
             actions = []
             for task in tasks:
@@ -208,6 +223,8 @@ async def get_monitoring_actions(limit: int = 20) -> List[Dict[str, Any]]:
                 )
 
             return actions
+        finally:
+            await db.close()
     except Exception as e:
         logger.error(f"Failed to get monitoring actions: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get actions: {str(e)}")
@@ -255,8 +272,10 @@ async def approve_task(task_id: str, approved: bool, notes: str | None = None) -
     """Approve or reject a task requiring human oversight"""
     try:
         db_manager = get_db_manager()
-        async with db_manager.get_session() as db:
-            task = db.query(GitHubTask).filter(GitHubTask.id == task_id).first()
+        db = await db_manager.get_session().__anext__()
+        try:
+            result = await db.execute(select(GitHubTask).filter(GitHubTask.id == task_id))
+            task = result.scalar_one_or_none()
             if not task:
                 raise HTTPException(status_code=404, detail="Task not found")
 
@@ -293,6 +312,8 @@ async def approve_task(task_id: str, approved: bool, notes: str | None = None) -
                 "approved": approved,
                 "timestamp": datetime.utcnow().isoformat(),
             }
+        finally:
+            await db.close()
     except HTTPException:
         raise
     except Exception as e:

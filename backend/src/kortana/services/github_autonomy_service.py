@@ -9,9 +9,7 @@ from typing import Any
 
 import httpx
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from src.kortana.config import get_settings
-from src.kortana.database import get_db_manager
 from src.kortana.logger import get_logger
 from src.kortana.models import GitHubTask
 from src.kortana.services.gemini import gemini_service
@@ -26,7 +24,7 @@ class GitHubAutonomyService:
     """Service for autonomous GitHub-driven development"""
 
     def __init__(self, db_session=None):
-        self.db = db_session or SessionLocal()
+        self.db = db_session
         self.code_gen = CodeGenerator()
         self.settings = get_settings()
         self.github_token = os.getenv("GITHUB_TOKEN") or self.settings.GITHUB_TOKEN
@@ -69,6 +67,7 @@ class GitHubAutonomyService:
 
         # Check existing tasks
         from sqlalchemy import select
+
         stmt = select(GitHubTask.github_issue_number).where(
             GitHubTask.github_issue_number.in_(issue_numbers),
             GitHubTask.github_repo == f"{owner}/{name}",
@@ -109,9 +108,9 @@ class GitHubAutonomyService:
     def _determine_priority(self, issue: dict[str, Any]) -> str:
         """Determine priority from labels"""
         labels = [label.get("name", "").lower() for label in issue.get("labels", [])]
-        if any(l in ["critical", "p0", "urgent", "bug"] for l in labels):
+        if any(label in ["critical", "p0", "urgent", "bug"] for label in labels):
             return "high"
-        elif any(l in ["p2", "low", "chore"] for l in labels):
+        elif any(label in ["p2", "low", "chore"] for label in labels):
             return "low"
         return "medium"
 

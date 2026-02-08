@@ -90,9 +90,9 @@ class GeminiService:
 # Create service instance
 try:
     gemini_service = GeminiService()
-    print("✅ Gemini service created successfully")
+    print("[OK] Gemini service created successfully")
 except Exception as e:
-    print(f"❌ Failed to create Gemini service: {e}")
+    print(f"[WARN] Failed to create Gemini service: {e}")
     print(
         f"   API Key env check: GEMINI_API_KEY={'SET' if os.getenv('GEMINI_API_KEY') else 'NOT SET'}, GOOGLE_API_KEY={'SET' if os.getenv('GOOGLE_API_KEY') else 'NOT SET'}"
     )

@@ -10,7 +10,6 @@ from datetime import datetime
 from typing import Any, Dict, List
 
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from src.kortana.config import get_settings
 from src.kortana.database import get_db_manager
 from src.kortana.logger import get_logger
@@ -33,9 +32,7 @@ class AlwaysOnMonitor:
         self.last_check = None
         self.check_interval = int(os.getenv("MONITOR_CHECK_INTERVAL", "60"))  # seconds
         self.max_concurrent_tasks = int(os.getenv("MAX_CONCURRENT_TASKS", "5"))
-        self.monitoring_enabled = (
-            os.getenv("ALWAYS_ON_MONITORING", "true").lower() == "true"
-        )
+        self.monitoring_enabled = os.getenv("ALWAYS_ON_MONITORING", "true").lower() == "true"
 
         # Statistics tracking
         self.stats = {
@@ -98,9 +95,7 @@ class AlwaysOnMonitor:
             cycle_duration = time.time() - cycle_start
 
             logger.info(f"✅ Cycle completed in {cycle_duration:.2f}s")
-            logger.info(
-                f"📊 Stats: {len(new_tasks)} new, {self.stats['tasks_processed']} processed"
-            )
+            logger.info(f"📊 Stats: {len(new_tasks)} new, {self.stats['tasks_processed']} processed")
 
         except Exception as e:
             logger.error(f"❌ Cycle failed: {str(e)}")
@@ -118,9 +113,7 @@ class AlwaysOnMonitor:
                     if new_tasks:
                         logger.info(f"✅ Found {len(new_tasks)} new issues to process")
                         for task in new_tasks:
-                            logger.info(
-                                f"   📋 Task: #{task.github_issue_number} - {task.title}"
-                            )
+                            logger.info(f"   📋 Task: #{task.github_issue_number} - {task.title}")
                     else:
                         logger.info("📭 No new issues found")
 
@@ -200,7 +193,7 @@ class AlwaysOnMonitor:
 
             if requires_human:
                 logger.info(f"👤 Task {task.id} requires human oversight")
-                scaffold = await self.hop_service.generate_ho_scaffold(task)
+                await self.hop_service.generate_ho_scaffold(task)
                 self.stats["human_interventions"] += 1
                 logger.info(f"📋 HO scaffold generated for task {task.id}")
             else:
@@ -260,9 +253,7 @@ class AlwaysOnMonitor:
                 pending = await count_filtered(GitHubTask.status == "pending")
                 analyzing = await count_filtered(GitHubTask.status == "analyzing")
                 planning = await count_filtered(GitHubTask.status == "planning")
-                planning_complete = await count_filtered(
-                    GitHubTask.status == "planning_complete"
-                )
+                planning_complete = await count_filtered(GitHubTask.status == "planning_complete")
                 executing = await count_filtered(GitHubTask.status == "executing")
                 completed = await count_filtered(GitHubTask.status == "completed")
                 failed = await count_filtered(GitHubTask.status == "failed")
@@ -271,9 +262,7 @@ class AlwaysOnMonitor:
                 # Count by classification
                 auto_tasks = await count_filtered(GitHubTask.classification == "auto")
                 ho_tasks = await count_filtered(GitHubTask.classification == "ho")
-                approval_tasks = await count_filtered(
-                    GitHubTask.classification == "approval"
-                )
+                approval_tasks = await count_filtered(GitHubTask.classification == "approval")
 
                 return {
                     "total_tasks": total_tasks,
