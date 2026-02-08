@@ -19,9 +19,9 @@ from kortana.brain_utils import (
     sanitize_user_input,
 )
 from kortana.config.schema import KortanaConfig
+from kortana.llm_clients.factory import LLMClientFactory
 from kortana.memory.memory import MemoryEntry
 from kortana.memory.memory_manager import MemoryManager
-from kortana.llm_clients.factory import LLMClientFactory
 from kortana.model_router import SacredModelRouter
 
 # Configure logging

@@ -1,9 +1,10 @@
 import os
-import pytest
-from pathlib import Path
 
-from kortana.memory.memory_manager import MemoryManager
+import pytest
+
 from kortana.config import load_kortana_config
+from kortana.memory.memory_manager import MemoryManager
+
 
 @pytest.fixture(scope="function")
 def memory_manager_instance():

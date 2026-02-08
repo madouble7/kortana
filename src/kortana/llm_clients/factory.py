@@ -23,18 +23,23 @@ class LLMClientFactory:
         """Helper to lazily import and return client classes."""
         if client_name == "OpenRouterClient":
             from .openrouter_client import OpenRouterClient
+
             return OpenRouterClient
         elif client_name == "OpenAIClient":
             from .openai_client import OpenAIClient
+
             return OpenAIClient
         elif client_name == "GoogleGeminiClient":
             from .google_client import GoogleGeminiClient
+
             return GoogleGeminiClient
         elif client_name == "GoogleGenAIClient":
             from .genai_client import GoogleGenAIClient
+
             return GoogleGenAIClient
         elif client_name == "XAIClient":
             from .xai_client import XAIClient
+
             return XAIClient
         return BaseLLMClient
 
@@ -168,17 +173,17 @@ class LLMClientFactory:
                     f"No client class mapped for model_id: {model_id} in MODEL_CLIENT_NAMES."
                 )
                 return None
-            
+
             client_class = self._get_client_class(client_name)
-            
+
             # Simple instantiation for now as most take api_key and model_name
             # If specific logic is needed, we can re-add it per class
-            
+
+            from .google_client import GoogleGeminiClient
             from .openai_client import OpenAIClient
             from .openrouter_client import OpenRouterClient
-            from .google_client import GoogleGeminiClient
             from .xai_client import XAIClient
-            
+
             if client_class == OpenAIClient:
                 client = OpenAIClient(
                     api_key=api_key,

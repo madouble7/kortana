@@ -198,6 +198,7 @@ class GoogleGenAIClient(BaseLLMClient):
             generation_config = None
             if valid_genai_params:
                 from google.generativeai.types import GenerationConfig
+
                 generation_config = GenerationConfig(**valid_genai_params)
                 logger.info(f"Using generation config: {generation_config}")
 

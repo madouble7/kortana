@@ -21,6 +21,7 @@ class KortanaMonitor:
         self.last_goal_count = 0
         self.last_memory_count = 0
         self.monitoring = True
+        self.project_root = Path.cwd()
 
     async def check_server_health(self):
         """Check if Kor'tana server is responding."""
@@ -55,7 +56,6 @@ class KortanaMonitor:
 
     def check_file_changes(self):
         """Check for recent file modifications."""
-        project_root = Path("c:/project-kortana")
         recent_changes = []
 
         # Key files to monitor
@@ -67,7 +67,7 @@ class KortanaMonitor:
         ]
 
         for file_path in key_files:
-            full_path = project_root / file_path
+            full_path = self.project_root / file_path
             if full_path.exists():
                 mtime = full_path.stat().st_mtime
                 modified_time = datetime.fromtimestamp(mtime)

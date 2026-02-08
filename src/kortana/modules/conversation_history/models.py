@@ -1,4 +1,5 @@
 """Database models for conversation history."""
+
 import enum
 
 from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, String, Text
@@ -17,6 +18,7 @@ class ConversationStatus(enum.Enum):
 
 class Conversation(Base):
     """Represents a conversation session."""
+
     __tablename__ = "conversations"
     __table_args__ = {"extend_existing": True}
 
@@ -35,7 +37,7 @@ class Conversation(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
     archived_at = Column(DateTime(timezone=True), nullable=True, index=True)
-    
+
     # Relationship to messages
     messages = relationship(
         "ConversationMessage",
@@ -50,16 +52,19 @@ class Conversation(Base):
 
 class ConversationMessage(Base):
     """Represents a message in a conversation."""
+
     __tablename__ = "conversation_messages"
     __table_args__ = {"extend_existing": True}
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    conversation_id = Column(Integer, ForeignKey("conversations.id"), nullable=False, index=True)
+    conversation_id = Column(
+        Integer, ForeignKey("conversations.id"), nullable=False, index=True
+    )
     role = Column(String(50), nullable=False, index=True)  # user, assistant, system
     content = Column(Text, nullable=False)
     extra_info = Column(JSON, nullable=True)  # Store performance stats, etc.
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
-    
+
     # Relationship to conversation
     conversation = relationship("Conversation", back_populates="messages")
 

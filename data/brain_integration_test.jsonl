@@ -1,0 +1,3 @@
+{"timestamp": "2026-02-08T10:23:33.800266", "role": "user", "content": "Hello Kor'tana, I am Matt, your creator", "metadata": {"type": "introduction", "user": "Matt"}, "id": "mem_20260208T102333800266"}
+{"timestamp": "2026-02-08T10:23:33.800266", "role": "system", "content": "This is a test of the brain-memory integration system", "metadata": {"type": "context", "test": true}, "id": "mem_20260208T102333800266"}
+{"timestamp": "2026-02-08T10:23:33.801268", "role": "assistant", "content": "Responded to query 'What do you know about me?' with context from 1 memories", "metadata": {"type": "interaction", "query": "What do you know about me?", "memories_used": 1}, "id": "mem_20260208T102333801268"}

@@ -16,7 +16,6 @@ from typing import Any
 
 from .base_client import BaseLLMClient
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -45,6 +44,7 @@ class OpenAIClient(BaseLLMClient):
 
         # ✅ Initialize official OpenAI client
         import openai
+
         self.client = openai.OpenAI(api_key=self.api_key)
 
         # ✅ Add chat attribute for ADE compatibility
@@ -272,9 +272,7 @@ class OpenAIClient(BaseLLMClient):
         """Test connection to OpenAI API"""
         try:
             # Simple test with minimal tokens
-            test_messages: list[Any] = [
-                {"role": "user", "content": "Hello"}
-            ]
+            test_messages: list[Any] = [{"role": "user", "content": "Hello"}]
             response = self.client.chat.completions.create(
                 model=self.model_name,
                 messages=test_messages,

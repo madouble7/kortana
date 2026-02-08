@@ -1,0 +1,5 @@
+{"timestamp": "2026-02-08T10:23:35.942147", "role": "user", "content": "Matt is building Kor'tana as an autonomous AI companion", "metadata": {"type": "project_info", "user": "Matt"}, "id": "mem_20260208T102335942147"}
+{"timestamp": "2026-02-08T10:23:35.943147", "role": "system", "content": "Kor'tana uses Gemini 2.0 Flash for core reasoning", "metadata": {"type": "technical", "component": "llm"}, "id": "mem_20260208T102335943147"}
+{"timestamp": "2026-02-08T10:23:35.943147", "role": "assistant", "content": "I understand Matt's vision for autonomous AI development", "metadata": {"type": "understanding"}, "id": "mem_20260208T102335943147"}
+{"timestamp": "2026-02-08T10:23:35.943147", "role": "user", "content": "The project emphasizes clean code and minimal interfaces", "metadata": {"type": "preferences", "user": "Matt"}, "id": "mem_20260208T102335943147"}
+{"timestamp": "2026-02-08T10:23:35.944150", "role": "system", "content": "Memory system stores both conversations and project context", "metadata": {"type": "technical", "component": "memory"}, "id": "mem_20260208T102335944150"}

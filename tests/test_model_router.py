@@ -4,7 +4,6 @@ Comprehensive test suite for model_router.py - Sacred Model Selection System
 
 import json
 import os
-import sys
 from unittest.mock import Mock, mock_open, patch
 
 import pytest
@@ -12,7 +11,11 @@ import pytest
 
 def test_model_router_module_structure():
     """Test that model_router.py has expected structure and classes"""
-    from kortana.model_router import SacredModelRouter, ModelArchetype, AugmentedModelConfig
+    from kortana.model_router import (
+        AugmentedModelConfig,
+        ModelArchetype,
+        SacredModelRouter,
+    )
 
     assert SacredModelRouter is not None
     assert ModelArchetype is not None
@@ -22,7 +25,11 @@ def test_model_router_module_structure():
 def test_sacred_model_router_import():
     """Test that SacredModelRouter can be imported without errors"""
     try:
-        from kortana.model_router import AugmentedModelConfig, ModelArchetype, SacredModelRouter
+        from kortana.model_router import (
+            AugmentedModelConfig,
+            ModelArchetype,
+            SacredModelRouter,
+        )
 
         # Verify classes are importable
         assert SacredModelRouter is not None

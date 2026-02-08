@@ -102,6 +102,18 @@
 			"type": "shell",
 			"command": "\"C:\\Program Files\\Python311\\python.exe\" test_runner.py",
 			"group": "test"
+		},
+		{
+			"label": "Diagnose Environment",
+			"type": "shell",
+			"command": "python diagnose_environment.py",
+			"group": "none"
+		},
+		{
+			"label": "Diagnose with Output",
+			"type": "shell",
+			"command": "python diagnose_environment.py > diag_output.txt 2>&1",
+			"group": "none"
 		}
 	]
 }

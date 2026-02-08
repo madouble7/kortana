@@ -14,6 +14,7 @@ class LLMService:
         self.provider = provider
         if self.provider == "openai":
             import openai
+
             if not settings.OPENAI_API_KEY:
                 raise ValueError(
                     "OPENAI_API_KEY must be set to use the OpenAI provider."
@@ -71,11 +72,13 @@ class LLMService:
 # Singleton instance for easy access
 _llm_service = None
 
+
 def get_llm_service():
     global _llm_service
     if _llm_service is None:
         _llm_service = LLMService()
     return _llm_service
+
 
 # Example for direct testing
 if __name__ == "__main__":

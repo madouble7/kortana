@@ -26,13 +26,13 @@ from kortana.modules.marketplace.router import router as marketplace_router
 from kortana.modules.memory_core.routers.memory_router import (
     router as memory_router,
 )
-from kortana.modules.security.routers.security_router import (
-    router as security_router,
-)
 
 # Import new module routers
 from kortana.modules.multilingual.router import router as multilingual_router
 from kortana.modules.plugin_framework.router import router as plugin_router
+from kortana.modules.security.routers.security_router import (
+    router as security_router,
+)
 
 # Global configuration and engine
 settings = load_kortana_config()
