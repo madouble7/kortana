@@ -47,8 +47,7 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
-
-print("DEBUG: src/kortana/core/brain.py loaded")
+logger.debug("src/kortana/core/brain.py loaded")
 
 
 class ChatEngine:
@@ -233,7 +232,7 @@ class ChatEngine:
         """
         Runs a single autonomous cycle: scan, generate, prioritize, plan, execute.
         """
-        print("DEBUG: Brain.run_single_cycle() started")
+        logger.debug("Brain.run_single_cycle() started")
         logger.info("Starting single autonomous cycle...")
 
         # Perform autonomous operations
@@ -243,7 +242,7 @@ class ChatEngine:
         """
         Runs autonomous cycles continuously.
         """
-        print("DEBUG: Brain.run_continuous_cycles() started")
+        logger.debug("Brain.run_continuous_cycles() started")
         logger.info("Starting continuous autonomous cycles...")
 
         # Redirect stdout/stderr to a log file for Genesis Protocol runs
