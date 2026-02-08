@@ -50,6 +50,16 @@ class VoiceConfig(BaseModel):
     max_audio_bytes: int = Field(default=10 * 1024 * 1024, ge=1024)
     min_audio_seconds: float = Field(default=0.15, ge=0.0)
     return_audio_by_default: bool = True
+    session_idle_seconds: int = Field(default=1800, ge=30, le=86400)
+    max_active_sessions: int = Field(default=1000, ge=1, le=100000)
+    stt_provider: str = Field(default="openai", pattern="^(openai|heuristic)$")
+    stt_fallback_provider: str = Field(default="heuristic", pattern="^(openai|heuristic)$")
+    tts_provider: str = Field(default="pyttsx3", pattern="^(pyttsx3|tone)$")
+    tts_fallback_provider: str = Field(default="tone", pattern="^(pyttsx3|tone)$")
+    openai_stt_model: str = "whisper-1"
+    tts_voice_name: str | None = None
+    tts_rate: int = Field(default=170, ge=80, le=280)
+    tts_volume: float = Field(default=0.95, ge=0.0, le=1.0)
 
 
 class ModelProviderConfig(BaseModel):

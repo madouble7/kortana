@@ -154,6 +154,8 @@ def test_voice_chat_endpoint(client: TestClient):
     assert "transcript" in data
     assert "response" in data
     assert "metrics" in data
+    assert "session" in data
+    assert "turn_count" in data["session"]
 
 
 def test_voice_chat_invalid_base64(client: TestClient):
@@ -163,6 +165,51 @@ def test_voice_chat_invalid_base64(client: TestClient):
         json={"audio_base64": "@@@not-base64@@@", "user_id": "voice-test-user"},
     )
     assert response.status_code == 400
+
+
+def test_voice_chat_accepts_data_uri_base64(client: TestClient):
+    """Test voice endpoint accepts data URI payloads from browser clients."""
+    raw = base64.b64encode(b"TEXT: data uri input").decode("utf-8")
+    response = client.post(
+        "/voice/chat",
+        json={
+            "audio_base64": f"data:audio/wav;base64,{raw}",
+            "user_id": "voice-data-uri-user",
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert data["transcript"] == "data uri input"
+
+
+def test_voice_session_lifecycle_endpoints(client: TestClient):
+    """Test session inspect/interruption/end lifecycle for voice chats."""
+    audio_payload = base64.b64encode(b"TEXT: session lifecycle").decode("utf-8")
+    chat_resp = client.post(
+        "/voice/chat",
+        json={"audio_base64": audio_payload, "user_id": "voice-session-user"},
+    )
+    assert chat_resp.status_code == 200
+    session_id = chat_resp.json()["session_id"]
+
+    get_resp = client.get(f"/voice/sessions/{session_id}")
+    assert get_resp.status_code == 200
+    assert get_resp.json()["session"]["session_id"] == session_id
+
+    interrupt_resp = client.post(
+        f"/voice/sessions/{session_id}/interrupt",
+        json={"interrupted": True},
+    )
+    assert interrupt_resp.status_code == 200
+    assert interrupt_resp.json()["session"]["interrupted"] is True
+
+    end_resp = client.delete(f"/voice/sessions/{session_id}")
+    assert end_resp.status_code == 200
+    assert end_resp.json()["ended"] is True
+
+    missing_resp = client.get(f"/voice/sessions/{session_id}")
+    assert missing_resp.status_code == 404
 
 
 # =============================================================================

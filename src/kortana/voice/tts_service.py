@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import math
+import os
 import struct
 import time
 import wave
@@ -18,6 +19,11 @@ class TTSConfig:
     sample_rate: int = 16000
     tone_hz: int = 220
     duration_seconds: float = 0.35
+    provider: str = "pyttsx3"
+    fallback_provider: str = "tone"
+    voice_name: str | None = None
+    rate: int = 170
+    volume: float = 0.95
 
 
 class TTSService:
@@ -35,7 +41,7 @@ class TTSService:
             )
 
         start = time.perf_counter()
-        audio_bytes = self._generate_placeholder_wav()
+        audio_bytes, provider_used = self._synthesize_with_provider(text)
         elapsed_ms = (time.perf_counter() - start) * 1000
 
         return {
@@ -43,8 +49,58 @@ class TTSService:
             "metrics": {
                 "tts_ms": round(elapsed_ms, 2),
                 "audio_bytes": len(audio_bytes),
+                "tts_provider": provider_used,
             },
         }
+
+    def _synthesize_with_provider(self, text: str) -> tuple[bytes, str]:
+        provider = (self.config.provider or "tone").lower()
+
+        if provider == "pyttsx3":
+            try:
+                return self._synthesize_pyttsx3(text), "pyttsx3"
+            except Exception as exc:
+                fallback = (self.config.fallback_provider or "tone").lower()
+                if fallback == "tone":
+                    return self._generate_placeholder_wav(), "tone_fallback"
+                raise VoiceProcessingError(
+                    code="tts_provider_failed",
+                    message="Primary and fallback TTS providers failed.",
+                    details={"provider": provider, "fallback": fallback, "error": str(exc)},
+                    status_code=502,
+                ) from exc
+
+        return self._generate_placeholder_wav(), "tone"
+
+    def _synthesize_pyttsx3(self, text: str) -> bytes:
+        try:
+            import pyttsx3
+
+            # pyttsx3 writes to a file; use a short-lived path.
+            output_path = "data/processed/kortana_tts_output.wav"
+            os.makedirs("data/processed", exist_ok=True)
+            engine = pyttsx3.init()
+            engine.setProperty("rate", self.config.rate)
+            engine.setProperty("volume", self.config.volume)
+
+            if self.config.voice_name:
+                for voice in engine.getProperty("voices"):
+                    if self.config.voice_name.lower() in voice.name.lower():
+                        engine.setProperty("voice", voice.id)
+                        break
+
+            engine.save_to_file(text, output_path)
+            engine.runAndWait()
+
+            with open(output_path, "rb") as f:
+                return f.read()
+        except Exception as exc:
+            raise VoiceProcessingError(
+                code="pyttsx3_error",
+                message="pyttsx3 synthesis failed.",
+                details={"error": str(exc)},
+                status_code=502,
+            ) from exc
 
     def _generate_placeholder_wav(self) -> bytes:
         sample_rate = self.config.sample_rate

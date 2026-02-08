@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import logging
+import os
 import time
 import wave
 from dataclasses import dataclass
@@ -19,6 +20,9 @@ class STTConfig:
     max_audio_bytes: int = 10 * 1024 * 1024
     min_audio_seconds: float = 0.15
     silence_ratio_threshold: float = 0.98
+    provider: str = "openai"
+    fallback_provider: str = "heuristic"
+    openai_model: str = "whisper-1"
 
 
 class STTService:
@@ -50,7 +54,7 @@ class STTService:
                 status_code=422,
             )
 
-        transcript = self._heuristic_transcription(audio_bytes)
+        transcript, provider_used = self._transcribe_with_provider(audio_bytes)
         elapsed_ms = (time.perf_counter() - start) * 1000
 
         return {
@@ -59,8 +63,67 @@ class STTService:
                 "stt_ms": round(elapsed_ms, 2),
                 "audio_bytes": len(audio_bytes),
                 "duration_seconds": duration_seconds,
+                "stt_provider": provider_used,
             },
         }
+
+    def _transcribe_with_provider(self, audio_bytes: bytes) -> tuple[str, str]:
+        provider = (self.config.provider or "heuristic").lower()
+
+        if provider == "openai":
+            try:
+                return self._openai_transcription(audio_bytes), "openai"
+            except Exception as exc:
+                logger.warning("OpenAI STT failed; attempting fallback: %s", exc)
+                fallback = (self.config.fallback_provider or "heuristic").lower()
+                if fallback == "heuristic":
+                    return self._heuristic_transcription(audio_bytes), "heuristic_fallback"
+                raise VoiceProcessingError(
+                    code="stt_provider_failed",
+                    message="Primary and fallback STT providers failed.",
+                    details={"provider": provider, "fallback": fallback},
+                    status_code=502,
+                ) from exc
+
+        return self._heuristic_transcription(audio_bytes), "heuristic"
+
+    def _openai_transcription(self, audio_bytes: bytes) -> str:
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise VoiceProcessingError(
+                code="openai_key_missing",
+                message="OPENAI_API_KEY is required for OpenAI STT provider.",
+                status_code=503,
+            )
+
+        try:
+            from openai import OpenAI
+
+            client = OpenAI(api_key=api_key)
+            audio_file = io.BytesIO(audio_bytes)
+            audio_file.name = "voice.wav"
+            response = client.audio.transcriptions.create(
+                model=self.config.openai_model,
+                file=audio_file,
+            )
+            text = getattr(response, "text", None) or ""
+            text = text.strip()
+            if not text:
+                raise VoiceProcessingError(
+                    code="empty_transcript",
+                    message="STT provider returned an empty transcript.",
+                    status_code=502,
+                )
+            return text
+        except VoiceProcessingError:
+            raise
+        except Exception as exc:
+            raise VoiceProcessingError(
+                code="openai_stt_error",
+                message="OpenAI STT request failed.",
+                details={"error": str(exc)},
+                status_code=502,
+            ) from exc
 
     def _validate_audio(self, audio_bytes: bytes) -> None:
         if not audio_bytes:

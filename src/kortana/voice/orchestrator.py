@@ -1,4 +1,4 @@
-""Voice chat orchestration pipeline."""
+"""Voice chat orchestration pipeline."""
 
 from __future__ import annotations
 
@@ -31,11 +31,21 @@ class VoiceChatOrchestrator:
         stt_service: STTService | None = None,
         tts_service: TTSService | None = None,
         session_manager: VoiceSessionManager | None = None,
+        session_idle_seconds: int = 1800,
+        max_active_sessions: int = 1000,
     ):
         self.chat_engine = chat_engine
         self.stt = stt_service or STTService()
         self.tts = tts_service or TTSService()
         self.sessions = session_manager or VoiceSessionManager()
+        self.session_idle_seconds = session_idle_seconds
+        self.max_active_sessions = max_active_sessions
+
+    def _prune_sessions(self) -> int:
+        return self.sessions.cleanup_inactive(
+            max_idle_seconds=self.session_idle_seconds,
+            max_active_sessions=self.max_active_sessions,
+        )
 
     async def transcribe_only(
         self,
@@ -43,15 +53,18 @@ class VoiceChatOrchestrator:
         session_id: str | None = None,
         user_id: str | None = None,
     ) -> dict[str, Any]:
+        sessions_reaped = self._prune_sessions()
         session = self.sessions.get_or_create(session_id=session_id, user_id=user_id)
         stt_result = self.stt.transcribe(audio_bytes)
         self.sessions.mark_turn(session.session_id)
+        session_snapshot = self.sessions.get_snapshot(session.session_id)
 
         return {
             "session_id": session.session_id,
             "user_id": session.user_id,
+            "session": session_snapshot,
             "transcript": stt_result["text"],
-            "metrics": stt_result["metrics"],
+            "metrics": {**stt_result["metrics"], "sessions_reaped": sessions_reaped},
         }
 
     async def process_voice_turn(
@@ -63,6 +76,7 @@ class VoiceChatOrchestrator:
         return_audio: bool = True,
     ) -> dict[str, Any]:
         total_start = time.perf_counter()
+        sessions_reaped = self._prune_sessions()
         session = self.sessions.get_or_create(session_id=session_id, user_id=user_id)
 
         stt_result = self.stt.transcribe(audio_bytes)
@@ -96,17 +110,20 @@ class VoiceChatOrchestrator:
                 }
 
         self.sessions.mark_turn(session.session_id)
+        session_snapshot = self.sessions.get_snapshot(session.session_id)
         total_ms = (time.perf_counter() - total_start) * 1000
 
         return {
             "session_id": session.session_id,
             "user_id": session.user_id,
+            "session": session_snapshot,
             "transcript": transcript,
             "response": response_text,
             "response_audio_base64": response_audio_b64,
             "metrics": {
                 **stt_result["metrics"],
                 **tts_metrics,
+                "sessions_reaped": sessions_reaped,
                 "llm_ms": round(llm_ms, 2),
                 "total_ms": round(total_ms, 2),
             },

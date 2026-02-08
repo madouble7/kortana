@@ -133,6 +133,22 @@ class ChatEngine:
         logger.info("ChatEngine initialized successfully with memory integration")
         logger.debug(f"Session {self.session_id} ready for use")
 
+    def _record_metric_safe(
+        self, metric_name: str, value_ms: float, success: bool = True
+    ) -> None:
+        """Record async metrics safely from sync and async call sites."""
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(self.metrics.record(metric_name, value_ms, success=success))
+            return
+        except RuntimeError:
+            pass
+
+        try:
+            asyncio.run(self.metrics.record(metric_name, value_ms, success=success))
+        except Exception as exc:
+            logger.debug("Metric recording fallback failed: %s", exc)
+
     def _load_existing_memories(self) -> None:
         """
         Load and format existing conversation memories for context-aware responses.
@@ -154,13 +170,11 @@ class ChatEngine:
             logger.info(
                 f"Loaded {len(memories)} existing memories in {elapsed_ms:.1f}ms"
             )
-            asyncio.create_task(
-                self.metrics.record("memory_load", elapsed_ms, success=True)
-            )
+            self._record_metric_safe("memory_load", elapsed_ms, success=True)
         except Exception as e:
             logger.warning(f"Failed to load memories (non-critical): {e}")
             self.formatted_memories = []
-            asyncio.create_task(self.metrics.record("memory_load", 0, success=False))
+            self._record_metric_safe("memory_load", 0, success=False)
 
     def append_memory(self, interaction: dict[str, Any]) -> None:
         """Append a new memory entry to the journal."""
