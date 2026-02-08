@@ -133,17 +133,7 @@
     "terminal.integrated.enableMultiLinePasteWarning": "never",
     "terminal.integrated.copyOnSelection": true,
     "terminal.integrated.rightClickBehavior": "paste",
-    "terminal.integrated.profiles.windows": {
-        "Python venv311": {
-            "path": "cmd.exe",
-            "args": [
-                "/k",
-                "c:\\kortana\\.kortana_config_test_env\\Scripts\\activate.bat && set PYTHONPATH=c:\\kortana;c:\\kortana\\src"
-            ],
-            "icon": "snake"
-        }
-    },
-    "terminal.integrated.defaultProfile.windows": "Python venv311",
+    "terminal.integrated.defaultProfile.windows": "Command Prompt",
     // Workspace Intelligence
     "workbench.startupEditor": "none",
     "workbench.editor.showTabs": "multiple",

@@ -82,11 +82,20 @@
 			"label": "Run Full Test Suite - CMD",
 			"type": "shell",
 			"command": "cmd.exe",
-			"args": ["/c", "c:\\kortana\\run_tests.bat"],
+			"args": [
+				"/c",
+				"c:\\kortana\\run_tests.bat"
+			],
 			"presentation": {
 				"reveal": "always",
 				"panel": "shared"
 			}
+		},
+		{
+			"label": "Run Tests Simple",
+			"type": "shell",
+			"command": "run_tests_simple.bat",
+			"group": "test"
 		}
 	]
 }

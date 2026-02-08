@@ -1,7 +1,7 @@
 {
-    "python.defaultInterpreterPath": "C:\\\\project-kortana\\\\venv311\\\\Scripts\\\\python.exe",
-    "python.terminal.activateEnvironment": true,
-    "python.terminal.activateEnvInCurrentTerminal": true,
+    "python.defaultInterpreterPath": "c:\\\\kortana\\\\.kortana_config_test_env\\\\Scripts\\\\python.exe",
+    "python.terminal.activateEnvironment": false,
+    "python.terminal.activateEnvInCurrentTerminal": false,
     "files.exclude": {
         "**/__pycache__": true,
         "**/*.pyc": true,
@@ -15,10 +15,10 @@
         ".."
     ],
     "terminal.integrated.env.windows": {
-        "PATH": "C:\\project-kortana\\venv311\\Scripts;${env:PATH}",
-        "PYTHONPATH": "${workspaceFolder};C:\\project-kortana"
+        "PATH": "c:\\kortana\\.kortana_config_test_env\\Scripts;${env:PATH}",
+        "PYTHONPATH": "${workspaceFolder};${workspaceFolder}/src"
     },
-    "terminal.integrated.defaultProfile.windows": "Python venv311",
+    "terminal.integrated.defaultProfile.windows": "Command Prompt",
     "terminal.integrated.profiles.windows": {
         "Command Prompt": {
             "path": "cmd.exe",
@@ -28,11 +28,6 @@
         "PowerShell": {
             "source": "PowerShell",
             "icon": "terminal-powershell"
-        },
-        "Python venv311": {
-            "path": "cmd.exe",
-            "args": ["/k", "C:\\project-kortana\\venv311\\Scripts\\activate.bat"],
-            "icon": "python"
         }
     }
 }
