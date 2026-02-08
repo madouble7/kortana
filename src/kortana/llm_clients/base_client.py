@@ -1,5 +1,6 @@
 """Base client abstraction for all LLM providers used in Kor'tana."""
 
+import asyncio
 import logging
 import time
 from abc import ABC, abstractmethod
@@ -129,7 +130,7 @@ class BaseLLMClient(ABC):
         """Get information about the current model"""
         return {"name": self.model_name, "provider": "unknown"}
 
-    def complete(self, prompt: dict[str, Any]) -> dict[str, Any]:
+    async def complete(self, prompt: dict[str, Any]) -> dict[str, Any]:
         """Compatibility wrapper used by ChatEngine.
 
         Accepts OpenAI-style prompt payloads:
@@ -154,7 +155,8 @@ class BaseLLMClient(ABC):
             else:
                 chat_messages.append({"role": role, "content": content})
 
-        raw = self.generate_response(
+        raw = await asyncio.to_thread(
+            self.generate_response,
             system_prompt=system_prompt,
             messages=chat_messages,
             temperature=prompt.get("temperature", 0.7),

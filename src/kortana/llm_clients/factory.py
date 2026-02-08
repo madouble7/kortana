@@ -128,10 +128,10 @@ class LLMClientFactory:
             return None
         return self.create_client(model_id, self.models_config)  # models_config is dict
 
-    @staticmethod
     def create_client(
+        self,
         model_id: str,
-        models_config: dict[str, Any],  # Ensure this expects dict
+        models_config: dict[str, Any],
     ) -> BaseLLMClient | None:
         """Create an LLM client based on provider configuration.
 
@@ -197,8 +197,8 @@ class LLMClientFactory:
                     api_key=api_key,
                     base_url=model_conf.get("base_url", "https://api.x.ai/v1"),
                 )  # Ensure model_name is passed if XAIClient expects it
-            elif client_class == GoogleGeminiClient:  # Changed to GoogleGeminiClient
-                client = GoogleGenAIClient(
+            elif client_class == GoogleGeminiClient:
+                client = GoogleGeminiClient(
                     api_key=api_key,
                     model_name=model_conf.get("model_name", model_id),
                     base_url=model_conf.get(
@@ -240,18 +240,16 @@ class LLMClientFactory:
             )
             return None
 
-    @staticmethod
-    def get_client_for_model(model_id: str, models_config: dict[str, Any]):
+    def get_client_for_model(self, model_id: str, models_config: dict[str, Any]):
         """Enhanced method with validation for ADE requirements."""
-        return LLMClientFactory.create_client(model_id, models_config)
+        return self.create_client(model_id, models_config)
 
-    @staticmethod
-    def get_default_client(models_config: dict[str, Any]) -> BaseLLMClient | None:
+    def get_default_client(self, models_config: dict[str, Any]) -> BaseLLMClient | None:
         """Get the default LLM client (GPT-4.1-Nano for Kor'tana primary use)."""
         default_model_id = "gpt-4.1-nano"
 
         try:
-            client = LLMClientFactory.create_client(default_model_id, models_config)
+            client = self.create_client(default_model_id, models_config)
             if client:
                 logger.info(
                     f"Default client created: {default_model_id} for primary Kor'tana conversation"
@@ -261,9 +259,8 @@ class LLMClientFactory:
             logger.error(f"Failed to create default client {default_model_id}: {e}")
             return None
 
-    @staticmethod
     def get_ade_client(
-        models_config: dict[str, Any], task_type: str = "primary"
+        self, models_config: dict[str, Any], task_type: str = "primary"
     ) -> BaseLLMClient | None:
         """Get appropriate client for ADE tasks based on task type."""
         task_model_mapping = {
@@ -276,14 +273,14 @@ class LLMClientFactory:
 
         model_id = task_model_mapping.get(task_type, "gpt-4.1-nano")
 
-        if model_id not in LLMClientFactory.MODEL_CLIENTS:
+        if model_id not in self.MODEL_CLIENT_NAMES:
             logger.warning(
                 f"ADE task type '{task_type}' mapped to unsupported model '{model_id}'. Falling back to default."
             )
             model_id = "gpt-4.1-nano"
 
         try:
-            client = LLMClientFactory.create_client(model_id, models_config)
+            client = self.create_client(model_id, models_config)
             if client:
                 logger.info(
                     f"ADE client created: {model_id} for task type: {task_type}"
@@ -293,10 +290,9 @@ class LLMClientFactory:
             logger.error(
                 f"Failed to create ADE client for {task_type} (model {model_id}): {e}"
             )
-            return LLMClientFactory.get_default_client(models_config)
+            return self.get_default_client(models_config)
 
-    @staticmethod
-    def validate_configuration(settings: KortanaConfig) -> bool:
+    def validate_configuration(self, settings: KortanaConfig) -> bool:
         """Validate that essential models are properly configured."""
         # Load models from the enhanced configuration
         try:
@@ -324,7 +320,7 @@ class LLMClientFactory:
 
         # Check essential models
         for model_id in essential_models:
-            if model_id not in LLMClientFactory.MODEL_CLIENTS:
+            if model_id not in self.MODEL_CLIENT_NAMES:
                 missing_essential.append(f"{model_id} (Not in MODEL_CLIENTS)")
                 continue
 
@@ -343,7 +339,7 @@ class LLMClientFactory:
 
         # Check recommended models
         for model_id in recommended_models:
-            if model_id not in LLMClientFactory.MODEL_CLIENTS:
+            if model_id not in self.MODEL_CLIENT_NAMES:
                 missing_recommended.append(f"{model_id} (Not in MODEL_CLIENTS)")
                 continue
 

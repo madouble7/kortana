@@ -5,6 +5,7 @@ Connects ChatEngine brain + Voice capabilities
 """
 
 import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -56,11 +57,20 @@ except Exception as e:
 
     settings = KortanaConfig()
 
+print(f"LLM default model: {getattr(settings, 'default_llm_id', 'unknown')}")
+print(f"OPENAI_API_KEY set: {bool(os.getenv('OPENAI_API_KEY'))}")
+print(f"OPENROUTER_API_KEY set: {bool(os.getenv('OPENROUTER_API_KEY'))}\n")
+
 # Initialize Kor'tana's brain
 print("Awakening Kor'tana's consciousness...")
 try:
     chat_engine = ChatEngine(settings)
     print("✅ Kor'tana is conscious\n")
+    try:
+        active_client = type(chat_engine.default_llm_client).__name__
+        print(f"Active LLM client: {active_client}")
+    except Exception:
+        pass
 except Exception as e:
     print(f"⚠️  Warning: ChatEngine initialization issue: {e}")
     print("Bot will continue with limited functionality.\n")
@@ -77,6 +87,7 @@ try:
         else None
     )
     print("✅ Voice system ready\n")
+    print(f"FFmpeg available: {bool(shutil.which('ffmpeg'))}")
 except Exception as e:
     print(f"⚠️  Warning: Voice system unavailable: {e}\n")
     voice_orchestrator = None
@@ -153,7 +164,20 @@ async def speak_response(guild, text):
             import io
 
             tts_result = voice_orchestrator.tts.synthesize(text)
-            audio_bytes = tts_result["audio_bytes"]
+            audio_bytes = tts_result.get("audio_bytes")
+            if not audio_bytes:
+                print("Voice output error: TTS produced no audio bytes")
+                return False
+
+            metrics = tts_result.get("metrics", {})
+            print(
+                "TTS metrics:",
+                {
+                    "provider": metrics.get("tts_provider"),
+                    "tts_ms": metrics.get("tts_ms"),
+                    "audio_bytes": metrics.get("audio_bytes"),
+                },
+            )
 
             # Play audio in voice channel
             audio_source = discord.FFmpegPCMAudio(io.BytesIO(audio_bytes), pipe=True)
@@ -163,6 +187,7 @@ async def speak_response(guild, text):
 
             voice_client.play(audio_source)
             return True
+        return False
     except Exception as e:
         print(f"Voice output error: {e}")
         return False
@@ -201,6 +226,11 @@ async def kortana_chat(interaction: discord.Interaction, message: str):
             if spoke:
                 await interaction.followup.send(
                     "🔊 Speaking in voice channel...", ephemeral=True
+                )
+            else:
+                await interaction.followup.send(
+                    "⚠️ I replied in text, but voice playback failed. Check FFmpeg/voice logs in terminal.",
+                    ephemeral=True,
                 )
 
     except Exception as e:

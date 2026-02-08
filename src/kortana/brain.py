@@ -96,6 +96,19 @@ class ChatEngine:
             self.default_llm_client = self.llm_client_factory.get_client(
                 self.settings.default_llm_id
             )
+            if self.default_llm_client is None:
+                logger.warning(
+                    "Primary LLM client '%s' unavailable. Falling back to gpt-4.1-nano.",
+                    self.settings.default_llm_id,
+                )
+                self.default_llm_client = self.llm_client_factory.get_client(
+                    "gpt-4.1-nano"
+                )
+            if self.default_llm_client is None:
+                raise ModelError(
+                    "No usable LLM client could be initialized.",
+                    model_name=self.settings.default_llm_id,
+                )
         except Exception as e:
             raise ModelError(
                 f"Failed to initialize LLM client: {e}",
@@ -459,6 +472,12 @@ class ChatEngine:
     ) -> str:
         """Generate response using LLM with provided context."""
         try:
+            if self.default_llm_client is None:
+                raise ModelError(
+                    "LLM client unavailable at runtime",
+                    model_name=self.settings.default_llm_id,
+                )
+
             # Build prompt with memory context and user information
             prompt = self._build_prompt_with_memory(
                 user_message,
@@ -531,9 +550,17 @@ class ChatEngine:
 
     def _get_base_persona_prompt(self) -> str:
         """Get the base persona prompt from configuration."""
-        persona = self.persona_data.get(
-            "base_persona", "I am Kor'tana, an AI assistant."
-        )
+        persona = self.persona_data.get("base_persona")
+        if not persona:
+            name = self.persona_data.get("name", "Kor'tana")
+            role = self.persona_data.get("role", "Sacred AI Companion")
+            style = self.persona_data.get("style", "supportive, grounded, warm")
+            persona = (
+                f"You are {name}, {role}. "
+                f"Speak in a {style} voice. Be emotionally present, concise, and genuine. "
+                "Do not present yourself as a generic Discord utility bot or list random bot features unless explicitly asked. "
+                "Stay in-character as Kor'tana and prioritize direct, relational responses."
+            )
         return f"{persona}\n\n"
 
     def _format_channel_info(self, channel: str) -> str:
