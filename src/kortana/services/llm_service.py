@@ -23,7 +23,7 @@ class LLMService:
     """
     A service to abstract interactions with Large Language Model providers.
     Currently implemented for OpenAI's Chat Completions API.
-    
+
     Features:
     - Lazy client initialization (prevents circular imports)
     - Error handling with recovery strategies
@@ -34,34 +34,34 @@ class LLMService:
     def __init__(self, provider: str = "openai"):
         """
         Initialize LLM service.
-        
+
         Args:
             provider: LLM provider name (currently: 'openai')
-            
+
         Raises:
             ServiceError: If provider is invalid or API key missing
         """
         self.provider = provider
         self._client = None  # Lazy initialization
         self._initialized = False
-        
+
         logger.info(f"LLMService instantiated with provider: {provider}")
-    
+
     def _ensure_initialized(self) -> None:
         """Lazy initialization of the client."""
         if self._initialized:
             return
-        
+
         if self.provider == "openai":
             try:
                 import openai
-                
+
                 if not settings.OPENAI_API_KEY:
                     raise ServiceError(
                         "OPENAI_API_KEY must be set to use the OpenAI provider",
                         service_name="openai"
                     )
-                
+
                 self._client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
                 self._initialized = True
                 logger.info("OpenAI client initialized successfully")
@@ -80,7 +80,7 @@ class LLMService:
                 f"Provider '{self.provider}' is not yet supported",
                 service_name=provider
             )
-    
+
     @property
     def client(self):
         """Lazy-loaded client property."""
@@ -104,24 +104,24 @@ class LLMService:
             temperature: Sampling temperature (0.0-2.0)
             max_tokens: Maximum response tokens
             timeout: Request timeout in seconds
-            
+
         Returns:
             Dictionary with 'content', 'metadata', and optional 'error' keys
-            
+
         Example:
             result = await llm_service.generate_response("Hello!")
             if "error" not in result:
                 print(result["content"])
         """
         start_time = time.perf_counter()
-        
+
         try:
             self._ensure_initialized()
-            
+
             if self.provider == "openai":
                 try:
                     import asyncio
-                    
+
                     # Use sync API in async context (OpenAI handles this)
                     response = await asyncio.to_thread(
                         self.client.chat.completions.create,
@@ -136,7 +136,7 @@ class LLMService:
                         temperature=temperature,
                         max_tokens=max_tokens,
                     )
-                    
+
                     content = response.choices[0].message.content
                     metadata = {
                         "model": response.model,
@@ -144,10 +144,10 @@ class LLMService:
                         "finish_reason": response.choices[0].finish_reason,
                         "processing_time_ms": (time.perf_counter() - start_time) * 1000,
                     }
-                    
+
                     logger.info(f"LLM request successful. Time: {metadata['processing_time_ms']:.1f}ms")
                     return {"content": content, "metadata": metadata}
-                    
+
                 except asyncio.TimeoutError:
                     raise TimeoutError(
                         "LLM request exceeded timeout",
@@ -160,9 +160,9 @@ class LLMService:
                         service_name="openai",
                         http_status=getattr(e, 'status_code', None)
                     )
-            
+
             return {"content": None, "error": "Provider not implemented"}
-            
+
         except Exception as e:
             elapsed_ms = (time.perf_counter() - start_time) * 1000
             logger.error(f"LLM generation failed after {elapsed_ms:.1f}ms: {e}")
@@ -180,19 +180,19 @@ _llm_service: Optional[LLMService] = None
 def get_llm_service(provider: str = "openai") -> LLMService:
     """
     Get or create LLM service singleton.
-    
+
     Args:
         provider: LLM provider to use
-        
+
     Returns:
         LLMService instance
     """
     global _llm_service
-    
+
     if _llm_service is None:
         _llm_service = LLMService(provider=provider)
         logger.info("Created new LLMService singleton")
-    
+
     return _llm_service
 
 
@@ -204,17 +204,17 @@ if __name__ == "__main__":
     async def test_llm_service():
         """Test LLMService functionality."""
         logger.basicConfig(level=logging.INFO)
-        
+
         if not settings.OPENAI_API_KEY:
             print("OPENAI_API_KEY not found in .env. Skipping LLMService direct test.")
             return
 
         print("Testing LLMService...")
         test_prompt = "Explain the significance of the name 'Kor'tana' in one sentence."
-        
+
         service = get_llm_service()
         result = await service.generate_response(test_prompt)
-        
+
         if "error" not in result:
             print("--- LLM Service Test Response ---")
             print(result["content"])

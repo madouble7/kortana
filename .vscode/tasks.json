@@ -124,6 +124,14 @@
 			"label": "Test Environment Status",
 			"type": "shell",
 			"command": "python diagnose_test_env.py"
+		},
+		{
+			"label": "Validate Improvements",
+			"type": "shell",
+			"command": "c:\\kortana\\.kortana_config_test_env\\Scripts\\python.exe",
+			"args": [
+				"c:\\kortana\\validate_improvements.py"
+			]
 		}
 	]
 }

@@ -148,7 +148,7 @@ result = await call_flaky_api()
 
 ## 5. Input Validation
 
-### Before:
+### Before
 
 ```python
 def create_user(name, email, age):
@@ -161,7 +161,7 @@ def create_user(name, email, age):
     ...
 ```
 
-### After:
+### After
 
 ```python
 from kortana.utils import Validator, with_validation
@@ -239,7 +239,8 @@ await pool.close_all()
 
 ## 8. Configuration Examples
 
-### For Development (looser limits):
+### For Development (looser limits)
+
 ```python
 cache = TTLCache(max_size=50, default_ttl=60)  # 1-min cache
 breaker = CircuitBreaker(
@@ -250,7 +251,8 @@ breaker = CircuitBreaker(
 )
 ```
 
-### For Production (stricter):
+### For Production (stricter)
+
 ```python
 cache = TTLCache(max_size=1000, default_ttl=3600)  # 1-hour cache
 breaker = CircuitBreaker(
@@ -266,6 +268,7 @@ breaker = CircuitBreaker(
 ## 9. Troubleshooting
 
 ### Cache Not Working?
+
 ```python
 # Check cache directly
 cached_value = await engine.response_cache.get("my_key")
@@ -277,6 +280,7 @@ await engine.response_cache.clear()
 ```
 
 ### Circuit Breaker Stuck?
+
 ```python
 # Check breaker state
 print(f"State: {engine.llm_circuit_breaker.state}")
@@ -287,6 +291,7 @@ engine.llm_circuit_breaker.state = CircuitState.CLOSED
 ```
 
 ### Metrics Showing Errors?
+
 ```python
 metrics = engine.metrics.get_summary()
 
@@ -370,7 +375,7 @@ response = await engine.get_response(query)
 
 ## 11. Performance Expected
 
-### Before vs After Improvements:
+### Before vs After Improvements
 
 | Operation | Before | After | Speedup |
 |-----------|--------|-------|---------|
@@ -392,6 +397,7 @@ response = await engine.get_response(query)
 ## Summary
 
 Kor'tana 2.0 gives you:
+
 - ✅ **3-5x performance improvement** from caching
 - ✅ **10x better reliability** from error handling and circuit breaker
 - ✅ **Easier development** with decorators and validators

@@ -6,6 +6,43 @@ Contains various utility functions and modules used throughout the Kor'tana syst
 """
 
 # Text and encoding utilities
+# Async utilities
+from .async_helpers import (
+    AsyncBatchProcessor,
+    AsyncCache,
+    AsyncRetry,
+    ConnectionPool,
+    gather_with_limit,
+)
+
+# Error handling utilities
+from .errors import (
+    ConfigurationError,
+    ErrorContext,
+    ErrorSeverity,
+    KortanaError,
+    MemoryError,
+    ModelError,
+    RetryableError,
+    ServiceError,
+    ValidationError,
+    handle_error,
+)
+from .errors import (
+    TimeoutError as KortanaTimeoutError,
+)
+
+# Performance and optimization utilities
+from .performance import (
+    CircuitBreaker,
+    CircuitBreakerConfig,
+    CircuitState,
+    MetricsCollector,
+    PerfMetrics,
+    TTLCache,
+    cached_async,
+    timed_execution,
+)
 from .text_analysis import (
     analyze_sentiment,
     count_tokens,
@@ -27,42 +64,6 @@ from .text_encoding import (
     encode_text_to_base64,
 )
 from .timestamp_utils import get_iso_timestamp
-
-# Performance and optimization utilities
-from .performance import (
-    CircuitBreaker,
-    CircuitBreakerConfig,
-    CircuitState,
-    MetricsCollector,
-    PerfMetrics,
-    TTLCache,
-    cached_async,
-    timed_execution,
-)
-
-# Error handling utilities
-from .errors import (
-    ConfigurationError,
-    ErrorContext,
-    ErrorSeverity,
-    KortanaError,
-    MemoryError,
-    ModelError,
-    RetryableError,
-    ServiceError,
-    TimeoutError as KortanaTimeoutError,
-    ValidationError,
-    handle_error,
-)
-
-# Async utilities
-from .async_helpers import (
-    AsyncBatchProcessor,
-    AsyncCache,
-    AsyncRetry,
-    ConnectionPool,
-    gather_with_limit,
-)
 
 # Validation utilities
 from .validation import (
