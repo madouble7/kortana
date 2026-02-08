@@ -26,12 +26,13 @@ from kortana.modules.memory_core.routers.memory_router import router as memory_r
 from kortana.modules.multilingual.router import router as multilingual_router
 from kortana.modules.plugin_framework.router import router as plugin_router
 from kortana.modules.security.routers.security_router import router as security_router
-from kortana.voice import VoiceChatOrchestrator, VoiceProcessingError
+from kortana.voice import VoiceChatOrchestrator, VoiceProcessingError, VoiceSessionManager
 from kortana.voice.stt_service import STTConfig, STTService
 from kortana.voice.tts_service import TTSConfig, TTSService
 
 settings = load_kortana_config()
 chat_engine = ChatEngine(settings=settings)
+voice_session_manager = VoiceSessionManager()
 voice_orchestrator = VoiceChatOrchestrator(
     chat_engine=chat_engine,
     stt_service=STTService(
@@ -52,6 +53,9 @@ voice_orchestrator = VoiceChatOrchestrator(
             volume=settings.voice.tts_volume,
         )
     ),
+    session_manager=voice_session_manager,
+    session_idle_seconds=settings.voice.session_idle_seconds,
+    max_active_sessions=settings.voice.max_active_sessions,
 )
 
 
@@ -69,11 +73,41 @@ class VoiceTranscribeRequest(BaseModel):
     user_id: str | None = "default"
 
 
+class VoiceInterruptRequest(BaseModel):
+    interrupted: bool = True
+
+
 def _decode_audio_payload(audio_base64: str) -> bytes:
+    if not audio_base64 or not audio_base64.strip():
+        raise HTTPException(status_code=400, detail="Audio payload cannot be empty")
+
+    normalized = audio_base64.strip()
+    if normalized.lower().startswith("data:"):
+        if "," not in normalized:
+            raise HTTPException(status_code=400, detail="Invalid audio data URI format")
+        header, normalized = normalized.split(",", 1)
+        if ";base64" not in header.lower():
+            raise HTTPException(
+                status_code=400,
+                detail="Audio data URI must be base64 encoded",
+            )
+
+    compact = "".join(normalized.split())
+    if not compact:
+        raise HTTPException(status_code=400, detail="Audio payload cannot be empty")
+
+    max_audio_bytes = settings.voice.max_audio_bytes
+    max_base64_len = ((max_audio_bytes + 2) // 3) * 4
+    if len(compact) > max_base64_len + 4:
+        raise HTTPException(status_code=413, detail="Audio payload exceeds size limit")
+
     try:
-        return base64.b64decode(audio_base64, validate=True)
+        decoded = base64.b64decode(compact, validate=True)
     except Exception as exc:
         raise HTTPException(status_code=400, detail="Invalid base64 audio payload") from exc
+    if len(decoded) > max_audio_bytes:
+        raise HTTPException(status_code=413, detail="Audio payload exceeds size limit")
+    return decoded
 
 
 @asynccontextmanager
@@ -177,6 +211,45 @@ async def voice_chat(payload: VoiceChatRequest) -> dict[str, Any]:
         return {"status": "success", **result}
     except VoiceProcessingError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.to_dict()) from exc
+
+
+@app.get("/voice/sessions/{session_id}")
+async def get_voice_session(session_id: str) -> dict[str, Any]:
+    if not settings.voice.enabled:
+        raise HTTPException(status_code=503, detail="Voice chat is disabled")
+
+    snapshot = voice_session_manager.get_snapshot(session_id)
+    if snapshot is None:
+        raise HTTPException(status_code=404, detail="Voice session not found")
+    return {"status": "success", "session": snapshot}
+
+
+@app.post("/voice/sessions/{session_id}/interrupt")
+async def interrupt_voice_session(
+    session_id: str,
+    payload: VoiceInterruptRequest | None = None,
+) -> dict[str, Any]:
+    if not settings.voice.enabled:
+        raise HTTPException(status_code=503, detail="Voice chat is disabled")
+
+    if voice_session_manager.get_snapshot(session_id) is None:
+        raise HTTPException(status_code=404, detail="Voice session not found")
+
+    interrupted = payload.interrupted if payload else True
+    voice_session_manager.mark_interrupted(session_id, interrupted=interrupted)
+    snapshot = voice_session_manager.get_snapshot(session_id)
+    return {"status": "success", "session": snapshot}
+
+
+@app.delete("/voice/sessions/{session_id}")
+async def end_voice_session(session_id: str) -> dict[str, Any]:
+    if not settings.voice.enabled:
+        raise HTTPException(status_code=503, detail="Voice chat is disabled")
+
+    ended = voice_session_manager.end_session(session_id)
+    if not ended:
+        raise HTTPException(status_code=404, detail="Voice session not found")
+    return {"status": "success", "session_id": session_id, "ended": True}
 
 
 @app.get("/status")

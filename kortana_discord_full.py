@@ -132,6 +132,35 @@ async def ping_command(interaction: discord.Interaction):
         ephemeral=True
     )
 
+async def speak_response(guild, text):
+    """Helper to speak text in voice channel if connected"""
+    voice_client = guild.voice_client
+    if not voice_client or not voice_client.is_connected():
+        return False
+    
+    try:
+        if voice_orchestrator:
+            # Generate audio using TTS
+            import base64
+            import io
+            tts_result = voice_orchestrator.tts.synthesize(text)
+            audio_bytes = tts_result['audio_bytes']
+            
+            # Play audio in voice channel
+            audio_source = discord.FFmpegPCMAudio(
+                io.BytesIO(audio_bytes),
+                pipe=True
+            )
+            
+            if voice_client.is_playing():
+                voice_client.stop()
+            
+            voice_client.play(audio_source)
+            return True
+    except Exception as e:
+        print(f"Voice output error: {e}")
+        return False
+
 @bot.tree.command(name="kortana", description="Talk to Kor'tana")
 async def kortana_chat(interaction: discord.Interaction, message: str):
     """Main chat command with AI brain"""
@@ -158,7 +187,14 @@ async def kortana_chat(interaction: discord.Interaction, message: str):
         )
         embed.set_footer(text="Sacred AI Companion")
         
+        # Send text response
         await interaction.followup.send(embed=embed)
+        
+        # If in voice channel, also speak the response
+        if interaction.guild.voice_client:
+            spoke = await speak_response(interaction.guild, response)
+            if spoke:
+                await interaction.followup.send("🔊 Speaking in voice channel...", ephemeral=True)
         
     except Exception as e:
         await interaction.followup.send(
@@ -198,7 +234,7 @@ async def join_voice(interaction: discord.Interaction):
         }
         
         await interaction.response.send_message(
-            f"🎤 Joined {channel.name}! I'm ready to listen and respond.",
+            f"🎤 Joined {channel.name}! Use `/kortana` to chat - I'll speak my responses aloud.",
             ephemeral=False
         )
         
@@ -207,6 +243,27 @@ async def join_voice(interaction: discord.Interaction):
             f"❌ Failed to join voice: {str(e)}",
             ephemeral=True
         )
+
+@bot.tree.command(name="speak", description="Make Kor'tana speak text in voice channel")
+async def speak_text(interaction: discord.Interaction, text: str):
+    """Speak specific text in voice channel"""
+    if not interaction.guild.voice_client:
+        await interaction.response.send_message(
+            "❌ I'm not in a voice channel! Use `/join` first.",
+            ephemeral=True
+        )
+        return
+    
+    await interaction.response.defer()
+    
+    try:
+        spoke = await speak_response(interaction.guild, text)
+        if spoke:
+            await interaction.followup.send(f"🔊 Speaking: '{text[:50]}...'", ephemeral=True)
+        else:
+            await interaction.followup.send("⚠️ Voice output unavailable.", ephemeral=True)
+    except Exception as e:
+        await interaction.followup.send(f"❌ Error: {str(e)}", ephemeral=True)
 
 @bot.tree.command(name="leave", description="Kor'tana leaves the voice channel")
 async def leave_voice(interaction: discord.Interaction):
@@ -246,8 +303,9 @@ async def help_command(interaction: discord.Interaction):
             name="🎤 Voice Commands",
             value=(
                 "`/join` - I'll join your voice channel\n"
+                "`/speak [text]` - I'll speak specific text\n"
                 "`/leave` - I'll leave the voice channel\n"
-                "*Voice chat with speech-to-text and text-to-speech!*"
+                "*When in voice: Use `/kortana` and I'll speak my responses!*"
             ),
             inline=False
         )
