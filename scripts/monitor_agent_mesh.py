@@ -6,17 +6,24 @@ Real-time monitor for the concurrent agent mesh.
 from __future__ import annotations
 
 import argparse
-import sys
+import importlib.util
 import time
 from datetime import UTC, datetime
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SRC_PATH = PROJECT_ROOT / "src"
-if str(SRC_PATH) not in sys.path:
-    sys.path.insert(0, str(SRC_PATH))
+AGENT_MESH_PATH = PROJECT_ROOT / "src" / "kortana" / "core" / "agent_mesh.py"
 
-from kortana.core.agent_mesh import ConcurrentAgentMesh  # noqa: E402
+if not AGENT_MESH_PATH.exists():
+    raise RuntimeError(f"Agent mesh module not found: {AGENT_MESH_PATH}")
+
+_SPEC = importlib.util.spec_from_file_location("kortana_agent_mesh_runtime", AGENT_MESH_PATH)
+if _SPEC is None or _SPEC.loader is None:
+    raise RuntimeError(f"Unable to load module spec from: {AGENT_MESH_PATH}")
+
+_MODULE = importlib.util.module_from_spec(_SPEC)
+_SPEC.loader.exec_module(_MODULE)
+ConcurrentAgentMesh = _MODULE.ConcurrentAgentMesh
 
 
 def _render(status: dict, assignments: list[dict], sweep_info: dict) -> None:
