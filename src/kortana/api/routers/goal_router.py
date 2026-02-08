@@ -62,7 +62,8 @@ def list_all_goals(skip: int = 0, limit: int = 20, db: Session = Depends(get_db_
     """
     try:
         # AUTONOMOUS REFACTORING: Use the new service layer instead of direct database queries
-        GoalService(db)
+        goal_service = GoalService(db)
+        # TODO: Replace direct DB query with goal_service.list_goals() when implemented
 
         # For now, get goals directly but through service pattern (async would be added later)
         goals = (

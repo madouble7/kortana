@@ -128,12 +128,21 @@ def _create_memory_core_service():
         from kortana.modules.memory_core.services import MemoryCoreService
         from kortana.services.database import get_db_sync
         
-        # Get a database session
-        db = next(get_db_sync())
+        # Get a database session - Note: This creates a session that will be
+        # managed by the service itself. The service should handle closing it.
+        db_generator = get_db_sync()
+        db = next(db_generator)
         
         # Create and return the memory service
         logger.info("Creating MemoryCoreService with database session")
-        return MemoryCoreService(db)
+        service = MemoryCoreService(db)
+        
+        # Note: The database session lifecycle is now managed by the service.
+        # When the service is garbage collected or explicitly closed, 
+        # the session should be closed. Consider implementing a close() method
+        # on MemoryCoreService for proper cleanup.
+        
+        return service
     except ImportError as e:
         logger.warning(f"Failed to import MemoryCoreService dependencies: {e}")
         return None

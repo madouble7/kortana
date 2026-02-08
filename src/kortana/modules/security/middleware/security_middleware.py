@@ -97,7 +97,8 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
 
         # Calculate response time
-        (time.time() - start_time) * 1000  # Convert to ms
+        response_time_ms = (time.time() - start_time) * 1000  # Convert to ms
+        # TODO: Log or collect response_time_ms for metrics
 
         # Add security headers to response
         response.headers["X-Content-Type-Options"] = "nosniff"

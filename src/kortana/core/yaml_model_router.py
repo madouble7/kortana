@@ -162,7 +162,8 @@ class YamlModelRouter:
         # Sort by preference
         def sort_key(model: ModelInfo):
             is_free = model.cost_tier == "free"
-            1.0 if is_free else 1.0 / (model.cost_per_1m_input + 1)
+            # Calculate cost score for sorting (unused for now, but kept for future use)
+            cost_score = 1.0 if is_free else 1.0 / (model.cost_per_1m_input + 1)
 
             if prefer_free:
                 return (-int(is_free), model.cost_per_1m_input, -model.context_window)

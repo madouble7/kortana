@@ -581,7 +581,11 @@ async def run_proactive_code_review_task(db: Session):
 
     try:
         # Get execution engine instance
-        get_execution_engine_instance()
+        # Initialize execution engine to ensure it's available for task execution
+    # This call ensures the executor is properly set up before running tasks
+    executor = get_execution_engine_instance()
+    if executor is None:
+        logger.warning("Execution engine could not be initialized")
 
         # Define scan paths - focus on core Kor'tana code
         scan_paths = [

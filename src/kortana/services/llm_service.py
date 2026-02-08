@@ -9,7 +9,7 @@ Provides abstraction for LLM provider interactions with:
 - Async support
 """
 
-import builtins
+import asyncio
 import logging
 import time
 from typing import Any
@@ -149,7 +149,7 @@ class LLMService:
                     logger.info(f"LLM request successful. Time: {metadata['processing_time_ms']:.1f}ms")
                     return {"content": content, "metadata": metadata}
 
-                except builtins.TimeoutError:
+                except asyncio.TimeoutError:
                     raise KortanaTimeoutError(
                         "LLM request exceeded timeout",
                         operation="llm_generate",
