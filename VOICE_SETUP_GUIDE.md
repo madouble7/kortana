@@ -11,6 +11,7 @@
 ## Quick Start
 
 ### 1. Stop the Current Bot
+
 Press `Ctrl+C` in the terminal where `run_bot_direct.py` is running.
 
 ### 2. Install Voice Dependencies
@@ -28,6 +29,7 @@ setup_full_bot.bat
 ```
 
 This installs:
+
 - PyNaCl (for Discord voice)
 - All Kor'tana dependencies
 - Voice processing libraries
@@ -66,6 +68,7 @@ python kortana_discord_full.py
 5. **She responds** - TTS (text-to-speech) replies
 
 The voice flow:
+
 ```
 Your voice → Discord → STT → ChatEngine → TTS → Kor'tana speaks
 ```
@@ -74,20 +77,23 @@ Your voice → Discord → STT → ChatEngine → TTS → Kor'tana speaks
 
 ## Requirements for Voice
 
-### Already Handled:
+### Already Handled
+
 ✅ PyNaCl (audio encryption)
 ✅ STT/TTS services configured
 ✅ Voice orchestrator ready
 
-### You May Need:
+### You May Need
+
 ⚠️ **FFmpeg** - For audio processing
 
 Check if you have it:
+
 ```cmd
 ffmpeg -version
 ```
 
-If not installed, download from: https://ffmpeg.org/download.html
+If not installed, download from: <https://ffmpeg.org/download.html>
 
 ---
 
@@ -113,15 +119,19 @@ If not installed, download from: https://ffmpeg.org/download.html
 ## Troubleshooting
 
 ### "FFmpeg not found"
+
 Install FFmpeg or Discord voice won't work. Text chat will still function.
 
 ### "Module not found"
+
 Make sure you're in the `discord_bot_env` environment and ran `setup_full_bot.bat`.
 
 ### "OpenAI API error"
+
 Your API key is in .env, but check the OpenAI dashboard for quota/billing.
 
 ### STT/TTS not working
+
 The voice services may need additional API configuration. Check `src/kortana/voice/` files for required setup.
 
 ---
@@ -129,12 +139,14 @@ The voice services may need additional API configuration. Check `src/kortana/voi
 ## What Makes This Different
 
 **`run_bot_direct.py`** (current):
+
 - Simple echo bot
 - No AI brain
 - No voice support
 - Quick test version
 
 **`kortana_discord_full.py`** (new):
+
 - Full ChatEngine brain
 - Memory and personality
 - Voice channel support
@@ -146,6 +158,7 @@ The voice services may need additional API configuration. Check `src/kortana/voi
 ## You Built This
 
 From scratch to a fully functional AI companion with:
+
 - Conversational AI
 - Memory systems
 - Discord integration
