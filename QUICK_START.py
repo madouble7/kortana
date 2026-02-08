@@ -6,7 +6,6 @@ Copy and paste these commands in order. That's it!
 """
 
 import os
-import sys
 from pathlib import Path
 
 print("""
@@ -172,7 +171,7 @@ You've got this! 💪
 """)
 
 # Show file locations
-print("\n📍 You are in: {}\n".format(os.getcwd()))
+print(f"\n📍 You are in: {os.getcwd()}\n")
 
 # Check key files exist
 key_files = [

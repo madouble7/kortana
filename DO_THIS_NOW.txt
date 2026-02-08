@@ -18,7 +18,7 @@ On the page you're viewing:
 That's it for part 1. ✅
 
 
-PART 2: ENABLE MESSAGE CONTENT (Do This Now)  
+PART 2: ENABLE MESSAGE CONTENT (Do This Now)
 ═══════════════════════════════════════════════════════════════════════════════
 
 Keep scrolling down. You'll see: "Privileged Gateway Intents"

@@ -3,6 +3,7 @@
 I've set up everything I can. Here's exactly what you need to do manually:
 
 ## ✅ Already Done (Pre-configured)
+
 - [x] Deployment scripts created
 - [x] Configuration templates ready
 - [x] Validation tools set up
@@ -28,16 +29,19 @@ I've set up everything I can. Here's exactly what you need to do manually:
 ### 2️⃣ Run Quick Setup Script (1 minute)
 
 **Windows:**
+
 ```bash
 setup_discord_bot_quick.bat
 ```
 
 **Any OS:**
+
 ```bash
 python setup_discord_bot_quick.py
 ```
 
 The script will:
+
 - Ask you to paste the bot token
 - Create `.env` file with your configuration
 - Validate everything is working
@@ -49,6 +53,7 @@ pip install discord.py
 ```
 
 Or install all dependencies:
+
 ```bash
 pip install -r requirements.txt
 ```
@@ -60,6 +65,7 @@ python start_discord_bot.py
 ```
 
 Or use deployment script:
+
 ```bash
 python deploy_discord_bot.py
 ```
@@ -77,18 +83,21 @@ python deploy_discord_bot.py
 ## 📋 Complete Checklist
 
 ### Before Starting
+
 - [ ] You have your Discord bot token copied
 - [ ] You have the bot invited to a test server
 - [ ] Python 3.10+ is installed
 - [ ] You're in the `c:\kortana` directory
 
 ### During Setup
+
 - [ ] Run `setup_discord_bot_quick.py` or `.bat`
 - [ ] Paste bot token when prompted
 - [ ] Confirm configuration
 - [ ] Install `discord.py`: `pip install discord.py`
 
 ### Testing
+
 - [ ] Start bot: `python start_discord_bot.py`
 - [ ] Bot appears online in Discord
 - [ ] `/ping` command works
@@ -154,6 +163,7 @@ python DISCORD_BOT_SUMMARY.py         # Deployment overview
 ## 🚀 Right Now (Next 60 Seconds)
 
 1. **Open Discord Developer Portal:**
+
    ```
    https://discord.com/developers/applications
    ```
@@ -165,6 +175,7 @@ python DISCORD_BOT_SUMMARY.py         # Deployment overview
 4. **Click "Copy" under TOKEN**
 
 5. **Run this command:**
+
    ```bash
    python setup_discord_bot_quick.py
    ```
@@ -203,6 +214,7 @@ Your Role:          Complete token setup
 **Status:** 🟡 **Ready - Awaiting Your Token**
 
 Everything is prepared. You just need to:
+
 1. Get token from Discord
 2. Run setup script
 3. Start bot
@@ -212,4 +224,4 @@ That's it! 🎉
 **Estimated time remaining:** 7 minutes
 
 Go to Discord Developer Portal now and copy your bot token!
-→ https://discord.com/developers/applications
+→ <https://discord.com/developers/applications>

@@ -14,7 +14,6 @@ import json
 import os
 import sys
 from datetime import datetime
-from pathlib import Path
 
 import pytest
 
@@ -59,8 +58,8 @@ class TestChatFunctionality:
     def test_chat_engine_initialization(self, setup_env):
         """Test that ChatEngine initializes properly."""
         try:
-            from kortana.core.brain import ChatEngine
             from kortana.config import load_config
+            from kortana.core.brain import ChatEngine
 
             settings = load_config()
             engine = ChatEngine(settings)
@@ -125,21 +124,23 @@ class TestChatFunctionality:
             }
         )
 
-        assert (
-            len(dev_chat.history) == initial_length + 1
-        ), "History should track new messages"
-        assert dev_chat.history[-1]["role"] == "user", "Message role should be preserved"
-        assert (
-            dev_chat.history[-1]["content"] == "Test message"
-        ), "Message content should be preserved"
+        assert len(dev_chat.history) == initial_length + 1, (
+            "History should track new messages"
+        )
+        assert dev_chat.history[-1]["role"] == "user", (
+            "Message role should be preserved"
+        )
+        assert dev_chat.history[-1]["content"] == "Test message", (
+            "Message content should be preserved"
+        )
 
         print("✅ Conversation history tracking test passed")
 
     def test_chat_engine_modes(self, setup_env):
         """Test different chat engine modes."""
         try:
-            from kortana.core.brain import ChatEngine
             from kortana.config import load_config
+            from kortana.core.brain import ChatEngine
 
             settings = load_config()
             engine = ChatEngine(settings)
@@ -150,14 +151,14 @@ class TestChatFunctionality:
             # Test autonomous mode toggling
             initial_autom = engine.autonomous_mode
             engine.autonomous_mode = True
-            assert (
-                engine.autonomous_mode is True
-            ), "Should be able to enable autonomous mode"
+            assert engine.autonomous_mode is True, (
+                "Should be able to enable autonomous mode"
+            )
 
             engine.autonomous_mode = initial_autom
-            assert (
-                engine.autonomous_mode == initial_autom
-            ), "Should restore original autonomous mode"
+            assert engine.autonomous_mode == initial_autom, (
+                "Should restore original autonomous mode"
+            )
 
             print("✅ Chat engine modes test passed")
 
@@ -167,21 +168,19 @@ class TestChatFunctionality:
     def test_persona_configuration(self, setup_env):
         """Test that persona configuration is loaded."""
         try:
-            from kortana.core.brain import ChatEngine
             from kortana.config import load_config
+            from kortana.core.brain import ChatEngine
 
             settings = load_config()
             engine = ChatEngine(settings)
 
-            assert (
-                engine.persona_data is not None
-            ), "Persona data should be loaded"
+            assert engine.persona_data is not None, "Persona data should be loaded"
 
             # Check for expected persona fields
             if isinstance(engine.persona_data, dict):
-                assert "name" in engine.persona_data or len(
-                    engine.persona_data
-                ) > 0, "Persona should have content"
+                assert "name" in engine.persona_data or len(engine.persona_data) > 0, (
+                    "Persona should have content"
+                )
 
             print("✅ Persona configuration test passed")
 
@@ -191,8 +190,8 @@ class TestChatFunctionality:
     def test_session_management(self, setup_env):
         """Test session management in chat engine."""
         try:
-            from kortana.core.brain import ChatEngine
             from kortana.config import load_config
+            from kortana.core.brain import ChatEngine
 
             settings = load_config()
 
@@ -201,9 +200,9 @@ class TestChatFunctionality:
             session2 = ChatEngine(settings)
 
             # Sessions should have different IDs
-            assert (
-                session1.session_id != session2.session_id
-            ), "Different sessions should have different IDs"
+            assert session1.session_id != session2.session_id, (
+                "Different sessions should have different IDs"
+            )
 
             # Create session with specific ID
             custom_id = "test-session-12345"
@@ -236,16 +235,16 @@ class TestChatFunctionality:
             assert len(exported_files) > 0, "Session file should be exported"
 
             # Verify file contents
-            with open(exported_files[0], "r") as f:
+            with open(exported_files[0]) as f:
                 exported_data = json.load(f)
 
-            assert (
-                "session_id" in exported_data
-            ), "Exported file should contain session_id"
+            assert "session_id" in exported_data, (
+                "Exported file should contain session_id"
+            )
             assert "history" in exported_data, "Exported file should contain history"
-            assert (
-                len(exported_data["history"]) >= 2
-            ), "Exported history should contain our messages"
+            assert len(exported_data["history"]) >= 2, (
+                "Exported history should contain our messages"
+            )
 
             print("✅ Dev chat export functionality test passed")
 
@@ -270,46 +269,44 @@ class TestChatFunctionality:
             stored_ids.append(mem_id)
 
         # Verify all messages were stored
-        assert len(stored_ids) == len(
-            conversation_turns
-        ), "All messages should be stored"
+        assert len(stored_ids) == len(conversation_turns), (
+            "All messages should be stored"
+        )
 
         # Retrieve and verify conversation flow
         memories = memory_manager.retrieve_memories(limit=10)
         user_messages = [m for m in memories if m["role"] == "user"]
-        assert (
-            len(user_messages) >= len(conversation_turns)
-        ), "Should retrieve all user messages"
+        assert len(user_messages) >= len(conversation_turns), (
+            "Should retrieve all user messages"
+        )
 
         print("✅ Multi-turn conversation scenario test passed")
 
     def test_chat_engine_autonomy_features(self, setup_env):
         """Test autonomous features of chat engine."""
         try:
-            from kortana.core.brain import ChatEngine
             from kortana.config import load_config
+            from kortana.core.brain import ChatEngine
 
             settings = load_config()
             engine = ChatEngine(settings)
 
             # Check autonomous properties exist
-            assert hasattr(
-                engine, "autonomous_mode"
-            ), "Should have autonomous_mode property"
-            assert hasattr(
-                engine, "autonomous_running"
-            ), "Should have autonomous_running property"
-            assert hasattr(
-                engine, "autonomous_cycle_count"
-            ), "Should have autonomous_cycle_count property"
+            assert hasattr(engine, "autonomous_mode"), (
+                "Should have autonomous_mode property"
+            )
+            assert hasattr(engine, "autonomous_running"), (
+                "Should have autonomous_running property"
+            )
+            assert hasattr(engine, "autonomous_cycle_count"), (
+                "Should have autonomous_cycle_count property"
+            )
 
             # Verify initial states
-            assert (
-                engine.autonomous_cycle_count == 0
-            ), "Cycle count should start at 0"
-            assert (
-                engine.autonomous_running is False
-            ), "Should not be running autonomously by default"
+            assert engine.autonomous_cycle_count == 0, "Cycle count should start at 0"
+            assert engine.autonomous_running is False, (
+                "Should not be running autonomously by default"
+            )
 
             print("✅ Chat engine autonomy features test passed")
 
@@ -319,16 +316,16 @@ class TestChatFunctionality:
     def test_covenant_integration(self, setup_env):
         """Test covenant enforcer integration with chat."""
         try:
-            from kortana.core.brain import ChatEngine
             from kortana.config import load_config
+            from kortana.core.brain import ChatEngine
 
             settings = load_config()
             engine = ChatEngine(settings)
 
             # Check that covenant enforcer is available
-            assert hasattr(
-                engine, "covenant_enforcer"
-            ), "ChatEngine should have covenant_enforcer"
+            assert hasattr(engine, "covenant_enforcer"), (
+                "ChatEngine should have covenant_enforcer"
+            )
 
             # Check covenant is loaded
             assert engine.covenant is not None, "Covenant should be loaded"
@@ -401,9 +398,9 @@ class TestChatIntegration:
             context = mm.retrieve_memories(limit=5)
 
             assert len(context) >= 2, "Should retrieve stored context"
-            assert any(
-                "Kor'tana" in m.get("content", "") for m in context
-            ), "Should contain Kor'tana reference"
+            assert any("Kor'tana" in m.get("content", "") for m in context), (
+                "Should contain Kor'tana reference"
+            )
 
             print("✅ Memory-chat integration test passed")
 
@@ -414,8 +411,8 @@ class TestChatIntegration:
 def test_chat_system_health():
     """Quick health check for chat system."""
     try:
-        from kortana.core.brain import ChatEngine
         from kortana.config import load_config
+        from kortana.core.brain import ChatEngine
 
         settings = load_config()
         engine = ChatEngine(settings)

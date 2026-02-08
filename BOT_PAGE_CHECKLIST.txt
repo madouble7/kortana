@@ -29,7 +29,7 @@ You should see checkboxes:
      Status: Should be CHECKED ✓
      What to do: If unchecked, click to CHECK it
 
-  ☐ Requires OAuth2 Code Grant  
+  ☐ Requires OAuth2 Code Grant
      Status: Should be UNCHECKED
      What to do: Leave it unchecked (don't click)
 
@@ -45,7 +45,7 @@ You should see three intents with toggles:
      Status: Can be ON or OFF (either is fine)
      Currently: [Your setting]
 
-  ☑️ Server Members Intent  
+  ☑️ Server Members Intent
      Status: Should be ON (toggle switch enabled)
      Currently: [Your setting]
      What to do: If OFF, click toggle to turn ON
@@ -87,7 +87,7 @@ Right on this page, check these boxes:
 
 ═══════════════════════════════════════════════════════════════════════════════
 
-DONE WITH THIS PAGE? 
+DONE WITH THIS PAGE?
 
 Run this command in your terminal:
 

@@ -44,12 +44,12 @@ WHAT TO DO RIGHT NOW:
   1. In Discord Developer Portal (where you are):
      → Scroll down to the "TOKEN" section
      → Click the copy icon next to your token
-     
+
   2. Come back here and paste the token below
 
 INTENTS TO ENABLE (while you're there):
   ✅ Message Content Intent (needed for message reading)
-  
+
 CHECK THESE SETTINGS:
   ✅ Public Bot = ON (so bot can be added)
   ✅ Message Content Intent = ON (required!)
@@ -87,7 +87,7 @@ def create_env_file(token):
     print_step(2, "Creating .env File")
 
     env_content = f"""# Kor'tana Discord Bot Configuration
-# Generated: {os.popen('date').read().strip() if os.name != 'nt' else 'Feb 8, 2026'}
+# Generated: {os.popen("date").read().strip() if os.name != "nt" else "Feb 8, 2026"}
 
 # ===== REQUIRED =====
 DISCORD_BOT_TOKEN={token}
@@ -132,7 +132,7 @@ LLM_TEMPERATURE=0.7
         print("\n📝 Configuration saved:")
         print(f"   • DISCORD_BOT_TOKEN: {token[:20]}...{token[-5:]}")
         print(f"   • DISCORD_APP_ID: {APP_ID}")
-        print(f"   • Mode: default")
+        print("   • Mode: default")
 
         return True
 
@@ -149,17 +149,19 @@ def run_validation():
 
     # Python version
     python_ok = sys.version_info >= (3, 10)
-    print(f"  {'✅' if python_ok else '❌'} Python {sys.version_info.major}.{sys.version_info.minor}")
+    print(
+        f"  {'✅' if python_ok else '❌'} Python {sys.version_info.major}.{sys.version_info.minor}"
+    )
 
     # discord.py
     discord_ok = False
     try:
         import discord
 
-        print(f"  ✅ discord.py installed")
+        print("  ✅ discord.py installed")
         discord_ok = True
     except ImportError:
-        print(f"  ❌ discord.py not installed (run: pip install discord.py)")
+        print("  ❌ discord.py not installed (run: pip install discord.py)")
 
     # .env file
     env_ok = Path(".env").exists()
@@ -213,7 +215,7 @@ This assistant will help you set up Kor'tana in 2 minutes!
 Your Discord App Settings (Pre-filled):
   • Application ID: 1421497726201233418
   • Status: Ready to connect
-  
+
 What you need to provide:
   • Bot Token (from https://discord.com/developers/applications)
     """)

@@ -10,9 +10,8 @@ This script prepares and deploys the Discord bot:
 """
 
 import os
-import sys
 import subprocess
-from pathlib import Path
+import sys
 
 # Add src to Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
@@ -93,12 +92,14 @@ def check_environment():
             env_status[var_name] = False
 
     if missing_vars:
-        print(f"\n❌ Configuration incomplete - bot requires: {', '.join(missing_vars)}")
+        print(
+            f"\n❌ Configuration incomplete - bot requires: {', '.join(missing_vars)}"
+        )
         print("\nTo set up environment variables:")
         print("  1. Copy .env.example to .env (if it exists)")
         print("  2. Edit .env and add your tokens:")
-        print('     DISCORD_BOT_TOKEN=your_token_here')
-        print('     OPENAI_API_KEY=your_key_here (optional)')
+        print("     DISCORD_BOT_TOKEN=your_token_here")
+        print("     OPENAI_API_KEY=your_key_here (optional)")
         return False
 
     print("\n✅ Environment configured")
@@ -111,8 +112,9 @@ def validate_bot_modules():
 
     try:
         from src.discord_bot import bot, chat_engine
+
         print("  ✅ Discord bot imported")
-        print(f"  ✅ Chat engine: {'Kor\'tana Brain' if chat_engine else 'Echo Mode'}")
+        print(f"  ✅ Chat engine: {"Kor'tana Brain" if chat_engine else 'Echo Mode'}")
         return True
     except ImportError as e:
         print(f"  ❌ Failed to import bot modules: {e}")
@@ -122,8 +124,6 @@ def validate_bot_modules():
 def test_discord_token():
     """Test Discord token validity."""
     print_section("Testing Discord Token")
-
-    import discord
 
     token = os.getenv("DISCORD_BOT_TOKEN")
 
@@ -180,7 +180,7 @@ def setup_env_file():
     if os.path.exists(env_example):
         print(f"  Creating {env_file} from {env_example}...")
         try:
-            with open(env_example, "r") as src:
+            with open(env_example) as src:
                 content = src.read()
             with open(env_file, "w") as dst:
                 dst.write(content)

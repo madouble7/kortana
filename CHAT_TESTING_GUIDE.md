@@ -9,9 +9,11 @@ This guide provides comprehensive information on testing Kor'tana's chat functio
 ## 📋 Test Files Created
 
 ### 1. **test_chat_functionality.py**
+
 **Location:** `tests/test_chat_functionality.py`
 
 Comprehensive pytest-based test suite covering:
+
 - ChatEngine initialization and configuration
 - Development chat interface (`KortanaDevChat`)
 - Memory system integration
@@ -24,26 +26,31 @@ Comprehensive pytest-based test suite covering:
 - End-to-end chat flows
 
 **Key Test Classes:**
+
 - `TestChatFunctionality` - Core functionality tests
 - `TestChatIntegration` - Integration tests
 
 **Run with:**
+
 ```bash
 pytest tests/test_chat_functionality.py -v
 ```
 
 ### 2. **test_chat_interactive.py**
+
 **Location:** `test_chat_interactive.py`
 
 Interactive test runner with detailed output and manual chat demo capability.
 
 **Features:**
+
 - Tests all major chat components
 - Clear pass/fail indicators
 - Session summary statistics
 - Optional interactive demo mode
 
 **Run with:**
+
 ```bash
 python test_chat_interactive.py
 ```
@@ -53,6 +60,7 @@ python test_chat_interactive.py
 ## 🧪 Test Coverage
 
 ### Chat Engine Tests
+
 - ✅ Initialization with proper configuration
 - ✅ Session ID assignment and management
 - ✅ Multiple session isolation
@@ -62,12 +70,14 @@ python test_chat_interactive.py
 - ✅ Configuration validation
 
 ### Memory Integration Tests
+
 - ✅ Memory storage and retrieval
 - ✅ Chat history persistence
 - ✅ Memory metadata handling
 - ✅ Multi-turn conversation memory tracking
 
 ### Development Chat Interface Tests
+
 - ✅ Chat initialization
 - ✅ Message history tracking
 - ✅ Command processing
@@ -75,12 +85,14 @@ python test_chat_interactive.py
 - ✅ Status reporting
 
 ### Conversation Flow Tests
+
 - ✅ Message sending and receiving
 - ✅ Multi-turn conversation handling
 - ✅ Conversation context preservation
 - ✅ Message ordering and timestamps
 
 ### Service Integration Tests
+
 - ✅ LLM client availability
 - ✅ Memory manager integration
 - ✅ Planning engine availability
@@ -93,17 +105,20 @@ python test_chat_interactive.py
 
 ### Method 1: Using pytest (Recommended)
 
-#### Run all chat tests:
+#### Run all chat tests
+
 ```bash
 pytest tests/test_chat_functionality.py -v
 ```
 
-#### Run specific test:
+#### Run specific test
+
 ```bash
 pytest tests/test_chat_functionality.py::TestChatFunctionality::test_chat_engine_initialization -v
 ```
 
-#### Run with coverage:
+#### Run with coverage
+
 ```bash
 pytest tests/test_chat_functionality.py -v --cov=src/kortana/core
 ```
@@ -115,6 +130,7 @@ python test_chat_interactive.py
 ```
 
 This provides:
+
 - Detailed status for each test
 - Overall summary statistics
 - Optional interactive chat demo
@@ -127,6 +143,7 @@ run_chat_test.bat
 ```
 
 Windows batch file that:
+
 - Sets up Python environment
 - Runs interactive tests
 - Keeps output visible
@@ -158,6 +175,7 @@ Total: 5/5 passed (100%)
 ## 🔧 Chat Functionality Components Being Tested
 
 ### 1. **ChatEngine** (`src/kortana/core/brain.py`)
+
 - Core conversational processing
 - Session management
 - Integration with LLM services
@@ -165,18 +183,21 @@ Total: 5/5 passed (100%)
 - Autonomous agent coordination
 
 ### 2. **KortanaDevChat** (`src/dev_chat_simple.py`)
+
 - Terminal-based chat interface
 - Command processing
 - Session export
 - Message history tracking
 
 ### 3. **MemoryManager** (`src/memory_manager.py`)
+
 - Message persistence
 - Memory retrieval and context
 - Conversation history
 - Metadata management
 
 ### 4. **Supporting Services**
+
 - LLM Client Factory
 - Model Router
 - Execution Engine
@@ -255,6 +276,7 @@ Before running tests, ensure:
 ### Issue: "ModuleNotFoundError: No module named 'kortana'"
 
 **Solution:**
+
 ```bash
 set PYTHONPATH=c:\kortana\src
 # or in Python:
@@ -270,6 +292,7 @@ Ensure memory_manager.py is in `src/` directory and PYTHONPATH is set correctly.
 ### Issue: Tests timeout or hang
 
 **Solution:**
+
 - Some tests may require external API calls
 - Use `-k` flag to skip specific tests
 - Run with `--tb=short` for shorter tracebacks
@@ -278,6 +301,7 @@ Ensure memory_manager.py is in `src/` directory and PYTHONPATH is set correctly.
 
 **Solution:**
 Tests use separate test files (e.g., `data/test_chat_*.jsonl`). Remove old ones:
+
 ```bash
 del data\test_chat_*.jsonl
 ```
@@ -348,6 +372,7 @@ del data\test_chat_*.jsonl
 ## ✨ Chat Features Available
 
 ### Core Features
+
 - ✅ Real-time message processing
 - ✅ Persistent memory and context
 - ✅ Multi-turn conversation support
@@ -355,6 +380,7 @@ del data\test_chat_*.jsonl
 - ✅ Autonomous operation modes
 
 ### Advanced Features
+
 - ✅ Memory metadata and tagging
 - ✅ Conversation export
 - ✅ Covenant-based safety checks
@@ -375,5 +401,5 @@ Tests are considered successful when:
 
 ---
 
-**Last Updated:** February 8, 2026  
+**Last Updated:** February 8, 2026
 **Status:** ✅ Complete - Ready for Testing

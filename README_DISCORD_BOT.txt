@@ -42,17 +42,17 @@ Your job is simple - just 5 steps (~7 minutes total):
    Click: kor'tana app
    Go: Bot section
    Click: Copy (under TOKEN)
-   
+
 2️⃣  RUN SETUP (1 min)
    Command: python setup_discord_bot_quick.py
    Action: Paste your token when asked
-   
+
 3️⃣  INSTALL (1 min)
    Command: pip install discord.py
-   
+
 4️⃣  START BOT (30 sec)
    Command: python start_discord_bot.py
-   
+
 5️⃣  TEST (2 min)
    In Discord: /ping
    In Discord: /kortana hello
@@ -193,14 +193,14 @@ HELP
 
 Before you start:
   → Read: SETUP_REMAINING_STEPS.md (clear step-by-step)
-  
+
 Need bot token?
   → Go: https://discord.com/developers/applications
-  
+
 Something not working?
   → Run: python validate_discord_bot.py
   → Check: DISCORD_BOT_DEPLOYMENT.md (Troubleshooting section)
-  
+
 Want full details?
   → Read: DISCORD_BOT_DEPLOYMENT.md
 
