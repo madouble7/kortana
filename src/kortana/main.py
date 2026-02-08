@@ -159,9 +159,11 @@ async def voice_transcribe(payload: VoiceTranscribeRequest) -> dict[str, Any]:
         raise HTTPException(status_code=503, detail="Voice chat is disabled")
 
     try:
-        audio_bytes = base64.b64decode(payload.audio_base64)
+        audio_bytes = base64.b64decode(payload.audio_base64, validate=True)
     except Exception as exc:
-        raise HTTPException(status_code=400, detail="Invalid base64 audio payload") from exc
+        raise HTTPException(
+            status_code=400, detail="Invalid base64 audio payload"
+        ) from exc
 
     try:
         result = await voice_orchestrator.transcribe_only(
@@ -181,9 +183,11 @@ async def voice_chat(payload: VoiceChatRequest) -> dict[str, Any]:
         raise HTTPException(status_code=503, detail="Voice chat is disabled")
 
     try:
-        audio_bytes = base64.b64decode(payload.audio_base64)
+        audio_bytes = base64.b64decode(payload.audio_base64, validate=True)
     except Exception as exc:
-        raise HTTPException(status_code=400, detail="Invalid base64 audio payload") from exc
+        raise HTTPException(
+            status_code=400, detail="Invalid base64 audio payload"
+        ) from exc
 
     return_audio = (
         payload.return_audio

@@ -4,9 +4,7 @@ from __future__ import annotations
 
 import base64
 import time
-from typing import Any
-
-from kortana.brain import ChatEngine
+from typing import Any, Protocol
 
 from .errors import VoiceProcessingError
 from .stt_service import STTService
@@ -14,12 +12,22 @@ from .tts_service import TTSService
 from .voice_session import VoiceSessionManager
 
 
+class ChatEngineProtocol(Protocol):
+    async def process_message(
+        self,
+        user_message: str,
+        user_id: str | None = None,
+        user_name: str | None = None,
+        channel: str = "default",
+    ) -> str: ...
+
+
 class VoiceChatOrchestrator:
     """Coordinates STT -> ChatEngine -> TTS for voice conversations."""
 
     def __init__(
         self,
-        chat_engine: ChatEngine,
+        chat_engine: ChatEngineProtocol,
         stt_service: STTService | None = None,
         tts_service: TTSService | None = None,
         session_manager: VoiceSessionManager | None = None,
