@@ -3,11 +3,15 @@ Usage Example: External Services Integration
 
 This example demonstrates how to use the Spotify and GitHub agents
 integrated into Kor'tana for entertainment and productivity tasks.
+
+Note: Set the following environment variables before running:
+  - OPENAI_API_KEY: Your OpenAI API key
+  - SPOTIFY_API_KEY: Your Spotify API key
+  - GITHUB_TOKEN: Your GitHub personal access token
 """
 
 import asyncio
 import os
-from dotenv import load_dotenv
 
 from src.kortana.external_services import ExternalServiceManager
 from src.kortana.external_services.base.service_manager import ServiceType
@@ -18,9 +22,6 @@ from src.kortana.external_services.github import GitHubAgent, GitHubAgentConfig
 async def example_spotify_usage():
     """Example of using the Spotify agent"""
     print("\n=== Spotify Agent Example ===\n")
-    
-    # Load environment variables
-    load_dotenv()
     
     # Create configuration
     config = SpotifyAgentConfig(
@@ -61,9 +62,6 @@ async def example_github_usage():
     """Example of using the GitHub agent"""
     print("\n=== GitHub Agent Example ===\n")
     
-    # Load environment variables
-    load_dotenv()
-    
     # Create configuration
     config = GitHubAgentConfig(
         llm_api_key=os.getenv("OPENAI_API_KEY", "your-openai-key"),
@@ -101,9 +99,6 @@ async def example_github_usage():
 async def example_service_manager():
     """Example of using the External Service Manager"""
     print("\n=== External Service Manager Example ===\n")
-    
-    # Load environment variables
-    load_dotenv()
     
     # Create service manager
     manager = ExternalServiceManager()

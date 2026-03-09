@@ -74,10 +74,11 @@ explain what you can do instead.
                 '-y',
                 '@smithery/cli@latest',
                 'run',
-                '@superseoworld/mcp-spotify',
-                '--key',
-                self.config.spotify_api_key
-            ]
+                '@superseoworld/mcp-spotify'
+            ],
+            env={
+                "SPOTIFY_API_KEY": self.config.spotify_api_key
+            }
         )
     
     async def setup(self) -> None:
@@ -133,14 +134,14 @@ explain what you can do instead.
             raise RuntimeError("Agent not initialized. Call setup() first.")
         
         try:
-            start_time = asyncio.get_event_loop().time()
+            start_time = asyncio.get_running_loop().time()
             
             self.logger.info(f"Processing Spotify query: '{query}'")
             
             # Execute the query
             result = await self.agent.run(query)
             
-            elapsed_time = asyncio.get_event_loop().time() - start_time
+            elapsed_time = asyncio.get_running_loop().time() - start_time
             
             # Extract result data
             result_data = result.data if hasattr(result, 'data') else str(result)

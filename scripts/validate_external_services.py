@@ -1,20 +1,21 @@
 """
-Standalone test for external services
+Validation script for external services
 
-Simple test that can run without the full Kortana environment.
+Validates the external services module without needing the full Kortana environment.
+Run this to verify the basic functionality of the external services integration.
 """
 
 import sys
 import os
 
-# Add src to path
+# Add parent directory to path for module imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from src.kortana.external_services.base.agent_base import AgentConfig, BaseExternalAgent
 from src.kortana.external_services.base.service_manager import ExternalServiceManager, ServiceType
 
 
-def test_agent_config():
+def validate_agent_config():
     """Test AgentConfig creation"""
     config = AgentConfig(
         llm_api_key="test-key",
@@ -23,25 +24,25 @@ def test_agent_config():
     )
     assert config.llm_api_key == "test-key"
     assert config.model_choice == "gpt-4o-mini"
-    print("✓ AgentConfig test passed")
+    print("✓ AgentConfig validated")
 
 
-def test_service_manager():
+def validate_service_manager():
     """Test ExternalServiceManager"""
     manager = ExternalServiceManager()
     assert manager._services == {}
     assert len(manager.list_services()) == 0
-    print("✓ ServiceManager test passed")
+    print("✓ ServiceManager validated")
 
 
-def test_service_types():
+def validate_service_types():
     """Test ServiceType enum"""
     assert ServiceType.SPOTIFY == "spotify"
     assert ServiceType.GITHUB == "github"
-    print("✓ ServiceType test passed")
+    print("✓ ServiceType validated")
 
 
-def test_spotify_config():
+def validate_spotify_config():
     """Test Spotify agent config"""
     from src.kortana.external_services.spotify import SpotifyAgentConfig
     
@@ -52,10 +53,10 @@ def test_spotify_config():
     )
     assert config.spotify_api_key == "test-spotify-key"
     assert config.market == "US"
-    print("✓ SpotifyAgentConfig test passed")
+    print("✓ SpotifyAgentConfig validated")
 
 
-def test_github_config():
+def validate_github_config():
     """Test GitHub agent config"""
     from src.kortana.external_services.github import GitHubAgentConfig
     
@@ -64,10 +65,10 @@ def test_github_config():
         github_token="test-github-token"
     )
     assert config.github_token == "test-github-token"
-    print("✓ GitHubAgentConfig test passed")
+    print("✓ GitHubAgentConfig validated")
 
 
-def test_spotify_agent_capabilities():
+def validate_spotify_agent_capabilities():
     """Test Spotify agent capabilities"""
     from src.kortana.external_services.spotify import SpotifyAgent, SpotifyAgentConfig
     
@@ -82,10 +83,10 @@ def test_spotify_agent_capabilities():
     assert capabilities["service"] == "spotify"
     assert "categories" in capabilities
     assert len(capabilities["categories"]) == 4  # Search, Playlists, Playback, User Library
-    print("✓ Spotify agent capabilities test passed")
+    print("✓ Spotify agent capabilities validated")
 
 
-def test_github_agent_capabilities():
+def validate_github_agent_capabilities():
     """Test GitHub agent capabilities"""
     from src.kortana.external_services.github import GitHubAgent, GitHubAgentConfig
     
@@ -100,23 +101,23 @@ def test_github_agent_capabilities():
     assert capabilities["service"] == "github"
     assert "categories" in capabilities
     assert len(capabilities["categories"]) == 4  # Repositories, Issues, PRs, Users
-    print("✓ GitHub agent capabilities test passed")
+    print("✓ GitHub agent capabilities validated")
 
 
-def run_all_tests():
+def run_all_validations():
     """Run all tests"""
-    print("\nRunning external services integration tests...\n")
+    print("\nRunning external services validation...\n")
     
     try:
-        test_agent_config()
-        test_service_manager()
-        test_service_types()
-        test_spotify_config()
-        test_github_config()
-        test_spotify_agent_capabilities()
-        test_github_agent_capabilities()
+        validate_agent_config()
+        validate_service_manager()
+        validate_service_types()
+        validate_spotify_config()
+        validate_github_config()
+        validate_spotify_agent_capabilities()
+        validate_github_agent_capabilities()
         
-        print("\n✅ All tests passed!\n")
+        print("\n✅ All validations passed!\n")
         return 0
     except Exception as e:
         print(f"\n❌ Test failed: {e}\n")
@@ -126,4 +127,4 @@ def run_all_tests():
 
 
 if __name__ == "__main__":
-    sys.exit(run_all_tests())
+    sys.exit(run_all_validations())

@@ -6,8 +6,7 @@ requests to multiple external service agents.
 """
 
 import pytest
-import asyncio
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 from src.kortana.external_services.base.service_manager import (
     ExternalServiceManager,
@@ -79,7 +78,6 @@ class TestExternalServiceManager:
     def test_manager_initialization(self, manager):
         """Test service manager initialization"""
         assert manager._services == {}
-        assert manager._initialized == False
         assert manager.logger is not None
     
     @pytest.mark.asyncio
@@ -133,7 +131,7 @@ class TestExternalServiceManager:
         result = await manager.query_service(ServiceType.SPOTIFY, "test query")
         
         assert result["service"] == "spotify"
-        assert result["success"] == True
+        assert result["success"] is True
         assert "result" in result
         assert "elapsed_time" in result
     
@@ -154,7 +152,7 @@ class TestExternalServiceManager:
         result = await manager.query_service(ServiceType.SPOTIFY, "test query")
         
         assert result["service"] == "spotify"
-        assert result["success"] == False
+        assert result["success"] is False
         assert "error" in result
         assert "Test error" in result["error"]
     
@@ -202,7 +200,6 @@ class TestExternalServiceManager:
         mock_spotify_agent.cleanup.assert_called_once()
         mock_github_agent.cleanup.assert_called_once()
         assert manager._services == {}
-        assert manager._initialized == False
     
     @pytest.mark.asyncio
     async def test_cleanup_with_error(self, manager, mock_spotify_agent):
@@ -243,8 +240,8 @@ class TestServiceManagerIntegration:
         spotify_result = await manager.query_service(ServiceType.SPOTIFY, "find songs")
         github_result = await manager.query_service(ServiceType.GITHUB, "list repos")
         
-        assert spotify_result["success"] == True
-        assert github_result["success"] == True
+        assert spotify_result["success"] is True
+        assert github_result["success"] is True
         
         # Get capabilities
         all_caps = manager.get_all_capabilities()

@@ -8,7 +8,7 @@ discovery, and routing capabilities for low-latency operations.
 from typing import Dict, Optional, Any, List
 from enum import Enum
 import logging
-from .agent_base import BaseExternalAgent, AgentConfig
+from .agent_base import BaseExternalAgent
 
 
 class ServiceType(str, Enum):
@@ -30,7 +30,6 @@ class ExternalServiceManager:
         """Initialize the service manager"""
         self.logger = logging.getLogger(self.__class__.__name__)
         self._services: Dict[ServiceType, BaseExternalAgent] = {}
-        self._initialized = False
         
     async def register_service(
         self,
@@ -156,4 +155,3 @@ class ExternalServiceManager:
                 self.logger.error(f"Error cleaning up {service_type.value}: {e}")
         
         self._services.clear()
-        self._initialized = False

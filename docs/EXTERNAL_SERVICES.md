@@ -50,10 +50,7 @@ The module requires the following dependencies:
 pip install pydantic-ai httpx
 ```
 
-For Node.js MCP servers (Spotify and GitHub):
-```bash
-npm install -g npx
-```
+For Node.js MCP servers (Spotify and GitHub), ensure you have Node.js installed (which includes npm and npx). You can download it from https://nodejs.org/ or install it via your system package manager.
 
 ## Configuration
 
@@ -277,7 +274,7 @@ If you get import errors:
 
 - **API Keys**: Store in `.env` file, never commit to version control
 - **Tokens**: Use tokens with minimal required permissions
-- **Logging**: Sensitive data is masked in logs
+- **Logging**: Avoid logging sensitive data (such as API keys or tokens), and review logs regularly for inadvertent exposure
 - **Validation**: Pydantic validates all configuration inputs
 
 ## Future Enhancements

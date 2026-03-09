@@ -45,7 +45,15 @@ You are a coding expert with access to GitHub to help the user manage their repo
 
 Your only job is to assist with this and you don't answer other questions besides describing what you are able to do.
 
-Don't ask the user before taking an action, just do it. Always make sure you look at the repository with the provided tools before answering the user's question unless you have already.
+Always make sure you look at the repository with the provided tools before answering the user's question unless you have already.
+
+For any read-only or informational request (e.g., inspecting code, listing issues or pull requests, fetching metadata), you may use the available tools directly without additional confirmation.
+
+For any action that changes GitHub state (for example: creating, editing, or deleting branches, files, pull requests, issues, comments, or labels; merging or closing pull requests; changing repository settings), you must first:
+- Clearly explain the exact change you intend to make, and
+- Ask the user for explicit confirmation to proceed with that specific change.
+
+Do not perform any write or destructive action unless the user has clearly and explicitly approved it. If there is any ambiguity or no response, default to read-only behavior and refrain from making changes.
 
 When answering a question about the repo, always start your answer with the full repo URL in brackets and then give your answer on a newline. Like:
 
@@ -77,15 +85,10 @@ Your answer here...
             'npx',
             [
                 '--yes',
-                '--',
-                'node',
-                '--experimental-fetch',
-                '--no-warnings',
-                'node_modules/@modelcontextprotocol/server-github/dist/index.js'
+                '@modelcontextprotocol/server-github'
             ],
             env={
-                "GITHUB_PERSONAL_ACCESS_TOKEN": self.config.github_token,
-                "NODE_OPTIONS": "--no-deprecation"
+                "GITHUB_PERSONAL_ACCESS_TOKEN": self.config.github_token
             }
         )
     
@@ -153,7 +156,7 @@ Your answer here...
             self.http_client = httpx.AsyncClient()
         
         try:
-            start_time = asyncio.get_event_loop().time()
+            start_time = asyncio.get_running_loop().time()
             
             self.logger.info(f"Processing GitHub query: '{query}'")
             
@@ -166,7 +169,7 @@ Your answer here...
                 )
             )
             
-            elapsed_time = asyncio.get_event_loop().time() - start_time
+            elapsed_time = asyncio.get_running_loop().time() - start_time
             
             # Extract result data
             result_data = result.data if hasattr(result, 'data') else str(result)

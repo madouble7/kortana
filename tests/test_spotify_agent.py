@@ -6,8 +6,7 @@ setup, query processing, and capabilities.
 """
 
 import pytest
-import asyncio
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, patch, MagicMock
 from pydantic import ValidationError
 
 from src.kortana.external_services.spotify import SpotifyAgent, SpotifyAgentConfig
