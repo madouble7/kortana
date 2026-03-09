@@ -9,7 +9,7 @@ Successfully integrated CopilotKit as a modern React-based frontend option for K
 ### 1. Frontend Application (`/frontend`)
 
 **Technology Stack**:
-- React 18 with TypeScript
+- React 19 with TypeScript
 - Vite for fast development and building
 - CopilotKit for AI chat interface
   - `@copilotkit/react-core`: Core functionality
