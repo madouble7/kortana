@@ -36,7 +36,7 @@ CopilotKit provides a modern React-based interface for AI-powered chat applicati
 ### Frontend (`/frontend`)
 
 Built with:
-- **React 18** with TypeScript
+- **React 19** with TypeScript
 - **Vite** for fast development and building
 - **CopilotKit** for AI chat interface
   - `@copilotkit/react-core`: Core functionality
