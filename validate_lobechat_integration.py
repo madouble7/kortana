@@ -39,7 +39,7 @@ def check_function_definitions(file_path: Path, expected_funcs: list) -> bool:
         
         defined_funcs = []
         for node in ast.walk(tree):
-            if isinstance(node, ast.FunctionDef):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 defined_funcs.append(node.name)
         
         all_found = True

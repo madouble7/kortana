@@ -16,8 +16,9 @@ services:
       - PINECONE_API_KEY=${PINECONE_API_KEY}
       - PINECONE_ENV=${PINECONE_ENV}
       - PINECONE_INDEX=${PINECONE_INDEX}
-      - KORTANA_API_KEY=${KORTANA_API_KEY:-kortana_dev_key}
+      - KORTANA_API_KEY=${KORTANA_API_KEY:?KORTANA_API_KEY must be set}
       - DATABASE_URL=${DATABASE_URL:-sqlite:///./kortana.db}
+      - ENV=${ENV:-production}
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
@@ -33,7 +34,7 @@ services:
 
   # LobeChat Frontend
   lobechat-frontend:
-    image: lobehub/lobe-chat:latest
+    image: lobehub/lobe-chat:v0.167.0
     container_name: lobechat-frontend
     ports:
       - "3210:3210"

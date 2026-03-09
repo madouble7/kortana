@@ -7,6 +7,8 @@ seamless integration with LobeChat frontend, which expects OpenAI-compatible end
 LobeChat can connect to custom backends that implement the OpenAI API format.
 """
 
+import hmac
+import logging
 import os
 import time
 import uuid
@@ -18,6 +20,10 @@ from sqlalchemy.orm import Session
 
 from src.kortana.core.orchestrator import KorOrchestrator
 from src.kortana.services.database import get_db_sync
+
+# Module-level logger and flag for one-time warning
+logger = logging.getLogger(__name__)
+_auth_warning_logged = False
 
 router = APIRouter(
     prefix="/v1",
@@ -91,28 +97,44 @@ def verify_api_key(authorization: Optional[str] = Header(None)) -> bool:
     """
     Verify the API key from the request headers.
     
-    Supports both:
-    - Authorization: Bearer <token>
-    - x-api-key: <token> (for compatibility)
+    Supports Authorization: Bearer <token> format.
     """
+    global _auth_warning_logged
+    
     api_key = os.environ.get("KORTANA_API_KEY")
+    env = os.environ.get("ENV", "").lower()
     
     if not api_key:
-        # Log warning about open access in development mode
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.warning(
-            "KORTANA_API_KEY not configured - API is accessible without authentication. "
-            "This is acceptable for development but should NEVER be used in production. "
-            "Set KORTANA_API_KEY in your .env file to enable authentication."
+        # Allow unauthenticated access only in explicit development environments
+        if env in {"development", "dev", "local"}:
+            if not _auth_warning_logged:
+                logger.warning(
+                    "KORTANA_API_KEY not configured and ENV=%s - API is accessible without "
+                    "authentication for development purposes only. Do NOT use this configuration "
+                    "in production. Set KORTANA_API_KEY in your environment to enable "
+                    "authentication.",
+                    env or "unknown",
+                )
+                _auth_warning_logged = True
+            return True
+        
+        # In non-development environments, fail closed if the API key is missing
+        logger.error(
+            "KORTANA_API_KEY is not configured while ENV=%s. Refusing to start unauthenticated "
+            "API in non-development environment. Set KORTANA_API_KEY to secure this endpoint.",
+            env or "unknown",
         )
-        return True
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Server misconfiguration: KORTANA_API_KEY is not set.",
+        )
     
     # Check Authorization header
     if authorization:
         parts = authorization.split()
         if len(parts) == 2 and parts[0].lower() == "bearer":
-            if parts[1] == api_key:
+            # Use constant-time comparison to prevent timing attacks
+            if hmac.compare_digest(parts[1], api_key):
                 return True
     
     raise HTTPException(
@@ -168,6 +190,21 @@ async def create_chat_completion(
     responses in OpenAI-compatible format.
     """
     try:
+        # Validate streaming is not requested (not yet implemented)
+        if request.stream:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Streaming responses are not yet implemented. Please set stream=false."
+            )
+        
+        # Validate model is supported
+        supported_models = {"kortana-default", "gpt-4o-mini-openai", "gemini-2.0-flash-lite"}
+        if request.model not in supported_models:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Model '{request.model}' is not supported. Supported models: {', '.join(supported_models)}"
+            )
+        
         # Extract the user's latest message
         if not request.messages:
             raise HTTPException(
@@ -192,6 +229,8 @@ async def create_chat_completion(
                 conversation_context.append(f"{msg.role}: {msg.content}")
         
         # Process through Kor'tana's orchestrator
+        # Note: Currently all models route through the same orchestrator
+        # The request.model parameter is validated but not yet used for routing
         orchestrator = KorOrchestrator(db=db)
         
         # Add conversation context to the query if available
@@ -246,12 +285,11 @@ async def create_chat_completion(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error in chat completion: {e}")
-        import traceback
-        traceback.print_exc()
+        # Log the error server-side without exposing details to client
+        logger.exception("Error processing chat completion request")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error processing chat completion: {str(e)}"
+            detail="An internal error occurred while processing your request."
         )
 
 
