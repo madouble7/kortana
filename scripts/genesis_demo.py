@@ -16,7 +16,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 async def demo_genesis_tools():
     try:
-        from src.kortana.core.execution_engine import ExecutionEngine
+        from kortana.core.execution_engine import ExecutionEngine
 
         # Initialize execution engine with current directory
         allowed_dirs = [os.getcwd()]

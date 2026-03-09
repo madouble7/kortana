@@ -128,3 +128,47 @@ class BaseLLMClient(ABC):
     def get_model_info(self) -> dict[str, Any]:
         """Get information about the current model"""
         return {"name": self.model_name, "provider": "unknown"}
+
+    def complete(self, prompt: dict[str, Any]) -> dict[str, Any]:
+        """Compatibility wrapper used by ChatEngine.
+
+        Accepts OpenAI-style prompt payloads:
+        {
+          "messages": [{"role": "system"|"user"|..., "content": "..."}],
+          "temperature": 0.7,
+          "max_tokens": 1000,
+        }
+
+        Returns a normalized shape:
+        {"content": "...", "raw": <provider_response>}
+        """
+        messages = prompt.get("messages", []) if isinstance(prompt, dict) else []
+        system_prompt = ""
+        chat_messages: list[dict[str, str]] = []
+
+        for msg in messages:
+            role = msg.get("role", "user")
+            content = msg.get("content", "")
+            if role == "system" and not system_prompt:
+                system_prompt = content
+            else:
+                chat_messages.append({"role": role, "content": content})
+
+        raw = self.generate_response(
+            system_prompt=system_prompt,
+            messages=chat_messages,
+            temperature=prompt.get("temperature", 0.7),
+            max_tokens=prompt.get("max_tokens", 1000),
+        )
+
+        content = ""
+        if isinstance(raw, dict):
+            if "content" in raw and isinstance(raw.get("content"), str):
+                content = raw["content"]
+            else:
+                try:
+                    content = raw["choices"][0]["message"].get("content", "")
+                except Exception:
+                    content = ""
+
+        return {"content": content, "raw": raw}

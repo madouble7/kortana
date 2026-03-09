@@ -20,8 +20,8 @@ def create_genesis_spark_goal():
     """Create the Genesis Spark goal via direct database insertion."""
 
     try:
-        from src.kortana.core.models import Goal, GoalStatus
-        from src.kortana.services.database import get_db_sync
+        from kortana.core.models import Goal, GoalStatus
+        from kortana.services.database import get_db_sync
 
         print("🌟 INITIATING THE GENESIS SPARK")
         print("━" * 60)

@@ -245,8 +245,8 @@ def trigger_proactive_scan():
 
         sys.path.append(".")
 
-        from src.kortana.core.autonomous_tasks import run_proactive_code_review_task
-        from src.kortana.services.database import get_db_sync
+        from kortana.core.autonomous_tasks import run_proactive_code_review_task
+        from kortana.services.database import get_db_sync
 
         db_gen = get_db_sync()
         db = next(db_gen)
