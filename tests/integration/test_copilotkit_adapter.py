@@ -9,7 +9,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from src.kortana.main import app
-from src.kortana.modules.memory_core import models as memory_models
 from src.kortana.services.database import Base, get_db_sync
 
 # Use a separate in-memory SQLite database for testing
