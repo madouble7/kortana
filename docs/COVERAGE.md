@@ -124,7 +124,7 @@ if __name__ == "__main__":
 ### Coverage not showing any results
 
 Check that:
-1. pytest-cov is installed: `pip install pytest-cov`
+1. Test dependencies are installed: `pip install -e '.[dev]'`
 2. You're running from the project root
 3. The `src/` directory exists
 
