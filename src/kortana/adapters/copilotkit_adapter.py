@@ -63,11 +63,19 @@ def verify_api_key(authorization: str | None = Header(None)) -> bool:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid API key format",
         )
-    
+
     # Get the API key from environment
     api_key = os.environ.get("KORTANA_API_KEY")
 
-    if api_key and api_key_parts[1] != api_key:
+    # If a Bearer token is provided but the server API key is not configured,
+    # treat this as a server misconfiguration instead of silently accepting it.
+    if not api_key:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Server API key is not configured",
+        )
+
+    if api_key_parts[1] != api_key:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid API key",
