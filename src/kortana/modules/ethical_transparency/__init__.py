@@ -1,0 +1,1 @@
+"""Ethical Transparency Module"""

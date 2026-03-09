@@ -8,10 +8,41 @@ from typing import Any
 
 import yaml
 
+from config.schema import KortanaConfig
+
 
 def get_project_root() -> Path:
     """Return the project root directory."""
     return Path(__file__).parent.parent.parent
+
+
+def load_kortana_config(config_path: str | None = None) -> KortanaConfig:
+    """
+    Load configuration and return a KortanaConfig object.
+    """
+    if config_path is None:
+        config_path = os.path.join(get_project_root(), "config.yaml")
+
+    raw_config = {}
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, encoding="utf-8") as f:
+                raw_config = yaml.safe_load(f) or {}
+        except Exception as e:
+            print(f"Error loading config yaml from {config_path}: {e}")
+
+    # Load covenant rules if file exists
+    covenant_path = os.path.join(get_project_root(), "covenant.yaml")
+    covenant_rules = {}
+    if os.path.exists(covenant_path):
+        try:
+            with open(covenant_path, encoding="utf-8") as f:
+                covenant_rules = yaml.safe_load(f) or {}
+        except Exception as e:
+            print(f"Error loading covenant from {covenant_path}: {e}")
+
+    # Merge into config object - pydantic-settings handles env vars automatically
+    return KortanaConfig(covenant_rules=covenant_rules, **raw_config)
 
 
 def load_config(config_path: str | None = None) -> dict[str, Any]:
