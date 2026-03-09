@@ -199,10 +199,11 @@ Multi-provider LLM support:
 
 Use the factory pattern for client creation:
 ```python
-from src.kortana.llm_clients.factory import create_llm_client
+from src.kortana.llm_clients.factory import LLMClientFactory
 
-client = create_llm_client(provider="openai", model="gpt-4")
-response = await client.generate(prompt)
+factory = LLMClientFactory()
+client = factory.create_client(provider="openai", model="gpt-4")
+response = client.generate_response(prompt)
 ```
 
 ## Testing
