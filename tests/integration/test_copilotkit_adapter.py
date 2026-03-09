@@ -6,15 +6,18 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from src.kortana.main import app
+from src.kortana.modules.memory_core import models as memory_models
 from src.kortana.services.database import Base, get_db_sync
 
 # Use a separate in-memory SQLite database for testing
-SQLALCHEMY_DATABASE_URL_TEST = "sqlite:///./test_kortana_copilotkit.db"
+SQLALCHEMY_DATABASE_URL_TEST = "sqlite:///:memory:"
 engine_test = create_engine(
-    SQLALCHEMY_DATABASE_URL_TEST, connect_args={"check_same_thread": False}
+    SQLALCHEMY_DATABASE_URL_TEST,
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine_test)
 
