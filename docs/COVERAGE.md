@@ -76,7 +76,7 @@ Coverage is automatically run in CI pipelines:
 
 1. **GitHub Actions**: 
    - Runs on every push and pull request
-   - Tests across Python 3.9, 3.10, and 3.11
+   - Tests on Python 3.11+
    - Uploads coverage to Codecov
    - Generates coverage badge
 
