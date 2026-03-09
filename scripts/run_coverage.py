@@ -53,7 +53,14 @@ def main():
     print(f"  - XML:  {project_root / 'coverage.xml'}")
     print()
     print("To view HTML report:")
-    print(f"  open {project_root / 'htmlcov' / 'index.html'}")
+    html_report = project_root / "htmlcov" / "index.html"
+    if sys.platform.startswith("darwin"):
+        cmd_hint = f"open {html_report}"
+    elif sys.platform.startswith("win"):
+        cmd_hint = f'start \"\" \"{html_report}\"'
+    else:
+        cmd_hint = f"xdg-open {html_report}"
+    print(f"  {cmd_hint}")
     print("=" * 70)
     
     return result.returncode
