@@ -5,7 +5,7 @@ import './App.css'
 
 function App() {
   return (
-    <CopilotKit runtimeUrl="http://localhost:8000/copilotkit">
+    <CopilotKit runtimeUrl={import.meta.env.VITE_COPILOTKIT_URL || "/copilotkit"}>
       <CopilotSidebar
         defaultOpen={true}
         labels={{
