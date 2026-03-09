@@ -4,7 +4,6 @@ Script to check coverage for critical modules in Kor'tana.
 Highlights security and core modules that require higher coverage.
 """
 
-import sys
 from pathlib import Path
 
 
