@@ -116,13 +116,13 @@ When adding new API endpoints:
 Example:
 ```python
 from fastapi import Request, HTTPException
-from src.kortana.modules.security.services import ThreatDetectionService
+from src.kortana.modules.security.services.threat_detection_service import ThreatDetectionService
 
 async def process_user_input(user_input: str, request: Request) -> dict:
     """Process user input with security checks."""
     # Check for threats
     threat_service = ThreatDetectionService()
-    if threat_service.detect_sql_injection(user_input):
+    if threat_service._detect_injection_attacks(user_input):
         raise HTTPException(status_code=400, detail="Invalid input detected")
     
     # Log the request source for auditing (request param used here)
