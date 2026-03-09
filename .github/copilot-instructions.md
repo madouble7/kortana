@@ -21,6 +21,7 @@ Kor'tana embodies three core principles (The Sacred Trinity):
 - **Python Version**: Target Python 3.11+
 - **Type Hints**: ALWAYS use type annotations for function parameters and return values
   ```python
+  from typing import Any
   def process_memory(memory_id: int, content: str) -> dict[str, Any]:
       """Process and store a memory with proper typing."""
       pass
