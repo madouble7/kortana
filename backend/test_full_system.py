@@ -41,7 +41,7 @@ def test_configuration():
     print_header("TEST 1: Configuration Loading")
 
     try:
-        from config import get_settings, Settings
+        from config import get_settings
         settings = get_settings()
 
         # Validate configuration
@@ -125,7 +125,7 @@ def test_provider_connectivity():
     # Test OpenAI
     try:
         import openai
-        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         # Just verify client is created, don't make API call
         print_result("OpenAI Client", True, "Client initialized")
         results.append(True)
@@ -136,7 +136,7 @@ def test_provider_connectivity():
     # Test Anthropic
     try:
         import anthropic
-        client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
         print_result("Anthropic Client", True, "Client initialized")
         results.append(True)
     except Exception as e:
@@ -154,7 +154,7 @@ def test_provider_connectivity():
     # Test Pinecone
     try:
         from pinecone import Pinecone
-        pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
+        Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
         print_result("Pinecone Client", True, "Client initialized")
         results.append(True)
     except Exception as e:
@@ -214,7 +214,7 @@ def test_database_readiness():
             )
             conn.close()
             db_exists = True
-        except Exception as e:
+        except Exception:
             print(f"  ⚠️  Database '{settings.DB_NAME}' does not exist yet")
             db_exists = False
 
@@ -225,9 +225,8 @@ def test_database_readiness():
             print("\nChecking Alembic migration status...")
             try:
                 from alembic.config import Config
-                from alembic import command
 
-                alembic_cfg = Config("alembic.ini")
+                Config("alembic.ini")
                 # Just verify config loads
                 print_result("Alembic Config", True, "Configuration loaded successfully")
 

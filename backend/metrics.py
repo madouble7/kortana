@@ -10,8 +10,6 @@ Date: January 14, 2026
 
 import time
 from collections import defaultdict
-from functools import wraps
-from typing import Callable
 
 from fastapi import APIRouter, Response
 from prometheus_client import (
@@ -21,7 +19,6 @@ from prometheus_client import (
     Histogram,
     Info,
     generate_latest,
-    multiprocess,
     CollectorRegistry,
 )
 

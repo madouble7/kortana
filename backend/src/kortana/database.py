@@ -85,7 +85,7 @@ class DatabaseManager:
 
             # Test connection
             async with self.engine.connect() as conn:
-                result = await conn.execute(text("SELECT 1"))
+                await conn.execute(text("SELECT 1"))
                 await conn.commit()
 
             self._connected = True
@@ -133,7 +133,7 @@ class DatabaseManager:
     async def get_stats(self) -> dict:
         """Get database statistics"""
         try:
-            async with self.engine.connect() as conn:
+            async with self.engine.connect():
                 # Get connection pool stats
                 pool = self.engine.pool
                 stats = {

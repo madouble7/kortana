@@ -146,7 +146,7 @@ def test_provider_connectivity():
     try:
         import openai
 
-        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         # Just verify client is created, don't make API call
         print_result("OpenAI Client", True, "Client initialized")
         results.append(True)
@@ -158,7 +158,7 @@ def test_provider_connectivity():
     try:
         import anthropic
 
-        client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
         print_result("Anthropic Client", True, "Client initialized")
         results.append(True)
     except Exception as e:
@@ -177,7 +177,7 @@ def test_provider_connectivity():
     try:
         from pinecone import Pinecone
 
-        pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
+        Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
         print_result("Pinecone Client", True, "Client initialized")
         results.append(True)
     except Exception as e:
@@ -253,7 +253,7 @@ def test_database_readiness():
             try:
                 from alembic.config import Config
 
-                alembic_cfg = Config("alembic.ini")
+                Config("alembic.ini")
                 # Just verify config loads
                 print_result(
                     "Alembic Config", True, "Configuration loaded successfully"

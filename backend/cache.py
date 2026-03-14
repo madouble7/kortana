@@ -124,7 +124,9 @@ class CacheManager:
                     decode_responses=True,
                 )
                 await self._async_client.ping()
-                logger.info(f"Async Redis connected: {self.config.host}:{self.config.port}")
+                logger.info(
+                    f"Async Redis connected: {self.config.host}:{self.config.port}"
+                )
             except Exception as e:
                 logger.error(f"Async Redis connection failed: {e}")
                 self.config.enabled = False
@@ -312,7 +314,8 @@ class CacheManager:
                 client.ping()
                 return True
             return False
-        except:
+        except Exception as e:
+            logger.error(f"Cache health check failed: {e}")
             return False
 
 

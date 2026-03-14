@@ -104,7 +104,9 @@ class MessageResponse(BaseModel):
 # ==================== API Endpoints ====================
 
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED
+)
 async def register(user_data: UserCreate) -> UserResponse:
     """
     Register a new user using unified auth system
@@ -147,7 +149,9 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()) -> Token:
 
     refresh_token = create_refresh_token(data={"sub": user.id, "email": user.email})
 
-    return Token(access_token=access_token, refresh_token=refresh_token, token_type="bearer")
+    return Token(
+        access_token=access_token, refresh_token=refresh_token, token_type="bearer"
+    )
 
 
 @router.post("/refresh", response_model=Token)
@@ -165,9 +169,16 @@ async def refresh_token(request: RefreshTokenRequest) -> Token:
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    if token_data.email is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     # Get user to verify active status
     user = get_user_by_email(token_data.email)
-    if user is None or not user.get("is_active"):
+    if user is None or not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found or inactive",
@@ -176,10 +187,10 @@ async def refresh_token(request: RefreshTokenRequest) -> Token:
 
     # Create new tokens using unified functions
     access_token = create_access_token(
-        data={"sub": user["id"], "email": user["email"], "role": user["role"]}
+        data={"sub": user.id, "email": user.email, "role": user.role}
     )
 
-    new_refresh_token = create_refresh_token(data={"sub": user["id"], "email": user["email"]})
+    new_refresh_token = create_refresh_token(data={"sub": user.id, "email": user.email})
 
     return Token(
         access_token=access_token,
@@ -195,13 +206,26 @@ async def get_me(
     """
     Get current authenticated user's information
     """
+    if current_user.email is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token"
+        )
+
     user = get_user_by_email(current_user.email)
 
     if user is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
 
-    # Return dict which UserResponse will convert
-    return UserResponse(**user) if isinstance(user, dict) else user
+    # Explicitly map to UserResponse for type safety
+    return UserResponse(
+        id=user.id,
+        email=user.email,
+        role=user.role,
+        is_active=user.is_active,
+        created_at=user.created_at,
+    )
 
 
 @router.post("/logout", response_model=MessageResponse)
@@ -225,13 +249,20 @@ async def change_password(
     """
     Change user password using unified password utilities
     """
+    if current_user.email is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token"
+        )
+
     user = get_user_by_email(current_user.email)
 
     if user is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
 
     # Verify current password using unified verify_password
-    if not verify_password(current_password, user["hashed_password"]):
+    if not verify_password(current_password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Current password is incorrect",
@@ -262,11 +293,18 @@ async def deactivate_account(
     """
     Deactivate current user account
     """
+    if current_user.email is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token"
+        )
+
     user = get_user_by_email(current_user.email)
 
     if user is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
 
-    user["is_active"] = False
+    user.is_active = False
 
     return MessageResponse(message="Account successfully deactivated")

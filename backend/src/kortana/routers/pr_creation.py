@@ -117,11 +117,14 @@ class PRCreator:
 """
         return description
 
-    def create_pr(self, task_id: str, repo: str = None) -> dict[str, Any]:
+    def create_pr(self, task_id: str | Any, repo: str | None = None) -> dict[str, Any]:
         """Create a PR for a completed task"""
         self._validate_token()
 
-        task = self.db.query(GitHubTask).filter(GitHubTask.id == task_id).first()
+        # Handle task_id being a Column object from SQLAlchemy if needed
+        actual_task_id = str(task_id)
+
+        task = self.db.query(GitHubTask).filter(GitHubTask.id == actual_task_id).first()
         if not task:
             raise PRCreationError(f"Task {task_id} not found")
 
@@ -197,7 +200,10 @@ class PRCreator:
         }
 
     def get_pr_status(
-        self, task_id: str = None, repo: str = None, pr_number: int = None
+        self,
+        task_id: str | None = None,
+        repo: str | None = None,
+        pr_number: int | None = None,
     ) -> dict[str, Any]:
         """Get status of a Pull Request"""
         self._validate_token()
@@ -246,7 +252,7 @@ class PRCreator:
             logger.error(f"Failed to list PRs: {e}")
             return []
 
-    def auto_create_prs_for_completed(self, repo: str = None) -> dict[str, Any]:
+    def auto_create_prs_for_completed(self, repo: str | None = None) -> dict[str, Any]:
         """Automatically create PRs for all completed tasks that don't have one"""
         query = self.db.query(GitHubTask).filter(
             GitHubTask.status == "completed", GitHubTask.github_pr_number == None
@@ -271,9 +277,9 @@ class PRCreator:
 
     def create_pr_from_issue(
         self,
-        github_issue_number: int = None,
-        repo: str = None,
-        issue_number: int = None,
+        github_issue_number: int | None = None,
+        repo: str | None = None,
+        issue_number: int | None = None,
     ) -> dict[str, Any]:
         """Create PR from a GitHub issue by finding its task"""
         self._validate_token()
@@ -338,7 +344,9 @@ async def create_pr_from_issue_endpoint(
 
 @router.get("/status/{task_id}")
 async def get_pr_status(
-    task_id: str, repo: str = None, pr_creator: PRCreator = Depends(get_pr_creator)
+    task_id: str,
+    repo: str | None = None,
+    pr_creator: PRCreator = Depends(get_pr_creator),
 ) -> dict[str, Any]:
     """Get PR status for a task"""
     try:

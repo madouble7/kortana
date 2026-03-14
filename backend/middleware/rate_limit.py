@@ -19,11 +19,10 @@ import asyncio
 import hashlib
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
 from functools import wraps
 from typing import Callable, Dict, Optional, Tuple
 
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import HTTPException, Request, status
 from fastapi.responses import JSONResponse
 
 
@@ -367,7 +366,7 @@ class RateLimitMiddleware:
             return
 
         # Get request info
-        method = scope.get("method", "GET")
+        scope.get("method", "GET")
 
         # Create mock request for rate limiting
         # In production, you'd use actual request object

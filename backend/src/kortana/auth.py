@@ -20,7 +20,7 @@ This module provides:
 
 import os
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Any, Optional, Protocol, runtime_checkable
 
 import jwt
 from fastapi import Depends, HTTPException, status
@@ -29,20 +29,61 @@ from passlib.context import CryptContext
 from pydantic import BaseModel
 
 # ========================================================
+# PROTOCOLS FOR TYPE SAFETY
+# ========================================================
+
+
+@runtime_checkable
+class UserProtocol(Protocol):
+    """Protocol for user objects returned by auth system"""
+
+    id: int
+    email: str
+    hashed_password: str
+    role: str
+    is_active: bool
+    created_at: datetime
+
+
+class UserObject:
+    """Simple object wrapper for dictionary user data to support dot notation"""
+
+    id: int
+    email: str
+    hashed_password: str
+    role: str
+    is_active: bool
+    created_at: datetime
+
+    def __init__(self, **kwargs: Any) -> None:
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+    def __getitem__(self, key: str) -> Any:
+        return getattr(self, key)
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return getattr(self, key, default)
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        setattr(self, key, value)
+
+
+# ========================================================
 # CONFIGURATION - ENVIRONMENT-BASED ONLY
 # ========================================================
 
 # Security configuration - environment variables only for production safety
-SECRET_KEY = os.getenv("SECRET_KEY")
-if not SECRET_KEY:
+_SECRET_KEY = os.getenv("SECRET_KEY")
+if not _SECRET_KEY:
     # Development fallback - NEVER use in production
-    SECRET_KEY = "kor-tana-unified-dev-secret-change-me-in-production-2026"
+    _SECRET_KEY = "kor-tana-unified-dev-secret-change-me-in-production-2026"
     print(
         "⚠️  WARNING: Using development SECRET_KEY. Set SECRET_KEY environment variable for production."
     )
 
 # Ensure SECRET_KEY is always a string for type safety
-SECRET_KEY: str = SECRET_KEY  # type: ignore
+SECRET_KEY: str = _SECRET_KEY
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
@@ -59,16 +100,16 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 # ========================================================
 
 # In-memory user store (replace with actual database in production)
-# Format: {email: dict}
-_users_db: dict[str, dict] = {}
+# Format: {email: UserObject}
+_users_db: dict[str, UserObject] = {}
 
 
-def get_user_by_email(email: str) -> Optional[dict]:
+def get_user_by_email(email: str) -> Optional[UserObject]:
     """Get user from src.kortana.database by email"""
     return _users_db.get(email)
 
 
-def create_user(user_data: Any) -> dict:
+def create_user(user_data: Any) -> UserObject:
     """
     Create a new user in the database
 
@@ -76,7 +117,7 @@ def create_user(user_data: Any) -> dict:
         user_data: UserCreate Pydantic model with registration data
 
     Returns:
-        Created user dictionary
+        Created user object
 
     Raises:
         HTTPException: If user already exists
@@ -104,21 +145,21 @@ def create_user(user_data: Any) -> dict:
     hashed_password = get_password_hash(user_data.password)
     user_id = len(_users_db) + 1
 
-    db_user = {
-        "id": user_id,
-        "email": user_data.email,
-        "hashed_password": hashed_password,
-        "role": "user",
-        "is_active": True,
-        "created_at": datetime.now(timezone.utc),
-    }
+    db_user = UserObject(
+        id=user_id,
+        email=user_data.email,
+        hashed_password=hashed_password,
+        role="user",
+        is_active=True,
+        created_at=datetime.now(timezone.utc),
+    )
 
     _users_db[user_data.email] = db_user
     # Return as an object that has expected attributes or just the dict
     return db_user
 
 
-def authenticate_user(email: str, password: str) -> Optional[dict]:
+def authenticate_user(email: str, password: str) -> Optional[UserObject]:
     """
     Authenticate user with email and password
 
@@ -134,7 +175,7 @@ def authenticate_user(email: str, password: str) -> Optional[dict]:
     if not user:
         return None
 
-    if not verify_password(password, user["hashed_password"]):
+    if not verify_password(password, user.hashed_password):
         return None
 
     return user
@@ -312,9 +353,13 @@ def create_access_token(
         expire = datetime.now(timezone.utc) + expires_delta
     else:
         if token_type == "access":
-            expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+            expire = datetime.now(timezone.utc) + timedelta(
+                minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+            )
         else:  # refresh
-            expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+            expire = datetime.now(timezone.utc) + timedelta(
+                days=REFRESH_TOKEN_EXPIRE_DAYS
+            )
 
     # Add standard claims
     to_encode.update(
@@ -373,7 +418,7 @@ def decode_token(token: str) -> TokenData:
         # print(f"DEBUG AUTH: payload={payload}")
 
         # Validate token structure and version
-        token_version = payload.get("token_version", "v1")
+        payload.get("token_version", "v1")
 
         # Extract common fields
         user_id = payload.get("sub")
@@ -430,7 +475,9 @@ def decode_token(token: str) -> TokenData:
 # ========================================================
 
 
-def create_access_token_legacy(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token_legacy(
+    data: dict, expires_delta: Optional[timedelta] = None
+) -> str:
     """
     Legacy token creation - maintains backward compatibility
 
@@ -482,7 +529,9 @@ def decode_token_legacy(token: str) -> dict:
             "sub": username,
         }
     except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired"
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -569,7 +618,9 @@ async def get_current_active_user(
     # In production, this would check database for active status
     # For now, we validate that we have basic user info
     if not current_user.email and not current_user.username:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
 
     return current_user
 
@@ -590,7 +641,9 @@ async def get_admin_user(
         HTTPException: 403 if not admin
     """
     if current_user.role != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
+        )
 
     return current_user
 
@@ -667,7 +720,9 @@ def validate_auth_system_integrity() -> dict:
 
     # Warn if using development secret
     if SECRET_KEY and "dev-secret" in SECRET_KEY:
-        status_check["warnings"] = ["Using development SECRET_KEY - not safe for production"]
+        status_check["warnings"] = [
+            "Using development SECRET_KEY - not safe for production"
+        ]
 
     return status_check
 

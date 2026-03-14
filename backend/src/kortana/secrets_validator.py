@@ -133,7 +133,7 @@ class SecretsValidator:
                 connect_args={"timeout": 5},
             )
             with engine.connect() as conn:
-                result = conn.execute(sqlalchemy.text("SELECT 1"))
+                conn.execute(sqlalchemy.text("SELECT 1"))
                 return (
                     True,
                     f"✅ Database connection valid - {self.settings.DB_HOST}:{self.settings.DB_PORT}",

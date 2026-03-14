@@ -47,6 +47,7 @@ try:
         health,
         knowledge,
         memory,
+        orchestrator,
         pr_creation,
         prayer,
         rclone,
@@ -212,6 +213,9 @@ def create_app() -> FastAPI:
         app.include_router(health.router, prefix="/api/system/health", tags=["health"])
         app.include_router(prayer.router)
         app.include_router(gemini.router, prefix="/api/gemini", tags=["gemini"])
+        app.include_router(
+            orchestrator.router, prefix="/api/orchestrator", tags=["ai-orchestrator"]
+        )
         app.include_router(memory.router, prefix="/api/memory", tags=["memory"])
         app.include_router(agents.router, prefix="/api/agents", tags=["agents"])
         app.include_router(github.router, prefix="/api/github", tags=["github"])

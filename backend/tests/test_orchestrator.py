@@ -96,7 +96,7 @@ class TestTestOrchestrator:
         mock_result.returncode = 0
         mock_run.return_value = mock_result
 
-        result = orchestrator.run_tests(coverage=True)
+        orchestrator.run_tests(coverage=True)
 
         # Verify coverage flags were added
         call_args = mock_run.call_args
@@ -117,7 +117,7 @@ class TestTestOrchestrator:
         mock_result.returncode = 0
         mock_run.return_value = mock_result
 
-        result = orchestrator.run_tests(markers="unit")
+        orchestrator.run_tests(markers="unit")
 
         call_args = mock_run.call_args
         assert "-m" in call_args[0][0] or "-m" in str(call_args)

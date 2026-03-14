@@ -4,6 +4,7 @@ Provides async SQLAlchemy with connection pooling and optimization
 """
 
 import os
+import time
 from collections.abc import AsyncGenerator
 
 from config import get_settings
@@ -37,9 +38,7 @@ class DatabaseConfig:
 
     def get_url(self) -> str:
         """Get async database URL"""
-        return (
-            f"postgresql+asyncpg://{self.user}:{self.password}@{self.host}:{self.port}/{self.name}"
-        )
+        return f"postgresql+asyncpg://{self.user}:{self.password}@{self.host}:{self.port}/{self.name}"
 
     def get_sync_url(self) -> str:
         """Get sync database URL (for migrations)"""
@@ -83,7 +82,7 @@ class DatabaseManager:
 
             # Test connection
             async with self.engine.connect() as conn:
-                result = await conn.execute(text("SELECT 1"))
+                await conn.execute(text("SELECT 1"))
                 await conn.commit()
 
             self._connected = True
@@ -131,7 +130,7 @@ class DatabaseManager:
     async def get_stats(self) -> dict:
         """Get database statistics"""
         try:
-            async with self.engine.connect() as conn:
+            async with self.engine.connect():
                 # Get connection pool stats
                 pool = self.engine.pool
                 stats = {
@@ -224,7 +223,9 @@ class QueryMetrics:
             "slow_queries": self.slow_queries,
             "avg_query_time_ms": round(avg_time * 1000, 2),
             "error_count": self.errors,
-            "slow_query_rate": round(self.slow_queries / max(self.total_queries, 1) * 100, 2),
+            "slow_query_rate": round(
+                self.slow_queries / max(self.total_queries, 1) * 100, 2
+            ),
         }
 
 

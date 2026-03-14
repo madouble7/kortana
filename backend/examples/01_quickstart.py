@@ -3,7 +3,6 @@ KOR'TANA Quickstart Example
 Basic usage of the Kor'tana API
 """
 
-import asyncio
 from main import app
 from fastapi.testclient import TestClient
 

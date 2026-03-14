@@ -158,7 +158,7 @@ async def add_task(payload: dict):
     """Add a new task to the queue"""
     name = payload.get("name")
     description = payload.get("description")
-    priority = payload.get("priority", 5)
+    payload.get("priority", 5)
 
     if not name:
         raise HTTPException(status_code=400, detail="Missing 'name'")

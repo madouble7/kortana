@@ -506,7 +506,7 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
         # Map titles to IDs for prerequisite checking
         title_to_id = {t.title: t.id for t in tasks}
         # Also map IDs to tasks for easier access
-        id_to_task = {t.id: t for t in tasks}
+        {t.id: t for t in tasks}
 
         for task in tasks:
             if (

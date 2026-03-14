@@ -8,7 +8,6 @@ from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.kortana.database import get_db_manager
 from src.kortana.logger import log_error, log_request
 from src.kortana.models import Task
 from src.kortana.services.gemini import gemini_service

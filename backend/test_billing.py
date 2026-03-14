@@ -33,7 +33,7 @@ def test_billing_configuration():
             
             # Try to retrieve account info
             account = stripe.Account.retrieve()
-            print(f"\n✅ Stripe Connection: SUCCESS")
+            print("\n✅ Stripe Connection: SUCCESS")
             print(f"   Account ID: {account.id}")
             print(f"   Country: {account.country}")
             print(f"   Currency: {account.default_currency}")
@@ -41,7 +41,7 @@ def test_billing_configuration():
             print("\n⚠️  Stripe package not installed")
             print("   Run: pip install stripe")
         except Exception as e:
-            print(f"\n❌ Stripe Connection: FAILED")
+            print("\n❌ Stripe Connection: FAILED")
             print(f"   Error: {str(e)}")
     else:
         print("\n⚠️  Stripe not configured - billing features will not work")

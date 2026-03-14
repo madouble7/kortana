@@ -376,7 +376,7 @@ class RateLimitMiddleware:
             return
 
         # Get request info
-        method = scope.get("method", "GET")
+        scope.get("method", "GET")
 
         # Create mock request for rate limiting
         # In production, you'd use actual request object

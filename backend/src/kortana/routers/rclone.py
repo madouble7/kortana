@@ -44,7 +44,7 @@ async def list_files(remote: str, path: str = "") -> dict[str, Any]:
 async def copy_file(source: str, destination: str) -> dict[str, Any]:
     """Copy a file/folder via rclone."""
     try:
-        process = subprocess.Popen(
+        subprocess.Popen(
             ["rclone", "copy", source, destination, "--progress"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

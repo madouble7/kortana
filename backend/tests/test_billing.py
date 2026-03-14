@@ -7,16 +7,12 @@ import os
 from unittest.mock import MagicMock, patch
 
 import pytest
-import stripe
 
 from schemas import (
     BillingPlanType,
     CustomerCreate,
-    Customer,
     SubscriptionCreate,
-    Subscription,
     PaymentIntentCreate,
-    BillingInfo,
 )
 
 
@@ -93,7 +89,7 @@ class TestBillingEndpoints:
         }, clear=True):
             # Need to reload config
             from config import get_settings
-            settings = get_settings()
+            get_settings()
             
             response = client.get("/api/billing/config")
             # Should return 503 when not configured
