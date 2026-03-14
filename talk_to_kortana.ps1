@@ -59,11 +59,11 @@ do {
                 Write-Host "❌ Server not running on port 8000" -ForegroundColor Red
                 Write-Host "Start it with:
   cd backend
-  python -m uvicorn main:app --port 8000`n" -ForegroundColor Yellow
+  python -m uvicorn src.kortana.main:app --port 8000`n" -ForegroundColor Yellow
 
                 $start = Read-Host "Start server now? (y/n)"
                 if ($start -eq 'y') {
-                    Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd backend; python -m uvicorn main:app --port 8000"
+                    Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd backend; python -m uvicorn src.kortana.main:app --port 8000"
                     Start-Sleep -Seconds 5
                     & python kor_tana_chat.py
                 }
@@ -93,11 +93,11 @@ do {
                 Write-Host "❌ Server not running on port 8000" -ForegroundColor Red
                 Write-Host "Start it with:
   cd backend
-  python -m uvicorn main:app --port 8000`n" -ForegroundColor Yellow
+  python -m uvicorn src.kortana.main:app --port 8000`n" -ForegroundColor Yellow
 
                 $start = Read-Host "Start server now? (y/n)"
                 if ($start -eq 'y') {
-                    Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd backend; python -m uvicorn main:app --port 8000"
+                    Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd backend; python -m uvicorn src.kortana.main:app --port 8000"
                     Start-Sleep -Seconds 5
                     & python kor_tana_voice_chat.py
                 }
@@ -114,3 +114,4 @@ do {
     }
 
 } while ($true)
+

@@ -164,7 +164,7 @@ def main():
 
     if not server_ok:
         print(
-            "   ⚠️  Server not running - Start: cd backend && python -m uvicorn main:app --port 8000"
+            "   ⚠️  Server not running - Start: cd backend && python -m uvicorn src.kortana.main:app --port 8000"
         )
     else:
         print("   ✅ Server is running")
@@ -182,3 +182,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

@@ -228,7 +228,7 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
             classification=TaskClassification.APPROVAL,
             status=TaskStatus.PENDING,
             prerequisites=["run_migrations"],
-            command="python -m uvicorn main:app --host 0.0.0.0 --port 8000",
+            command="python -m uvicorn src.kortana.main:app --host 0.0.0.0 --port 8000",
             description="Start KOR'TANA backend server",
         ),
         "verify_health": DeploymentTask(
@@ -660,3 +660,4 @@ async def protocol_health() -> dict[str, Any]:
         "owner": "Matt",
         "timestamp": datetime.utcnow().isoformat(),
     }
+

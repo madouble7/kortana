@@ -1,7 +1,7 @@
 # Google App Engine configuration (Alternative to Cloud Run)
 runtime: python311
 service: kortana-backend
-entrypoint: uvicorn main:app --host 0.0.0.0 --port $PORT
+entrypoint: uvicorn src.kortana.main:app --host 0.0.0.0 --port $PORT
 
 instance_class: F2
 

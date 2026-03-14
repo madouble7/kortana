@@ -288,7 +288,7 @@ def main():
         print("   1. Start PostgreSQL (if not running)")
         print("   2. Create database: createdb -U kortana kortana_db")
         print("   3. Run migrations: alembic upgrade head")
-        print("   4. Start backend: python -m uvicorn main:app --reload")
+        print("   4. Start backend: python -m uvicorn src.kortana.main:app --reload")
         print("   5. View API docs: http://localhost:8000/docs")
     else:
         print("  ⚠️  Some tests failed - review output above")
@@ -298,3 +298,4 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
+

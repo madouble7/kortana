@@ -19,7 +19,7 @@ app = Celery(
     "kortana",
     broker=REDIS_URL,
     backend=REDIS_URL,
-    include=["tasks"],  # Import tasks module
+    include=["src.kortana.tasks"],  # Import tasks module
 )
 
 # Configure Celery
@@ -41,21 +41,21 @@ app.conf.update(
 
 # Optional: Configure task routes
 app.conf.task_routes = {
-    "tasks.process_chat": {"queue": "chat"},
-    "tasks.analyze_image": {"queue": "analysis"},
-    "tasks.run_autonomy_cycle": {"queue": "autonomy"},
-    "tasks.execute_hop_task": {"queue": "hop"},
-    "tasks.run_github_autonomy_cycle": {"queue": "autonomy"},
+    "src.kortana.tasks.process_chat": {"queue": "chat"},
+    "src.kortana.tasks.analyze_image": {"queue": "analysis"},
+    "src.kortana.tasks.run_autonomy_cycle": {"queue": "autonomy"},
+    "src.kortana.tasks.execute_hop_task": {"queue": "hop"},
+    "src.kortana.tasks.run_github_autonomy_cycle": {"queue": "autonomy"},
 }
 
 # Celery Beat Schedule
 app.conf.beat_schedule = {
     "github-autonomy-every-10-minutes": {
-        "task": "tasks.run_github_autonomy_cycle",
+        "task": "src.kortana.tasks.run_github_autonomy_cycle",
         "schedule": 600.0,  # 10 minutes
     },
     "hop-cycle-every-hour": {
-        "task": "tasks.run_autonomy_cycle",
+        "task": "src.kortana.tasks.run_autonomy_cycle",
         "schedule": crontab(minute=0),  # Every hour at top of hour
     },
 }

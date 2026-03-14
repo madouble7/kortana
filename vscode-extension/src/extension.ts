@@ -85,7 +85,7 @@ export function activate(context: vscode.ExtensionContext) {
                 }
             } catch (error) {
                 vscode.window.showWarningMessage(
-                    "Backend is offline. Start it with: cd backend && python -m uvicorn main:app --reload"
+                    "Backend is offline. Start it with: cd backend && python -m uvicorn src.kortana.main:app --reload"
                 );
             }
         })
@@ -338,3 +338,4 @@ function getWebviewContent(url: string): string {
 export function deactivate() {
     console.log("Kor'tana VS Code Extension deactivated");
 }
+

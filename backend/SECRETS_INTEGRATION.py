@@ -267,7 +267,7 @@ QUICK START: Using Rotated API Keys in Kor'tana
    Expected: Detailed report of all API key validations
 
 4. START THE DEVELOPMENT SERVER
-   Command: uvicorn main:app --reload --host 0.0.0.0 --port 8000
+   Command: uvicorn src.kortana.main:app --reload --host 0.0.0.0 --port 8000
    Expected: Detailed startup output with API key status
 
 5. CHECK HEALTH ENDPOINT
@@ -341,3 +341,4 @@ if __name__ == "__main__":
         print("Next Step: Run 'python secrets_validator.py' to test connectivity\n")
     else:
         print("Some configuration issues detected. Review output above.\n")
+

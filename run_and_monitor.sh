@@ -213,7 +213,7 @@ start_backend_local() {
     print_warning "⚠️  Server will bind to 0.0.0.0 (all interfaces) - ensure firewall is configured"
     
     # Start backend in background
-    nohup python3 -m uvicorn main:app --host 0.0.0.0 --port ${BACKEND_PORT} --reload > backend.log 2>&1 &
+    nohup python3 -m uvicorn src.kortana.main:app --host 0.0.0.0 --port ${BACKEND_PORT} --reload > backend.log 2>&1 &
     BACKEND_PID=$!
     
     print_success "Backend started (PID: ${BACKEND_PID})"
@@ -406,3 +406,4 @@ main() {
 
 # Run main function
 main "$@"
+

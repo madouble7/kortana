@@ -64,7 +64,7 @@ docker-down:
 	docker-compose down
 
 backend:
-	cd backend && uvicorn main:app --reload --host 0.0.0.0 --port 8000
+	cd backend && uvicorn src.kortana.main:app --reload --host 0.0.0.0 --port 8000
 
 frontend:
 	cd frontend && npm start

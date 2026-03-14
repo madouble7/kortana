@@ -119,7 +119,7 @@ def print_next_steps():
     docker run --name kortana-redis -p 6379:6379 redis:7
 
 [7] Start backend with database
-    python -m uvicorn main:app --reload
+    python -m uvicorn src.kortana.main:app --reload
     """
     )
 
@@ -140,3 +140,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\n\nSetup cancelled")
         sys.exit(0)
+

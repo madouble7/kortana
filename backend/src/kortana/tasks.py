@@ -151,7 +151,7 @@ def run_autonomy_cycle() -> dict[str, Any]:
         raise
 
 
-@app.task(name="tasks.run_github_autonomy_cycle")
+@app.task
 def run_github_autonomy_cycle() -> dict[str, Any]:
     """
     Run GitHub autonomous development cycle.
