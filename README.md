@@ -136,6 +136,7 @@ PowerShell:
 - **Ethical Discernment**: Evaluates responses for algorithmic arrogance and uncertainty
 - **Context-Aware Responses**: Integrates memory and ethical considerations in responses
 - **LLM Integration**: Uses OpenAI's GPT models for natural language processing
+- **CopilotKit Frontend**: Modern React-based chat interface with AI assistance
 - **LobeChat Frontend**: Modern, intuitive chat interface with OpenAI-compatible API
 - **Multi-Model Support**: Intelligent routing between OpenAI, Anthropic, and Google AI models
 - **LLM Integration**: Supports multiple AI providers (OpenAI, Google, Anthropic, xAI, OpenRouter)
@@ -222,6 +223,38 @@ docker-compose up -d
 start-lobechat-integration.bat
 ```
 
+## Frontend Options
+
+Kor'tana supports multiple frontend options to suit different needs:
+
+### CopilotKit Integration (Recommended)
+
+Kor'tana includes a built-in React frontend powered by CopilotKit, providing:
+- Modern, customizable AI chat interface
+- Seamless integration with Kor'tana's backend
+- Real-time communication
+- Easy deployment alongside the backend
+
+**Quick Start:**
+```bash
+# Start the backend
+python -m uvicorn src.kortana.main:app --reload
+
+# In a new terminal, start the frontend
+cd frontend
+npm install
+npm run dev
+```
+
+Visit `http://localhost:5173` to access the CopilotKit interface.
+
+For detailed setup and configuration, see [`docs/COPILOTKIT_INTEGRATION.md`](docs/COPILOTKIT_INTEGRATION.md).
+
+### LobeChat Integration
+
+Kor'tana also integrates with [LobeChat](https://github.com/lobehub/lobe-chat) for an alternative chat interface.
+
+**Setting Up LobeChat Connection:**
 ### Configuration
 
 #### Setting Up LobeChat Connection
