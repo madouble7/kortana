@@ -99,6 +99,22 @@ class HumanOnlyProtocol:
             command="pip install -r backend/requirements.txt",
             description="Install all production dependencies",
         ),
+        "run_tests": DeploymentTask(
+            id="run_tests",
+            name="Run Backend Test Suite",
+            classification=TaskClassification.AUTO,
+            status=TaskStatus.PENDING,
+            command="cd backend && python -m pytest",
+            description="Execute automated tests to verify code integrity",
+        ),
+        "autonomous_merge": DeploymentTask(
+            id="autonomous_merge",
+            name="Autonomous Evolution Merge",
+            classification=TaskClassification.AUTO,
+            status=TaskStatus.PENDING,
+            command="git checkout main && git merge evolution/* --no-edit",
+            description="Merge verified evolution branches into the canonical organism",
+        ),
         "create_env_file": DeploymentTask(
             id="create_env_file",
             name="Create Environment Template",
