@@ -3,7 +3,7 @@ Database services for Kortana.
 """
 
 # Import specific service functions from the main services module
-from ..core.services import (
+from kortana.core.services import (
     get_ade_llm_client,
     get_chat_engine,
     get_covenant_enforcer,

@@ -10,7 +10,7 @@ from kortana.core import (
 )
 from kortana.services.database import get_db_sync
 
-from ..services.goal_service import GoalService
+from kortana.api.services.goal_service import GoalService
 
 router = APIRouter(prefix="/goals", tags=["Goal Management"])
 

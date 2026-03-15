@@ -85,7 +85,7 @@ class LLMClientFactory:
         if not absolute_config_path.is_absolute():
             # Attempt to resolve relative to project root if get_project_root is available
             try:
-                from ..config import get_project_root  # Delayed import
+                from kortana.config import get_project_root  # Delayed import
 
                 absolute_config_path = get_project_root() / config_file_path_str
             except ImportError:

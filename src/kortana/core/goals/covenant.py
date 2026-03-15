@@ -4,7 +4,7 @@ Sacred Covenant integration for goal validation and alignment scoring.
 
 import logging
 
-from ..covenant import CovenantEnforcer
+from kortana.core.covenant import CovenantEnforcer
 from .goal import Goal
 
 

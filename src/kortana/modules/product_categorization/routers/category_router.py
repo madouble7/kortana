@@ -2,9 +2,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from ....services.database import get_db_sync
-from .. import schemas, services
-from ..models import CategoryType
+from kortana.services.database import get_db_sync
+from kortana.modules.product_categorization import schemas, services
+from kortana.modules.product_categorization.models import CategoryType
 
 router = APIRouter(
     prefix="/categories",

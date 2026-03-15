@@ -8,9 +8,9 @@ from typing import Callable
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from ..models.security_models import AlertSeverity, AlertType
-from ..services.alert_service import AlertService
-from ..services.threat_detection_service import ThreatDetectionService
+from kortana.modules.security.models.security_models import AlertSeverity, AlertType
+from kortana.modules.security.services.alert_service import AlertService
+from kortana.modules.security.services.threat_detection_service import ThreatDetectionService
 
 # Global service instances
 _threat_detector = ThreatDetectionService()

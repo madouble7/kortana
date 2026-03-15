@@ -7,8 +7,8 @@ import logging
 from datetime import UTC, datetime
 from uuid import UUID
 
-from ..covenant import CovenantEnforcer
-from ..memory import MemoryManager
+from kortana.core.covenant import CovenantEnforcer
+from kortana.core.memory import MemoryManager
 from .goal import Goal, GoalStatus, GoalType
 
 

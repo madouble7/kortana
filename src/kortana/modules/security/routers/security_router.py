@@ -10,7 +10,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator
 
-from ..models.security_models import (
+from kortana.modules.security.models.security_models import (
     AlertSeverity,
     AlertType,
     SecurityAlert,
@@ -18,9 +18,9 @@ from ..models.security_models import (
     ThreatDetection,
     VulnerabilityScan,
 )
-from ..services.alert_service import AlertService
-from ..services.threat_detection_service import ThreatDetectionService
-from ..services.vulnerability_service import VulnerabilityService
+from kortana.modules.security.services.alert_service import AlertService
+from kortana.modules.security.services.threat_detection_service import ThreatDetectionService
+from kortana.modules.security.services.vulnerability_service import VulnerabilityService
 
 # Initialize services
 alert_service = AlertService()

@@ -13,8 +13,8 @@ import logging
 import time
 from typing import Any, Optional
 
-from ..config.settings import settings
-from ..utils import ServiceError, TimeoutError
+from kortana.config.settings import settings
+from kortana.utils import ServiceError, TimeoutError
 
 logger = logging.getLogger(__name__)
 

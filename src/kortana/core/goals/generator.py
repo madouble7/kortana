@@ -8,7 +8,7 @@ identified by the EnvironmentalScanner and generating structured Goal objects.
 import logging
 import re
 
-from ...services.llm_service import get_llm_service
+from kortana.services.llm_service import get_llm_service
 from .goal import Goal, GoalType
 from .manager import GoalManager
 

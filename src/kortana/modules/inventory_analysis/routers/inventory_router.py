@@ -2,9 +2,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from ....services.database import get_db_sync
-from .. import schemas, services
-from ..models import StockStatus
+from kortana.services.database import get_db_sync
+from kortana.modules.inventory_analysis import schemas, services
+from kortana.modules.inventory_analysis.models import StockStatus
 
 router = APIRouter(
     prefix="/inventory",
