@@ -209,7 +209,7 @@ class ChatEngine:
             List of relevant memory entries
         """
         try:
-            from kortana.brain_utils import generate_embedding
+            from src.kortana.brain_utils import generate_embedding
 
             # Generate embedding vector for the query text
             query_vector = generate_embedding(query)
@@ -381,7 +381,7 @@ class ChatEngine:
             List of memory entries
         """
         try:
-            from kortana.brain_utils import generate_embedding
+            from src.kortana.brain_utils import generate_embedding
 
             # Generate embedding vector for the query using our optimized utility function
             query_vector = generate_embedding(user_message)
