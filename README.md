@@ -140,6 +140,13 @@ PowerShell:
 - **Multi-Model Support**: Intelligent routing between OpenAI, Anthropic, and Google AI models
 - **LLM Integration**: Supports multiple AI providers (OpenAI, Google, Anthropic, xAI, OpenRouter)
 - **LobeChat Frontend Support**: Seamlessly integrates with LobeChat for a user-friendly interface
+- **Dify Platform Integration**: Connect with Dify for no-code prompt engineering and workflow automation
+
+## Frontend Integrations
+
+Kor'tana supports multiple frontend options for flexible deployment:
+
+### LobeChat Integration
 - **Open WebUI Integration**: Modern, feature-rich frontend with MCP (Model Context Protocol) support
 - **MCP Protocol**: Extends LLM functionality with memory, goals, and context tools
 - **AR/VR Exploration**: Comprehensive augmented and virtual reality capabilities for immersive simulations, real-world overlays, and spatial object management
@@ -217,6 +224,7 @@ start-lobechat-integration.bat
 
 ### Configuration
 
+#### Setting Up LobeChat Connection
 1. Open LobeChat at http://localhost:3210
 2. Go to Settings → Language Model
 3. Add custom provider:
@@ -232,6 +240,24 @@ For detailed setup instructions, troubleshooting, and advanced configuration, se
 - **Frontend Setup**: [`lobechat-frontend/README.md`](lobechat-frontend/README.md)
 - **Legacy Connection Guide**: [`docs/LOBECHAT_CONNECTION.md`](docs/LOBECHAT_CONNECTION.md)
 - **Troubleshooting**: [`docs/LOBECHAT_TROUBLESHOOTING.md`](docs/LOBECHAT_TROUBLESHOOTING.md)
+
+### Dify Platform Integration
+
+Kor'tana integrates with [Dify](https://dify.ai) for advanced no-code LLM application development.
+
+#### Key Dify Features
+
+- **No-code prompt engineering** - Design and test prompts visually
+- **Workflow automation** - Build complex AI workflows
+- **Multi-model support** - Switch between LLM providers easily
+- **Agent orchestration** - Create autonomous AI agents
+
+#### Quick Start with Dify
+
+1. Add Dify configuration to your `.env` file (see `.env.example`)
+2. Start Kor'tana server: `python -m uvicorn src.kortana.main:app --reload`
+3. Configure Dify to use Kor'tana as a custom model provider
+4. For detailed setup: `docs/DIFY_INTEGRATION.md`
 
 ## Documentation
 
@@ -252,6 +278,7 @@ For detailed setup instructions, troubleshooting, and advanced configuration, se
 - Security Module: `docs/SECURITY_MODULE.md`
 - LobeChat integration: `docs/LOBECHAT_CONNECTION.md`
 - LobeChat troubleshooting: `docs/LOBECHAT_TROUBLESHOOTING.md`
+- Dify platform integration: `docs/DIFY_INTEGRATION.md`
 - **Multimodal Capabilities**: `docs/MULTIMODAL_CAPABILITIES.md`
 - **Multimodal Usage Examples**: `docs/MULTIMODAL_USAGE_EXAMPLES.md`
 - **Multimodal API Reference**: `docs/MULTIMODAL_API_REFERENCE.md`
