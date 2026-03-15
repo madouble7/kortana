@@ -3,9 +3,9 @@ import os
 from typing import Any
 
 # Assume necessary Kor'tana modules are importable
-from src.llm_clients.factory import LLMClientFactory
-from src.trinity_evaluator import SacredTrinityEvaluator
-from src.utils import load_all_configs
+from kortana.llm_clients.factory import LLMClientFactory
+from kortana.trinity_evaluator import SacredTrinityEvaluator
+from kortana.utils import load_all_configs
 
 # Setup logging
 logging.basicConfig(

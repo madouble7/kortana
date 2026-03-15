@@ -77,8 +77,8 @@ def test_enhanced_router():
     print("------------------------------------------------------------")
 
     try:
-        from src.kortana.config import load_config
-        from src.kortana.core.enhanced_model_router import EnhancedModelRouter
+        from kortana.config import load_config
+        from kortana.core.enhanced_model_router import EnhancedModelRouter
 
         settings = load_config()
         router = EnhancedModelRouter(settings=settings)
@@ -96,8 +96,8 @@ def test_services_architecture():
     print("------------------------------------------------------------")
 
     try:
-        from src.kortana.config import load_config
-        from src.kortana.core.services import get_llm_service, initialize_services
+        from kortana.config import load_config
+        from kortana.core.services import get_llm_service, initialize_services
 
         settings = load_config()
         initialize_services(settings)
@@ -118,7 +118,7 @@ def test_configuration_system():
     print("------------------------------------------------------------")
 
     try:
-        from src.kortana.config import load_config
+        from kortana.config import load_config
 
         settings = load_config()
         print(f"✅ Configuration loaded: Type {type(settings)}")
@@ -144,8 +144,8 @@ def test_database_operations():
     print("------------------------------------------------------------")
 
     try:
-        from src.kortana.core.models import Goal
-        from src.kortana.services.database import SyncSessionLocal
+        from kortana.core.models import Goal
+        from kortana.services.database import SyncSessionLocal
 
         db = SyncSessionLocal()
         goals = db.query(Goal).all()

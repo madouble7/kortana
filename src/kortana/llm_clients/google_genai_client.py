@@ -7,8 +7,6 @@ import logging
 import os
 from typing import Any
 
-import google.generativeai as genai
-
 from .base_client import LLMClient
 
 logger = logging.getLogger(__name__)
@@ -24,6 +22,7 @@ class GenAIClient(LLMClient):
         self, model_name: str = "gemini-2.5-flash", api_key: str | None = None
     ):
         super().__init__(model_name)
+        import google.generativeai as genai
 
         # Configure API key
         api_key = api_key or os.getenv("GOOGLE_API_KEY")

@@ -13,10 +13,16 @@ Usage:
 """
 
 import json
+import os
 import sqlite3
 import time
 from datetime import datetime
 from pathlib import Path
+
+try:
+    from relays.protocol import append_text_line
+except ModuleNotFoundError:
+    from protocol import append_text_line
 
 
 class AgentHandoffManager:
@@ -46,10 +52,8 @@ class AgentHandoffManager:
     def _log_handoff(self, message: str):
         """Log handoff events"""
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = f"{timestamp} | {message}\n"
-
-        with open(self.handoff_log, "a", encoding="utf-8") as f:
-            f.write(log_entry)
+        log_entry = f"{timestamp} | {message}"
+        append_text_line(self.handoff_log, log_entry)
 
         print(f"📝 {message}")
 
@@ -243,7 +247,7 @@ Continue from where the previous agent left off."""
 
         try:
             if task_file.exists():
-                with open(task_file) as f:
+                with open(task_file, encoding="utf-8") as f:
                     tasks = json.load(f)
             else:
                 tasks = []
@@ -257,8 +261,11 @@ Continue from where the previous agent left off."""
                 }
             )
 
-            with open(task_file, "w") as f:
+            tmp = task_file.with_suffix(task_file.suffix + ".tmp")
+            with open(tmp, "w", encoding="utf-8") as f:
                 json.dump(tasks, f, indent=2)
+                f.write("\n")
+            os.replace(tmp, task_file)
 
         except Exception as e:
             print(f"⚠️  Error updating task queue: {e}")
@@ -307,7 +314,7 @@ Continue from where the previous agent left off."""
         if self.handoff_log.exists():
             print("\n📝 Recent handoffs:")
             try:
-                with open(self.handoff_log) as f:
+                with open(self.handoff_log, encoding="utf-8") as f:
                     lines = f.readlines()
                 for line in lines[-5:]:  # Last 5 handoff events
                     print(f"   {line.strip()}")
