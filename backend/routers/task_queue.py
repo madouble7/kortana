@@ -38,7 +38,7 @@ def slugify(text: str) -> str:
 
 def create_branch(task_id: str, task_name: str) -> str:
     """Create a git branch for a task via GitHub API or local git"""
-    branch_name = f"feature/{task_id}-{slugify(task_name)}"
+    branch_name = f"evolution/{task_id}-{slugify(task_name)}"
 
     try:
         # Try to create branch locally first
@@ -49,16 +49,19 @@ def create_branch(task_id: str, task_name: str) -> str:
             capture_output=True,
         )
 
-        # Create stub commit
+        # Create stub commit with Sacred Lineage metadata
         stub_content = f"""# Task {task_id}: {task_name}
+# Sacred Evolution Metadata
+# Absorption Date: 2026-03-15
+# Lineage: GitHub-3.5-Flash -> Canonical Organism
 
 ## Description
 {task_name}
 
 ## Status
 - [ ] In Progress
-- [ ] Testing
-- [ ] Ready for Review
+- [ ] Parallel Testing Enabled
+- [ ] Ready for Lineage Merge
 
 ## Related Issue
 {task_id}
@@ -70,7 +73,8 @@ def create_branch(task_id: str, task_name: str) -> str:
         with open(stub_file, "w") as f:
             f.write(stub_content)
 
-        # Commit stub
+        # Commit stub with ritualistic message
+        commit_msg = f"sacred: initiation of task {task_id} - {task_name} into lineage"
         subprocess.run(
             ["git", "add", stub_file],
             cwd=os.getenv("REPO_ROOT", "."),
@@ -78,7 +82,7 @@ def create_branch(task_id: str, task_name: str) -> str:
             capture_output=True,
         )
         subprocess.run(
-            ["git", "commit", "-m", f"feat: stub for task {task_id} - {task_name}"],
+            ["git", "commit", "-m", commit_msg],
             cwd=os.getenv("REPO_ROOT", "."),
             check=True,
             capture_output=True,
@@ -86,6 +90,9 @@ def create_branch(task_id: str, task_name: str) -> str:
 
         return branch_name
     except subprocess.CalledProcessError as e:
+        # If branch already exists, just return it for parallel work
+        if "already exists" in str(e.stderr):
+            return branch_name
         raise HTTPException(
             status_code=500, detail=f"Failed to create branch: {str(e)}"
         )

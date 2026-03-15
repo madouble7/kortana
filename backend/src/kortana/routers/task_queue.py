@@ -39,7 +39,8 @@ def slugify(text: str) -> str:
 
 def create_branch(task_id: str, task_name: str) -> str:
     """Create a git branch for a task via GitHub API or local git"""
-    branch_name = f"feature/{task_id}-{slugify(task_name)}"
+    # Use evolution/ prefix for concurrent autonomous development
+    branch_name = f"evolution/{task_id}-{slugify(task_name)}"
 
     try:
         # Try to create branch locally first
@@ -50,8 +51,10 @@ def create_branch(task_id: str, task_name: str) -> str:
             capture_output=True,
         )
 
-        # Create stub commit
+        # Create stub commit with Sacred Lineage metadata
         stub_content = f"""# Task {task_id}: {task_name}
+# 🔱 SACRED LINEAGE: {datetime.utcnow().isoformat()}
+# Status: Evolution In-Progress
 
 ## Description
 {task_name}
@@ -59,7 +62,8 @@ def create_branch(task_id: str, task_name: str) -> str:
 ## Status
 - [ ] In Progress
 - [ ] Testing
-- [ ] Ready for Review
+- [ ] Self-Assessment Ready
+- [ ] Ready for Sacred Absorption
 
 ## Related Issue
 {task_id}
@@ -71,7 +75,7 @@ def create_branch(task_id: str, task_name: str) -> str:
         with open(stub_file, "w") as f:
             f.write(stub_content)
 
-        # Commit stub
+        # Commit stub with the Sacred absorption signature
         subprocess.run(
             ["git", "add", stub_file],
             cwd=settings.REPO_ROOT,
@@ -79,7 +83,12 @@ def create_branch(task_id: str, task_name: str) -> str:
             capture_output=True,
         )
         subprocess.run(
-            ["git", "commit", "-m", f"feat: stub for task {task_id} - {task_name}"],
+            [
+                "git",
+                "commit",
+                "-m",
+                f"evolution: Sacred absorption of task {task_id} - {task_name}",
+            ],
             cwd=settings.REPO_ROOT,
             check=True,
             capture_output=True,
