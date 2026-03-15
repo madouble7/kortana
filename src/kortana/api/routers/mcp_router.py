@@ -5,14 +5,15 @@ This module provides MCP endpoints that extend LLM functionality
 by exposing Kor'tana's internal tools and services.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from src.kortana.services.database import get_db_sync
-from src.kortana.modules.memory_core.services import MemoryService
+from src.kortana.modules.memory_core.services import MemoryCoreService
+from src.kortana.api.services.goal_service import GoalService
 import os
 
 router = APIRouter(
@@ -36,7 +37,13 @@ def verify_mcp_token(authorization: Optional[str] = Header(None)) -> bool:
             detail="Invalid authorization format",
         )
 
-    api_key = os.environ.get("KORTANA_API_KEY", "kortana-default-key")
+    api_key = os.environ.get("KORTANA_API_KEY")
+    if not api_key:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Server misconfiguration: API key not set",
+        )
+    
     if parts[1] != api_key:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -87,22 +94,22 @@ async def mcp_search_memory(
                 success=False, error="Query parameter is required", result=None
             )
 
-        memory_service = MemoryService(db=db)
-        results = await memory_service.search_memories(query=query, limit=limit)
+        memory_service = MemoryCoreService(db=db)
+        results = memory_service.search_memories_semantic(query=query, top_k=limit)
 
         return MCPToolResponse(
             success=True,
             result={
                 "memories": [
                     {
-                        "id": memory.id if hasattr(memory, "id") else None,
-                        "content": memory.content if hasattr(memory, "content") else "",
-                        "relevance_score": memory.relevance_score if hasattr(memory, "relevance_score") else 0.0,
-                        "created_at": memory.created_at.isoformat()
-                        if hasattr(memory, "created_at") and memory.created_at
+                        "id": item["memory"].id,
+                        "content": item["memory"].content,
+                        "relevance_score": item["score"],
+                        "created_at": item["memory"].created_at.isoformat()
+                        if hasattr(item["memory"], "created_at") and item["memory"].created_at
                         else None,
                     }
-                    for memory in results
+                    for item in results
                 ],
                 "count": len(results),
             },
@@ -134,8 +141,18 @@ async def mcp_store_memory(
                 success=False, error="Content parameter is required", result=None
             )
 
-        memory_service = MemoryService(db=db)
-        memory = await memory_service.store_memory(content=content, tags=tags)
+        memory_service = MemoryCoreService(db=db)
+        
+        # Import the schema for creating memory
+        from src.kortana.modules.memory_core import schemas
+        
+        # Create memory using the proper schema
+        memory_create = schemas.CoreMemoryCreate(
+            content=content,
+            title=None,
+            tags=tags if tags else None,
+        )
+        memory = memory_service.create_memory(memory_create)
 
         return MCPToolResponse(
             success=True,
@@ -162,16 +179,11 @@ async def mcp_list_goals(
     MCP endpoint to list Kor'tana's goals.
     
     Parameters:
-    - status: Filter by status (pending, active, completed)
+    - status: Filter by status (pending, active, completed) - not currently implemented
     """
     try:
-        # Import here to avoid circular dependencies
-        from src.kortana.core.services.goal_service import GoalService
-
-        status_filter = request.parameters.get("status", None)
-        goal_service = GoalService(db=db)
-
-        goals = await goal_service.get_goals(status=status_filter)
+        goal_service = GoalService(db_session=db)
+        goals = await goal_service.list_all_goals()
 
         return MCPToolResponse(
             success=True,
@@ -179,10 +191,10 @@ async def mcp_list_goals(
                 "goals": [
                     {
                         "id": goal.id,
-                        "title": goal.title,
-                        "description": goal.description,
-                        "status": goal.status,
-                        "priority": getattr(goal, "priority", None),
+                        "title": goal.title if hasattr(goal, "title") else None,
+                        "description": goal.description if hasattr(goal, "description") else None,
+                        "status": goal.status if hasattr(goal, "status") else None,
+                        "priority": goal.priority if hasattr(goal, "priority") else None,
                     }
                     for goal in goals
                 ],
@@ -209,8 +221,6 @@ async def mcp_create_goal(
     - priority: Priority level (1-10)
     """
     try:
-        from src.kortana.core.services.goal_service import GoalService
-
         title = request.parameters.get("title", "")
         description = request.parameters.get("description", "")
         priority = request.parameters.get("priority", 5)
@@ -220,17 +230,24 @@ async def mcp_create_goal(
                 success=False, error="Title parameter is required", result=None
             )
 
-        goal_service = GoalService(db=db)
-        goal = await goal_service.create_goal(
-            title=title, description=description, priority=priority
-        )
+        goal_service = GoalService(db_session=db)
+        
+        # Create goal data dict matching the Goal model
+        goal_data = {
+            "title": title,
+            "description": description,
+            "priority": priority,
+            "status": "pending",  # Default status
+        }
+        
+        goal = await goal_service.create_goal(goal_data)
 
         return MCPToolResponse(
             success=True,
             result={
                 "id": goal.id,
-                "title": goal.title,
-                "description": goal.description,
+                "title": goal.title if hasattr(goal, "title") else title,
+                "description": goal.description if hasattr(goal, "description") else description,
                 "priority": priority,
                 "created": True,
             },
@@ -267,14 +284,14 @@ async def mcp_gather_context(
 
         # Gather from memory if requested
         if "memory" in sources:
-            memory_service = MemoryService(db=db)
-            memories = await memory_service.search_memories(query=query, limit=5)
+            memory_service = MemoryCoreService(db=db)
+            memories = memory_service.search_memories_semantic(query=query, top_k=5)
             context_data["sources"].append(
                 {
                     "type": "memory",
                     "count": len(memories),
                     "items": [
-                        {"content": m.content, "relevance": getattr(m, "relevance_score", 0)}
+                        {"content": m["memory"].content, "relevance": m["score"]}
                         for m in memories
                     ],
                 }

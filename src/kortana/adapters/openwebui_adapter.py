@@ -6,12 +6,13 @@ It translates Open WebUI's OpenAI-formatted requests to Kor'tana's internal form
 and returns OpenAI-compatible responses.
 """
 
+import json
 import os
 import time
 import uuid
-from typing import Any, AsyncGenerator, Dict, List, Optional
+from typing import AsyncGenerator, List, Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -108,9 +109,15 @@ def verify_api_key(authorization: Optional[str] = Header(None)) -> bool:
             detail="Invalid authorization header format. Expected: Bearer <token>",
         )
 
-    api_key = os.environ.get(
-        "KORTANA_API_KEY", getattr(settings, "KORTANA_API_KEY", "kortana-default-key")
-    )
+    # Load API key from environment or settings; do not fall back to a hardcoded default
+    api_key = os.environ.get("KORTANA_API_KEY") or getattr(settings, "KORTANA_API_KEY", None)
+
+    if not api_key:
+        # Server-side configuration error: no API key configured
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Server misconfiguration: API key not set",
+        )
 
     if parts[1] != api_key:
         raise HTTPException(
@@ -150,14 +157,11 @@ class OpenWebUIAdapter:
 
         # Process through Kor'tana's orchestrator
         orchestrator = KorOrchestrator(db=db)
-        response_data = await orchestrator.process_query(
-            query=user_query,
-            context="\n".join(context_messages) if context_messages else None,
-        )
+        response_data = await orchestrator.process_query(query=user_query)
 
-        # Extract the response
+        # Extract the response (orchestrator returns "final_kortana_response")
         assistant_message = response_data.get(
-            "final_response", "I'm processing your request..."
+            "final_kortana_response", "I'm processing your request..."
         )
 
         # Calculate token usage (rough estimation)

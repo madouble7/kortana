@@ -128,14 +128,14 @@
    - Use minimal base images
    - Regular security updates
 
-## Security Vulnerabilities Addressed
+### Security Vulnerabilities Addressed
 
 ### From Code Review
 
-1. **Default API Key** (FIXED)
-   - Issue: `kortana-default-key` as fallback
-   - Fix: Docker Compose now requires `KORTANA_API_KEY`
-   - Status: ✅ Resolved
+1. **Default API Key** (FIXED in latest commit)
+   - Issue: `kortana-default-key` as fallback when KORTANA_API_KEY unset
+   - Fix: Both OpenWebUI adapter and MCP router now fail with HTTP 500 when API key is not configured
+   - Status: ✅ Resolved - No default credentials
 
 2. **Network Binding** (FIXED)
    - Issue: Binding to `0.0.0.0` by default
