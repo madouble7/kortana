@@ -20,8 +20,8 @@ def create_test_goal():
     try:
         from datetime import datetime
 
-        from src.kortana.database.db_setup import SessionLocal
-        from src.kortana.models.goal import Goal
+        from kortana.database.db_setup import SessionLocal
+        from kortana.models.goal import Goal
 
         print("🎯 Creating test goal for autonomous processing...")
 

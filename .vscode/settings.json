@@ -1,8 +1,8 @@
 {
     // Core Python configuration
-    "python.defaultInterpreterPath": "C:\\\\project-kortana\\\\venv311\\\\Scripts\\\\python.exe",
-    "python.terminal.activateEnvironment": true,
-    "python.terminal.activateEnvInCurrentTerminal": true,
+    "python.defaultInterpreterPath": "c:\\\\kortana\\\\.kortana_config_test_env\\\\Scripts\\\\python.exe",
+    "python.terminal.activateEnvironment": false,
+    "python.terminal.activateEnvInCurrentTerminal": false,
     // Performance optimizations - File handling
     "files.autoSave": "afterDelay",
     "files.autoSaveDelay": 1000,
@@ -133,17 +133,7 @@
     "terminal.integrated.enableMultiLinePasteWarning": "never",
     "terminal.integrated.copyOnSelection": true,
     "terminal.integrated.rightClickBehavior": "paste",
-    "terminal.integrated.profiles.windows": {
-        "Python venv311": {
-            "path": "cmd.exe",
-            "args": [
-                "/k",
-                "C:\\project-kortana\\venv311\\Scripts\\activate.bat && set PYTHONPATH=C:\\project-kortana;C:\\project-kortana\\src"
-            ],
-            "icon": "snake"
-        }
-    },
-    "terminal.integrated.defaultProfile.windows": "Python venv311",
+    "terminal.integrated.defaultProfile.windows": "Command Prompt",
     // Workspace Intelligence
     "workbench.startupEditor": "none",
     "workbench.editor.showTabs": "multiple",

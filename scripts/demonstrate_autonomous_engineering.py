@@ -102,7 +102,7 @@ This demonstrates autonomous software architecture and code generation.
 
 from typing import List, Optional
 from sqlalchemy.orm import Session
-from src.kortana.data.models import Goal
+from kortana.data.models import Goal
 
 
 class GoalService:
