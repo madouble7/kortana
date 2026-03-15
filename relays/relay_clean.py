@@ -24,6 +24,10 @@ from pathlib import Path
 from typing import Any
 
 import tiktoken
+try:
+    from relays.protocol import append_text_line, tail_text_lines, utc_now_iso
+except ModuleNotFoundError:
+    from protocol import append_text_line, tail_text_lines, utc_now_iso
 
 # Try to import Gemini (graceful fallback if not installed)
 try:
@@ -235,8 +239,11 @@ class KortanaRelay:
     def _save_relay_state(self):
         """Save relay state"""
         self.relay_state_file.parent.mkdir(exist_ok=True)
-        with open(self.relay_state_file, "w") as f:
+        tmp = self.relay_state_file.with_suffix(self.relay_state_file.suffix + ".tmp")
+        with open(tmp, "w", encoding="utf-8") as f:
             json.dump(self.relay_state, f, indent=2)
+            f.write("\n")
+        os.replace(tmp, self.relay_state_file)
 
     def _get_new_messages(self, agent_name: str) -> list[str]:
         """Get new messages from agent log"""
@@ -245,29 +252,47 @@ class KortanaRelay:
             return []
 
         agent_state = self.relay_state.get(agent_name, {})
-        last_line_count = agent_state.get("last_line_count", 0)
+        last_offset = int(agent_state.get("last_offset", 0) or 0)
+        remainder = str(agent_state.get("remainder", "") or "")
+
+        # Backward-compatible migration from line-count cursor.
+        if "last_offset" not in agent_state and "last_line_count" in agent_state:
+            last_line_count = int(agent_state.get("last_line_count", 0) or 0)
+            try:
+                with open(log_file, encoding="utf-8") as f:
+                    lines = f.readlines()
+                capped = max(0, min(last_line_count, len(lines)))
+                last_offset = len("".join(lines[:capped]).encode("utf-8"))
+            except Exception:
+                last_offset = 0
 
         try:
-            with open(log_file, encoding="utf-8") as f:
-                lines = f.readlines()
+            new_lines, next_offset, next_remainder = tail_text_lines(
+                log_file,
+                offset=last_offset,
+                remainder=remainder,
+            )
         except Exception as e:
             print(f"[WARNING] Error reading {log_file}: {e}")
             return []
-
-        new_lines = lines[last_line_count:]
         new_messages = [
             line.strip()
             for line in new_lines
             if line.strip() and not line.startswith("//")
         ]
 
+        next_state = {
+            "last_offset": next_offset,
+            "remainder": next_remainder,
+            "messages_processed": agent_state.get("messages_processed", 0),
+            "last_processed_time": agent_state.get("last_processed_time", ""),
+        }
         if new_messages:
-            self.relay_state[agent_name] = {
-                "last_line_count": len(lines),
-                "last_processed_time": datetime.now().isoformat(),
-                "messages_processed": agent_state.get("messages_processed", 0)
-                + len(new_messages),
-            }
+            next_state["last_processed_time"] = utc_now_iso()
+            next_state["messages_processed"] = (
+                int(agent_state.get("messages_processed", 0) or 0) + len(new_messages)
+            )
+        self.relay_state[agent_name] = next_state
 
         return new_messages
 
@@ -285,11 +310,10 @@ class KortanaRelay:
 
             queue_file = agent_info["queue"]
             try:
-                with open(queue_file, "a", encoding="utf-8") as f:
-                    for message in messages:
-                        relay_message = f"[{timestamp}] {source_agent}: {message}"
-                        f.write(relay_message + "\n")
-                        relayed_count += 1
+                for message in messages:
+                    relay_message = f"[{timestamp}] {source_agent}: {message}"
+                    append_text_line(queue_file, relay_message)
+                    relayed_count += 1
 
                 print(
                     f"[RELAY] {source_agent} -> {target_agent}: {len(messages)} messages"

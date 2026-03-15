@@ -10,7 +10,7 @@ import datetime
 
 # Attempt to import the standard timestamp utility
 try:
-    from ..utils.timestamp_utils import get_iso_timestamp as get_timestamp
+    from kortana.utils.timestamp_utils import get_iso_timestamp as get_timestamp
 
     _timestamp_source = "standard"
 except ImportError:

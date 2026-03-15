@@ -29,7 +29,7 @@ from kortana.core.memory import (
     save_memory,
     save_project_insight,
 )
-from src.kortana.core.brain import ChatEngine
+from kortana.core.brain import ChatEngine
 
 # Constants for testing
 TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), "test_data")

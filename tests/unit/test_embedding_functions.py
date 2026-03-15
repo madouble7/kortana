@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from src.kortana.brain_utils import (
+from kortana.brain_utils import (
     _hash_text_for_cache,
     generate_embedding,
     get_embedding_model,

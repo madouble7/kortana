@@ -40,19 +40,19 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from config.schema import KortanaConfig
 
 from config import load_config
-from src.dev_agent_stub import DevAgentStub
-from src.kortana.agents.autonomous_agents import (CodingAgent, MonitoringAgent,
+from kortana.dev_agent_stub import DevAgentStub
+from kortana.agents.autonomous_agents import (CodingAgent, MonitoringAgent,
                                                   PlanningAgent, TestingAgent)
-from src.kortana.core.covenant_enforcer import CovenantEnforcer
-from src.kortana.memory.memory import MemoryManager as JsonLogMemoryManager
-from src.kortana.memory.memory_manager import \\
+from kortana.core.covenant_enforcer import CovenantEnforcer
+from kortana.memory.memory import MemoryManager as JsonLogMemoryManager
+from kortana.memory.memory_manager import \\
     MemoryManager as PineconeMemoryManager
-from src.kortana.utils import text_analysis
-from src.llm_clients.factory import LLMClientFactory
-from src.model_router import SacredModelRouter
+from kortana.utils import text_analysis
+from kortana.llm_clients.factory import LLMClientFactory
+from kortana.model_router import SacredModelRouter
 
 try:
-    from src.sacred_trinity_router import SacredTrinityRouter
+    from kortana.sacred_trinity_router import SacredTrinityRouter
 except ImportError:
     # Create a stub if the module doesn't exist
     class SacredTrinityRouter:

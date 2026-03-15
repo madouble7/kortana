@@ -11,14 +11,14 @@ from datetime import UTC, datetime
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 
-from src.kortana.core.execution_engine import ExecutionEngine
-from src.kortana.core.models import Goal, GoalStatus, PlanStep
-from src.kortana.core.planning_engine import PlanningEngine
-from src.kortana.core.services import get_execution_engine, get_planning_engine
-from src.kortana.modules.memory_core import models
-from src.kortana.modules.memory_core.models import MemoryType
-from src.kortana.modules.memory_core.schemas import CoreMemoryCreate
-from src.kortana.services.database import get_db_sync
+from kortana.core.execution_engine import ExecutionEngine
+from kortana.core.models import Goal, GoalStatus, PlanStep
+from kortana.core.planning_engine import PlanningEngine
+from kortana.core.services import get_execution_engine, get_planning_engine
+from kortana.modules.memory_core import models
+from kortana.modules.memory_core.models import MemoryType
+from kortana.modules.memory_core.schemas import CoreMemoryCreate
+from kortana.services.database import get_db_sync
 
 logger = logging.getLogger(__name__)
 

@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from src.kortana.services.database import get_db_sync
+from kortana.services.database import get_db_sync
 
 from .lobechat_adapter import LobeChatAdapter
 

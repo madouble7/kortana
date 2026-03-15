@@ -5,7 +5,7 @@ This module provides a stub implementation of the Development Agent
 for use in testing and development.
 """
 
-from src.kortana.config.schema import KortanaConfig
+from kortana.config.schema import KortanaConfig
 
 
 class DevAgentStub:

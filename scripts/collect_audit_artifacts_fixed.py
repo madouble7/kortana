@@ -170,7 +170,7 @@ def main():
         print_section(f, "CONFIG PIPELINE CHECK")
 
         f.write("Checking config pipeline:\n\n")
-        config_cmd = 'from src.kortana.config import load_config; cfg = load_config(); print("loaded env:", cfg.model_dump())'
+        config_cmd = 'from kortana.config import load_config; cfg = load_config(); print("loaded env:", cfg.model_dump())'
         config_output, config_status = run_command(
             [sys.executable, "-c", config_cmd], cwd=project_root
         )

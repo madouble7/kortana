@@ -1,17 +1,5 @@
 #!/usr/bin/env python3
-"""
-Master Autonomous Agent Orchestrator
-===================================
-
-Runs the complete autonomous agent system:
-1. Relay orchestrator (scans logs → queues)
-2. Claude task runner (processes claude_in.txt)
-3. Flash task runner (processes flash_in.txt)
-4. Weaver task runner (processes weaver_in.txt)
-
-Usage:
-    python relays/master_orchestrator.py
-"""
+"""Master autonomous agent orchestrator with coordinator integration."""
 
 import os
 import subprocess
@@ -26,8 +14,8 @@ def run_component(script_name, component_name):
         process = subprocess.Popen(
             [sys.executable, script_name],
             cwd=os.getcwd(),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
             text=True,
             bufsize=1,
             universal_newlines=True,
@@ -52,6 +40,7 @@ def main():
 
     components = [
         ("relay_agent_orchestrator.py", "Relay Orchestrator"),
+        ("multi_agent_coordinator.py", "Multi-Agent Coordinator"),
         ("run_claude_task.py", "Claude Agent"),
         ("run_flash_task.py", "Flash Agent"),
         ("run_weaver_task.py", "Weaver Agent"),
@@ -70,6 +59,7 @@ def main():
         print(f"\n✅ {len(processes)} components started successfully!")
         print("\nSystem Status:")
         print("- Relay Orchestrator: Scanning logs → relaying to queues")
+        print("- Multi-Agent Coordinator: task leases, directives, real-time state")
         print("- Claude Agent: Processing claude_in.txt → claude.log")
         print("- Flash Agent: Processing flash_in.txt → flash.log")
         print("- Weaver Agent: Processing weaver_in.txt → weaver.log")
@@ -84,9 +74,9 @@ def main():
             for proc, name in processes:
                 if proc.poll() is not None:
                     print(f"⚠️  {name} stopped unexpectedly!")
-                    stdout, stderr = proc.communicate()
-                    if stderr:
-                        print(f"Error: {stderr}")
+                    print(
+                        f"Component '{name}' exited with return code {proc.returncode}"
+                    )
 
     except KeyboardInterrupt:
         print("\n\n🛑 Stopping autonomous agent system...")

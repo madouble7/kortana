@@ -56,7 +56,7 @@ def check_proactive_status():
     # Check if proactive task is in autonomous tasks
     try:
         print("\n🔧 Checking autonomous tasks configuration...")
-        from src.kortana.core.autonomous_tasks import run_proactive_code_review_task
+        from kortana.core.autonomous_tasks import run_proactive_code_review_task
 
         print("✅ Proactive code review task found")
     except ImportError as e:
@@ -65,8 +65,8 @@ def check_proactive_status():
     # Test code scanner directly
     try:
         print("\n🔍 Testing code scanner directly...")
-        from src.kortana.config import load_config
-        from src.kortana.core.execution_engine import ExecutionEngine
+        from kortana.config import load_config
+        from kortana.core.execution_engine import ExecutionEngine
 
         config = load_config()
         engine = ExecutionEngine(config)

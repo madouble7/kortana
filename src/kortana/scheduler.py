@@ -8,6 +8,7 @@ import logging
 import threading
 import time
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -40,14 +41,16 @@ class TaskResult:
 class Scheduler:
     """Thread-safe task scheduler with priority support."""
 
-    def __init__(self) -> None:
+    def __init__(self, max_workers: int = 4) -> None:
         """Initialize the scheduler."""
-        self.tasks: list[tuple[int, Callable[[], None]]] = []
+        self.tasks: list[tuple[int, int, Callable[[], None]]] = []
         self.lock = threading.Lock()
         self.task_results: dict[int, TaskResult] = {}
         self._task_counter = 0
         self._running = False
         self._thread: threading.Thread | None = None
+        self._executor: ThreadPoolExecutor | None = None
+        self._max_workers = max_workers
 
     def add_task(self, task: Callable[[], None], priority: int = 1) -> int:
         """Add a task to the scheduler with the given priority.
@@ -62,7 +65,7 @@ class Scheduler:
         with self.lock:
             self._task_counter += 1
             task_id = self._task_counter
-            self.tasks.append((priority, task))
+            self.tasks.append((priority, task_id, task))
             self.tasks.sort(key=lambda x: x[0])  # Sort by priority
             self.task_results[task_id] = TaskResult(status=TaskStatus.PENDING)
             logger.info(f"Added task {task_id} with priority {priority}")
@@ -82,6 +85,8 @@ class Scheduler:
                 result = self.task_results[task_id]
                 if result.status == TaskStatus.PENDING:
                     result.status = TaskStatus.CANCELLED
+                    # Remove from the task queue if still there
+                    self.tasks = [t for t in self.tasks if t[1] != task_id]
                     logger.info(f"Task {task_id} cancelled")
                     return True
         return False
@@ -115,45 +120,47 @@ class Scheduler:
     def execute_tasks(self) -> None:
         """Main task execution loop."""
         while self._running:
+            task_entry = None
             with self.lock:
                 if self.tasks:
-                    priority, task = self.tasks.pop(0)
-                    # Find task_id by looking through results
-                    task_id = next(
-                        (
-                            tid
-                            for tid, result in self.task_results.items()
-                            if result.status == TaskStatus.PENDING
-                        ),
-                        None,
-                    )
-                    if task_id:
-                        result = self.task_results[task_id]
-                        result.status = TaskStatus.RUNNING
-                        result.start_time = datetime.now()
+                    task_entry = self.tasks.pop(0)
 
-                        try:
-                            logger.info(
-                                f"Executing task {task_id} with priority {priority}"
-                            )
-                            result.result = task()
-                            result.status = TaskStatus.COMPLETED
-                        except Exception as e:
-                            logger.error(
-                                f"Task {task_id} failed: {str(e)}", exc_info=True
-                            )
-                            result.error = e
-                            result.status = TaskStatus.FAILED
-                        finally:
-                            result.end_time = datetime.now()
+            if task_entry is not None:
+                priority, task_id, task = task_entry
+                result = self.task_results[task_id]
+                if result.status == TaskStatus.CANCELLED:
+                    continue
+                if self._executor is not None:
+                    self._executor.submit(self._run_task, task_id, priority, task)
                 else:
-                    logger.debug("No tasks to execute. Waiting...")
-            time.sleep(1)
+                    self._run_task(task_id, priority, task)
+            else:
+                logger.debug("No tasks to execute. Waiting...")
+                time.sleep(0.1)
+
+    def _run_task(self, task_id: int, priority: int, task: Callable[[], None]) -> None:
+        """Execute a single task and record its result."""
+        result = self.task_results[task_id]
+        if result.status == TaskStatus.CANCELLED:
+            return
+        result.status = TaskStatus.RUNNING
+        result.start_time = datetime.now()
+        try:
+            logger.info(f"Executing task {task_id} with priority {priority}")
+            result.result = task()
+            result.status = TaskStatus.COMPLETED
+        except Exception as e:
+            logger.error(f"Task {task_id} failed: {str(e)}", exc_info=True)
+            result.error = e
+            result.status = TaskStatus.FAILED
+        finally:
+            result.end_time = datetime.now()
 
     def start(self) -> None:
         """Start the scheduler."""
         if not self._running:
             self._running = True
+            self._executor = ThreadPoolExecutor(max_workers=self._max_workers)
             self._thread = threading.Thread(target=self.execute_tasks, daemon=True)
             self._thread.start()
             logger.info("Scheduler started")
@@ -161,6 +168,9 @@ class Scheduler:
     def stop(self) -> None:
         """Stop the scheduler."""
         self._running = False
+        if self._executor:
+            self._executor.shutdown(wait=True)
+            self._executor = None
         if self._thread:
             self._thread.join()
             self._thread = None

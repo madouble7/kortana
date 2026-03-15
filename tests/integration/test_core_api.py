@@ -5,10 +5,10 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from src.kortana.main import app  # Your FastAPI app
-from src.kortana.modules.memory_core import models as memory_models
-from src.kortana.services.database import Base, get_db_sync
-from src.kortana.services.embedding_service import embedding_service
+from kortana.main import app  # Your FastAPI app
+from kortana.modules.memory_core import models as memory_models
+from kortana.services.database import Base, get_db_sync
+from kortana.services.embedding_service import embedding_service
 
 # Use a separate in-memory SQLite database for testing API endpoints
 SQLALCHEMY_DATABASE_URL_TEST = "sqlite:///./test_kortana_core_api.db"
