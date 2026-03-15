@@ -15,7 +15,7 @@ if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
 # Now import from the config module (assuming it's in the project root or src)
-from src.kortana.config import load_config
+from kortana.config import load_config
 
 
 def test_covenant_loading():

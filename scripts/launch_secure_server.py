@@ -42,7 +42,7 @@ def launch_with_environment():
     try:
         import uvicorn
 
-        from src.kortana.main import app
+        from kortana.main import app
 
         print("✅ FastAPI app imported successfully")
         print("🌐 Server starting at http://127.0.0.1:8000")

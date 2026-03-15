@@ -7,8 +7,8 @@ import sys
 
 sys.path.append("src")
 
-from src.kortana.core.models import Goal
-from src.kortana.services.database import SyncSessionLocal
+from kortana.core.models import Goal
+from kortana.services.database import SyncSessionLocal
 
 
 def check_genesis_goal():

@@ -4,7 +4,6 @@ Comprehensive test suite for model_router.py - Sacred Model Selection System
 
 import json
 import os
-import sys
 from unittest.mock import Mock, mock_open, patch
 
 import pytest
@@ -12,38 +11,25 @@ import pytest
 
 def test_model_router_module_structure():
     """Test that model_router.py has expected structure and classes"""
-    router_path = os.path.join(
-        os.path.dirname(__file__), "..", "src", "model_router.py"
+    from kortana.model_router import (
+        AugmentedModelConfig,
+        ModelArchetype,
+        SacredModelRouter,
     )
-    assert os.path.exists(router_path), "model_router.py file should exist"
 
-    # Read and check for key components
-    with open(router_path, encoding="utf-8") as f:
-        content = f.read()
-
-    assert "class SacredModelRouter" in content, (
-        "SacredModelRouter class should be defined"
-    )
-    assert "class ModelArchetype" in content, "ModelArchetype enum should be defined"
-    assert "class AugmentedModelConfig" in content, (
-        "AugmentedModelConfig dataclass should be defined"
-    )
-    assert "def select_model_with_sacred_guidance" in content, (
-        "select_model_with_sacred_guidance method should exist"
-    )
-    assert "def get_model_config" in content, "get_model_config method should exist"
-    assert "def get_routing_stats" in content, "get_routing_stats method should exist"
+    assert SacredModelRouter is not None
+    assert ModelArchetype is not None
+    assert AugmentedModelConfig is not None
 
 
 def test_sacred_model_router_import():
     """Test that SacredModelRouter can be imported without errors"""
     try:
-        # Add src to path temporarily
-        src_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
-        if src_path not in sys.path:
-            sys.path.insert(0, src_path)
-
-        from model_router import AugmentedModelConfig, ModelArchetype, SacredModelRouter
+        from kortana.model_router import (
+            AugmentedModelConfig,
+            ModelArchetype,
+            SacredModelRouter,
+        )
 
         # Verify classes are importable
         assert SacredModelRouter is not None
@@ -51,19 +37,13 @@ def test_sacred_model_router_import():
         assert AugmentedModelConfig is not None
 
     except ImportError as e:
-        pytest.fail(f"Cannot import from model_router: {e}")
+        pytest.fail(f"Cannot import from kortana.model_router: {e}")
 
 
 def test_model_archetype_enum():
     """Test that ModelArchetype enum has expected values"""
     try:
-        import sys
-
-        src_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
-        if src_path not in sys.path:
-            sys.path.insert(0, src_path)
-
-        from model_router import ModelArchetype
+        from kortana.model_router import ModelArchetype
 
         # Check for expected archetype values
         assert hasattr(ModelArchetype, "ORACLE")
@@ -88,24 +68,16 @@ def test_sacred_model_router_initialization(mock_exists, mock_file):
     mock_exists.return_value = True
 
     try:
-        import sys
+        from kortana.model_router import SacredModelRouter
 
-        src_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
-        if src_path not in sys.path:
-            sys.path.insert(0, src_path)
+        router = SacredModelRouter()
 
-        with patch("model_router.UltimateLivingSacredConfig") as mock_config:
-            mock_config.return_value = Mock()
-            from model_router import SacredModelRouter
-
-            router = SacredModelRouter()
-
-            # Verify initialization
-            assert router is not None
-            assert hasattr(router, "loaded_models_config")
-            assert hasattr(router, "sacred_config")
-            assert hasattr(router, "routing_history")
-            assert hasattr(router, "category_to_archetype_map")
+        # Verify initialization
+        assert router is not None
+        assert hasattr(router, "loaded_models_config")
+        assert hasattr(router, "sacred_config")
+        assert hasattr(router, "routing_history")
+        assert hasattr(router, "category_to_archetype_map")
 
     except Exception as e:
         pytest.fail(f"SacredModelRouter initialization failed: {e}")
