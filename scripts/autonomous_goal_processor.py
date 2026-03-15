@@ -21,6 +21,7 @@ from datetime import datetime
 from pathlib import Path
 
 import requests
+from src.kortana.utils.resiliency import resilient_call
 
 # Configure logging with UTF-8 encoding to handle emojis
 logging.basicConfig(
@@ -99,7 +100,7 @@ class AutonomousGoalProcessor:
     async def run_autonomous_loop(self):
         """Main autonomous processing loop"""
         logger.info("🚀 STARTING AUTONOMOUS GOAL PROCESSING")
-        
+
         # Check server readiness before starting the autonomous loop
         if not check_server_readiness():
             logger.critical("🚫 AUTONOMOUS PROCESSING ABORTED: Server not available")
@@ -107,7 +108,7 @@ class AutonomousGoalProcessor:
             print("❌ Cannot start autonomous processing without a healthy backend server.")
             print("💡 Please start the server first with: python scripts/start_backend.py")
             return
-        
+
         logger.info("🤖 Kor'tana is now fully autonomous and monitoring for goals...")
 
         print("🔥 KOR'TANA AUTONOMOUS MODE ACTIVATED")
@@ -150,9 +151,14 @@ class AutonomousGoalProcessor:
                 await asyncio.sleep(30)  # Wait longer on error
 
     async def check_for_pending_goals(self):
-        """Check for goals with PENDING status"""
+        """Check for goals with PENDING status using resilient retry logic."""
+        async def _fetch():
+            # Run the synchronous requests call in the threadpool for safety
+            loop = asyncio.get_event_loop()
+            return await loop.run_in_executor(None, lambda: requests.get(f"{BASE_URL}/goals/", timeout=10))
+
         try:
-            response = requests.get(f"{BASE_URL}/goals/", timeout=10)
+            response = await resilient_call(_fetch, max_retries=3)
             if response.status_code == 200:
                 goals = response.json()
                 pending = [g for g in goals if g.get("status") == "PENDING"]
@@ -161,8 +167,27 @@ class AutonomousGoalProcessor:
                 logger.warning(f"Could not fetch goals: {response.status_code}")
                 return []
         except Exception as e:
-            logger.error(f"Error checking goals: {e}")
+            logger.error(f"Error checking goals after retries: {e}")
             return []
+
+    async def update_goal_status(self, goal_id, status):
+        """Update goal status with resiliency."""
+        async def _update():
+            loop = asyncio.get_event_loop()
+            url = f"{BASE_URL}/goals/{goal_id}/status"
+            return await loop.run_in_executor(None, lambda: requests.patch(url, json={"status": status}, timeout=10))
+
+        try:
+            response = await resilient_call(_update, max_retries=3)
+            if response.status_code == 200:
+                logger.debug(f"Goal {goal_id} updated to {status}")
+                return True
+            else:
+                logger.warning(f"Failed to update goal {goal_id}: {response.status_code}")
+                return False
+        except Exception as e:
+            logger.error(f"Failed to update goal {goal_id} after retries: {e}")
+            return False
 
     async def process_goal_autonomously(self, goal):
         """Process a goal with full autonomous software engineering"""
@@ -267,7 +292,7 @@ class AutonomousGoalProcessor:
             # Step 1: Analyze current implementation
             logger.info("Step 1: Analyzing current goal_router.py...")
             router_file = self.project_root / "src/kortana/api/routers/goal_router.py"
-            
+
             if router_file.exists():
                 with open(router_file) as f:
                     f.read()  # Analyze the current implementation

@@ -64,9 +64,9 @@ class FileSystemMonitor:
         for file_path in current_files:
             self.baseline[file_path] = self.get_file_hash(file_path)
 
-        print("📁 File System Monitor Initialized")
-        print(f"🔍 Watching {len(self.baseline)} files for autonomous changes")
-        print(f"📂 Monitoring directories: {', '.join(self.watch_dirs)}")
+        print("[Folder] File System Monitor Initialized")
+        print(f"[Search] Watching {len(self.baseline)} files for autonomous changes")
+        print(f"[Folder] Monitoring directories: {', '.join(self.watch_dirs)}")
         print("-" * 60)
 
     def check_for_changes(self) -> list[str]:
@@ -103,10 +103,10 @@ class FileSystemMonitor:
         runtime = datetime.now() - self.start_time
 
         print(f"\n{'=' * 60}")
-        print(f"📁 FILE SYSTEM MONITOR - {timestamp}")
-        print(f"⏱️  Runtime: {runtime}")
-        print(f"📊 Total Changes Detected: {self.change_count}")
-        print(f"📂 Files Monitored: {len(self.baseline)}")
+        print(f"[Folder] FILE SYSTEM MONITOR - {timestamp}")
+        print(f"[Timer] Runtime: {runtime}")
+        print(f"[Chart] Total Changes Detected: {self.change_count}")
+        print(f"[Folder] Files Monitored: {len(self.baseline)}")
         print(f"{'=' * 60}")
 
     def analyze_changes(self, changes: list[str]):
@@ -114,7 +114,7 @@ class FileSystemMonitor:
         if not changes:
             return
 
-        print(f"\n🚨 AUTONOMOUS ACTIVITY DETECTED ({len(changes)} changes):")
+        print(f"\n[ALERT] AUTONOMOUS ACTIVITY DETECTED ({len(changes)} changes):")
 
         # Categorize changes
         new_files = [c for c in changes if "NEW FILE" in c]
@@ -122,51 +122,53 @@ class FileSystemMonitor:
         deleted_files = [c for c in changes if "DELETED" in c]
 
         if new_files:
-            print(f"\n🆕 New Files Created ({len(new_files)}):")
+            print(f"\n[NEW] New Files Created ({len(new_files)}):")
             for change in new_files:
                 file_path = change.split(": ", 1)[1]
-                print(f"   📄 {file_path}")
+                print(f"   [File] {file_path}")
 
                 # Check if it looks like code generation
                 if file_path.endswith(".py"):
-                    print("      🤖 Python code generation detected")
+                    print("      [Robot] Python code generation detected")
                 elif file_path.endswith((".md", ".txt")):
-                    print("      📝 Documentation generation detected")
+                    print("      [Note] Documentation generation detected")
                 elif file_path.endswith((".yaml", ".yml", ".json")):
-                    print("      ⚙️  Configuration file generation detected")
+                    print("      [Gear] Configuration file generation detected")
 
         if modified_files:
-            print(f"\n✏️  Modified Files ({len(modified_files)}):")
+            print(f"\n[EDIT] Modified Files ({len(modified_files)}):")
             for change in modified_files:
                 file_path = change.split(": ", 1)[1]
-                print(f"   📄 {file_path}")
+                print(f"   [File] {file_path}")
 
                 # Detect autonomous patterns
                 if "planning_engine" in file_path:
-                    print("      🧠 Planning engine modification - strategic thinking")
+                    print(
+                        "      [Brain] Planning engine modification - strategic thinking"
+                    )
                 elif "execution_engine" in file_path:
                     print(
-                        "      ⚡ Execution engine modification - capability expansion"
+                        "      [Bolt] Execution engine modification - capability expansion"
                     )
                 elif "memory" in file_path or "learning" in file_path:
                     print(
-                        "      🧠 Memory/Learning system modification - knowledge formation"
+                        "      [Brain] Memory/Learning system modification - knowledge formation"
                     )
                 elif "test" in file_path:
-                    print("      🧪 Test modification - validation improvement")
+                    print("      [Flask] Test modification - validation improvement")
 
         if deleted_files:
-            print(f"\n🗑️  Deleted Files ({len(deleted_files)}):")
+            print(f"\n[DELETE] Deleted Files ({len(deleted_files)}):")
             for change in deleted_files:
                 file_path = change.split(": ", 1)[1]
-                print(f"   📄 {file_path}")
-                print("      🧹 Code cleanup or refactoring detected")
+                print(f"   [File] {file_path}")
+                print("      [Broom] Code cleanup or refactoring detected")
 
     def run_continuous_monitoring(self, interval: int = 5):
         """Run continuous file system monitoring"""
         self.create_baseline()
 
-        print(f"🚀 Starting continuous monitoring (interval: {interval}s)")
+        print(f"[Rocket] Starting continuous monitoring (interval: {interval}s)")
         print("Press Ctrl+C to stop\n")
 
         try:
@@ -180,16 +182,16 @@ class FileSystemMonitor:
                     # Just show a brief status every 30 seconds
                     if int(time.time()) % 30 == 0:
                         print(
-                            f"📁 Monitoring... ({len(self.baseline)} files, {self.change_count} total changes)"
+                            f"[Folder] Monitoring... ({len(self.baseline)} files, {self.change_count} total changes)"
                         )
 
                 time.sleep(interval)
 
         except KeyboardInterrupt:
-            print("\n\n🛑 File monitoring stopped by user")
+            print("\n\n[Stop] File monitoring stopped by user")
             runtime = datetime.now() - self.start_time
-            print(f"📊 Total monitoring time: {runtime}")
-            print(f"📈 Total changes detected: {self.change_count}")
+            print(f"[Chart] Total monitoring time: {runtime}")
+            print(f"[Chart] Total changes detected: {self.change_count}")
 
 
 if __name__ == "__main__":
