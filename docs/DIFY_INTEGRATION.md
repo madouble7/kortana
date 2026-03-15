@@ -175,7 +175,7 @@ Handle text completion requests from Dify.
   "completion": "def fibonacci(n):\n    if n <= 1:\n        return n\n    return fibonacci(n-1) + fibonacci(n-2)",
   "metadata": {
     "model": "kortana",
-    "usage": {"total_tokens": 45}
+    "usage": {"approximate_tokens": 45}
   }
 }
 ```

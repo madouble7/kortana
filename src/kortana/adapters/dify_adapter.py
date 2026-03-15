@@ -11,12 +11,16 @@ This adapter handles:
 - Ensuring minimal latency and robust data security
 """
 
+import logging
+import uuid
 from typing import Any
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from src.kortana.core.orchestrator import KorOrchestrator
+
+logger = logging.getLogger(__name__)
 
 
 class DifyAdapter:
@@ -32,7 +36,7 @@ class DifyAdapter:
 
     def __init__(self):
         """Initialize the Dify adapter."""
-        print("DifyAdapter initialized.")
+        logger.info("DifyAdapter initialized.")
         self._validate_configuration()
 
     def _validate_configuration(self):
@@ -59,7 +63,15 @@ class DifyAdapter:
         Returns:
             Dictionary with Dify-compatible response format
         """
-        print(f"DifyAdapter received chat request: {request_data}")
+        # Log request metadata without sensitive data
+        logger.info(
+            "DifyAdapter received chat request",
+            extra={
+                "conversation_id": request_data.get("conversation_id"),
+                "user": request_data.get("user"),
+                "has_query": bool(request_data.get("query") or request_data.get("message")),
+            }
+        )
 
         # Extract message from Dify request format
         user_query = request_data.get("query") or request_data.get("message")
@@ -73,6 +85,10 @@ class DifyAdapter:
         conversation_id = request_data.get("conversation_id")
         user_id = request_data.get("user")
         inputs = request_data.get("inputs", {})
+        
+        # Generate unique conversation ID if not provided
+        if not conversation_id:
+            conversation_id = f"conv_{uuid.uuid4().hex[:16]}"
 
         try:
             # Initialize KorOrchestrator with the database session
@@ -90,7 +106,7 @@ class DifyAdapter:
             # Transform to Dify's expected response format
             dify_response = {
                 "answer": final_response,
-                "conversation_id": conversation_id or "default",
+                "conversation_id": conversation_id,
                 "metadata": {
                     "kortana_internals": kortana_response,
                     "processing_timestamp": kortana_response.get("timestamp"),
@@ -104,18 +120,20 @@ class DifyAdapter:
                 )
 
         except Exception as e:
-            print(f"Error during DifyAdapter processing: {e}")
+            logger.exception("Error during DifyAdapter chat processing")
             # Return a graceful error response in Dify format
             dify_response = {
                 "answer": "I encountered an internal processing error. Please try again.",
-                "conversation_id": conversation_id or "default",
+                "conversation_id": conversation_id,
                 "metadata": {
-                    "error": str(e),
-                    "error_type": type(e).__name__,
+                    "error": "Internal processing error",
                 },
             }
 
-        print(f"DifyAdapter sending response: {dify_response}")
+        logger.info(
+            "DifyAdapter sending chat response",
+            extra={"conversation_id": conversation_id, "has_answer": bool(dify_response.get("answer"))}
+        )
         return dify_response
 
     async def handle_workflow_request(
@@ -136,9 +154,12 @@ class DifyAdapter:
         Returns:
             Dictionary with workflow execution results
         """
-        print(f"DifyAdapter received workflow request: {request_data}")
-
         workflow_id = request_data.get("workflow_id")
+        logger.info(
+            "DifyAdapter received workflow request",
+            extra={"workflow_id": workflow_id}
+        )
+
         inputs = request_data.get("inputs", {})
         
         try:
@@ -161,13 +182,17 @@ class DifyAdapter:
             }
 
         except Exception as e:
-            print(f"Error during workflow processing: {e}")
+            logger.exception("Error during workflow processing")
             workflow_response = {
                 "workflow_id": workflow_id,
                 "status": "failed",
-                "error": str(e),
+                "error": "Workflow execution failed",
             }
 
+        logger.info(
+            "DifyAdapter workflow response",
+            extra={"workflow_id": workflow_id, "status": workflow_response.get("status")}
+        )
         return workflow_response
 
     async def handle_completion_request(
@@ -185,7 +210,7 @@ class DifyAdapter:
         Returns:
             Dictionary with completion result
         """
-        print(f"DifyAdapter received completion request: {request_data}")
+        logger.info("DifyAdapter received completion request")
 
         prompt = request_data.get("prompt")
         if not prompt:
@@ -214,12 +239,13 @@ class DifyAdapter:
             }
 
         except Exception as e:
-            print(f"Error during completion processing: {e}")
+            logger.exception("Error during completion processing")
             completion_response = {
                 "completion": "",
-                "error": str(e),
+                "error": "Completion processing failed",
             }
 
+        logger.info("DifyAdapter completion response sent")
         return completion_response
 
     def get_adapter_info(self) -> dict[str, Any]:
@@ -227,8 +253,13 @@ class DifyAdapter:
         Return information about the Dify adapter capabilities.
         
         Returns:
-            Dictionary with adapter metadata
+            Dictionary with adapter metadata reflecting actual runtime configuration
         """
+        import os
+        
+        # Check actual runtime configuration
+        require_auth = os.getenv("DIFY_REQUIRE_AUTH", "false").lower() == "true"
+        
         return {
             "name": "DifyAdapter",
             "version": "1.0.0",
@@ -241,8 +272,8 @@ class DifyAdapter:
             ],
             "security": {
                 "data_encryption": True,
-                "api_key_required": True,
-                "rate_limiting": True,
+                "api_key_required": require_auth,
+                "rate_limiting": False,  # Not implemented in this version
             },
             "capabilities": {
                 "minimal_latency": True,

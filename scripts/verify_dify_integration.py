@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Minimal test for Dify integration without full backend dependencies.
-Tests the adapter interface and router structure.
+Verification script for Dify integration.
+Validates adapter interface and router structure without requiring full backend dependencies.
+This is a standalone verification tool, not a pytest test.
 """
 
 import sys
@@ -12,8 +13,8 @@ from pathlib import Path
 # Get the repository root dynamically
 REPO_ROOT = Path(__file__).parent.parent.absolute()
 
-def test_file_syntax(filepath):
-    """Test if a Python file has valid syntax."""
+def verify_file_syntax(filepath):
+    """Verify if a Python file has valid syntax."""
     try:
         with open(filepath, 'r') as f:
             code = f.read()
@@ -22,8 +23,8 @@ def test_file_syntax(filepath):
     except SyntaxError as e:
         return False, f"✗ Syntax error: {e}"
 
-def test_file_structure(filepath, expected_classes=None, expected_functions=None):
-    """Test if a Python file contains expected classes and functions."""
+def verify_file_structure(filepath, expected_classes=None, expected_functions=None):
+    """Verify if a Python file contains expected classes and functions."""
     try:
         with open(filepath, 'r') as f:
             code = f.read()
@@ -57,31 +58,31 @@ def test_file_structure(filepath, expected_classes=None, expected_functions=None
 
 def main():
     print("=" * 60)
-    print("Dify Integration - Minimal Test Suite")
+    print("Dify Integration - Verification Script")
     print("=" * 60)
     
     base_path = REPO_ROOT
     
-    tests = [
+    verifications = [
         {
             "name": "Dify Adapter Syntax",
             "file": f"{base_path}/src/kortana/adapters/dify_adapter.py",
-            "test": "syntax"
+            "check": "syntax"
         },
         {
             "name": "Dify Router Syntax",
             "file": f"{base_path}/src/kortana/adapters/dify_router.py",
-            "test": "syntax"
+            "check": "syntax"
         },
         {
             "name": "Main App Syntax",
             "file": f"{base_path}/src/kortana/main.py",
-            "test": "syntax"
+            "check": "syntax"
         },
         {
             "name": "Dify Adapter Structure",
             "file": f"{base_path}/src/kortana/adapters/dify_adapter.py",
-            "test": "structure",
+            "check": "structure",
             "expected_classes": ["DifyAdapter"],
             "expected_functions": [
                 "handle_chat_request",
@@ -93,7 +94,7 @@ def main():
         {
             "name": "Dify Router Structure",
             "file": f"{base_path}/src/kortana/adapters/dify_router.py",
-            "test": "structure",
+            "check": "structure",
             "expected_classes": [
                 "DifyChatRequest",
                 "DifyWorkflowRequest",
@@ -113,22 +114,22 @@ def main():
     passed = 0
     failed = 0
     
-    for test in tests:
-        print(f"\n{test['name']}:")
+    for verification in verifications:
+        print(f"\n{verification['name']}:")
         print("-" * 60)
         
-        if not os.path.exists(test['file']):
-            print(f"✗ File not found: {test['file']}")
+        if not os.path.exists(verification['file']):
+            print(f"✗ File not found: {verification['file']}")
             failed += 1
             continue
         
-        if test['test'] == 'syntax':
-            success, message = test_file_syntax(test['file'])
-        elif test['test'] == 'structure':
-            success, message = test_file_structure(
-                test['file'],
-                test.get('expected_classes'),
-                test.get('expected_functions')
+        if verification['check'] == 'syntax':
+            success, message = verify_file_syntax(verification['file'])
+        elif verification['check'] == 'structure':
+            success, message = verify_file_structure(
+                verification['file'],
+                verification.get('expected_classes'),
+                verification.get('expected_functions')
             )
         
         print(message)
@@ -182,17 +183,17 @@ def main():
     
     # Summary
     print("\n" + "=" * 60)
-    print("Test Summary")
+    print("Verification Summary")
     print("=" * 60)
     print(f"Passed: {passed}")
     print(f"Failed: {failed}")
     print(f"Total:  {passed + failed}")
     
     if failed == 0:
-        print("\n✓ All tests passed!")
+        print("\n✓ All verifications passed!")
         return 0
     else:
-        print(f"\n✗ {failed} test(s) failed")
+        print(f"\n✗ {failed} verification(s) failed")
         return 1
 
 if __name__ == "__main__":

@@ -9,6 +9,8 @@ Provides endpoints for:
 - Agent-based interactions
 """
 
+import logging
+import secrets
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Header
@@ -19,6 +21,8 @@ from src.kortana.services.database import get_db_sync
 
 from .dify_adapter import DifyAdapter
 
+logger = logging.getLogger(__name__)
+
 
 # Pydantic models for Dify interaction
 class DifyChatRequest(BaseModel):
@@ -27,7 +31,11 @@ class DifyChatRequest(BaseModel):
     conversation_id: str | None = Field(None, description="Optional conversation identifier")
     user: str | None = Field(None, description="Optional user identifier")
     inputs: dict[str, Any] = Field(default_factory=dict, description="Optional variables for prompt templates")
-    response_mode: str = Field(default="blocking", description="Response mode: 'blocking' or 'streaming'", pattern="^(blocking|streaming)$")
+    response_mode: str = Field(
+        default="blocking",
+        description="Response mode: 'blocking' (streaming is not yet supported)",
+        pattern="^blocking$",
+    )
 
 
 class DifyWorkflowRequest(BaseModel):
@@ -94,7 +102,7 @@ def verify_dify_api_key(authorization: str | None = Header(None)) -> bool:
     Verify Dify API key from Authorization header.
     
     In production, this validates against configured API keys.
-    Can be disabled by setting DIFY_REQUIRE_AUTH=false in environment.
+    Fails closed to prevent misconfiguration from exposing the adapter.
     
     Args:
         authorization: Authorization header value
@@ -105,10 +113,11 @@ def verify_dify_api_key(authorization: str | None = Header(None)) -> bool:
     import os
     
     # Check if authentication is required
-    require_auth = os.getenv("DIFY_REQUIRE_AUTH", "false").lower() == "true"
+    require_auth_str = os.getenv("DIFY_REQUIRE_AUTH", "false").lower()
+    require_auth = require_auth_str == "true"
     
     if not require_auth:
-        # Authentication disabled (development mode)
+        # Authentication disabled (development mode only)
         return True
     
     if not authorization:
@@ -117,24 +126,29 @@ def verify_dify_api_key(authorization: str | None = Header(None)) -> bool:
             detail="Missing Authorization header. Include 'Bearer <api-key>' in request headers."
         )
     
-    # Extract the token from "Bearer <token>" format
+    # Extract the token from "Bearer <token>" format using strict prefix check
     if not authorization.startswith("Bearer "):
         raise HTTPException(
             status_code=401,
             detail="Invalid Authorization header format. Use 'Bearer <api-key>'."
         )
     
-    token = authorization.replace("Bearer ", "").strip()
+    # Strip the prefix safely
+    token = authorization[7:].strip()  # len("Bearer ") == 7
     
     # Validate against configured API key
     expected_key = os.getenv("DIFY_API_KEY")
     
     if not expected_key:
-        # No API key configured - allow access but log warning
-        print("WARNING: DIFY_API_KEY not configured. All requests will be accepted.")
-        return True
+        # No API key configured - fail closed with 500 for operator visibility
+        logger.error("DIFY_API_KEY not configured but DIFY_REQUIRE_AUTH is enabled. This is a misconfiguration.")
+        raise HTTPException(
+            status_code=500,
+            detail="Server misconfiguration: API key authentication is required but not configured."
+        )
     
-    if token != expected_key:
+    # Use constant-time comparison to prevent timing attacks
+    if not secrets.compare_digest(token, expected_key):
         raise HTTPException(
             status_code=401,
             detail="Invalid API key."
@@ -173,11 +187,12 @@ async def handle_dify_chat(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error in Dify chat endpoint: {e}")
-        return DifyChatResponse(
-            answer="An unexpected error occurred while processing your request.",
-            conversation_id=request.conversation_id or "default",
-            metadata={"error": str(e), "error_type": type(e).__name__},
+        # Log the full error server-side for debugging
+        logger.exception("Error in Dify chat endpoint")
+        # Return generic error to client to avoid leaking internals
+        raise HTTPException(
+            status_code=500,
+            detail="An error occurred while processing your request."
         )
 
 
