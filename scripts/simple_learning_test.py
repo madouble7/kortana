@@ -16,10 +16,10 @@ sys.path.insert(0, project_root)
 os.chdir(project_root)
 
 # Import required modules
-from src.kortana.modules.memory_core.models import MemoryType
-from src.kortana.modules.memory_core.schemas import CoreMemoryCreate
-from src.kortana.modules.memory_core.services import MemoryCoreService
-from src.kortana.services.database import get_db_sync
+from kortana.modules.memory_core.models import MemoryType
+from kortana.modules.memory_core.schemas import CoreMemoryCreate
+from kortana.modules.memory_core.services import MemoryCoreService
+from kortana.services.database import get_db_sync
 
 
 async def create_test_memories():
@@ -70,7 +70,7 @@ async def test_learning_loop():
 
     try:
         # Import the learning function
-        from src.kortana.core.autonomous_tasks import run_performance_analysis_task
+        from kortana.core.autonomous_tasks import run_performance_analysis_task
 
         # Get database session
         db = next(get_db_sync())
@@ -98,7 +98,7 @@ async def check_core_beliefs():
 
     try:
         # Get all core beliefs
-        from src.kortana.modules.memory_core import models
+        from kortana.modules.memory_core import models
 
         core_beliefs = (
             db.query(models.CoreMemory)

@@ -24,7 +24,7 @@ async def test_direct_router_usage():
 
     try:
         # Import and use the router directly
-        from src.kortana.core.enhanced_model_router import EnhancedModelRouter, TaskType
+        from kortana.core.enhanced_model_router import EnhancedModelRouter, TaskType
 
         # Create a mock settings object
         class MockSettings:
@@ -71,7 +71,7 @@ async def test_planning_engine_router_integration():
 
     try:
         # Test the planning engine separately
-        from src.kortana.core.planning_engine import planning_engine
+        from kortana.core.planning_engine import planning_engine
 
         print("Planning engine imported successfully")
         print(
@@ -97,7 +97,7 @@ async def test_yaml_router_integration():
     print("\n=== Testing YAML Router as Alternative ===")
 
     try:
-        from src.kortana.core.yaml_model_router import YamlModelRouter
+        from kortana.core.yaml_model_router import YamlModelRouter
 
         yaml_router = YamlModelRouter()
 

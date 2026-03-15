@@ -16,7 +16,7 @@ print(f"Python path: {sys.path[:3]}")
 
 try:
     print("Testing basic imports...")
-    from src.kortana.main import app
+    from kortana.main import app
     print("✅ FastAPI app imported successfully!")
 
     print("Testing uvicorn...")
