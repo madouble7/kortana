@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Script to check coverage for critical modules in Kor'tana.
-Highlights security and core modules that require higher coverage.
+Script to display coverage targets for critical modules in Kor'tana.
+This is an informational helper that shows which modules require higher coverage
+and provides commands to check their coverage. It does not enforce coverage targets.
 """
 
 from pathlib import Path
@@ -19,12 +20,12 @@ CRITICAL_MODULES = {
         "description": "Core functionality",
     },
     "brain": {
-        "path": "src/kortana/brain.py",
+        "path": "kortana.brain",
         "target": 85,
         "description": "Brain core logic",
     },
     "model_router": {
-        "path": "src/kortana/model_router.py",
+        "path": "kortana.model_router",
         "target": 85,
         "description": "Model routing logic",
     },
@@ -32,51 +33,41 @@ CRITICAL_MODULES = {
 
 
 def main():
-    """Check coverage for critical modules."""
+    """Display coverage targets for critical modules."""
     project_root = Path(__file__).parent.parent
     
     print("=" * 80)
-    print("Kor'tana Critical Module Coverage Check")
+    print("Kor'tana Critical Module Coverage Targets")
     print("=" * 80)
     print()
-    
-    results = {}
+    print("This script shows coverage targets for critical modules.")
+    print("Run the suggested pytest commands to check actual coverage.")
+    print()
     
     for name, info in CRITICAL_MODULES.items():
-        module_path = project_root / info["path"]
+        # For directory paths, check if they exist
+        if "/" in info["path"]:
+            module_path = project_root / info["path"]
+            if not module_path.exists():
+                print(f"⚠️  {name}: Module not found at {info['path']}")
+                continue
         
-        if not module_path.exists():
-            print(f"⚠️  {name}: Module not found at {info['path']}")
-            continue
-        
-        print(f"📊 Checking {name}...")
-        print(f"   Path: {info['path']}")
-        print(f"   Target: {info['target']}%")
+        print(f"📊 {name}:")
+        print(f"   Coverage Target: {info['target']}%")
         print(f"   Description: {info['description']}")
+        print(f"   Command: pytest --cov={info['path']}")
         print()
-        
-        print(f"   Run: pytest --cov={info['path']}")
-        print()
-        
-        results[name] = {
-            "target": info["target"],
-            "path": info["path"],
-        }
     
     print("=" * 80)
-    print("Summary")
+    print("Quick Reference")
     print("=" * 80)
     print()
-    print("To check coverage for all critical modules, run:")
+    print("Check all modules:")
     print("  pytest --cov=src")
     print()
-    print("To check coverage for a specific module:")
+    print("Check specific modules:")
     for name, info in CRITICAL_MODULES.items():
-        print(f"  pytest --cov={info['path']}")
-    print()
-    print("Critical modules and their coverage targets:")
-    for name, info in CRITICAL_MODULES.items():
-        print(f"  - {name}: {info['target']}% ({info['description']})")
+        print(f"  pytest --cov={info['path']}  # {name}")
     print()
     print("=" * 80)
 

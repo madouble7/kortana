@@ -22,8 +22,10 @@ def main():
     print("=" * 70)
     print()
     
-    # Run pytest with coverage
+    # Run pytest with coverage using current Python interpreter
     cmd = [
+        sys.executable,
+        "-m",
         "pytest",
         "--cov=src",
         "--cov-report=term-missing",

@@ -11,6 +11,9 @@ Kor'tana uses `pytest-cov` to measure test coverage across the codebase. The cov
 ### Quick Start
 
 ```bash
+# First, ensure test dependencies are installed
+pip install -e .[dev]
+
 # Run all tests with coverage
 pytest
 
@@ -33,11 +36,18 @@ After running tests, coverage reports are generated in multiple formats:
 3. **XML Report**: `coverage.xml` for CI/CD integration
 
 ```bash
-# View HTML report (macOS)
+# View HTML report
+# macOS
 open htmlcov/index.html
 
-# View HTML report (Linux)
+# Linux
 xdg-open htmlcov/index.html
+
+# Windows
+start htmlcov/index.html
+
+# Cross-platform (using Python)
+python -m webbrowser htmlcov/index.html
 ```
 
 ## Coverage Configuration
@@ -49,13 +59,9 @@ The main pytest configuration includes:
 - Multiple report formats (terminal, HTML, XML)
 - Minimum coverage threshold: 70%
 - Verbose output enabled
+- Test discovery in both `tests/` directory and root-level test files
 
-### .coveragerc
-
-Additional coverage settings:
-- Excluded patterns (tests, archives, examples)
-- Special handling for critical modules
-- Custom exclusion rules for code that doesn't need coverage
+**Note:** Running `pytest` requires dev dependencies. Install with `pip install -e .[dev]` before running tests.
 
 ## Critical Modules
 
@@ -102,21 +108,31 @@ Coverage is automatically run in CI pipelines:
 
 ## Excluding Code from Coverage
 
-Use these patterns to exclude code that shouldn't be covered:
+Use pragma comments to exclude code that shouldn't be covered:
 
 ```python
 # Pragma comment
 if DEBUG:  # pragma: no cover
     print("Debug info")
 
-# Abstract methods are automatically excluded
+# Abstract methods (automatically excluded by coverage.py)
 @abstractmethod
 def method(self):
     ...
 
-# Main blocks are excluded
+# Main blocks (automatically excluded)
 if __name__ == "__main__":
     main()
+```
+
+For project-wide exclusions, you can create a `.coveragerc` file in the project root with patterns like:
+
+```ini
+[run]
+omit = 
+    */tests/*
+    */archive/*
+    */obsolete/*
 ```
 
 ## Troubleshooting
@@ -138,7 +154,7 @@ If coverage falls below 70%, the test suite will fail. To address:
 
 ### Excluding files from coverage
 
-Edit `.coveragerc` and add patterns to the `omit` section:
+Create a `.coveragerc` file in the project root and add patterns to the `omit` section:
 
 ```ini
 [run]

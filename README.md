@@ -181,6 +181,10 @@ For troubleshooting, see `docs/LOBECHAT_TROUBLESHOOTING.md`.
 
 ### Running Tests
 ```bash
+# First, install test dependencies
+pip install -e .[dev]
+
+# Then run tests
 python -m pytest tests
 ```
 
@@ -188,14 +192,29 @@ python -m pytest tests
 
 Kor'tana uses pytest-cov for comprehensive test coverage reporting.
 
+**Prerequisites:**
+```bash
+# Install dev dependencies (includes pytest-cov)
+pip install -e .[dev]
+```
+
 **Quick start:**
 ```bash
 # Run all tests with coverage
 pytest
 
 # View HTML coverage report
-open htmlcov/index.html  # macOS
-xdg-open htmlcov/index.html  # Linux
+# macOS
+open htmlcov/index.html
+
+# Linux
+xdg-open htmlcov/index.html
+
+# Windows
+start htmlcov/index.html
+
+# Or use Python's webbrowser module (cross-platform)
+python -m webbrowser htmlcov/index.html
 ```
 
 **Critical modules coverage targets:**
