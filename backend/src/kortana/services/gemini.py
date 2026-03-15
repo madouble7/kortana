@@ -5,6 +5,7 @@ Gemini AI Service for Kor'tana - Minimal Working Version
 import os
 
 from google.genai import Client
+
 from src.kortana.config import get_settings
 
 
@@ -33,11 +34,23 @@ class GeminiService:
         return f"models/{self.model_name}"
 
     async def analyze_text(self, text: str, **kwargs) -> str:
-        """Analyze text using Gemini"""
+        """Analyze text using Gemini with potential system instruction."""
         try:
+            # Check for system instruction in kwargs or defaults
+            system_instruction = kwargs.get("system_instruction")
+
+            # If we're using the newer SDK Client, it might have a different method for setting system instructions
+            # For general content generation:
+            config = None
+            if system_instruction:
+                from google.genai import types
+
+                config = types.GenerateContentConfig(
+                    system_instruction=system_instruction
+                )
+
             response = self.client.models.generate_content(
-                model=self._get_model_name(),
-                contents=text,
+                model=self._get_model_name(), contents=text, config=config
             )
             return response.text if response.text else ""
         except Exception as e:

@@ -50,12 +50,9 @@ async def execute_unified_logic(payload: dict[str, Any]):
 
     # 2. Execute via Gemini Service
     try:
-        if system_instruction:
-            full_prompt = f"{system_instruction}\n\nUSER TASK:\n{task}"
-        else:
-            full_prompt = task
-
-        response = await gemini_service.analyze_text(full_prompt)
+        response = await gemini_service.analyze_text(
+            task, system_instruction=system_instruction
+        )
         return {
             "response": response,
             "source": "local_gemini_service",

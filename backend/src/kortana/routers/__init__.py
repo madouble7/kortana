@@ -11,6 +11,7 @@ __all__ = [
     "health",
     "knowledge",
     "memory",
+    "orchestrator",
     "pr_creation",
     "prayer",
     "rclone",
@@ -18,4 +19,3 @@ __all__ = [
     "task_queue",
     "test_orchestrator",
 ]
-

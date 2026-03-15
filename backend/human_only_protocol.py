@@ -23,13 +23,15 @@ from fastapi import APIRouter, HTTPException
 
 class TaskClassification(Enum):
     """Task classification for autonomy decisions"""
+
     AUTO = "auto"  # Fully automatable, execute immediately
-    HO = "ho"      # Human Only, requires explicit human action
+    HO = "ho"  # Human Only, requires explicit human action
     APPROVAL = "approval"  # Requires human approval before execution
 
 
 class TaskStatus(Enum):
     """Status for deployment tasks"""
+
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
@@ -41,6 +43,7 @@ class TaskStatus(Enum):
 @dataclass
 class DeploymentTask:
     """Represents a single deployment task"""
+
     id: str
     name: str
     classification: TaskClassification
@@ -77,7 +80,7 @@ class HumanOnlyProtocol:
             classification=TaskClassification.AUTO,
             status=TaskStatus.PENDING,
             command="python -m venv venv",
-            description="Create isolated Python environment for dependencies"
+            description="Create isolated Python environment for dependencies",
         ),
         "install_dependencies": DeploymentTask(
             id="install_dependencies",
@@ -85,7 +88,7 @@ class HumanOnlyProtocol:
             classification=TaskClassification.AUTO,
             status=TaskStatus.PENDING,
             command="pip install -r backend/requirements.txt",
-            description="Install all production dependencies"
+            description="Install all production dependencies",
         ),
         "create_env_file": DeploymentTask(
             id="create_env_file",
@@ -93,17 +96,48 @@ class HumanOnlyProtocol:
             classification=TaskClassification.AUTO,
             status=TaskStatus.PENDING,
             command="cp backend/.env.example backend/.env",
-            description="Create .env file from template"
+            description="Create .env file from template",
         ),
         "validate_codebase": DeploymentTask(
             id="validate_codebase",
             name="Validate Codebase Structure",
             classification=TaskClassification.AUTO,
             status=TaskStatus.PENDING,
-            command="python verify_deployment_readiness.py",
-            description="Verify all routers, migrations, and dependencies"
+            description="Ensure all required directories and files are present",
         ),
+        "run_tests": DeploymentTask(
+            id="run_tests",
+            name="Execute Test Suite",
+            classification=TaskClassification.AUTO,
+            status=TaskStatus.PENDING,
+            command="pytest backend/tests",
+            description="Run all backend tests to ensure system stability",
+        ),
+        "autonomous_merge": DeploymentTask(
+            id="autonomous_merge",
+            name="Merge Feature Branch",
+            classification=TaskClassification.AUTO,
+            status=TaskStatus.PENDING,
+            description="Merge validated feature branches into main lineage",
+        ),
+    }
 
+    def determine_classification(
+        self, task_name: str, has_tests: bool = False
+    ) -> TaskClassification:
+        """
+        Dynamically determine if a task should be AUTO based on test coverage.
+        """
+        if has_tests and task_name not in ["rotate_api_keys", "hardware_config"]:
+            return TaskClassification.AUTO
+
+        task = self.DEPLOYMENT_TASKS.get(task_name)
+        if task:
+            return task.classification
+        return TaskClassification.APPROVAL
+
+    # Task definitions with classifications (continued)
+    REMAINING_TASKS = {
         # HO tasks - Require human action
         "github_token": DeploymentTask(
             id="github_token",
@@ -126,7 +160,7 @@ class HumanOnlyProtocol:
 7. COPY the token immediately!
 
 **Token format**: `ghp_xxxxxxxxxxxxxxxxxxxx`
-            """
+            """,
         ),
         "gemini_api_key": DeploymentTask(
             id="gemini_api_key",
@@ -145,7 +179,7 @@ class HumanOnlyProtocol:
 6. COPY the API key
 
 **Key format**: `AIzaSy...`
-            """
+            """,
         ),
         "database_url": DeploymentTask(
             id="database_url",
@@ -181,7 +215,7 @@ Then update `backend/.env`:
 ```env
 DATABASE_URL=postgresql://user:pass@host:5432/kortana
 ```
-            """
+            """,
         ),
         "configure_env": DeploymentTask(
             id="configure_env",
@@ -199,9 +233,8 @@ GITHUB_TOKEN=ghp_your_token_here
 GEMINI_API_KEY=your_gemini_key_here
 DATABASE_URL=postgresql://user:pass@host:5432/kortana
 ```
-            """
+            """,
         ),
-
         # AUTO tasks after HO prerequisites are met
         "run_migrations": DeploymentTask(
             id="run_migrations",
@@ -210,7 +243,7 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
             status=TaskStatus.PENDING,
             prerequisites=["configure_env"],
             command="cd backend && alembic upgrade head",
-            description="Apply database migrations"
+            description="Apply database migrations",
         ),
         "start_server": DeploymentTask(
             id="start_server",
@@ -219,7 +252,7 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
             status=TaskStatus.PENDING,
             prerequisites=["run_migrations"],
             command="python -m uvicorn src.kortana.main:app --host 0.0.0.0 --port 8000",
-            description="Start KOR'TANA backend server"
+            description="Start KOR'TANA backend server",
         ),
         "verify_health": DeploymentTask(
             id="verify_health",
@@ -228,7 +261,7 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
             status=TaskStatus.PENDING,
             prerequisites=["start_server"],
             command="curl -s http://localhost:8000/health | jq .",
-            description="Verify all health endpoints respond"
+            description="Verify all health endpoints respond",
         ),
     }
 
@@ -249,7 +282,8 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
     def get_auto_tasks(self) -> list[DeploymentTask]:
         """Get all AUTO tasks ready to execute"""
         return [
-            t for t in self.tasks.values()
+            t
+            for t in self.tasks.values()
             if t.classification == TaskClassification.AUTO
             and t.status in [TaskStatus.PENDING, TaskStatus.FAILED]
             and self._prerequisites_met(t)
@@ -258,14 +292,14 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
     def get_ho_tasks(self) -> list[DeploymentTask]:
         """Get all Human Only tasks"""
         return [
-            t for t in self.tasks.values()
-            if t.classification == TaskClassification.HO
+            t for t in self.tasks.values() if t.classification == TaskClassification.HO
         ]
 
     def get_approval_tasks(self) -> list[DeploymentTask]:
         """Get tasks requiring human approval"""
         return [
-            t for t in self.tasks.values()
+            t
+            for t in self.tasks.values()
             if t.classification == TaskClassification.APPROVAL
             and self._prerequisites_met(t)
         ]
@@ -292,15 +326,15 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
         if not task.command:
             task.status = TaskStatus.COMPLETED
             task.completed_at = datetime.utcnow()
-            return {"status": "completed", "task": task_id, "message": "No command needed"}
+            return {
+                "status": "completed",
+                "task": task_id,
+                "message": "No command needed",
+            }
 
         try:
             result = subprocess.run(
-                task.command,
-                shell=True,
-                capture_output=True,
-                text=True,
-                timeout=300
+                task.command, shell=True, capture_output=True, text=True, timeout=300
             )
 
             if result.returncode == 0:
@@ -310,16 +344,12 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
                 return {
                     "status": "completed",
                     "task": task_id,
-                    "output": result.stdout[:1000]
+                    "output": result.stdout[:1000],
                 }
             else:
                 task.status = TaskStatus.FAILED
                 task.error = result.stderr
-                return {
-                    "status": "failed",
-                    "task": task_id,
-                    "error": result.stderr
-                }
+                return {"status": "failed", "task": task_id, "error": result.stderr}
 
         except subprocess.TimeoutExpired:
             task.status = TaskStatus.FAILED
@@ -345,11 +375,7 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
         # Check if this unlocks other tasks
         unlocked = self._check_unlocked_tasks()
 
-        return {
-            "status": "completed",
-            "task": task_id,
-            "unlocked_tasks": unlocked
-        }
+        return {"status": "completed", "task": task_id, "unlocked_tasks": unlocked}
 
     def _check_unlocked_tasks(self) -> list[str]:
         """Check which tasks are now unlocked after task completion"""
@@ -362,9 +388,19 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
 
     def get_status(self) -> dict[str, Any]:
         """Get full deployment status"""
-        auto_tasks = [t for t in self.tasks.values() if t.classification == TaskClassification.AUTO]
-        ho_tasks = [t for t in self.tasks.values() if t.classification == TaskClassification.HO]
-        approval_tasks = [t for t in self.tasks.values() if t.classification == TaskClassification.APPROVAL]
+        auto_tasks = [
+            t
+            for t in self.tasks.values()
+            if t.classification == TaskClassification.AUTO
+        ]
+        ho_tasks = [
+            t for t in self.tasks.values() if t.classification == TaskClassification.HO
+        ]
+        approval_tasks = [
+            t
+            for t in self.tasks.values()
+            if t.classification == TaskClassification.APPROVAL
+        ]
 
         return {
             "timestamp": datetime.utcnow().isoformat(),
@@ -372,64 +408,89 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
             "owner": "Matt",
             "summary": {
                 "total_tasks": len(self.tasks),
-                "completed": sum(1 for t in self.tasks.values() if t.status == TaskStatus.COMPLETED),
-                "in_progress": sum(1 for t in self.tasks.values() if t.status == TaskStatus.IN_PROGRESS),
-                "pending": sum(1 for t in self.tasks.values() if t.status == TaskStatus.PENDING),
-                "failed": sum(1 for t in self.tasks.values() if t.status == TaskStatus.FAILED),
-                "waiting_for_ho": sum(1 for t in self.tasks.values() if t.status == TaskStatus.WAITING_FOR_HO),
+                "completed": sum(
+                    1 for t in self.tasks.values() if t.status == TaskStatus.COMPLETED
+                ),
+                "in_progress": sum(
+                    1 for t in self.tasks.values() if t.status == TaskStatus.IN_PROGRESS
+                ),
+                "pending": sum(
+                    1 for t in self.tasks.values() if t.status == TaskStatus.PENDING
+                ),
+                "failed": sum(
+                    1 for t in self.tasks.values() if t.status == TaskStatus.FAILED
+                ),
+                "waiting_for_ho": sum(
+                    1
+                    for t in self.tasks.values()
+                    if t.status == TaskStatus.WAITING_FOR_HO
+                ),
             },
             "classifications": {
                 "auto": {
-                    "count": sum(1 for t in auto_tasks if t.status == TaskStatus.COMPLETED),
+                    "count": sum(
+                        1 for t in auto_tasks if t.status == TaskStatus.COMPLETED
+                    ),
                     "total": len(auto_tasks),
                     "tasks": [
                         {
                             "id": t.id,
                             "name": t.name,
                             "status": t.status.value,
-                            "completed": t.completed_at.isoformat() if t.completed_at else None
+                            "completed": t.completed_at.isoformat()
+                            if t.completed_at
+                            else None,
                         }
                         for t in auto_tasks
-                    ]
+                    ],
                 },
                 "ho": {
-                    "count": sum(1 for t in ho_tasks if t.status == TaskStatus.COMPLETED),
+                    "count": sum(
+                        1 for t in ho_tasks if t.status == TaskStatus.COMPLETED
+                    ),
                     "total": len(ho_tasks),
                     "pending": [
                         {
                             "id": t.id,
                             "name": t.name,
                             "description": t.description,
-                            "scaffold": t.ho_scaffold
+                            "scaffold": t.ho_scaffold,
                         }
-                        for t in ho_tasks if t.status != TaskStatus.COMPLETED
-                    ]
+                        for t in ho_tasks
+                        if t.status != TaskStatus.COMPLETED
+                    ],
                 },
                 "approval": {
-                    "count": sum(1 for t in approval_tasks if t.status == TaskStatus.COMPLETED),
+                    "count": sum(
+                        1 for t in approval_tasks if t.status == TaskStatus.COMPLETED
+                    ),
                     "total": len(approval_tasks),
                     "ready": [
-                        {
-                            "id": t.id,
-                            "name": t.name,
-                            "command": t.command
-                        }
-                        for t in approval_tasks if self._prerequisites_met(t) and t.status == TaskStatus.PENDING
-                    ]
-                }
+                        {"id": t.id, "name": t.name, "command": t.command}
+                        for t in approval_tasks
+                        if self._prerequisites_met(t) and t.status == TaskStatus.PENDING
+                    ],
+                },
             },
             "autonomy_progress": {
-                "auto_complete": sum(1 for t in auto_tasks if t.status == TaskStatus.COMPLETED),
+                "auto_complete": sum(
+                    1 for t in auto_tasks if t.status == TaskStatus.COMPLETED
+                ),
                 "auto_total": len(auto_tasks),
-                "ho_complete": sum(1 for t in ho_tasks if t.status == TaskStatus.COMPLETED),
-                "ho_total": len(ho_tasks)
-            }
+                "ho_complete": sum(
+                    1 for t in ho_tasks if t.status == TaskStatus.COMPLETED
+                ),
+                "ho_total": len(ho_tasks),
+            },
         }
 
     def get_next_ho_task(self) -> DeploymentTask | None:
         """Get the next pending HO task for Matt"""
         for task in self.tasks.values():
-            if task.classification == TaskClassification.HO and task.status == TaskStatus.PENDING:
+            if (
+                task.classification == TaskClassification.HO
+                and task.status == TaskStatus.PENDING
+            ):
                 return task
         return None
 
@@ -443,7 +504,7 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
             "executed": [],
             "failed": [],
             "pending_ho": [],
-            "status": self.get_status()
+            "status": self.get_status(),
         }
 
         # Execute all ready AUTO tasks
@@ -460,7 +521,7 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
             results["pending_ho"] = {
                 "id": ho_task.id,
                 "name": ho_task.name,
-                "scaffold": ho_task.ho_scaffold
+                "scaffold": ho_task.ho_scaffold,
             }
 
         return results
@@ -484,12 +545,7 @@ async def get_protocol_status() -> dict[str, Any]:
 async def get_auto_tasks() -> list[dict[str, Any]]:
     """Get all AUTO tasks ready for execution"""
     return [
-        {
-            "id": t.id,
-            "name": t.name,
-            "command": t.command,
-            "description": t.description
-        }
+        {"id": t.id, "name": t.name, "command": t.command, "description": t.description}
         for t in hop.get_auto_tasks()
     ]
 
@@ -520,7 +576,7 @@ async def get_next_ho_task() -> dict[str, Any]:
             "id": task.id,
             "name": task.name,
             "description": task.description,
-            "scaffold": task.ho_scaffold
+            "scaffold": task.ho_scaffold,
         }
     }
 
@@ -535,7 +591,7 @@ async def get_all_ho_tasks() -> list[dict[str, Any]]:
             "description": t.description,
             "status": t.status.value,
             "scaffold": t.ho_scaffold,
-            "completed": t.completed_at.isoformat() if t.completed_at else None
+            "completed": t.completed_at.isoformat() if t.completed_at else None,
         }
         for t in hop.get_ho_tasks()
     ]
@@ -557,6 +613,5 @@ async def protocol_health() -> dict[str, Any]:
         "status": "healthy",
         "service": "human_only_protocol",
         "owner": "Matt",
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.utcnow().isoformat(),
     }
-
