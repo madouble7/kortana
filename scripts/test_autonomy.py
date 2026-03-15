@@ -21,7 +21,7 @@ async def test_core_autonomy():
     # Test 1: LLM Service Availability
     print("\n1. 🧠 Testing LLM Service...")
     try:
-        from src.kortana.services.llm_service import llm_service
+        from kortana.services.llm_service import llm_service
 
         # Mock for testing without real API calls
         llm_service.generate_response = AsyncMock(
@@ -50,7 +50,7 @@ async def test_core_autonomy():
     try:
         from sqlalchemy.orm import Session
 
-        from src.kortana.core.orchestrator import KorOrchestrator
+        from kortana.core.orchestrator import KorOrchestrator
 
         # Mock database and services
         mock_db = MagicMock(spec=Session)
@@ -87,7 +87,7 @@ async def test_core_autonomy():
     try:
         from openai import AsyncClient
 
-        from src.kortana.core.autonomous_development_engine import (
+        from kortana.core.autonomous_development_engine import (
             AutonomousDevelopmentEngine,
             DevelopmentTask,
         )

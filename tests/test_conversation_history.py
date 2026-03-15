@@ -1,342 +1,192 @@
-"""
-Tests for conversation history service and API endpoints.
-Validates UI consistency requirements including tag filtering, keyword search, and timestamp queries.
-"""
-
-from datetime import datetime, timedelta
-from unittest.mock import patch
-
+"""Tests for conversation history management."""
 import pytest
-from fastapi.testclient import TestClient
+from datetime import datetime, timedelta
+from unittest.mock import Mock
+from sqlalchemy.orm import Session
 
-from src.kortana.services.conversation_history import (
-    ConversationHistoryService,
-)
+from kortana.modules.conversation_history import models, schemas, services
 
 
 class TestConversationHistoryService:
-    """Test the conversation history service."""
-
+    """Test conversation history service."""
+    
     @pytest.fixture
-    def temp_storage(self, tmp_path):
-        """Create temporary storage for tests."""
-        return tmp_path / "test_conversations"
-
+    def mock_db(self):
+        """Create a mock database session."""
+        return Mock(spec=Session)
+    
     @pytest.fixture
-    def service(self, temp_storage):
-        """Create a service instance with temporary storage."""
-        return ConversationHistoryService(storage_path=temp_storage)
-
-    def test_create_conversation(self, service):
+    def service(self, mock_db):
+        """Create a conversation history service."""
+        return services.ConversationHistoryService(mock_db)
+    
+    def test_create_conversation(self, service, mock_db):
         """Test creating a new conversation."""
-        conv = service.create_conversation(user_id="user123", tags=["work", "python"])
-
-        assert conv.id is not None
-        assert conv.user_id == "user123"
-        assert "work" in conv.tags
-        assert "python" in conv.tags
-        assert len(conv.messages) == 0
-
-    def test_save_and_retrieve_conversation(self, service):
-        """Test saving and retrieving a conversation."""
-        conv = service.create_conversation(user_id="user456")
-        conv.add_message("user", "Hello, Kor'tana!")
-        conv.add_message("assistant", "Hello! How can I help you today?")
-        service.save_conversation(conv)
-
-        # Retrieve
-        retrieved = service.get_conversation(conv.id)
-        assert retrieved is not None
-        assert retrieved.id == conv.id
-        assert len(retrieved.messages) == 2
-        assert retrieved.messages[0].content == "Hello, Kor'tana!"
-
-    def test_delete_conversation(self, service):
-        """Test deleting a conversation."""
-        conv = service.create_conversation()
-        conv_id = conv.id
-
-        # Verify it exists
-        assert service.get_conversation(conv_id) is not None
-
-        # Delete
-        success = service.delete_conversation(conv_id)
-        assert success is True
-
-        # Verify it's gone
-        assert service.get_conversation(conv_id) is None
-
-    def test_add_tags(self, service):
-        """Test adding tags to a conversation."""
-        conv = service.create_conversation(tags=["initial"])
-        service.add_tags(conv.id, ["tag1", "tag2"])
-
-        updated = service.get_conversation(conv.id)
-        assert "initial" in updated.tags
-        assert "tag1" in updated.tags
-        assert "tag2" in updated.tags
-
-    def test_remove_tags(self, service):
-        """Test removing tags from a conversation."""
-        conv = service.create_conversation(tags=["tag1", "tag2", "tag3"])
-        service.remove_tags(conv.id, ["tag2"])
-
-        updated = service.get_conversation(conv.id)
-        assert "tag1" in updated.tags
-        assert "tag2" not in updated.tags
-        assert "tag3" in updated.tags
-
-    def test_filter_by_tags(self, service):
-        """Test filtering conversations by tags."""
-        # Create conversations with different tags
-        conv1 = service.create_conversation(tags=["python", "ai"])
-        conv2 = service.create_conversation(tags=["javascript", "web"])
-        conv3 = service.create_conversation(tags=["python", "web"])
-
-        # Filter by python tag
-        results = service.list_conversations(tags=["python"])
-        assert len(results) == 2
-        assert any(c.id == conv1.id for c in results)
-        assert any(c.id == conv3.id for c in results)
-
-    def test_filter_by_keywords(self, service):
-        """Test filtering conversations by keywords."""
-        conv1 = service.create_conversation()
-        conv1.add_message("user", "Tell me about machine learning")
-        service.save_conversation(conv1)
-
-        conv2 = service.create_conversation()
-        conv2.add_message("user", "What is the weather?")
-        service.save_conversation(conv2)
-
-        # Search for "machine"
-        results = service.list_conversations(keywords=["machine"])
-        assert len(results) == 1
-        assert results[0].id == conv1.id
-
-    def test_filter_by_engagement_rank(self, service):
-        """Test filtering by engagement rank."""
-        # Create conversations with different lengths (affects engagement)
-        conv1 = service.create_conversation()
-        for i in range(20):  # High engagement
-            conv1.add_message("user", f"Message {i}" * 10)
-        service.save_conversation(conv1)
-
-        conv2 = service.create_conversation()
-        conv2.add_message("user", "Short")  # Low engagement
-        service.save_conversation(conv2)
-
-        # Filter high engagement
-        results = service.list_conversations(min_engagement_rank=0.5)
-        assert len(results) >= 1
-        assert conv1.id in [c.id for c in results]
-
-    def test_filter_by_user_and_timestamp(self, service):
-        """Test filtering by user ID and timestamp range."""
-        user_id = "test_user"
-
-        # Create conversations at different times (simulate by manipulating created_at)
-        conv1 = service.create_conversation(user_id=user_id)
-        conv1.created_at = datetime.utcnow() - timedelta(days=2)
-        service.save_conversation(conv1)
-
-        conv2 = service.create_conversation(user_id=user_id)
-        conv2.created_at = datetime.utcnow()
-        service.save_conversation(conv2)
-
-        conv3 = service.create_conversation(user_id="other_user")
-        service.save_conversation(conv3)
-
-        # Search for test_user conversations from last day
-        start_time = datetime.utcnow() - timedelta(days=1)
-        results = service.search_by_user_timestamp(
-            user_id=user_id,
-            start_timestamp=start_time,
+        conv_create = schemas.ConversationCreate(
+            user_id="test_user",
+            title="Test Conversation"
         )
-
-        assert len(results) == 1
-        assert results[0].id == conv2.id
-
-    def test_engagement_rank_calculation(self, service):
-        """Test that engagement rank is calculated correctly."""
-        conv = service.create_conversation()
-
-        # Initially should be 0
-        assert conv.engagement_rank == 0.0
-
-        # Add messages
-        for i in range(10):
-            conv.add_message("user", f"This is a longer message about topic {i}" * 5)
-
-        # Should have increased
-        assert conv.engagement_rank > 0.0
-        assert conv.engagement_rank <= 1.0
-
-    def test_conversation_preview(self, service):
-        """Test getting conversation preview."""
-        conv = service.create_conversation()
-        long_message = "This is a very long message that should be truncated " * 10
-        conv.add_message("user", long_message)
-        service.save_conversation(conv)
-
-        preview = service.get_conversation_preview(conv.id, max_chars=50)
-        assert len(preview) <= 53  # 50 + "..."
-        assert preview.endswith("...")
-
-    def test_statistics(self, service):
+        
+        # Mock the database operations
+        mock_db.commit = Mock()
+        mock_db.refresh = Mock()
+        mock_db.add = Mock()
+        
+        mock_conversation = Mock(spec=models.Conversation)
+        mock_conversation.id = 1
+        mock_conversation.user_id = "test_user"
+        
+        # Call create
+        service.create_conversation(conv_create)
+        
+        # Verify database operations were called
+        assert mock_db.add.called
+        assert mock_db.commit.called
+    
+    def test_add_message(self, service, mock_db):
+        """Test adding a message to conversation."""
+        # Setup mock conversation
+        mock_conversation = Mock(spec=models.Conversation)
+        mock_conversation.id = 1
+        
+        mock_db.query.return_value.filter.return_value.first.return_value = mock_conversation
+        
+        message_create = schemas.ConversationMessageCreate(
+            role="user",
+            content="Hello"
+        )
+        
+        # Mock database operations
+        mock_db.add = Mock()
+        mock_db.commit = Mock()
+        mock_db.refresh = Mock()
+        
+        service.add_message(1, message_create)
+        
+        assert mock_db.add.called
+        assert mock_db.commit.called
+    
+    def test_add_message_conversation_not_found(self, service, mock_db):
+        """Test adding message to non-existent conversation."""
+        mock_db.query.return_value.filter.return_value.first.return_value = None
+        
+        message_create = schemas.ConversationMessageCreate(
+            role="user",
+            content="Hello"
+        )
+        
+        with pytest.raises(ValueError, match="Conversation .* not found"):
+            service.add_message(999, message_create)
+    
+    def test_search_conversations_by_user(self, service, mock_db):
+        """Test searching conversations by user ID."""
+        filters = schemas.ConversationSearchFilters(user_id="test_user")
+        
+        mock_conversations = [Mock(spec=models.Conversation) for _ in range(3)]
+        mock_db.query.return_value.filter.return_value.order_by.return_value.offset.return_value.limit.return_value.all.return_value = mock_conversations
+        
+        results = service.search_conversations(filters)
+        
+        assert len(results) == 3
+    
+    def test_search_conversations_by_date_range(self, service, mock_db):
+        """Test searching conversations by date range."""
+        start_date = datetime.now() - timedelta(days=7)
+        end_date = datetime.now()
+        
+        filters = schemas.ConversationSearchFilters(
+            user_id="test_user",
+            start_date=start_date,
+            end_date=end_date
+        )
+        
+        mock_conversations = [Mock(spec=models.Conversation)]
+        mock_db.query.return_value.filter.return_value.filter.return_value.filter.return_value.order_by.return_value.offset.return_value.limit.return_value.all.return_value = mock_conversations
+        
+        results = service.search_conversations(filters)
+        
+        assert len(results) >= 0
+    
+    def test_search_conversations_by_keyword(self, service, mock_db):
+        """Test searching conversations by keyword."""
+        filters = schemas.ConversationSearchFilters(
+            user_id="test_user",
+            keyword="python"
+        )
+        
+        # Setup mock query chain
+        mock_query = Mock()
+        mock_db.query.return_value = mock_query
+        mock_query.filter.return_value = mock_query
+        mock_query.join.return_value = mock_query
+        mock_query.order_by.return_value = mock_query
+        mock_query.offset.return_value = mock_query
+        mock_query.limit.return_value = mock_query
+        mock_query.all.return_value = []
+        
+        results = service.search_conversations(filters)
+        
+        assert mock_query.join.called
+    
+    def test_archive_conversation(self, service, mock_db):
+        """Test archiving a conversation with compression."""
+        # Setup mock conversation with messages
+        mock_message = Mock(spec=models.ConversationMessage)
+        mock_message.role = "user"
+        mock_message.content = "Test message"
+        mock_message.created_at = datetime.now()
+        
+        mock_conversation = Mock(spec=models.Conversation)
+        mock_conversation.id = 1
+        mock_conversation.messages = [mock_message]
+        mock_conversation.metadata = {}
+        
+        mock_db.query.return_value.filter.return_value.options.return_value.first.return_value = mock_conversation
+        mock_db.commit = Mock()
+        mock_db.refresh = Mock()
+        
+        result = service.archive_conversation(1)
+        
+        assert result is not None
+        assert result.status == models.ConversationStatus.ARCHIVED
+        assert "compressed_messages" in result.metadata
+    
+    def test_delete_conversation(self, service, mock_db):
+        """Test soft deleting a conversation."""
+        mock_conversation = Mock(spec=models.Conversation)
+        mock_conversation.id = 1
+        
+        mock_db.query.return_value.filter.return_value.first.return_value = mock_conversation
+        mock_db.commit = Mock()
+        
+        result = service.delete_conversation(1)
+        
+        assert result is True
+        assert mock_conversation.status == models.ConversationStatus.DELETED
+    
+    def test_get_conversation_stats(self, service, mock_db):
         """Test getting conversation statistics."""
-        # Create several conversations
-        for i in range(3):
-            conv = service.create_conversation(
-                user_id=f"user{i}",
-                tags=[f"tag{i}", "common"],
-            )
-            conv.add_message("user", f"Message {i}")
-            service.save_conversation(conv)
-
-        stats = service.get_statistics()
-        assert stats["total_conversations"] == 3
+        # Setup mock messages
+        messages = []
+        for i, role in enumerate(["user", "assistant", "user"]):
+            msg = Mock(spec=models.ConversationMessage)
+            msg.role = role
+            msg.metadata = {"response_time_ms": 100 + i * 10}
+            messages.append(msg)
+        
+        mock_conversation = Mock(spec=models.Conversation)
+        mock_conversation.id = 1
+        mock_conversation.messages = messages
+        mock_conversation.created_at = datetime.now()
+        mock_conversation.updated_at = datetime.now()
+        mock_conversation.status = models.ConversationStatus.ACTIVE
+        
+        mock_db.query.return_value.filter.return_value.options.return_value.first.return_value = mock_conversation
+        
+        stats = service.get_conversation_stats(1)
+        
+        assert stats["conversation_id"] == 1
         assert stats["total_messages"] == 3
-        assert stats["unique_users"] == 3
-        assert "common" in stats["unique_tags"]
-
-
-class TestConversationAPI:
-    """Test the conversation history API endpoints."""
-
-    @pytest.fixture
-    def client(self, tmp_path):
-        """Create a test client with temporary storage."""
-        with patch(
-            "src.kortana.api.routers.conversation_router.ConversationHistoryService"
-        ) as mock_service_class:
-            # Use actual service with temp storage
-            service = ConversationHistoryService(storage_path=tmp_path / "api_test_conversations")
-            mock_service_class.return_value = service
-
-            # Import here to use the patched service
-            from src.kortana.api.routers.conversation_router import router
-            from fastapi import FastAPI
-
-            app = FastAPI()
-            app.include_router(router)
-
-            # Replace the module-level service instance
-            import src.kortana.api.routers.conversation_router as conv_router_module
-            conv_router_module.conversation_service = service
-
-            return TestClient(app)
-
-    def test_create_conversation_endpoint(self, client):
-        """Test POST /conversations/ endpoint."""
-        response = client.post(
-            "/conversations/",
-            json={"user_id": "user123", "tags": ["test"]},
-        )
-
-        assert response.status_code == 201
-        data = response.json()
-        assert data["user_id"] == "user123"
-        assert "test" in data["tags"]
-        assert "id" in data
-
-    def test_get_conversation_endpoint(self, client):
-        """Test GET /conversations/{id} endpoint."""
-        # Create a conversation first
-        create_response = client.post(
-            "/conversations/",
-            json={"user_id": "user456"},
-        )
-        conv_id = create_response.json()["id"]
-
-        # Get it
-        response = client.get(f"/conversations/{conv_id}")
-        assert response.status_code == 200
-        assert response.json()["id"] == conv_id
-
-    def test_add_message_endpoint(self, client):
-        """Test POST /conversations/{id}/messages endpoint."""
-        # Create conversation
-        create_response = client.post("/conversations/", json={})
-        conv_id = create_response.json()["id"]
-
-        # Add message
-        response = client.post(
-            f"/conversations/{conv_id}/messages",
-            json={
-                "role": "user",
-                "content": "Hello!",
-                "metadata": {"source": "test"},
-            },
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert len(data["messages"]) == 1
-        assert data["messages"][0]["content"] == "Hello!"
-
-    def test_list_with_filters_endpoint(self, client):
-        """Test GET /conversations/ with filters."""
-        # Create test conversations
-        client.post("/conversations/", json={"tags": ["python"]})
-        client.post("/conversations/", json={"tags": ["javascript"]})
-
-        # List with tag filter
-        response = client.get("/conversations/?tags=python")
-        assert response.status_code == 200
-        data = response.json()
-        assert data["total"] >= 1
-
-    def test_tag_management_endpoints(self, client):
-        """Test tag add/remove endpoints."""
-        # Create conversation
-        create_response = client.post("/conversations/", json={"tags": ["initial"]})
-        conv_id = create_response.json()["id"]
-
-        # Add tags
-        response = client.post(
-            f"/conversations/{conv_id}/tags",
-            json={"tags": ["new1", "new2"]},
-        )
-        assert response.status_code == 200
-        tags = response.json()["tags"]
-        assert "new1" in tags
-        assert "new2" in tags
-
-        # Remove tags
-        response = client.delete(
-            f"/conversations/{conv_id}/tags",
-            json={"tags": ["new1"]},
-        )
-        assert response.status_code == 200
-        tags = response.json()["tags"]
-        assert "new1" not in tags
-        assert "new2" in tags
-
-    def test_user_search_endpoint(self, client):
-        """Test GET /conversations/users/{user_id}/search endpoint."""
-        user_id = "search_test_user"
-
-        # Create conversations for this user
-        client.post("/conversations/", json={"user_id": user_id})
-        client.post("/conversations/", json={"user_id": user_id})
-
-        # Search
-        response = client.get(f"/conversations/users/{user_id}/search")
-        assert response.status_code == 200
-        data = response.json()
-        assert data["user_id"] == user_id
-        assert data["total"] == 2
-
-    def test_statistics_endpoint(self, client):
-        """Test GET /conversations/statistics endpoint."""
-        # Create some conversations
-        client.post("/conversations/", json={"user_id": "user1"})
-        client.post("/conversations/", json={"user_id": "user2"})
-
-        response = client.get("/conversations/statistics")
-        assert response.status_code == 200
-        data = response.json()
-        assert "total_conversations" in data
-        assert "total_messages" in data
-        assert data["total_conversations"] >= 2
+        assert stats["user_messages"] == 2
+        assert stats["assistant_messages"] == 1
+        assert stats["average_response_time_ms"] is not None

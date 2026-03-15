@@ -7,12 +7,12 @@ import asyncio
 import logging
 from unittest.mock import MagicMock
 
-from src.kortana.core.goals.engine import GoalEngine
-from src.kortana.core.goals.generator import GoalGenerator
-from src.kortana.core.goals.goal import Goal, GoalStatus, GoalType
-from src.kortana.core.goals.manager import GoalManager
-from src.kortana.core.goals.prioritizer import GoalPrioritizer
-from src.kortana.core.goals.scanner import EnvironmentalScanner
+from kortana.core.goals.engine import GoalEngine
+from kortana.core.goals.generator import GoalGenerator
+from kortana.core.goals.goal import Goal, GoalStatus, GoalType
+from kortana.core.goals.manager import GoalManager
+from kortana.core.goals.prioritizer import GoalPrioritizer
+from kortana.core.goals.scanner import EnvironmentalScanner
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

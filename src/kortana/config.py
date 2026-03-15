@@ -8,11 +8,12 @@ from typing import Any
 
 import yaml
 
-from config.schema import KortanaConfig
+from kortana.config.schema import KortanaConfig
 
 
 def get_project_root() -> Path:
     """Return the project root directory."""
+    # Since this is in src/kortana/config.py, project root is 2 levels up
     return Path(__file__).parent.parent.parent
 
 

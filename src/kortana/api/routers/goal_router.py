@@ -4,11 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 # Assuming your models and schemas are in the core directory now
-from src.kortana.core import (
+from kortana.core import (
     models,
     schemas,  # Corrected import path for schemas
 )
-from src.kortana.services.database import get_db_sync
+from kortana.services.database import get_db_sync
 
 from ..services.goal_service import GoalService
 
@@ -92,18 +92,7 @@ def list_all_goals(skip: int = 0, limit: int = 20, db: Session = Depends(get_db_
 @router.get("/{goal_id}", response_model=schemas.GoalDisplay)
 def get_goal_details(goal_id: int, db: Session = Depends(get_db_sync)):
     """Get detailed status and plan steps for a specific goal."""
-    try:
-        goal = db.query(models.Goal).filter(models.Goal.id == goal_id).first()
-        if not goal:
-            raise HTTPException(status_code=404, detail="Goal not found")
-        return goal
-    except Exception as e:
-        print(f"ERROR in get_goal_details endpoint: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "error_type": type(e).__name__,
-                "error_message": str(e),
-                "traceback": traceback.format_exc().splitlines(),
-            },
-        )
+    goal = db.query(models.Goal).filter(models.Goal.id == goal_id).first()
+    if not goal:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    return goal
