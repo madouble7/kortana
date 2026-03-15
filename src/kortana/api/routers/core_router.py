@@ -24,15 +24,22 @@ class QueryRequest(BaseModel):
         max_length=1000,
         examples=["What do you remember about our first conversation?"],
     )
+    language: str | None = Field(
+        None,
+        description="ISO 639-1 language code for the response (e.g., 'en', 'es', 'fr')",
+        min_length=2,
+        max_length=2,
+    )
 
 
 @router.post("/query", response_model=dict[str, Any])
 async def process_user_query(request: QueryRequest, db: Session = Depends(get_db_sync)):
     """
     Main endpoint for interacting with Kor'tana's core logic.
+    Supports multilingual responses via the optional 'language' parameter.
     """
     orchestrator = KorOrchestrator(db=db)
-    return await orchestrator.process_query(query=request.query)
+    return await orchestrator.process_query(query=request.query, language=request.language)
 
 
 # --- New OpenAI-Compatible Adapter Endpoint ---
@@ -204,7 +211,9 @@ async def openai_chat_completions_adapter(
         )
 
     orchestrator = KorOrchestrator(db=db)
-    kortana_response_data = await orchestrator.process_query(query=user_query)
+    kortana_response_data = await orchestrator.process_query(
+        query=user_query, language=request.language
+    )
 
     response_text: str
     if isinstance(kortana_response_data, dict):

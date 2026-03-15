@@ -175,6 +175,7 @@ For troubleshooting, see `docs/LOBECHAT_TROUBLESHOOTING.md`.
 - Security Module: `docs/SECURITY_MODULE.md`
 - LobeChat integration: `docs/LOBECHAT_CONNECTION.md`
 - LobeChat troubleshooting: `docs/LOBECHAT_TROUBLESHOOTING.md`
+- Multilingual support: `docs/MULTILINGUAL_SUPPORT.md`
 
 ## Development
 

@@ -66,7 +66,7 @@ class KorOrchestrator:
             "default": {"model": "gpt-4.1-nano"},
         }
 
-    async def process_query(self, query: str) -> dict[str, Any]:
+    async def process_query(self, query: str, language: str | None = None) -> dict[str, Any]:
         """
         The main thinking loop for Kor'tana, now with performance tracking and enhanced metadata.
         """
@@ -105,7 +105,7 @@ class KorOrchestrator:
         # Call the LLM client with the prompt
         llm_start = time.time()
         llm_result = await llm_client.generate_response(
-            system_prompt="You are responding as Kor'tana, a unique AI with a developing identity.",
+            system_prompt=system_prompt,
             messages=[{"role": "user", "content": prompt_for_llm}],
         )
         performance_metrics["llm_call_ms"] = int((time.time() - llm_start) * 1000)

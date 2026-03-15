@@ -169,6 +169,8 @@ def health_check() -> dict[str, Any]:
         "service": "Kor'tana",
         "version": "1.0.0",
         "message": "The Warchief's companion is ready",
+        "multilingual_support": True,
+        "supported_languages": ["en", "es", "fr", "de", "zh", "ja", "ko", "pt", "it", "ru"],
     }
 
 
