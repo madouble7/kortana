@@ -23,7 +23,7 @@ async def test_planning_engine_integration():
     print("\n=== Testing PlanningEngine Integration ===")
 
     try:
-        from src.kortana.core.planning_engine import planning_engine
+        from kortana.core.planning_engine import planning_engine
 
         # Test planning with a simple goal
         test_goal = "Create a simple Python function that adds two numbers"
@@ -52,8 +52,8 @@ async def test_chat_engine_integration():
     print("\n=== Testing ChatEngine Integration ===")
 
     try:
-        from src.kortana.config import load_config
-        from src.kortana.core.brain import ChatEngine
+        from kortana.config import load_config
+        from kortana.core.brain import ChatEngine
 
         # Load configuration
         settings = load_config()

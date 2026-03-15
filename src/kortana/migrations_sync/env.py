@@ -14,7 +14,7 @@ from kortana.services.database import Base
 
 # Import models for autogenerate support
 try:
-    from src.kortana.modules.memory_core.models import CoreMemory  # noqa: F401
+    from kortana.modules.memory_core.models import CoreMemory  # noqa: F401
 except ImportError:
     pass  # Models might not be available during initial setup
 

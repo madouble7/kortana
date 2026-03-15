@@ -5,8 +5,8 @@ Test the goals API directly to see the specific error
 
 import traceback
 
-from src.kortana.core.models import Goal, GoalStatus
-from src.kortana.services.database import SyncSessionLocal
+from kortana.core.models import Goal, GoalStatus
+from kortana.services.database import SyncSessionLocal
 
 
 def test_goals_directly():

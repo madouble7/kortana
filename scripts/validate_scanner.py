@@ -9,7 +9,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # Quick validation that the execution engine can be imported
 try:
-    from src.kortana.core.execution_engine import ExecutionEngine
+    from kortana.core.execution_engine import ExecutionEngine
 
     print("✅ ExecutionEngine imported successfully")
 

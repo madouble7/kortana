@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 try:
     # Import only what we need
-    from src.kortana.core.enhanced_model_router import EnhancedModelRouter, TaskType
+    from kortana.core.enhanced_model_router import EnhancedModelRouter, TaskType
 
     # Create a minimal settings object
     class MockSettings:

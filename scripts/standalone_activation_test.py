@@ -36,7 +36,7 @@ def test_autonomous_core():
     total_tests += 1
     try:
         print("1. 🧠 Testing Execution Engine Import...")
-        from src.kortana.core.execution_engine import execution_engine
+        from kortana.core.execution_engine import execution_engine
 
         print("   ✅ Execution Engine imported successfully")
         success_count += 1
@@ -65,7 +65,7 @@ def test_autonomous_core():
     total_tests += 1
     try:
         print("\n3. 🚀 Testing Autonomous Tasks Import...")
-        from src.kortana.core.autonomous_tasks import run_health_check_task
+        from kortana.core.autonomous_tasks import run_health_check_task
 
         print("   ✅ Autonomous tasks imported successfully")
         success_count += 1
@@ -94,7 +94,7 @@ def test_autonomous_core():
             print("   This is the core test - Kor'tana acting autonomously!")
 
             # Import the task function
-            from src.kortana.core.autonomous_tasks import run_health_check_task
+            from kortana.core.autonomous_tasks import run_health_check_task
 
             # Run the autonomous task
             result = run_health_check_task()

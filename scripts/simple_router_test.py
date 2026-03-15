@@ -9,8 +9,8 @@ import sys
 # Add the project root to the Python path
 sys.path.insert(0, ".")
 
-from src.kortana.config import load_config
-from src.kortana.core.enhanced_model_router import EnhancedModelRouter, TaskType
+from kortana.config import load_config
+from kortana.core.enhanced_model_router import EnhancedModelRouter, TaskType
 
 # Configure logging
 logging.basicConfig(

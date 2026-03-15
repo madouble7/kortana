@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from src.kortana.core.brain import ChatEngine
+from kortana.core.brain import ChatEngine
 
 
 @pytest.fixture
