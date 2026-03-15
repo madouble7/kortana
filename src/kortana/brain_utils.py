@@ -26,7 +26,7 @@ def get_embedding_model():
     """Get or initialize the sentence transformer embedding model (singleton pattern).
 
     Returns:
-        The sentence transformer model instance
+        The sentence transformer model instance or None if not available
     """
     global _EMBEDDING_MODEL
 
@@ -47,14 +47,14 @@ def get_embedding_model():
     return _EMBEDDING_MODEL
 
 
-def load_json_config(path: str) -> dict:
+def load_json_config(path: str) -> dict[str, Any]:
     """Load JSON configuration from file with graceful error handling.
 
     Args:
         path: Path to JSON configuration file
 
     Returns:
-        Dictionary containing loaded configuration
+        Dictionary containing loaded configuration, empty dict on error
     """
     try:
         with open(path, encoding="utf-8") as f:

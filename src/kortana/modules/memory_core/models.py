@@ -5,7 +5,7 @@ from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
-from src.kortana.services.database import Base
+from kortana.services.database import Base
 
 
 class MemoryType(enum.Enum):

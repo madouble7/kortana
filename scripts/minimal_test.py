@@ -2,7 +2,7 @@ import sys
 
 sys.path.insert(0, ".")
 
-from src.kortana.core.enhanced_model_router import EnhancedModelRouter, TaskType
+from kortana.core.enhanced_model_router import EnhancedModelRouter, TaskType
 
 
 class MockSettings:

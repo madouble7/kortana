@@ -77,7 +77,7 @@ def test_code_scanner():
     print("\n🔍 TESTING CODE SCANNER...")
 
     try:
-        from src.kortana.core.execution_engine import ExecutionEngine
+        from kortana.core.execution_engine import ExecutionEngine
 
         # Test directory with known Python files
         test_dirs = [
@@ -132,8 +132,8 @@ def check_database_for_proactive_goals():
     print("\n💾 CHECKING DATABASE FOR PROACTIVE GOALS...")
 
     try:
-        from src.kortana.database.db_setup import SessionLocal
-        from src.kortana.models.goal import Goal
+        from kortana.database.db_setup import SessionLocal
+        from kortana.models.goal import Goal
 
         db = SessionLocal()
 
@@ -177,8 +177,8 @@ def manual_proactive_execution():
     try:
         import asyncio
 
-        from src.kortana.core.autonomous_tasks import run_proactive_code_review_task
-        from src.kortana.database.db_setup import SessionLocal
+        from kortana.core.autonomous_tasks import run_proactive_code_review_task
+        from kortana.database.db_setup import SessionLocal
 
         print("  ⚡ Running proactive code review task...")
 
