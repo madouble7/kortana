@@ -126,11 +126,16 @@ PowerShell:
 
 ## Features
 
+- **Cost-Aware Model Routing**: Intelligent AI model selection prioritizing free models (87% cost reduction)
+  - 6+ free models via OpenRouter with automatic fallbacks
+  - Smart task-based routing (reasoning, coding, creative, vision)
+  - Real-time cost tracking and budget management
+  - Response caching to eliminate redundant API calls
 ### Core Features
 - **Memory System**: Stores and retrieves memories with semantic search capabilities
 - **Ethical Discernment**: Evaluates responses for algorithmic arrogance and uncertainty
 - **Context-Aware Responses**: Integrates memory and ethical considerations in responses
-- **LLM Integration**: Uses OpenAI's GPT models for natural language processing
+- **LLM Integration**: Supports multiple AI providers (OpenAI, Google, Anthropic, xAI, OpenRouter)
 - **LobeChat Frontend Support**: Seamlessly integrates with LobeChat for a user-friendly interface
 - **AR/VR Exploration**: Comprehensive augmented and virtual reality capabilities for immersive simulations, real-world overlays, and spatial object management
 - **Multimodal AI Capabilities**: Support for text, voice, images, video, and simulation-based queries
@@ -180,6 +185,7 @@ For troubleshooting, see `docs/LOBECHAT_TROUBLESHOOTING.md`.
 
 ## Documentation
 
+- **Cost Optimization Guide**: `docs/COST_OPTIMIZATION.md` - Save up to 87% on AI costs
 - **New Features**: `docs/NEW_FEATURES.md` - Comprehensive guide to all new features
 - **Quick Start**: `docs/QUICK_START_NEW_FEATURES.md` - Quick examples and tutorials
 - Full API documentation: `docs/API_ENDPOINTS.md`

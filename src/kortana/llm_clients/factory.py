@@ -27,6 +27,34 @@ class LLMClientFactory:
     Centralizes client creation logic and handles API key management.
     """
 
+    MODEL_CLIENTS = {
+        # Premium models via OpenRouter
+        "google/gemini-2.5-flash-preview-05-20": OpenRouterClient,
+        "openai/gpt-4.1-nano": OpenRouterClient,
+        "meta-llama/llama-4-maverick": OpenRouterClient,
+        "google/gemini-2.0-flash-001": OpenRouterClient,
+        "x-ai/grok-3-mini-beta": OpenRouterClient,
+        # Free models via OpenRouter (High Priority)
+        "deepseek/deepseek-r1-0528:free": OpenRouterClient,
+        "deepseek/deepseek-r1-0528-qwen3-8b:free": OpenRouterClient,
+        "mistralai/mistral-7b-instruct:free": OpenRouterClient,
+        "google/gemma-2-9b-it:free": OpenRouterClient,
+        "meta-llama/llama-3.1-8b-instruct:free": OpenRouterClient,
+        "qwen/qwen-2-7b-instruct:free": OpenRouterClient,
+        # Legacy models for backward compatibility
+        "anthropic/claude-3-haiku": OpenRouterClient,
+        "gpt-4.1-nano": OpenAIClient,
+        "gpt-4o-mini-openai": OpenAIClient,
+        "gemini-2.5-flash": GoogleGeminiClient,
+        "gemini-2.0-flash-lite": GoogleGeminiClient,
+        "gemini-1.5-flash": GoogleGeminiClient,
+        "deepseek/deepseek-chat-v3-0324": OpenRouterClient,
+        "deepseek-chat-v3-openrouter": OpenRouterClient,
+        "deepseek-r1-0528-free": OpenRouterClient,  # Legacy alias
+        "neversleep/noromaid-20b": OpenRouterClient,
+        "meta-llama/llama-4-scout": OpenRouterClient,
+        "qwen/qwen3-235b-a22b": OpenRouterClient,
+    }
     def _get_client_class(self, client_name: str) -> type:
         """Helper to lazily import and return client classes."""
         if client_name == "OpenRouterClient":
