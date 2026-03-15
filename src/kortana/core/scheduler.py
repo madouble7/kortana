@@ -4,15 +4,14 @@ Handles self-directed, scheduled operations that enable true autonomy
 """
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
-from pytz import UTC
 
+from kortana.core.autonomous_tasks import run_performance_analysis_task
 from kortana.core.covenant import CovenantEnforcer
 from kortana.core.environmental_scanner import run_environmental_scan_cycle
-from kortana.core.autonomous_tasks import run_performance_analysis_task
 from kortana.core.goal_manager import (
     GoalManager as CoreGoalManager,  # Alias to avoid confusion
 )
@@ -179,13 +178,14 @@ def start_scheduler():
     def run_proactive_code_review_wrapper():
         """Wrapper to handle database dependency for proactive code review."""
         try:
-            from kortana.services.database import get_db_sync
             from kortana.core.autonomous_tasks import run_proactive_code_review_task
+            from kortana.services.database import get_db_sync
 
             db_gen = get_db_sync()
             db = next(db_gen)  # Get the actual session from the generator
             try:
                 import asyncio
+
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
                 loop.run_until_complete(run_proactive_code_review_task(db))

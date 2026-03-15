@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
+import json
 from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from kortana.api.routers import core_router, goal_router
@@ -21,15 +24,29 @@ from kortana.modules.emotional_intelligence.router import (
 )
 from kortana.modules.ethical_transparency.router import router as ethics_router
 from kortana.modules.gaming.router import router as gaming_router
+from kortana.modules.inventory_analysis.routers.inventory_router import (
+    router as inventory_router,
+)
 from kortana.modules.marketplace.router import router as marketplace_router
 from kortana.modules.memory_core.routers.memory_router import router as memory_router
 from kortana.modules.multilingual.router import router as multilingual_router
 from kortana.modules.plugin_framework.router import router as plugin_router
+from kortana.modules.product_categorization.routers.category_router import (
+    router as category_router,
+)
+from kortana.modules.recommendation_engine.routers.recommendation_router import (
+    router as recommendation_router,
+)
 from kortana.modules.security.routers.security_router import router as security_router
-from kortana.voice import VoiceChatOrchestrator, VoiceProcessingError, VoiceSessionManager
+from kortana.voice import (
+    VoiceChatOrchestrator,
+    VoiceProcessingError,
+    VoiceSessionManager,
+)
 from kortana.voice.stt_service import STTConfig, STTService
 from kortana.voice.tts_service import TTSConfig, TTSService
 
+# Global configuration and engine
 settings = load_kortana_config()
 chat_engine = ChatEngine(settings=settings)
 voice_session_manager = VoiceSessionManager()
@@ -57,26 +74,6 @@ voice_orchestrator = VoiceChatOrchestrator(
     session_idle_seconds=settings.voice.session_idle_seconds,
     max_active_sessions=settings.voice.max_active_sessions,
 )
-from src.kortana.modules.security.routers.security_router import (
-    router as security_router,
-)
-from src.kortana.modules.product_categorization.routers.category_router import (
-    router as category_router,
-)
-from src.kortana.modules.inventory_analysis.routers.inventory_router import (
-    router as inventory_router,
-)
-from src.kortana.modules.recommendation_engine.routers.recommendation_router import (
-    router as recommendation_router,
-)
-
-# Import new module routers
-from src.kortana.modules.multilingual.router import router as multilingual_router
-from src.kortana.modules.plugin_framework.router import router as plugin_router
-
-# Global configuration and engine
-settings = load_kortana_config()
-chat_engine = ChatEngine(settings=settings)
 
 
 class VoiceChatRequest(BaseModel):
@@ -124,7 +121,9 @@ def _decode_audio_payload(audio_base64: str) -> bytes:
     try:
         decoded = base64.b64decode(compact, validate=True)
     except Exception as exc:
-        raise HTTPException(status_code=400, detail="Invalid base64 audio payload") from exc
+        raise HTTPException(
+            status_code=400, detail="Invalid base64 audio payload"
+        ) from exc
     if len(decoded) > max_audio_bytes:
         raise HTTPException(status_code=413, detail="Audio payload exceeds size limit")
     return decoded
@@ -183,17 +182,24 @@ def health_check() -> dict[str, Any]:
         "version": "1.0.0",
         "message": "The Warchief's companion is ready",
         "multilingual_support": True,
-        "supported_languages": ["en", "es", "fr", "de", "zh", "ja", "ko", "pt", "it", "ru"],
+        "supported_languages": [
+            "en",
+            "es",
+            "fr",
+            "de",
+            "zh",
+            "ja",
+            "ko",
+            "pt",
+            "it",
+            "ru",
+        ],
     }
 
 
 @app.post("/chat")
 async def chat(message: dict[str, Any]) -> dict[str, Any]:
     try:
-        from src.kortana.services.database import get_db_sync
-        from src.kortana.core.orchestrator import KorOrchestrator
-        from src.kortana.services.conversation_history import conversation_history
-        
         user_message = message.get("message", "")
         response = chat_engine.get_response(user_message)
         return {"response": response, "status": "success"}
@@ -285,38 +291,40 @@ async def end_voice_session(session_id: str) -> dict[str, Any]:
 @app.post("/chat/stream")
 async def chat_stream(message: dict):
     """Streaming chat endpoint for progressive responses with conversation history integration.
-    
+
     Validates input, streams response through orchestrator, and saves to conversation history.
-    
+
     Args:
         message: Dictionary containing 'message' (required) and optional 'conversation_id'
-        
+
     Returns:
         StreamingResponse with Server-Sent Events
-        
+
     Raises:
         HTTPException: If message is empty, too long, or processing fails
     """
-    from src.kortana.services.database import get_db_sync
-    from src.kortana.core.orchestrator import KorOrchestrator
-    from src.kortana.services.conversation_history import conversation_history
-    
+    from kortana.core.orchestrator import KorOrchestrator
+    from kortana.services.conversation_history import conversation_history
+    from kortana.services.database import get_db_sync
+
     user_message = message.get("message", "")
     if not user_message:
         raise HTTPException(status_code=400, detail="Message is required")
-    
+
     # Validate message length (max 10000 characters)
     if len(user_message) > 10000:
-        raise HTTPException(status_code=400, detail="Message too long (max 10000 characters)")
-    
+        raise HTTPException(
+            status_code=400, detail="Message too long (max 10000 characters)"
+        )
+
     # Get or create conversation
     conv_id = message.get("conversation_id")
     if not conv_id:
         conv_id = conversation_history.create_conversation()
-    
+
     # Save user message to history
     conversation_history.add_message(conv_id, "user", user_message)
-    
+
     async def generate_response():
         """Generator function for streaming response."""
         db = next(get_db_sync())
@@ -324,66 +332,55 @@ async def chat_stream(message: dict):
             # Send initial event
             yield f"data: {json.dumps({'type': 'start', 'status': 'processing'})}\n\n"
             await asyncio.sleep(0.1)
-            
+
             # Process the query
             orchestrator = KorOrchestrator(db=db)
             result = await orchestrator.process_query(query=user_message)
-            
+
             # Extract the response
-            final_response = result.get("final_kortana_response", 
-                                      result.get("response", 
-                                                "I'm having trouble processing that right now."))
-            
+            final_response = result.get(
+                "final_kortana_response",
+                result.get("response", "I'm having trouble processing that right now."),
+            )
+
             # Stream response in chunks with better chunk sizing
             words = final_response.split()
             if len(words) <= 20:
                 chunk_size = 3
             else:
                 chunk_size = max(3, len(words) // 20)
-            
+
             for i in range(0, len(words), chunk_size):
-                chunk = " ".join(words[i:i+chunk_size])
+                chunk = " ".join(words[i : i + chunk_size])
                 if chunk:
                     chunk += " " if i + chunk_size < len(words) else ""
-                    event_data = {
-                        'type': 'chunk',
-                        'content': chunk
-                    }
+                    event_data = {"type": "chunk", "content": chunk}
                     yield f"data: {json.dumps(event_data)}\n\n"
                     await asyncio.sleep(0.05)
-            
 
-            # Send the full response as a single chunk event
-            event_data = {
-                'type': 'chunk',
-                'content': final_response
-            }
-            yield f"data: {json.dumps(event_data)}\n\n"
-            
-            # Send completion event with metadata
+            # Save assistant response to history
+            conversation_history.add_message(conv_id, "assistant", final_response)
+
+            # Send completion event
             completion_data = {
-                'type': 'done',
-                'conversation_id': conv_id,
-                'metadata': metadata
+                "type": "done",
+                "conversation_id": conv_id,
             }
             yield f"data: {json.dumps(completion_data)}\n\n"
-            
+
         except Exception as e:
-            error_data = {
-                'type': 'error',
-                'error': str(e)
-            }
+            error_data = {"type": "error", "error": str(e)}
             yield f"data: {json.dumps(error_data)}\n\n"
         finally:
             db.close()
-    
+
     return StreamingResponse(
         generate_response(),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
-        }
+        },
     )
 
 
@@ -401,9 +398,6 @@ def system_status() -> dict[str, Any]:
 @app.post("/adapters/lobechat/chat")
 async def lobechat_adapter(request: dict[str, Any]) -> dict[str, Any]:
     try:
-        from src.kortana.services.database import get_db_sync
-        from src.kortana.core.orchestrator import KorOrchestrator
-        
         messages = request.get("messages", [])
         user_message = messages[-1].get("content", "") if messages else "Hello"
         response = chat_engine.get_response(user_message)
@@ -415,14 +409,16 @@ async def lobechat_adapter(request: dict[str, Any]) -> dict[str, Any]:
 @app.get("/conversations")
 def list_conversations(user_id: str | None = None):
     """List all conversations, optionally filtered by user."""
-    from src.kortana.services.conversation_history import conversation_history
+    from kortana.services.conversation_history import conversation_history
+
     return {"conversations": conversation_history.list_conversations(user_id=user_id)}
 
 
 @app.get("/conversations/{conversation_id}")
 def get_conversation(conversation_id: str):
     """Get a specific conversation by ID."""
-    from src.kortana.services.conversation_history import conversation_history
+    from kortana.services.conversation_history import conversation_history
+
     conversation = conversation_history.get_conversation(conversation_id)
     if not conversation:
         raise HTTPException(status_code=404, detail="Conversation not found")
@@ -432,7 +428,8 @@ def get_conversation(conversation_id: str):
 @app.delete("/conversations/{conversation_id}")
 def delete_conversation(conversation_id: str):
     """Delete a conversation."""
-    from src.kortana.services.conversation_history import conversation_history
+    from kortana.services.conversation_history import conversation_history
+
     if conversation_history.delete_conversation(conversation_id):
         return {"status": "deleted", "conversation_id": conversation_id}
     raise HTTPException(status_code=404, detail="Conversation not found")

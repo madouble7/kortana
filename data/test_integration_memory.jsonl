@@ -8,3 +8,8 @@
 {"timestamp": "2026-02-08T10:30:17.349730", "role": "assistant", "content": "I understand Matt's vision for autonomous AI development", "metadata": {"type": "understanding"}, "id": "mem_20260208T103017349730"}
 {"timestamp": "2026-02-08T10:30:17.349730", "role": "user", "content": "The project emphasizes clean code and minimal interfaces", "metadata": {"type": "preferences", "user": "Matt"}, "id": "mem_20260208T103017349730"}
 {"timestamp": "2026-02-08T10:30:17.349730", "role": "system", "content": "Memory system stores both conversations and project context", "metadata": {"type": "technical", "component": "memory"}, "id": "mem_20260208T103017349730"}
+{"timestamp": "2026-03-15T00:43:24.645506", "role": "user", "content": "Matt is building Kor'tana as an autonomous AI companion", "metadata": {"type": "project_info", "user": "Matt"}, "id": "mem_20260315T004324645506"}
+{"timestamp": "2026-03-15T00:43:24.645567", "role": "system", "content": "Kor'tana uses Gemini 2.0 Flash for core reasoning", "metadata": {"type": "technical", "component": "llm"}, "id": "mem_20260315T004324645567"}
+{"timestamp": "2026-03-15T00:43:24.645611", "role": "assistant", "content": "I understand Matt's vision for autonomous AI development", "metadata": {"type": "understanding"}, "id": "mem_20260315T004324645611"}
+{"timestamp": "2026-03-15T00:43:24.645650", "role": "user", "content": "The project emphasizes clean code and minimal interfaces", "metadata": {"type": "preferences", "user": "Matt"}, "id": "mem_20260315T004324645650"}
+{"timestamp": "2026-03-15T00:43:24.645686", "role": "system", "content": "Memory system stores both conversations and project context", "metadata": {"type": "technical", "component": "memory"}, "id": "mem_20260315T004324645686"}
