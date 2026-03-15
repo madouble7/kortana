@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class MemoryEntry:
-    """Represents a single memory entry."""
+    """Represents a single memory entry with enhanced metadata tracking."""
 
     def __init__(
         self,
@@ -27,6 +27,7 @@ class MemoryEntry:
         source: str = "conversation",
         embedding: list[float] | None = None,
         id: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ):
         self.text = text
         self.timestamp = timestamp or datetime.now()
@@ -34,6 +35,15 @@ class MemoryEntry:
         self.source = source
         self.embedding = embedding or []
         self.id = id or f"{source}-{self.timestamp.isoformat()}"
+        
+        # Enhanced metadata tracking
+        self.metadata = metadata or {}
+        if "created_at" not in self.metadata:
+            self.metadata["created_at"] = self.timestamp.isoformat()
+        if "last_accessed" not in self.metadata:
+            self.metadata["last_accessed"] = self.timestamp.isoformat()
+        if "access_count" not in self.metadata:
+            self.metadata["access_count"] = 0
 
     def to_dict(self) -> dict[str, Any]:
         """Convert the memory entry to a dictionary."""
@@ -44,6 +54,7 @@ class MemoryEntry:
             "tags": self.tags,
             "source": self.source,
             "embedding": self.embedding,
+            "metadata": self.metadata,
         }
 
     @classmethod
@@ -59,6 +70,7 @@ class MemoryEntry:
             source=data.get("source", "conversation"),
             embedding=data.get("embedding", []),
             id=data.get("id"),
+            metadata=data.get("metadata", {}),
         )
 
     @staticmethod
@@ -69,7 +81,13 @@ class MemoryEntry:
             tags=interaction.get("tags", []),
             source=interaction.get("source", "conversation"),
             embedding=interaction.get("embedding", []),
+            metadata=interaction.get("metadata", {}),
         )
+    
+    def update_access_metadata(self) -> None:
+        """Update metadata when memory is accessed."""
+        self.metadata["last_accessed"] = datetime.now().isoformat()
+        self.metadata["access_count"] = self.metadata.get("access_count", 0) + 1
 
 
 class MemoryManager:

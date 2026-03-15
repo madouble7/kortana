@@ -20,7 +20,7 @@ def start_server():
     try:
         import uvicorn
 
-        from src.kortana.main import app
+        from kortana.main import app
 
         print("🚀 Starting Kor'tana Genesis Protocol Server...")
         uvicorn.run(app, host="127.0.0.1", port=8000, log_level="info", reload=False)

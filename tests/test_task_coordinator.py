@@ -12,9 +12,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from src.kortana.core.execution_engine import ExecutionEngine
-from src.kortana.core.task_management.coordinator import TaskCoordinator
-from src.kortana.core.task_management.models import (
+from kortana.core.execution_engine import ExecutionEngine
+from kortana.core.task_management.coordinator import TaskCoordinator
+from kortana.core.task_management.models import (
     Task,
     TaskCategory,
     TaskPriority,

@@ -12,10 +12,16 @@ Usage:
 """
 
 import json
+import os
 import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+try:
+    from relays.protocol import append_text_line, tail_text_lines, utc_now_iso
+except ModuleNotFoundError:
+    from protocol import append_text_line, tail_text_lines, utc_now_iso
 
 
 class KortanaRelay:
@@ -77,8 +83,11 @@ class KortanaRelay:
     def _save_relay_state(self):
         """Save relay state to prevent duplicate processing"""
         self.relay_state_file.parent.mkdir(exist_ok=True)
-        with open(self.relay_state_file, "w", encoding="utf-8") as f:
+        tmp = self.relay_state_file.with_suffix(self.relay_state_file.suffix + ".tmp")
+        with open(tmp, "w", encoding="utf-8") as f:
             json.dump(self.relay_state, f, indent=2)
+            f.write("\n")
+        os.replace(tmp, self.relay_state_file)
 
     def _get_new_messages(self, agent_name: str) -> list[str]:
         """Get new messages from agent log since last relay"""
@@ -89,19 +98,29 @@ class KortanaRelay:
 
         # Get current state for this agent
         agent_state = self.relay_state.get(agent_name, {})
-        last_line_count = agent_state.get("last_line_count", 0)
-        last_processed_time = agent_state.get("last_processed_time", "")
+        last_offset = int(agent_state.get("last_offset", 0) or 0)
+        remainder = str(agent_state.get("remainder", "") or "")
 
-        # Read all lines from log
+        # Backward-compatible migration from line-count cursor.
+        if "last_offset" not in agent_state and "last_line_count" in agent_state:
+            last_line_count = int(agent_state.get("last_line_count", 0) or 0)
+            try:
+                with open(log_file, encoding="utf-8") as f:
+                    lines = f.readlines()
+                capped = max(0, min(last_line_count, len(lines)))
+                last_offset = len("".join(lines[:capped]).encode("utf-8"))
+            except Exception:
+                last_offset = 0
+
         try:
-            with open(log_file, encoding="utf-8") as f:
-                lines = f.readlines()
+            new_lines, next_offset, next_remainder = tail_text_lines(
+                log_file,
+                offset=last_offset,
+                remainder=remainder,
+            )
         except Exception as e:
             print(f"⚠️  Error reading {log_file}: {e}")
             return []
-
-        # Get new lines since last processing
-        new_lines = lines[last_line_count:]
 
         # Filter out empty lines and clean up
         new_messages = []
@@ -110,14 +129,19 @@ class KortanaRelay:
             if line and not line.startswith("//"):  # Skip comments
                 new_messages.append(line)
 
-        # Update state
+        # Update state (including partial-line buffer) even when no complete messages.
+        next_state = {
+            "last_offset": next_offset,
+            "remainder": next_remainder,
+            "messages_processed": agent_state.get("messages_processed", 0),
+            "last_processed_time": agent_state.get("last_processed_time", ""),
+        }
         if new_messages:
-            self.relay_state[agent_name] = {
-                "last_line_count": len(lines),
-                "last_processed_time": datetime.now().isoformat(),
-                "messages_processed": agent_state.get("messages_processed", 0)
-                + len(new_messages),
-            }
+            next_state["last_processed_time"] = utc_now_iso()
+            next_state["messages_processed"] = (
+                int(agent_state.get("messages_processed", 0) or 0) + len(new_messages)
+            )
+        self.relay_state[agent_name] = next_state
 
         return new_messages
 
@@ -144,11 +168,10 @@ class KortanaRelay:
                 continue
 
             try:
-                with open(queue_file, "a", encoding="utf-8") as f:
-                    for message in messages:
-                        relay_message = f"[{timestamp}] {source_agent}: {message}"
-                        f.write(relay_message + "\n")
-                        relayed_count += 1
+                for message in messages:
+                    relay_message = f"[{timestamp}] {source_agent}: {message}"
+                    append_text_line(queue_file, relay_message)
+                    relayed_count += 1
                 print(f"📤 {source_agent} → {target_agent}: {len(messages)} messages")
             except Exception as e:
                 print(f"⚠️  Error writing to {queue_file}: {e}")
