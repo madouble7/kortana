@@ -1,8 +1,8 @@
-[project]
+[tool.poetry]
 name = "project-kortana"
 version = "0.1.0"
 description = ""
-authors = [{ name = "codex-bot", email = "codex-bot@example.com" }]
+authors = ["codex-bot <codex-bot@example.com>"]
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -26,7 +26,30 @@ dependencies = [
     "plotly>=5.14.0",
 ]
 
+[tool.poetry.dependencies]
+python = "^3.9"
+fastapi = ">=0.115.0"
+uvicorn = {extras = ["standard"], version = ">=0.31.0"}
+sqlalchemy = ">=2.0.35"
+psycopg2-binary = ">=2.9.9"
+alembic = ">=1.13.0"
+openai = ">=1.54.0"
+pydantic = ">=2.9.0"
+pydantic-settings = ">=2.5.0"
+sentence-transformers = ">=3.1.0"
+torch = ">=2.1.0"
+numpy = ">=1.26.0"
+httpx = ">=0.27.0"
+apscheduler = ">=3.10.4"
+pinecone = ">=5.0.0"
+cryptography = ">=43.0.0"
 
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+kortana = ["py.typed"]

@@ -7,7 +7,7 @@ Goal Service Layer - Created autonomously as part of refactoring assignment.
 
 from sqlalchemy.orm import Session
 
-from ..models.goal import Goal
+from kortana.core.models import Goal
 
 
 class GoalService:
