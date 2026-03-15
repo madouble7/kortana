@@ -7,12 +7,10 @@ for demonstration purposes.
 """
 
 import json
-from datetime import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 # Setup in-memory database for demonstration
-from src.kortana.core.models import TILNote
 from src.kortana.modules.til.schemas import TILNoteCreate, TILNoteUpdate
 from src.kortana.modules.til.services import TILService
 from src.kortana.services.database import Base

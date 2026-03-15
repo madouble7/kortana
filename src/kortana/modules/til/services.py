@@ -160,13 +160,22 @@ class TILService:
         Returns:
             List of TIL notes with the tag
         """
-        # Search for exact tag match in the JSON array
-        # Pattern matches: ["tag"] or ["...", "tag", "..."]
-        # This ensures we match the complete tag, not substrings
-        tag_pattern_start = f'%["{tag}"%'  # Start of array or middle
-        tag_pattern_mid = f'%, "{tag}"%'    # Middle with leading comma
+        # Fetch all notes and filter in Python to avoid JSON serialization brittleness
+        # This approach is more robust and doesn't depend on specific JSON formatting
+        all_notes = self.db.query(TILNote).filter(TILNote.tags.isnot(None)).all()
         
-        query = self.db.query(TILNote).filter(
-            (TILNote.tags.ilike(tag_pattern_start)) | (TILNote.tags.ilike(tag_pattern_mid))
-        )
-        return query.order_by(TILNote.created_at.desc()).offset(skip).limit(limit).all()
+        matching_notes = []
+        for note in all_notes:
+            try:
+                tags_list = json.loads(note.tags) if note.tags else []
+                if tag in tags_list:
+                    matching_notes.append(note)
+            except json.JSONDecodeError:
+                # Skip notes with invalid JSON
+                continue
+        
+        # Sort by created_at descending
+        matching_notes.sort(key=lambda x: x.created_at, reverse=True)
+        
+        # Apply pagination
+        return matching_notes[skip:skip + limit]

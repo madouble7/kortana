@@ -9,7 +9,6 @@ Features:
 """
 
 import argparse
-import json
 import os
 import sys
 import tempfile
@@ -22,7 +21,6 @@ from sqlalchemy.orm import Session, sessionmaker
 # Add parent directory to path to import kortana modules
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from src.kortana.core.models import TILNote
 from src.kortana.modules.til.schemas import TILNoteCreate
 from src.kortana.modules.til.services import TILService
 from src.kortana.services.database import get_database_url

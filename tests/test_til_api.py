@@ -1,13 +1,9 @@
 """Integration tests for TIL API endpoints."""
 
-import json
-
-import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.kortana.core.models import TILNote
 from src.kortana.main import app
 from src.kortana.services.database import Base, get_db_sync
 

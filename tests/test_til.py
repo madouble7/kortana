@@ -1,13 +1,11 @@
 """Tests for TIL (Today I Learned) module."""
 
 import json
-from datetime import datetime
 
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.kortana.core.models import TILNote
 from src.kortana.modules.til.schemas import TILNoteCreate, TILNoteUpdate
 from src.kortana.modules.til.services import TILService
 from src.kortana.services.database import Base
