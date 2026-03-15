@@ -12,6 +12,9 @@ import sys
 from datetime import UTC, datetime
 from typing import Any
 
+# Configure logging
+logger = logging.getLogger(__name__)
+
 # Ensure src is in sys.path for imports if this script is run standalone
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
@@ -32,43 +35,39 @@ def load_memory() -> list[dict[str, Any]]:
     # Construct the absolute path to the memory file
     abs_memory_path = os.path.abspath(PROJECT_MEMORY_PATH)
 
-    print(f"[DEBUG] Attempting to load memory from: {abs_memory_path}")
+    logger.debug(f"Attempting to load memory from: {abs_memory_path}")
 
     if not os.path.exists(abs_memory_path):  # pragma: no cover
-        print(
-            f"[DEBUG] Memory file not found at {abs_memory_path}. Returning empty list."
+        logger.debug(
+            f"Memory file not found at {abs_memory_path}. Returning empty list."
         )
-        # print(f"Project memory file not found: {abs_memory_path}") # Avoid
-        # printing in library function
         return memory_entries
 
-    print(f"[DEBUG] Memory file found at {abs_memory_path}. Attempting to read.")
+    logger.debug(f"Memory file found at {abs_memory_path}. Attempting to read.")
 
     try:
         with open(abs_memory_path, encoding="utf-8") as f:
-            print("[DEBUG] File opened successfully. Reading line by line...")
+            logger.debug("File opened successfully. Reading line by line...")
             for line_num, line in enumerate(f, 1):
                 line = line.strip()
                 if not line:  # Skip empty lines
                     continue
-                print(f"[DEBUG] Reading line {line_num}: {line[:50]}...")
+                logger.debug(f"Reading line {line_num}: {line[:50]}...")
                 try:
                     entry = json.loads(line)
                     memory_entries.append(entry)
-                    print(f"[DEBUG] Successfully parsed line {line_num}.")
+                    logger.debug(f"Successfully parsed line {line_num}.")
                 except json.JSONDecodeError as e:
-                    print(
-                        f"[ERROR] JSON decoding error in {abs_memory_path} at line {line_num}: {e} - Line: {line[:100]}..."
-                    )  # Keep error printing for file issues
-                    # Decide how to handle errors - skip line, log, etc. #
-                    # pragma: no cover
+                    logger.error(
+                        f"JSON decoding error in {abs_memory_path} at line {line_num}: {e} - Line: {line[:100]}..."
+                    )
                     pass  # For now, just skip the problematic line # pragma: no cover
-            print("[DEBUG] Finished reading file.")
+            logger.debug("Finished reading file.")
     except OSError as e:  # pragma: no cover
-        print(f"[ERROR] IO Error reading project memory file {abs_memory_path}: {e}")
-        print("[DEBUG] Returning empty list due to IO Error.")
+        logger.error(f"IO Error reading project memory file {abs_memory_path}: {e}")
+        logger.debug("Returning empty list due to IO Error.")
 
-    print(f"[DEBUG] load_memory finished. Loaded {len(memory_entries)} entries.")
+    logger.debug(f"load_memory finished. Loaded {len(memory_entries)} entries.")
     return memory_entries
 
 

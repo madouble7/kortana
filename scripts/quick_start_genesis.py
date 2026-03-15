@@ -16,7 +16,7 @@ print("=" * 50)
 
 try:
     print("Testing basic import...")
-    from src.kortana.main import app
+    from kortana.main import app
 
     print("✅ FastAPI app imported successfully!")
 

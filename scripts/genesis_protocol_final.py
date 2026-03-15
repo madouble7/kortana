@@ -10,8 +10,8 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from src.kortana.config.schema import KortanaConfig  # Updated import path
-from src.kortana.core.services import initialize_services
+from kortana.config.schema import KortanaConfig  # Updated import path
+from kortana.core.services import initialize_services
 
 
 def test_core_imports():
@@ -20,23 +20,23 @@ def test_core_imports():
     print("-" * 60)
 
     import_tests = [
-        ("Brain Module", "from src.kortana.core.brain import ChatEngine"),
+        ("Brain Module", "from kortana.core.brain import ChatEngine"),
         (
             "Planning Engine",
-            "from src.kortana.core.planning_engine import PlanningEngine",
+            "from kortana.core.planning_engine import PlanningEngine",
         ),
         (
             "Enhanced Router",
-            "from src.kortana.core.enhanced_model_router import EnhancedModelRouter",
+            "from kortana.core.enhanced_model_router import EnhancedModelRouter",
         ),
         (
             "Model Factory",
-            "from src.kortana.llm_clients.factory import LLMClientFactory",
+            "from kortana.llm_clients.factory import LLMClientFactory",
         ),
-        ("Services", "from src.kortana.core.services import get_llm_service"),
+        ("Services", "from kortana.core.services import get_llm_service"),
         (
             "Memory Manager",
-            "from src.kortana.memory.memory_manager import MemoryManager",
+            "from kortana.memory.memory_manager import MemoryManager",
         ),
     ]
 
@@ -59,7 +59,7 @@ def test_enhanced_router(config: KortanaConfig):  # Added config parameter
     print("-" * 60)
 
     try:
-        from src.kortana.core.enhanced_model_router import EnhancedModelRouter, TaskType
+        from kortana.core.enhanced_model_router import EnhancedModelRouter, TaskType
 
         # Test router initialization
         router = EnhancedModelRouter(settings=config)
@@ -110,7 +110,7 @@ def test_services_architecture():
     print("-" * 60)
 
     try:
-        from src.kortana.core.services import get_llm_service, get_model_router
+        from kortana.core.services import get_llm_service, get_model_router
 
         # Test service access
         llm_service = get_llm_service()

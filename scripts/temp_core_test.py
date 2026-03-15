@@ -26,9 +26,9 @@ with open(output_file_path, "w", encoding="utf-8") as f_out:
 
     print("\n--- CONFIGURATION LOADING ---")
     try:
-        from src.kortana.config import load_config
+        from kortana.config import load_config
 
-        print("✅ Successfully imported load_config from src.kortana.config")
+        print("✅ Successfully imported load_config from kortana.config")
         settings = load_config()
         print(f"✅ Settings loaded successfully. Type: {type(settings)}")
         if hasattr(settings, "dict"):
@@ -44,10 +44,10 @@ with open(output_file_path, "w", encoding="utf-8") as f_out:
     if settings:
         print("\n--- SERVICES INITIALIZATION ---")
         try:
-            from src.kortana.core.services import initialize_services
+            from kortana.core.services import initialize_services
 
             print(
-                "✅ Successfully imported initialize_services from src.kortana.core.services"
+                "✅ Successfully imported initialize_services from kortana.core.services"
             )
             initialize_services(settings)
             services_initialized_flag = True
@@ -62,9 +62,9 @@ with open(output_file_path, "w", encoding="utf-8") as f_out:
 
     print("\n--- GET_LLM_SERVICE TEST ---")
     try:
-        from src.kortana.core.services import get_llm_service
+        from kortana.core.services import get_llm_service
 
-        print("✅ Successfully imported get_llm_service from src.kortana.core.services")
+        print("✅ Successfully imported get_llm_service from kortana.core.services")
         if services_initialized_flag:
             try:
                 llm_service = get_llm_service()
@@ -83,10 +83,10 @@ with open(output_file_path, "w", encoding="utf-8") as f_out:
     print("\n--- ENHANCED_MODEL_ROUTER TEST ---")
     if settings:
         try:
-            from src.kortana.core.enhanced_model_router import EnhancedModelRouter
+            from kortana.core.enhanced_model_router import EnhancedModelRouter
 
             print(
-                "✅ Successfully imported EnhancedModelRouter from src.kortana.core.enhanced_model_router"
+                "✅ Successfully imported EnhancedModelRouter from kortana.core.enhanced_model_router"
             )
             router = EnhancedModelRouter(settings=settings)
             print(
@@ -103,9 +103,9 @@ with open(output_file_path, "w", encoding="utf-8") as f_out:
         settings and services_initialized_flag
     ):  # ChatEngine relies on initialized services
         try:
-            from src.kortana.core.brain import ChatEngine
+            from kortana.core.brain import ChatEngine
 
-            print("✅ Successfully imported ChatEngine from src.kortana.core.brain")
+            print("✅ Successfully imported ChatEngine from kortana.core.brain")
             engine = ChatEngine(settings=settings)  # session_id is optional
             print(f"✅ ChatEngine instantiated successfully. Type: {type(engine)}")
         except Exception as e:
@@ -119,8 +119,8 @@ with open(output_file_path, "w", encoding="utf-8") as f_out:
     print("\n--- DATABASE GOAL QUERY TEST ---")
     if settings and services_initialized_flag:
         try:
-            from src.kortana.core.models import Goal
-            from src.kortana.services.database import (
+            from kortana.core.models import Goal
+            from kortana.services.database import (
                 Base,
                 SyncSessionLocal,
                 sync_engine,

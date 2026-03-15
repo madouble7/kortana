@@ -12,7 +12,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 def test_environment_loading():
     """Test environment variable loading with dotenv."""
-    print("🔧 Environment Loading Test")    print("=" * 40)
+    print("🔧 Environment Loading Test")
+    print("=" * 40)
 
     try:
         from dotenv import load_dotenv
