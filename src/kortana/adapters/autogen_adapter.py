@@ -1,12 +1,15 @@
 # src/kortana/adapters/autogen_adapter.py
 """
-Adapter to connect Kor'tana's backend API with the AutoGen multi-agent framework.
+Compatibility adapter exposing AutoGen-style endpoints for Kor'tana's backend API.
 
-This adapter enables:
-- Multi-agent collaboration using Microsoft AutoGen
-- Seamless integration with Kor'tana's orchestrator
-- Agent-based conversations and task delegation
-- Coordinated responses from multiple specialized agents
+This module does NOT run the Microsoft AutoGen framework or perform true
+multi-agent coordination. Instead, it:
+- Accepts requests and returns responses in AutoGen-inspired formats for client compatibility
+- Delegates all processing to Kor'tana's single orchestrator
+- Optionally formats outputs to appear as if they come from multiple agents
+
+Use this adapter when you need AutoGen-formatted interactions with Kor'tana, while
+understanding that native AutoGen multi-agent collaboration is not implemented here.
 """
 
 import logging
@@ -185,24 +188,25 @@ class AutoGenAdapter:
             # Future: Will coordinate actual AutoGen agents
             multi_agent_response = {
                 "collaboration_result": result.get("final_kortana_response"),
-                "agents_involved": ["planning_agent", "reasoning_agent", "memory_agent"],
+                # For now, only the Kor'tana orchestrator is involved; this list
+                # maintains AutoGen's expected structure without implying real
+                # multi-agent execution.
+                "agents_involved": ["kortana_orchestrator"],
                 "task": task,
                 "status": "completed",
                 "agent_contributions": [
                     {
-                        "agent": "planning_agent",
-                        "contribution": "Analyzed task structure and created execution plan",
-                    },
-                    {
-                        "agent": "reasoning_agent",
-                        "contribution": "Applied logical reasoning to the problem",
-                    },
-                    {
-                        "agent": "memory_agent",
-                        "contribution": "Retrieved relevant context from memory",
+                        "agent": "kortana_orchestrator",
+                        "contribution": "Processed the task using Kor'tana's orchestrator pipeline.",
                     },
                 ],
-                "debug_info": result,
+                "debug_info": {
+                    "orchestrator_result": result,
+                    "multi_agent_simulation": (
+                        "Response is formatted for AutoGen compatibility but does not "
+                        "yet represent true multi-agent execution."
+                    ),
+                },
             }
 
             return multi_agent_response

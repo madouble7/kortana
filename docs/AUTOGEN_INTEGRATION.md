@@ -193,33 +193,8 @@ Health check for AutoGen adapter.
 
 ## Configuration
 
-### Environment Variables
-
-Add to your `.env` file:
-
-```env
-# AutoGen Configuration
-AUTOGEN_ENABLED=true
-AUTOGEN_MAX_ROUNDS=10
-AUTOGEN_TIMEOUT=300
-```
-
-### Agent Configuration
-
-Agents can be configured in the request or through environment variables:
-
-```python
-agent_config = {
-    "assistant": {
-        "role": "assistant",
-        "system_message": "You are a helpful AI assistant.",
-    },
-    "user_proxy": {
-        "role": "user_proxy",
-        "system_message": "You represent the user.",
-    }
-}
-```
+The AutoGen adapter uses Kor'tana's existing configuration and does not require
+additional environment variables. All processing is handled by Kor'tana's orchestrator.
 
 ## Usage Examples
 

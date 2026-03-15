@@ -8,6 +8,7 @@ Provides endpoints for:
 - Agent status and configuration
 """
 
+import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -17,6 +18,8 @@ from sqlalchemy.orm import Session
 from src.kortana.services.database import get_db_sync
 
 from .autogen_adapter import AutoGenAdapter
+
+logger = logging.getLogger(__name__)
 
 
 # Pydantic models for AutoGen interaction
@@ -37,9 +40,6 @@ class AutoGenRequest(BaseModel):
     conversation_id: str | None = Field(
         None, description="Optional conversation ID for tracking"
     )
-    agent_config: dict[str, Any] | None = Field(
-        None, description="Optional agent configuration"
-    )
 
 
 class AutoGenResponse(BaseModel):
@@ -59,12 +59,6 @@ class MultiAgentRequest(BaseModel):
         examples=[
             "Analyze this code and suggest improvements with proper testing strategy"
         ],
-    )
-    agent_config: dict[str, Any] | None = Field(
-        None, description="Configuration for participating agents"
-    )
-    max_rounds: int | None = Field(
-        10, description="Maximum conversation rounds between agents"
     )
 
 
@@ -119,26 +113,17 @@ async def handle_autogen_chat(
         )
         # Ensure the response matches the AutoGenResponse model
         return AutoGenResponse(**response_data)
-    except HTTPException as e:
+    except HTTPException:
         # Re-raise HTTPException to let FastAPI handle it
-        raise e
+        raise
     except Exception as e:
-        # Catch any other unexpected errors
-        print(f"Error in AutoGen adapter endpoint: {e}")
-        # Return structured error response
-        return AutoGenResponse(
-            agent_responses=[
-                {
-                    "agent": "error_handler",
-                    "role": "assistant",
-                    "content": "An unexpected error occurred while processing your request.",
-                    "metadata": {"error": True},
-                }
-            ],
-            conversation_id=request.conversation_id or "error",
-            status="error",
-            debug_info={"error": str(e)},
-        )
+        # Log the error
+        logger.exception("Error in AutoGen adapter endpoint")
+        # Raise an HTTP 500 error so clients can detect failures via status code
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred while processing your request.",
+        ) from e
 
 
 @router.post("/collaborate", response_model=MultiAgentResponse)
@@ -146,24 +131,24 @@ async def handle_multi_agent_collaboration(
     request: MultiAgentRequest, db: Session = Depends(get_db_sync)
 ):
     """
-    Endpoint for multi-agent collaboration using AutoGen.
+    Endpoint for multi-agent collaboration using AutoGen-compatible format.
     
-    This endpoint enables multiple agents to work together on complex tasks,
-    coordinating their efforts to produce comprehensive results.
+    This endpoint enables complex tasks formatted for AutoGen clients,
+    while using Kor'tana's orchestrator for processing.
     """
     try:
         response_data = await autogen_adapter.handle_multi_agent_collaboration(
             request.model_dump(), db
         )
         return MultiAgentResponse(**response_data)
-    except HTTPException as e:
-        raise e
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"Error in multi-agent collaboration endpoint: {e}")
+        logger.exception("Error in multi-agent collaboration endpoint")
         raise HTTPException(
             status_code=500,
-            detail=f"Multi-agent collaboration failed: {str(e)}",
-        )
+            detail="Multi-agent collaboration failed. Please try again.",
+        ) from e
 
 
 @router.get("/status", response_model=AgentStatusResponse)
@@ -178,10 +163,10 @@ async def get_agent_status():
         status_data = autogen_adapter.get_agent_status()
         return AgentStatusResponse(**status_data)
     except Exception as e:
-        print(f"Error getting agent status: {e}")
+        logger.exception("Error getting agent status")
         raise HTTPException(
-            status_code=500, detail=f"Failed to retrieve agent status: {str(e)}"
-        )
+            status_code=500, detail="Failed to retrieve agent status."
+        ) from e
 
 
 @router.get("/health")
