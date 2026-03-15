@@ -13,6 +13,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from src.kortana.api.routers import core_router, goal_router
+from src.kortana.api.routers.multimodal_router import router as multimodal_router
+from src.kortana.core.scheduler import (
+    get_scheduler_status,
+    start_scheduler,
+    stop_scheduler,
 from kortana.api.routers import core_router, goal_router
 from kortana.api.routers.conversation_router import router as conversation_router
 from kortana.brain import ChatEngine
@@ -160,6 +166,7 @@ app.include_router(conversation_router)
 app.include_router(core_router.router)
 app.include_router(core_router.openai_adapter_router)
 app.include_router(goal_router.router)
+app.include_router(multimodal_router)
 # E-commerce AI modules
 app.include_router(category_router)
 app.include_router(inventory_router)
