@@ -10,6 +10,7 @@ from datetime import datetime
 import yaml
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+
 from src.kortana.config import get_settings
 
 router = APIRouter()
@@ -96,7 +97,9 @@ def create_branch(task_id: str, task_name: str) -> str:
 
         return branch_name
     except subprocess.CalledProcessError as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create branch: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to create branch: {str(e)}"
+        )
 
 
 def parse_covenant_tasks() -> list[Task]:

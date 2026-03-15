@@ -19,6 +19,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.kortana.database import get_db
 from src.kortana.logger import get_logger
 from src.kortana.models import Task
@@ -307,7 +308,9 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
             raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
 
         if task.classification != TaskClassification.AUTO.value:
-            raise HTTPException(status_code=400, detail=f"Task {task_id} is not AUTO classifiable")
+            raise HTTPException(
+                status_code=400, detail=f"Task {task_id} is not AUTO classifiable"
+            )
 
         task.status = TaskStatus.IN_PROGRESS.value
         task.started_at = datetime.utcnow()
@@ -362,15 +365,21 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
             elif command.startswith("pip "):
                 command_to_run = command.replace("pip ", f'"{py_exe}" -m pip ', 1)
             elif command.startswith("alembic "):
-                command_to_run = command.replace("alembic ", f'"{py_exe}" -m alembic ', 1)
+                command_to_run = command.replace(
+                    "alembic ", f'"{py_exe}" -m alembic ', 1
+                )
             else:
                 command_to_run = command
 
             # Execute command relative to project root
-            logger.info(f"Executing AUTO task {task_id}: {command_to_run} in {project_root}")
+            logger.info(
+                f"Executing AUTO task {task_id}: {command_to_run} in {project_root}"
+            )
 
             # Use shell=True only if necessary (file copy on windows)
-            use_shell = "copy " in command or "if not exist" in command or os.name == "nt"
+            use_shell = (
+                "copy " in command or "if not exist" in command or os.name == "nt"
+            )
 
             proc = subprocess.run(
                 command_to_run,
@@ -418,7 +427,9 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
             raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
 
         if task.classification != TaskClassification.HO.value:
-            raise HTTPException(status_code=400, detail=f"Task {task_id} is not an HO task")
+            raise HTTPException(
+                status_code=400, detail=f"Task {task_id} is not an HO task"
+            )
 
         task.status = TaskStatus.COMPLETED.value
         task.completed_at = datetime.utcnow()
@@ -430,9 +441,13 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
         """Get full deployment status from DB"""
         tasks = await self.get_all_tasks(db)
 
-        auto_tasks = [t for t in tasks if t.classification == TaskClassification.AUTO.value]
+        auto_tasks = [
+            t for t in tasks if t.classification == TaskClassification.AUTO.value
+        ]
         ho_tasks = [t for t in tasks if t.classification == TaskClassification.HO.value]
-        approval_tasks = [t for t in tasks if t.classification == TaskClassification.APPROVAL.value]
+        approval_tasks = [
+            t for t in tasks if t.classification == TaskClassification.APPROVAL.value
+        ]
 
         return {
             "timestamp": datetime.utcnow().isoformat(),
@@ -440,27 +455,39 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
             "owner": "Matt",
             "summary": {
                 "total_tasks": len(tasks),
-                "completed": sum(1 for t in tasks if t.status == TaskStatus.COMPLETED.value),
-                "in_progress": sum(1 for t in tasks if t.status == TaskStatus.IN_PROGRESS.value),
-                "pending": sum(1 for t in tasks if t.status == TaskStatus.PENDING.value),
+                "completed": sum(
+                    1 for t in tasks if t.status == TaskStatus.COMPLETED.value
+                ),
+                "in_progress": sum(
+                    1 for t in tasks if t.status == TaskStatus.IN_PROGRESS.value
+                ),
+                "pending": sum(
+                    1 for t in tasks if t.status == TaskStatus.PENDING.value
+                ),
                 "failed": sum(1 for t in tasks if t.status == TaskStatus.FAILED.value),
             },
             "classifications": {
                 "auto": {
-                    "count": sum(1 for t in auto_tasks if t.status == TaskStatus.COMPLETED.value),
+                    "count": sum(
+                        1 for t in auto_tasks if t.status == TaskStatus.COMPLETED.value
+                    ),
                     "total": len(auto_tasks),
                     "tasks": [
                         {
                             "id": t.id,
                             "name": t.title,
                             "status": t.status,
-                            "completed": t.completed_at.isoformat() if t.completed_at else None,
+                            "completed": t.completed_at.isoformat()
+                            if t.completed_at
+                            else None,
                         }
                         for t in auto_tasks
                     ],
                 },
                 "ho": {
-                    "count": sum(1 for t in ho_tasks if t.status == TaskStatus.COMPLETED.value),
+                    "count": sum(
+                        1 for t in ho_tasks if t.status == TaskStatus.COMPLETED.value
+                    ),
                     "total": len(ho_tasks),
                     "pending": [
                         {
@@ -475,7 +502,9 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
                 },
                 "approval": {
                     "count": sum(
-                        1 for t in approval_tasks if t.status == TaskStatus.COMPLETED.value
+                        1
+                        for t in approval_tasks
+                        if t.status == TaskStatus.COMPLETED.value
                     ),
                     "total": len(approval_tasks),
                     "ready": [
@@ -490,7 +519,9 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
                     1 for t in auto_tasks if t.status == TaskStatus.COMPLETED.value
                 ),
                 "auto_total": len(auto_tasks),
-                "ho_complete": sum(1 for t in ho_tasks if t.status == TaskStatus.COMPLETED.value),
+                "ho_complete": sum(
+                    1 for t in ho_tasks if t.status == TaskStatus.COMPLETED.value
+                ),
                 "ho_total": len(ho_tasks),
             },
         }
@@ -517,7 +548,9 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
 
         # Find all ready AUTO tasks
         auto_ready = []
-        completed_task_ids = {t.id for t in tasks if t.status == TaskStatus.COMPLETED.value}
+        completed_task_ids = {
+            t.id for t in tasks if t.status == TaskStatus.COMPLETED.value
+        }
 
         # Map titles to IDs for prerequisite checking
         title_to_id = {t.title: t.id for t in tasks}
@@ -547,7 +580,10 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
                         if prereq_id not in completed_task_ids:
                             # Also check if it's a title
                             prereq_task_id = title_to_id.get(prereq_id)
-                            if not prereq_task_id or prereq_task_id not in completed_task_ids:
+                            if (
+                                not prereq_task_id
+                                or prereq_task_id not in completed_task_ids
+                            ):
                                 prereqs_met = False
                                 break
 
@@ -676,4 +712,3 @@ async def protocol_health() -> dict[str, Any]:
         "owner": "Matt",
         "timestamp": datetime.utcnow().isoformat(),
     }
-
