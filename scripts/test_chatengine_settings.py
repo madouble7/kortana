@@ -16,13 +16,13 @@ print("=" * 50)
 
 try:
     print("1. Loading configuration...")
-    from src.config.schema import create_default_config
+    from kortana.config.schema import create_default_config
 
     config = create_default_config()
     print("✅ Configuration loaded")
 
     print("2. Testing ChatEngine import...")
-    from src.kortana.core.brain import ChatEngine
+    from kortana.core.brain import ChatEngine
 
     print("✅ ChatEngine imported")
 
@@ -34,7 +34,7 @@ try:
     print(f"   Mode: {engine.mode}")
 
     print("\n4. Testing EnhancedModelRouter with settings...")
-    from src.kortana.core.enhanced_model_router import EnhancedModelRouter
+    from kortana.core.enhanced_model_router import EnhancedModelRouter
 
     router = EnhancedModelRouter(settings=config)
     print("✅ EnhancedModelRouter created successfully!")

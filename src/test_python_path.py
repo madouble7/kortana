@@ -21,7 +21,7 @@ def main():
     # Try to import from other directories
     print("\nTesting imports:")
     try:
-        # from src import brain # Removed F401 unused import
+        # from kortana import brain # Removed F401 unused import
 
         print("✅ Successfully imported 'brain' module")
     except ImportError as e:

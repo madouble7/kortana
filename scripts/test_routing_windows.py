@@ -13,8 +13,8 @@ import sys
 # Add the project root to the Python path
 sys.path.insert(0, ".")
 
-from src.kortana.config import load_config
-from src.kortana.core.enhanced_model_router import EnhancedModelRouter, TaskType
+from kortana.config import load_config
+from kortana.core.enhanced_model_router import EnhancedModelRouter, TaskType
 
 # Configure logging
 logging.basicConfig(
@@ -224,7 +224,7 @@ def test_yaml_router_integration():
     print("\n=== Testing YAML Router Integration ===")
 
     try:
-        from src.kortana.core.yaml_model_router import YamlModelRouter
+        from kortana.core.yaml_model_router import YamlModelRouter
 
         yaml_router = YamlModelRouter()
         models = yaml_router.list_all_models()

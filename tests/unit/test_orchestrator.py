@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy.orm import Session  # Assuming Session is used for type hinting
 
 # Adjust the import path based on your project structure
-from src.kortana.core.orchestrator import KorOrchestrator
+from kortana.core.orchestrator import KorOrchestrator
 
 # Mocked service and evaluator classes for dependency injection
 # These would typically be imported if they were real classes,

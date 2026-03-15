@@ -13,6 +13,7 @@ from .genai_client import GoogleGenAIClient
 from .google_client import (
     GoogleGeminiClient,  # Changed to use the more robust GoogleGeminiClient
 )
+from .multimodal_openai_client import MultimodalOpenAIClient
 from .openai_client import OpenAIClient
 from .openrouter_client import OpenRouterClient
 from .xai_client import XAIClient
@@ -33,9 +34,13 @@ class LLMClientFactory:
         "meta-llama/llama-4-maverick": OpenRouterClient,
         "google/gemini-2.0-flash-001": OpenRouterClient,
         "x-ai/grok-3-mini-beta": OpenRouterClient,
-        # Free models via OpenRouter
+        # Free models via OpenRouter (High Priority)
         "deepseek/deepseek-r1-0528:free": OpenRouterClient,
         "deepseek/deepseek-r1-0528-qwen3-8b:free": OpenRouterClient,
+        "mistralai/mistral-7b-instruct:free": OpenRouterClient,
+        "google/gemma-2-9b-it:free": OpenRouterClient,
+        "meta-llama/llama-3.1-8b-instruct:free": OpenRouterClient,
+        "qwen/qwen-2-7b-instruct:free": OpenRouterClient,
         # Legacy models for backward compatibility
         "anthropic/claude-3-haiku": OpenRouterClient,
         "gpt-4.1-nano": OpenAIClient,
@@ -50,6 +55,56 @@ class LLMClientFactory:
         "meta-llama/llama-4-scout": OpenRouterClient,
         "qwen/qwen3-235b-a22b": OpenRouterClient,
     }
+    def _get_client_class(self, client_name: str) -> type:
+        """Helper to lazily import and return client classes."""
+        if client_name == "OpenRouterClient":
+            from .openrouter_client import OpenRouterClient
+
+            return OpenRouterClient
+        elif client_name == "OpenAIClient":
+            from .openai_client import OpenAIClient
+
+            return OpenAIClient
+        elif client_name == "GoogleGeminiClient":
+            from .google_client import GoogleGeminiClient
+
+            return GoogleGeminiClient
+        elif client_name == "GoogleGenAIClient":
+            from .genai_client import GoogleGenAIClient
+
+            return GoogleGenAIClient
+        elif client_name == "XAIClient":
+            from .xai_client import XAIClient
+
+            return XAIClient
+        return BaseLLMClient
+
+    @property
+    def MODEL_CLIENT_NAMES(self) -> dict[str, str]:
+        return {
+            # Premium models via OpenRouter
+            "google/gemini-2.5-flash-preview-05-20": "OpenRouterClient",
+            "openai/gpt-4.1-nano": "OpenRouterClient",
+            "meta-llama/llama-4-maverick": "OpenRouterClient",
+            "google/gemini-2.0-flash-001": "OpenRouterClient",
+            "x-ai/grok-3-mini-beta": "OpenRouterClient",
+            # Free models via OpenRouter
+            "deepseek/deepseek-r1-0528:free": "OpenRouterClient",
+            "deepseek/deepseek-r1-0528-qwen3-8b:free": "OpenRouterClient",
+            # Legacy models for backward compatibility
+            "anthropic/claude-3-haiku": "OpenRouterClient",
+            "gpt-4.1-nano": "OpenAIClient",
+            "gpt-4o-mini-openai": "OpenAIClient",
+            "gemini-2.5-flash": "GoogleGeminiClient",
+            "gemini-2.0-flash-lite": "GoogleGeminiClient",
+            "gemini-1.5-flash": "GoogleGeminiClient",
+            "deepseek/deepseek-chat-v3-0324": "OpenRouterClient",
+            "deepseek-chat-v3-openrouter": "OpenRouterClient",
+            "deepseek-r1-0528-free": "OpenRouterClient",
+            "neversleep/noromaid-20b": "OpenRouterClient",
+            "meta-llama/llama-4-scout": "OpenRouterClient",
+            "qwen/qwen3-235b-a22b": "OpenRouterClient",
+        }
 
     def __init__(self, settings: KortanaConfig):
         """Initialize the factory with Kortana configuration.
@@ -66,7 +121,7 @@ class LLMClientFactory:
         if not absolute_config_path.is_absolute():
             # Attempt to resolve relative to project root if get_project_root is available
             try:
-                from ..config import get_project_root  # Delayed import
+                from kortana.config import get_project_root  # Delayed import
 
                 absolute_config_path = get_project_root() / config_file_path_str
             except ImportError:
@@ -109,10 +164,10 @@ class LLMClientFactory:
             return None
         return self.create_client(model_id, self.models_config)  # models_config is dict
 
-    @staticmethod
     def create_client(
+        self,
         model_id: str,
-        models_config: dict[str, Any],  # Ensure this expects dict
+        models_config: dict[str, Any],
     ) -> BaseLLMClient | None:
         """Create an LLM client based on provider configuration.
 
@@ -148,15 +203,22 @@ class LLMClientFactory:
         default_params = model_conf.get("default_params", {})
 
         try:
-            client_class = LLMClientFactory.MODEL_CLIENTS.get(model_id)
-
-            if not client_class:
+            client_name = self.MODEL_CLIENT_NAMES.get(model_id)
+            if not client_name:
                 logging.error(
-                    f"No client class mapped for model_id: {model_id} in MODEL_CLIENTS."
+                    f"No client class mapped for model_id: {model_id} in MODEL_CLIENT_NAMES."
                 )
                 return None
 
-            client: BaseLLMClient | None = None
+            client_class = self._get_client_class(client_name)
+
+            # Simple instantiation for now as most take api_key and model_name
+            # If specific logic is needed, we can re-add it per class
+
+            from .google_client import GoogleGeminiClient
+            from .openai_client import OpenAIClient
+            from .openrouter_client import OpenRouterClient
+            from .xai_client import XAIClient
 
             if client_class == OpenAIClient:
                 client = OpenAIClient(
@@ -171,8 +233,8 @@ class LLMClientFactory:
                     api_key=api_key,
                     base_url=model_conf.get("base_url", "https://api.x.ai/v1"),
                 )  # Ensure model_name is passed if XAIClient expects it
-            elif client_class == GoogleGeminiClient:  # Changed to GoogleGeminiClient
-                client = GoogleGenAIClient(
+            elif client_class == GoogleGeminiClient:
+                client = GoogleGeminiClient(
                     api_key=api_key,
                     model_name=model_conf.get("model_name", model_id),
                     base_url=model_conf.get(
@@ -214,18 +276,16 @@ class LLMClientFactory:
             )
             return None
 
-    @staticmethod
-    def get_client_for_model(model_id: str, models_config: dict[str, Any]):
+    def get_client_for_model(self, model_id: str, models_config: dict[str, Any]):
         """Enhanced method with validation for ADE requirements."""
-        return LLMClientFactory.create_client(model_id, models_config)
+        return self.create_client(model_id, models_config)
 
-    @staticmethod
-    def get_default_client(models_config: dict[str, Any]) -> BaseLLMClient | None:
+    def get_default_client(self, models_config: dict[str, Any]) -> BaseLLMClient | None:
         """Get the default LLM client (GPT-4.1-Nano for Kor'tana primary use)."""
         default_model_id = "gpt-4.1-nano"
 
         try:
-            client = LLMClientFactory.create_client(default_model_id, models_config)
+            client = self.create_client(default_model_id, models_config)
             if client:
                 logger.info(
                     f"Default client created: {default_model_id} for primary Kor'tana conversation"
@@ -235,9 +295,8 @@ class LLMClientFactory:
             logger.error(f"Failed to create default client {default_model_id}: {e}")
             return None
 
-    @staticmethod
     def get_ade_client(
-        models_config: dict[str, Any], task_type: str = "primary"
+        self, models_config: dict[str, Any], task_type: str = "primary"
     ) -> BaseLLMClient | None:
         """Get appropriate client for ADE tasks based on task type."""
         task_model_mapping = {
@@ -250,14 +309,14 @@ class LLMClientFactory:
 
         model_id = task_model_mapping.get(task_type, "gpt-4.1-nano")
 
-        if model_id not in LLMClientFactory.MODEL_CLIENTS:
+        if model_id not in self.MODEL_CLIENT_NAMES:
             logger.warning(
                 f"ADE task type '{task_type}' mapped to unsupported model '{model_id}'. Falling back to default."
             )
             model_id = "gpt-4.1-nano"
 
         try:
-            client = LLMClientFactory.create_client(model_id, models_config)
+            client = self.create_client(model_id, models_config)
             if client:
                 logger.info(
                     f"ADE client created: {model_id} for task type: {task_type}"
@@ -267,10 +326,51 @@ class LLMClientFactory:
             logger.error(
                 f"Failed to create ADE client for {task_type} (model {model_id}): {e}"
             )
-            return LLMClientFactory.get_default_client(models_config)
+            return self.get_default_client(models_config)
+
+    @staticmethod
+    def get_multimodal_client(
+        models_config: dict[str, Any], 
+        model_id: str | None = None,
+        api_key_env: str = "OPENAI_API_KEY"
+    ) -> BaseLLMClient | None:
+        """
+        Get a multimodal-capable LLM client.
+
+        Args:
+            models_config: Models configuration dictionary
+            model_id: Model identifier (if None, uses GPT-4 Vision)
+            api_key_env: Environment variable name for API key
+
+        Returns:
+            Multimodal client instance or None
+        """
+        # If model_id provided, try to get from config
+        if model_id:
+            model_conf = models_config.get("models", {}).get(model_id)
+            if model_conf:
+                api_key_env = model_conf.get("api_key_env", api_key_env)
+                model_name = model_conf.get("model_name", model_id)
+        else:
+            # Use default vision model
+            model_name = "gpt-4-vision-preview"
+            
+        api_key = os.getenv(api_key_env)
+        if not api_key:
+            logger.error(f"{api_key_env} not found for multimodal client")
+            return None
+
+        try:
+            client = MultimodalOpenAIClient(api_key=api_key, model_name=model_name)
+            logger.info(f"Multimodal client created: {model_name}")
+            return client
+        except Exception as e:
+            logger.error(f"Failed to create multimodal client: {e}")
+            return None
 
     @staticmethod
     def validate_configuration(settings: KortanaConfig) -> bool:
+    def validate_configuration(self, settings: KortanaConfig) -> bool:
         """Validate that essential models are properly configured."""
         # Load models from the enhanced configuration
         try:
@@ -298,7 +398,7 @@ class LLMClientFactory:
 
         # Check essential models
         for model_id in essential_models:
-            if model_id not in LLMClientFactory.MODEL_CLIENTS:
+            if model_id not in self.MODEL_CLIENT_NAMES:
                 missing_essential.append(f"{model_id} (Not in MODEL_CLIENTS)")
                 continue
 
@@ -317,7 +417,7 @@ class LLMClientFactory:
 
         # Check recommended models
         for model_id in recommended_models:
-            if model_id not in LLMClientFactory.MODEL_CLIENTS:
+            if model_id not in self.MODEL_CLIENT_NAMES:
                 missing_recommended.append(f"{model_id} (Not in MODEL_CLIENTS)")
                 continue
 
