@@ -15,7 +15,7 @@ from typing import Any
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from src.kortana.core.orchestrator import KorOrchestrator
+from kortana.core.orchestrator import KorOrchestrator
 
 # Placeholder for LobeChat specific request/response models if needed
 # from pydantic import BaseModel
@@ -83,7 +83,7 @@ class LobeChatAdapter:
 # Example of how this adapter might be used in a new FastAPI router for LobeChat:
 #
 # from fastapi import APIRouter, Depends
-# from src.kortana.services.database import get_db_sync # If DB session is needed per request
+# from kortana.services.database import get_db_sync # If DB session is needed per request
 #
 # lobe_chat_router = APIRouter(
 #     prefix="/adapters/lobechat",

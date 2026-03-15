@@ -17,7 +17,7 @@ print(f"Python path includes: {sys.path[0]}")
 
 try:
     print("Importing FastAPI app...")
-    from src.kortana.main import app
+    from kortana.main import app
 
     print("✅ Import successful!")
 

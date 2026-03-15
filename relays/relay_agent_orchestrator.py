@@ -14,8 +14,14 @@ Usage:
     python relay_agent_orchestrator.py
 """
 
+import json
 import os
 import time
+
+try:
+    from relays.protocol import append_text_line, tail_text_lines
+except ModuleNotFoundError:
+    from protocol import append_text_line, tail_text_lines
 
 LOGS_DIR = "../logs"
 QUEUES_DIR = "../queues"
@@ -31,30 +37,80 @@ def get_seen_path(log_file):
     return os.path.join(SEEN_DIR, base + ".seen")
 
 
-def read_new_lines(log_file):
-    """Read only new lines since last processing"""
-    seen_path = get_seen_path(log_file)
-    last_count = 0
+def _load_seen_state(seen_path):
+    """Load seen state using byte offset + partial-line remainder."""
+    default = {"offset": 0, "remainder": ""}
+    if not os.path.exists(seen_path):
+        return default
 
-    # Get last processed line count
-    if os.path.exists(seen_path):
+    try:
         with open(seen_path, encoding="utf-8") as f:
-            try:
-                last_count = int(f.read().strip())
-            except ValueError:
-                last_count = 0
+            raw = f.read().strip()
+        if not raw:
+            return default
+
+        # New format: JSON
+        if raw.startswith("{"):
+            data = json.loads(raw)
+            if isinstance(data, dict):
+                return {
+                    "offset": int(data.get("offset", 0) or 0),
+                    "remainder": str(data.get("remainder", "") or ""),
+                }
+
+        # Legacy format: line count
+        legacy_count = int(raw)
+        return {"offset": 0, "remainder": "", "legacy_line_count": legacy_count}
+    except Exception:
+        return default
+
+
+def _save_seen_state(seen_path, state):
+    """Persist seen state atomically."""
+    tmp_path = seen_path + ".tmp"
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "offset": int(state.get("offset", 0) or 0),
+                "remainder": str(state.get("remainder", "") or ""),
+            },
+            f,
+            indent=2,
+        )
+        f.write("\n")
+    os.replace(tmp_path, seen_path)
+
+
+def read_new_lines(log_file):
+    """Read only new complete lines since last processing."""
+    seen_path = get_seen_path(log_file)
+    seen_state = _load_seen_state(seen_path)
 
     # Check if log file exists
     if not os.path.exists(log_file):
-        return [], last_count
+        return [], seen_state
 
-    # Read all lines from log
-    with open(log_file, encoding="utf-8") as f:
-        lines = f.readlines()
+    last_offset = int(seen_state.get("offset", 0) or 0)
+    remainder = str(seen_state.get("remainder", "") or "")
 
-    # Return only new lines
-    new_lines = lines[last_count:]
-    return new_lines, len(lines)
+    # One-time migration for legacy line-count state.
+    legacy_line_count = seen_state.get("legacy_line_count")
+    if legacy_line_count is not None:
+        try:
+            with open(log_file, encoding="utf-8") as f:
+                lines = f.readlines()
+            capped = max(0, min(int(legacy_line_count), len(lines)))
+            last_offset = len("".join(lines[:capped]).encode("utf-8"))
+        except Exception:
+            last_offset = 0
+
+    lines, next_offset, next_remainder = tail_text_lines(
+        log_file,
+        offset=last_offset,
+        remainder=remainder,
+    )
+    new_lines = [line for line in lines if line.strip()]
+    return new_lines, {"offset": next_offset, "remainder": next_remainder}
 
 
 def write_to_queue(agent, lines):
@@ -64,9 +120,8 @@ def write_to_queue(agent, lines):
 
     queue_file = os.path.join(QUEUES_DIR, f"{agent}_in.txt")
 
-    with open(queue_file, "a", encoding="utf-8") as f:
-        for line in lines:
-            f.write(line.rstrip("\n") + "\n")
+    for line in lines:
+        append_text_line(queue_file, line.rstrip("\n"))
 
     print(f"[relay] relayed {len(lines)} message(s) to {queue_file}")
 
@@ -81,16 +136,15 @@ def relay_all():
         full_log_path = os.path.join(LOGS_DIR, log_file)
 
         # Get new lines since last check
-        new_lines, total_lines = read_new_lines(full_log_path)
+        new_lines, next_state = read_new_lines(full_log_path)
 
         # Relay to queue if there are new messages
         if new_lines:
             write_to_queue(agent, new_lines)
 
-        # Update seen file with current line count
+        # Update seen file with current byte offset + remainder state.
         seen_path = get_seen_path(full_log_path)
-        with open(seen_path, "w", encoding="utf-8") as f:
-            f.write(str(total_lines))
+        _save_seen_state(seen_path, next_state)
 
 
 if __name__ == "__main__":

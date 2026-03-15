@@ -19,7 +19,7 @@ def test_centralized_services():
 
     try:
         # Test importing the services module
-        from src.kortana.core.services import (
+        from kortana.core.services import (
             get_chat_engine,
             get_covenant_enforcer,
             initialize_core_services,
@@ -28,7 +28,7 @@ def test_centralized_services():
         print("✅ Successfully imported centralized services")
 
         # Test creating config
-        from src.config.schema import create_default_config
+        from kortana.config.schema import create_default_config
 
         config = create_default_config()
         print("✅ Successfully created default config")

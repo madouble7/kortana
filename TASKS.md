@@ -42,6 +42,7 @@ STATUS: ⏳ PENDING (Activates after Phase 2 is complete)
 ## 🧹 ACTIVE DIRECTIVE: Project Stabilization & Cleanup
 
 ### **Phase 1: Directory Cleanup**
+
 STATUS: 🟢 ACTIVE
 
 | Priority | Task Description                                                                                                | Status        | Agent      | Notes / PR Link |
@@ -51,19 +52,19 @@ STATUS: 🟢 ACTIVE
 | 3        | Perform a final scan of the project root to ensure all specified items are moved. Report completion of Phase 1. | ⏸️ ON HOLD    |            |                 |
 
 ### **Phase 2: Code Refactoring**
-STATUS: ⏸️ ON HOLD (pending Tabby server setup)
+
+STATUS: 🟢 ACTIVE
 
 | Priority | Task Description                                                                 | Status        | Agent          | Notes / PR Link |
 | :------- | :------------------------------------------------------------------------------- | :------------ | :------------- | :-------------- |
-| 1        | Fix missing `get_memory_manager` function in import chain for `brain.py`.        | ⏸️ ON HOLD    |                | Error identified but fix waiting for infrastructure completion |
-| 2        | Fix `ChatEngine` class missing attributes in `brain.py` (project_memory, pinecone_memory, json_memory).  | ⏸️ ON HOLD    |                | Missing attributes identified and documented |
-| 3        | Address missing `dev_agent_instance` parameter in `PlanningAgent`.              | ⏸️ ON HOLD    |                | Parameter requirement identified |
-| 4        | Fix KortanaConfig type issue with `**raw_config` in `brain.py`.                 | ⏸️ ON HOLD    |                | Type error identified on line 726 |
-| 5        | Run `poetry install` to ensure consistent development environment.               | ⏸️ ON HOLD    |                | Will resume after infrastructure setup |
-| 6        | Execute `poetry run ruff check . --fix` for automated linting fixes.             | ⏸️ ON HOLD    |                | Will resume after infrastructure setup |
-| 7        | Run `poetry run ruff check .` and save output to `ruff_issues.txt`.              | ⏸️ ON HOLD    |                | Will resume after infrastructure setup |
-| 8        | Run `poetry run mypy .` and save output to `mypy_issues.txt`.                    | ⏸️ ON HOLD    |                | Will resume after infrastructure setup |
-| 9        | Systematically address remaining Ruff and MyPy errors, module by module.         | ⏸️ ON HOLD    |                | Will resume after infrastructure setup |
+| 1        | Unify KortanaConfig schema in `src/kortana/config/schema.py`.                    | ✅ DONE       | Lead Dev       | Consolidated root and src schemas. |
+| 2        | Consolidate PlanningAgent and CovenantEnforcer logic in `src/kortana/`.          | ✅ DONE       | Lead Dev       | Merged duplicate agents and enforcers. |
+| 3        | Update `main.py` entry point to use unified ChatEngine and Config.              | ✅ DONE       | Lead Dev       | Root API now uses consolidated brain. |
+| 4        | Synchronize dependencies in `requirements.txt`.                                  | ✅ DONE       | Lead Dev       | Synced with pyproject.toml info. |
+| 5        | Address missing `dev_agent_instance` parameter in `PlanningAgent`.              | ✅ DONE       | Lead Dev       | Handled via getattr in autonomous_agents.py |
+| 6        | Fix KortanaConfig type issue with `**raw_config` in `brain.py`.                 | ✅ DONE       | Lead Dev       | Fixed via unified schema and load_kortana_config. |
+| 7        | Run `poetry install` to ensure consistent development environment.               | ⏸️ ON HOLD    |                | |
+| 8        | Execute `poetry run ruff check . --fix` for automated linting fixes.             | ⏸️ ON HOLD    |                | |
 
 ---
 
