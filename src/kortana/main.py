@@ -164,6 +164,10 @@ def health_check() -> dict[str, Any]:
 @app.post("/chat")
 async def chat(message: dict[str, Any]) -> dict[str, Any]:
     try:
+        from src.kortana.services.database import get_db_sync
+        from src.kortana.core.orchestrator import KorOrchestrator
+        from src.kortana.services.conversation_history import conversation_history
+        
         user_message = message.get("message", "")
         response = chat_engine.get_response(user_message)
         return {"response": response, "status": "success"}
@@ -252,6 +256,111 @@ async def end_voice_session(session_id: str) -> dict[str, Any]:
     return {"status": "success", "session_id": session_id, "ended": True}
 
 
+@app.post("/chat/stream")
+async def chat_stream(message: dict):
+    """Streaming chat endpoint for progressive responses with conversation history integration.
+    
+    Validates input, streams response through orchestrator, and saves to conversation history.
+    
+    Args:
+        message: Dictionary containing 'message' (required) and optional 'conversation_id'
+        
+    Returns:
+        StreamingResponse with Server-Sent Events
+        
+    Raises:
+        HTTPException: If message is empty, too long, or processing fails
+    """
+    from src.kortana.services.database import get_db_sync
+    from src.kortana.core.orchestrator import KorOrchestrator
+    from src.kortana.services.conversation_history import conversation_history
+    
+    user_message = message.get("message", "")
+    if not user_message:
+        raise HTTPException(status_code=400, detail="Message is required")
+    
+    # Validate message length (max 10000 characters)
+    if len(user_message) > 10000:
+        raise HTTPException(status_code=400, detail="Message too long (max 10000 characters)")
+    
+    # Get or create conversation
+    conv_id = message.get("conversation_id")
+    if not conv_id:
+        conv_id = conversation_history.create_conversation()
+    
+    # Save user message to history
+    conversation_history.add_message(conv_id, "user", user_message)
+    
+    async def generate_response():
+        """Generator function for streaming response."""
+        db = next(get_db_sync())
+        try:
+            # Send initial event
+            yield f"data: {json.dumps({'type': 'start', 'status': 'processing'})}\n\n"
+            await asyncio.sleep(0.1)
+            
+            # Process the query
+            orchestrator = KorOrchestrator(db=db)
+            result = await orchestrator.process_query(query=user_message)
+            
+            # Extract the response
+            final_response = result.get("final_kortana_response", 
+                                      result.get("response", 
+                                                "I'm having trouble processing that right now."))
+            
+            # Stream response in chunks with better chunk sizing
+            words = final_response.split()
+            if len(words) <= 20:
+                chunk_size = 3
+            else:
+                chunk_size = max(3, len(words) // 20)
+            
+            for i in range(0, len(words), chunk_size):
+                chunk = " ".join(words[i:i+chunk_size])
+                if chunk:
+                    chunk += " " if i + chunk_size < len(words) else ""
+                    event_data = {
+                        'type': 'chunk',
+                        'content': chunk
+                    }
+                    yield f"data: {json.dumps(event_data)}\n\n"
+                    await asyncio.sleep(0.05)
+            
+
+            # Send the full response as a single chunk event
+            event_data = {
+                'type': 'chunk',
+                'content': final_response
+            }
+            yield f"data: {json.dumps(event_data)}\n\n"
+            
+            # Send completion event with metadata
+            completion_data = {
+                'type': 'done',
+                'conversation_id': conv_id,
+                'metadata': metadata
+            }
+            yield f"data: {json.dumps(completion_data)}\n\n"
+            
+        except Exception as e:
+            error_data = {
+                'type': 'error',
+                'error': str(e)
+            }
+            yield f"data: {json.dumps(error_data)}\n\n"
+        finally:
+            db.close()
+    
+    return StreamingResponse(
+        generate_response(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        }
+    )
+
+
 @app.get("/status")
 def system_status() -> dict[str, Any]:
     scheduler_info = get_scheduler_status()
@@ -266,12 +375,41 @@ def system_status() -> dict[str, Any]:
 @app.post("/adapters/lobechat/chat")
 async def lobechat_adapter(request: dict[str, Any]) -> dict[str, Any]:
     try:
+        from src.kortana.services.database import get_db_sync
+        from src.kortana.core.orchestrator import KorOrchestrator
+        
         messages = request.get("messages", [])
         user_message = messages[-1].get("content", "") if messages else "Hello"
         response = chat_engine.get_response(user_message)
         return {"choices": [{"message": {"role": "assistant", "content": response}}]}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.get("/conversations")
+def list_conversations(user_id: str | None = None):
+    """List all conversations, optionally filtered by user."""
+    from src.kortana.services.conversation_history import conversation_history
+    return {"conversations": conversation_history.list_conversations(user_id=user_id)}
+
+
+@app.get("/conversations/{conversation_id}")
+def get_conversation(conversation_id: str):
+    """Get a specific conversation by ID."""
+    from src.kortana.services.conversation_history import conversation_history
+    conversation = conversation_history.get_conversation(conversation_id)
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return conversation
+
+
+@app.delete("/conversations/{conversation_id}")
+def delete_conversation(conversation_id: str):
+    """Delete a conversation."""
+    from src.kortana.services.conversation_history import conversation_history
+    if conversation_history.delete_conversation(conversation_id):
+        return {"status": "deleted", "conversation_id": conversation_id}
+    raise HTTPException(status_code=404, detail="Conversation not found")
 
 
 if __name__ == "__main__":
