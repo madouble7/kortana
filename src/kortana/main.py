@@ -57,6 +57,17 @@ voice_orchestrator = VoiceChatOrchestrator(
     session_idle_seconds=settings.voice.session_idle_seconds,
     max_active_sessions=settings.voice.max_active_sessions,
 )
+from src.kortana.modules.security.routers.security_router import (
+    router as security_router,
+)
+
+# Import new module routers
+from src.kortana.modules.multilingual.router import router as multilingual_router
+from src.kortana.modules.plugin_framework.router import router as plugin_router
+
+# Global configuration and engine
+settings = load_kortana_config()
+chat_engine = ChatEngine(settings=settings)
 
 
 class VoiceChatRequest(BaseModel):
