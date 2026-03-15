@@ -159,12 +159,6 @@ async def queue_task(task: Task):
     return {"status": "queued", "task": task}
 
 
-@router.get("/")
-async def list_tasks():
-    """List all tasks in the queue"""
-    return {"tasks": list(task_queue.values())}
-
-
 @router.post("/")
 async def add_task(payload: dict):
     """Add a new task to the queue"""
