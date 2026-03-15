@@ -43,6 +43,9 @@ from kortana.modules.product_categorization.routers.category_router import (
 from kortana.modules.recommendation_engine.routers.recommendation_router import (
     router as recommendation_router,
 )
+from src.kortana.modules.ar_vr_exploration.routers.ar_vr_router import (
+    router as ar_vr_router,
+)
 from kortana.modules.security.routers.security_router import router as security_router
 from kortana.voice import (
     VoiceChatOrchestrator,
@@ -166,6 +169,7 @@ app.include_router(conversation_router)
 app.include_router(core_router.router)
 app.include_router(core_router.openai_adapter_router)
 app.include_router(goal_router.router)
+app.include_router(ar_vr_router)
 app.include_router(multimodal_router)
 # E-commerce AI modules
 app.include_router(category_router)

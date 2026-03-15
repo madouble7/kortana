@@ -132,6 +132,7 @@ PowerShell:
 - **Context-Aware Responses**: Integrates memory and ethical considerations in responses
 - **LLM Integration**: Uses OpenAI's GPT models for natural language processing
 - **LobeChat Frontend Support**: Seamlessly integrates with LobeChat for a user-friendly interface
+- **AR/VR Exploration**: Comprehensive augmented and virtual reality capabilities for immersive simulations, real-world overlays, and spatial object management
 - **Multimodal AI Capabilities**: Support for text, voice, images, video, and simulation-based queries
   - Text processing with context awareness
   - Voice/audio transcription and analysis
@@ -184,6 +185,7 @@ For troubleshooting, see `docs/LOBECHAT_TROUBLESHOOTING.md`.
 - Full API documentation: `docs/API_ENDPOINTS.md`
 - Architecture overview: `docs/ARCHITECTURE.md`
 - Memory Core details: `docs/MEMORY_CORE.md`
+- AR/VR Exploration: `docs/AR_VR_EXPLORATION.md`
 - AI Decision-Making: `docs/AI_DECISION_MAKING.md`
 - Security Module: `docs/SECURITY_MODULE.md`
 - LobeChat integration: `docs/LOBECHAT_CONNECTION.md`
@@ -209,6 +211,7 @@ This project uses Black for formatting and Pylint for linting.
 - **Memory Core**: Stores, retrieves, and manages memories
 - **Reasoning Core**: Processes user queries and generates responses
 - **Ethical Discernment Module**: Ensures responses are ethical and reflective
+- **AR/VR Exploration Module**: Provides immersive simulations and spatial interaction capabilities
 - **Security Module**: Advanced cybersecurity features for system protection
 - **API Adapters**: Connect to frontend interfaces (including LobeChat)
 
