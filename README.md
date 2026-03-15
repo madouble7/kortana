@@ -141,6 +141,11 @@ PowerShell:
 - **Multi-Model Support**: Intelligent routing between OpenAI, Anthropic, and Google AI models
 - **LLM Integration**: Supports multiple AI providers (OpenAI, Google, Anthropic, xAI, OpenRouter)
 - **LobeChat Frontend Support**: Seamlessly integrates with LobeChat for a user-friendly interface
+- **AutoGen Multi-Agent Support**: Integrates with Microsoft AutoGen for collaborative AI agent workflows
+
+## Frontend Integrations
+
+### LobeChat Integration
 - **Dify Platform Integration**: Connect with Dify for no-code prompt engineering and workflow automation
 
 ## Frontend Integrations
@@ -292,6 +297,18 @@ Kor'tana integrates with [Dify](https://dify.ai) for advanced no-code LLM applic
 3. Configure Dify to use Kor'tana as a custom model provider
 4. For detailed setup: `docs/DIFY_INTEGRATION.md`
 
+### AutoGen Integration
+
+Kor'tana integrates with [Microsoft AutoGen](https://github.com/microsoft/autogen) to enable multi-agent collaboration and complex task orchestration.
+
+#### Setting Up AutoGen Connection
+
+1. Follow the guide in `docs/AUTOGEN_INTEGRATION.md` for detailed setup.
+2. The AutoGen adapter is available at `/adapters/autogen/chat` and `/adapters/autogen/collaborate`.
+3. Run the Kor'tana API server to access AutoGen endpoints.
+
+For detailed API documentation, see `docs/AUTOGEN_INTEGRATION.md`.
+
 ## Documentation
 
 - **LobeChat Integration** (Primary): [`docs/LOBECHAT_INTEGRATION_GUIDE.md`](docs/LOBECHAT_INTEGRATION_GUIDE.md)
@@ -311,6 +328,7 @@ Kor'tana integrates with [Dify](https://dify.ai) for advanced no-code LLM applic
 - Security Module: `docs/SECURITY_MODULE.md`
 - LobeChat integration: `docs/LOBECHAT_CONNECTION.md`
 - LobeChat troubleshooting: `docs/LOBECHAT_TROUBLESHOOTING.md`
+- AutoGen integration: `docs/AUTOGEN_INTEGRATION.md`
 - Dify platform integration: `docs/DIFY_INTEGRATION.md`
 - **Multimodal Capabilities**: `docs/MULTIMODAL_CAPABILITIES.md`
 - **Multimodal Usage Examples**: `docs/MULTIMODAL_USAGE_EXAMPLES.md`

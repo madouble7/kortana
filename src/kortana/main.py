@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from src.kortana.adapters.autogen_router import router as autogen_router
 from src.kortana.adapters.copilotkit_adapter import router as copilotkit_router
 from src.kortana.adapters.adapter_router import router as adapter_router
 from src.kortana.adapters.dify_router import router as dify_router
@@ -181,6 +182,7 @@ app.include_router(conversation_router)
 app.include_router(core_router.router)
 app.include_router(core_router.openai_adapter_router)
 app.include_router(goal_router.router)
+app.include_router(autogen_router)
 app.include_router(copilotkit_router)
 app.include_router(adapter_router)
 app.include_router(dify_router)
