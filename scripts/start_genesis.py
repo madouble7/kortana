@@ -19,7 +19,7 @@ print("=" * 50)
 
 try:
     print("📦 Loading Kor'tana modules...")
-    from src.kortana.main import app
+    from kortana.main import app
 
     print("✅ Main application loaded successfully")
 

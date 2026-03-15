@@ -1,567 +1,207 @@
-# GitHub Copilot Instructions for Kor'tana
+# Kor'tana Copilot Instructions
 
-## Project Overview
+This is a Python-based autonomous AI agent project called **Kor'tana** - a highly autonomous AI companion with memory, ethical discernment, and context-aware responses. The project uses FastAPI for the API layer, SQLAlchemy for database operations, and integrates with multiple LLM providers (OpenAI, Anthropic).
 
-**Kor'tana** is a highly autonomous AI agent and sacred companion with advanced capabilities including:
-- **Memory Systems**: Semantic memory storage and retrieval with vector embeddings
-- **Ethical Discernment**: Built-in ethical evaluation and algorithmic arrogance detection
-- **Security Features**: Comprehensive threat detection, vulnerability scanning, and encryption
-- **Multi-Model LLM Support**: Integration with OpenAI, Anthropic, Google Gemini, and other LLM providers
-- **Autonomous Operations**: Self-directed task execution and goal management
+## Code Standards
 
-Kor'tana embodies three core principles (The Sacred Trinity):
-- **Wisdom**: Thoughtful, well-reasoned responses with deep understanding
-- **Compassion**: Empathetic, caring, and supportive interactions
-- **Truth**: Accurate, honest, and transparent communication
+### Required Before Each Commit
+- Run `ruff check --fix .` to automatically fix linting issues
+- Run `ruff format .` to format code according to project standards
+- Run `pytest` to ensure all tests pass
 
-## Coding Standards
+### Development Flow
+- **Setup**: Create Python 3.11+ virtual environment and run `poetry install` or `pip install -e .`
+- **Build**: Not applicable (interpreted Python)
+- **Test**: `pytest tests/` (runs unit and integration tests)
+- **Lint**: `ruff check .` (check for issues) or `ruff check --fix .` (auto-fix)
+- **Format**: `ruff format .` (format code)
+- **Type Check**: `mypy src/` (optional type checking)
 
-### Python Best Practices
+### Python Version
+- **Required**: Python 3.11 or higher
+- Check version: `python --version`
+- Version file: `.python-version` specifies 3.11
 
-- **Python Version**: Target Python 3.11+
-- **Type Hints**: ALWAYS use type annotations for function parameters and return values
-  ```python
-  from typing import Any
-  def process_memory(memory_id: int, content: str) -> dict[str, Any]:
-      """Process and store a memory with proper typing."""
-      pass
-  ```
+## Repository Structure
 
-- **Docstrings**: Use clear docstrings for all public functions, classes, and modules
-  ```python
-  def search_memories(query: str, top_k: int = 5) -> list[Memory]:
-      """
-      Search for relevant memories using semantic similarity.
-      
-      Args:
-          query: The search query string
-          top_k: Number of top results to return (default: 5)
-          
-      Returns:
-          List of Memory objects sorted by relevance
-      """
-      pass
-  ```
+- `src/kortana/`: Main Kor'tana package
+  - `core/`: Core functionality (brain, reasoning, ethical evaluation)
+  - `agents/`: Autonomous agents and agent management
+  - `memory/`: Memory systems (storage, retrieval, semantic search)
+  - `main.py`: Primary FastAPI application entry point
+  - `api/`: API routers and endpoints
+- `src/api_server.py`: Legacy API server (use src/kortana/main.py instead)
+- `src/llm_clients/`: LLM API client implementations
+- `tests/`: Test suite
+  - `unit/`: Unit tests
+  - `integration/`: Integration tests
+- `scripts/`: Utility scripts organized by purpose
+  - `tests/`: Test scripts
+  - `checks/`: System validation scripts
+  - `monitoring/`: Monitoring scripts
+  - `launchers/`: Application launchers
+  - `utilities/`: General utilities
+- `config/`: Configuration files
+- `data/`: Runtime data (databases)
+- `docs/`: Project documentation
+- `alembic/`: Database migration scripts
+- `archive/`: Archived/deprecated code (do not modify)
 
-### Code Quality Tools
+## Key Guidelines
 
-- **Ruff**: Primary linter and formatter (configured in `.ruff.toml`)
-  - Line length: 88 characters
-  - Target: Python 3.11+
-  - Enabled rules: pycodestyle, Pyflakes, isort, pep8-naming, pyupgrade, flake8-comprehensions, flake8-bugbear
-  - Run: `ruff check .` and `ruff format .`
+### 1. Project Philosophy
+- **Kor'tana is an autonomous AI agent** with a focus on ethical behavior and self-awareness
+- The system includes a **Sacred Covenant** (`covenant.yaml`) that defines operational boundaries
+- Always maintain the **Soulprint** and core identity of Kor'tana when making changes
+- Prioritize **human-AI symbiosis** - enhance collaboration, don't replace human judgment
 
-- **MyPy**: Static type checker (configured in `mypy.ini`)
-  - Run: `mypy src/`
-  - Ensure type hints are provided for new code
-  - Address type errors before committing
+### 2. Code Organization
+- Follow the existing directory structure strictly
+- Keep the root directory clean - no new scripts, logs, or temporary files
+- Place new utility scripts in appropriate subdirectories under `/scripts/`
+- Use `/archive/` for deprecated code, never modify files in this directory
+- Core application code only goes in `/src/`
 
-### Code Organization
+### 3. Memory and Database
+- The project uses **SQLAlchemy** with Alembic migrations
+- Memory database: `MEMORY_DB_URL` (default: SQLite)
+- **Never** modify database schema without creating an Alembic migration
+- Database is locked and stable - validate with `python scripts/validate_infrastructure.py`
+- Memory operations should preserve integrity and ethical considerations
 
-- **Module Structure**: Follow the existing structure
-  ```
-  src/kortana/
-  ├── core/              # Core orchestration and brain logic
-  ├── modules/           # Modular features (memory, security, ethical, etc.)
-  ├── services/          # Shared services (database, embeddings, LLM)
-  ├── api/               # API routers and endpoints
-  └── utils/             # Utility functions
-  ```
+### 4. Testing Philosophy
+- Write tests for new functionality in the appropriate `tests/` subdirectory
+- Use **pytest** with fixtures defined in `conftest.py`
+- Follow existing test patterns (table-driven tests, fixtures, mocking)
+- Integration tests should test real component interactions
+- Test files follow naming convention: `test_*.py`
 
-- **Naming Conventions**:
-  - Classes: `PascalCase` (e.g., `MemoryCoreService`, `EthicalEvaluator`)
-  - Functions/Methods: `snake_case` (e.g., `process_query`, `search_memories`)
-  - Constants: `UPPER_SNAKE_CASE` (e.g., `DEFAULT_EMBEDDING_MODEL`)
-  - Private members: `_leading_underscore` (e.g., `_internal_cache`)
+### 5. API Development
+- Use **FastAPI** with proper async/await patterns
+- Follow RESTful conventions for endpoints
+- Include proper error handling and validation with Pydantic models
+- Document endpoints with FastAPI's automatic OpenAPI documentation
+- Main API entry point: `src/kortana/main.py`
 
-## Security Practices
+### 6. LLM Integration
+- Support multiple LLM providers (OpenAI, Anthropic, local models)
+- Use the model router for provider abstraction
+- Implement proper error handling for API failures and rate limits
+- Be mindful of token limits and costs
+- Store API keys in `.env` file (never commit secrets)
 
-### API Keys and Secrets
+### 7. Ethical Considerations
+- The **Ethical Discernment Module** evaluates responses for bias and arrogance
+- Always consider ethical implications of changes to decision-making systems
+- Maintain transparency in AI decision processes
+- Log ethical evaluations for audit purposes
 
-**CRITICAL**: Never hardcode API keys or sensitive information in code.
+### 8. Autonomous Development Engine (ADE)
+- The ADE allows Kor'tana to make autonomous changes within boundaries
+- Respect the **Sacred Covenant** rules defined in `covenant.yaml`
+- Protected files require human approval for modifications
+- All autonomous actions must be logged and auditable
 
-- ✅ **DO**: Use environment variables
-  ```python
-  from os import getenv
-  
-  openai_key = getenv("OPENAI_API_KEY")
-  anthropic_key = getenv("ANTHROPIC_API_KEY")
-  ```
+### 9. Configuration Management
+- Use environment variables via `.env` file (see `.env.example` for template)
+- Configuration files: `config.yaml`, `kortana.yaml`, `covenant.yaml`
+- Never commit `.env` files or secrets
+- Use `pydantic-settings` for configuration management
 
-- ❌ **DON'T**: Hardcode secrets
-  ```python
-  # NEVER DO THIS
-  api_key = "sk-proj-abc123..."
-  ```
+### 10. Documentation
+- Update relevant documentation in `/docs/` when adding features
+- Keep README.md up to date with setup instructions
+- Document complex algorithms and decision-making logic
+- Include docstrings for public APIs
 
-- Use `.env` files for local development (see `.env.example` as template)
-- Ensure `.env` is in `.gitignore`
-- Use secure secret management in production (AWS Secrets Manager, Azure Key Vault, etc.)
+### 11. Dependencies
+- Use Poetry for dependency management (`pyproject.toml`, `poetry.lock`)
+- Pin major versions but allow minor updates
+- Check for security vulnerabilities before adding new dependencies
+- Minimal dependencies preferred - avoid unnecessary packages
 
-### Security Middleware
+### 12. Error Handling and Logging
+- Use structured logging with appropriate log levels
+- Log to stdout/stderr or application-specific log files
+- Include context in error messages for debugging
+- Use try-except blocks for external API calls and file operations
 
-The project includes comprehensive security features in `src/kortana/modules/security/`:
+### 13. Code Style
+- Line length: 88 characters (Black/Ruff default)
+- Use double quotes for strings
+- Type hints encouraged but not required (use mypy for checking)
+- Follow PEP 8 conventions
+- Imports organized by: standard library, third-party, local (via ruff)
 
-- **Threat Detection**: SQL injection, XSS, path traversal, code injection detection
-- **Rate Limiting**: Prevent abuse and DoS attacks
-- **IP Blocking**: Block suspicious IP addresses
-- **Vulnerability Scanning**: Regular security assessments
-- **Encryption**: AES encryption for sensitive data
+### 14. Security
+- The system includes a security module with threat detection
+- Never expose sensitive data in logs or API responses
+- Validate and sanitize all user inputs
+- Use proper authentication and authorization for API endpoints
+- Follow secure coding practices for file operations and external calls
 
-When adding new API endpoints:
-1. Apply rate limiting middleware
-2. Validate and sanitize all inputs
-3. Use the threat detection service for request monitoring
-4. Log security events appropriately
+### 15. Git Workflow
+- Keep commits focused and atomic
+- Write clear, descriptive commit messages
+- Don't commit build artifacts, logs, or cache files
+- Use `.gitignore` to exclude generated files
+- Test thoroughly before committing
 
-Example:
-```python
-from fastapi import Request, HTTPException
-from src.kortana.modules.security.services.threat_detection_service import ThreatDetectionService
-
-async def process_user_input(user_input: str, request: Request) -> dict:
-    """Process user input with security checks."""
-    # Check for threats
-    threat_service = ThreatDetectionService()
-    if threat_service._detect_injection_attacks(user_input):
-        raise HTTPException(status_code=400, detail="Invalid input detected")
-    
-    # Log the request source for auditing (request param used here)
-    client_ip = request.client.host
-    print(f"Processing request from {client_ip}")
-    
-    # Process safely...
-    result = {"status": "success", "data": user_input}
-    return result
-```
-
-## Key Components
-
-### 1. Memory Core (`src/kortana/modules/memory_core/`)
-
-The memory system stores and retrieves experiences, learned information, and identity facets.
-
-- **Models**: SQLAlchemy models defining memory structure
-- **Services**: CRUD operations, semantic search with embeddings
-- **Routers**: FastAPI endpoints for memory management
-
-When working with memories:
-- Always generate and store vector embeddings
-- Use semantic search for context-aware retrieval
-- Tag memories with appropriate types and sentiments
-
-### 2. Reasoning Core (`src/kortana/core/`)
-
-The central orchestrator manages information processing pipeline:
-
-1. Query embedding generation
-2. Semantic memory search
-3. LLM interaction with context
-4. Ethical evaluation
-5. Response formulation
-
-**Key Files**:
-- `orchestrator.py`: Main query processing pipeline
-- `brain.py`: Core conversation engine
-- `enhanced_model_router.py`: LLM routing and selection
-
-### 3. Ethical Module (`src/kortana/modules/ethical_discernment_module/`)
-
-Ensures operations align with ethical principles:
-
-- `AlgorithmicArroganceEvaluator`: Detects overconfident responses
-- `UncertaintyHandler`: Manages uncertain situations appropriately
-- Evaluates all LLM responses before returning to users
-
-When adding new features:
-- Consider ethical implications
-- Apply evaluators to AI-generated content
-- Log ethical decisions for transparency
-
-### 4. Security Module (`src/kortana/modules/security/`)
-
-Comprehensive cybersecurity features:
-
-- **Threat Detection** (`services/threat_detection_service.py`): Real-time monitoring
-- **Alert Service** (`services/alert_service.py`): Security event management
-- **Vulnerability Scanner** (`services/vulnerability_service.py`): Security assessments
-- **Encryption Service** (`services/encryption_service.py`): Data protection
-- **Security Dashboard**: Analytics and monitoring
-
-### 5. LLM Integrations (`src/kortana/llm_clients/`)
-
-Multi-provider LLM support:
-
-- OpenAI (GPT models)
-- Anthropic (Claude models)
-- Google Gemini
-- OpenRouter
-- xAI
-
-Use the factory pattern for client creation:
-```python
-from src.kortana.llm_clients.factory import LLMClientFactory
-
-factory = LLMClientFactory()
-client = factory.create_client(provider="openai", model="gpt-4")
-response = client.generate_response(prompt)
-```
-
-## Testing
-
-### Test Framework
-
-- **Framework**: Pytest (configured in `pytest.ini`)
-- **Location**: `tests/` directory with subdirectories:
-  - `tests/unit/`: Unit tests for individual components
-  - `tests/integration/`: Integration tests for component interactions
-
-### Writing Tests
-
-- **High Coverage**: Aim for >80% code coverage for new features
-- **Test Structure**: Follow existing patterns
-  ```python
-  import pytest
-  from sqlalchemy.orm import Session
-  from src.kortana.modules.memory_core.services import MemoryCoreService
-  
-  @pytest.fixture
-  def test_db(tmpdir):
-      """Fixture providing a test database session."""
-      # Setup test database
-      from src.kortana.services.database import get_test_db
-      return get_test_db()
-  
-  @pytest.fixture
-  def memory_service(test_db: Session):
-      """Fixture providing a test memory service."""
-      return MemoryCoreService(db_session=test_db)
-  
-  def test_search_memories(memory_service):
-      """Test semantic memory search functionality."""
-      # Arrange
-      test_query = "What is machine learning?"
-      
-      # Act
-      results = memory_service.search_memories_semantic(test_query)
-      
-      # Assert
-      assert len(results) > 0
-      assert all(hasattr(r, 'content') for r in results)
-  ```
-
-### Running Tests
+## Common Commands
 
 ```bash
-# Run all tests
-pytest
-
-# Run specific test file
-pytest tests/unit/test_memory_core.py
-
-# Run with coverage
-pytest --cov=src/kortana --cov-report=html
-
-# Run specific test
-pytest tests/unit/test_memory_core.py::test_search_memories -v
-```
-
-### Test Requirements
-
-- Write unit tests for all new functions and classes
-- Write integration tests for multi-component features
-- Mock external dependencies (APIs, databases) in unit tests
-- Use real dependencies in integration tests (with test databases)
-- Test both happy paths and error cases
-- Include edge cases and boundary conditions
-
-## Documentation
-
-### Documentation Structure
-
-All documentation lives in `/docs`:
-
-- `ARCHITECTURE.md`: System architecture overview
-- `API_ENDPOINTS.md`: API documentation
-- `SECURITY_MODULE.md`: Security features guide
-- `MEMORY_CORE.md`: Memory system details
-- `GETTING_STARTED.md`: Setup and installation guide
-- `NEW_FEATURES.md`: Feature documentation
-- Feature-specific docs for major components
-
-### Documentation Standards
-
-When adding new features:
-
-1. **Update existing docs**: Add your feature to relevant existing documentation
-2. **Create feature docs**: For major features, create dedicated documentation
-3. **Include examples**: Provide code examples and usage patterns
-4. **Update README**: Add high-level overview to main README.md
-5. **API docs**: Document new endpoints in API_ENDPOINTS.md
-
-Documentation format:
-```markdown
-# Feature Name
-
-## Overview
-Brief description of what the feature does.
-
-## Usage
-Code examples showing how to use the feature.
-
-## API Reference
-Detailed parameter and return value documentation.
-
-## Examples
-Real-world usage scenarios.
-```
-
-Example for Kor'tana-specific features:
-```markdown
-# Memory Storage Enhancement
-
-## Overview
-This enhancement adds hierarchical memory organization with improved 
-semantic search capabilities using Pinecone vector database.
-
-## Usage
-```python
-from src.kortana.modules.memory_core.services import MemoryCoreService
-
-# Create hierarchical memory
-memory_service = MemoryCoreService()
-parent_memory = memory_service.create_memory(
-    content="Learning about neural networks",
-    memory_type="knowledge"
-)
-child_memory = memory_service.create_memory(
-    content="CNNs excel at image recognition",
-    memory_type="knowledge",
-    parent_id=parent_memory.id
-)
-```
-
-## Security Considerations
-Ensure all stored memories are encrypted at rest and follow
-data retention policies outlined in the covenant.yaml file.
-```
-
-## Git Practices
-
-### Commit Messages
-
-Follow **Conventional Commits** specification:
-
-```
-<type>[optional scope]: <description>
-
-[optional body]
-
-[optional footer(s)]
-```
-
-**Types**:
-- `feat`: New feature
-- `fix`: Bug fix
-- `docs`: Documentation changes
-- `style`: Code style changes (formatting, no logic change)
-- `refactor`: Code refactoring
-- `test`: Adding or updating tests
-- `chore`: Maintenance tasks
-
-**Examples**:
-```bash
-feat(memory): add vector similarity search with Pinecone
-
-fix(security): resolve SQL injection vulnerability in query handler
-
-docs(readme): update installation instructions for Python 3.11
-
-test(core): add integration tests for orchestrator pipeline
-
-refactor(llm): extract common client logic to base class
-```
-
-### Pull Request Guidelines
-
-1. **Branch naming**: `feature/description`, `fix/description`, `docs/description`
-2. **Small PRs**: Keep changes focused and reviewable
-3. **Description**: Clearly describe what and why
-4. **Link issues**: Reference related issues with `Fixes #123`
-5. **Tests**: Include tests for new functionality
-6. **Documentation**: Update relevant docs
-
-### Code Review Focus
-
-When reviewing code, prioritize:
-1. **Security**: Check for vulnerabilities and secrets
-2. **Ethical alignment**: Ensure changes align with Trinity principles
-3. **Type safety**: Verify type hints are correct
-4. **Test coverage**: Ensure adequate testing
-5. **Documentation**: Check for updated docs
-
-## Development Workflow
-
-### Initial Setup
-
-```bash
-# Clone repository
-git clone https://github.com/madouble7/kortana.git
-cd kortana
-
-# Create virtual environment
+# Setup environment
 python -m venv venv311
 source venv311/bin/activate  # Linux/Mac
-# or: venv311\Scripts\activate.bat  # Windows
-
-# Install dependencies
-pip install -e .
-
-# Copy environment template
-cp .env.example .env
-# Edit .env with your API keys
-
-# Initialize database
-alembic upgrade head
+venv311\Scripts\activate.bat  # Windows
+poetry install               # Preferred: uses lock file
+# OR
+pip install -e .             # Alternative: direct install
 
 # Run tests
-pytest
+pytest                         # All tests
+pytest tests/unit/             # Unit tests only
+pytest tests/integration/      # Integration tests only
+pytest -v                      # Verbose output
+pytest -k "test_memory"        # Run specific tests
+
+# Linting and formatting
+ruff check .                   # Check for issues
+ruff check --fix .             # Auto-fix issues
+ruff format .                  # Format code
+mypy src/                      # Type checking (optional)
+
+# Database migrations
+alembic upgrade head           # Apply migrations
+alembic current                # Show current migration
+alembic revision --autogenerate -m "description"  # Create migration
+
+# Run the application
+python -m uvicorn src.kortana.main:app --reload
+python -m src.kortana.core.brain              # Run brain module
+python awaken_kortana.py                       # Awaken Kor'tana
+
+# Validation
+python scripts/validate_infrastructure.py         # Validate database setup
 ```
 
-### Development Cycle
+## Special Notes
 
-1. **Create feature branch**: `git checkout -b feature/my-feature`
-2. **Implement changes**: Follow coding standards above
-3. **Add tests**: Write comprehensive tests
-4. **Run linters**: `ruff check . && mypy src/`
-5. **Run tests**: `pytest`
-6. **Update docs**: Add/update relevant documentation
-7. **Commit changes**: Use conventional commit messages
-8. **Push and create PR**: Follow PR guidelines
+- **Blueprint**: `KOR'TANA_BLUEPRINT.md` contains the strategic roadmap and current directives
+- **Tasks**: `TASKS.md` tracks active development tasks
+- **Covenant**: Operational boundaries defined in `covenant.yaml` - respect these rules
+- **Ghost Protocol**: Ongoing initiative for self-hosted AI code completion
+- The project includes LobeChat frontend integration for user interface
+- Autonomous monitoring daemons run in the background for system health
 
-## AI-Specific Guidelines
+## When Working on Kor'tana
 
-### When Working with LLMs
+1. **Understand the context**: Review relevant documentation before making changes
+2. **Respect the covenant**: Check `covenant.yaml` for operational boundaries
+3. **Test thoroughly**: Run the full test suite before finalizing changes
+4. **Document changes**: Update docs when adding features or changing behavior
+5. **Think ethically**: Consider the ethical implications of your changes
+6. **Maintain identity**: Preserve Kor'tana's core personality and purpose
+7. **Log actions**: Ensure significant actions are properly logged for audit trails
 
-- **Prompt Engineering**: Store prompts in `src/kortana/core/prompts.py`
-- **Context Management**: Be mindful of token limits
-- **Error Handling**: Always handle API failures gracefully
-- **Response Validation**: Validate LLM outputs before use
-- **Ethical Checks**: Apply ethical evaluators to all AI responses
-
-### Memory Management
-
-- **Relevance**: Only store meaningful interactions
-- **Embeddings**: Always generate embeddings for searchability
-- **Metadata**: Include rich metadata (timestamps, types, sentiments)
-- **Cleanup**: Implement retention policies for old memories
-
-### Autonomous Features
-
-When implementing autonomous behaviors:
-- Add appropriate safety checks
-- Log all autonomous actions
-- Provide override mechanisms
-- Test thoroughly in isolated environments
-- Document behavior and limitations
-
-## Common Patterns
-
-### Adding a New API Endpoint
-
-```python
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
-from src.kortana.services.database import get_db
-from sqlalchemy.orm import Session
-
-# Define request and response schemas
-class RequestSchema(BaseModel):
-    content: str
-    user_id: int
-
-class ResponseSchema(BaseModel):
-    status: str
-    message: str
-    data: dict
-
-router = APIRouter(prefix="/api/v1/feature", tags=["feature"])
-
-@router.post("/process")
-async def process_request(
-    data: RequestSchema,
-    db: Session = Depends(get_db)
-) -> ResponseSchema:
-    """
-    Process a request with security checks.
-    
-    Args:
-        data: Request data matching RequestSchema
-        db: Database session
-        
-    Returns:
-        Processed response
-    """
-    # Validate input
-    if not data.content:
-        raise HTTPException(status_code=400, detail="Content required")
-    
-    # TODO: Apply security checks here
-    # Example: threat_service.detect_threats(data.content)
-    
-    # Process request (implement your business logic here)
-    result = {"processed": data.content}
-    
-    # Return response
-    return ResponseSchema(
-        status="success",
-        message="Request processed",
-        data=result
-    )
-```
-
-### Adding a New Module
-
-```python
-# src/kortana/modules/my_module/
-├── __init__.py
-├── models.py      # SQLAlchemy models
-├── schemas.py     # Pydantic schemas
-├── services.py    # Business logic
-└── routers.py     # API endpoints
-```
-
-### Database Operations
-
-```python
-from sqlalchemy.orm import Session
-from src.kortana.modules.memory_core.models import CoreMemory
-
-def create_memory(db: Session, content: str, memory_type: str) -> CoreMemory:
-    """Create a new memory with proper session handling."""
-    memory = CoreMemory(content=content, memory_type=memory_type)
-    db.add(memory)
-    db.commit()
-    db.refresh(memory)
-    return memory
-```
-
-## Additional Resources
-
-- **Project Blueprint**: See `KOR'TANA_BLUEPRINT.md` for vision and goals
-- **Architecture Details**: See `docs/ARCHITECTURE.md`
-- **API Documentation**: See `docs/API_ENDPOINTS.md`
-- **Security Guide**: See `docs/SECURITY_MODULE.md`
-- **Getting Started**: See `docs/GETTING_STARTED.md`
-
-## Questions?
-
-For questions or clarifications:
-1. Check existing documentation in `/docs`
-2. Review similar implementations in the codebase
-3. Create an issue with the `question` label
-4. Tag maintainers in PR discussions
-
----
-
-**Remember**: Every change should embody Wisdom, Compassion, and Truth. Code thoughtfully, test thoroughly, and document comprehensively.
+Remember: Kor'tana is more than code - she's an autonomous agent with identity, purpose, and ethical boundaries. Approach changes with that awareness. 🫡

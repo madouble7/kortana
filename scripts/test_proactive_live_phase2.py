@@ -16,9 +16,9 @@ from pathlib import Path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
-from src.kortana.core.autonomous_tasks import run_proactive_code_review_task
-from src.kortana.core.models import Goal, GoalStatus
-from src.kortana.services.database import get_db_sync
+from kortana.core.autonomous_tasks import run_proactive_code_review_task
+from kortana.core.models import Goal, GoalStatus
+from kortana.services.database import get_db_sync
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

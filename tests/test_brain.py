@@ -1,20 +1,19 @@
-import os
 import pytest
-from unittest.mock import MagicMock
 
 from kortana.brain import ChatEngine
 from kortana.config.schema import KortanaConfig
 
+
 @pytest.fixture
 def mock_config():
     """Provides a mock KortanaConfig."""
-    from kortana.config.schema import KortanaConfig, ModelsConfig
-    
+    from kortana.config.schema import ModelsConfig
+
     # Minimal test config
     return KortanaConfig(
-        default_llm_id="test-model",
-        models=ModelsConfig(default="test-model")
+        default_llm_id="test-model", models=ModelsConfig(default="test-model")
     )
+
 
 @pytest.fixture
 def chat_engine_instance(mock_config):

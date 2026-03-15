@@ -5,14 +5,14 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from src.kortana.config.schema import KortanaConfig
-from src.kortana.llm_clients.factory import LLMClientFactory
-from src.kortana.core import prompts
-from src.kortana.modules.ethical_discernment_module.evaluators import (
+from kortana.config.schema import KortanaConfig
+from kortana.llm_clients.factory import LLMClientFactory
+from kortana.core import prompts
+from kortana.modules.ethical_discernment_module.evaluators import (
     AlgorithmicArroganceEvaluator,
     UncertaintyHandler,
 )
-from src.kortana.modules.memory_core.services import MemoryCoreService
+from kortana.modules.memory_core.services import MemoryCoreService
 
 
 class KorOrchestrator:

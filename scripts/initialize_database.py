@@ -18,8 +18,8 @@ def initialize_database():
     print("=" * 40)
 
     try:
-        from src.kortana.core.models import Goal
-        from src.kortana.services.database import Base, sync_engine
+        from kortana.core.models import Goal
+        from kortana.services.database import Base, sync_engine
 
         print("📦 Creating database tables...")
 
@@ -32,7 +32,7 @@ def initialize_database():
         print("   • plan_steps - For storing goal execution plans")
 
         # Test database connectivity
-        from src.kortana.services.database import get_db_sync
+        from kortana.services.database import get_db_sync
         db = next(get_db_sync())
         try:
             goal_count = db.query(Goal).count()
