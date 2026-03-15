@@ -48,7 +48,7 @@ def test_brain_initialization(settings):
     print("=" * 50)
 
     try:
-        from src.kortana.core.brain import ChatEngine
+        from kortana.core.brain import ChatEngine
         print("✅ ChatEngine import successful")
 
         print("\n   Creating ChatEngine instance...")

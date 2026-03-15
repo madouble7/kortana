@@ -12,7 +12,7 @@ load_dotenv()
 print("Attempting to import GoogleGenAIClient...")
 try:
     # Import the Google GenAI client from your project structure
-    from src.llm_clients.genai_client import GoogleGenAIClient
+    from kortana.llm_clients.genai_client import GoogleGenAIClient
 except ImportError as e:
     print(f"ERROR: Could not import GoogleGenAIClient: {e}")
     print(

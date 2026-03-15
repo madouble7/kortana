@@ -17,8 +17,8 @@ sys.path.insert(0, os.path.abspath("."))
 
 import requests
 
-from src.kortana.core.autonomous_tasks import run_proactive_code_review_task
-from src.kortana.services.database import get_db_sync
+from kortana.core.autonomous_tasks import run_proactive_code_review_task
+from kortana.services.database import get_db_sync
 
 
 def demonstrate_proactive_capabilities():
