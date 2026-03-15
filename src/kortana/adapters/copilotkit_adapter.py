@@ -10,12 +10,10 @@ import os
 import uuid
 from typing import Any, Dict, List
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from src.kortana.config import settings
 from src.kortana.core.orchestrator import KorOrchestrator
 from src.kortana.services.database import get_db_sync
 
@@ -51,28 +49,25 @@ class CopilotResponse(BaseModel):
 
 def verify_api_key(authorization: str | None = Header(None)) -> bool:
     """Verify the API key from the request headers."""
-    # For development, allow requests without auth
-    # In production, you should enforce this
-    if not authorization:
-        # For now, allow without auth for easier development
+    # Get the API key from environment
+    api_key = os.environ.get("KORTANA_API_KEY")
+    
+    # If no API key is configured, allow unauthenticated access (development mode)
+    if not api_key:
         return True
+    
+    # If API key is configured, require authentication
+    if not authorization:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authorization header required",
+        )
 
     api_key_parts = authorization.split()
     if len(api_key_parts) != 2 or api_key_parts[0].lower() != "bearer":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid API key format",
-        )
-
-    # Get the API key from environment
-    api_key = os.environ.get("KORTANA_API_KEY")
-
-    # If a Bearer token is provided but the server API key is not configured,
-    # treat this as a server misconfiguration instead of silently accepting it.
-    if not api_key:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Server API key is not configured",
         )
 
     if api_key_parts[1] != api_key:
@@ -91,6 +86,13 @@ class CopilotKitAdapter:
         self, request: CopilotRequest, db: Session
     ) -> CopilotResponse:
         """Handle a CopilotKit request and return a response."""
+        # Check if streaming is requested
+        if request.stream:
+            raise HTTPException(
+                status_code=status.HTTP_501_NOT_IMPLEMENTED,
+                detail="Streaming responses are not yet supported",
+            )
+        
         # Extract the last user message
         user_messages = [msg for msg in request.messages if msg.role == "user"]
         if not user_messages:
@@ -125,7 +127,6 @@ class CopilotKitAdapter:
 @router.post("", response_model=CopilotResponse)
 async def process_copilotkit_chat(
     copilot_request: CopilotRequest,
-    request: Request,
     db: Session = Depends(get_db_sync),
     _: bool = Depends(verify_api_key),
 ) -> CopilotResponse:

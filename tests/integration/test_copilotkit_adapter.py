@@ -6,10 +6,10 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from src.kortana.main import app
-from src.kortana.modules.memory_core import models as memory_models
 from src.kortana.services.database import Base, get_db_sync
 
 # Use a separate in-memory SQLite database for testing
@@ -130,6 +130,25 @@ async def test_copilotkit_endpoint_no_user_message(client: TestClient):
     data = response.json()
     assert "detail" in data
     assert "No user message found" in data["detail"]
+
+
+@pytest.mark.asyncio
+async def test_copilotkit_endpoint_streaming_not_supported(client: TestClient):
+    """Test the /copilotkit endpoint rejects streaming requests."""
+    # Act
+    request_payload = {
+        "messages": [
+            {"role": "user", "content": "Hello!"},
+        ],
+        "stream": True,
+    }
+    response = client.post("/copilotkit", json=request_payload)
+
+    # Assert
+    assert response.status_code == 501
+    data = response.json()
+    assert "detail" in data
+    assert "not yet supported" in data["detail"].lower()
 
 
 @pytest.mark.asyncio
