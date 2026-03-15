@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.kortana.brain import ChatEngine
+from kortana.brain import ChatEngine
 
 
 class TestChatEngineRefactoring(unittest.TestCase):

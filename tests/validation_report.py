@@ -108,7 +108,7 @@ def main():
             [
                 sys.executable,
                 "-c",
-                "import src.brain; import src.model_router; import src.strategic_config; print('All critical imports successful')",
+                "import kortana.brain; import kortana.model_router; import kortana.strategic_config; print('All critical imports successful')",
             ],
             capture_output=True,
             text=True,

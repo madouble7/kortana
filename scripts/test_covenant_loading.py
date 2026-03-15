@@ -15,7 +15,7 @@ if str(current_dir) not in sys.path:
     sys.path.insert(0, str(current_dir))
 
 try:
-    from src.kortana.config import load_config
+    from kortana.config import load_config
 
     def test_covenant_loading():
         """Test that covenant.yaml is loaded into settings.covenant_rules"""

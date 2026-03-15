@@ -21,7 +21,7 @@ def test_clean_services_architecture():
     try:
         # Test 1: Import the clean services module (should work without circular imports)
         print("Testing clean services import...")
-        from src.kortana.core.services_clean import (
+        from kortana.core.services_clean import (
             get_enhanced_model_router,
             get_planning_engine,
             get_service_status,
@@ -92,8 +92,8 @@ def test_model_router_integration():
     print("\n=== Testing Model Router Integration ===")
 
     try:
-        from src.kortana.config import load_config
-        from src.kortana.core.services_clean import (
+        from kortana.config import load_config
+        from kortana.core.services_clean import (
             get_enhanced_model_router,
             initialize_services,
         )
@@ -110,7 +110,7 @@ def test_model_router_integration():
         print(f"Available models through clean services: {len(available_models)}")
 
         # Test model selection
-        from src.kortana.core.enhanced_model_router import TaskType
+        from kortana.core.enhanced_model_router import TaskType
 
         selected_model = router.select_optimal_model(
             TaskType.REASONING, prefer_free=True
