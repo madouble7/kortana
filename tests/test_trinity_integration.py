@@ -4,11 +4,11 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # Assume necessary Kor'tana modules are importable
-# from src.brain import ChatEngine
-# from src.sacred_trinity_router import SacredTrinityRouter
-# from src.covenant_enforcer import CovenantEnforcer
-# from src.memory_manager import MemoryManager
-# from src.utils import load_all_configs
+# from kortana.brain import ChatEngine
+# from kortana.sacred_trinity_router import SacredTrinityRouter
+# from kortana.covenant_enforcer import CovenantEnforcer
+# from kortana.memory_manager import MemoryManager
+# from kortana.utils import load_all_configs
 # from config.sacred_trinity_config import SACRED_TRINITY_CONFIG # Assume config loading utility is used
 
 

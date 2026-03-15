@@ -22,8 +22,8 @@ async def test_proactive_code_review():
 
     try:
         # Import the necessary components
-        from src.kortana.core.autonomous_tasks import run_proactive_code_review_task
-        from src.kortana.services.database import get_db_sync
+        from kortana.core.autonomous_tasks import run_proactive_code_review_task
+        from kortana.services.database import get_db_sync
 
         print("✅ Imports successful")
 
@@ -40,7 +40,7 @@ async def test_proactive_code_review():
         print("✅ Proactive code review task completed successfully!")
 
         # Check for new goals created
-        from src.kortana.core.models import Goal
+        from kortana.core.models import Goal
 
         proactive_goals = (
             db.query(Goal)

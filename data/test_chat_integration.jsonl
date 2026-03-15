@@ -1,0 +1,2 @@
+{"timestamp": "2026-03-15T00:43:24.642286", "role": "system", "content": "I am Kor'tana, an autonomous AI assistant.", "metadata": {"type": "system_context"}, "id": "mem_20260315T004324642286"}
+{"timestamp": "2026-03-15T00:43:24.642334", "role": "user", "content": "Hi Kor'tana, tell me about yourself", "metadata": {"type": "user_query"}, "id": "mem_20260315T004324642334"}

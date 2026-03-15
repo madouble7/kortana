@@ -126,12 +126,53 @@ PowerShell:
 
 ## Features
 
+- **Cost-Aware Model Routing**: Intelligent AI model selection prioritizing free models (87% cost reduction)
+  - 6+ free models via OpenRouter with automatic fallbacks
+  - Smart task-based routing (reasoning, coding, creative, vision)
+  - Real-time cost tracking and budget management
+  - Response caching to eliminate redundant API calls
+### Core Features
 - **Memory System**: Stores and retrieves memories with semantic search capabilities
 - **Ethical Discernment**: Evaluates responses for algorithmic arrogance and uncertainty
 - **Context-Aware Responses**: Integrates memory and ethical considerations in responses
 - **LLM Integration**: Uses OpenAI's GPT models for natural language processing
 - **LobeChat Frontend**: Modern, intuitive chat interface with OpenAI-compatible API
 - **Multi-Model Support**: Intelligent routing between OpenAI, Anthropic, and Google AI models
+- **LLM Integration**: Supports multiple AI providers (OpenAI, Google, Anthropic, xAI, OpenRouter)
+- **LobeChat Frontend Support**: Seamlessly integrates with LobeChat for a user-friendly interface
+- **AR/VR Exploration**: Comprehensive augmented and virtual reality capabilities for immersive simulations, real-world overlays, and spatial object management
+- **Multimodal AI Capabilities**: Support for text, voice, images, video, and simulation-based queries
+  - Text processing with context awareness
+  - Voice/audio transcription and analysis
+  - Image understanding with GPT-4 Vision
+  - Video content processing
+  - Simulation-based scenario analysis
+  - Mixed multimodal prompts
+- **AI-Powered Decision-Making**: ML-driven strategies for real-time autonomous decision-making
+  - Neural network-based decision engine
+  - Time-sensitive dataset analysis and trend detection
+  - Outcome prediction with confidence scoring
+  - Multi-objective optimization for optimal solutions
+- **Advanced Security Module**: Comprehensive cybersecurity features including:
+  - Real-time threat detection and prevention
+  - Security alerts and monitoring
+  - Vulnerability scanning and management
+  - Advanced encryption utilities
+  - Secure API communication
+  - Security analytics dashboard
+
+### New Features (2026)
+
+1. **Multilingual Support**: Real-time translation and language detection for 10+ languages
+2. **Emotional Intelligence**: Sentiment analysis and emotion detection to adapt responses
+3. **Adaptive Content Generation**: Summarize, elaborate, or rewrite text in various styles
+4. **Dynamic API Integration**: Plugin framework with built-in Weather, Stock, and Task Management plugins
+5. **Ethical Transparency Dashboard**: Real-time logging and reporting of ethical decisions with user feedback
+6. **Gaming Expansion**: Interactive storytelling engine and RPG assistant with dice rolling and NPC generation
+7. **Community-Driven Marketplace**: Module discovery, submission, installation, and rating system
+
+📚 **See [NEW_FEATURES.md](docs/NEW_FEATURES.md) for detailed documentation**  
+🚀 **See [QUICK_START_NEW_FEATURES.md](docs/QUICK_START_NEW_FEATURES.md) for quick examples**
 
 ## LobeChat Integration
 
@@ -186,7 +227,22 @@ For detailed setup instructions, troubleshooting, and advanced configuration, se
 - Architecture overview: `docs/ARCHITECTURE.md`
 - Memory Core details: `docs/MEMORY_CORE.md`
 - LobeChat legacy guide: `docs/LOBECHAT_CONNECTION.md`
+- **Cost Optimization Guide**: `docs/COST_OPTIMIZATION.md` - Save up to 87% on AI costs
+- **New Features**: `docs/NEW_FEATURES.md` - Comprehensive guide to all new features
+- **Quick Start**: `docs/QUICK_START_NEW_FEATURES.md` - Quick examples and tutorials
+- Full API documentation: `docs/API_ENDPOINTS.md`
+- Architecture overview: `docs/ARCHITECTURE.md`
+- Memory Core details: `docs/MEMORY_CORE.md`
+- AR/VR Exploration: `docs/AR_VR_EXPLORATION.md`
+- AI Decision-Making: `docs/AI_DECISION_MAKING.md`
+- Security Module: `docs/SECURITY_MODULE.md`
+- LobeChat integration: `docs/LOBECHAT_CONNECTION.md`
 - LobeChat troubleshooting: `docs/LOBECHAT_TROUBLESHOOTING.md`
+- **Multimodal Capabilities**: `docs/MULTIMODAL_CAPABILITIES.md`
+- **Multimodal Usage Examples**: `docs/MULTIMODAL_USAGE_EXAMPLES.md`
+- **Multimodal API Reference**: `docs/MULTIMODAL_API_REFERENCE.md`
+- **Multimodal Integration Guide**: `docs/MULTIMODAL_INTEGRATION_GUIDE.md`
+- Multilingual support: `docs/MULTILINGUAL_SUPPORT.md`
 
 ## Development
 
@@ -203,6 +259,8 @@ This project uses Black for formatting and Pylint for linting.
 - **Memory Core**: Stores, retrieves, and manages memories
 - **Reasoning Core**: Processes user queries and generates responses
 - **Ethical Discernment Module**: Ensures responses are ethical and reflective
+- **AR/VR Exploration Module**: Provides immersive simulations and spatial interaction capabilities
+- **Security Module**: Advanced cybersecurity features for system protection
 - **API Adapters**: Connect to frontend interfaces (including LobeChat)
 
 ## License
