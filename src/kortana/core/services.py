@@ -107,6 +107,16 @@ def _create_execution_engine():
     return ExecutionEngine(allowed_dirs=allowed_dirs, blocked_commands=blocked_commands)
 
 
+def _create_tabby_service():
+    """Factory function for Tabby Service."""
+    from kortana.core.services.tabby_service import TabbyService
+
+    if _config is None:
+        raise RuntimeError("Services not initialized with configuration")
+
+    return TabbyService(config=_config)
+
+
 def _create_covenant_enforcer():
     """Factory function for Covenant Enforcer."""
     from kortana.core.covenant_enforcer import CovenantEnforcer
@@ -246,6 +256,12 @@ def get_scheduler():
 def get_memory_core_service():
     """Get the Memory Core Service instance."""
     return get_service("memory_core_service", _create_memory_core_service)
+
+
+def get_tabby_service():
+    """Get the Tabby Service instance."""
+    return get_service("tabby_service", _create_tabby_service)
+
 
 def get_memory_manager():
     """Get the Memory Manager instance."""

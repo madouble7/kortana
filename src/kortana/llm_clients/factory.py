@@ -76,11 +76,18 @@ class LLMClientFactory:
             from .xai_client import XAIClient
 
             return XAIClient
+        elif client_name == "TabbyClient":
+            from .tabby_client import TabbyClient
+
+            return TabbyClient
         return BaseLLMClient
 
     @property
     def MODEL_CLIENT_NAMES(self) -> dict[str, str]:
         return {
+            # Local models via Tabby (Ghost Protocol)
+            "star-coder-2-7b-local": "TabbyClient",
+            "tabby/starcoder2-7b": "TabbyClient",
             # Premium models via OpenRouter
             "google/gemini-2.5-flash-preview-05-20": "OpenRouterClient",
             "openai/gpt-4.1-nano": "OpenRouterClient",

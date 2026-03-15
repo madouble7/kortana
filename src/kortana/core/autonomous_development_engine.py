@@ -107,7 +107,24 @@ class AutonomousDevelopmentEngine:
                 "function": self._implement_monitoring,
                 "complexity": "medium",
             },
+            "provision_local_model": {
+                "description": "Provision local StarCoder-2-7B model via Tabby for Ghost Protocol",
+                "function": self._provision_local_model,
+                "complexity": "high",
+            },
         }
+
+    async def _provision_local_model(self, task: DevelopmentTask) -> dict[str, Any]:
+        """
+        ADE tool to provision the local StarCoder model via Tabby.
+        Part of the Ghost Protocol infrastructure.
+        """
+        try:
+            from .ade_model_ops import provision_local_agent_model
+            return await provision_local_agent_model(task)
+        except ImportError as e:
+            self.logger.error(f"Failed to import ADE model operations: {e}")
+            return {"status": "failed", "error": f"Import error: {str(e)}"}
 
     async def plan_development_session(self, goal: str) -> list[DevelopmentTask]:
         """
