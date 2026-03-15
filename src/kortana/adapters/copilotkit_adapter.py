@@ -52,9 +52,20 @@ def verify_api_key(authorization: str | None = Header(None)) -> bool:
     # Get the API key from environment
     api_key = os.environ.get("KORTANA_API_KEY")
     
-    # If no API key is configured, allow unauthenticated access (development mode)
-    if not api_key:
+    # Check if we're in development mode (explicitly set)
+    env = os.environ.get("ENV", "").lower()
+    is_dev_mode = env in ("development", "dev", "local")
+    
+    # If no API key is configured AND we're explicitly in dev mode, allow unauthenticated access
+    if not api_key and is_dev_mode:
         return True
+    
+    # If no API key is configured but NOT in dev mode, fail closed
+    if not api_key:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Server API key is not configured",
+        )
     
     # If API key is configured, require authentication
     if not authorization:

@@ -152,6 +152,9 @@ Built files will be in `frontend/dist/`
 Create a `.env` file in the repository root:
 
 ```env
+# Environment (set to 'development', 'dev', or 'local' to allow unauthenticated access)
+ENV=development
+
 # Kor'tana Configuration
 KORTANA_API_KEY=your_api_key_here
 
@@ -162,6 +165,11 @@ ANTHROPIC_API_KEY=your_anthropic_key
 # Database
 MEMORY_DB_URL=sqlite:///./kortana_memory_dev.db
 ```
+
+**Authentication Behavior:**
+- If `ENV` is set to `development`, `dev`, or `local` AND `KORTANA_API_KEY` is not set: unauthenticated access allowed
+- If `KORTANA_API_KEY` is set: authentication required (Bearer token)
+- Otherwise: authentication required (fails closed for security)
 
 ### CORS Configuration
 

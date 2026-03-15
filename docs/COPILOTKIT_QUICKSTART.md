@@ -128,12 +128,15 @@ Once running, you can:
 Edit `.env`:
 
 ```env
+# Environment mode (set to 'development' for easier local development)
+ENV=development
+
 # API Keys
 OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=sk-ant-...
 
-# Optional: Custom API key for frontend authentication
-KORTANA_API_KEY=your-secure-key
+# Optional: Custom API key for frontend authentication (omit for dev mode)
+# KORTANA_API_KEY=your-secure-key
 
 # Database
 MEMORY_DB_URL=sqlite:///./kortana_memory_dev.db
@@ -141,6 +144,8 @@ MEMORY_DB_URL=sqlite:///./kortana_memory_dev.db
 # Logging
 LOG_LEVEL=INFO
 ```
+
+**Note:** When `ENV=development` and `KORTANA_API_KEY` is not set, authentication is not required. For production, always set `KORTANA_API_KEY`.
 
 ### Frontend Configuration
 
