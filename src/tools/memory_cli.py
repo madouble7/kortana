@@ -9,7 +9,7 @@ import argparse
 import os
 import sys
 
-from kortana.core.memory import (
+from src.kortana.core.memory import (
     save_context_summary,
     save_decision,
     save_implementation_note,

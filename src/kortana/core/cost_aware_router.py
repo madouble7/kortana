@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from kortana.config.schema import KortanaConfig
+from src.kortana.config.schema import KortanaConfig
 
 from .enhanced_model_router import EnhancedModelRouter, TaskType
 

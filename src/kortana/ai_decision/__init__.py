@@ -12,10 +12,10 @@ Key Components:
 - Decision Optimizer: Solution optimization framework
 """
 
-from kortana.ai_decision.decision_engine import DecisionEngine
-from kortana.ai_decision.dataset_analyzer import DatasetAnalyzer
-from kortana.ai_decision.outcome_predictor import OutcomePredictor
-from kortana.ai_decision.optimizer import DecisionOptimizer
+from src.kortana.ai_decision.decision_engine import DecisionEngine
+from src.kortana.ai_decision.dataset_analyzer import DatasetAnalyzer
+from src.kortana.ai_decision.outcome_predictor import OutcomePredictor
+from src.kortana.ai_decision.optimizer import DecisionOptimizer
 
 __all__ = [
     "DecisionEngine",

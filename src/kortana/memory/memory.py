@@ -11,7 +11,7 @@ import os
 from datetime import datetime
 from typing import Any
 
-from kortana.config.schema import KortanaConfig
+from src.kortana.config.schema import KortanaConfig
 
 logger = logging.getLogger(__name__)
 

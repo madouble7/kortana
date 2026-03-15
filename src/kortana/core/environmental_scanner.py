@@ -8,9 +8,9 @@ import json
 import logging
 import os
 
-from kortana.core.execution_engine import ExecutionEngine
-from kortana.core.goal_framework import GoalStatus, GoalType
-from kortana.core.goal_manager import GoalManager
+from src.kortana.core.execution_engine import ExecutionEngine
+from src.kortana.core.goal_framework import GoalStatus, GoalType
+from src.kortana.core.goal_manager import GoalManager
 
 logger = logging.getLogger(__name__)
 

@@ -15,7 +15,7 @@ from typing import Any
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from kortana.core.orchestrator import KorOrchestrator
+from src.kortana.core.orchestrator import KorOrchestrator
 
 # Placeholder for LobeChat specific request/response models if needed
 # from pydantic import BaseModel

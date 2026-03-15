@@ -21,7 +21,7 @@ sys.path.insert(
 )
 
 # Import the modules we want to test
-from kortana.core.memory import (
+from src.kortana.core.memory import (
     get_memory_by_type,
     load_memory,
     save_decision,
@@ -29,7 +29,7 @@ from kortana.core.memory import (
     save_memory,
     save_project_insight,
 )
-from kortana.core.brain import ChatEngine
+from src.kortana.core.brain import ChatEngine
 
 # Constants for testing
 TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), "test_data")

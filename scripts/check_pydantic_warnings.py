@@ -18,7 +18,7 @@ warnings.formatwarning = warning_on_one_line
 print("Testing for Pydantic model_mapping warnings...")
 
 # Import the relevant class
-from kortana.config.schema import AgentTypeConfig, KortanaConfig
+from src.kortana.config.schema import AgentTypeConfig, KortanaConfig
 
 # Create instances
 print("\nCreating AgentTypeConfig instance...")

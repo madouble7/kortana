@@ -10,8 +10,8 @@ import sys
 src_path = os.path.join(os.path.dirname(__file__), "src")
 sys.path.insert(0, src_path)
 
-from kortana.modules.memory_core.services import MemoryCoreService
-from kortana.services.database import SyncSessionLocal
+from src.kortana.modules.memory_core.services import MemoryCoreService
+from src.kortana.services.database import SyncSessionLocal
 
 
 def test_memory_service():

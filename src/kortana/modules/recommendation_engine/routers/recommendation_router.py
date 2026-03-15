@@ -3,8 +3,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from kortana.modules.recommendation_engine import schemas, services
-from kortana.services.database import get_db_sync
+from src.kortana.modules.recommendation_engine import schemas, services
+from src.kortana.services.database import get_db_sync
 
 router = APIRouter(
     prefix="/recommendations",

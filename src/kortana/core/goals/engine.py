@@ -7,8 +7,8 @@ This component orchestrates the process of goal processing and execution.
 import asyncio
 import logging
 
-from kortana.core.execution_engine import ExecutionEngine
-from kortana.core.planning_engine import PlanningEngine
+from src.kortana.core.execution_engine import ExecutionEngine
+from src.kortana.core.planning_engine import PlanningEngine
 
 from .goal import Goal, GoalStatus
 from .manager import GoalManager

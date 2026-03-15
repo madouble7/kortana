@@ -20,15 +20,15 @@ import yaml
 from apscheduler.triggers.interval import IntervalTrigger
 
 # Local application imports
-from kortana.agents.autonomous_agents import (
+from src.kortana.agents.autonomous_agents import (
     CodingAgent,
     MonitoringAgent,
     PlanningAgent,
     TestingAgent,
 )
-from kortana.config import load_config
-from kortana.config.schema import KortanaConfig
-from kortana.services import (
+from src.kortana.config import load_config
+from src.kortana.config.schema import KortanaConfig
+from src.kortana.services import (
     get_ade_llm_client,
     get_covenant_enforcer,
     get_default_llm_client,
@@ -39,8 +39,8 @@ from kortana.services import (
     get_planning_engine,
     get_scheduler,
 )
-from kortana.services.database import get_db_sync
-from kortana.utils import text_analysis
+from src.kortana.services.database import get_db_sync
+from src.kortana.utils import text_analysis
 
 # Configure logging
 logging.basicConfig(

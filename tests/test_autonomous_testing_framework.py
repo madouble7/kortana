@@ -12,8 +12,8 @@ Tests all five core modules:
 
 import pytest
 
-from kortana.core.autonomous_testing_config import DEFAULT_CONFIG, FrameworkConfig
-from kortana.core.autonomous_testing_framework import (
+from src.kortana.core.autonomous_testing_config import DEFAULT_CONFIG, FrameworkConfig
+from src.kortana.core.autonomous_testing_framework import (
     AutonomousDebuggingModule,
     AutonomousTestingFramework,
     DebugStatus,

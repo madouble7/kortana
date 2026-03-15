@@ -7,7 +7,7 @@ import gzip
 import pytest
 from datetime import datetime, timedelta
 from pathlib import Path
-from kortana.memory.conversation_archive import ConversationArchive
+from src.kortana.memory.conversation_archive import ConversationArchive
 
 
 class TestConversationArchive:

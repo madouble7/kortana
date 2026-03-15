@@ -16,10 +16,10 @@ sys.path.insert(0, project_root)
 os.chdir(project_root)
 
 # Import required modules
-from kortana.modules.memory_core.models import MemoryType
-from kortana.modules.memory_core.schemas import CoreMemoryCreate
-from kortana.modules.memory_core.services import MemoryCoreService
-from kortana.services.database import get_db_sync
+from src.kortana.modules.memory_core.models import MemoryType
+from src.kortana.modules.memory_core.schemas import CoreMemoryCreate
+from src.kortana.modules.memory_core.services import MemoryCoreService
+from src.kortana.services.database import get_db_sync
 
 
 async def create_test_memories():

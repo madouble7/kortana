@@ -6,9 +6,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from kortana.config.schema import KortanaConfig
-from kortana.memory.memory import MemoryEntry
-from kortana.memory.memory_manager import MemoryManager
+from src.kortana.config.schema import KortanaConfig
+from src.kortana.memory.memory import MemoryEntry
+from src.kortana.memory.memory_manager import MemoryManager
 
 
 class TestMemoryManager:

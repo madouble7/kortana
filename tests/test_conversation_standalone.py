@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 # Direct import of conversation history (no kortana services __init__)
-from kortana.services.conversation_history import (
+from src.kortana.services.conversation_history import (
     ConversationHistoryService,
 )
 

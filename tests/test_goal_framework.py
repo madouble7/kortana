@@ -8,8 +8,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from kortana.core.goal_framework import Goal, GoalStatus, GoalType
-from kortana.core.goal_manager import GoalManager
+from src.kortana.core.goal_framework import Goal, GoalStatus, GoalType
+from src.kortana.core.goal_manager import GoalManager
 
 
 class TestGoal:

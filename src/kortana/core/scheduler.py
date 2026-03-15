@@ -9,13 +9,13 @@ from datetime import UTC, datetime
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
-from kortana.core.autonomous_tasks import run_performance_analysis_task
-from kortana.core.covenant import CovenantEnforcer
-from kortana.core.environmental_scanner import run_environmental_scan_cycle
-from kortana.core.goal_manager import (
+from src.kortana.core.autonomous_tasks import run_performance_analysis_task
+from src.kortana.core.covenant import CovenantEnforcer
+from src.kortana.core.environmental_scanner import run_environmental_scan_cycle
+from src.kortana.core.goal_manager import (
     GoalManager as CoreGoalManager,  # Alias to avoid confusion
 )
-from kortana.core.memory import MemoryManager
+from src.kortana.core.memory import MemoryManager
 
 logger = logging.getLogger(__name__)
 

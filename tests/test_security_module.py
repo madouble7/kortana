@@ -3,17 +3,17 @@ Tests for the Kor'tana security module.
 """
 
 import pytest
-from kortana.modules.security.models.security_models import (
+from src.kortana.modules.security.models.security_models import (
     AlertSeverity,
     AlertType,
     ThreatLevel,
 )
-from kortana.modules.security.services.alert_service import AlertService
-from kortana.modules.security.services.encryption_service import EncryptionService
-from kortana.modules.security.services.threat_detection_service import (
+from src.kortana.modules.security.services.alert_service import AlertService
+from src.kortana.modules.security.services.encryption_service import EncryptionService
+from src.kortana.modules.security.services.threat_detection_service import (
     ThreatDetectionService,
 )
-from kortana.modules.security.services.vulnerability_service import (
+from src.kortana.modules.security.services.vulnerability_service import (
     VulnerabilityService,
 )
 

@@ -2,8 +2,8 @@ import os
 
 import pytest
 
-from kortana.config import load_kortana_config
-from kortana.memory.memory_manager import MemoryManager
+from src.kortana.config import load_kortana_config
+from src.kortana.memory.memory_manager import MemoryManager
 
 
 @pytest.fixture(scope="function")

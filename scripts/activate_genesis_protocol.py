@@ -8,10 +8,10 @@ import sys
 
 sys.path.append("src")
 
-from kortana.core.goal_framework import GoalType
-from kortana.core.goal_manager import GoalManager
-from kortana.modules.memory_core.services import MemoryCoreService
-from kortana.services.database import SessionLocal
+from src.kortana.core.goal_framework import GoalType
+from src.kortana.core.goal_manager import GoalManager
+from src.kortana.modules.memory_core.services import MemoryCoreService
+from src.kortana.services.database import SessionLocal
 
 
 def activate_genesis_protocol():

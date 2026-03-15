@@ -19,15 +19,15 @@ from fastapi.testclient import TestClient
 app = FastAPI()
 
 # Import and include new module routers directly from their files
-from kortana.modules.multilingual.router import router as multilingual_router
-from kortana.modules.emotional_intelligence.router import (
+from src.kortana.modules.multilingual.router import router as multilingual_router
+from src.kortana.modules.emotional_intelligence.router import (
     router as emotional_intelligence_router,
 )
-from kortana.modules.content_generation.router import router as content_router
-from kortana.modules.plugin_framework.router import router as plugin_router
-from kortana.modules.ethical_transparency.router import router as ethics_router
-from kortana.modules.gaming.router import router as gaming_router
-from kortana.modules.marketplace.router import router as marketplace_router
+from src.kortana.modules.content_generation.router import router as content_router
+from src.kortana.modules.plugin_framework.router import router as plugin_router
+from src.kortana.modules.ethical_transparency.router import router as ethics_router
+from src.kortana.modules.gaming.router import router as gaming_router
+from src.kortana.modules.marketplace.router import router as marketplace_router
 
 app.include_router(multilingual_router)
 app.include_router(emotional_intelligence_router)

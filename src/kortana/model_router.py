@@ -10,8 +10,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
-from kortana.config.schema import KortanaConfig
-from kortana.strategic_config import (
+from src.kortana.config.schema import KortanaConfig
+from src.kortana.strategic_config import (
     SacredPrinciple,
     TaskCategory,
     UltimateLivingSacredConfig,

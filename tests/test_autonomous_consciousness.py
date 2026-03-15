@@ -4,7 +4,7 @@ import unittest
 
 from dotenv import load_dotenv
 
-from kortana.llm_clients.genai_client import GoogleGenAIClient
+from src.kortana.llm_clients.genai_client import GoogleGenAIClient
 
 # Configure logging
 logging.basicConfig(

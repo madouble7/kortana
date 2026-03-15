@@ -9,8 +9,8 @@ from sqlalchemy import engine_from_config, pool
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 
-from kortana.config.settings import settings
-from kortana.services.database import Base
+from src.kortana.config.settings import settings
+from src.kortana.services.database import Base
 
 # Import models for autogenerate support
 try:

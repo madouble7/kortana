@@ -6,17 +6,15 @@ import os
 from pathlib import Path  # Added import
 from typing import Any
 
-from kortana.config.schema import KortanaConfig
+from src.kortana.config.schema import KortanaConfig
 
 from .base_client import BaseLLMClient
-from .genai_client import GoogleGenAIClient
 from .google_client import (
     GoogleGeminiClient,  # Changed to use the more robust GoogleGeminiClient
 )
 from .multimodal_openai_client import MultimodalOpenAIClient
 from .openai_client import OpenAIClient
 from .openrouter_client import OpenRouterClient
-from .xai_client import XAIClient
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +53,7 @@ class LLMClientFactory:
         "meta-llama/llama-4-scout": OpenRouterClient,
         "qwen/qwen3-235b-a22b": OpenRouterClient,
     }
+
     def _get_client_class(self, client_name: str) -> type:
         """Helper to lazily import and return client classes."""
         if client_name == "OpenRouterClient":
@@ -330,9 +329,9 @@ class LLMClientFactory:
 
     @staticmethod
     def get_multimodal_client(
-        models_config: dict[str, Any], 
+        models_config: dict[str, Any],
         model_id: str | None = None,
-        api_key_env: str = "OPENAI_API_KEY"
+        api_key_env: str = "OPENAI_API_KEY",
     ) -> BaseLLMClient | None:
         """
         Get a multimodal-capable LLM client.
@@ -354,7 +353,7 @@ class LLMClientFactory:
         else:
             # Use default vision model
             model_name = "gpt-4-vision-preview"
-            
+
         api_key = os.getenv(api_key_env)
         if not api_key:
             logger.error(f"{api_key_env} not found for multimodal client")
@@ -368,8 +367,6 @@ class LLMClientFactory:
             logger.error(f"Failed to create multimodal client: {e}")
             return None
 
-    @staticmethod
-    def validate_configuration(settings: KortanaConfig) -> bool:
     def validate_configuration(self, settings: KortanaConfig) -> bool:
         """Validate that essential models are properly configured."""
         # Load models from the enhanced configuration

@@ -7,7 +7,7 @@ from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
-from kortana.services.database import Base
+from src.kortana.services.database import Base
 
 
 class ConversationStatus(enum.Enum):

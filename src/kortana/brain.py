@@ -20,20 +20,20 @@ from datetime import UTC, datetime
 from typing import Any
 
 # Core imports
-from kortana.brain_utils import (
+from src.kortana.brain_utils import (
     append_to_memory_journal,
     extract_keywords_from_text,
     load_json_config,
     sanitize_user_input,
 )
-from kortana.config.schema import KortanaConfig
-from kortana.llm_clients.factory import LLMClientFactory
-from kortana.memory.memory import MemoryEntry
-from kortana.memory.memory_manager import MemoryManager
-from kortana.model_router import SacredModelRouter
+from src.kortana.config.schema import KortanaConfig
+from src.kortana.llm_clients.factory import LLMClientFactory
+from src.kortana.memory.memory import MemoryEntry
+from src.kortana.memory.memory_manager import MemoryManager
+from src.kortana.model_router import SacredModelRouter
 
 # Optimization and utility imports
-from kortana.utils import (
+from src.kortana.utils import (
     CircuitBreaker,
     CircuitBreakerConfig,
     MetricsCollector,

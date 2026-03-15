@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
-from kortana.core.execution_engine import ExecutionEngine
+from src.kortana.core.execution_engine import ExecutionEngine
 
 # Define allowed directories and blocked commands for testing
 ALLOWED_DIRS = [

@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 
-from kortana.core.services import get_execution_engine, get_memory_core_service
+from src.kortana.core.services import get_execution_engine, get_memory_core_service
 
 logger = logging.getLogger(__name__)
 

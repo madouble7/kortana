@@ -6,8 +6,8 @@ This module provides functionality to plan daily tasks based on memory records.
 from datetime import datetime
 from typing import Any
 
-from kortana.config.schema import KortanaConfig
-from kortana.memory.memory_manager import MemoryManager
+from src.kortana.config.schema import KortanaConfig
+from src.kortana.memory.memory_manager import MemoryManager
 
 
 class PlanningAgent:

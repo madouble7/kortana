@@ -7,7 +7,7 @@ Factory for creating LLM clients based on provider and model.
 import logging
 from typing import Any
 
-from kortana.config.schema import KortanaConfig
+from src.kortana.config.schema import KortanaConfig
 
 from .anthropic_client import AnthropicClient
 from .openai_client import OpenAIClient

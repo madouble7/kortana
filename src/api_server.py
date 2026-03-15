@@ -24,11 +24,11 @@ from slowapi.util import get_remote_address
 from sse_starlette.sse import EventSourceResponse
 
 # Updated ChatEngine import
-from kortana.core.brain import ChatEngine
+from src.kortana.core.brain import ChatEngine
 
 # Imports for the new ChatEngine dependencies
-from kortana.services.llm_service import LLMService
-from kortana.memory.memory_manager import MemoryManager
+from src.kortana.services.llm_service import LLMService
+from src.kortana.memory.memory_manager import MemoryManager
 
 
 # Configure basic logging

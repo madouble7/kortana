@@ -8,7 +8,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Any
 
-from kortana.modules.security.models.security_models import (
+from src.kortana.modules.security.models.security_models import (
     ThreatDetection,
     ThreatLevel,
 )

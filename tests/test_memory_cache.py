@@ -4,7 +4,7 @@ Tests for memory caching functionality
 
 import pytest
 from datetime import datetime
-from kortana.memory.memory_manager import MemoryCache
+from src.kortana.memory.memory_manager import MemoryCache
 
 
 class TestMemoryCache:

@@ -13,7 +13,7 @@ old_stderr = sys.stderr
 sys.stderr = sys.stdout
 
 print("Loading AgentTypeConfig...")
-from kortana.config.schema import AgentTypeConfig
+from src.kortana.config.schema import AgentTypeConfig
 
 # Create an instance
 print("Creating instance...")

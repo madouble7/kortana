@@ -1,4 +1,4 @@
-from kortana.utils import timestamp_utils
+from src.kortana.utils import timestamp_utils
 
 
 def test_smoke():

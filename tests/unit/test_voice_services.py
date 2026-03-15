@@ -3,11 +3,11 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from kortana.voice.errors import VoiceProcessingError
-from kortana.voice.orchestrator import VoiceChatOrchestrator
-from kortana.voice.stt_service import STTService
-from kortana.voice.tts_service import TTSService
-from kortana.voice.voice_session import VoiceSessionManager
+from src.kortana.voice.errors import VoiceProcessingError
+from src.kortana.voice.orchestrator import VoiceChatOrchestrator
+from src.kortana.voice.stt_service import STTService
+from src.kortana.voice.tts_service import TTSService
+from src.kortana.voice.voice_session import VoiceSessionManager
 
 
 class DummyChatEngine:

@@ -4,7 +4,7 @@ Tests for enhanced metadata tracking in memory entries
 
 import pytest
 from datetime import datetime
-from kortana.memory.memory import MemoryEntry
+from src.kortana.memory.memory import MemoryEntry
 
 
 class TestMemoryEntryMetadata:

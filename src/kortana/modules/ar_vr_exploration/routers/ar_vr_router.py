@@ -5,12 +5,12 @@ FastAPI router for AR/VR exploration endpoints including environment management,
 session tracking, spatial object operations, and VirtuScope-inspired features.
 """
 
-from typing import Any, Dict, List
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from src.kortana.services.database_service import get_db_sync
+from src.kortana.services.database import get_db_sync
 
 from .. import schemas, services
 
@@ -27,7 +27,9 @@ def create_environment(
     return service.create_environment(environment)
 
 
-@router.get("/environments/{environment_id}", response_model=schemas.ARVREnvironmentDisplay)
+@router.get(
+    "/environments/{environment_id}", response_model=schemas.ARVREnvironmentDisplay
+)
 def get_environment(environment_id: int, db: Session = Depends(get_db_sync)):
     """Get an AR/VR environment by ID"""
     service = services.ARVRExplorationService(db=db)
@@ -37,7 +39,7 @@ def get_environment(environment_id: int, db: Session = Depends(get_db_sync)):
     return environment
 
 
-@router.get("/environments", response_model=List[schemas.ARVREnvironmentDisplay])
+@router.get("/environments", response_model=list[schemas.ARVREnvironmentDisplay])
 def list_environments(
     skip: int = 0, limit: int = 100, db: Session = Depends(get_db_sync)
 ):
@@ -46,7 +48,9 @@ def list_environments(
     return service.list_environments(skip=skip, limit=limit)
 
 
-@router.patch("/environments/{environment_id}", response_model=schemas.ARVREnvironmentDisplay)
+@router.patch(
+    "/environments/{environment_id}", response_model=schemas.ARVREnvironmentDisplay
+)
 def update_environment(
     environment_id: int,
     environment_update: schemas.ARVREnvironmentUpdate,
@@ -142,7 +146,7 @@ def get_spatial_object(object_id: int, db: Session = Depends(get_db_sync)):
 
 @router.get(
     "/environments/{environment_id}/objects",
-    response_model=List[schemas.SpatialObjectDisplay],
+    response_model=list[schemas.SpatialObjectDisplay],
 )
 def list_spatial_objects(environment_id: int, db: Session = Depends(get_db_sync)):
     """List all spatial objects in an environment"""
@@ -181,7 +185,7 @@ def delete_spatial_object(object_id: int, db: Session = Depends(get_db_sync)):
 )
 def create_immersive_simulation(
     environment_id: int,
-    simulation_config: Dict[str, Any],
+    simulation_config: dict[str, Any],
     db: Session = Depends(get_db_sync),
 ):
     """
@@ -198,7 +202,7 @@ def create_immersive_simulation(
 )
 def activate_real_world_overlay(
     session_id: int,
-    anchor_points: List[Dict[str, Any]],
+    anchor_points: list[dict[str, Any]],
     db: Session = Depends(get_db_sync),
 ):
     """
@@ -211,11 +215,11 @@ def activate_real_world_overlay(
 
 @router.post(
     "/environments/{environment_id}/spatial-query",
-    response_model=List[schemas.SpatialObjectDisplay],
+    response_model=list[schemas.SpatialObjectDisplay],
 )
 def spatial_query(
     environment_id: int,
-    position: Dict[str, float],
+    position: dict[str, float],
     radius: float,
     db: Session = Depends(get_db_sync),
 ):

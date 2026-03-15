@@ -1,6 +1,6 @@
 from langchain_openai import OpenAIEmbeddings
 
-from kortana.config.settings import settings
+from src.kortana.config.settings import settings
 
 
 class EmbeddingService:

@@ -11,9 +11,9 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from kortana.config.schema import KortanaConfig
-from kortana.core.cost_aware_router import CostAwareRouter, RequestMetrics, UsageStats
-from kortana.core.enhanced_model_router import TaskType
+from src.kortana.config.schema import KortanaConfig
+from src.kortana.core.cost_aware_router import CostAwareRouter, RequestMetrics, UsageStats
+from src.kortana.core.enhanced_model_router import TaskType
 
 
 @pytest.fixture

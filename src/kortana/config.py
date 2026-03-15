@@ -8,7 +8,7 @@ from typing import Any
 
 import yaml
 
-from kortana.config.schema import KortanaConfig
+from src.kortana.config.schema import KortanaConfig
 
 
 def get_project_root() -> Path:

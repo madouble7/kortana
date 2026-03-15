@@ -13,13 +13,13 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 # Direct imports to avoid core __init__.py issues
-from kortana.core.debugging_team.error_detector import ErrorDetector, DetectedError
-from kortana.core.debugging_team.error_reporter import ErrorReporter
-from kortana.core.debugging_team.resolution_engine import ResolutionEngine
+from src.kortana.core.debugging_team.error_detector import ErrorDetector, DetectedError
+from src.kortana.core.debugging_team.error_reporter import ErrorReporter
+from src.kortana.core.debugging_team.resolution_engine import ResolutionEngine
 
-from kortana.core.repo_maintenance.code_cleaner import CodeCleaner
-from kortana.core.repo_maintenance.file_classifier import FileClassifier
-from kortana.core.repo_maintenance.health_monitor import HealthMonitor
+from src.kortana.core.repo_maintenance.code_cleaner import CodeCleaner
+from src.kortana.core.repo_maintenance.file_classifier import FileClassifier
+from src.kortana.core.repo_maintenance.health_monitor import HealthMonitor
 
 
 def test_error_detector():

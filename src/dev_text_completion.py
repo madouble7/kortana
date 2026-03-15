@@ -8,7 +8,7 @@ import os
 
 from dotenv import load_dotenv
 
-from kortana.llm_clients.openai_client import OpenAIClient
+from src.kortana.llm_clients.openai_client import OpenAIClient
 
 load_dotenv()
 

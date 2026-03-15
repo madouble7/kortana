@@ -37,7 +37,7 @@ async def example_basic_metrics_monitoring():
 
     # This is what you would do:
     code = """
-from kortana.brain import ChatEngine
+from src.kortana.brain import ChatEngine
 
 engine = ChatEngine(config)
 

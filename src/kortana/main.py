@@ -13,56 +13,59 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from src.kortana.adapters.adapter_router import router as adapter_router
 from src.kortana.adapters.autogen_router import router as autogen_router
 from src.kortana.adapters.copilotkit_adapter import router as copilotkit_router
-from src.kortana.adapters.adapter_router import router as adapter_router
 from src.kortana.adapters.dify_router import router as dify_router
-from src.kortana.api.routers import core_router, goal_router
-from src.kortana.api.routers.mcp_router import router as mcp_router
+from src.kortana.adapters.lobe_chat_adapter import router as lobe_legacy_router
+from src.kortana.adapters.lobechat_openai_adapter import router as lobechat_router
 from src.kortana.adapters.openwebui_adapter import router as openwebui_router
+from src.kortana.api.routers import core_router, goal_router
+from src.kortana.api.routers.conversation_router import router as conversation_router
+from src.kortana.api.routers.mcp_router import router as mcp_router
 from src.kortana.api.routers.multimodal_router import router as multimodal_router
+from src.kortana.brain import ChatEngine
+from src.kortana.config import load_kortana_config
 from src.kortana.core.scheduler import (
     get_scheduler_status,
     start_scheduler,
     stop_scheduler,
-from kortana.api.routers import core_router, goal_router
-from kortana.api.routers.conversation_router import router as conversation_router
-from kortana.brain import ChatEngine
-from kortana.config import load_kortana_config
-from kortana.core.scheduler import get_scheduler_status, start_scheduler, stop_scheduler
-from kortana.modules.content_generation.router import router as content_router
-from kortana.modules.emotional_intelligence.router import (
-    router as emotional_intelligence_router,
-)
-from kortana.modules.ethical_transparency.router import router as ethics_router
-from kortana.modules.gaming.router import router as gaming_router
-from kortana.modules.inventory_analysis.routers.inventory_router import (
-    router as inventory_router,
-)
-from kortana.modules.marketplace.router import router as marketplace_router
-from kortana.modules.memory_core.routers.memory_router import router as memory_router
-from kortana.modules.multilingual.router import router as multilingual_router
-from kortana.modules.plugin_framework.router import router as plugin_router
-from kortana.modules.product_categorization.routers.category_router import (
-    router as category_router,
-)
-from kortana.modules.recommendation_engine.routers.recommendation_router import (
-    router as recommendation_router,
 )
 from src.kortana.modules.ar_vr_exploration.routers.ar_vr_router import (
     router as ar_vr_router,
 )
-from kortana.modules.security.routers.security_router import router as security_router
-from kortana.voice import (
+from src.kortana.modules.content_generation.router import router as content_router
+from src.kortana.modules.emotional_intelligence.router import (
+    router as emotional_intelligence_router,
+)
+from src.kortana.modules.ethical_transparency.router import router as ethics_router
+from src.kortana.modules.gaming.router import router as gaming_router
+from src.kortana.modules.inventory_analysis.routers.inventory_router import (
+    router as inventory_router,
+)
+from src.kortana.modules.marketplace.router import router as marketplace_router
+from src.kortana.modules.memory_core.routers.memory_router import (
+    router as memory_router,
+)
+from src.kortana.modules.multilingual.router import router as multilingual_router
+from src.kortana.modules.plugin_framework.router import router as plugin_router
+from src.kortana.modules.product_categorization.routers.category_router import (
+    router as category_router,
+)
+from src.kortana.modules.recommendation_engine.routers.recommendation_router import (
+    router as recommendation_router,
+)
+from src.kortana.modules.security.routers.security_router import (
+    router as security_router,
+)
+from src.kortana.modules.til.router import router as til_router
+from src.kortana.voice import (
     VoiceChatOrchestrator,
     VoiceProcessingError,
     VoiceSessionManager,
 )
-from src.kortana.modules.til.router import router as til_router
-from src.kortana.adapters.lobechat_openai_adapter import router as lobechat_router
-from src.kortana.adapters.lobe_chat_adapter import router as lobe_legacy_router
-from kortana.voice.stt_service import STTConfig, STTService
-from kortana.voice.tts_service import TTSConfig, TTSService
+from src.kortana.voice.stt_service import STTConfig, STTService
+from src.kortana.voice.tts_service import TTSConfig, TTSService
 
 # Global configuration and engine
 settings = load_kortana_config()
@@ -171,7 +174,7 @@ app.add_middleware(
         "http://localhost:3000",
         "http://localhost:3210",  # Default LobeChat port
         "http://localhost:8080",
-        "*"  # Allow all origins in development
+        "*",  # Allow all origins in development
     ],
     allow_credentials=True,
     allow_methods=["*"],

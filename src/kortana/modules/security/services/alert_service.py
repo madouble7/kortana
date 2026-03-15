@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from kortana.modules.security.models.security_models import (
+from src.kortana.modules.security.models.security_models import (
     AlertSeverity,
     AlertType,
     SecurityAlert,

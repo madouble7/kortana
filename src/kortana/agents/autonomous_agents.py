@@ -9,8 +9,8 @@ testing, and system monitoring.
 import logging
 from typing import Any
 
-from kortana.config.schema import KortanaConfig
-from kortana.memory.memory_manager import MemoryManager
+from src.kortana.config.schema import KortanaConfig
+from src.kortana.memory.memory_manager import MemoryManager
 
 logger = logging.getLogger(__name__)
 

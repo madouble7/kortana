@@ -10,8 +10,8 @@ from pathlib import Path
 # Add src to path for development
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from kortana.config import load_config
-from kortana.core.autonomous_development_engine import AutonomousDevelopmentEngine
+from src.kortana.config import load_config
+from src.kortana.core.autonomous_development_engine import AutonomousDevelopmentEngine
 
 
 def start_autonomy():

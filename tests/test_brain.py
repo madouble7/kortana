@@ -1,7 +1,7 @@
 import pytest
 
-from kortana.brain import ChatEngine
-from kortana.config.schema import KortanaConfig
+from src.kortana.brain import ChatEngine
+from src.kortana.config.schema import KortanaConfig
 
 
 @pytest.fixture

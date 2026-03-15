@@ -2,11 +2,11 @@ import asyncio
 import unittest
 from unittest.mock import Mock
 
-from kortana.core.goals.engine import GoalEngine
-from kortana.core.goals.generator import GoalGenerator
-from kortana.core.goals.goal import Goal, GoalType
-from kortana.core.goals.prioritizer import GoalPrioritizer
-from kortana.core.goals.scanner import EnvironmentalScanner
+from src.kortana.core.goals.engine import GoalEngine
+from src.kortana.core.goals.generator import GoalGenerator
+from src.kortana.core.goals.goal import Goal, GoalType
+from src.kortana.core.goals.prioritizer import GoalPrioritizer
+from src.kortana.core.goals.scanner import EnvironmentalScanner
 
 
 class TestEnvironmentalScanner(unittest.TestCase):

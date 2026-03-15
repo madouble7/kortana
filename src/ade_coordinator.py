@@ -7,8 +7,8 @@ import logging
 from typing import Any
 from uuid import UUID
 
-from kortana.core.autonomous_development_engine import create_ade
-from kortana.core.goals import Goal, GoalManager, GoalStatus, GoalType
+from src.kortana.core.autonomous_development_engine import create_ade
+from src.kortana.core.goals import Goal, GoalManager, GoalStatus, GoalType
 
 
 class ADECoordinator:

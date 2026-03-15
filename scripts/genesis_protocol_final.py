@@ -10,8 +10,8 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from kortana.config.schema import KortanaConfig  # Updated import path
-from kortana.core.services import initialize_services
+from src.kortana.config.schema import KortanaConfig  # Updated import path
+from src.kortana.core.services import initialize_services
 
 
 def test_core_imports():

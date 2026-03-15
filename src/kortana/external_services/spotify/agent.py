@@ -12,7 +12,7 @@ from pydantic import Field
 from pydantic_ai import Agent
 from pydantic_ai.mcp import MCPServerStdio
 
-from kortana.external_services.base.agent_base import AgentConfig, BaseExternalAgent
+from src.kortana.external_services.base.agent_base import AgentConfig, BaseExternalAgent
 
 
 class SpotifyAgentConfig(AgentConfig):

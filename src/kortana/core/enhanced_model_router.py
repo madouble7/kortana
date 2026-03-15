@@ -17,7 +17,7 @@ from enum import Enum
 from pathlib import Path  # Added import
 from typing import Any
 
-from kortana.config.schema import KortanaConfig
+from src.kortana.config.schema import KortanaConfig
 
 # from kortana.config import get_project_root # May be needed for path resolution
 

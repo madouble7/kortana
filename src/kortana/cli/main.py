@@ -11,9 +11,9 @@ from pathlib import Path
 # Add src to path for development
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from kortana.config import get_config, load_config
-from kortana.core.autonomous_development_engine import AutonomousDevelopmentEngine
-from kortana.core.brain import Brain
+from src.kortana.config import get_config, load_config
+from src.kortana.core.autonomous_development_engine import AutonomousDevelopmentEngine
+from src.kortana.core.brain import Brain
 
 
 def create_parser() -> argparse.ArgumentParser:

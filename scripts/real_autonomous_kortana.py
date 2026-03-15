@@ -19,8 +19,8 @@ import yaml
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
-from kortana.config import load_config
-from kortana.config.schema import KortanaConfig
+from src.kortana.config import load_config
+from src.kortana.config.schema import KortanaConfig
 
 # Configure logging
 logging.basicConfig(

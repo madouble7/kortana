@@ -1,6 +1,6 @@
 import pytest
 
-from kortana.config.schema import KortanaConfig
+from src.kortana.config.schema import KortanaConfig
 
 
 def test_chat_engine_config_creation():

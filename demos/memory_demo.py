@@ -15,7 +15,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import load_config
-from kortana.memory.memory import (
+from src.kortana.memory.memory import (
     get_memory_by_type,
     get_recent_memories_by_type,
     load_memory,

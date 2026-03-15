@@ -7,7 +7,7 @@ with Kortana's brain engine during development and testing.
 import json
 from datetime import datetime
 
-from kortana.core.brain import ChatEngine
+from src.kortana.core.brain import ChatEngine
 
 
 class KortanaDevChat:

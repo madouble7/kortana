@@ -1,6 +1,6 @@
 import unittest
 
-from kortana.utils.text_analysis import (
+from src.kortana.utils.text_analysis import (
     analyze_sentiment,
     count_tokens,
     extract_keywords,

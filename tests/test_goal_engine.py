@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-from kortana.core.goal_engine import Goal, GoalEngine, GoalType
+from src.kortana.core.goal_engine import Goal, GoalEngine, GoalType
 
 
 @pytest.fixture

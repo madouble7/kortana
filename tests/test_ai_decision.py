@@ -9,19 +9,19 @@ import pytest
 from datetime import datetime, timedelta
 import numpy as np
 
-from kortana.ai_decision import (
+from src.kortana.ai_decision import (
     DecisionEngine,
     DatasetAnalyzer,
     OutcomePredictor,
     DecisionOptimizer,
 )
-from kortana.ai_decision.decision_engine import (
+from src.kortana.ai_decision.decision_engine import (
     DecisionContext,
     DecisionUrgency,
     DecisionConfidence,
 )
-from kortana.ai_decision.outcome_predictor import PredictionInput
-from kortana.ai_decision.optimizer import OptimizationObjective
+from src.kortana.ai_decision.outcome_predictor import PredictionInput
+from src.kortana.ai_decision.optimizer import OptimizationObjective
 
 
 class TestDecisionEngine:

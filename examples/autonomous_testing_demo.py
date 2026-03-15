@@ -13,10 +13,10 @@ from pathlib import Path
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from kortana.core.autonomous_testing_framework import (
+from src.kortana.core.autonomous_testing_framework import (
     AutonomousTestingFramework
 )
-from kortana.core.autonomous_testing_config import (
+from src.kortana.core.autonomous_testing_config import (
     FrameworkConfig
 )
 

@@ -6,7 +6,7 @@ from typing import Any
 import numpy as np
 from sqlalchemy.orm import Session, joinedload
 
-from kortana.services.embedding_service import embedding_service
+from src.kortana.services.embedding_service import embedding_service
 
 from . import models, schemas
 

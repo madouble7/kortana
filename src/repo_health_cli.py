@@ -14,14 +14,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 # Direct imports to avoid circular dependency issues with core/__init__.py
-from kortana.core.debugging_team.error_detector import ErrorDetector
-from kortana.core.debugging_team.error_reporter import ErrorReporter
-from kortana.core.debugging_team.resolution_engine import ResolutionEngine
+from src.kortana.core.debugging_team.error_detector import ErrorDetector
+from src.kortana.core.debugging_team.error_reporter import ErrorReporter
+from src.kortana.core.debugging_team.resolution_engine import ResolutionEngine
 
-from kortana.core.repo_maintenance.code_cleaner import CodeCleaner
-from kortana.core.repo_maintenance.file_classifier import FileClassifier
-from kortana.core.repo_maintenance.branch_manager import BranchManager
-from kortana.core.repo_maintenance.health_monitor import HealthMonitor
+from src.kortana.core.repo_maintenance.code_cleaner import CodeCleaner
+from src.kortana.core.repo_maintenance.file_classifier import FileClassifier
+from src.kortana.core.repo_maintenance.branch_manager import BranchManager
+from src.kortana.core.repo_maintenance.health_monitor import HealthMonitor
 
 
 def setup_logging(verbose: bool = False):
