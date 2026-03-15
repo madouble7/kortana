@@ -9,9 +9,10 @@ Provides abstraction for LLM provider interactions with:
 - Async support
 """
 
+import builtins
 import logging
 import time
-from typing import Any, Optional
+from typing import Any
 
 from kortana.config.settings import settings
 from kortana.utils import ServiceError, TimeoutError
@@ -59,7 +60,7 @@ class LLMService:
                 if not settings.OPENAI_API_KEY:
                     raise ServiceError(
                         "OPENAI_API_KEY must be set to use the OpenAI provider",
-                        service_name="openai"
+                        service_name="openai",
                     )
 
                 self._client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
@@ -68,17 +69,16 @@ class LLMService:
             except ImportError:
                 raise ServiceError(
                     "OpenAI library not installed. Install with: pip install openai",
-                    service_name="openai"
+                    service_name="openai",
                 )
             except Exception as e:
                 raise ServiceError(
-                    f"Failed to initialize OpenAI client: {e}",
-                    service_name="openai"
+                    f"Failed to initialize OpenAI client: {e}", service_name="openai"
                 )
         else:
             raise ServiceError(
                 f"Provider '{self.provider}' is not yet supported",
-                service_name=self.provider
+                service_name=self.provider,
             )
 
     @property
@@ -93,7 +93,7 @@ class LLMService:
         model: str = "gpt-4o",
         temperature: float = 0.7,
         max_tokens: int = 1500,
-        timeout: Optional[float] = 30.0,
+        timeout: float | None = 30.0,
     ) -> dict[str, Any]:
         """
         Generate a response from the configured LLM provider.
@@ -140,25 +140,29 @@ class LLMService:
                     content = response.choices[0].message.content
                     metadata = {
                         "model": response.model,
-                        "usage": response.usage.model_dump() if hasattr(response.usage, 'model_dump') else {},
+                        "usage": response.usage.model_dump()
+                        if hasattr(response.usage, "model_dump")
+                        else {},
                         "finish_reason": response.choices[0].finish_reason,
                         "processing_time_ms": (time.perf_counter() - start_time) * 1000,
                     }
 
-                    logger.info(f"LLM request successful. Time: {metadata['processing_time_ms']:.1f}ms")
+                    logger.info(
+                        f"LLM request successful. Time: {metadata['processing_time_ms']:.1f}ms"
+                    )
                     return {"content": content, "metadata": metadata}
 
-                except asyncio.TimeoutError:
+                except builtins.TimeoutError:
                     raise TimeoutError(
                         "LLM request exceeded timeout",
                         operation="llm_generate",
-                        timeout_seconds=timeout
+                        timeout_seconds=timeout,
                     )
                 except Exception as e:
                     raise ServiceError(
                         f"OpenAI API error: {e}",
                         service_name="openai",
-                        http_status=getattr(e, 'status_code', None)
+                        http_status=getattr(e, "status_code", None),
                     )
 
             return {"content": None, "error": "Provider not implemented"}
@@ -174,7 +178,7 @@ class LLMService:
 
 
 # Singleton instance for easy access with lazy initialization
-_llm_service: Optional[LLMService] = None
+_llm_service: LLMService | None = None
 
 
 def get_llm_service(provider: str = "openai") -> LLMService:

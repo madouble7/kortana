@@ -1,10 +1,11 @@
 """API router for inventory analysis endpoints."""
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from kortana.services.database import get_db_sync
 from kortana.modules.inventory_analysis import schemas, services
 from kortana.modules.inventory_analysis.models import StockStatus
+from kortana.services.database import get_db_sync
 
 router = APIRouter(
     prefix="/inventory",
@@ -14,19 +15,18 @@ router = APIRouter(
 
 @router.post("/analyze", response_model=schemas.InventoryAnalysisResponse)
 def analyze_inventory(
-    request: schemas.InventoryAnalysisRequest,
-    db: Session = Depends(get_db_sync)
+    request: schemas.InventoryAnalysisRequest, db: Session = Depends(get_db_sync)
 ):
     """
     Analyze inventory using financial metrics and ML model.
-    
+
     Provides buy/don't buy recommendation based on:
     - P/E Ratio (Price to Earnings)
     - P/B Ratio (Price to Book)
     - D/E Ratio (Debt to Equity)
     - ROE (Return on Equity)
     - ROA (Return on Assets)
-    
+
     Returns recommendation with confidence score and detailed analysis.
     """
     service = services.InventoryAnalysisService(db=db)
@@ -35,8 +35,7 @@ def analyze_inventory(
 
 @router.post("/", response_model=schemas.InventoryDisplay)
 def create_inventory(
-    inventory: schemas.InventoryCreate,
-    db: Session = Depends(get_db_sync)
+    inventory: schemas.InventoryCreate, db: Session = Depends(get_db_sync)
 ):
     """
     Create a new inventory entry.
@@ -47,12 +46,11 @@ def create_inventory(
 
 @router.post("/with-analysis", response_model=schemas.InventoryDisplay)
 def create_inventory_with_analysis(
-    request: schemas.InventoryAnalysisRequest,
-    db: Session = Depends(get_db_sync)
+    request: schemas.InventoryAnalysisRequest, db: Session = Depends(get_db_sync)
 ):
     """
     Create inventory entry with automatic financial analysis.
-    
+
     This combines inventory creation with ML-based financial analysis.
     """
     service = services.InventoryAnalysisService(db=db)
@@ -60,11 +58,7 @@ def create_inventory_with_analysis(
 
 
 @router.get("/", response_model=list[schemas.InventoryDisplay])
-def list_inventory(
-    skip: int = 0,
-    limit: int = 100,
-    db: Session = Depends(get_db_sync)
-):
+def list_inventory(skip: int = 0, limit: int = 100, db: Session = Depends(get_db_sync)):
     """
     Retrieve all inventory entries with pagination.
     """
@@ -73,10 +67,7 @@ def list_inventory(
 
 
 @router.get("/{inventory_id}", response_model=schemas.InventoryDisplay)
-def get_inventory(
-    inventory_id: int,
-    db: Session = Depends(get_db_sync)
-):
+def get_inventory(inventory_id: int, db: Session = Depends(get_db_sync)):
     """
     Retrieve a specific inventory entry by ID.
     """
@@ -92,11 +83,11 @@ def get_inventory_by_status(
     status: StockStatus,
     skip: int = 0,
     limit: int = 100,
-    db: Session = Depends(get_db_sync)
+    db: Session = Depends(get_db_sync),
 ):
     """
     Retrieve inventory by status.
-    
+
     - **status**: Stock status (IN_STOCK, LOW_STOCK, OUT_OF_STOCK, OVERSTOCKED)
     """
     service = services.InventoryAnalysisService(db=db)
@@ -107,7 +98,7 @@ def get_inventory_by_status(
 def update_inventory(
     inventory_id: int,
     inventory_update: schemas.InventoryUpdate,
-    db: Session = Depends(get_db_sync)
+    db: Session = Depends(get_db_sync),
 ):
     """
     Update an inventory entry.
@@ -120,10 +111,7 @@ def update_inventory(
 
 
 @router.delete("/{inventory_id}")
-def delete_inventory(
-    inventory_id: int,
-    db: Session = Depends(get_db_sync)
-):
+def delete_inventory(inventory_id: int, db: Session = Depends(get_db_sync)):
     """
     Delete an inventory entry.
     """

@@ -9,6 +9,7 @@ from uuid import UUID
 
 from kortana.core.covenant import CovenantEnforcer
 from kortana.core.memory import MemoryManager
+
 from .goal import Goal, GoalStatus, GoalType
 
 

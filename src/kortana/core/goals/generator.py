@@ -9,6 +9,7 @@ import logging
 import re
 
 from kortana.services.llm_service import get_llm_service
+
 from .goal import Goal, GoalType
 from .manager import GoalManager
 

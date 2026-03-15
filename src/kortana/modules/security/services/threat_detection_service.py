@@ -178,7 +178,11 @@ class ThreatDetectionService:
             "code_injection",
             "credential_exposure",
         ]
-        return threat_types[pattern_index] if pattern_index < len(threat_types) else "unknown_threat"
+        return (
+            threat_types[pattern_index]
+            if pattern_index < len(threat_types)
+            else "unknown_threat"
+        )
 
     def _analyze_headers(self, headers: dict[str, str]) -> list[str]:
         """
@@ -261,9 +265,7 @@ class ThreatDetectionService:
         now = datetime.utcnow()
         cutoff = now - timedelta(minutes=1)
 
-        recent_requests = [
-            ts for ts in self._request_history[client_ip] if ts > cutoff
-        ]
+        recent_requests = [ts for ts in self._request_history[client_ip] if ts > cutoff]
 
         return {
             "ip_address": client_ip,

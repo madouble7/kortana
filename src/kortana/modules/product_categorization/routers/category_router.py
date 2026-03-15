@@ -1,10 +1,11 @@
 """API router for product categorization endpoints."""
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from kortana.services.database import get_db_sync
 from kortana.modules.product_categorization import schemas, services
 from kortana.modules.product_categorization.models import CategoryType
+from kortana.services.database import get_db_sync
 
 router = APIRouter(
     prefix="/categories",
@@ -14,15 +15,14 @@ router = APIRouter(
 
 @router.post("/classify", response_model=schemas.ProductCategorizeResponse)
 def classify_product(
-    request: schemas.ProductCategorizeRequest,
-    db: Session = Depends(get_db_sync)
+    request: schemas.ProductCategorizeRequest, db: Session = Depends(get_db_sync)
 ):
     """
     Classify a product into a category using AI.
-    
+
     - **name**: Product name (required)
     - **description**: Product description (optional)
-    
+
     Returns the predicted category, confidence score, and reasoning.
     """
     service = services.CategorizationService(db=db)
@@ -30,13 +30,10 @@ def classify_product(
 
 
 @router.post("/products", response_model=schemas.ProductDisplay)
-def create_product(
-    product: schemas.ProductCreate,
-    db: Session = Depends(get_db_sync)
-):
+def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db_sync)):
     """
     Create a new product with automatic categorization.
-    
+
     If category is not provided, it will be automatically determined using AI.
     """
     service = services.CategorizationService(db=db)
@@ -44,14 +41,10 @@ def create_product(
 
 
 @router.get("/products", response_model=list[schemas.ProductDisplay])
-def list_products(
-    skip: int = 0,
-    limit: int = 100,
-    db: Session = Depends(get_db_sync)
-):
+def list_products(skip: int = 0, limit: int = 100, db: Session = Depends(get_db_sync)):
     """
     Retrieve all products with pagination.
-    
+
     - **skip**: Number of records to skip
     - **limit**: Maximum number of records to return
     """
@@ -60,10 +53,7 @@ def list_products(
 
 
 @router.get("/products/{product_id}", response_model=schemas.ProductDisplay)
-def get_product(
-    product_id: int,
-    db: Session = Depends(get_db_sync)
-):
+def get_product(product_id: int, db: Session = Depends(get_db_sync)):
     """
     Retrieve a specific product by ID.
     """
@@ -74,16 +64,18 @@ def get_product(
     return product
 
 
-@router.get("/products/category/{category}", response_model=list[schemas.ProductDisplay])
+@router.get(
+    "/products/category/{category}", response_model=list[schemas.ProductDisplay]
+)
 def get_products_by_category(
     category: CategoryType,
     skip: int = 0,
     limit: int = 100,
-    db: Session = Depends(get_db_sync)
+    db: Session = Depends(get_db_sync),
 ):
     """
     Retrieve products by category.
-    
+
     - **category**: Category to filter by (ELECTRONICS, FASHION, HOME, etc.)
     - **skip**: Number of records to skip
     - **limit**: Maximum number of records to return
@@ -96,7 +88,7 @@ def get_products_by_category(
 def update_product(
     product_id: int,
     product_update: schemas.ProductUpdate,
-    db: Session = Depends(get_db_sync)
+    db: Session = Depends(get_db_sync),
 ):
     """
     Update a product.
@@ -109,10 +101,7 @@ def update_product(
 
 
 @router.delete("/products/{product_id}")
-def delete_product(
-    product_id: int,
-    db: Session = Depends(get_db_sync)
-):
+def delete_product(product_id: int, db: Session = Depends(get_db_sync)):
     """
     Delete a product.
     """

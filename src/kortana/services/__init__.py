@@ -24,6 +24,7 @@ from kortana.core.services import (
     initialize_services,
     reset_services,
 )
+
 from .database import get_db, get_db_sync
 
 # Explicitly define what's exported

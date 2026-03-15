@@ -3,10 +3,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from kortana.services.database import get_db_sync  # Adjust path as needed
-
 # Assuming these are in the parent directory of this routers module
 from kortana.modules.memory_core import schemas, services
+from kortana.services.database import get_db_sync  # Adjust path as needed
 
 router = APIRouter(
     prefix="/memories",
