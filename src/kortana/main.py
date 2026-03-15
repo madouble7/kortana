@@ -58,6 +58,7 @@ from kortana.voice import (
     VoiceProcessingError,
     VoiceSessionManager,
 )
+from src.kortana.modules.til.router import router as til_router
 from src.kortana.adapters.lobechat_openai_adapter import router as lobechat_router
 from src.kortana.adapters.lobe_chat_adapter import router as lobe_legacy_router
 from kortana.voice.stt_service import STTConfig, STTService
@@ -182,6 +183,7 @@ app.include_router(conversation_router)
 app.include_router(core_router.router)
 app.include_router(core_router.openai_adapter_router)
 app.include_router(goal_router.router)
+app.include_router(til_router)
 app.include_router(autogen_router)
 app.include_router(copilotkit_router)
 app.include_router(adapter_router)

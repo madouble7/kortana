@@ -141,6 +141,34 @@ PowerShell:
 - **Multi-Model Support**: Intelligent routing between OpenAI, Anthropic, and Google AI models
 - **LLM Integration**: Supports multiple AI providers (OpenAI, Google, Anthropic, xAI, OpenRouter)
 - **LobeChat Frontend Support**: Seamlessly integrates with LobeChat for a user-friendly interface
+- **TIL (Today I Learned) Notes**: Structured note-taking system for capturing and organizing quick knowledge snippets with categories, tags, and full-text search
+
+## TIL (Today I Learned) Feature
+
+Kor'tana now includes a powerful note-taking system inspired by the [raivivek/til](https://github.com/raivivek/til) repository. Capture and organize your learning with:
+
+- 📝 **Quick Note Creation**: CLI tool and REST API for easy note creation
+- 🏷️ **Categories & Tags**: Organize notes by category and tag them for easy retrieval
+- 🔍 **Full-Text Search**: Search notes by title or content
+- 📊 **Statistics**: Track note counts by category
+- 🔄 **Memory Integration**: Connect TIL notes with Kor'tana's memory system
+
+### Quick Start
+
+```bash
+# Create a TIL note via CLI
+python til_cli.py -c python -t "tips,performance"
+
+# Or run the demo to see all features
+python demo_til.py
+
+# Use the REST API (see docs/TIL_FEATURE_GUIDE.md for details)
+curl -X POST "http://localhost:8000/til/notes" \
+  -H "Content-Type: application/json" \
+  -d '{"title": "My Learning", "content": "Today I learned...", "category": "general"}'
+```
+
+For full documentation, see [TIL Feature Guide](docs/TIL_FEATURE_GUIDE.md).
 - **AutoGen Multi-Agent Support**: Integrates with Microsoft AutoGen for collaborative AI agent workflows
 
 ## Frontend Integrations
@@ -323,6 +351,7 @@ For detailed API documentation, see `docs/AUTOGEN_INTEGRATION.md`.
 - Full API documentation: `docs/API_ENDPOINTS.md`
 - Architecture overview: `docs/ARCHITECTURE.md`
 - Memory Core details: `docs/MEMORY_CORE.md`
+- TIL Feature Guide: `docs/TIL_FEATURE_GUIDE.md`
 - **Open WebUI integration**: `docs/OPENWEBUI_INTEGRATION.md`
 - AR/VR Exploration: `docs/AR_VR_EXPLORATION.md`
 - AI Decision-Making: `docs/AI_DECISION_MAKING.md`
