@@ -1,8 +1,8 @@
 from unittest.mock import MagicMock
 
 # Assume the necessary classes and config loading are available
-# from src.sacred_trinity_router import SacredTrinityRouter
-# from src.brain import ChatEngine # Potentially test integration via ChatEngine
+# from kortana.sacred_trinity_router import SacredTrinityRouter
+# from kortana.brain import ChatEngine # Potentially test integration via ChatEngine
 # from config.sacred_trinity_config import SACRED_TRINITY_CONFIG # Assume config is loaded
 
 

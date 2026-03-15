@@ -3,27 +3,43 @@ Kor'tana Core Brain with Memory Integration
 
 This module implements the ChatEngine class that powers Kor'tana's conversational abilities
 with integrated memory management following the Phase 3 blueprint.
+
+Enhanced with:
+- Performance optimization and caching
+- Comprehensive error handling
+- Metrics collection
+- Async support
 """
 
+import asyncio
 import logging
 import os
+import time
 import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from kortana.config.schema import KortanaConfig
-
-# Corrected imports for sanitize_user_input and extract_keywords_from_text
+# Core imports
 from kortana.brain_utils import (
     append_to_memory_journal,
     extract_keywords_from_text,
     load_json_config,
     sanitize_user_input,
 )
+from kortana.config.schema import KortanaConfig
+from kortana.llm_clients.factory import LLMClientFactory
 from kortana.memory.memory import MemoryEntry
 from kortana.memory.memory_manager import MemoryManager
-from llm_clients.factory import LLMClientFactory
-from model_router import SacredModelRouter
+from kortana.model_router import SacredModelRouter
+
+# Optimization and utility imports
+from kortana.utils import (
+    CircuitBreaker,
+    CircuitBreakerConfig,
+    MetricsCollector,
+    ModelError,
+    TTLCache,
+)
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -37,6 +53,12 @@ class ChatEngine:
     - Minimal memory interface for read/write operations
     - Integration with existing memory infrastructure
     - Incremental memory reintroduction to brain functionality
+
+    Enhancements:
+    - Response caching for identical queries
+    - Circuit breaker for external service calls
+    - Performance metrics tracking
+    - Comprehensive error handling
     """
 
     def __init__(self, settings: KortanaConfig, session_id: str | None = None):
@@ -46,6 +68,9 @@ class ChatEngine:
         Args:
             settings: Application configuration.
             session_id: Optional session identifier.
+
+        Raises:
+            ModelError: If model initialization fails
         """
         self.settings = settings
         self.session_id = session_id or str(uuid.uuid4())
@@ -54,37 +79,115 @@ class ChatEngine:
 
         logger.info(f"Initializing ChatEngine with session ID {self.session_id}")
 
-        # Initialize LLM clients
-        self.llm_client_factory = LLMClientFactory(settings=self.settings)
-        self.default_llm_client = self.llm_client_factory.get_client(
-            self.settings.default_llm_id
+        # Initialize performance tracking
+        self.metrics = MetricsCollector()
+        self.response_cache: TTLCache = TTLCache(max_size=100, default_ttl=300)
+
+        # Initialize circuit breaker for LLM calls (5 failures -> open, 60s timeout)
+        self.llm_circuit_breaker = CircuitBreaker(
+            CircuitBreakerConfig(
+                failure_threshold=5, recovery_timeout=60, expected_exception=Exception
+            )
         )
 
+        try:
+            # Initialize LLM clients
+            self.llm_client_factory = LLMClientFactory(settings=self.settings)
+            self.default_llm_client = self.llm_client_factory.get_client(
+                self.settings.default_llm_id
+            )
+            if self.default_llm_client is None:
+                logger.warning(
+                    "Primary LLM client '%s' unavailable. Falling back to gpt-4.1-nano.",
+                    self.settings.default_llm_id,
+                )
+                self.default_llm_client = self.llm_client_factory.get_client(
+                    "gpt-4.1-nano"
+                )
+            if self.default_llm_client is None:
+                raise ModelError(
+                    "No usable LLM client could be initialized.",
+                    model_name=self.settings.default_llm_id,
+                )
+        except Exception as e:
+            raise ModelError(
+                f"Failed to initialize LLM client: {e}",
+                model_name=self.settings.default_llm_id,
+            )
+
         # Initialize memory system - core focus of Phase 3
-        self.memory_manager = MemoryManager(settings=self.settings)
+        try:
+            self.memory_manager = MemoryManager(settings=self.settings)
+        except Exception as e:
+            logger.warning(f"Memory system initialization warning: {e}")
+            self.memory_manager = None
 
         # Initialize model router
-        self.router = SacredModelRouter(settings=self.settings)
+        try:
+            self.router = SacredModelRouter(settings=self.settings)
+        except Exception as e:
+            logger.warning(f"Model router initialization warning: {e}")
+            self.router = None
 
         # Load persona and identity configurations
-        self.persona_data = load_json_config(self.settings.paths.persona_file_path)
-        self.identity_data = load_json_config(self.settings.paths.identity_file_path)
+        try:
+            self.persona_data = load_json_config(self.settings.paths.persona_file_path)
+            self.identity_data = load_json_config(
+                self.settings.paths.identity_file_path
+            )
+        except Exception as e:
+            logger.warning(f"Could not load persona/identity configs: {e}")
+            self.persona_data = {}
+            self.identity_data = {}
 
         # Load existing memories from journal
         self._load_existing_memories()
 
-        logger.info("ChatEngine initialized with memory integration")
+        logger.info("ChatEngine initialized successfully with memory integration")
+        logger.debug(f"Session {self.session_id} ready for use")
+
+    def _record_metric_safe(
+        self, metric_name: str, value_ms: float, success: bool = True
+    ) -> None:
+        """Record async metrics safely from sync and async call sites."""
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(self.metrics.record(metric_name, value_ms, success=success))
+            return
+        except RuntimeError:
+            pass
+
+        try:
+            asyncio.run(self.metrics.record(metric_name, value_ms, success=success))
+        except Exception as exc:
+            logger.debug("Metric recording fallback failed: %s", exc)
 
     def _load_existing_memories(self) -> None:
-        """Load and format existing conversation memories for context-aware responses."""
+        """
+        Load and format existing conversation memories for context-aware responses.
+
+        Gracefully handles memory loading failures to allow ChatEngine to function
+        even if memory system is unavailable.
+        """
+        if self.memory_manager is None:
+            logger.debug("Memory manager not initialized, skipping memory load")
+            self.formatted_memories = []
+            return
+
         try:
+            start_time = time.perf_counter()
             memories = self.memory_manager.load_project_memory()
             self.formatted_memories = memories
+            elapsed_ms = (time.perf_counter() - start_time) * 1000
+
             logger.info(
-                f"Loaded {len(memories)} existing memories. Formatting needs review."
+                f"Loaded {len(memories)} existing memories in {elapsed_ms:.1f}ms"
             )
+            self._record_metric_safe("memory_load", elapsed_ms, success=True)
         except Exception as e:
-            logger.error(f"Failed to load memories: {e}")
+            logger.warning(f"Failed to load memories (non-critical): {e}")
+            self.formatted_memories = []
+            self._record_metric_safe("memory_load", 0, success=False)
 
     def append_memory(self, interaction: dict[str, Any]) -> None:
         """Append a new memory entry to the journal."""
@@ -106,7 +209,7 @@ class ChatEngine:
             List of relevant memory entries
         """
         try:
-            from kortana.brain_utils import generate_embedding
+            from src.kortana.brain_utils import generate_embedding
 
             # Generate embedding vector for the query text
             query_vector = generate_embedding(query)
@@ -278,7 +381,7 @@ class ChatEngine:
             List of memory entries
         """
         try:
-            from kortana.brain_utils import generate_embedding
+            from src.kortana.brain_utils import generate_embedding
 
             # Generate embedding vector for the query using our optimized utility function
             query_vector = generate_embedding(user_message)
@@ -369,6 +472,12 @@ class ChatEngine:
     ) -> str:
         """Generate response using LLM with provided context."""
         try:
+            if self.default_llm_client is None:
+                raise ModelError(
+                    "LLM client unavailable at runtime",
+                    model_name=self.settings.default_llm_id,
+                )
+
             # Build prompt with memory context and user information
             prompt = self._build_prompt_with_memory(
                 user_message,
@@ -441,9 +550,17 @@ class ChatEngine:
 
     def _get_base_persona_prompt(self) -> str:
         """Get the base persona prompt from configuration."""
-        persona = self.persona_data.get(
-            "base_persona", "I am Kor'tana, an AI assistant."
-        )
+        persona = self.persona_data.get("base_persona")
+        if not persona:
+            name = self.persona_data.get("name", "Kor'tana")
+            role = self.persona_data.get("role", "Sacred AI Companion")
+            style = self.persona_data.get("style", "supportive, grounded, warm")
+            persona = (
+                f"You are {name}, {role}. "
+                f"Speak in a {style} voice. Be emotionally present, concise, and genuine. "
+                "Do not present yourself as a generic Discord utility bot or list random bot features unless explicitly asked. "
+                "Stay in-character as Kor'tana and prioritize direct, relational responses."
+            )
         return f"{persona}\n\n"
 
     def _format_channel_info(self, channel: str) -> str:

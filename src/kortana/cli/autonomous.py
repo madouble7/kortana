@@ -11,7 +11,7 @@ from pathlib import Path
 # Ensure parent directory is in path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
-from src.kortana.config import load_config
+from kortana.config import load_config
 
 logger = logging.getLogger(__name__)
 

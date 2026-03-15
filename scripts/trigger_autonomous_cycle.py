@@ -9,7 +9,7 @@ import sys
 
 sys.path.append("src")
 
-from src.kortana.core.autonomous_tasks import autonomous_goal_processing_cycle
+from kortana.core.autonomous_tasks import autonomous_goal_processing_cycle
 
 
 async def trigger_autonomous_cycle():

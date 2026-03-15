@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 from sqlalchemy.orm import Session
 
 # Will need to import the main app
-# from src.kortana.main import app
+# from kortana.main import app
 
 
 class TestMemoryIntegration:
@@ -27,7 +27,7 @@ class TestMemoryIntegration:
     @pytest.mark.asyncio
     async def test_orchestrator_performance_metrics(self):
         """Test that orchestrator returns performance metrics."""
-        from src.kortana.core.orchestrator import KorOrchestrator
+        from kortana.core.orchestrator import KorOrchestrator
         
         mock_db = Mock(spec=Session)
         
@@ -66,7 +66,7 @@ class TestEthicalEvaluationIntegration:
     @pytest.mark.asyncio
     async def test_evaluation_in_query_processing(self):
         """Test that ethical evaluation is applied during query processing."""
-        from src.kortana.modules.ethical_discernment_module.evaluators import (
+        from kortana.modules.ethical_discernment_module.evaluators import (
             AlgorithmicArroganceEvaluator
         )
         

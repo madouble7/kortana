@@ -64,6 +64,11 @@ data/heart.log
 data/soul.index.jsonl
 data/lit.log.jsonl
 
+# Test databases
+test_*.db
+*.db
+!kortana.db
+
 # Temp and backup files
 *.bak
 *.tmp

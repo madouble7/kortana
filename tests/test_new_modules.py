@@ -7,7 +7,7 @@ import pytest
 
 # Multilingual Module Tests
 def test_translation_service():
-    from src.kortana.modules.multilingual import TranslationService
+    from kortana.modules.multilingual import TranslationService
 
     service = TranslationService()
     assert service.is_supported("en")
@@ -20,7 +20,7 @@ def test_translation_service():
 
 
 def test_language_detector():
-    from src.kortana.modules.multilingual import LanguageDetector
+    from kortana.modules.multilingual import LanguageDetector
 
     detector = LanguageDetector()
 
@@ -40,8 +40,8 @@ def test_language_detector():
 
 # Emotional Intelligence Module Tests
 def test_sentiment_analyzer():
-    from src.kortana.modules.emotional_intelligence import SentimentAnalyzer
-    from src.kortana.modules.emotional_intelligence.sentiment_analyzer import Sentiment
+    from kortana.modules.emotional_intelligence import SentimentAnalyzer
+    from kortana.modules.emotional_intelligence.sentiment_analyzer import Sentiment
 
     analyzer = SentimentAnalyzer()
 
@@ -61,8 +61,8 @@ def test_sentiment_analyzer():
 
 
 def test_emotion_detector():
-    from src.kortana.modules.emotional_intelligence import EmotionDetector
-    from src.kortana.modules.emotional_intelligence.emotion_detector import Emotion
+    from kortana.modules.emotional_intelligence import EmotionDetector
+    from kortana.modules.emotional_intelligence.emotion_detector import Emotion
 
     detector = EmotionDetector()
 
@@ -77,8 +77,8 @@ def test_emotion_detector():
 
 # Content Generation Module Tests
 def test_content_generator():
-    from src.kortana.modules.content_generation import ContentGenerator
-    from src.kortana.modules.content_generation.content_generator import ContentStyle
+    from kortana.modules.content_generation import ContentGenerator
+    from kortana.modules.content_generation.content_generator import ContentStyle
 
     generator = ContentGenerator()
 
@@ -103,7 +103,7 @@ def test_content_generator():
 
 # Plugin Framework Module Tests
 def test_plugin_base():
-    from src.kortana.modules.plugin_framework import BasePlugin, PluginRegistry
+    from kortana.modules.plugin_framework import BasePlugin, PluginRegistry
 
     class TestPlugin(BasePlugin):
         def execute(self, **kwargs):
@@ -125,7 +125,7 @@ def test_plugin_base():
 
 
 def test_example_plugins():
-    from src.kortana.modules.plugin_framework.example_plugins import (
+    from kortana.modules.plugin_framework.example_plugins import (
         WeatherPlugin,
         StockPlugin,
         TaskManagementPlugin,
@@ -151,8 +151,8 @@ def test_example_plugins():
 
 # Ethical Transparency Module Tests
 def test_ethical_decision_logger():
-    from src.kortana.modules.ethical_transparency import EthicalDecisionLogger
-    from src.kortana.modules.ethical_transparency.decision_logger import (
+    from kortana.modules.ethical_transparency import EthicalDecisionLogger
+    from kortana.modules.ethical_transparency.decision_logger import (
         EthicalDecisionType,
     )
 
@@ -179,11 +179,11 @@ def test_ethical_decision_logger():
 
 
 def test_transparency_service():
-    from src.kortana.modules.ethical_transparency import (
+    from kortana.modules.ethical_transparency import (
         EthicalDecisionLogger,
         TransparencyService,
     )
-    from src.kortana.modules.ethical_transparency.decision_logger import (
+    from kortana.modules.ethical_transparency.decision_logger import (
         EthicalDecisionType,
     )
 
@@ -203,8 +203,8 @@ def test_transparency_service():
 
 # Gaming Module Tests
 def test_storytelling_engine():
-    from src.kortana.modules.gaming import StorytellingEngine
-    from src.kortana.modules.gaming.storytelling_engine import StoryGenre
+    from kortana.modules.gaming import StorytellingEngine
+    from kortana.modules.gaming.storytelling_engine import StoryGenre
 
     engine = StorytellingEngine()
 
@@ -223,7 +223,7 @@ def test_storytelling_engine():
 
 
 def test_rpg_assistant():
-    from src.kortana.modules.gaming import RPGAssistant
+    from kortana.modules.gaming import RPGAssistant
 
     assistant = RPGAssistant()
 
@@ -247,7 +247,7 @@ def test_rpg_assistant():
 
 # Marketplace Module Tests
 def test_module_registry():
-    from src.kortana.modules.marketplace.module_registry import ModuleRegistry
+    from kortana.modules.marketplace.module_registry import ModuleRegistry
 
     registry = ModuleRegistry()
 
@@ -273,7 +273,7 @@ def test_module_registry():
 
 
 def test_marketplace_service():
-    from src.kortana.modules.marketplace import MarketplaceService
+    from kortana.modules.marketplace import MarketplaceService
 
     service = MarketplaceService()
 

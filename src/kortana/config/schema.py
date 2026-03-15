@@ -43,6 +43,27 @@ class APIConfig(BaseModel):
     rate_limit: int = Field(default=100, ge=1)
 
 
+class VoiceConfig(BaseModel):
+    """Voice chat configuration."""
+
+    enabled: bool = True
+    max_audio_bytes: int = Field(default=10 * 1024 * 1024, ge=1024)
+    min_audio_seconds: float = Field(default=0.15, ge=0.0)
+    return_audio_by_default: bool = True
+    session_idle_seconds: int = Field(default=1800, ge=30, le=86400)
+    max_active_sessions: int = Field(default=1000, ge=1, le=100000)
+    stt_provider: str = Field(default="openai", pattern="^(openai|heuristic)$")
+    stt_fallback_provider: str = Field(
+        default="heuristic", pattern="^(openai|heuristic)$"
+    )
+    tts_provider: str = Field(default="pyttsx3", pattern="^(pyttsx3|tone)$")
+    tts_fallback_provider: str = Field(default="tone", pattern="^(pyttsx3|tone)$")
+    openai_stt_model: str = "whisper-1"
+    tts_voice_name: str | None = None
+    tts_rate: int = Field(default=170, ge=80, le=280)
+    tts_volume: float = Field(default=0.95, ge=0.0, le=1.0)
+
+
 class ModelProviderConfig(BaseModel):
     """Individual model provider configuration"""
 
@@ -65,7 +86,7 @@ class ModelsConfig(BaseModel):
     temperature: float = Field(default=0.2, ge=0.0, le=2.0)
     top_p: float = Field(default=0.9, ge=0.0, le=1.0)
     providers: dict[str, ModelProviderConfig] = {}
-    default: str = "gpt-4"
+    default: str = "openai/gpt-4.1-nano"
     alternate: str = "gpt-3.5-turbo"
 
 
@@ -78,10 +99,19 @@ class MemoryConfig(BaseModel):
     backup_enabled: bool = True
     enable_persistent: bool = True
     pinecone_api_key: str | None = Field(default=None, description="Pinecone API key")
-    pinecone_environment: str | None = Field(default=None, description="Pinecone environment")
-    pinecone_index_name: str = Field(default="kortana-memory", description="Pinecone index name")
-    pinecone_namespace: str = Field(default="{user}", description="Pinecone namespace template. {user} will be replaced with username")
-    local_memory_path: str = Field(default="data/project_memory.jsonl", description="Local memory file path")
+    pinecone_environment: str | None = Field(
+        default=None, description="Pinecone environment"
+    )
+    pinecone_index_name: str = Field(
+        default="kortana-memory", description="Pinecone index name"
+    )
+    pinecone_namespace: str = Field(
+        default="{user}",
+        description="Pinecone namespace template. {user} will be replaced with username",
+    )
+    local_memory_path: str = Field(
+        default="data/project_memory.jsonl", description="Local memory file path"
+    )
 
 
 class AgentTypeConfig(BaseModel):
@@ -90,7 +120,9 @@ class AgentTypeConfig(BaseModel):
     enabled: bool = True
     max_tasks: int = Field(default=10, ge=1, le=100)
     agent_model_mapping: dict[str, str] = Field(default_factory=dict)
-    llm_id: str | None = Field(default=None, description="Override LLM ID for this agent type")
+    llm_id: str | None = Field(
+        default=None, description="Override LLM ID for this agent type"
+    )
     coding: dict[str, Any] = {}
     planning: dict[str, Any] = {}
     testing: dict[str, Any] = {}
@@ -119,10 +151,16 @@ class PersonaConfig(BaseModel):
 
     name: str = Field(default="Kor'tana", description="Persona name")
     voice_style: str = Field(default="presence", description="Default voice style")
-    temperature: float = Field(default=0.7, description="Default temperature for responses")
+    temperature: float = Field(
+        default=0.7, description="Default temperature for responses"
+    )
     max_tokens: int = Field(default=4000, description="Maximum tokens per response")
-    wisdom_weight: float = Field(default=0.33, description="Weight for wisdom principle")
-    compassion_weight: float = Field(default=0.33, description="Weight for compassion principle")
+    wisdom_weight: float = Field(
+        default=0.33, description="Weight for wisdom principle"
+    )
+    compassion_weight: float = Field(
+        default=0.33, description="Weight for compassion principle"
+    )
     truth_weight: float = Field(default=0.34, description="Weight for truth principle")
 
 
@@ -174,14 +212,14 @@ class PathsConfig(BaseModel):
     models_dir: str = "models"
     config_dir: str = "config"
     temp_dir: str = "tmp"
-    
+
     # Core configuration files
     persona_file_path: str = "config/persona.json"
     identity_file_path: str = "config/identity.json"
     models_config_file_path: str = "config/models_config.json"
     sacred_trinity_config_file_path: str = "config/sacred_trinity_config.json"
     covenant_file_path: str = "covenant.yaml"
-    
+
     # Memory and log paths (with user templating support)
     project_memory_file_path: str = "data/project_memory.jsonl"
     memory_journal_path: str = "data/memory/{user}/memory_journal.jsonl"
@@ -225,6 +263,7 @@ class KortanaConfig(BaseSettings):
     app: AppConfig = AppConfig()
     logging: LoggingConfig = LoggingConfig()
     api: APIConfig = APIConfig()
+    voice: VoiceConfig = VoiceConfig()
     models: ModelsConfig = ModelsConfig()
     memory: MemoryConfig = MemoryConfig()
     agents: AgentsConfig = AgentsConfig()
@@ -237,7 +276,7 @@ class KortanaConfig(BaseSettings):
     api_keys: APIKeysConfig | None = None
     covenant_rules: dict[Any, Any] | None = None
     pinecone: PineconeConfig = PineconeConfig()
-    default_llm_id: str = "gpt-4.1-nano"
+    default_llm_id: str = "openai/gpt-4.1-nano"
 
     model_config = SettingsConfigDict(
         env_prefix="KORTANA_", case_sensitive=False, extra="allow"
@@ -258,7 +297,7 @@ class KortanaConfig(BaseSettings):
                     if path.suffix == "" or path_name.endswith("_dir"):
                         path.mkdir(parents=True, exist_ok=True)
                 except Exception:
-                    pass # Non-critical if creation fails here
+                    pass  # Non-critical if creation fails here
         return paths
 
     @field_validator("api_keys", mode="before")
@@ -270,7 +309,11 @@ class KortanaConfig(BaseSettings):
         if isinstance(v, dict):
             resolved = {}
             for key, value in v.items():
-                if isinstance(value, str) and value.startswith("${") and value.endswith("}"):
+                if (
+                    isinstance(value, str)
+                    and value.startswith("${")
+                    and value.endswith("}")
+                ):
                     env_var = value[2:-1]
                     resolved[key] = os.getenv(env_var)
                 else:

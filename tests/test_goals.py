@@ -8,8 +8,9 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from kortana.core.goals import Goal, GoalManager, GoalStatus, GoalType
+from kortana.core.goals import Goal, GoalStatus, GoalType
 from kortana.core.goals.covenant import GoalCovenantValidator
+from kortana.core.goals.manager import GoalManager
 
 
 @pytest.fixture

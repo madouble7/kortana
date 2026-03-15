@@ -20,11 +20,11 @@ print("=" * 50)
 # Test 1: Core modules load successfully
 print("1. 📦 Testing core module imports...")
 try:
-    from src.kortana.core.brain import Brain
+    from kortana.core.brain import Brain
 
     print("   ✅ Brain module: LOADS")
 
-    from src.kortana.core.execution_engine import ExecutionEngine
+    from kortana.core.execution_engine import ExecutionEngine
 
     print("   ✅ Execution Engine: LOADS")
 
