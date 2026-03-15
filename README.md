@@ -319,6 +319,7 @@ For detailed API documentation, see `docs/AUTOGEN_INTEGRATION.md`.
 - **Cost Optimization Guide**: `docs/COST_OPTIMIZATION.md` - Save up to 87% on AI costs
 - **New Features**: `docs/NEW_FEATURES.md` - Comprehensive guide to all new features
 - **Quick Start**: `docs/QUICK_START_NEW_FEATURES.md` - Quick examples and tutorials
+- **Code Coverage**: `docs/COVERAGE.md` - Guide to test coverage and best practices
 - Full API documentation: `docs/API_ENDPOINTS.md`
 - Architecture overview: `docs/ARCHITECTURE.md`
 - Memory Core details: `docs/MEMORY_CORE.md`
@@ -340,8 +341,57 @@ For detailed API documentation, see `docs/AUTOGEN_INTEGRATION.md`.
 
 ### Running Tests
 ```bash
+# First, install test dependencies
+pip install -e .[dev]
+
+# Then run tests
 python -m pytest tests
 ```
+
+### Code Coverage
+
+Kor'tana uses pytest-cov for comprehensive test coverage reporting.
+
+**Prerequisites:**
+```bash
+# Install dev dependencies (includes pytest-cov)
+pip install -e .[dev]
+```
+
+**Quick start:**
+```bash
+# Run all tests with coverage
+pytest
+
+# View HTML coverage report
+# macOS
+open htmlcov/index.html
+
+# Linux
+xdg-open htmlcov/index.html
+
+# Windows
+start htmlcov/index.html
+
+# Or use Python's webbrowser module (cross-platform)
+python -m webbrowser htmlcov/index.html
+```
+
+**Critical modules coverage targets:**
+- Security Module: 90%+ (authentication, authorization, encryption)
+- Core Module: 85%+ (brain, model_router, core functionality)
+- Overall Project: 70% minimum
+
+**Helpful scripts:**
+```bash
+# Run coverage with helper script
+python scripts/run_coverage.py
+
+# Check critical modules coverage
+python scripts/check_critical_coverage.py
+```
+
+📚 **See [docs/COVERAGE.md](docs/COVERAGE.md) for detailed coverage documentation**
 
 ### Code Style
 This project uses Black for formatting and Pylint for linting.
