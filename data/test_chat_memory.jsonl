@@ -1,0 +1,4 @@
+{"timestamp": "2026-03-15T00:43:24.628451", "role": "user", "content": "Test message for chat memory", "metadata": {"type": "test_chat"}, "id": "mem_20260315T004324628451"}
+{"timestamp": "2026-03-15T00:43:24.636849", "role": "user", "content": "Hello, what's your name?", "metadata": {"type": "conversation", "turn": 0}, "id": "mem_20260315T004324636849"}
+{"timestamp": "2026-03-15T00:43:24.636900", "role": "user", "content": "Can you help me with Python?", "metadata": {"type": "conversation", "turn": 1}, "id": "mem_20260315T004324636900"}
+{"timestamp": "2026-03-15T00:43:24.636935", "role": "user", "content": "What about async programming?", "metadata": {"type": "conversation", "turn": 2}, "id": "mem_20260315T004324636935"}

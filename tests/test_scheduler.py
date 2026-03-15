@@ -5,7 +5,7 @@ import time
 
 import pytest
 
-from src.kortana.scheduler import Scheduler, TaskStatus
+from kortana.scheduler import Scheduler, TaskStatus
 
 # Configure logging for tests
 logging.basicConfig(level=logging.INFO)

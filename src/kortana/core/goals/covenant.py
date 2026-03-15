@@ -4,7 +4,8 @@ Sacred Covenant integration for goal validation and alignment scoring.
 
 import logging
 
-from ..covenant import CovenantEnforcer
+from kortana.core.covenant import CovenantEnforcer
+
 from .goal import Goal
 
 
@@ -182,9 +183,7 @@ class GoalCovenantValidator:
         """
         try:
             # Pass just the description text since evaluate_sacred_alignment only accepts text parameter
-            alignment = await self.covenant.evaluate_sacred_alignment(
-                goal.description
-            )
+            alignment = await self.covenant.evaluate_sacred_alignment(goal.description)
 
             # Ensure we have all three scores
             alignment.setdefault("wisdom", 0.0)

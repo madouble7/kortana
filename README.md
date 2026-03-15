@@ -126,10 +126,19 @@ PowerShell:
 
 ## Features
 
+- **Cost-Aware Model Routing**: Intelligent AI model selection prioritizing free models (87% cost reduction)
+  - 6+ free models via OpenRouter with automatic fallbacks
+  - Smart task-based routing (reasoning, coding, creative, vision)
+  - Real-time cost tracking and budget management
+  - Response caching to eliminate redundant API calls
+### Core Features
 - **Memory System**: Stores and retrieves memories with semantic search capabilities
 - **Ethical Discernment**: Evaluates responses for algorithmic arrogance and uncertainty
 - **Context-Aware Responses**: Integrates memory and ethical considerations in responses
 - **LLM Integration**: Uses OpenAI's GPT models for natural language processing
+- **LobeChat Frontend**: Modern, intuitive chat interface with OpenAI-compatible API
+- **Multi-Model Support**: Intelligent routing between OpenAI, Anthropic, and Google AI models
+- **LLM Integration**: Supports multiple AI providers (OpenAI, Google, Anthropic, xAI, OpenRouter)
 - **LobeChat Frontend Support**: Seamlessly integrates with LobeChat for a user-friendly interface
 - **Dify Platform Integration**: Connect with Dify for no-code prompt engineering and workflow automation
 
@@ -138,16 +147,99 @@ PowerShell:
 Kor'tana supports multiple frontend options for flexible deployment:
 
 ### LobeChat Integration
+- **Open WebUI Integration**: Modern, feature-rich frontend with MCP (Model Context Protocol) support
+- **MCP Protocol**: Extends LLM functionality with memory, goals, and context tools
+- **AR/VR Exploration**: Comprehensive augmented and virtual reality capabilities for immersive simulations, real-world overlays, and spatial object management
+- **Multimodal AI Capabilities**: Support for text, voice, images, video, and simulation-based queries
+  - Text processing with context awareness
+  - Voice/audio transcription and analysis
+  - Image understanding with GPT-4 Vision
+  - Video content processing
+  - Simulation-based scenario analysis
+  - Mixed multimodal prompts
+- **AI-Powered Decision-Making**: ML-driven strategies for real-time autonomous decision-making
+  - Neural network-based decision engine
+  - Time-sensitive dataset analysis and trend detection
+  - Outcome prediction with confidence scoring
+  - Multi-objective optimization for optimal solutions
+- **Advanced Security Module**: Comprehensive cybersecurity features including:
+  - Real-time threat detection and prevention
+  - Security alerts and monitoring
+  - Vulnerability scanning and management
+  - Advanced encryption utilities
+  - Secure API communication
+  - Security analytics dashboard
 
-Kor'tana integrates with [LobeChat](https://github.com/lobehub/lobe-chat) to provide an intuitive chat interface.
+### New Features (2026)
+
+1. **Multilingual Support**: Real-time translation and language detection for 10+ languages
+2. **Emotional Intelligence**: Sentiment analysis and emotion detection to adapt responses
+3. **Adaptive Content Generation**: Summarize, elaborate, or rewrite text in various styles
+4. **Dynamic API Integration**: Plugin framework with built-in Weather, Stock, and Task Management plugins
+5. **Ethical Transparency Dashboard**: Real-time logging and reporting of ethical decisions with user feedback
+6. **Gaming Expansion**: Interactive storytelling engine and RPG assistant with dice rolling and NPC generation
+7. **Community-Driven Marketplace**: Module discovery, submission, installation, and rating system
+
+📚 **See [NEW_FEATURES.md](docs/NEW_FEATURES.md) for detailed documentation**  
+🚀 **See [QUICK_START_NEW_FEATURES.md](docs/QUICK_START_NEW_FEATURES.md) for quick examples**
+
+## Frontend Options
+
+Kor'tana supports multiple frontend interfaces:
+
+### Open WebUI (Recommended)
+Modern, self-hosted UI with advanced features and MCP support.
+- **Setup Guide**: [`docs/OPENWEBUI_INTEGRATION.md`](docs/OPENWEBUI_INTEGRATION.md)
+- **Quick Start**: `./scripts/start_openwebui.sh` (Linux/Mac) or `scripts\start_openwebui.bat` (Windows)
+- **Features**: MCP tools, memory access, goal management, streaming responses
+
+### LobeChat Integration
+
+Kor'tana also integrates with [LobeChat](https://github.com/lobehub/lobe-chat) to provide an intuitive chat interface.
+Kor'tana seamlessly integrates with [LobeChat](https://github.com/lobehub/lobe-chat), providing a modern, feature-rich chat interface.
+
+### Quick Start with LobeChat
+
+**Using Docker Compose (Recommended)**:
+```bash
+# Copy environment template and add your API keys
+cp .env.template .env
+# Edit .env with your API keys
+
+# Start both Kor'tana backend and LobeChat frontend
+docker-compose up -d
+
+# Access LobeChat at http://localhost:3210
+# Access Kor'tana API at http://localhost:8000
+```
+
+**Or use the convenience script**:
+```bash
+# Linux/Mac
+./start-lobechat-integration.sh
+
+# Windows
+start-lobechat-integration.bat
+```
+
+### Configuration
 
 #### Setting Up LobeChat Connection
+1. Open LobeChat at http://localhost:3210
+2. Go to Settings → Language Model
+3. Add custom provider:
+   - **Name**: Kor'tana
+   - **Base URL**: `http://localhost:8000/v1`
+   - **API Key**: (from your `.env` file)
+4. Select model: `kortana-default` (recommended)
 
-1. Follow the guide in `docs/LOBECHAT_CONNECTION.md` to configure LobeChat.
-2. Set your API key in the `.env` file.
-3. Run the Kor'tana API server.
+📋 **Quick Reference**: See [`LOBECHAT_QUICK_START.md`](LOBECHAT_QUICK_START.md) for commands and troubleshooting
 
-For troubleshooting, see `docs/LOBECHAT_TROUBLESHOOTING.md`.
+For detailed setup instructions, troubleshooting, and advanced configuration, see:
+- **Complete Guide**: [`docs/LOBECHAT_INTEGRATION_GUIDE.md`](docs/LOBECHAT_INTEGRATION_GUIDE.md)
+- **Frontend Setup**: [`lobechat-frontend/README.md`](lobechat-frontend/README.md)
+- **Legacy Connection Guide**: [`docs/LOBECHAT_CONNECTION.md`](docs/LOBECHAT_CONNECTION.md)
+- **Troubleshooting**: [`docs/LOBECHAT_TROUBLESHOOTING.md`](docs/LOBECHAT_TROUBLESHOOTING.md)
 
 ### Dify Platform Integration
 
@@ -169,12 +261,29 @@ Kor'tana integrates with [Dify](https://dify.ai) for advanced no-code LLM applic
 
 ## Documentation
 
+- **LobeChat Integration** (Primary): [`docs/LOBECHAT_INTEGRATION_GUIDE.md`](docs/LOBECHAT_INTEGRATION_GUIDE.md)
 - Full API documentation: `docs/API_ENDPOINTS.md`
 - Architecture overview: `docs/ARCHITECTURE.md`
 - Memory Core details: `docs/MEMORY_CORE.md`
+- LobeChat legacy guide: `docs/LOBECHAT_CONNECTION.md`
+- **Cost Optimization Guide**: `docs/COST_OPTIMIZATION.md` - Save up to 87% on AI costs
+- **New Features**: `docs/NEW_FEATURES.md` - Comprehensive guide to all new features
+- **Quick Start**: `docs/QUICK_START_NEW_FEATURES.md` - Quick examples and tutorials
+- Full API documentation: `docs/API_ENDPOINTS.md`
+- Architecture overview: `docs/ARCHITECTURE.md`
+- Memory Core details: `docs/MEMORY_CORE.md`
+- **Open WebUI integration**: `docs/OPENWEBUI_INTEGRATION.md`
+- AR/VR Exploration: `docs/AR_VR_EXPLORATION.md`
+- AI Decision-Making: `docs/AI_DECISION_MAKING.md`
+- Security Module: `docs/SECURITY_MODULE.md`
 - LobeChat integration: `docs/LOBECHAT_CONNECTION.md`
 - LobeChat troubleshooting: `docs/LOBECHAT_TROUBLESHOOTING.md`
 - Dify platform integration: `docs/DIFY_INTEGRATION.md`
+- **Multimodal Capabilities**: `docs/MULTIMODAL_CAPABILITIES.md`
+- **Multimodal Usage Examples**: `docs/MULTIMODAL_USAGE_EXAMPLES.md`
+- **Multimodal API Reference**: `docs/MULTIMODAL_API_REFERENCE.md`
+- **Multimodal Integration Guide**: `docs/MULTIMODAL_INTEGRATION_GUIDE.md`
+- Multilingual support: `docs/MULTILINGUAL_SUPPORT.md`
 
 ## Development
 
@@ -191,6 +300,8 @@ This project uses Black for formatting and Pylint for linting.
 - **Memory Core**: Stores, retrieves, and manages memories
 - **Reasoning Core**: Processes user queries and generates responses
 - **Ethical Discernment Module**: Ensures responses are ethical and reflective
+- **AR/VR Exploration Module**: Provides immersive simulations and spatial interaction capabilities
+- **Security Module**: Advanced cybersecurity features for system protection
 - **API Adapters**: Connect to frontend interfaces (including LobeChat)
 
 ## License

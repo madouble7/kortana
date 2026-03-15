@@ -20,15 +20,15 @@ import yaml
 from apscheduler.triggers.interval import IntervalTrigger
 
 # Local application imports
-from src.kortana.agents.autonomous_agents import (
+from kortana.agents.autonomous_agents import (
     CodingAgent,
     MonitoringAgent,
     PlanningAgent,
     TestingAgent,
 )
-from src.kortana.config import load_config
-from src.kortana.config.schema import KortanaConfig
-from src.kortana.services import (
+from kortana.config import load_config
+from kortana.config.schema import KortanaConfig
+from kortana.services import (
     get_ade_llm_client,
     get_covenant_enforcer,
     get_default_llm_client,
@@ -39,16 +39,15 @@ from src.kortana.services import (
     get_planning_engine,
     get_scheduler,
 )
-from src.kortana.services.database import get_db_sync
-from src.kortana.utils import text_analysis
+from kortana.services.database import get_db_sync
+from kortana.utils import text_analysis
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
-
-print("DEBUG: src/kortana/core/brain.py loaded")
+logger.debug("src/kortana/core/brain.py loaded")
 
 
 class ChatEngine:
@@ -233,7 +232,7 @@ class ChatEngine:
         """
         Runs a single autonomous cycle: scan, generate, prioritize, plan, execute.
         """
-        print("DEBUG: Brain.run_single_cycle() started")
+        logger.debug("Brain.run_single_cycle() started")
         logger.info("Starting single autonomous cycle...")
 
         # Perform autonomous operations
@@ -243,7 +242,7 @@ class ChatEngine:
         """
         Runs autonomous cycles continuously.
         """
-        print("DEBUG: Brain.run_continuous_cycles() started")
+        logger.debug("Brain.run_continuous_cycles() started")
         logger.info("Starting continuous autonomous cycles...")
 
         # Redirect stdout/stderr to a log file for Genesis Protocol runs
@@ -355,7 +354,7 @@ class ChatEngine:
             logger.info("🔍 Starting proactive code review cycle...")
 
             # Import the task function (avoid circular imports)
-            from src.kortana.core.autonomous_tasks import run_proactive_code_review_task
+            from kortana.core.autonomous_tasks import run_proactive_code_review_task
 
             # Get database session
             db = next(get_db_sync())
