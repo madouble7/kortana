@@ -140,6 +140,8 @@ PowerShell:
 - **Multi-Model Support**: Intelligent routing between OpenAI, Anthropic, and Google AI models
 - **LLM Integration**: Supports multiple AI providers (OpenAI, Google, Anthropic, xAI, OpenRouter)
 - **LobeChat Frontend Support**: Seamlessly integrates with LobeChat for a user-friendly interface
+- **Open WebUI Integration**: Modern, feature-rich frontend with MCP (Model Context Protocol) support
+- **MCP Protocol**: Extends LLM functionality with memory, goals, and context tools
 - **AR/VR Exploration**: Comprehensive augmented and virtual reality capabilities for immersive simulations, real-world overlays, and spatial object management
 - **Multimodal AI Capabilities**: Support for text, voice, images, video, and simulation-based queries
   - Text processing with context awareness
@@ -174,8 +176,19 @@ PowerShell:
 📚 **See [NEW_FEATURES.md](docs/NEW_FEATURES.md) for detailed documentation**  
 🚀 **See [QUICK_START_NEW_FEATURES.md](docs/QUICK_START_NEW_FEATURES.md) for quick examples**
 
-## LobeChat Integration
+## Frontend Options
 
+Kor'tana supports multiple frontend interfaces:
+
+### Open WebUI (Recommended)
+Modern, self-hosted UI with advanced features and MCP support.
+- **Setup Guide**: [`docs/OPENWEBUI_INTEGRATION.md`](docs/OPENWEBUI_INTEGRATION.md)
+- **Quick Start**: `./scripts/start_openwebui.sh` (Linux/Mac) or `scripts\start_openwebui.bat` (Windows)
+- **Features**: MCP tools, memory access, goal management, streaming responses
+
+### LobeChat Integration
+
+Kor'tana also integrates with [LobeChat](https://github.com/lobehub/lobe-chat) to provide an intuitive chat interface.
 Kor'tana seamlessly integrates with [LobeChat](https://github.com/lobehub/lobe-chat), providing a modern, feature-rich chat interface.
 
 ### Quick Start with LobeChat
@@ -233,6 +246,7 @@ For detailed setup instructions, troubleshooting, and advanced configuration, se
 - Full API documentation: `docs/API_ENDPOINTS.md`
 - Architecture overview: `docs/ARCHITECTURE.md`
 - Memory Core details: `docs/MEMORY_CORE.md`
+- **Open WebUI integration**: `docs/OPENWEBUI_INTEGRATION.md`
 - AR/VR Exploration: `docs/AR_VR_EXPLORATION.md`
 - AI Decision-Making: `docs/AI_DECISION_MAKING.md`
 - Security Module: `docs/SECURITY_MODULE.md`

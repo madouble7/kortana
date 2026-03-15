@@ -14,6 +14,8 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from src.kortana.api.routers import core_router, goal_router
+from src.kortana.api.routers.mcp_router import router as mcp_router
+from src.kortana.adapters.openwebui_adapter import router as openwebui_router
 from src.kortana.api.routers.multimodal_router import router as multimodal_router
 from src.kortana.core.scheduler import (
     get_scheduler_status,
@@ -176,6 +178,8 @@ app.include_router(conversation_router)
 app.include_router(core_router.router)
 app.include_router(core_router.openai_adapter_router)
 app.include_router(goal_router.router)
+app.include_router(openwebui_router)
+app.include_router(mcp_router)
 # OpenAI-compatible API for LobeChat integration (primary)
 app.include_router(lobechat_router)
 # Legacy LobeChat adapter (for backward compatibility)
