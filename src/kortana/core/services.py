@@ -166,6 +166,7 @@ def _create_memory_manager():
     """Factory function for Memory Manager."""
     try:
         from kortana.services.memory_system import memory_manager
+
         return memory_manager
     except ImportError as e:
         logger.warning(f"MemoryManager not found: {e}, using stub")
@@ -183,6 +184,7 @@ def _create_memory_manager():
                 logger.info(f"Storing research topic: {topic}")
 
         return MemoryManagerStub()
+
 
 def _create_chat_engine():
     """Factory function for Chat Engine."""

@@ -249,6 +249,27 @@
         "temperature": 0.7,
         "max_tokens": 4096
       }
+    },
+    "star-coder-2-7b-local": {
+      "provider": "tabby",
+      "api": "local",
+      "api_key_env": "LOCAL_TABBY_KEY",
+      "model_name": "StarCoder2-7B",
+      "base_url": "http://localhost:8080",
+      "style": "tactical",
+      "cost_per_1m_input": 0.0,
+      "cost_per_1m_output": 0.0,
+      "context_window": 8192,
+      "capabilities": [
+        "text",
+        "coding",
+        "local",
+        "fast"
+      ],
+      "default_params": {
+        "temperature": 0.1,
+        "max_tokens": 2048
+      }
     }
   },
   "routing": {
@@ -256,8 +277,8 @@
     "general_chat_fallback": "meta-llama/llama-3.1-8b-instruct:free",
     "reasoning_tasks": "deepseek/deepseek-r1-0528:free",
     "reasoning_fallback": "qwen/qwen-2-7b-instruct:free",
-    "coding": "mistralai/mistral-7b-instruct:free",
-    "coding_fallback": "meta-llama/llama-3.1-8b-instruct:free",
+    "coding": "star-coder-2-7b-local",
+    "coding_fallback": "mistralai/mistral-7b-instruct:free",
     "analysis": "deepseek/deepseek-r1-0528:free",
     "analysis_fallback": "qwen/qwen-2-7b-instruct:free",
     "creative_writing": "google/gemma-2-9b-it:free",

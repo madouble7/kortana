@@ -121,6 +121,7 @@ class AutonomousDevelopmentEngine:
         """
         try:
             from .ade_model_ops import provision_local_agent_model
+
             return await provision_local_agent_model(task)
         except ImportError as e:
             self.logger.error(f"Failed to import ADE model operations: {e}")
