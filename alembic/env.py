@@ -12,8 +12,8 @@ project_root = str(Path(__file__).resolve().parents[1])
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from src.kortana.config.settings import settings  # Import your app settings
-from src.kortana.services.database import Base  # Import your Base
+from kortana.config.settings import settings  # Import your app settings
+from kortana.services.database import Base  # Import your Base
 
 # --- MODIFICATION END ---
 

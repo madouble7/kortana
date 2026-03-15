@@ -2,7 +2,7 @@
 """Test script to verify ExecutionEngine functionality"""
 
 try:
-    from src.kortana.core.execution_engine import ExecutionEngine
+    from kortana.core.execution_engine import ExecutionEngine
     print('✅ ExecutionEngine imported successfully')
     
     engine = ExecutionEngine(['c:/temp'], ['rm'])

@@ -54,7 +54,7 @@ async def test_database_connection():
     log("🔍 Testing database connection...")
 
     try:
-        from src.kortana.services.database import get_db_sync
+        from kortana.services.database import get_db_sync
 
         db = next(get_db_sync())
         log("✅ Database connection successful")
@@ -71,10 +71,10 @@ async def create_test_memory():
     log("📝 Creating test memory...")
 
     try:
-        from src.kortana.modules.memory_core.models import MemoryType
-        from src.kortana.modules.memory_core.schemas import CoreMemoryCreate
-        from src.kortana.modules.memory_core.services import MemoryCoreService
-        from src.kortana.services.database import get_db_sync
+        from kortana.modules.memory_core.models import MemoryType
+        from kortana.modules.memory_core.schemas import CoreMemoryCreate
+        from kortana.modules.memory_core.services import MemoryCoreService
+        from kortana.services.database import get_db_sync
 
         db = next(get_db_sync())
         memory_service = MemoryCoreService(db)
@@ -109,8 +109,8 @@ async def test_learning_function():
     log("🧠 Testing learning function...")
 
     try:
-        from src.kortana.core.autonomous_tasks import run_performance_analysis_task
-        from src.kortana.services.database import get_db_sync
+        from kortana.core.autonomous_tasks import run_performance_analysis_task
+        from kortana.services.database import get_db_sync
 
         db = next(get_db_sync())
 

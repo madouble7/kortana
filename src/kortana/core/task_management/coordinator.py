@@ -8,7 +8,8 @@ import logging
 import time
 from datetime import datetime, timedelta
 
-from ..execution_engine import ExecutionEngine, OperationResult
+from kortana.core.execution_engine import ExecutionEngine, OperationResult
+
 from .models import Task, TaskResult, TaskStatus
 
 logger = logging.getLogger(__name__)

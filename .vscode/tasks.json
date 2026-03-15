@@ -52,6 +52,102 @@
 			"label": "Run Cleanup Script",
 			"type": "shell",
 			"command": "c:\\kortana\\.kortana_config_test_env\\Scripts\\python.exe c:\\kortana\\scripts\\root_cleanup.py"
+		},
+		{
+			"label": "Run Brain Tests",
+			"type": "shell",
+			"command": "$env:PYTHONPATH=\"c:\\kortana\\src\"; c:\\kortana\\.kortana_config_test_env\\Scripts\\python.exe -m pytest c:\\kortana\\tests\\test_brain.py"
+		},
+		{
+			"label": "Run Brain Tests V2",
+			"type": "shell",
+			"command": "set PYTHONPATH=c:\\kortana\\src && c:\\kortana\\.kortana_config_test_env\\Scripts\\pytest.exe c:\\kortana\\tests\\test_brain.py"
+		},
+		{
+			"label": "Run Brain Tests V3",
+			"type": "shell",
+			"command": "set PYTHONPATH=c:\\kortana\\src && set PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python && c:\\kortana\\.kortana_config_test_env\\Scripts\\pytest.exe c:\\kortana\\tests\\test_brain.py"
+		},
+		{
+			"label": "Unify Imports",
+			"type": "shell",
+			"command": "c:\\kortana\\.kortana_config_test_env\\Scripts\\python.exe c:\\kortana\\scripts\\unify_kortana_imports.py"
+		},
+		{
+			"label": "Unify Imports Logged",
+			"type": "shell",
+			"command": "c:\\kortana\\.kortana_config_test_env\\Scripts\\python.exe c:\\kortana\\scripts\\unify_kortana_imports.py"
+		},
+		{
+			"label": "Run Full Test Suite - CMD",
+			"type": "shell",
+			"command": "cmd.exe",
+			"args": [
+				"/c",
+				"c:\\kortana\\run_tests.bat"
+			],
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "Run Tests Simple",
+			"type": "shell",
+			"command": "run_tests_simple.bat",
+			"group": "test"
+		},
+		{
+			"label": "Run Tests Direct",
+			"type": "shell",
+			"command": "\"C:\\Program Files\\Python311\\python.exe\" test_runner.py",
+			"group": "test"
+		},
+		{
+			"label": "Diagnose Environment",
+			"type": "shell",
+			"command": "python diagnose_environment.py",
+			"group": "none"
+		},
+		{
+			"label": "Diagnose with Output",
+			"type": "shell",
+			"command": "python diagnose_environment.py > diag_output.txt 2>&1",
+			"group": "none"
+		},
+		{
+			"label": "Diagnose Environment",
+			"type": "shell",
+			"command": "python c:\\kortana\\diagnose_test_env.py"
+		},
+		{
+			"label": "Test Environment Status",
+			"type": "shell",
+			"command": "python diagnose_test_env.py"
+		},
+		{
+			"label": "Validate Improvements",
+			"type": "shell",
+			"command": "c:\\kortana\\.kortana_config_test_env\\Scripts\\python.exe",
+			"args": [
+				"c:\\kortana\\validate_improvements.py"
+			]
+		},
+		{
+			"label": "Run Isolated Tests",
+			"type": "shell",
+			"command": "python",
+			"args": [
+				"c:\\kortana\\isolated_test_runner.py"
+			],
+			"group": "test"
+		},
+		{
+			"label": "Run Tests Direct Safe",
+			"type": "shell",
+			"command": "c:\\kortana\\run_tests_direct_safe.bat",
+			"args": [],
+			"group": "test"
 		}
 	]
 }

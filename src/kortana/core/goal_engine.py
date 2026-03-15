@@ -261,4 +261,4 @@ class GoalEngine:
 
 
 # Create a global instance
-goal_engine = GoalEngine()
+# goal_engine = GoalEngine()

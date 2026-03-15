@@ -20,7 +20,7 @@ def test_code_scanner():
     print("🔍 PHASE 1: Testing Code Scanner...")
 
     try:
-        from src.kortana.core.execution_engine import ExecutionEngine
+        from kortana.core.execution_engine import ExecutionEngine
 
         # Create execution engine
         engine = ExecutionEngine(
@@ -65,8 +65,8 @@ def test_proactive_task():
     try:
         import asyncio
 
-        from src.kortana.core.autonomous_tasks import run_proactive_code_review_task
-        from src.kortana.services.database import get_db_sync
+        from kortana.core.autonomous_tasks import run_proactive_code_review_task
+        from kortana.services.database import get_db_sync
 
         # Get database session
         db_gen = get_db_sync()
@@ -137,7 +137,7 @@ def test_autonomous_execution():
             print("✅ Goal assignment script exists")
 
             # Run goal processor to see if it picks up proactive goals
-            from src.kortana.core.goal_manager import process_goals
+            from kortana.core.goal_manager import process_goals
 
             result = process_goals()
 

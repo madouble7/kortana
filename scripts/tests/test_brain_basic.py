@@ -2,7 +2,7 @@
 """Test script to verify brain.py functionality"""
 
 try:
-    from src.kortana.core.brain import ChatEngine
+    from kortana.core.brain import ChatEngine
     print('✅ ChatEngine imported successfully')
     
     # Don't try to instantiate as it may require config

@@ -3,14 +3,14 @@ import traceback  # Import the traceback module to get detailed error info
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from kortana.api.services.goal_service import GoalService
+
 # Assuming your models and schemas are in the core directory now
-from src.kortana.core import (
+from kortana.core import (
     models,
     schemas,  # Corrected import path for schemas
 )
-from src.kortana.services.database import get_db_sync
-
-from ..services.goal_service import GoalService
+from kortana.services.database import get_db_sync
 
 router = APIRouter(prefix="/goals", tags=["Goal Management"])
 

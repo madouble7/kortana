@@ -19,15 +19,15 @@ os.environ["OPENAI_API_KEY"] = "demo_key"
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "."))
 
-from src.kortana.modules.security.services.encryption_service import EncryptionService
-from src.kortana.modules.security.services.alert_service import AlertService
-from src.kortana.modules.security.services.threat_detection_service import (
+from kortana.modules.security.services.encryption_service import EncryptionService
+from kortana.modules.security.services.alert_service import AlertService
+from kortana.modules.security.services.threat_detection_service import (
     ThreatDetectionService,
 )
-from src.kortana.modules.security.services.vulnerability_service import (
+from kortana.modules.security.services.vulnerability_service import (
     VulnerabilityService,
 )
-from src.kortana.modules.security.models.security_models import (
+from kortana.modules.security.models.security_models import (
     AlertType,
     AlertSeverity,
 )

@@ -14,9 +14,6 @@ import logging
 import os
 from typing import Any
 
-from openai import OpenAI
-from openai.types.chat import ChatCompletionUserMessageParam
-
 from .base_client import BaseLLMClient
 
 logger = logging.getLogger(__name__)
@@ -46,7 +43,9 @@ class OpenAIClient(BaseLLMClient):
         self.base_url = kwargs.get("base_url", "https://api.openai.com/v1")
 
         # ✅ Initialize official OpenAI client
-        self.client = OpenAI(api_key=self.api_key)
+        import openai
+
+        self.client = openai.OpenAI(api_key=self.api_key)
 
         # ✅ Add chat attribute for ADE compatibility
         self.chat = ChatNamespace(self.client)
@@ -273,9 +272,7 @@ class OpenAIClient(BaseLLMClient):
         """Test connection to OpenAI API"""
         try:
             # Simple test with minimal tokens
-            test_messages: list[ChatCompletionUserMessageParam] = [
-                {"role": "user", "content": "Hello"}
-            ]
+            test_messages: list[Any] = [{"role": "user", "content": "Hello"}]
             response = self.client.chat.completions.create(
                 model=self.model_name,
                 messages=test_messages,
@@ -315,7 +312,7 @@ class ChatNamespace:
     Routes calls to the official OpenAI client
     """
 
-    def __init__(self, openai_client: OpenAI):
+    def __init__(self, openai_client: Any):
         self.openai_client = openai_client
         self.completions = ChatCompletions(openai_client)
 
@@ -326,7 +323,7 @@ class ChatCompletions:
     Provides full compatibility with ADE calling patterns
     """
 
-    def __init__(self, openai_client: OpenAI):
+    def __init__(self, openai_client: Any):
         self.openai_client = openai_client
 
     def create(self, **kwargs) -> Any:

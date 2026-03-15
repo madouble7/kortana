@@ -19,7 +19,7 @@ from typing import Any
 
 from kortana.config.schema import KortanaConfig
 
-# from ..config import get_project_root # May be needed for path resolution
+# from kortana.config import get_project_root # May be needed for path resolution
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +84,7 @@ class EnhancedModelRouter:
 
         if not absolute_config_path.is_absolute():
             try:
-                from ..config import get_project_root  # Delayed import
+                from kortana.config import get_project_root  # Delayed import
 
                 absolute_config_path = get_project_root() / config_file_path_str
             except ImportError:

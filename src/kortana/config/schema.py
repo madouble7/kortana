@@ -43,6 +43,27 @@ class APIConfig(BaseModel):
     rate_limit: int = Field(default=100, ge=1)
 
 
+class VoiceConfig(BaseModel):
+    """Voice chat configuration."""
+
+    enabled: bool = True
+    max_audio_bytes: int = Field(default=10 * 1024 * 1024, ge=1024)
+    min_audio_seconds: float = Field(default=0.15, ge=0.0)
+    return_audio_by_default: bool = True
+    session_idle_seconds: int = Field(default=1800, ge=30, le=86400)
+    max_active_sessions: int = Field(default=1000, ge=1, le=100000)
+    stt_provider: str = Field(default="openai", pattern="^(openai|heuristic)$")
+    stt_fallback_provider: str = Field(
+        default="heuristic", pattern="^(openai|heuristic)$"
+    )
+    tts_provider: str = Field(default="pyttsx3", pattern="^(pyttsx3|tone)$")
+    tts_fallback_provider: str = Field(default="tone", pattern="^(pyttsx3|tone)$")
+    openai_stt_model: str = "whisper-1"
+    tts_voice_name: str | None = None
+    tts_rate: int = Field(default=170, ge=80, le=280)
+    tts_volume: float = Field(default=0.95, ge=0.0, le=1.0)
+
+
 class ModelProviderConfig(BaseModel):
     """Individual model provider configuration"""
 
@@ -65,7 +86,7 @@ class ModelsConfig(BaseModel):
     temperature: float = Field(default=0.2, ge=0.0, le=2.0)
     top_p: float = Field(default=0.9, ge=0.0, le=1.0)
     providers: dict[str, ModelProviderConfig] = {}
-    default: str = "gpt-4"
+    default: str = "openai/gpt-4.1-nano"
     alternate: str = "gpt-3.5-turbo"
 
 
@@ -242,6 +263,7 @@ class KortanaConfig(BaseSettings):
     app: AppConfig = AppConfig()
     logging: LoggingConfig = LoggingConfig()
     api: APIConfig = APIConfig()
+    voice: VoiceConfig = VoiceConfig()
     models: ModelsConfig = ModelsConfig()
     memory: MemoryConfig = MemoryConfig()
     agents: AgentsConfig = AgentsConfig()
@@ -254,7 +276,7 @@ class KortanaConfig(BaseSettings):
     api_keys: APIKeysConfig | None = None
     covenant_rules: dict[Any, Any] | None = None
     pinecone: PineconeConfig = PineconeConfig()
-    default_llm_id: str = "gpt-4.1-nano"
+    default_llm_id: str = "openai/gpt-4.1-nano"
 
     model_config = SettingsConfigDict(
         env_prefix="KORTANA_", case_sensitive=False, extra="allow"

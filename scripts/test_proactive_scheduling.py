@@ -18,7 +18,7 @@ print("=" * 50)
 
 try:
     print("📥 Importing brain components...")
-    from src.kortana.core.brain import ChatEngine
+    from kortana.core.brain import ChatEngine
     print("✅ ChatEngine imported successfully")
 
     # Test that the proactive code review cycle method exists
