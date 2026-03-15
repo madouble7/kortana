@@ -105,7 +105,7 @@ def test_chat_engine_autonomous():
 
     try:
         # Try to import the advanced brain
-        from src.brain import ChatEngine
+        from kortana.brain import ChatEngine
 
         print("✅ ChatEngine import successful")
 
@@ -138,7 +138,7 @@ def test_ade_coordinator():
     print("-" * 40)
 
     try:
-        from src.ade_coordinator import ADECoordinator
+        from kortana.ade_coordinator import ADECoordinator
 
         print("✅ ADECoordinator import successful")
 

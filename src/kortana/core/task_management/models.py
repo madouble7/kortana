@@ -40,6 +40,7 @@ class TaskCategory(enum.Enum):
     ANALYSIS = "analysis"  # Code/data analysis
     TESTING = "testing"  # Running tests
     OPTIMIZATION = "optimization"  # Performance improvements
+    SYSTEM = "system"  # System tasks
 
 
 @dataclass

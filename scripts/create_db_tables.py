@@ -8,8 +8,8 @@ import sys
 
 sys.path.append("src")
 
-from src.kortana.core.models import Goal  # Explicitly import Goal for testing
-from src.kortana.services.database import Base, SyncSessionLocal, sync_engine
+from kortana.core.models import Goal  # Explicitly import Goal for testing
+from kortana.services.database import Base, SyncSessionLocal, sync_engine
 
 print("🚀 Attempting to create all database tables...")
 

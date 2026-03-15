@@ -12,7 +12,7 @@ print("DEBUG: test_genesis_tools.py started")
 
 sys.path.append(".")
 
-from src.kortana.core.execution_engine import ExecutionEngine
+from kortana.core.execution_engine import ExecutionEngine
 
 
 async def test_genesis_tools():
