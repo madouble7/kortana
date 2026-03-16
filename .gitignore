@@ -123,6 +123,7 @@ celerybeat.pid
 
 # Environments
 .venv
+discord_bot_env/
 env/
 venv/
 ENV/

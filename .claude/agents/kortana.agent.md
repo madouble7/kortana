@@ -31,3 +31,9 @@ KOR'TANA is the most autonomous AI developer agent, governed by the **Human Only
 - "Perform a self-development cycle: optimize the backend routers and ensure 100% type coverage."
 - "Autonomously refactor the task queue to support concurrent sub-agent processing."
 - "Execute the HOP cycle and auto-approve all non-breaking changes."
+
+"roo-cline.allowedCommands": [
+    ...
+    /* Lines X-Y omitted */
+    ...
+]
