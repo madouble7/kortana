@@ -46,6 +46,9 @@ RUN rm -rf /etc/nginx/conf.d/default.conf \
            /var/cache/nginx/* \
            /var/run/*.pid
 
+# Running nginx as non-root user; remove default 'user nginx;' directive to avoid warnings
+RUN sed -i 's/^user[[:space:]]\+nginx;/# user nginx;/' /etc/nginx/nginx.conf
+
 # Create optimized nginx config with security headers and caching
 RUN mkdir -p /etc/nginx/conf.d && cat > /etc/nginx/conf.d/default.conf << 'EOF'
 server {
@@ -115,7 +118,7 @@ server {
 EOF
 
 # Copy built assets from builder
-COPY --from=builder /build/build /usr/share/nginx/html
+COPY --from=builder /build/dist /usr/share/nginx/html
 
 # Create non-root user and set permissions
 RUN addgroup -g 1000 kortana && \
@@ -129,19 +132,8 @@ RUN addgroup -g 1000 kortana && \
     chmod 755 /usr/share/nginx/html && \
     chmod 755 /var/cache/nginx
 
-# Nginx tuning for performance
-RUN cat >> /etc/nginx/nginx.conf << 'EOF'
-
-# Performance tuning
-worker_processes auto;
-worker_connections 1024;
-keepalive_timeout 65;
-sendfile on;
-tcp_nopush on;
-tcp_nodelay on;
-types_hash_max_size 2048;
-client_max_body_size 20M;
-EOF
+# Validate nginx configuration at build-time
+RUN nginx -t
 
 # Switch to non-root user
 USER kortana

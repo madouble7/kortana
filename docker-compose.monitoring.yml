@@ -114,3 +114,4 @@ volumes:
 networks:
   kortana-network:
     driver: bridge
+"   jaeger_data:" 

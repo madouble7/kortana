@@ -1,0 +1,188 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Kor'tana APM Dashboard",
+    "tags": ["kortana", "apm", "monitoring"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "System Overview",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"kortana-backend\"}",
+            "legendFormat": "Backend Status"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {
+                "options": {
+                  "0": {
+                    "text": "DOWN",
+                    "color": "red"
+                  },
+                  "1": {
+                    "text": "UP",
+                    "color": "green"
+                  }
+                },
+                "type": "value"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "HTTP Request Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(kortana_http_requests_total[5m])",
+            "legendFormat": "Requests/sec"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Request Latency (95th percentile)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(kortana_http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "95th percentile latency"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Agent Execution Success Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(kortana_agent_executions_total{status=\"success\"}[5m]) / rate(kortana_agent_executions_total[5m]) * 100",
+            "legendFormat": "Success Rate %"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "LLM Token Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(kortana_llm_tokens_used_total[5m])",
+            "legendFormat": "Tokens/sec"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Memory Operations",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(kortana_memory_operations_total[5m])",
+            "legendFormat": "{{operation}} operations"
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Error Rate by Type",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(kortana_errors_total[5m])",
+            "legendFormat": "{{error_type}} errors"
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Authentication Failures",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(kortana_auth_failures_total[5m])",
+            "legendFormat": "{{reason}} failures"
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Cache Performance",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(kortana_cache_hits_total[5m]) / (rate(kortana_cache_hits_total[5m]) + rate(kortana_cache_misses_total[5m])) * 100",
+            "legendFormat": "Cache Hit Rate %"
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Database Connection Pool",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "kortana_db_connections_active",
+            "legendFormat": "Active connections"
+          },
+          {
+            "expr": "kortana_db_connections_idle",
+            "legendFormat": "Idle connections"
+          }
+        ]
+      },
+      {
+        "id": 11,
+        "title": "APM Infrastructure Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"otel-collector\"}",
+            "legendFormat": "OTEL Collector"
+          },
+          {
+            "expr": "up{job=\"jaeger\"}",
+            "legendFormat": "Jaeger"
+          }
+        ]
+      },
+      {
+        "id": 12,
+        "title": "Trace Processing Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(otelcol_processor_batch_traces_received_total[5m])",
+            "legendFormat": "Traces received/sec"
+          },
+          {
+            "expr": "rate(otelcol_processor_batch_traces_dropped_total[5m])",
+            "legendFormat": "Traces dropped/sec"
+          }
+        ]
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "timepicker": {},
+    "templating": {
+      "list": []
+    },
+    "annotations": {
+      "list": []
+    },
+    "refresh": "30s",
+    "schemaVersion": 27,
+    "version": 0,
+    "links": []
+  }
+}

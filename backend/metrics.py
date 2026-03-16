@@ -188,6 +188,33 @@ app_info = Info(
     registry=registry,
 )
 
+# ==================== APM Tracing Metrics ====================
+
+# Trace spans created
+trace_spans_total = Counter(
+    "kortana_trace_spans_total",
+    "Total number of trace spans created",
+    ["service_name", "operation", "status"],
+    registry=registry,
+)
+
+# Active trace spans
+active_trace_spans = Gauge(
+    "kortana_active_trace_spans",
+    "Number of currently active trace spans",
+    ["service_name"],
+    registry=registry,
+)
+
+# Trace span duration
+trace_span_duration_seconds = Histogram(
+    "kortana_trace_span_duration_seconds",
+    "Trace span duration in seconds",
+    ["service_name", "operation"],
+    buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0],
+    registry=registry,
+)
+
 # ==================== Performance Tracking ====================
 
 # Store start times for in-progress requests
@@ -252,6 +279,17 @@ def track_auth_failure(reason: str):
 def track_rate_limit_hit(endpoint: str, tier: str):
     """Record a rate limit hit"""
     rate_limit_hits_total.labels(endpoint=endpoint, tier=tier).inc()
+
+
+def track_trace_span(service_name: str, operation: str, status: str, duration: float):
+    """Record metrics for a trace span"""
+    trace_spans_total.labels(service_name=service_name, operation=operation, status=status).inc()
+    trace_span_duration_seconds.labels(service_name=service_name, operation=operation).observe(duration)
+
+
+def track_active_trace_span(service_name: str, delta: int = 1):
+    """Update active trace span count"""
+    active_trace_spans.labels(service_name=service_name).inc(delta)
 
 
 # ==================== Metrics Endpoint ====================
@@ -327,6 +365,8 @@ __all__ = [
     "track_error",
     "track_auth_failure",
     "track_rate_limit_hit",
+    "track_trace_span",
+    "track_active_trace_span",
     "set_app_info",
     "metrics_middleware",
 ]

@@ -1,6 +1,11 @@
 # Dependencies
 node_modules
 client/node_modules
+frontend/node_modules
+backend/venv
+backend/.venv
+venv
+.venv
 
 # Environment files
 .env
@@ -22,12 +27,15 @@ client/node_modules
 # Build artifacts (will be included for Docker - comment out)
 # dist
 # client/build
+frontend/dist
+frontend/build
 
 # Logs
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+logs/
 
 # Testing
 coverage
@@ -48,6 +56,14 @@ Thumbs.db
 tmp
 temp
 .cache
+
+# Python caches
+backend/__pycache__/
+backend/.pytest_cache/
+backend/.mypy_cache/
+backend/.ruff_cache/
+backend/*.db
+backend/*.sqlite
 
 # Source files (not needed if pre-built)
 src
