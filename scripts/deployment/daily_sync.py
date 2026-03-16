@@ -9,7 +9,10 @@ from datetime import datetime
 from pathlib import Path
 
 
-def get_git_stats():
+from typing import Any, Dict
+
+
+def get_git_stats() -> Dict[str, Any]:
     """Get current git stats"""
     try:
         # Count commits today
@@ -49,7 +52,7 @@ def get_git_stats():
         return {"error": str(e)}
 
 
-def check_backend_health():
+def check_backend_health() -> Dict[str, Any]:
     """Check if backend is healthy"""
     try:
         import requests
@@ -60,7 +63,7 @@ def check_backend_health():
         return {"status": "offline"}
 
 
-def get_deployment_status():
+def get_deployment_status() -> Dict[str, Any]:
     """Get last deployment info"""
     try:
         # Parse Cloud Run service info if available
@@ -91,7 +94,7 @@ def get_deployment_status():
     return {"status": "unavailable"}
 
 
-def main():
+def main() -> int:
     # Create logs/autonomy directory (used by heartbeat monitoring)
     log_dir = Path("logs/autonomy")
     log_dir.mkdir(parents=True, exist_ok=True)
@@ -143,14 +146,20 @@ Kor'tana autonomous heartbeat confirmed. All systems operational.
 
     # Write log file
     log_file = log_dir / f"{date_str}.md"
-    log_file.write_text(log_content)
+    try:
+        log_file.write_text(log_content, encoding="utf-8")
+    except Exception:
+        log_file.write_text(log_content)
 
     print(f"✓ Autonomy heartbeat log written: {log_file}")
-    
+
     # Also write a latest.md for quick access
     latest_file = log_dir / "latest.md"
-    latest_file.write_text(log_content)
-    
+    try:
+        latest_file.write_text(log_content, encoding="utf-8")
+    except Exception:
+        latest_file.write_text(log_content)
+
     print(f"✓ Latest heartbeat updated: {latest_file}")
     return 0
 
