@@ -7,16 +7,15 @@ import os
 from unittest.mock import MagicMock, patch
 
 import pytest
-import stripe
-from fastapi import HTTPException, Request
-
 from config import get_settings
+from fastapi import HTTPException
 from schemas import (
     BillingPlanType,
     CustomerCreate,
-    SubscriptionCreate,
     PaymentIntentCreate,
+    SubscriptionCreate,
 )
+
 
 # Mock stripe error for testing
 class MockStripeError(Exception):
@@ -29,10 +28,7 @@ class TestBillingSchemas:
 
     def test_customer_create_schema(self):
         """Test CustomerCreate schema"""
-        customer_data = CustomerCreate(
-            email="test@example.com",
-            name="Test User"
-        )
+        customer_data = CustomerCreate(email="test@example.com", name="Test User")
         assert customer_data.email == "test@example.com"
         assert customer_data.name == "Test User"
 
@@ -58,8 +54,7 @@ class TestBillingSchemas:
     def test_subscription_create_schema(self):
         """Test SubscriptionCreate schema"""
         subscription_data = SubscriptionCreate(
-            customer_id="cus_test123",
-            price_id="price_test123"
+            customer_id="cus_test123", price_id="price_test123"
         )
         assert subscription_data.customer_id == "cus_test123"
         assert subscription_data.price_id == "price_test123"
@@ -72,12 +67,15 @@ class TestBillingEndpoints:
     def test_billing_config_endpoint(self, client):
         """Test billing config endpoint"""
         # Set dummy Stripe keys for testing
-        with patch.dict(os.environ, {
-            "STRIPE_SECRET_KEY": "sk_test_dummy",
-            "STRIPE_PUBLISHABLE_KEY": "pk_test_dummy"
-        }):
+        with patch.dict(
+            os.environ,
+            {
+                "STRIPE_SECRET_KEY": "sk_test_dummy",
+                "STRIPE_PUBLISHABLE_KEY": "pk_test_dummy",
+            },
+        ):
             response = client.get("/api/billing/config")
-            
+
             # Should succeed with dummy keys configured
             if response.status_code == 200:
                 data = response.json()
@@ -90,14 +88,16 @@ class TestBillingEndpoints:
     def test_billing_config_not_configured(self, client):
         """Test billing config when Stripe is not configured"""
         # Clear Stripe keys
-        with patch.dict(os.environ, {
-            "STRIPE_SECRET_KEY": "",
-            "STRIPE_PUBLISHABLE_KEY": ""
-        }, clear=True):
+        with patch.dict(
+            os.environ,
+            {"STRIPE_SECRET_KEY": "", "STRIPE_PUBLISHABLE_KEY": ""},
+            clear=True,
+        ):
             # Need to reload config
             from config import get_settings
+
             get_settings()
-            
+
             response = client.get("/api/billing/config")
             # Should return 503 when not configured
             assert response.status_code == 503
@@ -116,9 +116,9 @@ class TestBillingEndpoints:
 
             response = client.post(
                 "/api/billing/customers",
-                json={"email": "test@example.com", "name": "Test User"}
+                json={"email": "test@example.com", "name": "Test User"},
             )
-            
+
             # With mocked Stripe, should succeed
             if response.status_code == 200:
                 data = response.json()
@@ -128,17 +128,17 @@ class TestBillingEndpoints:
     def test_webhook_missing_signature(self, client):
         """Test webhook handler with missing signature"""
         # Test with current environment (may or may not have Stripe configured)
-        response = client.post(
-            "/api/billing/webhooks",
-            json={"type": "test"}
-        )
+        response = client.post("/api/billing/webhooks", json={"type": "test"})
         # Should either return 503 (not configured) or 400 (missing signature)
         assert response.status_code in [400, 503]
-        
+
         # If it returns 400, it should be about the signature
         if response.status_code == 400:
             data = response.json()
-            assert "signature" in data["detail"].lower() or "missing" in data["detail"].lower()
+            assert (
+                "signature" in data["detail"].lower()
+                or "missing" in data["detail"].lower()
+            )
 
 
 @pytest.mark.unit
@@ -149,7 +149,7 @@ class TestBillingRouter:
         """Test that billing routes are registered"""
         from routers import billing
 
-        routes = [r for r in billing.router.routes if hasattr(r, 'path')]
+        routes = [r for r in billing.router.routes if hasattr(r, "path")]
         assert len(routes) >= 5  # At least the main endpoints
 
         # Check key endpoints exist
@@ -164,7 +164,7 @@ class TestBillingRouter:
         """Test that logger is properly configured"""
         from routers import billing
 
-        assert hasattr(billing, 'logger')
+        assert hasattr(billing, "logger")
         assert billing.logger.name == "kortana.billing"
 
     @pytest.mark.asyncio
@@ -172,7 +172,7 @@ class TestBillingRouter:
         """Test verify_stripe_configured with valid config"""
         from routers.billing import verify_stripe_configured
 
-        with patch.object(get_settings(), 'STRIPE_SECRET_KEY', 'sk_test_dummy'):
+        with patch.object(get_settings(), "STRIPE_SECRET_KEY", "sk_test_dummy"):
             # Should not raise exception
             verify_stripe_configured()
 
@@ -181,7 +181,7 @@ class TestBillingRouter:
         """Test verify_stripe_configured with missing config"""
         from routers.billing import verify_stripe_configured
 
-        with patch.object(get_settings(), 'STRIPE_SECRET_KEY', ''):
+        with patch.dict(os.environ, {"STRIPE_SECRET_KEY": ""}, clear=False):
             with pytest.raises(HTTPException) as exc_info:
                 verify_stripe_configured()
             assert exc_info.value.status_code == 503
@@ -192,8 +192,9 @@ class TestBillingRouter:
         """Test get_billing_config with valid config"""
         from routers.billing import get_billing_config
 
-        with patch.object(get_settings(), 'STRIPE_SECRET_KEY', 'sk_test_dummy'), \
-             patch.object(get_settings(), 'STRIPE_PUBLISHABLE_KEY', 'pk_test_dummy'):
+        with patch.object(
+            get_settings(), "STRIPE_SECRET_KEY", "sk_test_dummy"
+        ), patch.object(get_settings(), "STRIPE_PUBLISHABLE_KEY", "pk_test_dummy"):
             result = await get_billing_config()
             assert "publishable_key" in result
             assert "plans" in result
@@ -207,7 +208,7 @@ class TestBillingRouter:
         """Test get_billing_config without Stripe config"""
         from routers.billing import get_billing_config
 
-        with patch.object(get_settings(), 'STRIPE_SECRET_KEY', ''):
+        with patch.dict(os.environ, {"STRIPE_SECRET_KEY": ""}, clear=False):
             with pytest.raises(HTTPException) as exc_info:
                 await get_billing_config()
             assert exc_info.value.status_code == 503
@@ -242,8 +243,9 @@ class TestBillingRouter:
 
         customer_data = CustomerCreate(email="test@example.com", name="Test User")
 
-        with patch("stripe.error.StripeError", MockStripeError), \
-             patch("stripe.Customer.create", side_effect=MockStripeError("Test error")):
+        with patch("stripe.error.StripeError", MockStripeError), patch(
+            "stripe.Customer.create", side_effect=MockStripeError("Test error")
+        ):
             with pytest.raises(HTTPException) as exc_info:
                 await create_customer(customer_data)
             assert exc_info.value.status_code == 400
@@ -272,8 +274,10 @@ class TestBillingRouter:
         """Test get_customer with non-existent customer"""
         from routers.billing import get_customer
 
-        with patch("stripe.error.StripeError", MockStripeError), \
-             patch("stripe.Customer.retrieve", side_effect=MockStripeError("Customer not found")):
+        with patch("stripe.error.StripeError", MockStripeError), patch(
+            "stripe.Customer.retrieve",
+            side_effect=MockStripeError("Customer not found"),
+        ):
             with pytest.raises(HTTPException) as exc_info:
                 await get_customer("cus_invalid")
             assert exc_info.value.status_code == 404
@@ -286,9 +290,7 @@ class TestBillingRouter:
         from schemas import SubscriptionCreate
 
         subscription_data = SubscriptionCreate(
-            customer_id="cus_test123",
-            price_id="price_test123",
-            trial_period_days=7
+            customer_id="cus_test123", price_id="price_test123", trial_period_days=7
         )
 
         with patch("stripe.Subscription.create") as mock_create:
@@ -297,7 +299,7 @@ class TestBillingRouter:
             mock_subscription.customer = "cus_test123"
             mock_subscription.status = "active"
             mock_subscription.current_period_start = 1234567890
-            mock_subscription.current_period_end = 1234567890 + 30*24*3600
+            mock_subscription.current_period_end = 1234567890 + 30 * 24 * 3600
             mock_subscription.cancel_at_period_end = False
             mock_subscription.metadata = {}
             mock_create.return_value = mock_subscription
@@ -313,10 +315,13 @@ class TestBillingRouter:
         from routers.billing import create_subscription
         from schemas import SubscriptionCreate
 
-        subscription_data = SubscriptionCreate(customer_id="cus_test123", price_id="price_test123")
+        subscription_data = SubscriptionCreate(
+            customer_id="cus_test123", price_id="price_test123"
+        )
 
-        with patch("stripe.error.StripeError", MockStripeError), \
-             patch("stripe.Subscription.create", side_effect=MockStripeError("Test error")):
+        with patch("stripe.error.StripeError", MockStripeError), patch(
+            "stripe.Subscription.create", side_effect=MockStripeError("Test error")
+        ):
             with pytest.raises(HTTPException) as exc_info:
                 await create_subscription(subscription_data)
             assert exc_info.value.status_code == 400
@@ -332,7 +337,7 @@ class TestBillingRouter:
             mock_subscription.customer = "cus_test123"
             mock_subscription.status = "active"
             mock_subscription.current_period_start = 1234567890
-            mock_subscription.current_period_end = 1234567890 + 30*24*3600
+            mock_subscription.current_period_end = 1234567890 + 30 * 24 * 3600
             mock_subscription.cancel_at_period_end = False
             mock_subscription.metadata = {}
             mock_retrieve.return_value = mock_subscription
@@ -383,7 +388,7 @@ class TestBillingRouter:
             amount=1000,
             currency="usd",
             customer_id="cus_test123",
-            description="Test payment"
+            description="Test payment",
         )
 
         with patch("stripe.PaymentIntent.create") as mock_create:
@@ -405,21 +410,28 @@ class TestBillingRouter:
     @pytest.mark.asyncio
     async def test_handle_webhook_success(self):
         """Test handle_webhook with valid signature"""
-        from routers.billing import handle_webhook
         from config import get_settings
+        from routers.billing import handle_webhook
 
         payload = b'{"type": "customer.subscription.created", "data": {"object": {"id": "sub_test"}}}'
         signature = "t=1234567890,v1=test_signature"
 
         # Create a mock request
         mock_request = MagicMock()
+
         async def mock_body():
             return payload
+
         mock_request.body = mock_body
 
-        with patch.object(get_settings(), 'STRIPE_WEBHOOK_SECRET', 'whsec_test'), \
-             patch("stripe.Webhook.construct_event") as mock_construct:
-            mock_event = {"type": "customer.subscription.created", "data": {"object": {"id": "sub_test"}}, "id": "evt_test"}
+        with patch.object(get_settings(), "STRIPE_WEBHOOK_SECRET", "whsec_test"), patch(
+            "stripe.Webhook.construct_event"
+        ) as mock_construct:
+            mock_event = {
+                "type": "customer.subscription.created",
+                "data": {"object": {"id": "sub_test"}},
+                "id": "evt_test",
+            }
             mock_construct.return_value = mock_event
 
             result = await handle_webhook(mock_request, signature)
@@ -429,16 +441,22 @@ class TestBillingRouter:
     @pytest.mark.asyncio
     async def test_handle_webhook_missing_secret(self):
         """Test handle_webhook without webhook secret"""
-        from routers.billing import handle_webhook
         from config import get_settings
+        from routers.billing import handle_webhook
 
         payload = b'{"type": "test"}'
         signature = "t=1234567890,v1=test_signature"
 
         mock_request = MagicMock()
-        mock_request.body = MagicMock(return_value=payload)
 
-        with patch.object(get_settings(), 'STRIPE_WEBHOOK_SECRET', ''):
+        async def mock_body():
+            return payload
+
+        mock_request.body = mock_body
+
+        with patch.object(get_settings(), "STRIPE_WEBHOOK_SECRET", ""), patch.dict(
+            os.environ, {"STRIPE_WEBHOOK_SECRET": ""}, clear=False
+        ):
             with pytest.raises(HTTPException) as exc_info:
                 await handle_webhook(mock_request, signature)
             assert exc_info.value.status_code == 503
@@ -451,8 +469,10 @@ class TestBillingRouter:
         payload = b'{"type": "test"}'
 
         mock_request = MagicMock()
+
         async def mock_body():
             return payload
+
         mock_request.body = mock_body
 
         with pytest.raises(HTTPException) as exc_info:

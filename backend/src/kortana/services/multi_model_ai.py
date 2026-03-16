@@ -11,25 +11,31 @@ class MultiModelAIService:
     """Service that intelligently selects from multiple AI providers"""
 
     def __init__(self):
-        """Initialize all available AI services"""
+        """Initialize service container (providers are loaded lazily on first use)."""
         self.providers = {}
         self.primary_provider = None
+        self._initialized = False
 
-        # Try to initialize each provider
+    def _ensure_initialized(self) -> None:
+        """Initialize providers only when first requested."""
+        if self._initialized:
+            return
+
         self._init_gemini()
         self._init_openai()
         self._init_anthropic()
         self._init_groq()
         self._init_openrouter()
 
-        # Set primary (first available)
         if self.providers:
             self.primary_provider = list(self.providers.keys())[0]
-            print("✅ Multi-Model Service initialized")
-            print(f"   Available providers: {', '.join(self.providers.keys())}")
-            print(f"   Primary: {self.primary_provider}")
+            print("[OK] Multi-Model Service initialized")
+            print(f"[INFO] Available providers: {', '.join(self.providers.keys())}")
+            print(f"[INFO] Primary provider: {self.primary_provider}")
         else:
-            print("❌ No AI providers configured!")
+            print("[WARN] No AI providers configured")
+
+        self._initialized = True
 
     def _init_gemini(self):
         """Initialize Google Gemini"""
@@ -46,9 +52,9 @@ class MultiModelAIService:
                 "model": "gemini-2.0-flash-exp",
                 "type": "google",
             }
-            print("✅ Gemini provider initialized")
+            print("[OK] Gemini provider initialized")
         except Exception as e:
-            print(f"⚠️ Gemini initialization failed: {e}")
+            print(f"[WARN] Gemini initialization failed: {e}")
 
     def _init_openai(self):
         """Initialize OpenAI"""
@@ -65,9 +71,9 @@ class MultiModelAIService:
                 "model": "gpt-3.5-turbo",
                 "type": "openai",
             }
-            print("✅ OpenAI provider initialized")
+            print("[OK] OpenAI provider initialized")
         except Exception as e:
-            print(f"⚠️ OpenAI initialization failed: {e}")
+            print(f"[WARN] OpenAI initialization failed: {e}")
 
     def _init_anthropic(self):
         """Initialize Anthropic Claude"""
@@ -83,9 +89,9 @@ class MultiModelAIService:
                 "model": "claude-3-5-sonnet-20241022",
                 "type": "anthropic",
             }
-            print("✅ Anthropic Claude provider initialized")
+            print("[OK] Anthropic Claude provider initialized")
         except Exception as e:
-            print(f"⚠️ Anthropic initialization failed: {e}")
+            print(f"[WARN] Anthropic initialization failed: {e}")
 
     def _init_groq(self):
         """Initialize Groq (fast inference)"""
@@ -101,9 +107,9 @@ class MultiModelAIService:
                 "model": "mixtral-8x7b-32768",
                 "type": "groq",
             }
-            print("✅ Groq provider initialized")
+            print("[OK] Groq provider initialized")
         except Exception as e:
-            print(f"⚠️ Groq initialization failed: {e}")
+            print(f"[WARN] Groq initialization failed: {e}")
 
     def _init_openrouter(self):
         """Initialize OpenRouter (multi-model aggregator)"""
@@ -121,14 +127,16 @@ class MultiModelAIService:
                 "model": "meta-llama/llama-2-70b-chat",
                 "type": "openrouter",
             }
-            print("✅ OpenRouter provider initialized")
+            print("[OK] OpenRouter provider initialized")
         except Exception as e:
-            print(f"⚠️ OpenRouter initialization failed: {e}")
+            print(f"[WARN] OpenRouter initialization failed: {e}")
 
     async def analyze_text(self, text: str, **kwargs) -> str:
         """Analyze text using best available provider with fallback"""
+        self._ensure_initialized()
+
         if not self.providers:
-            return "❌ No AI providers available"
+            return "[ERROR] No AI providers available"
 
         # Try each provider in order
         for provider_name in self.providers.keys():
@@ -137,10 +145,10 @@ class MultiModelAIService:
                 if response:
                     return f"[{provider_name.upper()}] {response}"
             except Exception as e:
-                print(f"⚠️ {provider_name} failed: {e}, trying next provider...")
+                print(f"[WARN] {provider_name} failed: {e}; trying next provider")
                 continue
 
-        return "❌ All providers failed"
+        return "[ERROR] All providers failed"
 
     async def _call_provider(self, provider_name: str, text: str) -> Optional[str]:
         """Call a specific provider"""
@@ -194,7 +202,7 @@ class MultiModelAIService:
                 return response.choices[0].message.content if response.choices else None
 
         except Exception as e:
-            print(f"Error calling {provider_name}: {e}")
+            print(f"[WARN] Error calling {provider_name}: {e}")
             return None
 
         return None
@@ -210,8 +218,4 @@ class MultiModelAIService:
 
 
 # Create global instance
-try:
-    ai_service = MultiModelAIService()
-except Exception as e:
-    print(f"❌ Failed to initialize MultiModelAIService: {e}")
-    ai_service = None
+ai_service = MultiModelAIService()

@@ -37,14 +37,14 @@ RUN apk upgrade --no-cache && \
 
 # Set labels
 LABEL maintainer="Kor'tana Team" \
-      description="Kor'tana Frontend UI Service" \
-      version="1.0.0"
+    description="Kor'tana Frontend UI Service" \
+    version="1.0.0"
 
 # Remove default nginx config and www data
 RUN rm -rf /etc/nginx/conf.d/default.conf \
-           /usr/share/nginx/html/* \
-           /var/cache/nginx/* \
-           /var/run/*.pid
+    /usr/share/nginx/html/* \
+    /var/cache/nginx/* \
+    /var/run/*.pid
 
 # Running nginx as non-root user; remove default 'user nginx;' directive to avoid warnings
 RUN sed -i 's/^user[[:space:]]\+nginx;/# user nginx;/' /etc/nginx/nginx.conf
@@ -52,68 +52,68 @@ RUN sed -i 's/^user[[:space:]]\+nginx;/# user nginx;/' /etc/nginx/nginx.conf
 # Create optimized nginx config with security headers and caching
 RUN mkdir -p /etc/nginx/conf.d && cat > /etc/nginx/conf.d/default.conf << 'EOF'
 server {
-    listen 3000 default_server;
-    listen [::]:3000 default_server;
-    server_name _;
+listen 3000 default_server;
+listen [::]:3000 default_server;
+server_name _;
 
-    root /usr/share/nginx/html;
-    index index.html index.htm;
+root /usr/share/nginx/html;
+index index.html index.htm;
 
-    # Security headers
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-Frame-Options "DENY" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+# Security headers
+add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header X-Frame-Options "DENY" always;
+add_header X-XSS-Protection "1; mode=block" always;
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 
-    # Performance optimizations
-    gzip on;
-    gzip_min_length 1000;
-    gzip_types text/plain text/css text/xml text/javascript 
-               application/x-javascript application/xml+rss 
-               application/json image/svg+xml;
-    gzip_disable "msie6";
-    gzip_vary on;
-    gzip_proxied any;
-    gzip_comp_level 6;
+# Performance optimizations
+gzip on;
+gzip_min_length 1000;
+gzip_types text/plain text/css text/xml text/javascript
+application/x-javascript application/xml+rss
+application/json image/svg+xml;
+gzip_disable "msie6";
+gzip_vary on;
+gzip_proxied any;
+gzip_comp_level 6;
 
-    # Cache static assets
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-        access_log off;
-    }
+# Cache static assets
+location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+expires 1y;
+add_header Cache-Control "public, immutable";
+access_log off;
+}
 
-    # HTML with conditional caching
-    location ~* \.html?$ {
-        expires 0;
-        add_header Cache-Control "public, max-age=0, must-revalidate";
-    }
+# HTML with conditional caching
+location ~* \.html?$ {
+expires 0;
+add_header Cache-Control "public, max-age=0, must-revalidate";
+}
 
-    # SPA routing
-    location / {
-        try_files $uri $uri/ /index.html;
-        expires 0;
-        add_header Cache-Control "public, max-age=0, must-revalidate";
-    }
+# SPA routing
+location / {
+try_files $uri $uri/ /index.html;
+expires 0;
+add_header Cache-Control "public, max-age=0, must-revalidate";
+}
 
-    # Health check endpoint
-    location /health {
-        access_log off;
-        return 200 "healthy\n";
-        add_header Content-Type text/plain;
-    }
+# Health check endpoint
+location /health {
+access_log off;
+return 200 "healthy\n";
+add_header Content-Type text/plain;
+}
 
-    # Deny access to sensitive files
-    location ~ /\. {
-        deny all;
-        access_log off;
-    }
+# Deny access to sensitive files
+location ~ /\. {
+deny all;
+access_log off;
+}
 
-    location ~ ~$ {
-        deny all;
-        access_log off;
-    }
+location ~ ~$ {
+deny all;
+access_log off;
+}
 }
 EOF
 

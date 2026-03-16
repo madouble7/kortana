@@ -65,6 +65,12 @@ except ImportError as e:
     print(f"Error importing routers: {e}")
     raise
 
+# Billing router currently lives in the root backend router stack.
+try:
+    from routers import billing as root_billing
+except ImportError:
+    root_billing = None
+
 # Import Human Only Protocol (HOP) for autonomy
 try:
     from src.kortana.human_only_protocol import router as hop_router
@@ -149,7 +155,8 @@ def create_app() -> FastAPI:
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(RequestIDMiddleware)
     app.add_middleware(RequestLoggingMiddleware)
-    app.add_middleware(RateLimitMiddleware, requests_per_minute=100)
+    if settings.ENVIRONMENT != "testing":
+        app.add_middleware(RateLimitMiddleware, requests_per_minute=100)
 
     # Exception handlers
     @app.exception_handler(KortanaException)
@@ -178,6 +185,7 @@ def create_app() -> FastAPI:
             status_code=exc.status_code,
             content={
                 "error": f"HTTP_{exc.status_code}",
+                "detail": str(exc.detail) if exc.detail else "An error occurred",
                 "message": str(exc.detail) if exc.detail else "An error occurred",
                 "status_code": exc.status_code,
                 "details": {},
@@ -240,6 +248,12 @@ def create_app() -> FastAPI:
         app.include_router(
             code_reviewer.router, prefix="/api/code-review", tags=["code-review"]
         )
+
+        # Billing (mounted from root router stack for compatibility)
+        if root_billing is not None:
+            app.include_router(
+                root_billing.router, prefix="/api/billing", tags=["billing"]
+            )
 
         # Frontend Adapters
         app.include_router(

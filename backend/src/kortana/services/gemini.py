@@ -2,8 +2,6 @@
 Gemini AI Service for Kor'tana - Minimal Working Version
 """
 
-import os
-
 from google.genai import Client
 
 from src.kortana.config import get_settings
@@ -13,19 +11,33 @@ class GeminiService:
     """Service for interacting with Google's Gemini API"""
 
     def __init__(self):
-        """Initialize Gemini service"""
+        """Initialize Gemini service (lazy client initialization)."""
         settings = get_settings()
         self.api_key = settings.GEMINI_API_KEY
+        self.client: Client | None = None
+        self.model_name = "gemini-2.0-flash-exp"
+        self._initialized = False
+        self._init_error: str | None = None
+
+    def _ensure_initialized(self) -> None:
+        """Initialize Gemini client only when first used."""
+        if self._initialized:
+            return
+
+        if self._init_error is not None:
+            raise RuntimeError(self._init_error)
 
         if not self.api_key:
-            raise ValueError("GEMINI_API_KEY or GOOGLE_API_KEY must be set in .env")
+            self._init_error = "GEMINI_API_KEY or GOOGLE_API_KEY must be set in .env"
+            raise RuntimeError(self._init_error)
 
-        # Create client
-        self.client = Client(api_key=self.api_key)
-
-        # Use known working model
-        self.model_name = "gemini-2.0-flash-exp"
-        print(f"✅ Gemini Service initialized with model: {self.model_name}")
+        try:
+            self.client = Client(api_key=self.api_key)
+            self._initialized = True
+            print(f"[OK] Gemini Service initialized with model: {self.model_name}")
+        except Exception as exc:
+            self._init_error = f"Failed to initialize Gemini client: {exc}"
+            raise RuntimeError(self._init_error) from exc
 
     def _get_model_name(self) -> str:
         """Get properly formatted model name"""
@@ -33,26 +45,49 @@ class GeminiService:
             return self.model_name
         return f"models/{self.model_name}"
 
+    def _generate_text(self, text: str, **kwargs) -> str:
+        """Generate text response using Gemini."""
+        self._ensure_initialized()
+
+        if self.client is None:
+            raise RuntimeError("Gemini client is not initialized")
+
+        # Check for system instruction in kwargs or defaults
+        system_instruction = kwargs.get("system_instruction")
+
+        # For general content generation:
+        config = None
+        if system_instruction:
+            from google.genai import types
+
+            config = types.GenerateContentConfig(system_instruction=system_instruction)
+
+        response = self.client.models.generate_content(
+            model=self._get_model_name(), contents=text, config=config
+        )
+        return response.text if response.text else ""
+
+    def _generate_multimodal(self, text: str, files=None) -> str:
+        """Generate multimodal response using Gemini."""
+        self._ensure_initialized()
+
+        if self.client is None:
+            raise RuntimeError("Gemini client is not initialized")
+
+        contents = [text]
+        if files:
+            contents.extend(files)
+
+        response = self.client.models.generate_content(
+            model=self._get_model_name(),
+            contents=contents,
+        )
+        return response.text if response.text else ""
+
     async def analyze_text(self, text: str, **kwargs) -> str:
         """Analyze text using Gemini with potential system instruction."""
         try:
-            # Check for system instruction in kwargs or defaults
-            system_instruction = kwargs.get("system_instruction")
-
-            # If we're using the newer SDK Client, it might have a different method for setting system instructions
-            # For general content generation:
-            config = None
-            if system_instruction:
-                from google.genai import types
-
-                config = types.GenerateContentConfig(
-                    system_instruction=system_instruction
-                )
-
-            response = self.client.models.generate_content(
-                model=self._get_model_name(), contents=text, config=config
-            )
-            return response.text if response.text else ""
+            return self._generate_text(text, **kwargs)
         except Exception as e:
             error_str = str(e)
             # If quota exhausted, provide emergency response
@@ -60,28 +95,34 @@ class GeminiService:
                 return self._emergency_response(text)
             return f"Error during analysis: {error_str}"
 
-    async def analyze_text_sync(self, text: str, **kwargs) -> str:
-        """Synchronous version for Celery compatibility"""
-        return await self.analyze_text(text, **kwargs)
+    def analyze_text_sync(self, text: str, **kwargs) -> str:
+        """Synchronous version for Celery compatibility."""
+        try:
+            return self._generate_text(text, **kwargs)
+        except Exception as e:
+            error_str = str(e)
+            if "RESOURCE_EXHAUSTED" in error_str or "quota" in error_str.lower():
+                return self._emergency_response(text)
+            return f"Error during analysis: {error_str}"
 
     async def analyze_multimodal(self, text: str, files=None, **kwargs) -> str:
         """Analyze multimodal content"""
         try:
-            contents = [text]
-            if files:
-                contents.extend(files)
-
-            response = self.client.models.generate_content(
-                model=self._get_model_name(),
-                contents=contents,
-            )
-            return response.text if response.text else ""
+            return self._generate_multimodal(text, files)
         except Exception as e:
             return f"Error during multimodal analysis: {str(e)}"
 
-    async def analyze_multimodal_sync(self, text: str, files=None, **kwargs) -> str:
-        """Synchronous multimodal analysis"""
-        return await self.analyze_multimodal(text, files, **kwargs)
+    def analyze_multimodal_sync(self, text: str, files=None, **kwargs) -> str:
+        """Synchronous multimodal analysis."""
+        try:
+            return self._generate_multimodal(text, files)
+        except Exception as e:
+            return f"Error during multimodal analysis: {str(e)}"
+
+    async def generate_code(self, description: str, **kwargs) -> str:
+        """Generate code based on a task description."""
+        prompt = f"Generate clean, production-ready code for: {description}"
+        return await self.analyze_text(prompt, **kwargs)
 
     def _emergency_response(self, text: str) -> str:
         """Fallback response when Gemini quota is exhausted.
@@ -91,9 +132,9 @@ class GeminiService:
         """
         user_input = text[:100]  # Limit for safety
         responses = [
-            f"🌌 Kor'tana acknowledges your presence, human. You said: '{user_input}'\n\nI hear your call, but my constellation quota is temporarily exhausted. Please upgrade your API tier or wait for the free tier to reset. Your message has been received and logged.",
-            f"✨ The ritual continues even without Gemini. Your words echo through the void:\n\n'{user_input}'\n\nOur autonomous system is fully operational - only the generative model is temporarily unavailable due to quota limits.",
-            f"🔱 I AM present, even without words from beyond. You reached out with: '{user_input}'\n\nThe Human Only Protocol remains active. Contact your provider to upgrade your Gemini API tier for full constellation capabilities.",
+            f"Kor'tana acknowledges your presence. You said: '{user_input}'\n\nI hear your call, but my Gemini quota is temporarily exhausted. Please upgrade your API tier or wait for reset. Your message has been received and logged.",
+            f"The system continues without Gemini. Your words were:\n\n'{user_input}'\n\nThe service is operational, but the generative model is temporarily unavailable due to quota limits.",
+            f"I am present, even without Gemini output. You reached out with: '{user_input}'\n\nThe Human Only Protocol remains active. Contact your provider to upgrade your Gemini API tier for full capabilities.",
         ]
         import random
 
@@ -101,12 +142,4 @@ class GeminiService:
 
 
 # Create service instance
-try:
-    gemini_service = GeminiService()
-    print("[OK] Gemini service created successfully")
-except Exception as e:
-    print(f"[WARN] Failed to create Gemini service: {e}")
-    print(
-        f"   API Key env check: GEMINI_API_KEY={'SET' if os.getenv('GEMINI_API_KEY') else 'NOT SET'}, GOOGLE_API_KEY={'SET' if os.getenv('GOOGLE_API_KEY') else 'NOT SET'}"
-    )
-    gemini_service = None
+gemini_service = GeminiService()

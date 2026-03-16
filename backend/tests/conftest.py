@@ -6,12 +6,11 @@ import asyncio
 import os
 import sys
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 import httpx
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from unittest.mock import patch, MagicMock
+import pytest
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 # Set test environment variables before any imports
 os.environ["ENVIRONMENT"] = "testing"
@@ -38,22 +37,31 @@ os.environ["HEARTBEAT_TOKEN"] = "test_heartbeat_token"
 
 # Patch print function to handle emojis before any imports
 _original_print = print
+
+
 def safe_print(*args, **kwargs):
     # Filter out strings containing emojis
     filtered_args = []
     for arg in args:
         if isinstance(arg, str):
             # Remove common emojis that cause issues
-            arg = arg.replace("✅", "[OK]").replace("❌", "[ERROR]").replace("⚠️", "[WARN]").replace("❌", "[FAIL]").replace("❌", "[FAIL]")
+            arg = (
+                arg.replace("✅", "[OK]")
+                .replace("❌", "[ERROR]")
+                .replace("⚠️", "[WARN]")
+                .replace("❌", "[FAIL]")
+                .replace("❌", "[FAIL]")
+            )
         filtered_args.append(arg)
     return _original_print(*filtered_args, **kwargs)
+
+
 print = safe_print
 
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.kortana.config import Settings
-from src.kortana.database import DatabaseManager
 
 
 class SyncTestClient:
@@ -78,8 +86,7 @@ class SyncTestClient:
     async def _get_client(self):
         if self._client is None:
             self._client = httpx.AsyncClient(
-                transport=httpx.ASGITransport(app=self.app),
-                base_url=self.base_url
+                transport=httpx.ASGITransport(app=self.app), base_url=self.base_url
             )
         return self._client
 
@@ -98,31 +105,39 @@ class SyncTestClient:
     def patch(self, url, **kwargs):
         return self._run_async(self._apatch(url, **kwargs))
 
+    def options(self, url, **kwargs):
+        return self._run_async(self._aoptions(url, **kwargs))
+
     async def _aget(self, url, **kwargs):
         client = await self._get_client()
-        return await client.get(url, **kwargs)
+        return await client.request("GET", url, **kwargs)
 
     async def _apost(self, url, **kwargs):
         client = await self._get_client()
-        return await client.post(url, **kwargs)
+        return await client.request("POST", url, **kwargs)
 
     async def _aput(self, url, **kwargs):
         client = await self._get_client()
-        return await client.put(url, **kwargs)
+        return await client.request("PUT", url, **kwargs)
 
     async def _adelete(self, url, **kwargs):
         client = await self._get_client()
-        return await client.delete(url, **kwargs)
+        return await client.request("DELETE", url, **kwargs)
 
     async def _apatch(self, url, **kwargs):
         client = await self._get_client()
-        return await client.patch(url, **kwargs)
+        return await client.request("PATCH", url, **kwargs)
+
+    async def _aoptions(self, url, **kwargs):
+        client = await self._get_client()
+        return await client.request("OPTIONS", url, **kwargs)
 
     def close(self):
         if self._client and self._loop:
             self._loop.run_until_complete(self._client.aclose())
         if self._loop:
             self._loop.close()
+
 
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -152,32 +167,32 @@ async def test_engine(test_db_url):
 @pytest.fixture(scope="session")
 async def setup_test_db(test_db_url, test_engine):
     """Set up test database schema using alembic migrations"""
-    import subprocess
     import os
+    import subprocess
     from pathlib import Path
 
     # Set DATABASE_URL for alembic
     env = os.environ.copy()
-    env["DATABASE_URL"] = test_db_url.replace("aiosqlite", "sqlite")
+    env["DATABASE_URL"] = test_db_url.replace("sqlite+aiosqlite", "sqlite")
 
     # Run alembic upgrade to head
     backend_dir = Path(__file__).parent.parent
-    alembic_dir = backend_dir / "alembic"
     try:
-        result = subprocess.run(
-            ["alembic", "upgrade", "head"],
+        subprocess.run(
+            [sys.executable, "-m", "alembic", "upgrade", "head"],
             cwd=backend_dir,
             env=env,
             capture_output=True,
             text=True,
-            check=True
+            check=True,
         )
-    except subprocess.CalledProcessError as e:
+    except (subprocess.CalledProcessError, FileNotFoundError):
         # If alembic fails, fall back to creating tables directly
-        from src.kortana.models import Base
         from sqlalchemy import create_engine
 
-        sync_url = test_db_url.replace("aiosqlite", "sqlite")
+        from src.kortana.models import Base
+
+        sync_url = test_db_url.replace("sqlite+aiosqlite", "sqlite")
         engine = create_engine(sync_url)
         Base.metadata.create_all(engine)
         engine.dispose()
@@ -193,7 +208,9 @@ async def setup_test_db(test_db_url, test_engine):
 @pytest.fixture
 async def test_db_session(test_engine, setup_test_db):
     """Provide test database session"""
-    session_factory = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
+    session_factory = async_sessionmaker(
+        test_engine, class_=AsyncSession, expire_on_commit=False
+    )
     session = session_factory()
     try:
         yield session
@@ -237,8 +254,9 @@ def mock_settings(test_db_url):
 @pytest.fixture
 def app_fixture(db, mock_settings):
     """Provide the FastAPI app with mocked database and settings"""
-    from src.kortana.main import app
     from src.kortana.database import get_db
+    from src.kortana.main import app
+
     app.dependency_overrides[get_db] = lambda: db
     yield app
     app.dependency_overrides.clear()
@@ -263,6 +281,7 @@ def client(app_fixture):
 def test_user():
     """Provide a test user"""
     from src.kortana.schemas import User
+
     return User(
         id="1",
         username="testuser",
@@ -277,6 +296,7 @@ def test_user():
 def test_token(test_user):
     """Provide a valid test JWT token"""
     from src.kortana.auth import create_access_token
+
     return create_access_token(
         data={"sub": test_user.username, "scopes": ["read", "write"]}
     )
@@ -293,6 +313,7 @@ def authenticated_client(client, test_token):
 def test_agent():
     """Provide a test agent"""
     from src.kortana.schemas import Agent
+
     return Agent(
         id="1",
         name="Test Agent",
@@ -310,6 +331,7 @@ def test_agent():
 def test_task():
     """Provide a test task"""
     from src.kortana.schemas import Task
+
     return Task(
         id="1",
         title="Test Task",
@@ -447,33 +469,54 @@ def mock_anthropic_api():
         mock_instance = MagicMock()
         mock_client = MagicMock()
         mock_instance.return_value = mock_client
-        mock_client.messages.create.return_value = MagicMock(content=[MagicMock(text="Mocked Anthropic response")])
+        mock_client.messages.create.return_value = MagicMock(
+            content=[MagicMock(text="Mocked Anthropic response")]
+        )
         yield mock_client
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def mock_httpx_requests():
     """Mock all httpx requests for external APIs"""
-    with patch("httpx.AsyncClient") as mock_client:
+    real_async_client = httpx.AsyncClient
+
+    def _mock_response() -> MagicMock:
+        return MagicMock(status_code=200, json=lambda: {"mock": "response"})
+
+    def _async_client_factory(*args, **kwargs):
+        # Preserve in-process ASGI test client behavior for SyncTestClient.
+        if isinstance(kwargs.get("transport"), httpx.ASGITransport):
+            return real_async_client(*args, **kwargs)
+
         mock_instance = MagicMock()
-        mock_client.return_value.__aenter__.return_value = mock_instance
-        mock_instance.get.return_value = MagicMock(status_code=200, json=lambda: {"mock": "response"})
-        mock_instance.post.return_value = MagicMock(status_code=200, json=lambda: {"mock": "response"})
-        mock_instance.put.return_value = MagicMock(status_code=200, json=lambda: {"mock": "response"})
-        mock_instance.delete.return_value = MagicMock(status_code=200, json=lambda: {"mock": "response"})
-        yield mock_instance
+        mock_instance.get = AsyncMock(return_value=_mock_response())
+        mock_instance.post = AsyncMock(return_value=_mock_response())
+        mock_instance.put = AsyncMock(return_value=_mock_response())
+        mock_instance.delete = AsyncMock(return_value=_mock_response())
+        mock_instance.__aenter__ = AsyncMock(return_value=mock_instance)
+        mock_instance.__aexit__ = AsyncMock(return_value=None)
+        return mock_instance
+
+    with patch("httpx.AsyncClient", side_effect=_async_client_factory):
+        yield
 
 
 @pytest.fixture(autouse=True, scope="session")
 def suppress_emoji_prints():
     """Suppress emoji prints that cause encoding issues on Windows"""
+
     def safe_print(*args, **kwargs):
         # Filter out strings containing emojis
         filtered_args = []
         for arg in args:
             if isinstance(arg, str):
                 # Remove common emojis that cause issues
-                arg = arg.replace("✅", "[OK]").replace("❌", "[ERROR]").replace("⚠️", "[WARN]").replace("❌", "[FAIL]")
+                arg = (
+                    arg.replace("✅", "[OK]")
+                    .replace("❌", "[ERROR]")
+                    .replace("⚠️", "[WARN]")
+                    .replace("❌", "[FAIL]")
+                )
             filtered_args.append(arg)
         return print(*filtered_args, **kwargs)
 

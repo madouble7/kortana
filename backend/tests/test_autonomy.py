@@ -2,7 +2,7 @@
 Unit and integration tests for GitHub autonomy system
 """
 
-from unittest.mock import MagicMock, Mock, patch, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 
@@ -14,17 +14,19 @@ from src.kortana.models import GitHubTask
 def mock_db():
     """Mock database session"""
     db = MagicMock()
-    # Make db methods async
-    async def mock_commit():
-        pass
-    async def mock_execute(stmt):
-        result = MagicMock()
-        result.all.return_value = []
-        result.scalar_one_or_none.return_value = None
-        result.scalars.return_value.all.return_value = []
-        return result
-    db.commit = mock_commit
-    db.execute = mock_execute
+
+    default_result = MagicMock()
+    default_result.all.return_value = []
+    default_result.scalar_one_or_none.return_value = None
+    default_result.scalars.return_value.all.return_value = []
+    default_result.scalar_one.return_value = 0
+
+    db.execute = AsyncMock(return_value=default_result)
+    db.commit = AsyncMock(return_value=None)
+    db.rollback = AsyncMock(return_value=None)
+    db.add = MagicMock()
+    db.close = MagicMock()
+
     return db
 
 
@@ -51,6 +53,7 @@ class TestGitHubRouter:
             # Make it awaitable for AsyncClient
             async def mock_awaitable(*args, **kwargs):
                 return mock_response
+
             mock_get.side_effect = mock_awaitable
 
             with patch.dict("os.environ", {"GITHUB_TOKEN": "test-token"}):
@@ -70,6 +73,7 @@ class TestGitHubRouter:
 
             async def mock_awaitable(*args, **kwargs):
                 return mock_response
+
             mock_get.side_effect = mock_awaitable
 
             with patch.dict("os.environ", {"GITHUB_TOKEN": "test-token"}):
@@ -89,6 +93,7 @@ class TestGitHubRouter:
 
             async def mock_awaitable(*args, **kwargs):
                 return mock_response
+
             mock_get.side_effect = mock_awaitable
 
             with patch.dict("os.environ", {"GITHUB_TOKEN": "test-token"}):
@@ -151,10 +156,11 @@ class TestAutonomyRouter:
 
             async def mock_awaitable(*args, **kwargs):
                 return mock_response
+
             mock_get.side_effect = mock_awaitable
 
             with patch("src.kortana.database.SessionLocal"):
-                 with patch.dict("os.environ", {"GITHUB_TOKEN": "test-token"}):
+                with patch.dict("os.environ", {"GITHUB_TOKEN": "test-token"}):
                     response = client.post("/api/autonomy/task-queue")
                     assert response.status_code == 200
                     data = response.json()
@@ -259,6 +265,7 @@ class TestGitHubAutonomyService:
     def service(self, mock_db):
         """Create GitHubAutonomyService instance"""
         from src.kortana.services.github_autonomy_service import GitHubAutonomyService
+
         return GitHubAutonomyService(db_session=mock_db)
 
     @pytest.mark.asyncio
@@ -270,8 +277,9 @@ class TestGitHubAutonomyService:
     @pytest.mark.asyncio
     async def test_validate_token_failure(self, service):
         """Test token validation with missing token"""
-        with patch("os.getenv", return_value=None), \
-             patch("src.kortana.services.github_autonomy_service.get_settings") as mock_settings:
+        with patch("os.getenv", return_value=None), patch(
+            "src.kortana.services.github_autonomy_service.get_settings"
+        ) as mock_settings:
             mock_settings.return_value.GITHUB_TOKEN = None
             with pytest.raises(ValueError, match="GitHub token not configured"):
                 service._validate_token()
@@ -286,8 +294,9 @@ class TestGitHubAutonomyService:
         ]
         mock_response.raise_for_status = MagicMock()
 
-        with patch("httpx.AsyncClient") as mock_client_class, \
-             patch("os.getenv", return_value="test_token"):
+        with patch("httpx.AsyncClient") as mock_client_class, patch(
+            "os.getenv", return_value="test_token"
+        ):
             mock_client = MagicMock()
             mock_client_class.return_value.__aenter__.return_value = mock_client
             mock_client.get = AsyncMock(return_value=mock_response)
@@ -311,8 +320,9 @@ class TestGitHubAutonomyService:
         ]
         mock_response.raise_for_status = MagicMock()
 
-        with patch("httpx.AsyncClient.get") as mock_get, \
-             patch("os.getenv", return_value="test_token"):
+        with patch("httpx.AsyncClient.get") as mock_get, patch(
+            "os.getenv", return_value="test_token"
+        ):
             mock_get.return_value = mock_response
 
             # Mock existing task
@@ -356,10 +366,12 @@ class TestGitHubAutonomyService:
             github_repo="test/repo",
             title="Test Task",
             description="Test description",
-            status="pending"
+            status="pending",
         )
 
-        with patch("src.kortana.services.github_autonomy_service.gemini_service.analyze_text") as mock_analyze:
+        with patch(
+            "src.kortana.services.github_autonomy_service.gemini_service.analyze_text"
+        ) as mock_analyze:
             mock_analyze.return_value = "Analysis result"
             mock_db.commit = MagicMock()
 
@@ -377,14 +389,16 @@ class TestGitHubAutonomyService:
             github_repo="test/repo",
             title="Test Task",
             description="Test description",
-            status="pending"
+            status="pending",
         )
 
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = task
         mock_db.execute.return_value = mock_result
 
-        with patch("src.kortana.services.github_autonomy_service.gemini_service.analyze_text") as mock_analyze:
+        with patch(
+            "src.kortana.services.github_autonomy_service.gemini_service.analyze_text"
+        ) as mock_analyze:
             mock_analyze.return_value = "Analysis result"
             mock_db.commit = MagicMock()
 
@@ -400,10 +414,12 @@ class TestGitHubAutonomyService:
             title="Test Task",
             description="Test description",
             analysis="Test analysis",
-            status="analyzed"
+            status="analyzed",
         )
 
-        with patch("src.kortana.services.github_autonomy_service.gemini_service.analyze_text") as mock_analyze:
+        with patch(
+            "src.kortana.services.github_autonomy_service.gemini_service.analyze_text"
+        ) as mock_analyze:
             mock_analyze.return_value = "Planning result"
             mock_db.commit = MagicMock()
 
@@ -421,11 +437,12 @@ class TestGitHubAutonomyService:
             description="Test description",
             plan="Test plan",
             status="planning_complete",
-            branch_name="test-branch"
+            branch_name="test-branch",
         )
 
-        with patch.object(service, "_create_branch", return_value=True), \
-             patch("src.kortana.services.github_autonomy_service.CodeGenerator") as mock_codegen:
+        with patch.object(service, "_create_branch", return_value=True), patch(
+            "src.kortana.services.github_autonomy_service.CodeGenerator"
+        ) as mock_codegen:
             mock_instance = MagicMock()
             mock_instance.generate_from_gemini_plan.return_value = {"errors": None}
             mock_codegen.return_value = mock_instance
@@ -445,7 +462,7 @@ class TestGitHubAutonomyService:
             description="Test description",
             plan="Test plan",
             status="planning_complete",
-            branch_name="test-branch"
+            branch_name="test-branch",
         )
 
         with patch.object(service, "_create_branch", return_value=False):
@@ -472,8 +489,9 @@ class TestGitHubAutonomyService:
         async def mock_post(*args, **kwargs):
             return create_response
 
-        with patch("httpx.AsyncClient") as mock_client_class, \
-             patch("os.getenv", return_value="test_token"):
+        with patch("httpx.AsyncClient") as mock_client_class, patch(
+            "os.getenv", return_value="test_token"
+        ):
             mock_client = MagicMock()
             mock_client_class.return_value.__aenter__.return_value = mock_client
             mock_client.get = mock_get
@@ -498,16 +516,19 @@ class TestGitHubAutonomyService:
         create_response = MagicMock()
         create_response.status_code = 201
 
-        with patch("httpx.AsyncClient") as mock_client_class, \
-             patch("os.getenv", return_value="test_token"):
+        with patch("httpx.AsyncClient") as mock_client_class, patch(
+            "os.getenv", return_value="test_token"
+        ):
             mock_client = MagicMock()
             mock_client_class.return_value.__aenter__.return_value = mock_client
 
             # Mock async methods
             async def mock_get_main(*args, **kwargs):
                 return main_response
+
             async def mock_get_master(*args, **kwargs):
                 return master_response
+
             async def mock_post(*args, **kwargs):
                 return create_response
 
@@ -525,24 +546,28 @@ class TestHOPAutonomyService:
     def service(self, mock_db):
         """Create HOPAutonomyService instance"""
         from src.kortana.services.hop_autonomy_service import HOPAutonomyService
+
         return HOPAutonomyService(db_session=mock_db)
 
     @pytest.fixture
     def mock_task(self):
         """Create mock task"""
         from src.kortana.models import Task
+
         return Task(
             id="test-id",
             title="Test Task",
             description="Test description",
             status="pending",
-            classification=None
+            classification=None,
         )
 
     @pytest.mark.asyncio
     async def test_run_hop_cycle_success(self, service):
         """Test running HOP cycle"""
-        with patch("src.kortana.services.hop_autonomy_service.run_autonomy_cycle.delay") as mock_delay:
+        with patch(
+            "src.kortana.services.hop_autonomy_service.run_autonomy_cycle.delay"
+        ) as mock_delay:
             mock_task = MagicMock()
             mock_task.id = "celery-task-id"
             mock_delay.return_value = mock_task
@@ -554,7 +579,9 @@ class TestHOPAutonomyService:
     @pytest.mark.asyncio
     async def test_classify_hop_task_auto(self, service, mock_task, mock_db):
         """Test task classification as auto"""
-        with patch("src.kortana.services.hop_autonomy_service.gemini_service.analyze_text") as mock_analyze:
+        with patch(
+            "src.kortana.services.hop_autonomy_service.gemini_service.analyze_text"
+        ) as mock_analyze:
             mock_analyze.return_value = "auto"
             mock_db.commit = MagicMock()
 
@@ -563,9 +590,13 @@ class TestHOPAutonomyService:
             assert mock_task.classification == "auto"
 
     @pytest.mark.asyncio
-    async def test_classify_hop_task_invalid_response(self, service, mock_task, mock_db):
+    async def test_classify_hop_task_invalid_response(
+        self, service, mock_task, mock_db
+    ):
         """Test task classification with invalid response defaults to ho"""
-        with patch("src.kortana.services.hop_autonomy_service.gemini_service.analyze_text") as mock_analyze:
+        with patch(
+            "src.kortana.services.hop_autonomy_service.gemini_service.analyze_text"
+        ) as mock_analyze:
             mock_analyze.return_value = "invalid"
             mock_db.commit = MagicMock()
 
@@ -602,7 +633,9 @@ class TestHOPAutonomyService:
     @pytest.mark.asyncio
     async def test_should_require_human_not_classified(self, service, mock_task):
         """Test human requirement check for unclassified task"""
-        with patch.object(service, "classify_hop_task", return_value="ho") as mock_classify:
+        with patch.object(
+            service, "classify_hop_task", return_value="ho"
+        ) as mock_classify:
             result = await service.should_require_human(mock_task)
             assert result is True
             mock_classify.assert_called_once_with(mock_task)
@@ -617,7 +650,9 @@ class TestHOPAutonomyService:
     @pytest.mark.asyncio
     async def test_generate_ho_scaffold(self, service, mock_task, mock_db):
         """Test generating HO scaffold"""
-        with patch("src.kortana.services.hop_autonomy_service.gemini_service.analyze_text") as mock_analyze:
+        with patch(
+            "src.kortana.services.hop_autonomy_service.gemini_service.analyze_text"
+        ) as mock_analyze:
             mock_analyze.return_value = "Scaffold content"
             mock_db.commit = MagicMock()
 

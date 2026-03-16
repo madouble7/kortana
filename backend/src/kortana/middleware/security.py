@@ -76,7 +76,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                     detail="Rate limit exceeded. Maximum requests exceeded.",
                 )
-        except RedisError as exc:
+        except (RedisError, RuntimeError, OSError) as exc:
             # Security-first approach: if Redis is unavailable, fail safely and log.
             log_error(
                 "RATE_LIMIT_REDIS_ERROR",

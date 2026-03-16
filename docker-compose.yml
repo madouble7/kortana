@@ -1,5 +1,4 @@
 # Docker Compose for Local Development
-version: "3.9"
 
 services:
   # PostgreSQL Database
@@ -24,8 +23,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1Gi
-          cpus: '1.0'
+          memory: 1g
+          cpus: "1.0"
 
   # Redis Cache
   redis:
@@ -45,8 +44,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512Mi
-          cpus: '0.5'
+          memory: 512m
+          cpus: "0.5"
 
   # Backend API
   backend:
@@ -77,8 +76,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1Gi
-          cpus: '1.0'
+          memory: 1g
+          cpus: "1.0"
 
   # Frontend Dev Server
   frontend:
@@ -99,8 +98,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512Mi
-          cpus: '0.5'
+          memory: 512m
+          cpus: "0.5"
 
 volumes:
   postgres_data:

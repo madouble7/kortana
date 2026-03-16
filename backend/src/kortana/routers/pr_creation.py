@@ -37,8 +37,6 @@ class PRCreator:
     def _validate_token(self) -> bool:
         """Validate GitHub token is configured"""
         token = os.environ.get("GITHUB_TOKEN")
-        if token is None:
-            token = get_settings().GITHUB_TOKEN
 
         if not token:
             raise PRCreationError("GitHub token not configured for PR creation")

@@ -3,12 +3,14 @@ GitHub Autonomy Service for Kor'tana
 Manages the autonomous development loop: monitoring issues, planning, and executing changes.
 """
 
+import inspect
 import os
 from datetime import datetime
 from typing import Any
 
 import httpx
 from sqlalchemy import select
+
 from src.kortana.config import get_settings
 from src.kortana.logger import get_logger
 from src.kortana.models import GitHubTask
@@ -32,6 +34,31 @@ class GitHubAutonomyService:
         self.repo_name = self.settings.GITHUB_REPO
         self.max_retries = self.settings.TASK_MAX_RETRIES
 
+    @staticmethod
+    async def _maybe_await(value: Any) -> Any:
+        """Await value when needed, otherwise return it as-is."""
+        if inspect.isawaitable(value):
+            return await value
+        return value
+
+    async def _db_execute(self, stmt: Any) -> Any:
+        """Execute a DB statement against async or sync-like test doubles."""
+        if self.db is None:
+            raise RuntimeError("Database session is not initialized")
+        return await self._maybe_await(self.db.execute(stmt))
+
+    async def _db_commit(self) -> None:
+        """Commit DB transaction for async or sync-like test doubles."""
+        if self.db is None:
+            return
+        await self._maybe_await(self.db.commit())
+
+    async def _db_rollback(self) -> None:
+        """Rollback DB transaction for async or sync-like test doubles."""
+        if self.db is None:
+            return
+        await self._maybe_await(self.db.rollback())
+
     def _validate_token(self) -> None:
         """Validate GitHub token is configured"""
         # Reload token from environment to support test mocks
@@ -48,11 +75,15 @@ class GitHubAutonomyService:
             "Authorization": f"token {self.github_token}",
             "Accept": "application/vnd.github.v3+json",
         }
-        url = f"https://api.github.com/repos/{owner}/{name}/issues?state=open&per_page=50"
+        url = (
+            f"https://api.github.com/repos/{owner}/{name}/issues?state=open&per_page=50"
+        )
 
         try:
             async with httpx.AsyncClient() as client:
-                response = await client.get(url, headers=headers, timeout=15)
+                response = await self._maybe_await(
+                    client.get(url, headers=headers, timeout=15)
+                )
                 response.raise_for_status()
                 issues = response.json()
         except Exception as e:
@@ -60,7 +91,9 @@ class GitHubAutonomyService:
             return []
 
         queued_tasks = []
-        issue_numbers = [issue["number"] for issue in issues if "pull_request" not in issue]
+        issue_numbers = [
+            issue["number"] for issue in issues if "pull_request" not in issue
+        ]
 
         if not issue_numbers:
             return []
@@ -72,7 +105,7 @@ class GitHubAutonomyService:
             GitHubTask.github_issue_number.in_(issue_numbers),
             GitHubTask.github_repo == f"{owner}/{name}",
         )
-        result = await self.db.execute(stmt)
+        result = await self._db_execute(stmt)
         existing_issue_numbers = {row[0] for row in result.all()}
 
         for issue in issues:
@@ -97,10 +130,10 @@ class GitHubAutonomyService:
 
         if queued_tasks:
             try:
-                await self.db.commit()
+                await self._db_commit()
                 logger.info(f"Queued {len(queued_tasks)} new tasks from GitHub")
             except Exception as e:
-                self.db.rollback()
+                await self._db_rollback()
                 logger.error(f"Failed to commit new tasks: {str(e)}")
 
         return queued_tasks
@@ -126,14 +159,14 @@ class GitHubAutonomyService:
 
         # 1. Analyze pending tasks
         stmt = select(GitHubTask).where(GitHubTask.status == "pending").limit(limit)
-        result = await self.db.execute(stmt)
+        result = await self._db_execute(stmt)
         pending = result.scalars().all()
         for task in pending:
             await self.analyze_task(task)
 
         # 2. Plan analyzed tasks
         stmt = select(GitHubTask).where(GitHubTask.status == "analyzed").limit(limit)
-        result = await self.db.execute(stmt)
+        result = await self._db_execute(stmt)
         analyzed = result.scalars().all()
         for task in analyzed:
             await self.plan_task(task)
@@ -143,8 +176,12 @@ class GitHubAutonomyService:
             self.settings.ENVIRONMENT == "production"
             or os.getenv("KORTANA_AUTONOMOUS_MODE") == "true"
         ):
-            stmt = select(GitHubTask).where(GitHubTask.status == "planning_complete").limit(limit)
-            result = await self.db.execute(stmt)
+            stmt = (
+                select(GitHubTask)
+                .where(GitHubTask.status == "planning_complete")
+                .limit(limit)
+            )
+            result = await self._db_execute(stmt)
             planned = result.scalars().all()
             for task in planned:
                 await self.execute_task(task)
@@ -153,7 +190,7 @@ class GitHubAutonomyService:
         """Analyze task with Gemini"""
         if isinstance(task_or_id, str):
             stmt = select(GitHubTask).where(GitHubTask.id == task_or_id)
-            result = await self.db.execute(stmt)
+            result = await self._db_execute(stmt)
             task = result.scalar_one_or_none()
             if not task:
                 raise ValueError("Task not found")
@@ -161,12 +198,12 @@ class GitHubAutonomyService:
             task = task_or_id
 
         task.status = "analyzing"
-        await self.db.commit()
+        await self._db_commit()
 
         try:
             logger.info(f"Analyzing task #{task.github_issue_number}: {task.title}")
             prompt = f"Analyze this issue and provide implementation insights: \nTitle: {task.title}\nDescription: {task.description}"
-            analysis = await gemini_service.analyze_text(prompt)
+            analysis = await self._maybe_await(gemini_service.analyze_text(prompt))
             task.analysis = analysis
             task.status = "analyzed"
             task.analyzed_at = datetime.utcnow()
@@ -174,18 +211,18 @@ class GitHubAutonomyService:
             logger.error(f"Analysis failed: {str(e)}")
             task.status = "pending"
             task.error_message = str(e)
-            task.error_count += 1
+            task.error_count = (task.error_count or 0) + 1
             if task.error_count >= self.max_retries:
                 task.status = "failed"
 
-        await self.db.commit()
+        await self._db_commit()
         return task
 
     async def plan_task(self, task_or_id: GitHubTask | str) -> GitHubTask:
         """Generate implementation plan with Gemini"""
         if isinstance(task_or_id, str):
             stmt = select(GitHubTask).where(GitHubTask.id == task_or_id)
-            result = await self.db.execute(stmt)
+            result = await self._db_execute(stmt)
             task = result.scalar_one_or_none()
             if not task:
                 raise ValueError("Task not found")
@@ -193,30 +230,32 @@ class GitHubAutonomyService:
             task = task_or_id
 
         task.status = "planning"
-        await self.db.commit()
+        await self._db_commit()
 
         try:
             logger.info(f"Planning task #{task.github_issue_number}")
             prompt = f"Generate a detailed file-by-file implementation plan for this issue. Use the FILE_CHANGES format.\nTitle: {task.title}\nAnalysis: {task.analysis}"
-            plan = await gemini_service.analyze_text(prompt)
+            plan = await self._maybe_await(gemini_service.analyze_text(prompt))
             task.plan = plan
             task.status = "planning_complete"
         except Exception as e:
             logger.error(f"Planning failed: {str(e)}")
             task.status = "analyzed"
             task.error_message = str(e)
-            task.error_count += 1
+            task.error_count = (task.error_count or 0) + 1
             if task.error_count >= self.max_retries:
                 task.status = "failed"
 
-        await self.db.commit()
+        await self._db_commit()
         return task
 
-    async def execute_task(self, task_or_id: GitHubTask | str, dry_run: bool = False) -> GitHubTask:
+    async def execute_task(
+        self, task_or_id: GitHubTask | str, dry_run: bool = False
+    ) -> GitHubTask:
         """Execute the task: Create branch, apply changes, and commit"""
         if isinstance(task_or_id, str):
             stmt = select(GitHubTask).where(GitHubTask.id == task_or_id)
-            result = await self.db.execute(stmt)
+            result = await self._db_execute(stmt)
             task = result.scalar_one_or_none()
             if not task:
                 raise ValueError("Task not found")
@@ -224,14 +263,14 @@ class GitHubAutonomyService:
             task = task_or_id
 
         task.status = "executing"
-        await self.db.commit()
+        await self._db_commit()
 
         try:
             logger.info(f"Executing task #{task.github_issue_number}")
 
             # 1. Create GitHub branch
             if not dry_run:
-                if not await self._create_branch(task):
+                if not await self._maybe_await(self._create_branch(task)):
                     raise Exception("Failed to create GitHub branch")
 
             # 2. Use CodeGenerator to apply changes
@@ -244,16 +283,17 @@ class GitHubAutonomyService:
 
             task.status = "executed"
             task.executed_at = datetime.utcnow()
+            await self._db_commit()
+            return task
         except Exception as e:
             logger.error(f"Execution failed: {str(e)}")
             task.status = "planning_complete"
             task.error_message = str(e)
-            task.error_count += 1
+            task.error_count = (task.error_count or 0) + 1
             if task.error_count >= self.max_retries:
                 task.status = "failed"
-
-        await self.db.commit()
-        return task
+            await self._db_commit()
+            raise
 
     async def _create_branch(self, task: GitHubTask) -> bool:
         """Create GitHub branch for task using async httpx"""
@@ -269,13 +309,19 @@ class GitHubAutonomyService:
 
             async with httpx.AsyncClient() as client:
                 # Get main branch SHA
-                ref_url = f"https://api.github.com/repos/{owner}/{repo}/git/ref/heads/main"
-                ref_response = await client.get(ref_url, headers=headers, timeout=10)
+                ref_url = (
+                    f"https://api.github.com/repos/{owner}/{repo}/git/ref/heads/main"
+                )
+                ref_response = await self._maybe_await(
+                    client.get(ref_url, headers=headers, timeout=10)
+                )
 
                 if ref_response.status_code != 200:
                     # Try master branch
                     ref_url = f"https://api.github.com/repos/{owner}/{repo}/git/ref/heads/master"
-                    ref_response = await client.get(ref_url, headers=headers, timeout=10)
+                    ref_response = await self._maybe_await(
+                        client.get(ref_url, headers=headers, timeout=10)
+                    )
                     if ref_response.status_code != 200:
                         return False
 
@@ -284,8 +330,10 @@ class GitHubAutonomyService:
                 # Create branch
                 branch_data = {"ref": f"refs/heads/{task.branch_name}", "sha": main_sha}
                 create_url = f"https://api.github.com/repos/{owner}/{repo}/git/refs"
-                create_response = await client.post(
-                    create_url, headers=headers, json=branch_data, timeout=10
+                create_response = await self._maybe_await(
+                    client.post(
+                        create_url, headers=headers, json=branch_data, timeout=10
+                    )
                 )
 
                 return create_response.status_code == 201

@@ -342,6 +342,8 @@ def create_access_token(
         raise ValueError("Token data must include 'sub' field for user_id")
 
     to_encode = data.copy()
+    # JWT spec (RFC 7519) requires "sub" to be a string
+    to_encode["sub"] = str(to_encode["sub"])
 
     # Set expiration based on token type
     if expires_delta:

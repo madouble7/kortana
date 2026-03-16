@@ -6,8 +6,8 @@ Tests GitHub PR creation, status tracking, and automation features
 from unittest.mock import MagicMock, patch
 
 import pytest
-import httpx
 from sqlalchemy.orm import Session
+
 from src.kortana.models import GitHubTask
 from src.kortana.routers.pr_creation import PRCreationError, PRCreator
 
@@ -16,8 +16,9 @@ class TestPRCreator:
     """Test PRCreator class functionality"""
 
     @pytest.fixture
-    def pr_creator(self, db: Session):
+    def pr_creator(self):
         """Create PRCreator instance"""
+        db = MagicMock(spec=Session)
         # Reset mock query for each test
         db.query.return_value.filter.return_value = db.query.return_value
         db.query.return_value.filter_by.return_value = db.query.return_value
@@ -203,6 +204,7 @@ class TestPRCreationAPI:
     def client(self, app_fixture):
         """Create test client"""
         from .conftest import SyncTestClient
+
         return SyncTestClient(app_fixture)
 
     @patch("src.kortana.routers.pr_creation.PRCreator.create_pr")
@@ -315,8 +317,9 @@ class TestPRCreationIntegration:
         # Verify PR descriptions are generated
         assert mock_response.status_code == 201
 
-    def test_pr_creation_database_persistence(self, db: Session):
+    def test_pr_creation_database_persistence(self):
         """Test PR creation is persisted to database"""
+        db = MagicMock(spec=Session)
         mock_retrieved = MagicMock(spec=GitHubTask)
         mock_retrieved.github_pr_number = 123
         mock_retrieved.github_issue_number = 42
@@ -328,4 +331,3 @@ class TestPRCreationIntegration:
         assert retrieved is not None
         assert retrieved.github_pr_number == 123
         assert retrieved.github_issue_number == 42
-

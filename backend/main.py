@@ -22,15 +22,27 @@ from logger import log_error, log_request, setup_logging
 # Import middleware
 from middleware.security import (
     RateLimitMiddleware,
-    SecurityHeadersMiddleware,
     RequestIDMiddleware,
     RequestLoggingMiddleware,
+    SecurityHeadersMiddleware,
 )
 
 # Import routers
 try:
-    from routers import agents, auth, autonomy, gemini, github, knowledge, memory, task_queue
-    from routers import pr_creation, test_orchestrator, code_reviewer, billing
+    from routers import (
+        agents,
+        auth,
+        autonomy,
+        billing,
+        code_reviewer,
+        gemini,
+        github,
+        knowledge,
+        memory,
+        pr_creation,
+        task_queue,
+        test_orchestrator,
+    )
 except ImportError as e:
     print(f"Error importing routers: {e}")
     raise
@@ -38,6 +50,7 @@ except ImportError as e:
 # Import Human Only Protocol (HOP) for autonomy
 try:
     from human_only_protocol import router as hop_router
+
     HOP_AVAILABLE = True
 except ImportError as e:
     print(f"Warning: Could not import Human Only Protocol: {e}")
@@ -55,30 +68,44 @@ async def lifespan(app: FastAPI):
     try:
         settings.validate()
         print(f"\n{'=' * 60}")
-        print("🔐 Secrets Validation: COMPLETE")
-        print(f"📦 Environment: {settings.ENVIRONMENT}")
-        print("🔗 API Keys Loaded:")
-        print(f"   ✓ Gemini API: {'✅' if settings.GEMINI_API_KEY else '❌'}")
-        print(f"   ✓ GitHub Token: {'✅' if settings.GITHUB_TOKEN else '❌'}")
-        print(f"   ✓ Discord Bot: {'✅' if settings.DISCORD_BOT_TOKEN else '❌'}")
-        print(f"   ✓ OpenAI Key: {'✅' if settings.OPENAI_API_KEY else '❌'}")
-        print(f"   ✓ Anthropic Key: {'✅' if settings.ANTHROPIC_API_KEY else '❌'}")
-        print(f"   ✓ Pinecone Key: {'✅' if settings.PINECONE_API_KEY else '❌'}")
-        print(f"   ✓ Stripe Keys: {'✅' if settings.STRIPE_SECRET_KEY else '❌'}")
+        print("[OK] Secrets Validation: COMPLETE")
+        print(f"[INFO] Environment: {settings.ENVIRONMENT}")
+        print("[INFO] API Keys Loaded:")
+        print(
+            f"   [KEY] Gemini API: {'[SET]' if settings.GEMINI_API_KEY else '[MISSING]'}"
+        )
+        print(
+            f"   [KEY] GitHub Token: {'[SET]' if settings.GITHUB_TOKEN else '[MISSING]'}"
+        )
+        print(
+            f"   [KEY] Discord Bot: {'[SET]' if settings.DISCORD_BOT_TOKEN else '[MISSING]'}"
+        )
+        print(
+            f"   [KEY] OpenAI Key: {'[SET]' if settings.OPENAI_API_KEY else '[MISSING]'}"
+        )
+        print(
+            f"   [KEY] Anthropic Key: {'[SET]' if settings.ANTHROPIC_API_KEY else '[MISSING]'}"
+        )
+        print(
+            f"   [KEY] Pinecone Key: {'[SET]' if settings.PINECONE_API_KEY else '[MISSING]'}"
+        )
+        print(
+            f"   [KEY] Stripe Keys: {'[SET]' if settings.STRIPE_SECRET_KEY else '[MISSING]'}"
+        )
         print(f"{'=' * 60}\n")
     except ValueError as e:
         log_error("config", f"Configuration validation failed: {e}")
-        print(f"❌ Configuration Error: {e}")
+        print(f"[ERROR] Configuration Error: {e}")
         raise
 
     log_request("system", f"Kor'tana API starting in {settings.ENVIRONMENT} mode")
-    print(f"🚀 Kor'tana API starting in {settings.ENVIRONMENT} mode")
+    print(f"[START] Kor'tana API starting in {settings.ENVIRONMENT} mode")
 
     yield
 
     # Shutdown
     log_request("system", "Kor'tana API shutting down")
-    print("👋 Kor'tana API shutting down")
+    print("[STOP] Kor'tana API shutting down")
 
 
 def create_app() -> FastAPI:
@@ -110,13 +137,18 @@ def create_app() -> FastAPI:
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(RequestIDMiddleware)
     app.add_middleware(RequestLoggingMiddleware)
-    app.add_middleware(RateLimitMiddleware, requests_per_minute=100)
+    if settings.ENVIRONMENT != "testing":
+        app.add_middleware(RateLimitMiddleware, requests_per_minute=100)
 
     # Exception handlers
     @app.exception_handler(KortanaException)
     async def kortana_exception_handler(request: Request, exc: KortanaException):
         """Handle custom Kortana exceptions"""
-        log_error(exc.error_code, f"{exc.message} - Path: {request.url.path}", details=exc.details)
+        log_error(
+            exc.error_code,
+            f"{exc.message} - Path: {request.url.path}",
+            details=exc.details,
+        )
         return JSONResponse(status_code=exc.status_code, content=exc.to_dict())
 
     @app.exception_handler(HTTPException)
@@ -131,6 +163,7 @@ def create_app() -> FastAPI:
             status_code=exc.status_code,
             content={
                 "error": f"HTTP_{exc.status_code}",
+                "detail": str(exc.detail) if exc.detail else "An error occurred",
                 "message": str(exc.detail) if exc.detail else "An error occurred",
                 "status_code": exc.status_code,
                 "details": {},
@@ -166,21 +199,31 @@ def create_app() -> FastAPI:
         app.include_router(agents.router, prefix="/api/agents", tags=["agents"])
         app.include_router(github.router, prefix="/api/github", tags=["github"])
         app.include_router(autonomy.router, prefix="/api/autonomy", tags=["autonomy"])
-        app.include_router(knowledge.router, prefix="/api/knowledge", tags=["knowledge"])
-        app.include_router(task_queue.router, prefix="/api/task-queue", tags=["task-queue"])
+        app.include_router(
+            knowledge.router, prefix="/api/knowledge", tags=["knowledge"]
+        )
+        app.include_router(
+            task_queue.router, prefix="/api/task-queue", tags=["task-queue"]
+        )
 
         # Phase 2: PR Creation, Testing, and Code Review
         app.include_router(pr_creation.router, prefix="/api/pr", tags=["pr-creation"])
-        app.include_router(test_orchestrator.router, prefix="/api/testing", tags=["testing"])
-        app.include_router(code_reviewer.router, prefix="/api/code-review", tags=["code-review"])
-        
+        app.include_router(
+            test_orchestrator.router, prefix="/api/testing", tags=["testing"]
+        )
+        app.include_router(
+            code_reviewer.router, prefix="/api/code-review", tags=["code-review"]
+        )
+
         # Billing router
         app.include_router(billing.router, prefix="/api/billing", tags=["billing"])
-        
+
         # Human Only Protocol router (if available)
         if HOP_AVAILABLE and hop_router:
-            app.include_router(hop_router, prefix="/api/autonomy/hop", tags=["human-only-protocol"])
-            print("✅ Human Only Protocol router mounted")
+            app.include_router(
+                hop_router, prefix="/api/autonomy/hop", tags=["human-only-protocol"]
+            )
+            print("[OK] Human Only Protocol router mounted")
     except Exception as e:
         log_error("router_error", f"Error including routers: {e}")
         raise

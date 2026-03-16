@@ -420,7 +420,10 @@ class HealthChecker:
             if result.status == HealthStatus.UNHEALTHY:
                 overall_status = HealthStatus.UNHEALTHY
                 break
-            elif result.status == HealthStatus.DEGRADED and overall_status == HealthStatus.HEALTHY:
+            elif (
+                result.status == HealthStatus.DEGRADED
+                and overall_status == HealthStatus.HEALTHY
+            ):
                 overall_status = HealthStatus.DEGRADED
 
         self._last_full_check = datetime.now()
@@ -431,9 +434,15 @@ class HealthChecker:
             "components": [r.to_dict() for r in results],
             "summary": {
                 "total": len(results),
-                "healthy": len([r for r in results if r.status == HealthStatus.HEALTHY]),
-                "degraded": len([r for r in results if r.status == HealthStatus.DEGRADED]),
-                "unhealthy": len([r for r in results if r.status == HealthStatus.UNHEALTHY]),
+                "healthy": len(
+                    [r for r in results if r.status == HealthStatus.HEALTHY]
+                ),
+                "degraded": len(
+                    [r for r in results if r.status == HealthStatus.DEGRADED]
+                ),
+                "unhealthy": len(
+                    [r for r in results if r.status == HealthStatus.UNHEALTHY]
+                ),
             },
         }
 
@@ -497,7 +506,7 @@ async def readiness_check():
     if result["status"] == "unhealthy":
         raise HTTPException(
             status_code=503,
-            content=result,
+            detail=result,
         )
 
     return result
