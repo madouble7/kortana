@@ -51,3 +51,6 @@ google-genai==1.60.0
 
 # Payment Processing
 stripe==7.9.0
+
+# Task Queue
+celery==5.3.4

@@ -5,7 +5,7 @@ Tests for Unified AI Orchestrator Router
 from unittest.mock import patch
 
 import pytest
-from fastapi.testclient import TestClient
+import httpx
 
 from src.kortana.main import create_app
 
@@ -13,7 +13,8 @@ from src.kortana.main import create_app
 @pytest.fixture
 def client():
     app = create_app()
-    return TestClient(app)
+    from .conftest import SyncTestClient
+    return SyncTestClient(app)
 
 
 def test_orchestrator_status(client):

@@ -7,15 +7,16 @@ Run with: pytest -v
 import asyncio
 
 import pytest
-from fastapi.testclient import TestClient
+import httpx
 
 
 @pytest.fixture
 def client():
     """FastAPI test client fixture."""
     from src.kortana.main import app
+    from .conftest import SyncTestClient
 
-    return TestClient(app)
+    return SyncTestClient(app)
 
 
 class TestHealthCheck:

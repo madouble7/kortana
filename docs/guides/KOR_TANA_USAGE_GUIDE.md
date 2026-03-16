@@ -12,7 +12,7 @@
 ```bash
 # Terminal 1: Start the Backend
 cd backend
-python main.py
+uvicorn main:app --reload --port 8000
 
 # Terminal 2: Start the Frontend (when ready)
 cd frontend
@@ -23,10 +23,10 @@ npm start
 
 ```bash
 # Check if KOR'TANA is alive
-curl http://localhost:8001/api/health
+curl http://localhost:8000/api/health
 
 # View all available endpoints
-curl http://localhost:8001/
+curl http://localhost:8000/
 ```
 
 ---
@@ -36,10 +36,10 @@ curl http://localhost:8001/
 | Service | URL | Description |
 |---------|-----|-------------|
 | **Dashboard** | <http://localhost:3000> | React UI for interaction |
-| **API Docs** | <http://localhost:8001/docs> | Interactive API documentation |
-| **Health Check** | <http://localhost:8001/api/health> | System status |
-| **Metrics** | <http://localhost:8001/api/metrics> | Performance metrics |
-| **ReDoc** | <http://localhost:8001/redoc> | Alternative API docs |
+| **API Docs** | <http://localhost:8000/docs> | Interactive API documentation |
+| **Health Check** | <http://localhost:8000/api/health> | System status |
+| **Metrics** | <http://localhost:8000/api/metrics> | Performance metrics |
+| **ReDoc** | <http://localhost:8000/redoc> | Alternative API docs |
 
 ---
 
@@ -69,7 +69,7 @@ curl http://localhost:8001/
 #### Health Check
 
 ```bash
-curl http://localhost:8001/api/health
+curl http://localhost:8000/api/health
 ```
 
 Response:
@@ -86,7 +86,7 @@ Response:
 #### Create an Agent
 
 ```bash
-curl -X POST http://localhost:8001/api/agents/create \
+curl -X POST http://localhost:8000/api/agents/create \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Research Assistant",
@@ -99,13 +99,13 @@ curl -X POST http://localhost:8001/api/agents/create \
 #### List Agents
 
 ```bash
-curl http://localhost:8001/api/agents/list
+curl http://localhost:8000/api/agents/list
 ```
 
 #### Create a Task
 
 ```bash
-curl -X POST http://localhost:8001/api/task-queue \
+curl -X POST http://localhost:8000/api/task-queue \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Research AI Trends",
@@ -117,13 +117,13 @@ curl -X POST http://localhost:8001/api/task-queue \
 #### Check Task Status
 
 ```bash
-curl http://localhost:8001/api/task-queue
+curl http://localhost:8000/api/task-queue
 ```
 
 #### Store in Memory
 
 ```bash
-curl -X POST http://localhost:8001/api/memory/add_document \
+curl -X POST http://localhost:8000/api/memory/add_document \
   -H "Content-Type: application/json" \
   -d '{
     "title": "Project Notes",
@@ -134,7 +134,7 @@ curl -X POST http://localhost:8001/api/memory/add_document \
 #### Search Memory
 
 ```bash
-curl "http://localhost:8001/api/memory/search?query=AI"
+curl "http://localhost:8000/api/memory/search?query=AI"
 ```
 
 ---
@@ -145,7 +145,7 @@ curl "http://localhost:8001/api/memory/search?query=AI"
 # examples/interact.py
 import requests
 
-API_URL = "http://localhost:8001"
+API_URL = "http://localhost:8000"
 
 def check_health():
     """Check if KOR'TANA is online"""
@@ -186,7 +186,7 @@ if __name__ == "__main__":
 
 ### 4. **Using the API Documentation**
 
-1. Open <http://localhost:8001/docs>
+1. Open <http://localhost:8000/docs>
 2. Click on any endpoint to expand
 3. Click "Try it out"
 4. Fill in parameters
@@ -207,7 +207,7 @@ The dashboard auto-refreshes every 30 seconds:
 
 ### 2. **Terminal Logs**
 
-When running `python main.py`, you'll see:
+When running `uvicorn main:app --reload --port 8000`, you'll see:
 
 ```
 🚀 Kor'tana API starting in development mode
@@ -221,7 +221,7 @@ When running `python main.py`, you'll see:
 
 ```bash
 # Get performance metrics
-curl http://localhost:8001/api/metrics
+curl http://localhost:8000/api/metrics
 
 # Response includes:
 # - Request counts
@@ -233,7 +233,7 @@ curl http://localhost:8001/api/metrics
 ### 4. **Detailed Health Check**
 
 ```bash
-curl http://localhost:8001/api/health/detailed
+curl http://localhost:8000/api/health/detailed
 ```
 
 Shows:
@@ -251,12 +251,12 @@ Shows:
 
 ```bash
 # 1. Create agent
-curl -X POST http://localhost:8001/api/agents/create \
+curl -X POST http://localhost:8000/api/agents/create \
   -H "Content-Type: application/json" \
   -d '{"name": "Writer", "model": "gemini-pro"}'
 
 # 2. Execute task with agent
-curl -X POST http://localhost:8001/api/agents/execute/1 \
+curl -X POST http://localhost:8000/api/agents/execute/1 \
   -H "Content-Type: application/json" \
   -d '{"task": "Write a poem about stars"}'
 ```
@@ -265,24 +265,24 @@ curl -X POST http://localhost:8001/api/agents/execute/1 \
 
 ```bash
 # Store information
-curl -X POST http://localhost:8001/api/memory/add_document \
+curl -X POST http://localhost:8000/api/memory/add_document \
   -H "Content-Type: application/json" \
   -d '{"title": "Meeting Notes", "content": "Discussed Q1 goals"}'
 
 # Later, search for it
-curl "http://localhost:8001/api/memory/search?query=Q1 goals"
+curl "http://localhost:8000/api/memory/search?query=Q1 goals"
 ```
 
 ### C. **Queue a Background Task**
 
 ```bash
 # Create task
-curl -X POST http://localhost:8001/api/task-queue \
+curl -X POST http://localhost:8000/api/task-queue \
   -H "Content-Type: application/json" \
   -d '{"name": "Data Processing", "priority": 3}'
 
 # Check status
-curl http://localhost:8001/api/task-queue
+curl http://localhost:8000/api/task-queue
 ```
 
 ---
@@ -292,25 +292,25 @@ curl http://localhost:8001/api/task-queue
 ### Quick Status
 
 ```bash
-curl http://localhost:8001/api/health
+curl http://localhost:8000/api/health
 ```
 
 ### Full System Info
 
 ```bash
-curl http://localhost:8001/api/health/system
+curl http://localhost:8000/api/health/system
 ```
 
 ### Performance Metrics
 
 ```bash
-curl http://localhost:8001/api/health/metrics
+curl http://localhost:8000/api/health/metrics
 ```
 
 ### Component Health
 
 ```bash
-curl http://localhost:8001/api/health/detailed
+curl http://localhost:8000/api/health/detailed
 ```
 
 ---
@@ -319,27 +319,27 @@ curl http://localhost:8001/api/health/detailed
 
 ```bash
 # 1. Start KOR'TANA
-cd backend && python main.py
+cd backend && uvicorn main:app --reload --port 8000
 
 # 2. In another terminal, interact
 echo "=== Checking Health ==="
-curl http://localhost:8001/api/health
+curl http://localhost:8000/api/health
 
 echo "=== Creating Agent ==="
-curl -X POST http://localhost:8001/api/agents/create \
+curl -X POST http://localhost:8000/api/agents/create \
   -H "Content-Type: application/json" \
   -d '{"name": "ChatBot", "description": "Conversational AI"}'
 
 echo "=== Creating Task ==="
-curl -X POST http://localhost:8001/api/task-queue \
+curl -X POST http://localhost:8000/api/task-queue \
   -H "Content-Type: application/json" \
   -d '{"name": "Welcome Message", "description": "Generate welcome message"}'
 
 echo "=== Checking Tasks ==="
-curl http://localhost:8001/api/task-queue
+curl http://localhost:8000/api/task-queue
 
 echo "=== Checking System ==="
-curl http://localhost:8001/api/health/detailed
+curl http://localhost:8000/api/health/detailed
 ```
 
 ---
@@ -350,15 +350,15 @@ curl http://localhost:8001/api/health/detailed
 
 ```bash
 # Check if running
-curl http://localhost:8001/api/health
+curl http://localhost:8000/api/health
 
 # View logs
-# (check terminal where python main.py is running)
+# (check terminal where uvicorn is running)
 ```
 
 ### Dashboard not loading?
 
-1. Check backend is running on port 8001
+1. Check backend is running on port 8000
 2. Refresh browser
 3. Check browser console for errors
 
@@ -373,9 +373,9 @@ curl http://localhost:8001/api/health
 ## 🌟 **Next Steps**
 
 1. **Explore the Dashboard** - <http://localhost:3000>
-2. **Try the API** - <http://localhost:8001/docs>
+2. **Try the API** - <http://localhost:8000/docs>
 3. **Run examples** - `python backend/examples/01_quickstart.py`
-4. **Monitor health** - `curl http://localhost:8001/api/health/detailed`
+4. **Monitor health** - `curl http://localhost:8000/api/health/detailed`
 
 ---
 

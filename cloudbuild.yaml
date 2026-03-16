@@ -53,6 +53,9 @@ steps:
       - 'kortana/backend/Dockerfile'
       - 'kortana/backend'
     id: 'build-backend'
+    options:
+      memory: 4Gi
+      cpu: 4
 
   # Build frontend Docker image
   - name: 'gcr.io/cloud-builders/docker'

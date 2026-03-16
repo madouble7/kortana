@@ -8,7 +8,7 @@ import subprocess
 from unittest.mock import MagicMock, patch
 
 import pytest
-from fastapi.testclient import TestClient
+import httpx
 from src.kortana.routers.test_orchestrator import (
     TestOrchestrationError,
     TestOrchestrator,
@@ -306,7 +306,8 @@ class TestTestOrchestrationAPI:
     @pytest.fixture
     def client(self, app_fixture):
         """Create test client"""
-        return TestClient(app_fixture)
+        from .conftest import SyncTestClient
+        return SyncTestClient(app_fixture)
 
     @patch("src.kortana.routers.test_orchestrator.TestOrchestrator.run_tests")
     def test_run_tests_endpoint(self, mock_run, client):

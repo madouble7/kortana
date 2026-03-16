@@ -13,6 +13,8 @@ from database import get_db
 from fastapi import APIRouter, Depends, HTTPException
 from logger import setup_logging
 from models import GitHubTask
+from routers.code_reviewer import CodeReviewer
+from routers.test_orchestrator import TestOrchestrator
 from sqlalchemy.orm import Session
 
 router = APIRouter()
@@ -33,6 +35,8 @@ class PRCreator:
     def __init__(self, db: Session):
         self.db = db
         self.token = GITHUB_TOKEN
+        self.test_orchestrator = TestOrchestrator()
+        self.code_reviewer = CodeReviewer()
 
     def _validate_token(self) -> bool:
         """Validate GitHub token is configured"""
@@ -49,7 +53,7 @@ class PRCreator:
             raise HTTPException(status_code=400, detail=f"Invalid repo format: {repo}")
         return parts[0], parts[1]
 
-    def _generate_pr_description(self, task: GitHubTask, code_changes=None) -> str:
+    def _generate_pr_description(self, task: GitHubTask, code_changes=None, test_results=None, review_results=None) -> str:
         """Generate PR description from task information"""
         description = f"""## Summary
 - **Issue:** #{task.github_issue_number}
@@ -93,13 +97,59 @@ class PRCreator:
         else:
             description += "_Files changed information not available_\n\n"
 
-        description += """## Testing
+        # Add test results if available
+        if test_results:
+            description += "## Testing\n\n"
+            if test_results.get("success"):
+                description += "✅ **All tests passed**\n\n"
+            else:
+                description += "❌ **Some tests failed**\n\n"
+
+            description += f"- **Tests:** {test_results.get('tests_passed', 0)} passed, {test_results.get('tests_failed', 0)} failed\n"
+            description += f"- **Coverage:** {test_results.get('coverage', 0.0):.1f}%\n"
+            description += f"- **Linting:** {'✅ Passed' if test_results.get('linting_passed') else '❌ Failed'}\n"
+            description += f"- **Type Check:** {'✅ Passed' if test_results.get('type_check_passed') else '❌ Failed'}\n"
+            description += f"- **Duration:** {test_results.get('duration_ms', 0)}ms\n\n"
+        else:
+            description += """## Testing
 
 - [ ] Tests pass locally
 - [ ] Manual testing completed
 - [ ] Edge cases considered
 
-## Checklist
+"""
+
+        # Add code review results if available
+        if review_results and review_results.get("success"):
+            description += "## Code Review\n\n"
+            score = review_results.get("score", 0)
+            if score >= 8:
+                description += f"🎉 **Score: {score}/10** - High quality code\n\n"
+            elif score >= 6:
+                description += f"👍 **Score: {score}/10** - Good code with minor improvements\n\n"
+            else:
+                description += f"⚠️ **Score: {score}/10** - Needs significant improvements\n\n"
+
+            description += f"**Summary:** {review_results.get('summary', 'N/A')}\n\n"
+
+            if review_results.get("strengths"):
+                description += "**Strengths:**\n"
+                for strength in review_results["strengths"][:3]:  # Limit to 3
+                    description += f"- {strength}\n"
+                description += "\n"
+
+            recommendation = review_results.get("recommendation", "comment")
+            if recommendation == "approve":
+                description += "🤖 **Recommendation:** Auto-approve\n\n"
+            elif recommendation == "request_changes":
+                description += "🤖 **Recommendation:** Request changes\n\n"
+            else:
+                description += "🤖 **Recommendation:** Review comments\n\n"
+        else:
+            description += "## Code Review\n\n"
+            description += "_Automated code review not performed_\n\n"
+
+        description += """## Checklist
 
 - [ ] Code follows project style guidelines
 - [ ] Documentation updated
@@ -112,8 +162,77 @@ class PRCreator:
 """
         return description
 
-    def create_pr(self, task_id: str) -> dict[str, Any]:
-        """Create a PR for a completed task"""
+    def _run_tests_for_task(self, task: GitHubTask) -> dict[str, Any]:
+        """Run automated tests for a task"""
+        try:
+            logger.info(f"Running tests for task {task.id}")
+            test_result = self.test_orchestrator.run_full_validation()
+
+            return {
+                "success": test_result["overall_status"] == "passed",
+                "tests_passed": test_result["tests"].passed if test_result["tests"] else 0,
+                "tests_failed": test_result["tests"].failed if test_result["tests"] else 0,
+                "coverage": test_result["coverage"]["coverage"] if test_result["coverage"] else 0.0,
+                "linting_passed": test_result["linting"]["passed"] if test_result["linting"] else False,
+                "type_check_passed": test_result["type_checking"]["passed"] if test_result["type_checking"] else False,
+                "duration_ms": test_result["duration_ms"],
+                "details": test_result
+            }
+        except Exception as e:
+            logger.error(f"Test execution failed for task {task.id}: {str(e)}")
+            return {
+                "success": False,
+                "error": str(e),
+                "tests_passed": 0,
+                "tests_failed": 0,
+                "coverage": 0.0,
+                "linting_passed": False,
+                "type_check_passed": False,
+                "duration_ms": 0
+            }
+
+    def _review_code_for_task(self, task: GitHubTask) -> dict[str, Any]:
+        """Perform code review for a task"""
+        try:
+            logger.info(f"Performing code review for task {task.id}")
+
+            # Get code changes (simplified - in real implementation would get diff from GitHub)
+            # For now, we'll do a basic review based on task description
+            review = self.code_reviewer.generate_review(
+                code=task.description or "No code provided",
+                plan=task.plan or ""
+            )
+
+            # Parse the review JSON
+            import json
+            if isinstance(review, str):
+                try:
+                    review_data = json.loads(review)
+                except json.JSONDecodeError:
+                    review_data = {"summary": review, "overall_score": 5}
+            else:
+                review_data = review
+
+            return {
+                "success": True,
+                "score": review_data.get("overall_score", 5),
+                "recommendation": review_data.get("recommendation", "comment"),
+                "summary": review_data.get("summary", "Review completed"),
+                "strengths": review_data.get("strengths", []),
+                "improvements": review_data.get("improvements", [])
+            }
+        except Exception as e:
+            logger.error(f"Code review failed for task {task.id}: {str(e)}")
+            return {
+                "success": False,
+                "error": str(e),
+                "score": 0,
+                "recommendation": "comment",
+                "summary": "Code review failed"
+            }
+
+    def create_pr(self, task_id: str, run_tests: bool = True, run_review: bool = True) -> dict[str, Any]:
+        """Create a PR for a completed task with automated testing and review"""
         self._validate_token()
 
         task = self.db.query(GitHubTask).filter(GitHubTask.id == task_id).first()
@@ -136,9 +255,21 @@ class PRCreator:
 
         owner, repo = self._get_repo_info(task.github_repo)
 
+        # Run automated tests if requested
+        test_results = None
+        if run_tests:
+            logger.info(f"Running automated tests for task {task_id}")
+            test_results = self._run_tests_for_task(task)
+
+        # Perform code review if requested
+        review_results = None
+        if run_review:
+            logger.info(f"Performing code review for task {task_id}")
+            review_results = self._review_code_for_task(task)
+
         # Prepare PR data
         pr_title = f"feat: {task.title}"
-        pr_body = self._generate_pr_description(task)
+        pr_body = self._generate_pr_description(task, test_results=test_results, review_results=review_results)
 
         headers = {
             "Authorization": f"token {self.token}",
@@ -167,6 +298,26 @@ class PRCreator:
         pr_number = pr_result["number"]
         pr_url = pr_result["html_url"]
 
+        # Post code review as comment if review was performed and successful
+        if review_results and review_results.get("success") and run_review:
+            try:
+                review_comment = self.code_reviewer.create_review_comment(review_results)
+                comment_url = f"https://api.github.com/repos/{owner}/{repo}/issues/{pr_number}/comments"
+                comment_data = {"body": review_comment}
+
+                comment_response = requests.post(
+                    comment_url,
+                    headers=headers,
+                    json=comment_data,
+                    timeout=30
+                )
+                if comment_response.status_code == 201:
+                    logger.info(f"Posted code review comment to PR #{pr_number}")
+                else:
+                    logger.warning(f"Failed to post review comment to PR #{pr_number}")
+            except Exception as e:
+                logger.error(f"Failed to post review comment: {str(e)}")
+
         # Update task with PR number
         task.github_pr_number = pr_number
         task.updated_at = datetime.utcnow()
@@ -182,15 +333,19 @@ class PRCreator:
                 "pr_number": pr_number,
                 "pr_url": pr_url,
                 "warning": "Task was not updated with PR number",
+                "test_results": test_results,
+                "review_results": review_results,
             }
 
         logger.info(f"PR #{pr_number} created for task {task_id}")
 
         return {
-            "message": "PR created successfully",
+            "message": "PR created successfully with automated testing and review",
             "pr_number": pr_number,
             "pr_url": pr_url,
             "task_id": task_id,
+            "test_results": test_results,
+            "review_results": review_results,
         }
 
     def create_pr_from_issue(self, issue_number: int, repo: str) -> dict[str, Any]:
@@ -224,11 +379,14 @@ async def get_pr_creator(db: Session = Depends(get_db)) -> PRCreator:
 
 @router.post("/create/{task_id}")
 async def create_pr_endpoint(
-    task_id: str, pr_creator: PRCreator = Depends(get_pr_creator)
+    task_id: str,
+    run_tests: bool = True,
+    run_review: bool = True,
+    pr_creator: PRCreator = Depends(get_pr_creator)
 ) -> dict[str, Any]:
-    """Create a PR for a completed task"""
+    """Create a PR for a completed task with automated testing and review"""
     try:
-        result = pr_creator.create_pr(task_id)
+        result = pr_creator.create_pr(task_id, run_tests=run_tests, run_review=run_review)
         return result
     except HTTPException:
         raise
@@ -388,13 +546,15 @@ async def auto_create_prs_for_completed(repo: str, db: Session = Depends(get_db)
 
     for task in completed_tasks:
         try:
-            result = pr_creator.create_pr(task.id)
+            result = pr_creator.create_pr(task.id, run_tests=True, run_review=True)
             results.append(
                 {
                     "task_id": task.id,
                     "issue_number": task.github_issue_number,
                     "pr_number": result.get("pr_number"),
                     "success": True,
+                    "test_results": result.get("test_results"),
+                    "review_results": result.get("review_results"),
                 }
             )
         except Exception as e:

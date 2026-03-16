@@ -35,6 +35,7 @@ class ComponentType(str, Enum):
     MEMORY = "memory"
     CPU = "cpu"
     NETWORK = "network"
+    CELERY = "celery"
 
 
 @dataclass
@@ -179,6 +180,59 @@ class HealthChecker:
                 details={"error": str(e)},
             )
 
+    async def check_celery(
+        self,
+        broker_url: str = "redis://localhost:6379/0",
+        timeout: int = 10,
+    ) -> ComponentHealth:
+        """Check Celery task queue status"""
+        start = time.perf_counter()
+        try:
+            from celery import Celery
+
+            # Create a minimal Celery app for health check
+            app = Celery("health_check", broker=broker_url)
+
+            # Try to inspect active workers
+            inspect = app.control.inspect()
+
+            # Check for active workers
+            active_workers = inspect.active() or {}
+            stats = inspect.stats() or {}
+
+            latency = (time.perf_counter() - start) * 1000
+
+            worker_count = len(active_workers)
+            if worker_count > 0:
+                status = HealthStatus.HEALTHY
+                message = f"Celery healthy with {worker_count} active worker(s)"
+            else:
+                status = HealthStatus.DEGRADED
+                message = "Celery broker accessible but no active workers"
+
+            return ComponentHealth(
+                name="celery",
+                component_type=ComponentType.CELERY,
+                status=status,
+                message=message,
+                latency_ms=latency,
+                details={
+                    "broker_url": broker_url,
+                    "active_workers": worker_count,
+                    "worker_stats": bool(stats),
+                },
+            )
+        except Exception as e:
+            latency = (time.perf_counter() - start) * 1000
+            return ComponentHealth(
+                name="celery",
+                component_type=ComponentType.CELERY,
+                status=HealthStatus.UNHEALTHY,
+                message=f"Celery check failed: {str(e)}",
+                latency_ms=latency,
+                details={"error": str(e), "broker_url": broker_url},
+            )
+
     def check_system_resources(self) -> List[ComponentHealth]:
         """Check system resource usage"""
         components = []
@@ -307,7 +361,8 @@ class HealthChecker:
         self,
         check_db: bool = True,
         check_redis: bool = True,
-        check_external: bool = False,
+        check_celery: bool = True,
+        check_external: bool = True,
     ) -> Dict[str, Any]:
         """Run comprehensive health check"""
         results = []
@@ -325,6 +380,40 @@ class HealthChecker:
         if check_redis:
             redis_health = await self.check_redis()
             results.append(redis_health)
+
+        # Check Celery if requested
+        if check_celery:
+            celery_health = await self.check_celery()
+            results.append(celery_health)
+
+        # Check external APIs if requested
+        if check_external:
+            # GitHub API
+            github_health = await self.check_external_api(
+                name="github_api",
+                url="https://api.github.com",
+                expected_status=200,
+                timeout=10,
+            )
+            results.append(github_health)
+
+            # Gemini API (Google AI Platform)
+            gemini_health = await self.check_external_api(
+                name="gemini_api",
+                url="https://generativelanguage.googleapis.com",
+                expected_status=200,
+                timeout=10,
+            )
+            results.append(gemini_health)
+
+            # Stripe API
+            stripe_health = await self.check_external_api(
+                name="stripe_api",
+                url="https://api.stripe.com",
+                expected_status=200,
+                timeout=10,
+            )
+            results.append(stripe_health)
 
         # Determine overall status
         for result in results:

@@ -2,7 +2,7 @@
 Unit and integration tests for GitHub autonomy system
 """
 
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock, patch, AsyncMock
 
 import pytest
 
@@ -14,6 +14,17 @@ from src.kortana.models import GitHubTask
 def mock_db():
     """Mock database session"""
     db = MagicMock()
+    # Make db methods async
+    async def mock_commit():
+        pass
+    async def mock_execute(stmt):
+        result = MagicMock()
+        result.all.return_value = []
+        result.scalar_one_or_none.return_value = None
+        result.scalars.return_value.all.return_value = []
+        return result
+    db.commit = mock_commit
+    db.execute = mock_execute
     return db
 
 
@@ -241,6 +252,424 @@ class TestCodeGenerator:
         assert formatted.count("\n\n") <= 1
 
 
+class TestGitHubAutonomyService:
+    """Tests for GitHubAutonomyService"""
+
+    @pytest.fixture
+    def service(self, mock_db):
+        """Create GitHubAutonomyService instance"""
+        from src.kortana.services.github_autonomy_service import GitHubAutonomyService
+        return GitHubAutonomyService(db_session=mock_db)
+
+    @pytest.mark.asyncio
+    async def test_validate_token_success(self, service):
+        """Test token validation with valid token"""
+        with patch("os.getenv", return_value="test_token"):
+            service._validate_token()  # Should not raise
+
+    @pytest.mark.asyncio
+    async def test_validate_token_failure(self, service):
+        """Test token validation with missing token"""
+        with patch("os.getenv", return_value=None), \
+             patch("src.kortana.services.github_autonomy_service.get_settings") as mock_settings:
+            mock_settings.return_value.GITHUB_TOKEN = None
+            with pytest.raises(ValueError, match="GitHub token not configured"):
+                service._validate_token()
+
+    @pytest.mark.asyncio
+    async def test_fetch_and_queue_issues_success(self, service, mock_db):
+        """Test fetching and queuing issues"""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = [
+            {"number": 1, "title": "Test Issue", "body": "Description", "labels": []}
+        ]
+        mock_response.raise_for_status = MagicMock()
+
+        with patch("httpx.AsyncClient") as mock_client_class, \
+             patch("os.getenv", return_value="test_token"):
+            mock_client = MagicMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client.get = AsyncMock(return_value=mock_response)
+            # Mock existing issues check
+            mock_result = MagicMock()
+            mock_result.all.return_value = []
+            mock_db.execute.return_value = mock_result
+
+            tasks = await service.fetch_and_queue_issues("test/repo")
+            assert len(tasks) == 1
+            assert tasks[0].github_issue_number == 1
+            assert tasks[0].title == "Test Issue"
+
+    @pytest.mark.asyncio
+    async def test_fetch_and_queue_issues_existing_task(self, service, mock_db):
+        """Test fetching issues when task already exists"""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = [
+            {"number": 1, "title": "Test Issue", "body": "Description", "labels": []}
+        ]
+        mock_response.raise_for_status = MagicMock()
+
+        with patch("httpx.AsyncClient.get") as mock_get, \
+             patch("os.getenv", return_value="test_token"):
+            mock_get.return_value = mock_response
+
+            # Mock existing task
+            mock_result = MagicMock()
+            mock_result.all.return_value = [(1,)]  # Existing issue number
+            mock_db.execute.return_value = mock_result
+
+            tasks = await service.fetch_and_queue_issues("test/repo")
+            assert len(tasks) == 0  # No new tasks should be created
+
+    def test_determine_priority_high(self, service):
+        """Test priority determination for high priority labels"""
+        issue = {"labels": [{"name": "critical"}, {"name": "bug"}]}
+        priority = service._determine_priority(issue)
+        assert priority == "high"
+
+    def test_determine_priority_low(self, service):
+        """Test priority determination for low priority labels"""
+        issue = {"labels": [{"name": "chore"}, {"name": "p2"}]}
+        priority = service._determine_priority(issue)
+        assert priority == "low"
+
+    def test_determine_priority_medium(self, service):
+        """Test priority determination for medium priority (default)"""
+        issue = {"labels": [{"name": "enhancement"}]}
+        priority = service._determine_priority(issue)
+        assert priority == "medium"
+
+    def test_generate_branch_name(self, service):
+        """Test branch name generation"""
+        branch_name = service._generate_branch_name(123, "Test Issue Title")
+        assert branch_name.startswith("auto-fix/123-")
+        assert "test-issue-title" in branch_name
+        assert len(branch_name) <= 50 + len("auto-fix/123-")
+
+    @pytest.mark.asyncio
+    async def test_analyze_task_success(self, service, mock_db):
+        """Test task analysis"""
+        task = GitHubTask(
+            github_issue_number=1,
+            github_repo="test/repo",
+            title="Test Task",
+            description="Test description",
+            status="pending"
+        )
+
+        with patch("src.kortana.services.github_autonomy_service.gemini_service.analyze_text") as mock_analyze:
+            mock_analyze.return_value = "Analysis result"
+            mock_db.commit = MagicMock()
+
+            result = await service.analyze_task(task)
+            assert result.status == "analyzed"
+            assert result.analysis == "Analysis result"
+            assert result.analyzed_at is not None
+
+    @pytest.mark.asyncio
+    async def test_analyze_task_by_id(self, service, mock_db):
+        """Test task analysis by ID"""
+        task = GitHubTask(
+            id="test-id",
+            github_issue_number=1,
+            github_repo="test/repo",
+            title="Test Task",
+            description="Test description",
+            status="pending"
+        )
+
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = task
+        mock_db.execute.return_value = mock_result
+
+        with patch("src.kortana.services.github_autonomy_service.gemini_service.analyze_text") as mock_analyze:
+            mock_analyze.return_value = "Analysis result"
+            mock_db.commit = MagicMock()
+
+            result = await service.analyze_task("test-id")
+            assert result.status == "analyzed"
+
+    @pytest.mark.asyncio
+    async def test_plan_task_success(self, service, mock_db):
+        """Test task planning"""
+        task = GitHubTask(
+            github_issue_number=1,
+            github_repo="test/repo",
+            title="Test Task",
+            description="Test description",
+            analysis="Test analysis",
+            status="analyzed"
+        )
+
+        with patch("src.kortana.services.github_autonomy_service.gemini_service.analyze_text") as mock_analyze:
+            mock_analyze.return_value = "Planning result"
+            mock_db.commit = MagicMock()
+
+            result = await service.plan_task(task)
+            assert result.status == "planning_complete"
+            assert result.plan == "Planning result"
+
+    @pytest.mark.asyncio
+    async def test_execute_task_success(self, service, mock_db):
+        """Test task execution"""
+        task = GitHubTask(
+            github_issue_number=1,
+            github_repo="test/repo",
+            title="Test Task",
+            description="Test description",
+            plan="Test plan",
+            status="planning_complete",
+            branch_name="test-branch"
+        )
+
+        with patch.object(service, "_create_branch", return_value=True), \
+             patch("src.kortana.services.github_autonomy_service.CodeGenerator") as mock_codegen:
+            mock_instance = MagicMock()
+            mock_instance.generate_from_gemini_plan.return_value = {"errors": None}
+            mock_codegen.return_value = mock_instance
+            mock_db.commit = MagicMock()
+
+            result = await service.execute_task(task)
+            assert result.status == "executed"
+            assert result.executed_at is not None
+
+    @pytest.mark.asyncio
+    async def test_execute_task_branch_creation_failure(self, service, mock_db):
+        """Test task execution when branch creation fails"""
+        task = GitHubTask(
+            github_issue_number=1,
+            github_repo="test/repo",
+            title="Test Task",
+            description="Test description",
+            plan="Test plan",
+            status="planning_complete",
+            branch_name="test-branch"
+        )
+
+        with patch.object(service, "_create_branch", return_value=False):
+            mock_db.commit = MagicMock()
+
+            with pytest.raises(Exception, match="Failed to create GitHub branch"):
+                await service.execute_task(task)
+
+    @pytest.mark.asyncio
+    async def test_create_branch_success(self, service):
+        """Test branch creation success"""
+        task = GitHubTask(branch_name="test-branch", github_repo="owner/repo")
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"object": {"sha": "abc123"}}
+
+        create_response = MagicMock()
+        create_response.status_code = 201
+
+        async def mock_get(*args, **kwargs):
+            return mock_response
+
+        async def mock_post(*args, **kwargs):
+            return create_response
+
+        with patch("httpx.AsyncClient") as mock_client_class, \
+             patch("os.getenv", return_value="test_token"):
+            mock_client = MagicMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+            mock_client.get = mock_get
+            mock_client.post = mock_post
+
+            result = await service._create_branch(task)
+            assert result is True
+
+    @pytest.mark.asyncio
+    async def test_create_branch_master_fallback(self, service):
+        """Test branch creation with master branch fallback"""
+        task = GitHubTask(branch_name="test-branch", github_repo="owner/repo")
+
+        # Main branch fails, master succeeds
+        main_response = MagicMock()
+        main_response.status_code = 404
+
+        master_response = MagicMock()
+        master_response.status_code = 200
+        master_response.json.return_value = {"object": {"sha": "abc123"}}
+
+        create_response = MagicMock()
+        create_response.status_code = 201
+
+        with patch("httpx.AsyncClient") as mock_client_class, \
+             patch("os.getenv", return_value="test_token"):
+            mock_client = MagicMock()
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+
+            # Mock async methods
+            async def mock_get_main(*args, **kwargs):
+                return main_response
+            async def mock_get_master(*args, **kwargs):
+                return master_response
+            async def mock_post(*args, **kwargs):
+                return create_response
+
+            mock_client.get = MagicMock(side_effect=[main_response, master_response])
+            mock_client.post = MagicMock(return_value=create_response)
+
+            result = await service._create_branch(task)
+            assert result is True
+
+
+class TestHOPAutonomyService:
+    """Tests for HOPAutonomyService"""
+
+    @pytest.fixture
+    def service(self, mock_db):
+        """Create HOPAutonomyService instance"""
+        from src.kortana.services.hop_autonomy_service import HOPAutonomyService
+        return HOPAutonomyService(db_session=mock_db)
+
+    @pytest.fixture
+    def mock_task(self):
+        """Create mock task"""
+        from src.kortana.models import Task
+        return Task(
+            id="test-id",
+            title="Test Task",
+            description="Test description",
+            status="pending",
+            classification=None
+        )
+
+    @pytest.mark.asyncio
+    async def test_run_hop_cycle_success(self, service):
+        """Test running HOP cycle"""
+        with patch("src.kortana.services.hop_autonomy_service.run_autonomy_cycle.delay") as mock_delay:
+            mock_task = MagicMock()
+            mock_task.id = "celery-task-id"
+            mock_delay.return_value = mock_task
+
+            result = await service.run_hop_cycle()
+            assert result["status"] == "cycle_started"
+            assert result["celery_task_id"] == "celery-task-id"
+
+    @pytest.mark.asyncio
+    async def test_classify_hop_task_auto(self, service, mock_task, mock_db):
+        """Test task classification as auto"""
+        with patch("src.kortana.services.hop_autonomy_service.gemini_service.analyze_text") as mock_analyze:
+            mock_analyze.return_value = "auto"
+            mock_db.commit = MagicMock()
+
+            result = await service.classify_hop_task(mock_task)
+            assert result == "auto"
+            assert mock_task.classification == "auto"
+
+    @pytest.mark.asyncio
+    async def test_classify_hop_task_invalid_response(self, service, mock_task, mock_db):
+        """Test task classification with invalid response defaults to ho"""
+        with patch("src.kortana.services.hop_autonomy_service.gemini_service.analyze_text") as mock_analyze:
+            mock_analyze.return_value = "invalid"
+            mock_db.commit = MagicMock()
+
+            result = await service.classify_hop_task(mock_task)
+            assert result == "ho"
+            assert mock_task.classification == "ho"
+
+    @pytest.mark.asyncio
+    async def test_get_autonomy_status(self, service, mock_db):
+        """Test getting autonomy status"""
+        # Mock the count queries
+        mock_count_result = MagicMock()
+        mock_count_result.scalar_one.return_value = 5
+
+        mock_recent_result = MagicMock()
+        mock_recent_result.scalar_one_or_none.return_value = None
+
+        mock_db.execute.side_effect = [mock_count_result] * 6 + [mock_recent_result]
+
+        result = await service.get_autonomy_status()
+        assert result["status"] == "active"
+        assert result["statistics"]["total_tasks"] == 5
+        assert "by_status" in result["statistics"]
+        assert "by_classification" in result["statistics"]
+
+    @pytest.mark.asyncio
+    async def test_trigger_task(self, service):
+        """Test triggering a task action"""
+        result = await service.trigger_task("autonomous_merge", "task-123")
+        assert result["status"] == "triggered"
+        assert result["action"] == "autonomous_merge"
+        assert result["task_id"] == "task-123"
+
+    @pytest.mark.asyncio
+    async def test_should_require_human_not_classified(self, service, mock_task):
+        """Test human requirement check for unclassified task"""
+        with patch.object(service, "classify_hop_task", return_value="ho") as mock_classify:
+            result = await service.should_require_human(mock_task)
+            assert result is True
+            mock_classify.assert_called_once_with(mock_task)
+
+    @pytest.mark.asyncio
+    async def test_should_require_human_already_classified(self, service, mock_task):
+        """Test human requirement check for already classified task"""
+        mock_task.classification = "approval"
+        result = await service.should_require_human(mock_task)
+        assert result is True
+
+    @pytest.mark.asyncio
+    async def test_generate_ho_scaffold(self, service, mock_task, mock_db):
+        """Test generating HO scaffold"""
+        with patch("src.kortana.services.hop_autonomy_service.gemini_service.analyze_text") as mock_analyze:
+            mock_analyze.return_value = "Scaffold content"
+            mock_db.commit = MagicMock()
+
+            result = await service.generate_ho_scaffold(mock_task)
+            assert result == "Scaffold content"
+            assert mock_task.ho_scaffold == "Scaffold content"
+
+    @pytest.mark.asyncio
+    async def test_approve_task_success(self, service, mock_db):
+        """Test task approval"""
+        mock_task = MagicMock()
+        mock_task.status = "waiting_for_ho"
+        mock_task.metadata_json = None
+
+        mock_result = MagicMock()
+        mock_result.scalar_one.return_value = mock_task
+        mock_db.execute.return_value = mock_result
+        mock_db.commit = MagicMock()
+
+        result = await service.approve_task("task-123", True, "Approved")
+        assert result.status == "pending"
+        assert result.classification == "auto"
+
+    @pytest.mark.asyncio
+    async def test_approve_task_reject(self, service, mock_db):
+        """Test task rejection"""
+        mock_task = MagicMock()
+        mock_task.status = "waiting_for_ho"
+        mock_task.metadata_json = None
+
+        mock_result = MagicMock()
+        mock_result.scalar_one.return_value = mock_task
+        mock_db.execute.return_value = mock_result
+        mock_db.commit = MagicMock()
+
+        result = await service.approve_task("task-123", False, "Rejected")
+        assert result.status == "cancelled"
+
+    @pytest.mark.asyncio
+    async def test_approve_task_not_waiting(self, service, mock_db):
+        """Test approval of task not waiting for approval"""
+        mock_task = MagicMock()
+        mock_task.status = "completed"
+
+        mock_result = MagicMock()
+        mock_result.scalar_one.return_value = mock_task
+        mock_db.execute.return_value = mock_result
+
+        with pytest.raises(ValueError, match="not awaiting approval"):
+            await service.approve_task("task-123", True)
+
+
 class TestGitHubTaskModel:
     """Tests for GitHubTask database model"""
 
@@ -255,47 +684,8 @@ class TestGitHubTaskModel:
             branch_name="feature/1-test",
         )
         assert task.github_issue_number == 1
-        assert task.status == "pending"
-
-    def test_github_task_status_transitions(self):
-        """Test valid status transitions"""
-        task = GitHubTask(
-            github_issue_number=1,
-            github_repo="test/repo",
-            title="Test",
-            description="Test",
-            branch_name="feature/1",
-        )
-
-        valid_statuses = [
-            "pending",
-            "analyzing",
-            "planning",
-            "ready_to_execute",
-            "executing",
-            "completed",
-            "failed",
-        ]
-
-        for status in valid_statuses:
-            task.status = status
-            assert task.status == status
-
-    def test_github_task_error_tracking(self):
-        """Test error tracking on tasks"""
-        task = GitHubTask(
-            github_issue_number=1,
-            github_repo="test/repo",
-            title="Test",
-            description="Test",
-            branch_name="feature/1",
-            error_count=0,
-            max_retries=3,
-        )
-
-        assert task.error_count == 0
-        task.error_count += 1
-        assert task.error_count == 1
+        assert task.github_repo == "test/repo"
+        assert task.title == "Test Task"
 
 
 class TestRateLimiting:

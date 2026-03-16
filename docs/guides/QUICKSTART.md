@@ -22,20 +22,19 @@
 git clone https://github.com/KOR-TANA/kortana.git
 cd kortana
 
-# Install dependencies
-npm install
-cd client && npm install && cd ..
+# Install Python dependencies
+cd backend
+pip install -r requirements.txt
 
 # Configure environment
 cp .env.example .env
-# Edit .env and add your GEMINI_API_KEY
+# Edit .env and add your GEMINI_API_KEY and GITHUB_TOKEN
 
-# Build and run
-npm run build:all
-npm start
+# Start the backend
+uvicorn main:app --reload --port 8000
 ```
 
-Open http://localhost:3001 and enter your GitHub token!
+Open http://localhost:8000/docs and enter your GitHub token!
 
 ### 3. Cloud Run Deployment
 
@@ -60,8 +59,8 @@ gcloud builds submit --config cloudbuild.yaml
 
 ## 📖 What's Included
 
-✅ **Backend API** (Node.js + TypeScript + Express)
-- GitHub integration via Octokit
+✅ **Backend API** (FastAPI + Python + Uvicorn)
+- GitHub integration via PyGitHub
 - Gemini AI analysis
 - RESTful API endpoints
 
@@ -86,10 +85,10 @@ gcloud builds submit --config cloudbuild.yaml
 
 ```bash
 # Test backend
-curl http://localhost:3001/health
+curl http://localhost:8000/api/health
 
 # Test with your GitHub token
-curl -X POST http://localhost:3001/api/github/analyze \
+curl -X POST http://localhost:8000/api/github/analyze \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_GITHUB_TOKEN" \
   -d '{"owner": "octocat", "repo": "Hello-World"}'
@@ -99,21 +98,22 @@ curl -X POST http://localhost:3001/api/github/analyze \
 
 ```
 kortana/
-├── src/                     # Backend (TypeScript)
-│   ├── services/
-│   │   ├── GitHubConnector.ts
-│   │   └── KortanaAI.ts
-│   ├── routes/
-│   │   └── github.ts
-│   └── server.ts
-├── client/                  # Frontend (React)
+├── backend/                     # Backend (Python/FastAPI)
+│   ├── main.py                  # Application entry point
+│   ├── requirements.txt         # Python dependencies
+│   ├── routers/                 # API route handlers
+│   │   ├── github.py            # GitHub integration
+│   │   ├── gemini.py            # AI analysis
+│   │   └── agents.py            # Agent management
+│   └── config.py                # Configuration
+├── frontend/                    # Frontend (React)
 │   └── src/
-│       ├── GitHubDashboard.tsx
-│       └── GitHubDashboard.css
-├── Dockerfile
-├── cloudbuild.yaml
-├── .github/workflows/deploy.yml
-└── README.md
+│       ├── App.tsx              # Main application
+│       └── components/          # UI components
+├── Dockerfile                   # Container build
+├── cloudbuild.yaml              # Cloud deployment
+├── .github/workflows/deploy.yml # CI/CD pipeline
+└── README.md                    # Documentation
 ```
 
 ## 🔒 Security Notes
@@ -125,8 +125,8 @@ kortana/
 
 ## 🆘 Troubleshooting
 
-**"Cannot find module 'express'"**
-→ Run `npm install`
+**"Module not found"**
+→ Run `pip install -r requirements.txt`
 
 **"Authentication failed"**
 → Check GitHub token is valid and has required scopes
@@ -135,7 +135,7 @@ kortana/
 → Verify API key and quota
 
 **Docker issues**
-→ Build locally first: `npm run build:all`
+→ Build locally first: `docker build -t kortana .`
 
 ## 📚 More Information
 
@@ -145,4 +145,4 @@ kortana/
 
 ---
 
-Built with ❤️ using Node.js, TypeScript, React, and Google Gemini AI
+Built with ❤️ using FastAPI, Python, React, and Google Gemini AI

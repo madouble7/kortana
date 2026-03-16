@@ -6,6 +6,7 @@ Handles automated code review, security scanning, and approval logic
 import logging
 import os
 import re
+from typing import Optional
 
 import requests
 from fastapi import APIRouter, HTTPException
@@ -149,7 +150,7 @@ class CodeReviewer:
             "issues": issues,
         }
 
-    def generate_review(self, code: str, plan: str = None) -> str:
+    def generate_review(self, code: str, plan: Optional[str] = None) -> str:
         """
         Generate detailed code review using Gemini
 
@@ -273,13 +274,135 @@ Provide a JSON response with the following structure:
             logger.error(f"Error creating review comment: {e}")
             return "Error generating review comment"
 
+    def get_pr_files(self, owner: str, repo: str, pr_number: int, github_token: Optional[str] = None) -> list[dict]:
+        """
+        Get files changed in a PR
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            pr_number: PR number
+            github_token: GitHub API token
+
+        Returns:
+            List of changed files
+        """
+        if not github_token:
+            raise CodeReviewError("GitHub token required")
+
+        url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{pr_number}/files"
+        headers = {
+            "Authorization": f"token {github_token}",
+            "Accept": "application/vnd.github.v3+json",
+        }
+
+        try:
+            response = requests.get(url, headers=headers, timeout=30)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            raise CodeReviewError(f"Failed to get PR files: {e}") from e
+
+    def get_pr_diff(self, owner: str, repo: str, pr_number: int, github_token: Optional[str] = None) -> str:
+        """
+        Get the diff of a PR
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            pr_number: PR number
+            github_token: GitHub API token
+
+        Returns:
+            PR diff as string
+        """
+        if not github_token:
+            raise CodeReviewError("GitHub token required")
+
+        url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{pr_number}"
+        headers = {
+            "Authorization": f"token {github_token}",
+            "Accept": "application/vnd.github.v3.diff",
+        }
+
+        try:
+            response = requests.get(url, headers=headers, timeout=30)
+            response.raise_for_status()
+            return response.text
+        except requests.exceptions.RequestException as e:
+            raise CodeReviewError(f"Failed to get PR diff: {e}") from e
+
+    def review_pr(
+        self,
+        owner: str,
+        repo: str,
+        pr_number: int,
+        github_token: Optional[str] = None,
+        post_comment: bool = True,
+    ) -> dict:
+        """
+        Perform automated code review on a PR
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            pr_number: PR number
+            github_token: GitHub API token
+            post_comment: Whether to post review as comment
+
+        Returns:
+            Review results
+        """
+        try:
+            # Get PR diff for review
+            diff = self.get_pr_diff(owner, repo, pr_number, github_token)
+
+            if not diff.strip():
+                raise CodeReviewError("No diff available for PR")
+
+            # Generate review using the diff
+            review = self.generate_review(diff)
+
+            # Parse review JSON
+            import json
+            if isinstance(review, str):
+                try:
+                    review_data = json.loads(review)
+                except json.JSONDecodeError:
+                    review_data = {"summary": review, "overall_score": 5}
+            else:
+                review_data = review
+
+            result = {
+                "success": True,
+                "pr_number": pr_number,
+                "review": review_data,
+                "posted_comment": False,
+            }
+
+            # Post review as comment if requested
+            if post_comment and github_token:
+                post_result = self.post_review(owner, repo, pr_number, review_data, github_token)
+                result["posted_comment"] = post_result.get("success", False)
+                result["comment_id"] = post_result.get("comment_id")
+
+            return result
+
+        except Exception as e:
+            logger.error(f"PR review failed for {owner}/{repo}#{pr_number}: {str(e)}")
+            return {
+                "success": False,
+                "pr_number": pr_number,
+                "error": str(e),
+            }
+
     def post_review(
         self,
         owner: str,
         repo: str,
         pr_number: int,
         review: dict,
-        github_token: str = None,
+        github_token: Optional[str] = None,
         dry_run: bool = False,
     ) -> dict:
         """
@@ -374,3 +497,58 @@ async def security_scan(code: str):
         }
     except CodeReviewError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/review-pr")
+async def review_pull_request(
+    owner: str,
+    repo: str,
+    pr_number: int,
+    github_token: Optional[str] = None,
+    post_comment: bool = True,
+):
+    """Perform automated code review on a pull request"""
+    try:
+        reviewer = CodeReviewer()
+        result = reviewer.review_pr(owner, repo, pr_number, github_token, post_comment)
+        return result
+    except CodeReviewError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"PR review endpoint error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/pr-files/{owner}/{repo}/{pr_number}")
+async def get_pr_files_endpoint(owner: str, repo: str, pr_number: int, github_token: Optional[str] = None):
+    """Get files changed in a pull request"""
+    try:
+        reviewer = CodeReviewer()
+        files = reviewer.get_pr_files(owner, repo, pr_number, github_token)
+        return {"files": files, "count": len(files)}
+    except CodeReviewError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Get PR files endpoint error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/post-review/{owner}/{repo}/{pr_number}")
+async def post_review_endpoint(
+    owner: str,
+    repo: str,
+    pr_number: int,
+    review: dict,
+    github_token: Optional[str] = None,
+    dry_run: bool = False,
+):
+    """Post a code review comment to a pull request"""
+    try:
+        reviewer = CodeReviewer()
+        result = reviewer.post_review(owner, repo, pr_number, review, github_token, dry_run)
+        return result
+    except CodeReviewError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Post review endpoint error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

@@ -6,7 +6,7 @@ Tests GitHub PR creation, status tracking, and automation features
 from unittest.mock import MagicMock, patch
 
 import pytest
-from fastapi.testclient import TestClient
+import httpx
 from sqlalchemy.orm import Session
 from src.kortana.models import GitHubTask
 from src.kortana.routers.pr_creation import PRCreationError, PRCreator
@@ -202,7 +202,8 @@ class TestPRCreationAPI:
     @pytest.fixture
     def client(self, app_fixture):
         """Create test client"""
-        return TestClient(app_fixture)
+        from .conftest import SyncTestClient
+        return SyncTestClient(app_fixture)
 
     @patch("src.kortana.routers.pr_creation.PRCreator.create_pr")
     def test_create_pr_endpoint(self, mock_create, client):

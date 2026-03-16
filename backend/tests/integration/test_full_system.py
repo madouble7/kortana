@@ -104,11 +104,11 @@ def test_application_startup():
     print_header("TEST 2: Application Startup")
 
     try:
-        from fastapi.testclient import TestClient
+        from ..conftest import SyncTestClient
         from src.kortana.main import app
 
         # Create test client
-        client = TestClient(app)
+        client = SyncTestClient(app)
 
         # Test health endpoint
         response = client.get("/api/health")

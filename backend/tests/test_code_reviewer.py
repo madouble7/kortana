@@ -7,7 +7,7 @@ import json
 from unittest.mock import MagicMock, patch
 
 import pytest
-from fastapi.testclient import TestClient
+import httpx
 from src.kortana.routers.code_reviewer import CodeReviewer
 
 
@@ -256,7 +256,8 @@ class TestCodeReviewAPI:
     @pytest.fixture
     def client(self, app_fixture):
         """Create test client"""
-        return TestClient(app_fixture)
+        from .conftest import SyncTestClient
+        return SyncTestClient(app_fixture)
 
     @patch("src.kortana.routers.code_reviewer.CodeReviewer.scan_for_security_issues")
     def test_scan_security_endpoint(self, mock_scan, client):
