@@ -7,31 +7,78 @@ Loads secrets from .env file and environment variables
 import os
 from functools import lru_cache
 from pathlib import Path
+from secrets import token_urlsafe
 from typing import Any
 
 from dotenv import load_dotenv
 
-# Load .env file at module import time
-env_path = Path(__file__).parent / ".env"
-if env_path.exists():
-    load_dotenv(env_path)
-else:
-    # Fallback to checking parent directory
-    parent_env = Path(__file__).parent.parent / ".env"
-    if parent_env.exists():
-        load_dotenv(parent_env)
+_ENV_FILENAMES = (".env",)
+_PLACEHOLDER_VALUES = {
+    "change-me-in-production",
+    "your-secret-key-change-in-production",
+    "your-secret-key-here",
+    "your-heartbeat-token",
+    "your-session-salt",
+    "your-secure-password",
+    "sk-...",
+    "github_pat_...",
+    "gsk_...",
+    "pcsk_...",
+}
+_DEV_SECRET_KEY = token_urlsafe(48)
+
+
+def _normalize_env_value(value: str | None) -> str | None:
+    """Normalize empty environment values to None."""
+    if value is None:
+        return None
+
+    normalized = value.strip()
+    return normalized or None
+
+
+def _is_placeholder(value: str | None) -> bool:
+    """Return True when a value is blank or matches a known placeholder."""
+    normalized = _normalize_env_value(value)
+    return normalized is None or normalized in _PLACEHOLDER_VALUES
+
+
+def _get_env(name: str, default: str | None = None) -> str | None:
+    """Read an environment variable, treating blank strings as unset."""
+    return _normalize_env_value(os.getenv(name)) or default
+
+
+def _find_env_file(start_path: Path | None = None) -> Path | None:
+    """Locate the nearest backend .env file by walking up parent directories."""
+    current = (start_path or Path(__file__).resolve().parent).resolve()
+    for directory in (current, *current.parents):
+        for filename in _ENV_FILENAMES:
+            candidate = directory / filename
+            if candidate.is_file():
+                return candidate
+        if directory.name == "backend":
+            break
+    return None
+
+
+_LOADED_ENV_FILE: Path | None = None
+if (_get_env("KORTANA_SKIP_DOTENV") or "false").lower() != "true":
+    _LOADED_ENV_FILE = _find_env_file()
+    if _LOADED_ENV_FILE is not None:
+        load_dotenv(_LOADED_ENV_FILE, override=False)
 
 
 class Settings:
     """Application settings loaded from environment variables"""
 
     # Environment
-    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
+    ENVIRONMENT: str = _get_env("ENVIRONMENT", "development") or "development"
     DEBUG: bool = ENVIRONMENT == "development"
+    ENV_FILE: str | None = str(_LOADED_ENV_FILE) if _LOADED_ENV_FILE else None
 
     # Server
-    HOST: str = os.getenv("HOST", "0.0.0.0")
-    PORT: int = int(os.getenv("PORT", 8000))
+    HOST: str = _get_env("HOST", "0.0.0.0") or "0.0.0.0"
+    PORT: int = int(_get_env("PORT", "8000") or "8000")
 
     # API Configuration
     API_TITLE: str = "Kor'tana Backend"
@@ -39,113 +86,149 @@ class Settings:
     API_DESCRIPTION: str = "Autonomous AI constellation API"
 
     # CORS Configuration
-    CORS_ORIGINS: list[str] = os.getenv(
-        "CORS_ORIGINS",
-        "http://localhost:3000,http://localhost:8000,http://127.0.0.1:8000,http://localhost:8080,http://localhost:5173",
+    CORS_ORIGINS: list[str] = (
+        _get_env(
+            "CORS_ORIGINS",
+            "http://localhost:3000,http://localhost:8000,http://127.0.0.1:8000,http://localhost:8080,http://localhost:5173",
+        )
+        or ""
     ).split(",")
     CORS_CREDENTIALS: bool = True
     CORS_METHODS: list[str] = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     CORS_HEADERS: list[str] = ["*"]
 
     # AI & LLM Providers
-    OPENAI_API_KEY: str | None = os.getenv("OPENAI_API_KEY")
-    ANTHROPIC_API_KEY: str | None = os.getenv("ANTHROPIC_API_KEY")
-    GOOGLE_API_KEY: str | None = os.getenv("GOOGLE_API_KEY")
-    GOOGLE_PROJECT_ID: str = os.getenv("GOOGLE_PROJECT_ID", "")
-    OPENROUTER_API_KEY: str | None = os.getenv("OPENROUTER_API_KEY")
-    GROQ_API_KEY: str | None = os.getenv("GROQ_API_KEY")
+    OPENAI_API_KEY: str | None = _get_env("OPENAI_API_KEY")
+    ANTHROPIC_API_KEY: str | None = _get_env("ANTHROPIC_API_KEY")
+    GOOGLE_API_KEY: str | None = _get_env("GOOGLE_API_KEY")
+    GOOGLE_PROJECT_ID: str = _get_env("GOOGLE_PROJECT_ID", "") or ""
+    OPENROUTER_API_KEY: str | None = _get_env("OPENROUTER_API_KEY")
+    GROQ_API_KEY: str | None = _get_env("GROQ_API_KEY")
     # Gemini uses GEMINI_API_KEY or falls back to GOOGLE_API_KEY
-    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or ""
+    GEMINI_API_KEY: str = _get_env("GEMINI_API_KEY") or _get_env("GOOGLE_API_KEY") or ""
 
     # Vector Database
-    PINECONE_API_KEY: str | None = os.getenv("PINECONE_API_KEY")
-    PINECONE_ENVIRONMENT: str = os.getenv("PINECONE_ENVIRONMENT", "us-east-1")
+    PINECONE_API_KEY: str | None = _get_env("PINECONE_API_KEY")
+    PINECONE_ENVIRONMENT: str = (
+        _get_env("PINECONE_ENVIRONMENT", "us-east-1") or "us-east-1"
+    )
 
     # Google Integration
-    GOOGLE_DRIVE_API_KEY: str = os.getenv("GOOGLE_DRIVE_API_KEY", "")
-    GOOGLE_CLIENT_ID: str | None = os.getenv("GOOGLE_CLIENT_ID")
-    GOOGLE_CLIENT_SECRET: str | None = os.getenv("GOOGLE_CLIENT_SECRET")
-    GOOGLE_REDIRECT_URI: str = os.getenv(
-        "GOOGLE_REDIRECT_URI", "http://localhost:3000/oauth/callback"
+    GOOGLE_DRIVE_API_KEY: str = _get_env("GOOGLE_DRIVE_API_KEY", "") or ""
+    GOOGLE_CLIENT_ID: str | None = _get_env("GOOGLE_CLIENT_ID")
+    GOOGLE_CLIENT_SECRET: str | None = _get_env("GOOGLE_CLIENT_SECRET")
+    GOOGLE_REDIRECT_URI: str = (
+        _get_env("GOOGLE_REDIRECT_URI", "http://localhost:3000/oauth/callback")
+        or "http://localhost:3000/oauth/callback"
     )
-    GOOGLE_REFRESH_TOKEN: str | None = os.getenv("GOOGLE_REFRESH_TOKEN")
-    GOOGLE_APPLICATION_CREDENTIALS: str | None = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+    GOOGLE_REFRESH_TOKEN: str | None = _get_env("GOOGLE_REFRESH_TOKEN")
+    GOOGLE_APPLICATION_CREDENTIALS: str | None = _get_env(
+        "GOOGLE_APPLICATION_CREDENTIALS"
+    )
 
     # GitHub Integration
-    GITHUB_TOKEN: str | None = os.getenv("GITHUB_TOKEN")
-    GITHUB_OWNER: str = os.getenv("GITHUB_OWNER", "KOR-TANA")
-    GITHUB_REPO: str = os.getenv("GITHUB_REPO", "kortana")
+    GITHUB_TOKEN: str | None = _get_env("GITHUB_TOKEN")
+    GITHUB_OWNER: str = _get_env("GITHUB_OWNER", "KOR-TANA") or "KOR-TANA"
+    GITHUB_REPO: str = _get_env("GITHUB_REPO", "kortana") or "kortana"
 
     # Discord Integration
-    DISCORD_BOT_TOKEN: str | None = os.getenv("DISCORD_BOT_TOKEN")
-    DISCORD_CLIENT_ID: str | None = os.getenv("CLIENT_ID")
+    DISCORD_BOT_TOKEN: str | None = _get_env("DISCORD_BOT_TOKEN")
+    DISCORD_CLIENT_ID: str | None = _get_env("CLIENT_ID")
 
     # Twilio Integration
-    TWILIO_ACCOUNT_SID: str | None = os.getenv("TWILIO_ACCOUNT_SID")
-    TWILIO_AUTH_TOKEN: str | None = os.getenv("TWILIO_AUTH_TOKEN")
+    TWILIO_ACCOUNT_SID: str | None = _get_env("TWILIO_ACCOUNT_SID")
+    TWILIO_AUTH_TOKEN: str | None = _get_env("TWILIO_AUTH_TOKEN")
 
     # Stripe Payment
-    STRIPE_SECRET_KEY: str | None = os.getenv("STRIPE_SECRET_KEY")
-    STRIPE_PUBLISHABLE_KEY: str | None = os.getenv("STRIPE_PUBLISHABLE_KEY")
-    STRIPE_WEBHOOK_SECRET: str | None = os.getenv("STRIPE_WEBHOOK_SECRET")
+    STRIPE_SECRET_KEY: str | None = _get_env("STRIPE_SECRET_KEY")
+    STRIPE_PUBLISHABLE_KEY: str | None = _get_env("STRIPE_PUBLISHABLE_KEY")
+    STRIPE_WEBHOOK_SECRET: str | None = _get_env("STRIPE_WEBHOOK_SECRET")
 
     # AWS Integration
-    AWS_ACCESS_KEY_ID: str | None = os.getenv("AWS_BACKUP_ACCESS_KEY_ID")
-    AWS_SECRET_ACCESS_KEY: str | None = os.getenv("AWS_BACKUP_SECRET_ACCESS_KEY")
+    AWS_ACCESS_KEY_ID: str | None = _get_env("AWS_BACKUP_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY: str | None = _get_env("AWS_BACKUP_SECRET_ACCESS_KEY")
 
     # Database
-    DB_HOST: str = os.getenv("DB_HOST", "localhost")
-    DB_PORT: int = int(os.getenv("DB_PORT", 5432))
-    DB_NAME: str = os.getenv("DB_NAME", "kortana")
-    DB_USER: str = os.getenv("DB_USER", "postgres")
-    DB_PASSWORD: str = os.getenv("DB_PASSWORD", "supersecretpassword")
+    DB_HOST: str = _get_env("DB_HOST", "localhost") or "localhost"
+    DB_PORT: int = int(_get_env("DB_PORT", "5432") or "5432")
+    DB_NAME: str = _get_env("DB_NAME", "kortana") or "kortana"
+    DB_USER: str = _get_env("DB_USER", "postgres") or "postgres"
+    DB_PASSWORD: str = _get_env("DB_PASSWORD", "") or ""
     # Security
-    SESSION_SALT: str | None = os.getenv("SESSION_SALT")
-    HEARTBEAT_TOKEN: str | None = os.getenv("HEARTBEAT_TOKEN")
+    SESSION_SALT: str | None = _get_env("SESSION_SALT")
+    HEARTBEAT_TOKEN: str | None = _get_env("HEARTBEAT_TOKEN")
 
     @property
     def DATABASE_URL(self) -> str:
         """Constructs the async database URL from settings."""
-        env_url = os.getenv("DATABASE_URL")
+        env_url = _get_env("DATABASE_URL")
         if env_url:
             return env_url
 
-        return f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+        if self.DB_PASSWORD:
+            return (
+                f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}@"
+                f"{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+            )
+
+        if self.ENVIRONMENT == "production":
+            raise ValueError(
+                "DATABASE_URL or complete database credentials must be configured in production"
+            )
+
+        return "sqlite+aiosqlite:///./kortana.db"
 
     # Logging
-    LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO" if not DEBUG else "DEBUG")
-    LOG_FORMAT: str = os.getenv("LOG_FORMAT", "json")
+    LOG_LEVEL: str = _get_env("LOG_LEVEL", "INFO" if not DEBUG else "DEBUG") or (
+        "INFO" if not DEBUG else "DEBUG"
+    )
+    LOG_FORMAT: str = _get_env("LOG_FORMAT", "json") or "json"
 
     # Security
-    ALLOWED_HOSTS: list[str] = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "change-me-in-production")
+    ALLOWED_HOSTS: list[str] = (
+        _get_env("ALLOWED_HOSTS", "localhost,127.0.0.1") or ""
+    ).split(",")
+    SECRET_KEY: str = _get_env("SECRET_KEY") or (
+        _DEV_SECRET_KEY if ENVIRONMENT != "production" else ""
+    )
 
     # Rate Limiting
-    RATE_LIMIT_ENABLED: bool = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
-    RATE_LIMIT_REQUESTS: int = int(os.getenv("RATE_LIMIT_REQUESTS", "100"))
-    RATE_LIMIT_PERIOD: int = int(os.getenv("RATE_LIMIT_PERIOD", "60"))
+    RATE_LIMIT_ENABLED: bool = (
+        _get_env("RATE_LIMIT_ENABLED", "true") or "true"
+    ).lower() == "true"
+    RATE_LIMIT_REQUESTS: int = int(_get_env("RATE_LIMIT_REQUESTS", "100") or "100")
+    RATE_LIMIT_PERIOD: int = int(_get_env("RATE_LIMIT_PERIOD", "60") or "60")
 
     # Timeouts
-    REQUEST_TIMEOUT: int = int(os.getenv("REQUEST_TIMEOUT", "30"))
-    API_TIMEOUT: int = int(os.getenv("API_TIMEOUT", "15"))
+    REQUEST_TIMEOUT: int = int(_get_env("REQUEST_TIMEOUT", "30") or "30")
+    API_TIMEOUT: int = int(_get_env("API_TIMEOUT", "15") or "15")
 
     # Autonomous Task Configuration
-    TASK_MAX_RETRIES: int = int(os.getenv("TASK_MAX_RETRIES", "3"))
-    TASK_RETRY_DELAY: int = int(os.getenv("TASK_RETRY_DELAY", "300"))
-    REPO_ROOT: str = os.getenv("REPO_ROOT", ".")
-    KORTANA_BACKEND_URL: str = os.getenv("KORTANA_BACKEND_URL", "http://localhost:8000")
+    TASK_MAX_RETRIES: int = int(_get_env("TASK_MAX_RETRIES", "3") or "3")
+    TASK_RETRY_DELAY: int = int(_get_env("TASK_RETRY_DELAY", "300") or "300")
+    REPO_ROOT: str = _get_env("REPO_ROOT", ".") or "."
+    KORTANA_BACKEND_URL: str = (
+        _get_env("KORTANA_BACKEND_URL", "http://localhost:8000")
+        or "http://localhost:8000"
+    )
 
     # Autonomy Configuration
-    AUTONOMOUS_MODE: bool = os.getenv("KORTANA_AUTONOMOUS_MODE", "false").lower() == "true"
-    AUTONOMY_CYCLE_INTERVAL: int = int(os.getenv("AUTONOMY_CYCLE_INTERVAL", "600"))
+    AUTONOMOUS_MODE: bool = (
+        _get_env("KORTANA_AUTONOMOUS_MODE", "false") or "false"
+    ).lower() == "true"
+    AUTONOMY_CYCLE_INTERVAL: int = int(
+        _get_env("AUTONOMY_CYCLE_INTERVAL", "600") or "600"
+    )
 
     @classmethod
     def validate(cls) -> None:
         """Validate required settings on startup"""
-        # First, ensure .env is loaded
-        env_path = Path(__file__).parent / ".env"
-        if env_path.exists():
-            load_dotenv(env_path, override=False)
+        if _LOADED_ENV_FILE is not None:
+            load_dotenv(_LOADED_ENV_FILE, override=False)
+        else:
+            print("[!] Warning: No .env file found; relying on process environment")
+
+        settings = cls()
 
         # Core secrets that should always be present
         # Note: Some keys have fallbacks (e.g., GEMINI uses GOOGLE_API_KEY)
@@ -176,20 +259,47 @@ class Settings:
             print("[#] Warning: Missing critical API keys:")
             for item in missing:
                 print(f"   - {item}")
-            if cls.ENVIRONMENT == "production":
+            if settings.ENVIRONMENT == "production":
                 raise ValueError(
                     f"Missing required environment variables in production: {', '.join([m.split()[0] for m in missing])}"
                 )
         else:
             print("[+] All critical API keys validated and loaded")
 
+        if _is_placeholder(settings.SECRET_KEY):
+            raise ValueError("SECRET_KEY must be configured before startup")
+
+        if (
+            settings.ENVIRONMENT != "production"
+            and settings.SECRET_KEY == _DEV_SECRET_KEY
+        ):
+            print(
+                "[!] Warning: SECRET_KEY not set; using an ephemeral development secret"
+            )
+
         # Validate database connection string
         try:
-            inst = cls()
-            db_url = inst.DATABASE_URL
-            if not db_url or "supersecretpassword" in db_url:
-                print("[!] Warning: Database password is using default value")
+            db_url = settings.DATABASE_URL
+            if settings.DB_PASSWORD and settings.DB_PASSWORD.lower() in {
+                "supersecretpassword",
+                "password",
+                "changeme",
+            }:
+                message = "Database password is using an insecure default value"
+                if settings.ENVIRONMENT == "production":
+                    raise ValueError(message)
+                print(f"[!] Warning: {message}")
+            elif not _get_env("DATABASE_URL") and not settings.DB_PASSWORD:
+                print(
+                    "[!] Warning: DATABASE_URL not set; falling back to local SQLite database"
+                )
+            if settings.ENVIRONMENT == "production" and db_url.startswith("sqlite"):
+                print(
+                    "[!] Warning: Production is configured to use SQLite; verify deployment settings"
+                )
         except Exception as e:
+            if settings.ENVIRONMENT == "production":
+                raise
             print(f"[!] Warning: Database configuration issue: {e}")
 
     def to_dict(self) -> dict[str, Any]:

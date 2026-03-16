@@ -8,8 +8,12 @@ client/build/
 
 # Environment variables
 .env
-.env.local
-.env.production
+.env.*
+!.env.example
+!*.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
 
 # Logs
 *.log
@@ -118,7 +122,6 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
 .venv
 env/
 venv/

@@ -28,6 +28,8 @@ from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
 from pydantic import BaseModel
 
+from src.kortana.config import get_settings
+
 # ========================================================
 # PROTOCOLS FOR TYPE SAFETY
 # ========================================================
@@ -73,17 +75,10 @@ class UserObject:
 # CONFIGURATION - ENVIRONMENT-BASED ONLY
 # ========================================================
 
-# Security configuration - environment variables only for production safety
-_SECRET_KEY = os.getenv("SECRET_KEY")
-if not _SECRET_KEY:
-    # Development fallback - NEVER use in production
-    _SECRET_KEY = "kor-tana-unified-dev-secret-change-me-in-production-2026"
-    print(
-        "⚠️  WARNING: Using development SECRET_KEY. Set SECRET_KEY environment variable for production."
-    )
-
-# Ensure SECRET_KEY is always a string for type safety
-SECRET_KEY: str = _SECRET_KEY
+# Resolve secrets through the central settings object so auth matches the app config.
+SECRET_KEY: str = get_settings().SECRET_KEY
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY must be configured before importing auth")
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
@@ -719,9 +714,9 @@ def validate_auth_system_integrity() -> dict:
     }
 
     # Warn if using development secret
-    if SECRET_KEY and "dev-secret" in SECRET_KEY:
+    if not os.getenv("SECRET_KEY") and get_settings().ENVIRONMENT != "production":
         status_check["warnings"] = [
-            "Using development SECRET_KEY - not safe for production"
+            "Using ephemeral development SECRET_KEY - not safe for production"
         ]
 
     return status_check

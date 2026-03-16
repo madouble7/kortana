@@ -3,16 +3,18 @@ Authentication module for Kor'tana Backend
 Handles JWT token generation, validation, and OAuth2 integration
 """
 
-import os
 from datetime import datetime, timedelta
 
 import jwt
+from config import get_settings
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
 
 # Configuration
-SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-production-with-secret-key-from-env")
+SECRET_KEY = get_settings().SECRET_KEY
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY must be configured before importing auth")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -26,7 +28,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 class TokenData:
     """Token data model"""
 
-    def __init__(self, username: str | None = None, scopes: list = None):
+    def __init__(self, username: str | None = None, scopes: list[str] | None = None):
         self.username = username
         self.scopes = scopes or []
 
@@ -61,14 +63,18 @@ def decode_token(token: str) -> dict:
         username: str = payload.get("sub")
         if username is None:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials"
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
             )
         return {"username": username, "scopes": payload.get("scopes", [])}
     except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired")
-    except jwt.JWTError:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired"
+        )
+    except jwt.InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
         )
 
 
