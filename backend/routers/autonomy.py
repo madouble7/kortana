@@ -49,7 +49,9 @@ class AutonomousTaskQueue:
             response.raise_for_status()
         except requests.RequestException as e:
             logger.error(f"Failed to fetch GitHub issues: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Failed to fetch issues: {str(e)}")
+            raise HTTPException(
+                status_code=500, detail=f"Failed to fetch issues: {str(e)}"
+            )
 
         issues = response.json()
         queued_tasks = []
@@ -227,7 +229,9 @@ FILE_CHANGES:
             if task.error_count >= MAX_RETRIES:
                 task.status = "failed"
             self.db.commit()
-            raise HTTPException(status_code=500, detail=f"Plan generation failed: {str(e)}")
+            raise HTTPException(
+                status_code=500, detail=f"Plan generation failed: {str(e)}"
+            )
 
         task.status = "ready_to_execute"
         task.updated_at = datetime.utcnow()
@@ -267,7 +271,9 @@ FILE_CHANGES:
                     else:
                         task.status = "ready_to_execute"
                     self.db.commit()
-                    raise Exception(f"Code generation errors: {generation_result['errors']}")
+                    raise Exception(
+                        f"Code generation errors: {generation_result['errors']}"
+                    )
 
             task.status = "completed"
             task.completed_at = datetime.utcnow()
@@ -304,7 +310,9 @@ FILE_CHANGES:
 
             if ref_response.status_code != 200:
                 # Try master branch
-                ref_url = f"https://api.github.com/repos/{owner}/{repo}/git/ref/heads/master"
+                ref_url = (
+                    f"https://api.github.com/repos/{owner}/{repo}/git/ref/heads/master"
+                )
                 ref_response = requests.get(ref_url, headers=headers, timeout=10)
                 if ref_response.status_code != 200:
                     return False
@@ -394,7 +402,9 @@ async def get_task_queue_status(db: Session = Depends(get_db)) -> dict[str, Any]
                 "status": t.status,
                 "updated_at": t.updated_at.isoformat(),
             }
-            for t in db.query(GitHubTask).order_by(GitHubTask.updated_at.desc()).limit(10)
+            for t in db.query(GitHubTask)
+            .order_by(GitHubTask.updated_at.desc())
+            .limit(10)
         ],
     }
 
@@ -441,7 +451,9 @@ async def plan_task_endpoint(
 
 @router.post("/execute/{task_id}")
 async def execute_task_endpoint(
-    task_id: str, dry_run: bool = False, task_queue: AutonomousTaskQueue = Depends(get_task_queue)
+    task_id: str,
+    dry_run: bool = False,
+    task_queue: AutonomousTaskQueue = Depends(get_task_queue),
 ) -> dict[str, Any]:
     """Execute a specific autonomous task."""
     try:
@@ -461,7 +473,9 @@ async def execute_task_endpoint(
 
 
 @router.get("/tasks/{task_id}")
-async def get_task_details(task_id: str, db: Session = Depends(get_db)) -> dict[str, Any]:
+async def get_task_details(
+    task_id: str, db: Session = Depends(get_db)
+) -> dict[str, Any]:
     """Get detailed information about a task"""
     task = db.query(GitHubTask).filter(GitHubTask.id == task_id).first()
     if not task:
@@ -489,7 +503,9 @@ async def get_task_details(task_id: str, db: Session = Depends(get_db)) -> dict[
 
 
 @router.post("/tasks/{task_id}/retry")
-async def retry_failed_task(task_id: str, db: Session = Depends(get_db)) -> dict[str, Any]:
+async def retry_failed_task(
+    task_id: str, db: Session = Depends(get_db)
+) -> dict[str, Any]:
     """Retry a failed task"""
     task = db.query(GitHubTask).filter(GitHubTask.id == task_id).first()
     if not task:
@@ -497,7 +513,8 @@ async def retry_failed_task(task_id: str, db: Session = Depends(get_db)) -> dict
 
     if task.error_count >= task.max_retries:
         raise HTTPException(
-            status_code=400, detail=f"Task has exceeded max retries ({task.max_retries})"
+            status_code=400,
+            detail=f"Task has exceeded max retries ({task.max_retries})",
         )
 
     task.status = "pending"

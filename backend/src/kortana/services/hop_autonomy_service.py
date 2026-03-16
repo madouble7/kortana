@@ -64,7 +64,7 @@ Classify this task for the Human Oversight Protocol (HOP):
 
 Title: {task.title}
 Description: {task.description}
-Command: {task.command or 'Not specified'}
+Command: {task.command or "Not specified"}
 
 Classify as ONE of the following:
 - auto: Safe for autonomous execution without human oversight
@@ -86,7 +86,8 @@ Respond with ONLY the classification word.
             # Validate classification
             if classification not in ["auto", "ho", "approval"]:
                 log_error(
-                    "hop_autonomy", f"Invalid classification: {classification}, defaulting to 'ho'"
+                    "hop_autonomy",
+                    f"Invalid classification: {classification}, defaulting to 'ho'",
                 )
                 classification = "ho"
 
@@ -96,12 +97,17 @@ Respond with ONLY the classification word.
             if self.db:
                 await self.db.commit()
 
-            log_request("hop_autonomy", f"Task {task.id} classified as: {classification}")
+            log_request(
+                "hop_autonomy", f"Task {task.id} classified as: {classification}"
+            )
 
             return classification
 
         except Exception as e:
-            log_error("hop_autonomy", f"Classification failed for task getattr(task, 'id', 'unknown'): {str(e)}")
+            log_error(
+                "hop_autonomy",
+                f"Classification failed for task getattr(task, 'id', 'unknown'): {str(e)}",
+            )
             # Default to human oversight on error
             task.classification = "ho"
             if self.db:
@@ -118,7 +124,7 @@ Respond with ONLY the classification word.
         self._ensure_db()
         try:
             from sqlalchemy import func
-            
+
             async def count_tasks(filter_expr=None):
                 stmt = select(func.count()).select_from(Task)
                 if filter_expr is not None:
@@ -172,6 +178,26 @@ Respond with ONLY the classification word.
             log_error("hop_autonomy", f"Failed to get autonomy status: {str(e)}")
             raise
 
+    async def trigger_task(
+        self, action: str, task_id: str | None = None
+    ) -> dict[str, Any]:
+        """
+        Triggers a specific autonomous action via HOP.
+        Actions: 'autonomous_merge', 'run_tests', 'validate_codebase'
+        """
+        log_request(
+            "hop_autonomy", f"Triggering action '{action}' for task {task_id or 'all'}"
+        )
+
+        # In a real implementation, this would trigger the actual shell command or API call
+        # For now, we simulate the 'AUTO' execution logic
+        return {
+            "status": "triggered",
+            "action": action,
+            "task_id": task_id,
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+
     async def should_require_human(self, task: Task) -> bool:
         """
         Determine if a task requires human intervention
@@ -193,7 +219,8 @@ Respond with ONLY the classification word.
 
         except Exception as e:
             log_error(
-                "hop_autonomy", f"Error checking human requirement for task {task.id}: {str(e)}"
+                "hop_autonomy",
+                f"Error checking human requirement for task {task.id}: {str(e)}",
             )
             # Default to requiring human on error
             return True
@@ -235,15 +262,23 @@ Format as markdown for readability.
             if self.db:
                 await self.db.commit()
 
-            log_request("hop_autonomy", f"Generated HO scaffold for task {getattr(task, 'id', 'unknown')}")
+            log_request(
+                "hop_autonomy",
+                f"Generated HO scaffold for task {getattr(task, 'id', 'unknown')}",
+            )
 
             return scaffold
 
         except Exception as e:
-            log_error("hop_autonomy", f"Scaffold generation failed for task {getattr(task, 'id', 'unknown')}: {str(e)}")
+            log_error(
+                "hop_autonomy",
+                f"Scaffold generation failed for task {getattr(task, 'id', 'unknown')}: {str(e)}",
+            )
             raise
 
-    async def approve_task(self, task_id: str, approved: bool, notes: str | None = None) -> Task:
+    async def approve_task(
+        self, task_id: str, approved: bool, notes: str | None = None
+    ) -> Task:
         """
         Human approval decision for a task
 
@@ -264,7 +299,9 @@ Format as markdown for readability.
                 raise ValueError(f"Task {task_id} not found")
 
             if task.status != "waiting_for_ho":
-                raise ValueError(f"Task {task_id} is not awaiting approval (status: {task.status})")
+                raise ValueError(
+                    f"Task {task_id} is not awaiting approval (status: {task.status})"
+                )
 
             if approved:
                 task.status = "pending"  # Ready for execution
@@ -284,7 +321,7 @@ Format as markdown for readability.
 
             task.updated_at = datetime.utcnow()
             await self.db.commit()
-            
+
             # Refresh task
             stmt = select(Task).where(Task.id == task_id)
             result = await self.db.execute(stmt)
