@@ -4,6 +4,7 @@ __all__ = [
     "agents",
     "always_on",
     "auth",
+    "autonomous_systems",
     "autonomy",
     "code_reviewer",
     "gemini",

@@ -48,15 +48,24 @@ app.conf.task_routes = {
     "src.kortana.tasks.run_github_autonomy_cycle": {"queue": "autonomy"},
 }
 
-# Celery Beat Schedule
+# Celery Beat Schedule - Autonomous self-sustaining cycles
 app.conf.beat_schedule = {
-    "github-autonomy-every-10-minutes": {
-        "task": "src.kortana.tasks.run_github_autonomy_cycle",
-        "schedule": 600.0,  # 10 minutes
+    # Phase 5: Autonomous Systems Self-Triggering
+    "always-on-monitor-every-5-minutes": {
+        "task": "src.kortana.tasks.run_always_on_monitor",
+        "schedule": 300.0,  # Every 5 minutes
     },
-    "hop-cycle-every-hour": {
-        "task": "src.kortana.tasks.run_autonomy_cycle",
-        "schedule": crontab(minute=0),  # Every hour at top of hour
+    "autonomous-review-every-10-minutes": {
+        "task": "src.kortana.tasks.trigger_autonomous_review_cycle",
+        "schedule": 600.0,  # Every 10 minutes
+    },
+    "autonomous-agent-every-15-minutes": {
+        "task": "src.kortana.tasks.trigger_autonomous_agent_cycle",
+        "schedule": 900.0,  # Every 15 minutes
+    },
+    "master-autonomy-loop-every-20-minutes": {
+        "task": "src.kortana.tasks.autonomous_self_improvement_loop",
+        "schedule": 1200.0,  # Every 20 minutes - master self-improvement cycle
     },
 }
 

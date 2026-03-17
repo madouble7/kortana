@@ -40,6 +40,7 @@ try:
         agents,
         always_on,
         auth,
+        autonomous_systems,
         autonomy,
         code_reviewer,
         gemini,
@@ -228,6 +229,9 @@ def create_app() -> FastAPI:
         app.include_router(agents.router, prefix="/api/agents", tags=["agents"])
         app.include_router(github.router, prefix="/api/github", tags=["github"])
         app.include_router(autonomy.router, prefix="/api/autonomy", tags=["autonomy"])
+        app.include_router(
+            autonomous_systems.router, prefix="/api/autonomous", tags=["autonomous"]
+        )
         app.include_router(
             knowledge.router, prefix="/api/knowledge", tags=["knowledge"]
         )
