@@ -1,0 +1,162 @@
+============================= test session starts =============================
+platform win32 -- Python 3.11.9, pytest-8.4.2, pluggy-1.6.0
+rootdir: C:\KOR-TANA\kortana\backend
+configfile: pytest.ini
+plugins: anyio-4.12.1, asyncio-0.24.0, cov-4.1.0, mock-3.15.1, xdist-3.8.0
+asyncio: mode=Mode.AUTO, default_loop_scope=None
+collected 668 items
+
+tests\integration\test_full_system.py ....                               [  0%]
+tests\test_ai_orchestrator.py ....                                       [  1%]
+tests\test_always_on.py .........................................        [  7%]
+tests\test_auth.py .............                                         [  9%]
+tests\test_auth_extended.py ..............                               [ 11%]
+tests\test_auth_router.py ........................                       [ 14%]
+tests\test_autonomy.py ...........................................       [ 21%]
+tests\test_billing.py ..............................                     [ 25%]
+tests\test_cache.py ................................................     [ 33%]
+tests\test_code_reviewer.py ..........................                   [ 36%]
+tests\test_config_security.py ....                                       [ 37%]
+tests\test_database.py ......F...........                                [ 40%]
+tests\test_exceptions.py .......................                         [ 43%]
+tests\test_health.py ........                                            [ 44%]
+tests\test_health_checker.py ..............................              [ 49%]
+tests\test_hop_engine.py ..................                              [ 52%]
+tests\test_init_db.py FFF                                                [ 52%]
+tests\test_knowledge.py ..................................               [ 57%]
+tests\test_main.py ............                                          [ 59%]
+tests\test_metrics.py ...........................                        [ 63%]
+tests\test_multi_model_ai.py ..............................              [ 67%]
+tests\test_orchestrator.py ................................              [ 72%]
+tests\test_pr_creation.py .....................                          [ 75%]
+tests\test_quick_routers.py .................                            [ 78%]
+tests\test_rate_limit.py ........................................        [ 84%]
+tests\test_schemas.py .................                                  [ 86%]
+tests\test_secrets_validator.py ..........................               [ 90%]
+tests\test_security_middleware.py ..............                         [ 92%]
+tests\test_setup_migrations.py FFF                                       [ 93%]
+tests\test_task_queue.py ........F...................                    [ 97%]
+tests\test_tasks.py ................                                     [100%]
+
+================================== FAILURES ===================================
+_____________ TestDatabaseManager.test_get_session_yields_session _____________
+tests\test_database.py:88: in test_get_session_yields_session
+    assert session is mock_session
+E   AssertionError: assert <coroutine object AsyncMockMixin._execute_mock_call at 0x000002AC7C5C4C40> is <AsyncMock name='mock()' id='2939843723472'>
+________________________ TestInitDB.test_init_db_basic ________________________
+tests\test_init_db.py:13: in test_init_db_basic
+    with patch("src.kortana.init_db.asyncpg.connect") as mock_connect:
+C:\Program Files\Python311\Lib\unittest\mock.py:1430: in __enter__
+    self.target = self.getter()
+                  ^^^^^^^^^^^^^
+C:\Program Files\Python311\Lib\pkgutil.py:715: in resolve_name
+    result = getattr(result, p)
+             ^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'src.kortana.init_db' has no attribute 'asyncpg'
+______________ TestInitDB.test_init_db_handles_missing_database _______________
+tests\test_init_db.py:31: in test_init_db_handles_missing_database
+    with patch("src.kortana.init_db.asyncpg.connect") as mock_connect:
+C:\Program Files\Python311\Lib\unittest\mock.py:1430: in __enter__
+    self.target = self.getter()
+                  ^^^^^^^^^^^^^
+C:\Program Files\Python311\Lib\pkgutil.py:715: in resolve_name
+    result = getattr(result, p)
+             ^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'src.kortana.init_db' has no attribute 'asyncpg'
+_________________ TestInitDB.test_init_db_connection_failure __________________
+tests\test_init_db.py:52: in test_init_db_connection_failure
+    with patch("src.kortana.init_db.asyncpg.connect") as mock_connect:
+C:\Program Files\Python311\Lib\unittest\mock.py:1430: in __enter__
+    self.target = self.getter()
+                  ^^^^^^^^^^^^^
+C:\Program Files\Python311\Lib\pkgutil.py:715: in resolve_name
+    result = getattr(result, p)
+             ^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'src.kortana.init_db' has no attribute 'asyncpg'
+_______________ TestSetupMigrations.test_setup_migrations_basic _______________
+tests\test_setup_migrations.py:10: in test_setup_migrations_basic
+    from src.kortana.setup_migrations import setup_migrations
+E   ImportError: cannot import name 'setup_migrations' from 'src.kortana.setup_migrations' (C:\KOR-TANA\kortana\backend\src\kortana\setup_migrations.py)
+______ TestSetupMigrations.test_setup_migrations_creates_alembic_version ______
+tests\test_setup_migrations.py:26: in test_setup_migrations_creates_alembic_version
+    from src.kortana.setup_migrations import setup_migrations
+E   ImportError: cannot import name 'setup_migrations' from 'src.kortana.setup_migrations' (C:\KOR-TANA\kortana\backend\src\kortana\setup_migrations.py)
+_____ TestSetupMigrations.test_setup_migrations_handles_connection_error ______
+tests\test_setup_migrations.py:43: in test_setup_migrations_handles_connection_error
+    from src.kortana.setup_migrations import setup_migrations
+E   ImportError: cannot import name 'setup_migrations' from 'src.kortana.setup_migrations' (C:\KOR-TANA\kortana\backend\src\kortana\setup_migrations.py)
+_____________ TestParseCovenantTasks.test_parses_yaml_frontmatter _____________
+tests\test_task_queue.py:88: in test_parses_yaml_frontmatter
+    assert len(tasks) == 2
+E   assert 0 == 2
+E    +  where 0 = len([])
+---------------------------- Captured stdout call -----------------------------
+Error parsing covenant: [Errno 2] No such file or directory: '.\\COVENANT_INDEX.md'
+
+---------- coverage: platform win32, python 3.11.9-final-0 -----------
+Name                                                 Stmts   Miss  Cover
+------------------------------------------------------------------------
+src\kortana\SECRETS_INTEGRATION.py                      73     73     0%
+src\kortana\__init__.py                                  0      0   100%
+src\kortana\auth.py                                    188     51    73%
+src\kortana\cache.py                                   254     66    74%
+src\kortana\celery_app.py                               12      1    92%
+src\kortana\config.py                                  154     21    86%
+src\kortana\database.py                                169     44    74%
+src\kortana\exceptions.py                               41      0   100%
+src\kortana\human_only_protocol.py                     212    129    39%
+src\kortana\init_db.py                                  67     58    13%
+src\kortana\logger.py                                   50      3    94%
+src\kortana\main.py                                    147     61    59%
+src\kortana\metrics.py                                  71     17    76%
+src\kortana\middleware\__init__.py                       2      0   100%
+src\kortana\middleware\rate_limit.py                   148     27    82%
+src\kortana\middleware\security.py                     103     40    61%
+src\kortana\models.py                                  148     10    93%
+src\kortana\routers\__init__.py                          1      0   100%
+src\kortana\routers\adapters\__init__.py                 2      0   100%
+src\kortana\routers\adapters\autogen_adapter.py         44     19    57%
+src\kortana\routers\adapters\copilotkit_adapter.py      75     43    43%
+src\kortana\routers\adapters\lobechat_adapter.py        74     40    46%
+src\kortana\routers\adapters\openwebui_adapter.py       59     29    51%
+src\kortana\routers\agents.py                           23      0   100%
+src\kortana\routers\always_on.py                       171     77    55%
+src\kortana\routers\auth.py                             92      8    91%
+src\kortana\routers\autonomy.py                         99     56    43%
+src\kortana\routers\code_reviewer.py                   139     14    90%
+src\kortana\routers\gemini.py                           76     57    25%
+src\kortana\routers\github.py                          140     36    74%
+src\kortana\routers\health.py                          194     15    92%
+src\kortana\routers\knowledge.py                       145      9    94%
+src\kortana\routers\memory.py                           24      0   100%
+src\kortana\routers\orchestrator.py                     36      7    81%
+src\kortana\routers\pr_creation.py                     196     53    73%
+src\kortana\routers\prayer.py                            9      2    78%
+src\kortana\routers\rclone.py                           32     22    31%
+src\kortana\routers\system.py                           27      6    78%
+src\kortana\routers\task_queue.py                      132     48    64%
+src\kortana\routers\test_orchestrator.py               203     30    85%
+src\kortana\schemas.py                                 214      0   100%
+src\kortana\secrets_validator.py                       114      4    96%
+src\kortana\services\always_on_monitor.py              195     79    59%
+src\kortana\services\code_generator.py                 109     52    52%
+src\kortana\services\gemini.py                          84     63    25%
+src\kortana\services\github_autonomy_service.py        215     63    71%
+src\kortana\services\hop_autonomy_service.py           168     33    80%
+src\kortana\services\multi_model_ai.py                 117     11    91%
+src\kortana\services\task_queue_service.py              99     34    66%
+src\kortana\setup_migrations.py                         57     52     9%
+src\kortana\tasks.py                                   130     80    38%
+------------------------------------------------------------------------
+TOTAL                                                 5334   1643    69%
+
+=========================== short test summary info ===========================
+FAILED tests/test_database.py::TestDatabaseManager::test_get_session_yields_session
+FAILED tests/test_init_db.py::TestInitDB::test_init_db_basic - AttributeError...
+FAILED tests/test_init_db.py::TestInitDB::test_init_db_handles_missing_database
+FAILED tests/test_init_db.py::TestInitDB::test_init_db_connection_failure - A...
+FAILED tests/test_setup_migrations.py::TestSetupMigrations::test_setup_migrations_basic
+FAILED tests/test_setup_migrations.py::TestSetupMigrations::test_setup_migrations_creates_alembic_version
+FAILED tests/test_setup_migrations.py::TestSetupMigrations::test_setup_migrations_handles_connection_error
+FAILED tests/test_task_queue.py::TestParseCovenantTasks::test_parses_yaml_frontmatter
+================ 8 failed, 660 passed, 103 warnings in 38.60s =================
