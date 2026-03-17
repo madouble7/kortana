@@ -6,7 +6,7 @@ Background task processing using Redis as broker
 import os
 
 from celery import Celery
-from celery.schedules import crontab
+
 from src.kortana.config import get_settings
 
 settings = get_settings()
