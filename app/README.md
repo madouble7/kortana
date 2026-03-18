@@ -13,11 +13,12 @@ npm install
 npm run dev
 ```
 
-Visit http://localhost:3000
+Visit <http://localhost:3000>
 
 ## Deployment to Vercel
 
 1. Ensure this directory is committed to git:
+
    ```bash
    git add app/
    git commit -m "feat: kor'tana public app"
@@ -25,6 +26,7 @@ Visit http://localhost:3000
    ```
 
 2. Deploy to Vercel:
+
    ```bash
    cd app
    npm install -g vercel
@@ -32,6 +34,7 @@ Visit http://localhost:3000
    ```
 
 3. Add environment variables in Vercel dashboard or via CLI:
+
    ```bash
    vercel env add OPENAI_API_KEY
    vercel env add OPENAI_MODEL
