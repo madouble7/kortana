@@ -245,7 +245,7 @@ class Settings:
                     f"Missing required environment variables in production: {', '.join([m.split()[0] for m in missing])}"
                 )
         else:
-            print("✅ All critical API keys validated and loaded")
+            print("All critical API keys validated and loaded")
 
         if _is_placeholder(settings.SECRET_KEY):
             raise ValueError("SECRET_KEY must be configured before startup")

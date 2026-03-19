@@ -8,10 +8,12 @@ from typing import Any
 
 from src.kortana.celery_app import app
 from src.kortana.database import SessionLocal
-from src.kortana.logger import log_error, log_request
+from src.kortana.logger import log_error, log_request, get_logger
 from src.kortana.models import Task
 from src.kortana.services.gemini import gemini_service
 from src.kortana.services.github_autonomy_service import GitHubAutonomyService
+
+logger = get_logger(__name__)
 
 
 @app.task(bind=True, max_retries=3)
@@ -361,45 +363,46 @@ def run_always_on_monitor_task(self) -> dict[str, Any]:
     Returns:
         dict with monitoring results
     """
-    try:
-        log_request("celery_task", "🔍 Running Always-On Monitor - Fetching GitHub Issues")
+    log_request("celery_task", "🔍 Running Always-On Monitor - Fetching GitHub Issues")
 
-        import asyncio
-        from src.kortana.database import SessionLocal
+    import asyncio
+    from src.kortana.database import SessionLocal
+    
+    db = SessionLocal()
+    try:
+        loop = asyncio.get_event_loop()
+        service = GitHubAutonomyService(db_session=db)
         
-        db = SessionLocal()
-        try:
-            loop = asyncio.get_event_loop()
-            service = GitHubAutonomyService(db_session=db)
-            
-            # Fetch and queue new issues from GitHub
-            new_tasks = loop.run_until_complete(service.fetch_and_queue_issues())
-            
-            # Process queued tasks through pipeline (analyze, plan, execute if enabled)
-            loop.run_until_complete(service.process_next_tasks(limit=5))
-            
-            log_request("celery_task", f"Monitor found {len(new_tasks)} new issues")
-            
-            return {
-                "status": "completed",
-                "message": f"Monitor cycle completed - processed {len(new_tasks)} new tasks",
-                "timestamp": datetime.utcnow().isoformat(),
-                "issues_found": len(new_tasks),
-                "prs_created": 0,  # Will be populated when create_pr_for_task is called
-            }
-        finally:
-            db.close()
-    except Exception as exc:
-        log_error("celery_task", f"Always-On Monitor failed: {str(exc)}")
+        # Fetch and queue new issues from GitHub
+        new_tasks = loop.run_until_complete(service.fetch_and_queue_issues())
+        
+        # Process queued tasks through pipeline (analyze, plan, execute if enabled)
+        loop.run_until_complete(service.process_next_tasks(limit=5))
+        
+        log_request("celery_task", f"Monitor found {len(new_tasks)} new issues")
+        
+        return {
+            "status": "completed",
+            "message": f"Monitor cycle completed - processed {len(new_tasks)} new tasks",
+            "timestamp": datetime.utcnow().isoformat(),
+            "issues_found": len(new_tasks),
+            "prs_created": 0,  # Will be populated when create_pr_for_task is called
+        }
+    except Exception as monitor_exc:
+        log_error("celery_task", f"Monitor error: {str(monitor_exc)}")
         # Return partial results instead of raising to keep beat schedule running
         return {
             "status": "failed",
-            "message": f"Monitor error: {str(exc)}",
+            "message": f"Monitor error: {str(monitor_exc)}",
             "timestamp": datetime.utcnow().isoformat(),
             "issues_found": 0,
-            "error": str(exc),
+            "error": str(monitor_exc),
         }
-
+    finally:
+        try:
+            db.close()
+        except Exception as close_exc:
+            logger.debug(f"Error closing DB: {close_exc}")
 
 @app.task(bind=True, name="src.kortana.tasks.create_pr_for_task_celery")
 def create_pr_for_task_celery(self, task_id: str) -> dict[str, Any]:
