@@ -230,7 +230,7 @@ class PRCreator:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    def list_prs_for_repo(self, repo: str, status: str = "open") -> list[dict[str, Any]]:
+    async def list_prs_for_repo(self, repo: str, status: str = "open") -> list[dict[str, Any]]:
         """List Pull Requests for a repository"""
         self._validate_token()
         owner, repo_name = self._get_repo_info(repo)

@@ -12,6 +12,7 @@ import httpx
 from sqlalchemy import select
 
 from src.kortana.config import get_settings
+from src.kortana.http_client import get_http_client
 from src.kortana.logger import get_logger
 from src.kortana.models import GitHubTask
 from src.kortana.services.gemini import gemini_service
@@ -29,6 +30,7 @@ class GitHubAutonomyService:
         self.db = db_session
         self.code_gen = CodeGenerator()
         self.settings = get_settings()
+        self.http_client = get_http_client()
 
         # Get GitHub token from environment first, then fallback to settings
         self.github_token = os.getenv("GITHUB_TOKEN")
@@ -37,18 +39,14 @@ class GitHubAutonomyService:
 
         # Validate token is actually set (not placeholder)
         if self.github_token and self.github_token.startswith("your_"):
-            logger.warning(
-                "GitHub token appears to be a placeholder, replacing with env var"
-            )
+            logger.warning("GitHub token appears to be a placeholder, replacing with env var")
             self.github_token = os.getenv("GITHUB_TOKEN", "")
 
         self.repo_owner = os.getenv("GITHUB_OWNER") or self.settings.GITHUB_OWNER
         self.repo_name = os.getenv("GITHUB_REPO") or self.settings.GITHUB_REPO
         self.max_retries = self.settings.TASK_MAX_RETRIES
 
-        logger.info(
-            f"GitHubAutonomyService initialized: {self.repo_owner}/{self.repo_name}"
-        )
+        logger.info(f"GitHubAutonomyService initialized: {self.repo_owner}/{self.repo_name}")
         logger.debug(f"GitHub token present: {bool(self.github_token)}")
 
     @staticmethod
@@ -92,25 +90,19 @@ class GitHubAutonomyService:
             "Authorization": f"token {self.github_token}",
             "Accept": "application/vnd.github.v3+json",
         }
-        url = (
-            f"https://api.github.com/repos/{owner}/{name}/issues?state=open&per_page=50"
-        )
+        url = f"https://api.github.com/repos/{owner}/{name}/issues?state=open&per_page=50"
 
         try:
-            async with httpx.AsyncClient() as client:
-                response = await self._maybe_await(
-                    client.get(url, headers=headers, timeout=15)
-                )
-                response.raise_for_status()
-                issues = response.json()
+            response = await self.http_client.get(
+                url, api_name="github_api", headers=headers, timeout=15
+            )
+            issues = response.json()
         except Exception as e:
             logger.error(f"Failed to fetch GitHub issues: {str(e)}")
             return []
 
         queued_tasks = []
-        issue_numbers = [
-            issue["number"] for issue in issues if "pull_request" not in issue
-        ]
+        issue_numbers = [issue["number"] for issue in issues if "pull_request" not in issue]
 
         if not issue_numbers:
             return []
@@ -164,9 +156,7 @@ class GitHubAutonomyService:
             "Authorization": f"token {self.github_token}",
             "Accept": "application/vnd.github.v3+json",
         }
-        url = (
-            f"https://api.github.com/repos/{owner}/{name}/issues?state=open&per_page=50"
-        )
+        url = f"https://api.github.com/repos/{owner}/{name}/issues?state=open&per_page=50"
 
         try:
             # Use sync httpx client for Celery compatibility
@@ -174,9 +164,7 @@ class GitHubAutonomyService:
             response.raise_for_status()
             issues = response.json()
             logger.info(f"Fetched {len(issues)} issues from {owner}/{name}")
-            return [
-                {"number": issue["number"], "title": issue["title"]} for issue in issues
-            ]
+            return [{"number": issue["number"], "title": issue["title"]} for issue in issues]
         except Exception as e:
             logger.error(f"Failed to fetch GitHub issues: {str(e)}")
             return []
@@ -200,30 +188,26 @@ class GitHubAutonomyService:
         """Process tasks through the pipeline: Pending -> Analyzing -> Planning -> Executing"""
         from sqlalchemy import select
 
-        # 1. Analyze pending tasks
+        # 1. Analyze pending tasks - batch fetch and process
         stmt = select(GitHubTask).where(GitHubTask.status == "pending").limit(limit)
         result = await self._db_execute(stmt)
         pending = result.scalars().all()
         for task in pending:
             await self.analyze_task(task)
 
-        # 2. Plan analyzed tasks
+        # 2. Plan analyzed tasks - batch fetch and process
         stmt = select(GitHubTask).where(GitHubTask.status == "analyzed").limit(limit)
         result = await self._db_execute(stmt)
         analyzed = result.scalars().all()
         for task in analyzed:
             await self.plan_task(task)
 
-        # 3. Execute planned tasks (only if autonomous mode is enabled)
+        # 3. Execute planned tasks (only if autonomous mode is enabled) - batch fetch and process
         if (
             self.settings.ENVIRONMENT == "production"
             or os.getenv("KORTANA_AUTONOMOUS_MODE") == "true"
         ):
-            stmt = (
-                select(GitHubTask)
-                .where(GitHubTask.status == "planning_complete")
-                .limit(limit)
-            )
+            stmt = select(GitHubTask).where(GitHubTask.status == "planning_complete").limit(limit)
             result = await self._db_execute(stmt)
             planned = result.scalars().all()
             for task in planned:
@@ -238,7 +222,7 @@ class GitHubAutonomyService:
             if not task:
                 raise ValueError("Task not found")
         else:
-            task = task_or_id
+            task = task_or_id  # Already have the task object, no additional query needed
 
         task.status = "analyzing"
         await self._db_commit()
@@ -270,7 +254,7 @@ class GitHubAutonomyService:
             if not task:
                 raise ValueError("Task not found")
         else:
-            task = task_or_id
+            task = task_or_id  # Already have the task object, no additional query needed
 
         task.status = "planning"
         await self._db_commit()
@@ -292,9 +276,7 @@ class GitHubAutonomyService:
         await self._db_commit()
         return task
 
-    async def execute_task(
-        self, task_or_id: GitHubTask | str, dry_run: bool = False
-    ) -> GitHubTask:
+    async def execute_task(self, task_or_id: GitHubTask | str, dry_run: bool = False) -> GitHubTask:
         """Execute the task: Create branch, apply changes, and commit"""
         if isinstance(task_or_id, str):
             stmt = select(GitHubTask).where(GitHubTask.id == task_or_id)
@@ -303,7 +285,7 @@ class GitHubAutonomyService:
             if not task:
                 raise ValueError("Task not found")
         else:
-            task = task_or_id
+            task = task_or_id  # Already have the task object, no additional query needed
 
         task.status = "executing"
         await self._db_commit()
@@ -350,36 +332,29 @@ class GitHubAutonomyService:
                 "Accept": "application/vnd.github.v3+json",
             }
 
-            async with httpx.AsyncClient() as client:
-                # Get main branch SHA
-                ref_url = (
-                    f"https://api.github.com/repos/{owner}/{repo}/git/ref/heads/main"
+            # Get main branch SHA
+            ref_url = f"https://api.github.com/repos/{owner}/{repo}/git/ref/heads/main"
+            try:
+                ref_response = await self.http_client.get(
+                    ref_url, api_name="github_api", headers=headers, timeout=10
                 )
-                ref_response = await self._maybe_await(
-                    client.get(ref_url, headers=headers, timeout=10)
-                )
-
-                if ref_response.status_code != 200:
-                    # Try master branch
-                    ref_url = f"https://api.github.com/repos/{owner}/{repo}/git/ref/heads/master"
-                    ref_response = await self._maybe_await(
-                        client.get(ref_url, headers=headers, timeout=10)
-                    )
-                    if ref_response.status_code != 200:
-                        return False
-
-                main_sha = ref_response.json()["object"]["sha"]
-
-                # Create branch
-                branch_data = {"ref": f"refs/heads/{task.branch_name}", "sha": main_sha}
-                create_url = f"https://api.github.com/repos/{owner}/{repo}/git/refs"
-                create_response = await self._maybe_await(
-                    client.post(
-                        create_url, headers=headers, json=branch_data, timeout=10
-                    )
+            except Exception:
+                # Try master branch
+                ref_url = f"https://api.github.com/repos/{owner}/{repo}/git/ref/heads/master"
+                ref_response = await self.http_client.get(
+                    ref_url, api_name="github_api", headers=headers, timeout=10
                 )
 
-                return create_response.status_code == 201
+            main_sha = ref_response.json()["object"]["sha"]
+
+            # Create branch
+            branch_data = {"ref": f"refs/heads/{task.branch_name}", "sha": main_sha}
+            create_url = f"https://api.github.com/repos/{owner}/{repo}/git/refs"
+            create_response = await self.http_client.post(
+                create_url, api_name="github_api", headers=headers, json=branch_data, timeout=10
+            )
+
+            return create_response.status_code == 201
         except Exception as e:
             logger.error(f"Branch creation failed: {str(e)}")
             return False

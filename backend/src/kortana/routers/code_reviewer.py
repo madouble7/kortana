@@ -166,7 +166,7 @@ class CodeReviewer:
 
         return comment
 
-    def generate_review(self, code: str, plan: str = None) -> dict:
+    async def generate_review(self, code: str, plan: str = None) -> dict:
         """
         Generate detailed code review using Gemini
 
