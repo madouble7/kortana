@@ -8,10 +8,9 @@ import os
 from datetime import datetime
 from typing import Any
 
-import requests
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-
 from src.kortana.config import get_settings
 from src.kortana.database import get_db
 from src.kortana.logger import setup_logging
@@ -115,7 +114,7 @@ class PRCreator:
 """
         return description
 
-    def create_pr(self, task_id: str | Any, repo: str | None = None) -> dict[str, Any]:
+    async def create_pr(self, task_id: str | Any, repo: str | None = None) -> dict[str, Any]:
         """Create a PR for a completed task"""
         self._validate_token()
 
@@ -161,11 +160,10 @@ class PRCreator:
         create_url = f"https://api.github.com/repos/{owner}/{repo_name}/pulls"
 
         try:
-            response = requests.post(
-                create_url, headers=headers, json=pr_data, timeout=30
-            )
-            response.raise_for_status()
-            pr_result = response.json()
+            async with httpx.AsyncClient(timeout=30) as client:
+                response = await client.post(create_url, headers=headers, json=pr_data)
+                response.raise_for_status()
+                pr_result = response.json()
         except Exception as e:
             logger.error(f"Failed to create PR for task {task_id}: {str(e)}")
             return {"success": False, "error": str(e)}
@@ -197,7 +195,7 @@ class PRCreator:
             "task_id": task_id,
         }
 
-    def get_pr_status(
+    async def get_pr_status(
         self,
         task_id: str | None = None,
         repo: str | None = None,
@@ -220,20 +218,19 @@ class PRCreator:
         headers = {"Authorization": f"token {self.token}"}
 
         try:
-            response = requests.get(url, headers=headers, timeout=30)
-            response.raise_for_status()
-            data = response.json()
-            # Compatibility with tests
-            result = data.copy()
-            result["pr_number"] = data.get("number")
-            result["success"] = True
-            return result
+            async with httpx.AsyncClient(timeout=30) as client:
+                response = await client.get(url, headers=headers)
+                response.raise_for_status()
+                data = response.json()
+                # Compatibility with tests
+                result = data.copy()
+                result["pr_number"] = data.get("number")
+                result["success"] = True
+                return result
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    def list_prs_for_repo(
-        self, repo: str, status: str = "open"
-    ) -> list[dict[str, Any]]:
+    def list_prs_for_repo(self, repo: str, status: str = "open") -> list[dict[str, Any]]:
         """List Pull Requests for a repository"""
         self._validate_token()
         owner, repo_name = self._get_repo_info(repo)
@@ -243,14 +240,15 @@ class PRCreator:
         headers = {"Authorization": f"token {self.token}"}
 
         try:
-            response = requests.get(url, headers=headers, params=params, timeout=30)
-            response.raise_for_status()
-            return response.json()
+            async with httpx.AsyncClient(timeout=30) as client:
+                response = await client.get(url, headers=headers, params=params)
+                response.raise_for_status()
+                return response.json()
         except Exception as e:
             logger.error(f"Failed to list PRs: {e}")
             return []
 
-    def auto_create_prs_for_completed(self, repo: str | None = None) -> dict[str, Any]:
+    async def auto_create_prs_for_completed(self, repo: str | None = None) -> dict[str, Any]:
         """Automatically create PRs for all completed tasks that don't have one"""
         query = self.db.query(GitHubTask).filter(
             GitHubTask.status == "completed", GitHubTask.github_pr_number == None
@@ -263,7 +261,7 @@ class PRCreator:
         results = []
         for task in tasks:
             try:
-                res = self.create_pr(task.id)
+                res = await self.create_pr(task.id)
                 if res.get("success"):
                     created += 1
                 results.append(res)
@@ -273,7 +271,7 @@ class PRCreator:
 
         return {"created": created, "results": results, "success": True}
 
-    def create_pr_from_issue(
+    async def create_pr_from_issue(
         self,
         github_issue_number: int | None = None,
         repo: str | None = None,
@@ -295,11 +293,9 @@ class PRCreator:
         )
 
         if not task:
-            raise PRCreationError(
-                f"No completed task found for issue #{issue_num} in {repo}"
-            )
+            raise PRCreationError(f"No completed task found for issue #{issue_num} in {repo}")
 
-        return self.create_pr(task.id)
+        return await self.create_pr(task.id)
 
 
 # Dependency
@@ -314,7 +310,7 @@ async def create_pr_endpoint(
 ) -> dict[str, Any]:
     """Create a PR for a completed task"""
     try:
-        result = pr_creator.create_pr(task_id)
+        result = await pr_creator.create_pr(task_id)
         return result
     except HTTPException:
         raise
@@ -331,7 +327,7 @@ async def create_pr_from_issue_endpoint(
 ) -> dict[str, Any]:
     """Create a PR from a GitHub issue number"""
     try:
-        result = pr_creator.create_pr_from_issue(issue_number, repo)
+        result = await pr_creator.create_pr_from_issue(issue_number, repo)
         return result
     except HTTPException:
         raise
@@ -348,7 +344,7 @@ async def get_pr_status(
 ) -> dict[str, Any]:
     """Get PR status for a task"""
     try:
-        result = pr_creator.get_pr_status(task_id=task_id, repo=repo)
+        result = await pr_creator.get_pr_status(task_id=task_id, repo=repo)
         return result
     except Exception as e:
         logger.error(f"Failed to get PR status: {e}")
@@ -361,7 +357,7 @@ async def list_prs_for_repo(
 ) -> list[dict[str, Any]]:
     """List PRs created by the system for a repo"""
     try:
-        return pr_creator.list_prs_for_repo(repo, state)
+        return await pr_creator.list_prs_for_repo(repo, state)
     except Exception as e:
         logger.error(f"Failed to list PRs: {e}")
         return []
@@ -373,7 +369,7 @@ async def auto_create_prs_for_completed(
 ) -> dict[str, Any]:
     """Auto-create PRs for all completed tasks without PRs"""
     try:
-        result = pr_creator.auto_create_prs_for_completed(repo)
+        result = await pr_creator.auto_create_prs_for_completed(repo)
         # Add "created" key for compatibility with some tests
         if "successful" in result:
             result["created"] = result["successful"]

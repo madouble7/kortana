@@ -2,7 +2,8 @@ import hashlib
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-import requests
+import httpx
+import requests  # noqa: F401 - May be used by external integrations
 from fastapi import APIRouter, HTTPException
 from src.kortana.config import get_settings
 
@@ -21,7 +22,7 @@ class KnowledgeManager:
         self.knowledge = knowledge_base
         self.rituals = ritual_documents
 
-    def extract_insights(
+    async def extract_insights(
         self, content: str, source: str, metadata: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Extract learnings and insights from development activities."""
@@ -44,15 +45,16 @@ class KnowledgeManager:
         gemini_payload = {"text": prompt}
 
         try:
-            response = requests.post(
-                f"{KORTANA_BACKEND_URL}/api/gemini/analyze", json=gemini_payload
-            )
-            if response.status_code == 200:
-                result = response.json()
-                analysis = result.get("analysis", "Analysis failed")
-            else:
-                analysis = "Failed to analyze content"
-        except requests.RequestException:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"{KORTANA_BACKEND_URL}/api/gemini/analyze", json=gemini_payload
+                )
+                if response.status_code == 200:
+                    result = response.json()
+                    analysis = result.get("analysis", "Analysis failed")
+                else:
+                    analysis = "Failed to analyze content"
+        except httpx.RequestError:
             analysis = "Error connecting to Gemini service"
 
         insight = {
@@ -93,11 +95,11 @@ class KnowledgeManager:
 
         return list(set(tags))  # Remove duplicates
 
-    def ingest_learning(
+    async def ingest_learning(
         self, content: str, source: str, metadata: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Ingest new learning into the knowledge base."""
-        insight = self.extract_insights(content, source, metadata)
+        insight = await self.extract_insights(content, source, metadata)
 
         # Check for duplicates
         existing = next((k for k in self.knowledge if k["id"] == insight["id"]), None)
@@ -136,7 +138,7 @@ class KnowledgeManager:
 
         return results[:limit]
 
-    def generate_ritual_document(self, milestone: str, context: str) -> Dict[str, Any]:
+    async def generate_ritual_document(self, milestone: str, context: str) -> Dict[str, Any]:
         """Generate a ritual document for major milestones."""
         prompt = f"""
         Create a ritual document for this milestone:
@@ -156,15 +158,16 @@ class KnowledgeManager:
         gemini_payload = {"text": prompt}
 
         try:
-            response = requests.post(
-                f"{KORTANA_BACKEND_URL}/api/gemini/analyze", json=gemini_payload
-            )
-            if response.status_code == 200:
-                result = response.json()
-                content = result.get("analysis", "Ritual generation failed")
-            else:
-                content = "Failed to generate ritual"
-        except requests.RequestException:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"{KORTANA_BACKEND_URL}/api/gemini/analyze", json=gemini_payload
+                )
+                if response.status_code == 200:
+                    result = response.json()
+                    content = result.get("analysis", "Ritual generation failed")
+                else:
+                    content = "Failed to generate ritual"
+        except httpx.RequestError:
             content = "Error connecting to Gemini service"
 
         ritual_number = len(self.rituals) + 17  # Starting from 17 after 16
@@ -208,7 +211,7 @@ class KnowledgeManager:
         try:
             dt = datetime.fromisoformat(timestamp)
             return (datetime.now() - dt).days <= days
-        except:
+        except (ValueError, TypeError):
             return False
 
 
@@ -227,7 +230,7 @@ async def ingest_learning(payload: Dict[str, Any]) -> Dict[str, Any]:
         raise HTTPException(status_code=400, detail="Content is required")
 
     try:
-        result = knowledge_manager.ingest_learning(content, source, metadata)
+        result = await knowledge_manager.ingest_learning(content, source, metadata)
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -262,7 +265,7 @@ async def generate_ritual(payload: Dict[str, Any]) -> Dict[str, Any]:
         raise HTTPException(status_code=400, detail="Milestone is required")
 
     try:
-        ritual = knowledge_manager.generate_ritual_document(milestone, context)
+        ritual = await knowledge_manager.generate_ritual_document(milestone, context)
         return {"message": "Ritual generated", "ritual": ritual}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

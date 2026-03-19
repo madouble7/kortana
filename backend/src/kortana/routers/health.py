@@ -420,10 +420,7 @@ class HealthChecker:
             if result.status == HealthStatus.UNHEALTHY:
                 overall_status = HealthStatus.UNHEALTHY
                 break
-            elif (
-                result.status == HealthStatus.DEGRADED
-                and overall_status == HealthStatus.HEALTHY
-            ):
+            elif result.status == HealthStatus.DEGRADED and overall_status == HealthStatus.HEALTHY:
                 overall_status = HealthStatus.DEGRADED
 
         self._last_full_check = datetime.now()
@@ -434,15 +431,9 @@ class HealthChecker:
             "components": [r.to_dict() for r in results],
             "summary": {
                 "total": len(results),
-                "healthy": len(
-                    [r for r in results if r.status == HealthStatus.HEALTHY]
-                ),
-                "degraded": len(
-                    [r for r in results if r.status == HealthStatus.DEGRADED]
-                ),
-                "unhealthy": len(
-                    [r for r in results if r.status == HealthStatus.UNHEALTHY]
-                ),
+                "healthy": len([r for r in results if r.status == HealthStatus.HEALTHY]),
+                "degraded": len([r for r in results if r.status == HealthStatus.DEGRADED]),
+                "unhealthy": len([r for r in results if r.status == HealthStatus.UNHEALTHY]),
             },
         }
 
@@ -548,5 +539,5 @@ async def system_info():
         "memory_total_gb": round(psutil.virtual_memory().total / (1024**3), 2),
         "disk_total_gb": round(psutil.disk_usage("/").total / (1024**3), 2),
         "process_memory_mb": round(psutil.Process().memory_info().rss / (1024**2), 2),
-        "process_cpu_percent": psutil.Process().cpu_percent(interval=1),
+        "process_cpu_percent": psutil.Process().cpu_percent(interval=0),
     }
