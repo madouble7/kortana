@@ -14,6 +14,7 @@ from typing import Any, Optional
 
 from celery import group
 from redis import Redis
+
 from src.kortana.logger import get_logger
 
 logger = get_logger(__name__)

@@ -5,6 +5,7 @@ Provides real-time visibility into autonomous system performance
 """
 
 from fastapi import APIRouter, HTTPException
+
 from src.kortana.circuit_breaker import create_circuit_breaker
 from src.kortana.distributed_lock import create_task_lock_manager
 from src.kortana.logger import get_logger
@@ -20,7 +21,9 @@ _task_lock_manager = None
 _cache_middleware = None
 
 
-def initialize_monitoring(redis_url: str, cache_middleware: ResponseCacheMiddleware = None):
+def initialize_monitoring(
+    redis_url: str, cache_middleware: ResponseCacheMiddleware = None
+):
     """Initialize monitoring dependencies"""
     global _circuit_breaker, _task_lock_manager, _cache_middleware
 

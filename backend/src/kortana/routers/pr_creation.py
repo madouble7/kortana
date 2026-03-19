@@ -11,6 +11,7 @@ from typing import Any
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+
 from src.kortana.config import get_settings
 from src.kortana.database import get_db
 from src.kortana.logger import setup_logging
@@ -114,7 +115,9 @@ class PRCreator:
 """
         return description
 
-    async def create_pr(self, task_id: str | Any, repo: str | None = None) -> dict[str, Any]:
+    async def create_pr(
+        self, task_id: str | Any, repo: str | None = None
+    ) -> dict[str, Any]:
         """Create a PR for a completed task"""
         self._validate_token()
 
@@ -230,7 +233,9 @@ class PRCreator:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    async def list_prs_for_repo(self, repo: str, status: str = "open") -> list[dict[str, Any]]:
+    async def list_prs_for_repo(
+        self, repo: str, status: str = "open"
+    ) -> list[dict[str, Any]]:
         """List Pull Requests for a repository"""
         self._validate_token()
         owner, repo_name = self._get_repo_info(repo)
@@ -248,7 +253,9 @@ class PRCreator:
             logger.error(f"Failed to list PRs: {e}")
             return []
 
-    async def auto_create_prs_for_completed(self, repo: str | None = None) -> dict[str, Any]:
+    async def auto_create_prs_for_completed(
+        self, repo: str | None = None
+    ) -> dict[str, Any]:
         """Automatically create PRs for all completed tasks that don't have one"""
         query = self.db.query(GitHubTask).filter(
             GitHubTask.status == "completed", GitHubTask.github_pr_number == None
@@ -293,7 +300,9 @@ class PRCreator:
         )
 
         if not task:
-            raise PRCreationError(f"No completed task found for issue #{issue_num} in {repo}")
+            raise PRCreationError(
+                f"No completed task found for issue #{issue_num} in {repo}"
+            )
 
         return await self.create_pr(task.id)
 

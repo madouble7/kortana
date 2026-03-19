@@ -28,6 +28,7 @@ class AutonomyCircuitBreaker:
 ```
 
 **Key Methods:**
+
 - `can_execute(task_name: str) -> tuple[bool, Optional[str]]` - Check if task can execute
 - `record_success(task_name: str) -> None` - Record successful execution
 - `record_failure(task_name: str, error: str) -> None` - Record failure
@@ -36,6 +37,7 @@ class AutonomyCircuitBreaker:
 - `get_all_statuses() -> dict` - Get all circuits status
 
 **State Machine:**
+
 ```
 CLOSED --[failures >= threshold]--> OPEN
   ^                                    |
@@ -71,6 +73,7 @@ class DistributedLock:
 ```
 
 **Key Methods:**
+
 - `acquire(wait_seconds: int = 30) -> bool` - Acquire lock with wait
 - `release() -> bool` - Release lock
 - `is_locked() -> bool` - Check lock status
@@ -78,6 +81,7 @@ class DistributedLock:
 - `get_owner() -> Optional[str]` - Get lock owner ID
 
 **Retry Strategies:**
+
 1. **immediate** - Try once, fail if locked
 2. **fixed_backoff** - Wait fixed interval between retries
 3. **exponential_backoff** - Double wait between retries (default)
@@ -91,6 +95,7 @@ class DistributedLockManager:
 ```
 
 **Key Methods:**
+
 - `acquire_lock(task_name: str, wait_seconds: int = 30) -> bool`
 - `release_lock(task_name: str) -> bool`
 - `is_locked(task_name: str) -> bool`
@@ -133,6 +138,7 @@ class WorkflowExecutor:
 ```
 
 **Key Methods:**
+
 - `execute_workflow(workflow_dict: dict) -> str` - Execute workflow, return execution ID
 - `get_workflow_status(execution_id: str) -> dict` - Get execution status
 - `wait_for_completion(execution_id: str, timeout: int = 3600) -> dict` - Wait for result
@@ -140,6 +146,7 @@ class WorkflowExecutor:
 - `get_task_result(execution_id: str, task_name: str) -> Any` - Get specific task result
 
 **Workflow Definition:**
+
 ```python
 workflow = {
     "name": "data_pipeline",
@@ -199,6 +206,7 @@ class HealthAwareScheduler:
 ```
 
 **Key Methods:**
+
 - `get_health() -> dict` - Get current system health
 - `should_execute(task_name: str) -> bool` - Check if task should execute
 - `pause_scheduling() -> None` - Pause all scheduling
@@ -281,6 +289,7 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
 ```
 
 **Key Features:**
+
 - Caches GET requests automatically
 - Invalidates on POST/PUT/DELETE
 - Per-endpoint cache policies
@@ -290,6 +299,7 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
 **Implementation Details:**
 
 1. **Cache Key Generation:**
+
    ```python
    cache_key = f"cache:{method}:{path}:{query_hash}:{user_id}"
    ```
@@ -300,6 +310,7 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
    - DELETE to /api/resource/{id} → Invalidates /api/resource/*
 
 3. **Degradation Strategy:**
+
    ```python
    if redis_down:
        if cached_response_exists:
@@ -535,6 +546,7 @@ ab -n 10000 -c 100 http://localhost:8000/api/health
 ## Summary
 
 The KOR'TANA optimization suite delivers:
+
 - **1,660 lines** of production-ready code
 - **6 specialized modules** with clear responsibilities
 - **14 REST monitoring endpoints** for visibility

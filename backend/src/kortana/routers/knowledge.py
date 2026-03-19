@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 import httpx
 import requests  # noqa: F401 - May be used by external integrations
 from fastapi import APIRouter, HTTPException
+
 from src.kortana.config import get_settings
 
 router = APIRouter()
@@ -76,9 +77,13 @@ class KnowledgeManager:
         analysis_lower = analysis.lower()
 
         # Technical tags
-        if any(word in content_lower for word in ["api", "endpoint", "router", "backend"]):
+        if any(
+            word in content_lower for word in ["api", "endpoint", "router", "backend"]
+        ):
             tags.append("backend")
-        if any(word in content_lower for word in ["frontend", "react", "ui", "component"]):
+        if any(
+            word in content_lower for word in ["frontend", "react", "ui", "component"]
+        ):
             tags.append("frontend")
         if any(word in content_lower for word in ["test", "pytest", "coverage"]):
             tags.append("testing")
@@ -138,7 +143,9 @@ class KnowledgeManager:
 
         return results[:limit]
 
-    async def generate_ritual_document(self, milestone: str, context: str) -> Dict[str, Any]:
+    async def generate_ritual_document(
+        self, milestone: str, context: str
+    ) -> Dict[str, Any]:
         """Generate a ritual document for major milestones."""
         prompt = f"""
         Create a ritual document for this milestone:
@@ -306,6 +313,10 @@ async def get_knowledge_stats() -> Dict[str, Any]:
         "tag_distribution": tags,
         "source_distribution": sources,
         "recent_insights": len(
-            [k for k in knowledge_manager.knowledge if knowledge_manager._is_recent(k["timestamp"])]
+            [
+                k
+                for k in knowledge_manager.knowledge
+                if knowledge_manager._is_recent(k["timestamp"])
+            ]
         ),
     }

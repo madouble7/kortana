@@ -138,16 +138,26 @@ def create_app() -> FastAPI:
             import redis
 
             try:
-                redis_url = getattr(settings, "REDIS_URL", None) or "redis://localhost:6379/0"
+                redis_url = (
+                    getattr(settings, "REDIS_URL", None) or "redis://localhost:6379/0"
+                )
             except (AttributeError, TypeError):
                 redis_url = "redis://localhost:6379/0"
             redis_client = redis.from_url(redis_url, decode_responses=True)
             cache_strategy = CacheStrategy(
                 ttl=300,
-                exclude_paths=["/api/auth", "/api/billing", "/health", "/docs", "/openapi.json"],
+                exclude_paths=[
+                    "/api/auth",
+                    "/api/billing",
+                    "/health",
+                    "/docs",
+                    "/openapi.json",
+                ],
             )
             app.add_middleware(
-                ResponseCacheMiddleware, redis_client=redis_client, strategy=cache_strategy
+                ResponseCacheMiddleware,
+                redis_client=redis_client,
+                strategy=cache_strategy,
             )
             log_request("middleware", "Response caching middleware enabled")
         except Exception as e:
@@ -212,20 +222,30 @@ def create_app() -> FastAPI:
         app.include_router(agents.router, prefix="/api/agents", tags=["agents"])
         app.include_router(github.router, prefix="/api/github", tags=["github"])
         app.include_router(autonomy.router, prefix="/api/autonomy", tags=["autonomy"])
-        app.include_router(knowledge.router, prefix="/api/knowledge", tags=["knowledge"])
-        app.include_router(task_queue.router, prefix="/api/task-queue", tags=["task-queue"])
+        app.include_router(
+            knowledge.router, prefix="/api/knowledge", tags=["knowledge"]
+        )
+        app.include_router(
+            task_queue.router, prefix="/api/task-queue", tags=["task-queue"]
+        )
 
         # Phase 2: PR Creation, Testing, and Code Review
         app.include_router(pr_creation.router, prefix="/api/pr", tags=["pr-creation"])
-        app.include_router(test_orchestrator.router, prefix="/api/testing", tags=["testing"])
-        app.include_router(code_reviewer.router, prefix="/api/code-review", tags=["code-review"])
+        app.include_router(
+            test_orchestrator.router, prefix="/api/testing", tags=["testing"]
+        )
+        app.include_router(
+            code_reviewer.router, prefix="/api/code-review", tags=["code-review"]
+        )
 
         # Billing router
         app.include_router(billing.router, prefix="/api/billing", tags=["billing"])
 
         # Human Only Protocol router (if available)
         if HOP_AVAILABLE and hop_router:
-            app.include_router(hop_router, prefix="/api/autonomy/hop", tags=["human-only-protocol"])
+            app.include_router(
+                hop_router, prefix="/api/autonomy/hop", tags=["human-only-protocol"]
+            )
             print("[OK] Human Only Protocol router mounted")
 
         # Optimization router (if available)
