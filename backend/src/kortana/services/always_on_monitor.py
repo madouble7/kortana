@@ -74,32 +74,68 @@ class AlwaysOnMonitor:
             self.stop_monitoring()
 
     async def _monitoring_cycle(self):
-        """Execute one monitoring cycle"""
+        """Execute one monitoring cycle with error recovery"""
         cycle_start = time.time()
         logger.info("🔄 Starting monitoring cycle...")
 
+        errors_encountered = []
+        partial_success = False
+
         try:
-            # 1. Fetch new GitHub issues
-            new_tasks = await self._fetch_new_issues()
-            self.stats["issues_fetched"] += len(new_tasks)
-            self.stats["tasks_created"] += len(new_tasks)
+            # 1. Fetch new GitHub issues (with error recovery)
+            try:
+                new_tasks = await self._fetch_new_issues()
+                self.stats["issues_fetched"] += len(new_tasks)
+                self.stats["tasks_created"] += len(new_tasks)
+                partial_success = True
+            except Exception as e:
+                error_msg = f"Failed to fetch issues: {str(e)}"
+                logger.error(f"❌ {error_msg}")
+                errors_encountered.append(error_msg)
+                new_tasks = []
 
-            # 2. Process existing tasks through pipeline
-            await self._process_task_pipeline()
+            # 2. Process existing tasks through pipeline (with error recovery)
+            try:
+                await self._process_task_pipeline()
+                partial_success = True
+            except Exception as e:
+                error_msg = f"Failed to process task pipeline: {str(e)}"
+                logger.error(f"❌ {error_msg}")
+                errors_encountered.append(error_msg)
 
-            # 3. Run HOP autonomy cycle for classification
-            await self._run_hop_cycle()
+            # 3. Run HOP autonomy cycle for classification (with error recovery)
+            try:
+                await self._run_hop_cycle()
+                partial_success = True
+            except Exception as e:
+                error_msg = f"Failed to run HOP cycle: {str(e)}"
+                logger.error(f"❌ {error_msg}")
+                errors_encountered.append(error_msg)
 
             # 4. Update statistics
             self.stats["last_run"] = datetime.utcnow().isoformat()
             cycle_duration = time.time() - cycle_start
 
-            logger.info(f"✅ Cycle completed in {cycle_duration:.2f}s")
+            # Log results with error recovery status
+            if errors_encountered:
+                logger.warning(
+                    f"⚠️ Cycle completed with {len(errors_encountered)} errors in {cycle_duration:.2f}s"
+                )
+                for error in errors_encountered:
+                    logger.warning(f"   - {error}")
+            else:
+                logger.info(f"✅ Cycle completed successfully in {cycle_duration:.2f}s")
+
             logger.info(f"📊 Stats: {len(new_tasks)} new, {self.stats['tasks_processed']} processed")
 
+            # Return success if at least one component succeeded
+            if not partial_success and not new_tasks:
+                raise Exception(f"Complete cycle failure: {', '.join(errors_encountered)}")
+
         except Exception as e:
-            logger.error(f"❌ Cycle failed: {str(e)}")
-            raise
+            logger.error(f"❌ Cycle failed completely: {str(e)}")
+            # Don't re-raise - allow monitor to continue running
+            self.stats["errors_encountered"] = errors_encountered
 
     async def _fetch_new_issues(self) -> List[GitHubTask]:
         """Fetch new GitHub issues and queue them as tasks"""
@@ -153,7 +189,7 @@ class AlwaysOnMonitor:
                 # Initialize HOP service
                 self.hop_service = HOPAutonomyService(db)
 
-                # Process each task through the pipeline
+                # Process each task through the pipeline with enhanced error recovery
                 for task in pending_tasks:
                     try:
                         await self._process_single_task(task, db)
@@ -161,6 +197,24 @@ class AlwaysOnMonitor:
                     except Exception as e:
                         logger.error(f"❌ Task {task.id} failed: {str(e)}")
                         self.stats["tasks_failed"] += 1
+
+                        # Implement error recovery: mark task for retry or human intervention
+                        try:
+                            task.status = "failed"
+                            task.error_message = str(e)
+                            task.error_count = (task.error_count or 0) + 1
+
+                            # If task has failed multiple times, flag for human review
+                            if task.error_count >= 3:
+                                task.status = "needs_human_review"
+                                logger.warning(
+                                    f"Task {task.id} marked for human review after {task.error_count} failures"
+                                )
+
+                            await db.commit()
+                        except Exception as db_exc:
+                            logger.error(f"Failed to update task {task.id} status: {str(db_exc)}")
+
                         continue
 
         except Exception as e:

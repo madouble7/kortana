@@ -6,7 +6,6 @@ Background task processing using Redis as broker
 import os
 
 from celery import Celery
-
 from src.kortana.config import get_settings
 
 settings = get_settings()
@@ -48,29 +47,20 @@ app.conf.task_routes = {
     "src.kortana.tasks.run_github_autonomy_cycle": {"queue": "autonomy"},
 }
 
-# Celery Beat Schedule - Autonomous self-sustaining cycles
+# Celery Beat Schedule - Streamlined Autonomous Cycles
+# Reduced from 5 excessive cycles to 2 essential cycles for better performance
 app.conf.beat_schedule = {
-    # Phase 5: Autonomous Systems Self-Triggering
-    "always-on-monitor-every-5-minutes": {
+    # Essential autonomous cycles only
+    "always-on-monitor-every-15-minutes": {
         "task": "src.kortana.tasks.run_always_on_monitor",
-        "schedule": 300.0,  # Every 5 minutes
-    },
-    "autonomous-review-every-10-minutes": {
-        "task": "src.kortana.tasks.trigger_autonomous_review_cycle",
-        "schedule": 600.0,  # Every 10 minutes
-    },
-    "autonomous-agent-every-15-minutes": {
-        "task": "src.kortana.tasks.trigger_autonomous_agent_cycle",
-        "schedule": 900.0,  # Every 15 minutes
-    },
-    "master-autonomy-loop-every-20-minutes": {
-        "task": "src.kortana.tasks.autonomous_self_improvement_loop",
-        "schedule": 1200.0,  # Every 20 minutes - master self-improvement cycle
+        "schedule": 900.0,  # Every 15 minutes - monitor for issues
     },
     "autonomous-system-monitor-every-30-minutes": {
         "task": "src.kortana.tasks.autonomous_system_monitor_task",
         "schedule": 1800.0,  # Every 30 minutes - self-awareness and optimization
     },
+    # Removed excessive cycles: autonomous-review, autonomous-agent, master-autonomy-loop
+    # These can be triggered on-demand or through the monitor when needed
 }
 
 if __name__ == "__main__":

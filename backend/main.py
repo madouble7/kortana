@@ -11,21 +11,36 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-# Add backend directory to path
+# Add backend directory to path FIRST (before any local imports)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-# Import configuration and utilities
+# Configuration and utilities
 from config import get_settings
 from exceptions import KortanaException
 from logger import log_error, log_request, setup_logging
 
-# Import middleware
+# Middleware
 from middleware.security import (
     RateLimitMiddleware,
     RequestIDMiddleware,
     RequestLoggingMiddleware,
     SecurityHeadersMiddleware,
 )
+
+# Optimization modules (optional - graceful degradation)
+OPTIMIZATION_AVAILABLE = False
+optimization_router = None
+try:
+    from src.kortana.circuit_breaker import AutonomyCircuitBreaker  # noqa: F401
+    from src.kortana.distributed_lock import DistributedLock  # noqa: F401
+    from src.kortana.workflow_executor import WorkflowExecutor  # noqa: F401
+    from src.kortana.celery_app_enhanced import HealthAwareScheduler  # noqa: F401
+    from src.kortana.middleware.cache import CacheStrategy, ResponseCacheMiddleware
+    from src.kortana.routers.optimization import router as optimization_router
+
+    OPTIMIZATION_AVAILABLE = True
+except ImportError as e:
+    print(f"Warning: Could not import optimization modules: {e}")
 
 # Import routers
 try:
@@ -71,27 +86,13 @@ async def lifespan(app: FastAPI):
         print("[OK] Secrets Validation: COMPLETE")
         print(f"[INFO] Environment: {settings.ENVIRONMENT}")
         print("[INFO] API Keys Loaded:")
-        print(
-            f"   [KEY] Gemini API: {'[SET]' if settings.GEMINI_API_KEY else '[MISSING]'}"
-        )
-        print(
-            f"   [KEY] GitHub Token: {'[SET]' if settings.GITHUB_TOKEN else '[MISSING]'}"
-        )
-        print(
-            f"   [KEY] Discord Bot: {'[SET]' if settings.DISCORD_BOT_TOKEN else '[MISSING]'}"
-        )
-        print(
-            f"   [KEY] OpenAI Key: {'[SET]' if settings.OPENAI_API_KEY else '[MISSING]'}"
-        )
-        print(
-            f"   [KEY] Anthropic Key: {'[SET]' if settings.ANTHROPIC_API_KEY else '[MISSING]'}"
-        )
-        print(
-            f"   [KEY] Pinecone Key: {'[SET]' if settings.PINECONE_API_KEY else '[MISSING]'}"
-        )
-        print(
-            f"   [KEY] Stripe Keys: {'[SET]' if settings.STRIPE_SECRET_KEY else '[MISSING]'}"
-        )
+        print(f"   [KEY] Gemini API: {'[SET]' if settings.GEMINI_API_KEY else '[MISSING]'}")
+        print(f"   [KEY] GitHub Token: {'[SET]' if settings.GITHUB_TOKEN else '[MISSING]'}")
+        print(f"   [KEY] Discord Bot: {'[SET]' if settings.DISCORD_BOT_TOKEN else '[MISSING]'}")
+        print(f"   [KEY] OpenAI Key: {'[SET]' if settings.OPENAI_API_KEY else '[MISSING]'}")
+        print(f"   [KEY] Anthropic Key: {'[SET]' if settings.ANTHROPIC_API_KEY else '[MISSING]'}")
+        print(f"   [KEY] Pinecone Key: {'[SET]' if settings.PINECONE_API_KEY else '[MISSING]'}")
+        print(f"   [KEY] Stripe Keys: {'[SET]' if settings.STRIPE_SECRET_KEY else '[MISSING]'}")
         print(f"{'=' * 60}\n")
     except ValueError as e:
         log_error("config", f"Configuration validation failed: {e}")
@@ -139,6 +140,27 @@ def create_app() -> FastAPI:
     app.add_middleware(RequestLoggingMiddleware)
     if settings.ENVIRONMENT != "testing":
         app.add_middleware(RateLimitMiddleware, requests_per_minute=100)
+
+    # Response caching middleware (optimization)
+    if OPTIMIZATION_AVAILABLE:
+        try:
+            import redis
+
+            try:
+                redis_url = getattr(settings, "REDIS_URL", None) or "redis://localhost:6379/0"
+            except (AttributeError, TypeError):
+                redis_url = "redis://localhost:6379/0"
+            redis_client = redis.from_url(redis_url, decode_responses=True)
+            cache_strategy = CacheStrategy(
+                ttl=300,
+                exclude_paths=["/api/auth", "/api/billing", "/health", "/docs", "/openapi.json"],
+            )
+            app.add_middleware(
+                ResponseCacheMiddleware, redis_client=redis_client, strategy=cache_strategy
+            )
+            print("[OK] Response caching middleware enabled")
+        except Exception as e:
+            print(f"[WARN] Response caching middleware disabled: {e}")
 
     # Exception handlers
     @app.exception_handler(KortanaException)
@@ -199,31 +221,28 @@ def create_app() -> FastAPI:
         app.include_router(agents.router, prefix="/api/agents", tags=["agents"])
         app.include_router(github.router, prefix="/api/github", tags=["github"])
         app.include_router(autonomy.router, prefix="/api/autonomy", tags=["autonomy"])
-        app.include_router(
-            knowledge.router, prefix="/api/knowledge", tags=["knowledge"]
-        )
-        app.include_router(
-            task_queue.router, prefix="/api/task-queue", tags=["task-queue"]
-        )
+        app.include_router(knowledge.router, prefix="/api/knowledge", tags=["knowledge"])
+        app.include_router(task_queue.router, prefix="/api/task-queue", tags=["task-queue"])
 
         # Phase 2: PR Creation, Testing, and Code Review
         app.include_router(pr_creation.router, prefix="/api/pr", tags=["pr-creation"])
-        app.include_router(
-            test_orchestrator.router, prefix="/api/testing", tags=["testing"]
-        )
-        app.include_router(
-            code_reviewer.router, prefix="/api/code-review", tags=["code-review"]
-        )
+        app.include_router(test_orchestrator.router, prefix="/api/testing", tags=["testing"])
+        app.include_router(code_reviewer.router, prefix="/api/code-review", tags=["code-review"])
 
         # Billing router
         app.include_router(billing.router, prefix="/api/billing", tags=["billing"])
 
         # Human Only Protocol router (if available)
         if HOP_AVAILABLE and hop_router:
-            app.include_router(
-                hop_router, prefix="/api/autonomy/hop", tags=["human-only-protocol"]
-            )
+            app.include_router(hop_router, prefix="/api/autonomy/hop", tags=["human-only-protocol"])
             print("[OK] Human Only Protocol router mounted")
+
+        # Optimization router (if available)
+        if OPTIMIZATION_AVAILABLE and optimization_router:
+            app.include_router(
+                optimization_router, prefix="/api/optimization", tags=["optimization"]
+            )
+            print("[OK] Optimization monitoring router mounted")
     except Exception as e:
         log_error("router_error", f"Error including routers: {e}")
         raise

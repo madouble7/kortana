@@ -17,9 +17,7 @@ logger = get_logger(__name__)
 
 
 @app.task(bind=True, max_retries=3)
-def process_chat(
-    self, message: str, conversation_id: str | None = None
-) -> dict[str, Any]:
+def process_chat(self, message: str, conversation_id: str | None = None) -> dict[str, Any]:
     """
     Process chat message with Gemini AI
 
@@ -48,9 +46,7 @@ def process_chat(
 
 
 @app.task(bind=True, max_retries=3)
-def analyze_image(
-    self, image_url: str, prompt: str = "Analyze this image"
-) -> dict[str, Any]:
+def analyze_image(self, image_url: str, prompt: str = "Analyze this image") -> dict[str, Any]:
     """
     Analyze image using Gemini Vision
 
@@ -134,9 +130,7 @@ def run_autonomy_cycle() -> dict[str, Any]:
                     db.commit()
 
                 except Exception as e:
-                    log_error(
-                        "celery_task", f"Task {task.id} execution failed: {str(e)}"
-                    )
+                    log_error("celery_task", f"Task {task.id} execution failed: {str(e)}")
                     task.status = "failed"
                     task.error = str(e)
                     task.updated_at = datetime.utcnow()
@@ -428,9 +422,7 @@ def create_pr_for_task_celery(self, task_id: str) -> dict[str, Any]:
 
             # If task has result/execution data, could create PR here
             # For now, log that we would create a PR
-            log_request(
-                "celery_task", f"Would create PR for completed task: {task.title}"
-            )
+            log_request("celery_task", f"Would create PR for completed task: {task.title}")
 
             return {
                 "status": "completed",
@@ -522,7 +514,7 @@ def execute_agent_task_celery(
 def trigger_autonomous_review_cycle(self) -> dict[str, Any]:
     """
     Autonomous code review cycle - triggered by Celery Beat
-    Reviews sample code and generates improvements
+    Reviews actual codebase files and generates improvements
 
     Returns:
         dict with review results
@@ -530,6 +522,47 @@ def trigger_autonomous_review_cycle(self) -> dict[str, Any]:
     try:
         log_request("celery_task", "🤖 AUTO-TRIGGER: Autonomous Review Cycle Started")
 
+        # Get actual files to review from the codebase
+        import os
+        import random
+
+        # Find Python files in the backend/src directory
+        backend_src = "backend/src"
+        if os.path.exists(backend_src):
+            python_files = []
+            for root, dirs, files in os.walk(backend_src):
+                for file in files:
+                    if file.endswith(".py") and not file.startswith("test_"):
+                        python_files.append(os.path.join(root, file))
+
+            if python_files:
+                # Select a random file to review
+                selected_file = random.choice(python_files)
+                try:
+                    with open(selected_file, "r", encoding="utf-8") as f:
+                        code_content = f.read()
+
+                    # Limit code size for review
+                    if len(code_content) > 10000:
+                        code_content = code_content[:10000] + "\n... (truncated for review)"
+
+                    # Trigger real code review
+                    task = review_code_task_celery.delay(code_content, selected_file)
+
+                    return {
+                        "status": "completed",
+                        "cycle": "review",
+                        "message": f"Autonomous review cycle triggered for {selected_file}",
+                        "task_id": task.id,
+                        "file_reviewed": selected_file,
+                        "timestamp": datetime.utcnow().isoformat(),
+                    }
+                except Exception as file_exc:
+                    log_error(
+                        "celery_task", f"Failed to read file {selected_file}: {str(file_exc)}"
+                    )
+
+        # Fallback to sample code if no files found
         sample_code = """
 def analyze_data(data_list):
     result = []
@@ -539,13 +572,12 @@ def analyze_data(data_list):
     return result
 """
 
-        # Trigger code review
-        task = review_code_task_celery.delay(sample_code, "autonomous_analysis.py")
+        task = review_code_task_celery.delay(sample_code, "sample_code.py")
 
         return {
             "status": "completed",
             "cycle": "review",
-            "message": "Autonomous review cycle triggered",
+            "message": "Autonomous review cycle triggered (fallback to sample)",
             "task_id": task.id,
             "timestamp": datetime.utcnow().isoformat(),
         }
@@ -558,7 +590,7 @@ def analyze_data(data_list):
 def trigger_autonomous_agent_cycle(self) -> dict[str, Any]:
     """
     Autonomous agent execution cycle - triggered by Celery Beat
-    Orchestrates agents to work on self-identified tasks
+    Analyzes codebase and identifies real improvement opportunities
 
     Returns:
         dict with agent execution results
@@ -566,18 +598,90 @@ def trigger_autonomous_agent_cycle(self) -> dict[str, Any]:
     try:
         log_request("celery_task", "🤖 AUTO-TRIGGER: Autonomous Agent Cycle Started")
 
-        # Trigger agent execution with self-generated task
+        # Analyze codebase for real improvement opportunities
+        import os
+        import random
+
+        improvements = []
+
+        # Check for potential improvements in the codebase
+        backend_src = "backend/src"
+        if os.path.exists(backend_src):
+            # Look for files that might need attention
+            python_files = []
+            for root, dirs, files in os.walk(backend_src):
+                for file in files:
+                    if file.endswith(".py"):
+                        python_files.append(os.path.join(root, file))
+
+            # Select a few files to analyze
+            sample_files = random.sample(python_files, min(3, len(python_files)))
+
+            for file_path in sample_files:
+                try:
+                    with open(file_path, "r", encoding="utf-8") as f:
+                        content = f.read()
+
+                    # Simple heuristic analysis for potential improvements
+                    lines = content.split("\n")
+                    issues = []
+
+                    # Check for TODO comments
+                    todo_count = sum(1 for line in lines if "TODO" in line.upper())
+                    if todo_count > 0:
+                        issues.append(f"{todo_count} TODO comments found")
+
+                    # Check for long functions (simple heuristic)
+                    long_functions = sum(
+                        1 for line in lines if line.strip().startswith("def ") and len(lines) > 50
+                    )
+                    if long_functions > 0:
+                        issues.append("Potentially long functions detected")
+
+                    # Check for print statements (could be debug code)
+                    print_count = sum(1 for line in lines if "print(" in line)
+                    if print_count > 2:
+                        issues.append(f"{print_count} print statements (potential debug code)")
+
+                    if issues:
+                        improvements.append(
+                            {"file": file_path, "issues": issues, "priority": "medium"}
+                        )
+
+                except Exception as file_exc:
+                    log_error("celery_task", f"Failed to analyze {file_path}: {str(file_exc)}")
+
+        # Generate a real task description based on findings
+        if improvements:
+            task_description = f"Address {len(improvements)} code quality issues: " + ", ".join(
+                [
+                    f"{imp['file'].split('/')[-1]} ({len(imp['issues'])} issues)"
+                    for imp in improvements
+                ]
+            )
+            priority = "high" if len(improvements) > 2 else "medium"
+        else:
+            task_description = "Perform general codebase quality improvements and optimizations"
+            priority = "medium"
+
+        # Trigger agent execution with real task
         task = execute_agent_task_celery.delay(
             "autonomous_agent",
-            "Self-improve codebase quality",
-            {"priority": "high", "category": "self-improvement"},
+            task_description,
+            {
+                "priority": priority,
+                "category": "code_quality",
+                "improvements_found": len(improvements),
+                "files_analyzed": len(sample_files) if "sample_files" in locals() else 0,
+            },
         )
 
         return {
             "status": "completed",
             "cycle": "agent",
-            "message": "Autonomous agent cycle triggered",
+            "message": f"Autonomous agent cycle triggered - found {len(improvements)} improvement opportunities",
             "task_id": task.id,
+            "improvements_identified": len(improvements),
             "timestamp": datetime.utcnow().isoformat(),
         }
     except Exception as exc:
@@ -644,33 +748,35 @@ def autonomous_system_monitor_task(self) -> dict[str, Any]:
         dict with monitoring results and optimization status
     """
     try:
-        from src.kortana.autonomous_monitor import get_monitor
+        import asyncio
+        from src.kortana.autonomous_monitor import monitor_autonomous_system
 
-        log_request(
-            "celery_task", "🧠 AUTONOMOUS SYSTEM MONITOR: Analyzing system performance"
-        )
+        log_request("celery_task", "🧠 AUTONOMOUS SYSTEM MONITOR: Analyzing system performance")
 
-        # Get the autonomous monitoring system
-        monitor = get_monitor()
+        # Run the async monitoring function
+        loop = asyncio.get_event_loop()
+        monitoring_results = loop.run_until_complete(monitor_autonomous_system())
 
-        # Return system metrics collected so far
+        # Extract real metrics from the monitoring results
+        awareness_report = monitoring_results.get("awareness_report", {})
+        system_status = awareness_report.get("system_status", {})
+        performance = awareness_report.get("performance", {})
+
         return {
             "status": "completed",
             "task": "autonomous_monitoring",
-            "message": "System self-monitoring completed",
+            "message": "System self-monitoring completed with real metrics",
             "metrics": {
-                "total_tasks": monitor.metrics["tasks_executed"],
-                "successful": monitor.metrics["tasks_successful"],
-                "failed": monitor.metrics["tasks_failed"],
-                "errors": len(monitor.metrics["errors_encountered"]),
-                "average_cycle_time": (
-                    sum(monitor.metrics["cycle_times"])
-                    / len(monitor.metrics["cycle_times"])
-                    if monitor.metrics["cycle_times"]
-                    else 0
-                ),
-                "last_check": monitor.metrics["last_check"],
+                "total_cycles": system_status.get("total_cycles", 0),
+                "successful_cycles": system_status.get("successful", 0),
+                "failed_cycles": system_status.get("failed", 0),
+                "success_rate": system_status.get("success_rate", 0),
+                "errors_total": performance.get("errors_total", 0),
+                "average_cycle_time_seconds": performance.get("average_cycle_time_seconds", 0),
+                "last_check": performance.get("last_check"),
+                "improvements_identified": len(monitoring_results.get("improvements", [])),
             },
+            "monitoring_results": monitoring_results,
             "timestamp": datetime.utcnow().isoformat(),
         }
     except Exception as monitor_exc:
