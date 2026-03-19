@@ -24,8 +24,14 @@ from src.kortana.config import get_settings
 from src.kortana.exceptions import KortanaException
 from src.kortana.logger import log_error, log_request, setup_logging
 
+# Import Redis for caching
+try:
+    from redis import Redis
+except ImportError:
+    Redis = None
+
 # Import middleware
-from src.kortana.middleware.cache import ResponseCacheMiddleware
+from src.kortana.middleware.cache import CacheStrategy, ResponseCacheMiddleware
 from src.kortana.middleware.security import (
     RateLimitMiddleware,
     RequestIDMiddleware,
@@ -145,7 +151,28 @@ def create_app() -> FastAPI:
     )
 
     # Response caching middleware for optimization
-    app.add_middleware(ResponseCacheMiddleware)
+    # Initialize Redis for caching if available
+    if Redis is not None:
+        try:
+            redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+            redis_client = Redis.from_url(redis_url)
+            cache_strategy = CacheStrategy(
+                ttl=300,  # 5 minutes
+                key_prefix="api_cache:",
+                exclude_paths=[
+                    "/health",
+                    "/docs",
+                    "/openapi.json",
+                    "/protocol/auto/execute",
+                    "/api/optimization",
+                ],
+            )
+            app.add_middleware(
+                ResponseCacheMiddleware, redis_client=redis_client, strategy=cache_strategy
+            )
+        except Exception as e:
+            log_error("CACHE_INIT", f"Failed to initialize response caching: {e}")
+    # Note: caching gracefully disabled if Redis unavailable
 
     # Security middleware
     app.add_middleware(SecurityHeadersMiddleware)
