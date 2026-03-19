@@ -2,7 +2,7 @@
 Celery Task Definitions for Kor'tana
 Background tasks for chat processing, image analysis, and autonomy cycles
 """
-
+import asyncio
 from datetime import datetime
 from typing import Any
 
@@ -631,12 +631,24 @@ def trigger_autonomous_agent_cycle(self) -> dict[str, Any]:
                     if todo_count > 0:
                         issues.append(f"{todo_count} TODO comments found")
 
-                    # Check for long functions (simple heuristic)
-                    long_functions = sum(
-                        1 for line in lines if line.strip().startswith("def ") and len(lines) > 50
-                    )
+                    # Check for long functions (per-function heuristic)
+                    # Track actual function lengths by finding function declarations and their spans
+                    function_lengths = []
+                    for i, line in enumerate(lines):
+                        if line.strip().startswith("def "):
+                            # Find the end of this function (next "def" or "class" or EOF)
+                            func_length = 1
+                            for j in range(i + 1, len(lines)):
+                                if (
+                                    lines[j].strip().startswith(("def ", "class "))
+                                    and lines[j][0] not in " \t"
+                                ):
+                                    break
+                                func_length += 1
+                            function_lengths.append(func_length)
+                    long_functions = sum(1 for length in function_lengths if length > 50)
                     if long_functions > 0:
-                        issues.append("Potentially long functions detected")
+                        issues.append(f"{long_functions} long functions (>50 lines) detected")
 
                     # Check for print statements (could be debug code)
                     print_count = sum(1 for line in lines if "print(" in line)
@@ -655,7 +667,7 @@ def trigger_autonomous_agent_cycle(self) -> dict[str, Any]:
         if improvements:
             task_description = f"Address {len(improvements)} code quality issues: " + ", ".join(
                 [
-                    f"{imp['file'].split('/')[-1]} ({len(imp['issues'])} issues)"
+                    f"{os.path.basename(imp['file'])} ({len(imp['issues'])} issues)"
                     for imp in improvements
                 ]
             )
@@ -748,14 +760,12 @@ def autonomous_system_monitor_task(self) -> dict[str, Any]:
         dict with monitoring results and optimization status
     """
     try:
-        import asyncio
         from src.kortana.autonomous_monitor import monitor_autonomous_system
 
         log_request("celery_task", "🧠 AUTONOMOUS SYSTEM MONITOR: Analyzing system performance")
 
         # Run the async monitoring function
-        loop = asyncio.get_event_loop()
-        monitoring_results = loop.run_until_complete(monitor_autonomous_system())
+        monitoring_results = asyncio.run(monitor_autonomous_system())
 
         # Extract real metrics from the monitoring results
         awareness_report = monitoring_results.get("awareness_report", {})
