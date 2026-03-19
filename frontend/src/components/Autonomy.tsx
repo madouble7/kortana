@@ -1,36 +1,30 @@
-import { useState, useEffect } from 'react';
-import { Brain, Play, Activity, TrendingUp, Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { Brain, Play, Activity, TrendingUp, Loader2, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import { api } from '../lib/api';
 import { formatRelativeTime } from '../lib/utils';
-import type { AutonomyStatus } from '../types';
+import { useAutonomyRealtime } from '../hooks/useAutonomyRealtime';
 
 export default function Autonomy() {
-  const [status, setStatus] = useState<AutonomyStatus | null>(null);
-  const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
 
-  useEffect(() => {
-    fetchStatus();
-    const interval = setInterval(fetchStatus, 5000); // Poll every 5 seconds
-    return () => clearInterval(interval);
-  }, []);
-
-  const fetchStatus = async () => {
-    try {
-      const data = await api.getAutonomyStatus();
-      setStatus(data);
-    } catch (error) {
-      console.error('Failed to fetch autonomy status:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const {
+    status,
+    connectionState,
+    isLoading,
+    error,
+    reconnect,
+  } = useAutonomyRealtime({
+    enabled: true,
+    pollingInterval: 5000,
+    maxRetries: 3,
+    reconnectDelay: 2000,
+  });
 
   const triggerCycle = async () => {
     try {
       setRunning(true);
       await api.triggerAutonomyCycle();
-      await fetchStatus();
+      // Status will be updated automatically via real-time connection
     } catch (error) {
       console.error('Failed to trigger autonomy cycle:', error);
     } finally {
@@ -38,7 +32,7 @@ export default function Autonomy() {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full bg-gray-900">
         <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
@@ -55,17 +49,60 @@ export default function Autonomy() {
             <Brain className="w-5 h-5 text-purple-400" />
             <h2 className="text-lg font-semibold text-white">HOP Autonomy</h2>
           </div>
-          <div className="flex items-center gap-2">
-            <div
-              className={`w-2 h-2 rounded-full ${
-                status?.status === 'active' ? 'bg-green-500 animate-pulse' : 'bg-gray-500'
-              }`}
-            />
-            <span className="text-sm text-gray-400">
-              {status?.status === 'active' ? 'Active' : 'Inactive'}
-            </span>
+          <div className="flex items-center gap-4">
+            {/* Connection Status */}
+            <div className="flex items-center gap-2">
+              {connectionState.isConnected ? (
+                <Wifi className="w-4 h-4 text-green-400" />
+              ) : connectionState.fallbackToPolling ? (
+                <RefreshCw className="w-4 h-4 text-yellow-400 animate-spin" />
+              ) : (
+                <WifiOff className="w-4 h-4 text-red-400" />
+              )}
+              <span className="text-xs text-gray-400">
+                {connectionState.isConnected
+                  ? 'Real-time'
+                  : connectionState.fallbackToPolling
+                  ? 'Polling'
+                  : 'Disconnected'
+                }
+              </span>
+              {!connectionState.isConnected && !connectionState.fallbackToPolling && (
+                <button
+                  onClick={reconnect}
+                  className="text-xs text-blue-400 hover:text-blue-300 underline"
+                  disabled={connectionState.isConnecting}
+                >
+                  {connectionState.isConnecting ? 'Connecting...' : 'Reconnect'}
+                </button>
+              )}
+            </div>
+
+            {/* Autonomy Status */}
+            <div className="flex items-center gap-2">
+              <div
+                className={`w-2 h-2 rounded-full ${
+                  status?.status === 'active' ? 'bg-green-500 animate-pulse' : 'bg-gray-500'
+                }`}
+              />
+              <span className="text-sm text-gray-400">
+                {status?.status === 'active' ? 'Active' : 'Inactive'}
+              </span>
+            </div>
           </div>
         </div>
+
+        {/* Connection Error Display */}
+        {error && (
+          <div className="mt-2 px-3 py-2 bg-red-900/20 border border-red-700/50 rounded-lg">
+            <p className="text-sm text-red-400">
+              Connection issue: {error}
+              {connectionState.fallbackToPolling && (
+                <span className="text-yellow-400 ml-2">Using polling fallback.</span>
+              )}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Content */}
