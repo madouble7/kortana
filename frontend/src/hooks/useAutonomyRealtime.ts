@@ -52,7 +52,6 @@ export function useAutonomyRealtime(options: UseAutonomyRealtimeOptions = {}): U
   const wsRef = useRef<WebSocket | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const pollingTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Get API base URL
   const getBaseUrl = useCallback(() => {
