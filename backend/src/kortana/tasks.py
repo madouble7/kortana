@@ -632,3 +632,42 @@ def autonomous_self_improvement_loop(self) -> dict[str, Any]:
     except Exception as exc:
         log_error("celery_task", f"Master improvement loop failed: {str(exc)}")
         raise
+
+
+@app.task(bind=True, name="src.kortana.tasks.autonomous_system_monitor_task")
+def autonomous_system_monitor_task(self) -> dict[str, Any]:
+    """
+    Autonomous system self-monitoring and self-awareness task
+    Monitors performance metrics, identifies improvements, and adapts the system
+    
+    Returns:
+        dict with monitoring results and optimization status
+    """
+    try:
+        import asyncio
+        from src.kortana.autonomous_monitor import get_monitor
+        
+        log_request("celery_task", "🧠 AUTONOMOUS SYSTEM MONITOR: Analyzing system performance")
+        
+        # Get the autonomous monitoring system
+        monitor = get_monitor()
+        
+        # Generate self-awareness report
+        loop = asyncio.get_event_loop()
+        awareness_report = loop.run_until_complete(monitor.generate_self_awareness_report())
+        
+        # Return comprehensive monitoring results
+        return {
+            "status": "completed",
+            "task": "autonomous_monitoring",
+            "message": "System self-monitoring and analysis completed",
+            "awareness_report": awareness_report,
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+    except Exception as monitor_exc:
+        log_error("celery_task", f"Autonomous monitoring failed: {str(monitor_exc)}")
+        return {
+            "status": "failed",
+            "error": str(monitor_exc),
+            "timestamp": datetime.utcnow().isoformat(),
+        }

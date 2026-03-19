@@ -67,6 +67,10 @@ app.conf.beat_schedule = {
         "task": "src.kortana.tasks.autonomous_self_improvement_loop",
         "schedule": 1200.0,  # Every 20 minutes - master self-improvement cycle
     },
+    "autonomous-system-monitor-every-30-minutes": {
+        "task": "src.kortana.tasks.autonomous_system_monitor_task",
+        "schedule": 1800.0,  # Every 30 minutes - self-awareness and optimization
+    },
 }
 
 if __name__ == "__main__":
