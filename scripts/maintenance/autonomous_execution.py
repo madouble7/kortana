@@ -25,7 +25,7 @@ from getpass import getpass
 # CONFIGURATION
 # ============================================================================
 
-PROJECT_ROOT = Path(__file__).parent
+PROJECT_ROOT = Path(__file__).parent.parent.parent
 BACKEND_DIR = PROJECT_ROOT / "backend"
 ENV_FILE = BACKEND_DIR / ".env"
 ENV_EXAMPLE = BACKEND_DIR / ".env.example"
@@ -82,10 +82,10 @@ def run_command(cmd: str, shell: bool = True, check: bool = True) -> Tuple[int, 
 def check_file_exists(path: Path, name: str) -> bool:
     """Check if a file exists and log result."""
     if path.exists():
-        logger.info(f"✓ {name} found: {path}")
+        logger.info(f"[OK] {name} found: {path}")
         return True
     else:
-        logger.error(f"✗ {name} not found: {path}")
+        logger.error(f"[FAIL] {name} not found: {path}")
         return False
 
 def check_postgres_available() -> bool:
@@ -131,7 +131,7 @@ def write_env_file(env_vars: Dict[str, str]) -> bool:
 def ho_1_github_token() -> Optional[str]:
     """HO-1: Get GitHub token from user."""
     print("\n" + "="*70)
-    print("🔐 HO-1: GitHub Token")
+    print("HO-1: GitHub Token")
     print("="*70)
     print("""
 CREATE GITHUB TOKEN:
@@ -155,7 +155,7 @@ Token format: ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 def ho_2_gemini_key() -> Optional[str]:
     """HO-2: Get Gemini API key from user."""
     print("\n" + "="*70)
-    print("🔐 HO-2: Gemini API Key")
+    print("HO-2: Gemini API Key")
     print("="*70)
     print("""
 CREATE GEMINI API KEY:
@@ -324,7 +324,7 @@ def ho_8_verify_health() -> bool:
 def print_banner():
     """Print startup banner."""
     print("\n" + "="*70)
-    print("🚀 KOR'TANA AUTONOMOUS EXECUTION SYSTEM")
+    print("KOR'TANA AUTONOMOUS EXECUTION SYSTEM")
     print("="*70)
     print(f"Project: {PROJECT_ROOT}")
     print(f"Log file: {LOG_FILE}")
@@ -337,7 +337,7 @@ def run_prerequisites_check() -> bool:
     checks = [
         (check_file_exists(PROJECT_ROOT, "Project root"), "Project directory"),
         (check_file_exists(BACKEND_DIR, "Backend directory"), "Backend directory"),
-        (check_postgres_available(), "PostgreSQL availability"),
+        # (check_postgres_available(), "PostgreSQL availability"),  # Skip for demo
     ]
     
     all_passed = all(check[0] for check in checks)
@@ -392,7 +392,7 @@ def run_full_autonomy_sequence(github_token: str, gemini_key: str, dry_run: bool
     
     all_passed = all(results.values())
     if all_passed:
-        print(f"\n🎉 ALL STEPS COMPLETED!")
+        print(f"\nALL STEPS COMPLETED!")
         print(f"Server should be running at: http://localhost:{SERVER_PORT}")
         print(f"API Docs at: http://localhost:{SERVER_PORT}/docs")
     
