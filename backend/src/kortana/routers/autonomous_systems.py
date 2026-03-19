@@ -213,3 +213,65 @@ async def get_autonomous_schedule() -> dict[str, Any]:
             "status": "error",
             "error": str(e),
         }
+
+
+@router.get("/monitor/dashboard")
+async def get_autonomous_monitoring_dashboard() -> dict[str, Any]:
+    """
+    Get autonomous system self-monitoring dashboard
+    Shows performance metrics, improvement opportunities, and self-awareness report
+    """
+    try:
+        log_request("api", "🧠 Generating autonomous system monitoring dashboard")
+
+        from src.kortana.autonomous_monitor import get_monitor
+
+        monitor = get_monitor()
+
+        # Generate self-awareness report
+        awareness_report = await monitor.generate_self_awareness_report()
+
+        # Identify improvements
+        improvements = await monitor.identify_improvements()
+
+        return {
+            "status": "success",
+            "message": "🧠 KOR'TANA Autonomous System Self-Awareness Dashboard",
+            "timestamp": awareness_report.get("timestamp"),
+            "system_performance": awareness_report.get("system_status"),
+            "performance_metrics": awareness_report.get("performance"),
+            "autonomous_capabilities": awareness_report.get("autonomous_capabilities"),
+            "improvement_opportunities": improvements,
+            "total_improvements": len(improvements),
+            "high_priority_count": len([i for i in improvements if i.get("impact") == "high"]),
+        }
+    except Exception as e:
+        log_error("api", f"Failed to generate monitoring dashboard: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate dashboard: {str(e)}")
+
+
+@router.post("/monitor/optimize")
+async def trigger_autonomous_optimization() -> dict[str, Any]:
+    """
+    Trigger autonomous system optimization
+    Analyzes current performance and initiates self-optimization
+    """
+    try:
+        log_request("api", "🚀 Triggering autonomous system optimization")
+
+        from src.kortana.autonomous_monitor import get_monitor
+
+        monitor = get_monitor()
+
+        # Initiate self-optimization
+        optimization_result = await monitor.initiate_self_optimization()
+
+        return {
+            "status": "initiated",
+            "message": "🚀 Autonomous optimization cycle started",
+            "optimization": optimization_result,
+            "next_check": "In 30 minutes (via Beat scheduler)",
+        }
+    except Exception as e:
+        log_error("api", f"Failed to initiate optimization: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to initiate optimization: {str(e)}")
