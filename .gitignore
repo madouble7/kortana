@@ -199,3 +199,4 @@ key.json
 # Cloud
 .terraform/
 *.tfstate
+celerybeat-schedule.*
