@@ -29,22 +29,26 @@ class GitHubAutonomyService:
         self.db = db_session
         self.code_gen = CodeGenerator()
         self.settings = get_settings()
-        
+
         # Get GitHub token from environment first, then fallback to settings
         self.github_token = os.getenv("GITHUB_TOKEN")
         if not self.github_token:
             self.github_token = self.settings.GITHUB_TOKEN
-        
+
         # Validate token is actually set (not placeholder)
         if self.github_token and self.github_token.startswith("your_"):
-            logger.warning("GitHub token appears to be a placeholder, replacing with env var")
+            logger.warning(
+                "GitHub token appears to be a placeholder, replacing with env var"
+            )
             self.github_token = os.getenv("GITHUB_TOKEN", "")
-        
+
         self.repo_owner = os.getenv("GITHUB_OWNER") or self.settings.GITHUB_OWNER
         self.repo_name = os.getenv("GITHUB_REPO") or self.settings.GITHUB_REPO
         self.max_retries = self.settings.TASK_MAX_RETRIES
-        
-        logger.info(f"GitHubAutonomyService initialized: {self.repo_owner}/{self.repo_name}")
+
+        logger.info(
+            f"GitHubAutonomyService initialized: {self.repo_owner}/{self.repo_name}"
+        )
         logger.debug(f"GitHub token present: {bool(self.github_token)}")
 
     @staticmethod
@@ -150,6 +154,32 @@ class GitHubAutonomyService:
                 logger.error(f"Failed to commit new tasks: {str(e)}")
 
         return queued_tasks
+
+    def fetch_and_queue_issues_sync(self, repo: str | None = None) -> list[dict]:
+        """Sync wrapper for fetch_and_queue_issues - fetches GitHub issues synchronously"""
+        self._validate_token()
+
+        owner, name = repo.split("/") if repo else (self.repo_owner, self.repo_name)
+        headers = {
+            "Authorization": f"token {self.github_token}",
+            "Accept": "application/vnd.github.v3+json",
+        }
+        url = (
+            f"https://api.github.com/repos/{owner}/{name}/issues?state=open&per_page=50"
+        )
+
+        try:
+            # Use sync httpx client for Celery compatibility
+            response = httpx.get(url, headers=headers, timeout=15)
+            response.raise_for_status()
+            issues = response.json()
+            logger.info(f"Fetched {len(issues)} issues from {owner}/{name}")
+            return [
+                {"number": issue["number"], "title": issue["title"]} for issue in issues
+            ]
+        except Exception as e:
+            logger.error(f"Failed to fetch GitHub issues: {str(e)}")
+            return []
 
     def _determine_priority(self, issue: dict[str, Any]) -> str:
         """Determine priority from labels"""
@@ -359,7 +389,7 @@ class GitHubAutonomyService:
         if self.db:
             try:
                 # Try to close gracefully
-                if hasattr(self.db, 'close'):
+                if hasattr(self.db, "close"):
                     self.db.close()
             except Exception as e:
                 logger.debug(f"Error closing database session: {e}")

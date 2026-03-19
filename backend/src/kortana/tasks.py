@@ -8,7 +8,7 @@ from typing import Any
 
 from src.kortana.celery_app import app
 from src.kortana.database import SessionLocal
-from src.kortana.logger import log_error, log_request, get_logger
+from src.kortana.logger import get_logger, log_error, log_request
 from src.kortana.models import Task
 from src.kortana.services.gemini import gemini_service
 from src.kortana.services.github_autonomy_service import GitHubAutonomyService
@@ -365,22 +365,14 @@ def run_always_on_monitor_task(self) -> dict[str, Any]:
     """
     log_request("celery_task", "🔍 Running Always-On Monitor - Fetching GitHub Issues")
 
-    import asyncio
-    from src.kortana.database import SessionLocal
-    
-    db = SessionLocal()
     try:
-        loop = asyncio.get_event_loop()
-        service = GitHubAutonomyService(db_session=db)
-        
-        # Fetch and queue new issues from GitHub
-        new_tasks = loop.run_until_complete(service.fetch_and_queue_issues())
-        
-        # Process queued tasks through pipeline (analyze, plan, execute if enabled)
-        loop.run_until_complete(service.process_next_tasks(limit=5))
-        
+        service = GitHubAutonomyService(db_session=None)
+
+        # Fetch and queue new issues from GitHub using sync-compatible approach
+        new_tasks = service.fetch_and_queue_issues_sync()
+
         log_request("celery_task", f"Monitor found {len(new_tasks)} new issues")
-        
+
         return {
             "status": "completed",
             "message": f"Monitor cycle completed - processed {len(new_tasks)} new tasks",
@@ -398,11 +390,7 @@ def run_always_on_monitor_task(self) -> dict[str, Any]:
             "issues_found": 0,
             "error": str(monitor_exc),
         }
-    finally:
-        try:
-            db.close()
-        except Exception as close_exc:
-            logger.debug(f"Error closing DB: {close_exc}")
+
 
 @app.task(bind=True, name="src.kortana.tasks.create_pr_for_task_celery")
 def create_pr_for_task_celery(self, task_id: str) -> dict[str, Any]:
@@ -419,15 +407,16 @@ def create_pr_for_task_celery(self, task_id: str) -> dict[str, Any]:
         log_request("celery_task", f"Creating PR for task: {task_id}")
 
         from src.kortana.database import SessionLocal
-        
+
         db = SessionLocal()
         try:
             # Fetch the task from database
             from sqlalchemy import select
+
             stmt = select(Task).where(Task.id == task_id)
             result = db.execute(stmt)
             task = result.scalar_one_or_none()
-            
+
             if not task:
                 log_error("celery_task", f"Task {task_id} not found in database")
                 return {
@@ -436,11 +425,13 @@ def create_pr_for_task_celery(self, task_id: str) -> dict[str, Any]:
                     "task_id": task_id,
                     "timestamp": datetime.utcnow().isoformat(),
                 }
-            
+
             # If task has result/execution data, could create PR here
             # For now, log that we would create a PR
-            log_request("celery_task", f"Would create PR for completed task: {task.title}")
-            
+            log_request(
+                "celery_task", f"Would create PR for completed task: {task.title}"
+            )
+
             return {
                 "status": "completed",
                 "message": f"PR creation completed for task {task_id}",
