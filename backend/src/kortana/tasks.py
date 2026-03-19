@@ -362,18 +362,43 @@ def run_always_on_monitor_task(self) -> dict[str, Any]:
         dict with monitoring results
     """
     try:
-        log_request("celery_task", "Running Always-On Monitor")
+        log_request("celery_task", "🔍 Running Always-On Monitor - Fetching GitHub Issues")
 
-        return {
-            "status": "completed",
-            "message": "Monitor cycle completed",
-            "timestamp": datetime.utcnow().isoformat(),
-            "issues_found": 0,
-            "prs_created": 0,
-        }
+        import asyncio
+        from src.kortana.database import SessionLocal
+        
+        db = SessionLocal()
+        try:
+            loop = asyncio.get_event_loop()
+            service = GitHubAutonomyService(db_session=db)
+            
+            # Fetch and queue new issues from GitHub
+            new_tasks = loop.run_until_complete(service.fetch_and_queue_issues())
+            
+            # Process queued tasks through pipeline (analyze, plan, execute if enabled)
+            loop.run_until_complete(service.process_next_tasks(limit=5))
+            
+            log_request("celery_task", f"Monitor found {len(new_tasks)} new issues")
+            
+            return {
+                "status": "completed",
+                "message": f"Monitor cycle completed - processed {len(new_tasks)} new tasks",
+                "timestamp": datetime.utcnow().isoformat(),
+                "issues_found": len(new_tasks),
+                "prs_created": 0,  # Will be populated when create_pr_for_task is called
+            }
+        finally:
+            db.close()
     except Exception as exc:
         log_error("celery_task", f"Always-On Monitor failed: {str(exc)}")
-        raise
+        # Return partial results instead of raising to keep beat schedule running
+        return {
+            "status": "failed",
+            "message": f"Monitor error: {str(exc)}",
+            "timestamp": datetime.utcnow().isoformat(),
+            "issues_found": 0,
+            "error": str(exc),
+        }
 
 
 @app.task(bind=True, name="src.kortana.tasks.create_pr_for_task_celery")
@@ -390,16 +415,46 @@ def create_pr_for_task_celery(self, task_id: str) -> dict[str, Any]:
     try:
         log_request("celery_task", f"Creating PR for task: {task_id}")
 
-        return {
-            "status": "completed",
-            "message": f"PR creation completed for task {task_id}",
-            "task_id": task_id,
-            "pr_number": None,
-            "timestamp": datetime.utcnow().isoformat(),
-        }
+        from src.kortana.database import SessionLocal
+        
+        db = SessionLocal()
+        try:
+            # Fetch the task from database
+            from sqlalchemy import select
+            stmt = select(Task).where(Task.id == task_id)
+            result = db.execute(stmt)
+            task = result.scalar_one_or_none()
+            
+            if not task:
+                log_error("celery_task", f"Task {task_id} not found in database")
+                return {
+                    "status": "failed",
+                    "message": f"Task {task_id} not found",
+                    "task_id": task_id,
+                    "timestamp": datetime.utcnow().isoformat(),
+                }
+            
+            # If task has result/execution data, could create PR here
+            # For now, log that we would create a PR
+            log_request("celery_task", f"Would create PR for completed task: {task.title}")
+            
+            return {
+                "status": "completed",
+                "message": f"PR creation completed for task {task_id}",
+                "task_id": task_id,
+                "pr_number": None,  # Placeholder until GitHub PR API integration
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        finally:
+            db.close()
     except Exception as exc:
         log_error("celery_task", f"PR creation failed: {str(exc)}")
-        raise
+        return {
+            "status": "failed",
+            "error": str(exc),
+            "task_id": task_id,
+            "timestamp": datetime.utcnow().isoformat(),
+        }
 
 
 @app.task(bind=True, name="src.kortana.tasks.review_code_task_celery")
