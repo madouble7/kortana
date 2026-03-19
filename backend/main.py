@@ -7,12 +7,16 @@ import os
 import sys
 from contextlib import asynccontextmanager
 
-# Configuration and utilities
-from config import get_settings
-from exceptions import KortanaException
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+
+# Add backend directory to path FIRST (before any local imports)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+# Configuration and utilities
+from config import get_settings
+from exceptions import KortanaException
 from logger import log_error, log_request, setup_logging
 
 # Middleware
@@ -27,19 +31,16 @@ from middleware.security import (
 OPTIMIZATION_AVAILABLE = False
 optimization_router = None
 try:
-    from src.kortana.celery_app_enhanced import HealthAwareScheduler  # noqa: F401
     from src.kortana.circuit_breaker import AutonomyCircuitBreaker  # noqa: F401
     from src.kortana.distributed_lock import DistributedLock  # noqa: F401
+    from src.kortana.workflow_executor import WorkflowExecutor  # noqa: F401
+    from src.kortana.celery_app_enhanced import HealthAwareScheduler  # noqa: F401
     from src.kortana.middleware.cache import CacheStrategy, ResponseCacheMiddleware
     from src.kortana.routers.optimization import router as optimization_router
-    from src.kortana.workflow_executor import WorkflowExecutor  # noqa: F401
 
     OPTIMIZATION_AVAILABLE = True
 except ImportError as e:
     print(f"Warning: Could not import optimization modules: {e}")
-
-# Add backend directory to path (after imports)
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # Import routers
 try:
