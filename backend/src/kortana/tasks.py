@@ -644,7 +644,6 @@ def autonomous_system_monitor_task(self) -> dict[str, Any]:
         dict with monitoring results and optimization status
     """
     try:
-        import asyncio
         from src.kortana.autonomous_monitor import get_monitor
         
         log_request("celery_task", "🧠 AUTONOMOUS SYSTEM MONITOR: Analyzing system performance")
@@ -652,16 +651,23 @@ def autonomous_system_monitor_task(self) -> dict[str, Any]:
         # Get the autonomous monitoring system
         monitor = get_monitor()
         
-        # Generate self-awareness report
-        loop = asyncio.get_event_loop()
-        awareness_report = loop.run_until_complete(monitor.generate_self_awareness_report())
-        
-        # Return comprehensive monitoring results
+        # Return system metrics collected so far
         return {
             "status": "completed",
             "task": "autonomous_monitoring",
-            "message": "System self-monitoring and analysis completed",
-            "awareness_report": awareness_report,
+            "message": "System self-monitoring completed",
+            "metrics": {
+                "total_tasks": monitor.metrics["tasks_executed"],
+                "successful": monitor.metrics["tasks_successful"],
+                "failed": monitor.metrics["tasks_failed"],
+                "errors": len(monitor.metrics["errors_encountered"]),
+                "average_cycle_time": (
+                    sum(monitor.metrics["cycle_times"]) / len(monitor.metrics["cycle_times"])
+                    if monitor.metrics["cycle_times"]
+                    else 0
+                ),
+                "last_check": monitor.metrics["last_check"],
+            },
             "timestamp": datetime.utcnow().isoformat(),
         }
     except Exception as monitor_exc:
