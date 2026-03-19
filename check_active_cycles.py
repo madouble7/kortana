@@ -2,7 +2,8 @@
 """Check which autonomous cycles are currently running."""
 
 import sys
-sys.path.insert(0, 'backend')
+
+sys.path.insert(0, "backend")
 
 from src.kortana.celery_app import app
 
@@ -19,7 +20,11 @@ cycles = [
     ("autonomous-review-every-10-minutes", 600, "📊 REVIEWING - Code quality review"),
     ("autonomous-agent-every-15-minutes", 900, "🤖 IMPROVING - Agent self-improvement"),
     ("master-autonomy-loop-every-20-minutes", 1200, "🎯 COORDINATION - Master control"),
-    ("autonomous-system-monitor-every-30-minutes", 1800, "🔄 SELF-AWARENESS - System monitoring"),
+    (
+        "autonomous-system-monitor-every-30-minutes",
+        1800,
+        "🔄 SELF-AWARENESS - System monitoring",
+    ),
 ]
 
 for cycle_name, interval, purpose in cycles:
@@ -35,16 +40,20 @@ try:
     inspector = app.control.inspect()
     stats = inspector.stats()
     active_tasks = inspector.active()
-    
+
     if stats:
         print("✅ Celery Worker is RUNNING")
         for worker_name, worker_stats in stats.items():
             print(f"   Worker: {worker_name}")
-            print(f"   - Pool: {worker_stats.get('pool', {}).get('implementation', 'Unknown')}")
-            print(f"   - Max concurrency: {worker_stats.get('pool', {}).get('max-concurrency', 'Unknown')}")
+            print(
+                f"   - Pool: {worker_stats.get('pool', {}).get('implementation', 'Unknown')}"
+            )
+            print(
+                f"   - Max concurrency: {worker_stats.get('pool', {}).get('max-concurrency', 'Unknown')}"
+            )
     else:
         print("⚠️  Celery Worker may not be responding")
-    
+
     if active_tasks and any(active_tasks.values()):
         print("\n🔄 CURRENTLY EXECUTING TASKS:")
         for worker_name, tasks in active_tasks.items():
@@ -54,7 +63,7 @@ try:
                     print(f"   - {task['name']}")
     else:
         print("\n⏳ No tasks currently executing (will run on schedule)")
-        
+
 except Exception as e:
     print(f"⚠️  Could not connect to Celery Worker: {e}")
     print("   This is normal if the worker is not running yet")
@@ -62,7 +71,8 @@ except Exception as e:
 print("\n" + "=" * 70)
 print("SUMMARY: Autonomous cycles are CONFIGURED and SCHEDULED")
 print("=" * 70)
-print("""
+print(
+    """
 When Celery Worker is running:
   ✅ Every 5 minutes:  Always-on GitHub monitor
   ✅ Every 10 minutes: Code review cycle (REVIEWING requirement)
@@ -77,4 +87,5 @@ All three user requirements are being continuously executed:
 
 Next action: Ensure Celery Worker is running to activate cycles
   python -m celery -A backend.celery_app worker --loglevel=info -P solo
-""")
+"""
+)

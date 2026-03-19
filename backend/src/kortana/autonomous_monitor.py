@@ -12,9 +12,8 @@ Features:
 - Continuous learning from execution patterns
 """
 
-import asyncio
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any
 
 from src.kortana.logger import get_logger
@@ -41,7 +40,9 @@ class AutonomousSystemMonitor:
         self.improvement_opportunities = []
         self.learning_log = []
 
-    async def monitor_cycle_execution(self, cycle_data: dict[str, Any]) -> dict[str, Any]:
+    async def monitor_cycle_execution(
+        self, cycle_data: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Monitor a single autonomous cycle execution
 
@@ -52,7 +53,9 @@ class AutonomousSystemMonitor:
             Analysis of cycle execution with recommendations
         """
         try:
-            logger.info(f"Monitoring cycle execution: {cycle_data.get('cycle_type', 'unknown')}")
+            logger.info(
+                f"Monitoring cycle execution: {cycle_data.get('cycle_type', 'unknown')}"
+            )
 
             # Extract metrics
             cycle_type = cycle_data.get("cycle_type", "unknown")
@@ -100,7 +103,9 @@ class AutonomousSystemMonitor:
                 )
 
             if errors:
-                analysis["issues_identified"].append(f"Errors in cycle: {len(errors)} encountered")
+                analysis["issues_identified"].append(
+                    f"Errors in cycle: {len(errors)} encountered"
+                )
 
             # Identify optimization opportunities
             if analysis["success_rate"] < 0.95:
@@ -134,7 +139,9 @@ class AutonomousSystemMonitor:
                     error_counts[error_type] = error_counts.get(error_type, 0) + 1
 
                 # Top recurring errors suggest areas for improvement
-                for error_type, count in sorted(error_counts.items(), key=lambda x: x[1], reverse=True)[:3]:
+                for error_type, count in sorted(
+                    error_counts.items(), key=lambda x: x[1], reverse=True
+                )[:3]:
                     improvements.append(
                         {
                             "type": "error_reduction",
@@ -147,7 +154,9 @@ class AutonomousSystemMonitor:
 
             # Analyze cycle times for performance optimization
             if self.metrics["cycle_times"]:
-                avg_time = sum(self.metrics["cycle_times"]) / len(self.metrics["cycle_times"])
+                avg_time = sum(self.metrics["cycle_times"]) / len(
+                    self.metrics["cycle_times"]
+                )
                 max_time = max(self.metrics["cycle_times"])
 
                 if max_time > avg_time * 2:
@@ -163,7 +172,9 @@ class AutonomousSystemMonitor:
 
             # Analyze task success rate
             if self.metrics["tasks_executed"] > 0:
-                success_rate = self.metrics["tasks_successful"] / self.metrics["tasks_executed"]
+                success_rate = (
+                    self.metrics["tasks_successful"] / self.metrics["tasks_executed"]
+                )
                 if success_rate < 0.9:
                     improvements.append(
                         {
@@ -210,7 +221,8 @@ class AutonomousSystemMonitor:
                 },
                 "performance": {
                     "average_cycle_time_seconds": (
-                        sum(self.metrics["cycle_times"]) / len(self.metrics["cycle_times"])
+                        sum(self.metrics["cycle_times"])
+                        / len(self.metrics["cycle_times"])
                         if self.metrics["cycle_times"]
                         else 0
                     ),

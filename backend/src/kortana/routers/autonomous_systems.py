@@ -243,11 +243,15 @@ async def get_autonomous_monitoring_dashboard() -> dict[str, Any]:
             "autonomous_capabilities": awareness_report.get("autonomous_capabilities"),
             "improvement_opportunities": improvements,
             "total_improvements": len(improvements),
-            "high_priority_count": len([i for i in improvements if i.get("impact") == "high"]),
+            "high_priority_count": len(
+                [i for i in improvements if i.get("impact") == "high"]
+            ),
         }
     except Exception as e:
         log_error("api", f"Failed to generate monitoring dashboard: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to generate dashboard: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to generate dashboard: {str(e)}"
+        )
 
 
 @router.post("/monitor/optimize")
@@ -274,4 +278,6 @@ async def trigger_autonomous_optimization() -> dict[str, Any]:
         }
     except Exception as e:
         log_error("api", f"Failed to initiate optimization: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to initiate optimization: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to initiate optimization: {str(e)}"
+        )

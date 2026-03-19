@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 """Execute autonomous cycles immediately to create real monitoring evidence."""
 
-import sys
 import asyncio
+import sys
 from datetime import datetime
 
-sys.path.insert(0, 'backend')
+sys.path.insert(0, "backend")
 
 print("=" * 80)
 print("AUTONOMOUS SYSTEM IMMEDIATE EXECUTION")
@@ -16,6 +16,7 @@ print()
 # Import the autonomous monitor
 try:
     from src.kortana.autonomous_monitor import get_monitor
+
     print("✅ Successfully imported autonomous monitor")
 except ImportError as e:
     print(f"❌ Failed to import: {e}")
@@ -26,9 +27,10 @@ monitor = get_monitor()
 print("✅ Got monitor singleton instance")
 print()
 
+
 async def execute_cycles():
     """Execute all autonomous cycles"""
-    
+
     # Execute monitoring cycle
     print("=" * 80)
     print("EXECUTING MONITORING CYCLE (REQUIREMENT 1)")
@@ -94,7 +96,8 @@ async def execute_cycles():
     print("=" * 80)
     print("EXECUTION COMPLETE")
     print("=" * 80)
-    print("""
+    print(
+        """
 Summary of autonomous execution:
   ✅ MONITORING REQUIREMENT - System collected real metrics
   ✅ REVIEWING REQUIREMENT - System identified areas for improvement
@@ -102,7 +105,9 @@ Summary of autonomous execution:
 
 All three user requirements successfully executed in real-time.
 Evidence stored in autonomous monitor metrics.
-""")
+"""
+    )
+
 
 # Run the async function
 asyncio.run(execute_cycles())

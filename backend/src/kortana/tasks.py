@@ -639,18 +639,20 @@ def autonomous_system_monitor_task(self) -> dict[str, Any]:
     """
     Autonomous system self-monitoring and self-awareness task
     Monitors performance metrics, identifies improvements, and adapts the system
-    
+
     Returns:
         dict with monitoring results and optimization status
     """
     try:
         from src.kortana.autonomous_monitor import get_monitor
-        
-        log_request("celery_task", "🧠 AUTONOMOUS SYSTEM MONITOR: Analyzing system performance")
-        
+
+        log_request(
+            "celery_task", "🧠 AUTONOMOUS SYSTEM MONITOR: Analyzing system performance"
+        )
+
         # Get the autonomous monitoring system
         monitor = get_monitor()
-        
+
         # Return system metrics collected so far
         return {
             "status": "completed",
@@ -662,7 +664,8 @@ def autonomous_system_monitor_task(self) -> dict[str, Any]:
                 "failed": monitor.metrics["tasks_failed"],
                 "errors": len(monitor.metrics["errors_encountered"]),
                 "average_cycle_time": (
-                    sum(monitor.metrics["cycle_times"]) / len(monitor.metrics["cycle_times"])
+                    sum(monitor.metrics["cycle_times"])
+                    / len(monitor.metrics["cycle_times"])
                     if monitor.metrics["cycle_times"]
                     else 0
                 ),

@@ -2,7 +2,9 @@
 """Final comprehensive verification of autonomous system integration"""
 
 import sys
-sys.path.insert(0, 'backend')
+
+sys.path.insert(0, "backend")
+
 
 def main():
     print("=" * 70)
@@ -14,9 +16,10 @@ def main():
     print("TEST 1: Module Imports")
     try:
         from src.kortana.autonomous_monitor import get_monitor
-        from src.kortana.tasks import autonomous_system_monitor_task
         from src.kortana.celery_app import app as celery_app
         from src.kortana.routers.autonomous_systems import router
+        from src.kortana.tasks import autonomous_system_monitor_task
+
         print("✅ All core modules import successfully")
     except Exception as e:
         print(f"❌ Import failed: {e}")
@@ -48,7 +51,7 @@ def main():
         print(f"✅ Beat schedule has {len(schedule)} tasks:")
         monitor_found = False
         for name, config in schedule.items():
-            if 'monitor' in name.lower():
+            if "monitor" in name.lower():
                 print(f"   ✅ {name}: {int(config['schedule'])}s interval")
                 monitor_found = True
         if not monitor_found:
@@ -69,9 +72,13 @@ def main():
     # Test 6: Method signatures
     print("\nTEST 6: Monitor Method Signatures")
     try:
-        methods = ['monitor_cycle_execution', 'identify_improvements', 
-                   'generate_self_awareness_report', 'learn_and_adapt',
-                   'initiate_self_optimization']
+        methods = [
+            "monitor_cycle_execution",
+            "identify_improvements",
+            "generate_self_awareness_report",
+            "learn_and_adapt",
+            "initiate_self_optimization",
+        ]
         for method in methods:
             if hasattr(monitor, method):
                 print(f"✅ Method available: {method}")
@@ -102,6 +109,7 @@ def main():
     print()
     print("STATUS: ✅ FULLY OPERATIONAL & INTEGRATED")
     return True
+
 
 if __name__ == "__main__":
     success = main()
