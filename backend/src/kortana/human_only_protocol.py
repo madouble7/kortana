@@ -239,6 +239,14 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
             command="python -m alembic -c backend/alembic.ini upgrade head",
             description="Apply database migrations",
         ),
+        "self_optimize": DeploymentTask(
+            id="self_optimize",
+            name="Autonomous Self-Optimization",
+            classification=TaskClassification.AUTO,
+            status=TaskStatus.PENDING,
+            command="python -m src.kortana.autonomous_monitor --optimize",
+            description="Analyze system performance and apply autonomous optimizations",
+        ),
         "start_server": DeploymentTask(
             id="start_server",
             name="Start Backend Server",

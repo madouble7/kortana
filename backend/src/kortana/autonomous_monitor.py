@@ -12,6 +12,8 @@ Features:
 - Continuous learning from execution patterns
 """
 
+import argparse
+import asyncio
 import json
 from datetime import datetime
 from typing import Any
@@ -401,3 +403,25 @@ async def monitor_autonomous_system() -> dict[str, Any]:
         "improvements": improvements,
         "optimization_status": optimization,
     }
+
+
+async def main():
+    parser = argparse.ArgumentParser(description="KOR'TANA Autonomous System Monitor")
+    parser.add_argument("--optimize", action="store_true", help="Run self-optimization")
+    args = parser.parse_args()
+
+    monitor = get_monitor()
+    if args.optimize:
+        print("Starting KOR'TANA Autonomous Self-Optimization...")
+        # Simulating execution data for the CLI demo
+        data = {"cycles": [], "error_rate": 0.05, "latency": 1500}
+        result = await monitor.learn_and_adapt(data)
+        print(f"Optimization Status: {result['status']}")
+        print(f"Recommendations: {result['recommendations']}")
+    else:
+        report = await monitor.generate_self_awareness_report()
+        print(json.dumps(report, indent=2))
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

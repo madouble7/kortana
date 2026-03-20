@@ -49,6 +49,18 @@ class CustomJsonFormatter(jsonlogger.JsonFormatter):
             log_record["exception"] = self.formatException(record.exc_info)
 
 
+class AutonomyReflectionFilter(logging.Filter):
+    """Filter for self-reflective autonomous logging"""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        # Add reflection metadata if not present
+        if not hasattr(record, "autonomy_state"):
+            record.autonomy_state = "active"
+        if not hasattr(record, "self_awareness_level"):
+            record.self_awareness_level = "high"
+        return True
+
+
 def setup_logging(log_level: str = "INFO", format_type: str = "json") -> logging.Logger:
     """
     Setup structured logging for the application
@@ -76,9 +88,13 @@ def setup_logging(log_level: str = "INFO", format_type: str = "json") -> logging
 
     # Set formatter
     if format_type.lower() == "json":
-        formatter = CustomJsonFormatter("%(timestamp)s %(level)s %(logger)s %(message)s")
+        formatter = CustomJsonFormatter(
+            "%(timestamp)s %(level)s %(logger)s %(message)s"
+        )
     else:
-        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
 
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
