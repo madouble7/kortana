@@ -31,16 +31,16 @@ from middleware.security import (
 OPTIMIZATION_AVAILABLE = False
 optimization_router = None
 try:
+    from src.kortana.celery_app_enhanced import HealthAwareScheduler  # noqa: F401
     from src.kortana.circuit_breaker import AutonomyCircuitBreaker  # noqa: F401
     from src.kortana.distributed_lock import DistributedLock  # noqa: F401
-    from src.kortana.workflow_executor import WorkflowExecutor  # noqa: F401
-    from src.kortana.celery_app_enhanced import HealthAwareScheduler  # noqa: F401
     from src.kortana.middleware.cache import CacheStrategy, ResponseCacheMiddleware
     from src.kortana.routers.optimization import router as optimization_router
+    from src.kortana.workflow_executor import WorkflowExecutor  # noqa: F401
 
     OPTIMIZATION_AVAILABLE = True
 except ImportError as e:
-    print(f"Warning: Could not import optimization modules: {e}")
+    log_error("optimization", f"Could not import optimization modules: {e}")
 
 # Import routers
 try:
@@ -59,7 +59,7 @@ try:
         test_orchestrator,
     )
 except ImportError as e:
-    print(f"Error importing routers: {e}")
+    log_error("routers", f"Error importing routers: {e}")
     raise
 
 # Import Human Only Protocol (HOP) for autonomy
@@ -68,7 +68,7 @@ try:
 
     HOP_AVAILABLE = True
 except ImportError as e:
-    print(f"Warning: Could not import Human Only Protocol: {e}")
+    log_error("hop", f"Could not import Human Only Protocol: {e}")
     HOP_AVAILABLE = False
     hop_router = None
 
@@ -82,31 +82,22 @@ async def lifespan(app: FastAPI):
     # Validate configuration and secrets
     try:
         settings.validate()
-        print(f"\n{'=' * 60}")
-        print("[OK] Secrets Validation: COMPLETE")
-        print(f"[INFO] Environment: {settings.ENVIRONMENT}")
-        print("[INFO] API Keys Loaded:")
-        print(f"   [KEY] Gemini API: {'[SET]' if settings.GEMINI_API_KEY else '[MISSING]'}")
-        print(f"   [KEY] GitHub Token: {'[SET]' if settings.GITHUB_TOKEN else '[MISSING]'}")
-        print(f"   [KEY] Discord Bot: {'[SET]' if settings.DISCORD_BOT_TOKEN else '[MISSING]'}")
-        print(f"   [KEY] OpenAI Key: {'[SET]' if settings.OPENAI_API_KEY else '[MISSING]'}")
-        print(f"   [KEY] Anthropic Key: {'[SET]' if settings.ANTHROPIC_API_KEY else '[MISSING]'}")
-        print(f"   [KEY] Pinecone Key: {'[SET]' if settings.PINECONE_API_KEY else '[MISSING]'}")
-        print(f"   [KEY] Stripe Keys: {'[SET]' if settings.STRIPE_SECRET_KEY else '[MISSING]'}")
-        print(f"{'=' * 60}\n")
+        log_request(
+            "config",
+            f"Secrets validation complete. Environment: {settings.ENVIRONMENT}, API Keys: "
+            f"Gemini={bool(settings.GEMINI_API_KEY)}, GitHub={bool(settings.GITHUB_TOKEN)}, "
+            f"Discord={bool(settings.DISCORD_BOT_TOKEN)}, OpenAI={bool(settings.OPENAI_API_KEY)}",
+        )
     except ValueError as e:
         log_error("config", f"Configuration validation failed: {e}")
-        print(f"[ERROR] Configuration Error: {e}")
         raise
 
     log_request("system", f"Kor'tana API starting in {settings.ENVIRONMENT} mode")
-    print(f"[START] Kor'tana API starting in {settings.ENVIRONMENT} mode")
 
     yield
 
     # Shutdown
     log_request("system", "Kor'tana API shutting down")
-    print("[STOP] Kor'tana API shutting down")
 
 
 def create_app() -> FastAPI:
@@ -147,20 +138,30 @@ def create_app() -> FastAPI:
             import redis
 
             try:
-                redis_url = getattr(settings, "REDIS_URL", None) or "redis://localhost:6379/0"
+                redis_url = (
+                    getattr(settings, "REDIS_URL", None) or "redis://localhost:6379/0"
+                )
             except (AttributeError, TypeError):
                 redis_url = "redis://localhost:6379/0"
             redis_client = redis.from_url(redis_url, decode_responses=True)
             cache_strategy = CacheStrategy(
                 ttl=300,
-                exclude_paths=["/api/auth", "/api/billing", "/health", "/docs", "/openapi.json"],
+                exclude_paths=[
+                    "/api/auth",
+                    "/api/billing",
+                    "/health",
+                    "/docs",
+                    "/openapi.json",
+                ],
             )
             app.add_middleware(
-                ResponseCacheMiddleware, redis_client=redis_client, strategy=cache_strategy
+                ResponseCacheMiddleware,
+                redis_client=redis_client,
+                strategy=cache_strategy,
             )
-            print("[OK] Response caching middleware enabled")
+            log_request("middleware", "Response caching middleware enabled")
         except Exception as e:
-            print(f"[WARN] Response caching middleware disabled: {e}")
+            log_error("middleware", f"Response caching middleware disabled: {e}")
 
     # Exception handlers
     @app.exception_handler(KortanaException)
@@ -221,20 +222,30 @@ def create_app() -> FastAPI:
         app.include_router(agents.router, prefix="/api/agents", tags=["agents"])
         app.include_router(github.router, prefix="/api/github", tags=["github"])
         app.include_router(autonomy.router, prefix="/api/autonomy", tags=["autonomy"])
-        app.include_router(knowledge.router, prefix="/api/knowledge", tags=["knowledge"])
-        app.include_router(task_queue.router, prefix="/api/task-queue", tags=["task-queue"])
+        app.include_router(
+            knowledge.router, prefix="/api/knowledge", tags=["knowledge"]
+        )
+        app.include_router(
+            task_queue.router, prefix="/api/task-queue", tags=["task-queue"]
+        )
 
         # Phase 2: PR Creation, Testing, and Code Review
         app.include_router(pr_creation.router, prefix="/api/pr", tags=["pr-creation"])
-        app.include_router(test_orchestrator.router, prefix="/api/testing", tags=["testing"])
-        app.include_router(code_reviewer.router, prefix="/api/code-review", tags=["code-review"])
+        app.include_router(
+            test_orchestrator.router, prefix="/api/testing", tags=["testing"]
+        )
+        app.include_router(
+            code_reviewer.router, prefix="/api/code-review", tags=["code-review"]
+        )
 
         # Billing router
         app.include_router(billing.router, prefix="/api/billing", tags=["billing"])
 
         # Human Only Protocol router (if available)
         if HOP_AVAILABLE and hop_router:
-            app.include_router(hop_router, prefix="/api/autonomy/hop", tags=["human-only-protocol"])
+            app.include_router(
+                hop_router, prefix="/api/autonomy/hop", tags=["human-only-protocol"]
+            )
             print("[OK] Human Only Protocol router mounted")
 
         # Optimization router (if available)
@@ -242,7 +253,7 @@ def create_app() -> FastAPI:
             app.include_router(
                 optimization_router, prefix="/api/optimization", tags=["optimization"]
             )
-            print("[OK] Optimization monitoring router mounted")
+            log_request("router", "Optimization monitoring router mounted")
     except Exception as e:
         log_error("router_error", f"Error including routers: {e}")
         raise

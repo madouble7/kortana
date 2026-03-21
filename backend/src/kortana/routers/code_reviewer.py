@@ -8,6 +8,7 @@ import re
 
 import httpx
 from fastapi import APIRouter
+
 from src.kortana.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -51,11 +52,15 @@ class CodeReviewer:
 
         # Check for SQL injection patterns
         if re.search(self.SECURITY_PATTERNS["sql_injection"], code):
-            all_issues.append("Potential SQL injection: Dynamic SQL construction detected")
+            all_issues.append(
+                "Potential SQL injection: Dynamic SQL construction detected"
+            )
 
         # Check for hardcoded secrets
         if re.search(self.SECURITY_PATTERNS["hardcoded_secrets"], code):
-            all_issues.append("Hardcoded credentials: Passwords or tokens found in source code")
+            all_issues.append(
+                "Hardcoded credentials: Passwords or tokens found in source code"
+            )
 
         # Check for unsafe eval
         if re.search(self.SECURITY_PATTERNS["unsafe_eval"], code):
@@ -63,7 +68,9 @@ class CodeReviewer:
 
         # Check for insecure deserialization
         if re.search(self.SECURITY_PATTERNS["insecure_deserialization"], code):
-            all_issues.append("Insecure deserialization: Unsafe pickle/yaml loading detected")
+            all_issues.append(
+                "Insecure deserialization: Unsafe pickle/yaml loading detected"
+            )
 
         return all_issues
 
@@ -85,7 +92,9 @@ class CodeReviewer:
             if line_count > 0
             else 0
         )
-        avg_line_length = sum(len(line) for line in lines) / line_count if line_count > 0 else 0
+        avg_line_length = (
+            sum(len(line) for line in lines) / line_count if line_count > 0 else 0
+        )
 
         # Long lines check
         long_lines = [i for i, line in enumerate(lines) if len(line) > 100]
@@ -111,7 +120,9 @@ class CodeReviewer:
             )
 
         commented_code = sum(
-            1 for line in lines if line.strip().startswith("#") and len(line.strip()) > 2
+            1
+            for line in lines
+            if line.strip().startswith("#") and len(line.strip()) > 2
         )
         if commented_code > line_count * 0.1:
             issues.append(
@@ -206,7 +217,9 @@ Provide a JSON response ONLY with the following structure:
 }}"""
 
             # Call Gemini API
-            url = f"{self.base_url}/gemini-pro:generateContent?key={self.gemini_api_key}"
+            url = (
+                f"{self.base_url}/gemini-pro:generateContent?key={self.gemini_api_key}"
+            )
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(
                     url,
@@ -274,7 +287,9 @@ Provide a JSON response ONLY with the following structure:
             Post result
         """
         try:
-            github_token = token or kwargs.get("github_token") or get_settings().GITHUB_TOKEN
+            github_token = (
+                token or kwargs.get("github_token") or get_settings().GITHUB_TOKEN
+            )
 
             comment = self.create_review_comment(review)
 

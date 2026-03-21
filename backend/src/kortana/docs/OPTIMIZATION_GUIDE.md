@@ -20,6 +20,7 @@ The KOR'TANA optimization suite consists of 6 integrated modules designed to imp
 #### How It Works
 
 The circuit breaker monitors Beat scheduler cycles and uses distributed state via Redis to track:
+
 - Failure counts per task
 - Last failure/success times
 - Circuit state: CLOSED (normal), OPEN (blocked), HALF_OPEN (testing)
@@ -114,6 +115,7 @@ else:
 #### How It Works
 
 Composes individual Celery tasks into workflows where:
+
 - Task B waits for Task A's output
 - Multiple tasks run in parallel then combine results
 - Task execution is conditional based on previous results
@@ -168,6 +170,7 @@ result = executor.execute_workflow(workflow)
 #### How It Works
 
 Monitors system health metrics (CPU, memory, error rates, circuit breaker state) and automatically adjusts task scheduling:
+
 - Reduces load when system is unhealthy
 - Increases throughput when system is healthy
 - Pauses critical tasks if errors exceed threshold
@@ -218,6 +221,7 @@ def autonomous_heartbeat():
 #### How It Works
 
 Middleware that caches HTTP responses based on configurable strategies:
+
 - Cache successful GET requests (default: 5 minutes)
 - Invalidate on POST/PUT/DELETE
 - Per-endpoint cache policies
@@ -303,6 +307,7 @@ curl http://localhost:8000/api/optimization/circuit-breaker/status
 ```
 
 **Response:**
+
 ```json
 {
   "circuits": {
@@ -395,6 +400,7 @@ def autonomous_heartbeat():
 ### Monitoring Dashboard
 
 Access real-time metrics:
+
 ```
 http://localhost:8000/api/optimization/health
 ```
@@ -516,6 +522,7 @@ async def get_data():
 
 **Symptom:** Tasks always blocked
 **Solution:** Manually reset
+
 ```bash
 curl -X POST http://localhost:8000/api/optimization/circuit-breaker/{task}/reset
 ```
@@ -524,6 +531,7 @@ curl -X POST http://localhost:8000/api/optimization/circuit-breaker/{task}/reset
 
 **Symptom:** Tasks deadlocked
 **Solution:** Check lock status and release manually
+
 ```bash
 curl http://localhost:8000/api/optimization/locks/{task}
 curl -X POST http://localhost:8000/api/optimization/locks/{task}/release
@@ -533,6 +541,7 @@ curl -X POST http://localhost:8000/api/optimization/locks/{task}/release
 
 **Symptom:** Stale data being served
 **Solution:** Check cache TTL and manually invalidate
+
 ```bash
 # Cache is automatically invalidated on POST/PUT/DELETE
 # To invalidate specific endpoint:
@@ -543,6 +552,7 @@ curl -X DELETE http://localhost:8000/api/optimization/cache/{endpoint}
 
 **Symptom:** Tasks not executing
 **Solution:** Check system health
+
 ```bash
 curl http://localhost:8000/api/optimization/health-scheduler/status
 ```
@@ -552,6 +562,7 @@ curl http://localhost:8000/api/optimization/health-scheduler/status
 ## Summary
 
 The KOR'TANA optimization suite provides production-ready modules for:
+
 - **90% cascade failure prevention** (Circuit Breaker)
 - **100% duplicate task prevention** (Distributed Locking)
 - **18x response speedup** (Response Caching)

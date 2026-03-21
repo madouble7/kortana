@@ -2,7 +2,7 @@
 Celery Task Definitions for Kor'tana
 Background tasks for chat processing, image analysis, and autonomy cycles
 """
-
+import asyncio
 from datetime import datetime
 from typing import Any
 
@@ -17,7 +17,9 @@ logger = get_logger(__name__)
 
 
 @app.task(bind=True, max_retries=3)
-def process_chat(self, message: str, conversation_id: str | None = None) -> dict[str, Any]:
+def process_chat(
+    self, message: str, conversation_id: str | None = None
+) -> dict[str, Any]:
     """
     Process chat message with Gemini AI
 
@@ -46,7 +48,9 @@ def process_chat(self, message: str, conversation_id: str | None = None) -> dict
 
 
 @app.task(bind=True, max_retries=3)
-def analyze_image(self, image_url: str, prompt: str = "Analyze this image") -> dict[str, Any]:
+def analyze_image(
+    self, image_url: str, prompt: str = "Analyze this image"
+) -> dict[str, Any]:
     """
     Analyze image using Gemini Vision
 
@@ -130,7 +134,9 @@ def run_autonomy_cycle() -> dict[str, Any]:
                     db.commit()
 
                 except Exception as e:
-                    log_error("celery_task", f"Task {task.id} execution failed: {str(e)}")
+                    log_error(
+                        "celery_task", f"Task {task.id} execution failed: {str(e)}"
+                    )
                     task.status = "failed"
                     task.error = str(e)
                     task.updated_at = datetime.utcnow()
@@ -422,7 +428,9 @@ def create_pr_for_task_celery(self, task_id: str) -> dict[str, Any]:
 
             # If task has result/execution data, could create PR here
             # For now, log that we would create a PR
-            log_request("celery_task", f"Would create PR for completed task: {task.title}")
+            log_request(
+                "celery_task", f"Would create PR for completed task: {task.title}"
+            )
 
             return {
                 "status": "completed",
@@ -544,7 +552,9 @@ def trigger_autonomous_review_cycle(self) -> dict[str, Any]:
 
                     # Limit code size for review
                     if len(code_content) > 10000:
-                        code_content = code_content[:10000] + "\n... (truncated for review)"
+                        code_content = (
+                            code_content[:10000] + "\n... (truncated for review)"
+                        )
 
                     # Trigger real code review
                     task = review_code_task_celery.delay(code_content, selected_file)
@@ -559,7 +569,8 @@ def trigger_autonomous_review_cycle(self) -> dict[str, Any]:
                     }
                 except Exception as file_exc:
                     log_error(
-                        "celery_task", f"Failed to read file {selected_file}: {str(file_exc)}"
+                        "celery_task",
+                        f"Failed to read file {selected_file}: {str(file_exc)}",
                     )
 
         # Fallback to sample code if no files found
@@ -631,17 +642,35 @@ def trigger_autonomous_agent_cycle(self) -> dict[str, Any]:
                     if todo_count > 0:
                         issues.append(f"{todo_count} TODO comments found")
 
-                    # Check for long functions (simple heuristic)
+                    # Check for long functions (per-function heuristic)
+                    # Track actual function lengths by finding function declarations and their spans
+                    function_lengths = []
+                    for i, line in enumerate(lines):
+                        if line.strip().startswith("def "):
+                            # Find the end of this function (next "def" or "class" or EOF)
+                            func_length = 1
+                            for j in range(i + 1, len(lines)):
+                                if (
+                                    lines[j].strip().startswith(("def ", "class "))
+                                    and lines[j][0] not in " \t"
+                                ):
+                                    break
+                                func_length += 1
+                            function_lengths.append(func_length)
                     long_functions = sum(
-                        1 for line in lines if line.strip().startswith("def ") and len(lines) > 50
+                        1 for length in function_lengths if length > 50
                     )
                     if long_functions > 0:
-                        issues.append("Potentially long functions detected")
+                        issues.append(
+                            f"{long_functions} long functions (>50 lines) detected"
+                        )
 
                     # Check for print statements (could be debug code)
                     print_count = sum(1 for line in lines if "print(" in line)
                     if print_count > 2:
-                        issues.append(f"{print_count} print statements (potential debug code)")
+                        issues.append(
+                            f"{print_count} print statements (potential debug code)"
+                        )
 
                     if issues:
                         improvements.append(
@@ -649,19 +678,26 @@ def trigger_autonomous_agent_cycle(self) -> dict[str, Any]:
                         )
 
                 except Exception as file_exc:
-                    log_error("celery_task", f"Failed to analyze {file_path}: {str(file_exc)}")
+                    log_error(
+                        "celery_task", f"Failed to analyze {file_path}: {str(file_exc)}"
+                    )
 
         # Generate a real task description based on findings
         if improvements:
-            task_description = f"Address {len(improvements)} code quality issues: " + ", ".join(
-                [
-                    f"{imp['file'].split('/')[-1]} ({len(imp['issues'])} issues)"
-                    for imp in improvements
-                ]
+            task_description = (
+                f"Address {len(improvements)} code quality issues: "
+                + ", ".join(
+                    [
+                        f"{os.path.basename(imp['file'])} ({len(imp['issues'])} issues)"
+                        for imp in improvements
+                    ]
+                )
             )
             priority = "high" if len(improvements) > 2 else "medium"
         else:
-            task_description = "Perform general codebase quality improvements and optimizations"
+            task_description = (
+                "Perform general codebase quality improvements and optimizations"
+            )
             priority = "medium"
 
         # Trigger agent execution with real task
@@ -672,7 +708,9 @@ def trigger_autonomous_agent_cycle(self) -> dict[str, Any]:
                 "priority": priority,
                 "category": "code_quality",
                 "improvements_found": len(improvements),
-                "files_analyzed": len(sample_files) if "sample_files" in locals() else 0,
+                "files_analyzed": len(sample_files)
+                if "sample_files" in locals()
+                else 0,
             },
         )
 
@@ -748,14 +786,14 @@ def autonomous_system_monitor_task(self) -> dict[str, Any]:
         dict with monitoring results and optimization status
     """
     try:
-        import asyncio
         from src.kortana.autonomous_monitor import monitor_autonomous_system
 
-        log_request("celery_task", "🧠 AUTONOMOUS SYSTEM MONITOR: Analyzing system performance")
+        log_request(
+            "celery_task", "🧠 AUTONOMOUS SYSTEM MONITOR: Analyzing system performance"
+        )
 
         # Run the async monitoring function
-        loop = asyncio.get_event_loop()
-        monitoring_results = loop.run_until_complete(monitor_autonomous_system())
+        monitoring_results = asyncio.run(monitor_autonomous_system())
 
         # Extract real metrics from the monitoring results
         awareness_report = monitoring_results.get("awareness_report", {})
@@ -772,9 +810,13 @@ def autonomous_system_monitor_task(self) -> dict[str, Any]:
                 "failed_cycles": system_status.get("failed", 0),
                 "success_rate": system_status.get("success_rate", 0),
                 "errors_total": performance.get("errors_total", 0),
-                "average_cycle_time_seconds": performance.get("average_cycle_time_seconds", 0),
+                "average_cycle_time_seconds": performance.get(
+                    "average_cycle_time_seconds", 0
+                ),
                 "last_check": performance.get("last_check"),
-                "improvements_identified": len(monitoring_results.get("improvements", [])),
+                "improvements_identified": len(
+                    monitoring_results.get("improvements", [])
+                ),
             },
             "monitoring_results": monitoring_results,
             "timestamp": datetime.utcnow().isoformat(),
