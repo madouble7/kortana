@@ -5,6 +5,7 @@ Gemini AI Service for Kor'tana - Minimal Working Version
 from google.genai import Client
 
 from src.kortana.config import get_settings
+from src.kortana.services.gemini_config import get_model_name
 
 
 class GeminiService:
@@ -15,7 +16,7 @@ class GeminiService:
         settings = get_settings()
         self.api_key = settings.GEMINI_API_KEY
         self.client: Client | None = None
-        self.model_name = "gemini-2.0-flash-exp"
+        self.model_name = get_model_name()
         self._initialized = False
         self._init_error: str | None = None
 

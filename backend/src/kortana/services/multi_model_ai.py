@@ -49,7 +49,7 @@ class MultiModelAIService:
             client = Client(api_key=api_key)
             self.providers["gemini"] = {
                 "client": client,
-                "model": "gemini-2.0-flash-exp",
+                "model": "gemini-2.0-flash",
                 "type": "google",
             }
             print("[OK] Gemini provider initialized")

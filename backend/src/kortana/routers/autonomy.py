@@ -5,7 +5,6 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session
 
 from src.kortana.config import get_settings
 from src.kortana.database import get_db
@@ -20,7 +19,7 @@ logger = setup_logging()
 
 
 # Dependency for service
-def get_autonomy_service(db: Session = Depends(get_db)) -> GitHubAutonomyService:
+def get_autonomy_service(db: AsyncSession = Depends(get_db)) -> GitHubAutonomyService:
     """Get GitHub autonomy service instance"""
     return GitHubAutonomyService(db)
 
@@ -166,10 +165,11 @@ async def execute_task_endpoint(
 
 @router.get("/tasks/{task_id}")
 async def get_task_details(
-    task_id: str, db: Session = Depends(get_db)
+    task_id: str, db: AsyncSession = Depends(get_db)
 ) -> dict[str, Any]:
     """Get detailed information about a task"""
-    task = db.query(GitHubTask).filter(GitHubTask.id == task_id).first()
+    result = await db.execute(select(GitHubTask).where(GitHubTask.id == task_id))
+    task = result.scalar_one_or_none()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
@@ -196,10 +196,11 @@ async def get_task_details(
 
 @router.post("/tasks/{task_id}/retry")
 async def retry_failed_task(
-    task_id: str, db: Session = Depends(get_db)
+    task_id: str, db: AsyncSession = Depends(get_db)
 ) -> dict[str, Any]:
     """Retry a failed task"""
-    task = db.query(GitHubTask).filter(GitHubTask.id == task_id).first()
+    result = await db.execute(select(GitHubTask).where(GitHubTask.id == task_id))
+    task = result.scalar_one_or_none()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
@@ -214,9 +215,9 @@ async def retry_failed_task(
     task.updated_at = datetime.utcnow()
 
     try:
-        db.commit()
+        await db.commit()
     except Exception as e:
-        db.rollback()
+        await db.rollback()
         logger.error(f"Retry failed for task {task_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to retry task")
 
@@ -240,10 +241,12 @@ async def health_check() -> dict[str, Any]:
 
 
 @router.get("/actions")
-async def get_recent_actions(db: Session = Depends(get_db)) -> dict[str, Any]:
+async def get_recent_actions(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
     """Get recent autonomous actions for dashboard"""
-    # Simply return recent tasks as actions for now
-    tasks = db.query(GitHubTask).order_by(GitHubTask.updated_at.desc()).limit(10).all()
+    result = await db.execute(
+        select(GitHubTask).order_by(GitHubTask.updated_at.desc()).limit(10)
+    )
+    tasks = result.scalars().all()
     actions = [
         {
             "id": t.id,

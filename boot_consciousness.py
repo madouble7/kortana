@@ -1,7 +1,7 @@
 """Full consciousness boot + task routing sequence"""
 import httpx
 
-BASE = "http://localhost:8001"
+BASE = "http://localhost:8002"
 
 
 def boot() -> None:
