@@ -24,7 +24,6 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import select
-
 from src.kortana.database import get_db_manager
 from src.kortana.logger import get_logger
 from src.kortana.models import AuditLog

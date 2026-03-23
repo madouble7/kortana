@@ -9,7 +9,6 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter
-
 from src.kortana.services.adaptive_learner import get_adaptive_learner
 from src.kortana.services.goal_manager import GoalTier, get_goal_manager
 from src.kortana.services.self_awareness import get_self_awareness

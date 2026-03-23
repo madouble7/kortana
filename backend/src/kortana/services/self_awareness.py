@@ -23,7 +23,6 @@ from typing import Any
 
 import psutil
 from sqlalchemy import func, select
-
 from src.kortana.database import get_db_manager
 from src.kortana.logger import get_logger
 from src.kortana.models import GitHubTask

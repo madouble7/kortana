@@ -115,7 +115,6 @@ class AIConsensusEngine:
             return
         try:
             from google.genai import Client
-
             from src.kortana.services.gemini_config import get_model_name
 
             client = Client(api_key=key)

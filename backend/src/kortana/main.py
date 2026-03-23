@@ -49,9 +49,12 @@ try:
         autonomy,
         billing,
         code_reviewer,
-        gemini,
-        github,
-        health,
+    )
+    from src.kortana.routers import consensus as consensus_router
+    from src.kortana.routers import daemon as daemon_router
+    from src.kortana.routers import gemini, github, health
+    from src.kortana.routers import intelligence as intelligence_router
+    from src.kortana.routers import (
         knowledge,
         memory,
         optimization,
@@ -66,9 +69,6 @@ try:
         task_queue,
         test_orchestrator,
     )
-    from src.kortana.routers import consensus as consensus_router
-    from src.kortana.routers import daemon as daemon_router
-    from src.kortana.routers import intelligence as intelligence_router
     from src.kortana.routers.adapters import (
         autogen_adapter,
         copilotkit_adapter,
