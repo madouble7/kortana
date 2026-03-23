@@ -1,6 +1,7 @@
 """
 Always-On Autonomous Development Monitor
 Continuous monitoring and processing system for GitHub-driven autonomous development
+Phase 7 Cycle #3: Intelligent task filtering and multi-source context injection
 """
 
 import asyncio
@@ -10,12 +11,14 @@ from datetime import datetime
 from typing import Any, Dict, List
 
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.kortana.config import get_settings
 from src.kortana.database import get_db_manager
 from src.kortana.logger import get_logger
 from src.kortana.models import GitHubTask
 from src.kortana.services.github_autonomy_service import GitHubAutonomyService
 from src.kortana.services.hop_autonomy_service import HOPAutonomyService
+from src.kortana.services.task_filtering_service import TaskFilteringService
 
 logger = get_logger(__name__)
 settings = get_settings()
@@ -28,11 +31,16 @@ class AlwaysOnMonitor:
         self.db_manager = get_db_manager()
         self.github_service = None
         self.hop_service = None
+        self.task_filter = (
+            TaskFilteringService()
+        )  # Phase 7 Cycle #3 intelligent filtering
         self.is_running = False
         self.last_check = None
         self.check_interval = int(os.getenv("MONITOR_CHECK_INTERVAL", "60"))  # seconds
         self.max_concurrent_tasks = int(os.getenv("MAX_CONCURRENT_TASKS", "5"))
-        self.monitoring_enabled = os.getenv("ALWAYS_ON_MONITORING", "true").lower() == "true"
+        self.monitoring_enabled = (
+            os.getenv("ALWAYS_ON_MONITORING", "true").lower() == "true"
+        )
 
         # Statistics tracking
         self.stats = {
@@ -43,6 +51,8 @@ class AlwaysOnMonitor:
             "tasks_failed": 0,
             "human_interventions": 0,
             "last_run": None,
+            "filtered_tasks_analyzed": 0,  # Phase 7 Cycle #3
+            "high_impact_tasks_selected": 0,  # Phase 7 Cycle #3
         }
 
     async def start_monitoring(self):
@@ -126,11 +136,15 @@ class AlwaysOnMonitor:
             else:
                 logger.info(f"✅ Cycle completed successfully in {cycle_duration:.2f}s")
 
-            logger.info(f"📊 Stats: {len(new_tasks)} new, {self.stats['tasks_processed']} processed")
+            logger.info(
+                f"📊 Stats: {len(new_tasks)} new, {self.stats['tasks_processed']} processed"
+            )
 
             # Return success if at least one component succeeded
             if not partial_success and not new_tasks:
-                raise Exception(f"Complete cycle failure: {', '.join(errors_encountered)}")
+                raise Exception(
+                    f"Complete cycle failure: {', '.join(errors_encountered)}"
+                )
 
         except Exception as e:
             logger.error(f"❌ Cycle failed completely: {str(e)}")
@@ -138,7 +152,8 @@ class AlwaysOnMonitor:
             self.stats["errors_encountered"] = errors_encountered
 
     async def _fetch_new_issues(self) -> List[GitHubTask]:
-        """Fetch new GitHub issues and queue them as tasks"""
+        """Fetch new GitHub issues and queue them as tasks
+        Phase 7 Cycle #3: Add intelligent filtering and impact analysis"""
         try:
             logger.info("📥 Fetching new GitHub issues...")
             async with self.db_manager.get_session() as db:
@@ -148,8 +163,30 @@ class AlwaysOnMonitor:
 
                     if new_tasks:
                         logger.info(f"✅ Found {len(new_tasks)} new issues to process")
-                        for task in new_tasks:
-                            logger.info(f"   📋 Task: #{task.github_issue_number} - {task.title}")
+
+                        # Phase 7 Cycle #3: Intelligent task filtering and impact analysis
+                        self.stats["filtered_tasks_analyzed"] += len(new_tasks)
+
+                        # Filter and rank tasks by impact
+                        ranked_tasks = await self.task_filter.filter_and_rank_tasks(
+                            new_tasks
+                        )
+
+                        # Log high-impact tasks
+                        for task, context in ranked_tasks[
+                            :3
+                        ]:  # Top 3 high-impact tasks
+                            logger.info(
+                                f"   📋 Task: #{task.github_issue_number} - {task.title} "
+                                f"(Impact: {context.impact_level.value}, Score: {context.impact_score:.2f})"
+                            )
+                            if context.evolution_relevance:
+                                logger.info("      🌌 Evolution Relevant: YES")
+                            if context.multi_source_signals:
+                                logger.info(
+                                    f"      📡 Multi-source Signals: {len(context.multi_source_signals)}"
+                                )
+                            self.stats["high_impact_tasks_selected"] += 1
                     else:
                         logger.info("📭 No new issues found")
 
@@ -163,28 +200,53 @@ class AlwaysOnMonitor:
             return []
 
     async def _process_task_pipeline(self):
-        """Process tasks through the autonomous development pipeline"""
+        """Process tasks through the autonomous development pipeline
+        Phase 7 Cycle #3: Intelligent task selection based on impact scores"""
         try:
             logger.info("⚙️ Processing task pipeline...")
 
             async with self.db_manager.get_session() as db:
-                # Get pending tasks (limit based on concurrency setting)
-                # Note: We need to use select() for async session
+                # Get pending tasks
                 from sqlalchemy import select
 
                 stmt = (
                     select(GitHubTask)
                     .filter(GitHubTask.status == "pending")
-                    .limit(self.max_concurrent_tasks)
+                    .limit(
+                        self.max_concurrent_tasks * 2
+                    )  # Fetch more to intelligently select
                 )
                 result = await db.execute(stmt)
-                pending_tasks = result.scalars().all()
+                all_pending_tasks = result.scalars().all()
 
-                if not pending_tasks:
+                if not all_pending_tasks:
                     logger.info("📭 No pending tasks to process")
                     return
 
-                logger.info(f"🚀 Processing {len(pending_tasks)} pending tasks")
+                # Phase 7 Cycle #3: Intelligent task selection
+                logger.info(
+                    f"🧠 Analyzing {len(all_pending_tasks)} pending tasks for intelligent selection..."
+                )
+                ranked_tasks = await self.task_filter.filter_and_rank_tasks(
+                    all_pending_tasks, limit=self.max_concurrent_tasks
+                )
+
+                if not ranked_tasks:
+                    logger.warning("⚠️ No tasks selected after intelligent filtering")
+                    return
+
+                pending_tasks = [task for task, _ in ranked_tasks]
+
+                logger.info(
+                    f"🚀 Processing {len(pending_tasks)} highest-impact pending tasks"
+                )
+
+                # Log selected tasks with impact scores
+                for task, context in ranked_tasks:
+                    logger.info(
+                        f"   🎯 Selected: #{task.github_issue_number} - {task.title} "
+                        f"(Impact: {context.impact_level.value})"
+                    )
 
                 # Initialize HOP service
                 self.hop_service = HOPAutonomyService(db)
@@ -213,7 +275,9 @@ class AlwaysOnMonitor:
 
                             await db.commit()
                         except Exception as db_exc:
-                            logger.error(f"Failed to update task {task.id} status: {str(db_exc)}")
+                            logger.error(
+                                f"Failed to update task {task.id} status: {str(db_exc)}"
+                            )
 
                         continue
 
@@ -307,7 +371,9 @@ class AlwaysOnMonitor:
                 pending = await count_filtered(GitHubTask.status == "pending")
                 analyzing = await count_filtered(GitHubTask.status == "analyzing")
                 planning = await count_filtered(GitHubTask.status == "planning")
-                planning_complete = await count_filtered(GitHubTask.status == "planning_complete")
+                planning_complete = await count_filtered(
+                    GitHubTask.status == "planning_complete"
+                )
                 executing = await count_filtered(GitHubTask.status == "executing")
                 completed = await count_filtered(GitHubTask.status == "completed")
                 failed = await count_filtered(GitHubTask.status == "failed")
@@ -316,7 +382,9 @@ class AlwaysOnMonitor:
                 # Count by classification
                 auto_tasks = await count_filtered(GitHubTask.classification == "auto")
                 ho_tasks = await count_filtered(GitHubTask.classification == "ho")
-                approval_tasks = await count_filtered(GitHubTask.classification == "approval")
+                approval_tasks = await count_filtered(
+                    GitHubTask.classification == "approval"
+                )
 
                 return {
                     "total_tasks": total_tasks,
