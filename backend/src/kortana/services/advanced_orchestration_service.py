@@ -413,13 +413,16 @@ class AdvancedOrchestrationService:
     ) -> ResourceAllocation:
         """Compute resource allocation for a single task"""
         if strategy == OrchestrationStrategy.PRIORITY_WEIGHTED:
-            # Higher priority gets more resources
+            # Formula: (priority / sum_of_priorities) * total_available
+            # For simplistic approximation where we don't know total phase priority here:
+            # Limit = 20% of total available for high priority, 5% for low
+            max_share = 0.20 if priority >= 8 else 0.10
             cpu_allocation = min(
                 (priority / 10.0) * available[ResourceType.CPU],
-                available[ResourceType.CPU] / 10.0,
+                available[ResourceType.CPU] * max_share,
             )
         else:
-            # Equal distribution
+            # Equal distribution (capped at 10% per task)
             cpu_allocation = available[ResourceType.CPU] / 10.0
 
         return ResourceAllocation(

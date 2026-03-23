@@ -3,35 +3,58 @@ Phase 7 Cycle #4: Advanced Orchestration Router
 Exposes meta-task coordination and resource allocation via REST API
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel
 
 from src.kortana.logger import log_error, log_request
 from src.kortana.services.advanced_orchestration_service import (
     AdvancedOrchestrationService,
     OrchestrationStrategy,
     ResourceType,
+    TaskDependency,
 )
 
 router = APIRouter()
 orchestration_service = AdvancedOrchestrationService()
 
 
+class TaskDependencyRequest(BaseModel):
+    """Request model for defining task dependencies"""
+    task_id: str
+    depends_on: str
+    dependency_type: str = "finish_before_start"
+    is_blocking: bool = True
+
+
 @router.post("/create", response_model=Dict[str, Any])
 async def create_orchestration(
     root_task_id: str,
-    child_tasks: list[str],
-    dependencies: Dict[str, list[Any]] = {},
+    child_tasks: List[str],
+    dependencies: Dict[str, List[TaskDependencyRequest]] = {},
     strategy: OrchestrationStrategy = OrchestrationStrategy.PRIORITY_WEIGHTED,
 ) -> Dict[str, Any]:
     """Create a new orchestration context for meta-task coordination."""
     try:
+        # Convert request dependencies to service models
+        service_dependencies = {}
+        for task_id, deps in dependencies.items():
+            service_dependencies[task_id] = [
+                TaskDependency(
+                    task_id=d.task_id,
+                    depends_on=d.depends_on,
+                    dependency_type=d.dependency_type,
+                    is_blocking=d.is_blocking,
+                )
+                for d in deps
+            ]
+
         context = await orchestration_service.create_orchestration(
             root_task_id=root_task_id,
             child_tasks=child_tasks,
-            dependencies=dependencies,
+            dependencies=service_dependencies,
             strategy=strategy,
         )
         log_request(

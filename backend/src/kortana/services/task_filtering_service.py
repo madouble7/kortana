@@ -4,6 +4,7 @@ Multi-source context injection with impact-based prioritization
 Enables autonomous evolution targeting the most impactful opportunities
 """
 
+from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -189,22 +190,31 @@ class TaskFilteringService:
             "evolution",
             "self-optimization",
         ]
+        
+        # Safe string joining for robustness
+        title = task.title or ""
+        body = task.body or ""
+        combined_text = (title + " " + body).lower()
+        
         evolution_relevant = any(
-            tag.lower() in (task.title + task.body).lower() for tag in evolution_tags
+            tag.lower() in combined_text for tag in evolution_tags
         )
 
         # Calculate complexity from task body length and type
-        complexity_score = min(len(task.body) / 2000.0, 1.0)
+        complexity_score = min(len(body) / 2000.0, 1.0)
 
-        # Build multi-source signals
-        multi_source_signals = {
-            injection.source: {
-                "signal_type": injection.signal_type,
-                "confidence": injection.confidence,
-                "content": injection.content,
-            }
-            for injection in context_injections
-        }
+        # Build multi-source signals, preserving all signals per source
+        multi_source_signals = defaultdict(list)
+        for injection in context_injections:
+            multi_source_signals[injection.source].append(
+                {
+                    "signal_type": injection.signal_type,
+                    "confidence": injection.confidence,
+                    "content": injection.content,
+                }
+            )
+        # Convert to plain dict for downstream compatibility
+        multi_source_signals_dict = dict(multi_source_signals)
 
         # Count dependencies
         dependencies_count = 0
@@ -235,7 +245,7 @@ class TaskFilteringService:
             evolution_relevance=evolution_relevant,
             complexity_score=complexity_score,
             dependencies_count=dependencies_count,
-            multi_source_signals=multi_source_signals,
+            multi_source_signals=multi_source_signals_dict,
             context_injections=[inj.content for inj in context_injections],
             priority_multiplier=priority_multiplier,
         )

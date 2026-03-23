@@ -284,10 +284,6 @@ def create_app() -> FastAPI:
             prefix="/api/orchestration/advanced",
             tags=["advanced-orchestration"],
         )
-        app.include_router(
-            optimization.router, prefix="/api/optimization", tags=["optimization"]
-        )
-        app.include_router(optimization.router, prefix="/api/optimization", tags=["optimization"])
 
         # Billing management
         app.include_router(billing.router)
