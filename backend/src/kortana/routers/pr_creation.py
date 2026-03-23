@@ -10,8 +10,8 @@ from typing import Any
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from src.kortana.config import get_settings
 from src.kortana.database import get_db
 from src.kortana.logger import setup_logging
@@ -30,7 +30,7 @@ class PRCreationError(Exception):
 class PRCreator:
     """Automated PR creation from task branches"""
 
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession):
         self.db = db
         self.token = None
 
@@ -40,17 +40,17 @@ class PRCreator:
 
         if not token:
             raise PRCreationError("GitHub token not configured for PR creation")
-        self.token = token
+        self.token = token  # type: ignore[assignment]
         return True
 
-    def _get_repo_info(self, repo: str):
+    def _get_repo_info(self, repo: str):  # type: ignore[no-untyped-def]
         """Parse repo string into owner and name"""
         parts = str(repo).split("/")
         if len(parts) < 2:
             raise PRCreationError(f"Invalid repo format: {repo}")
         return parts[-2], parts[-1]
 
-    def _generate_pr_description(self, task: GitHubTask, code_changes=None) -> str:
+    def _generate_pr_description(self, task: GitHubTask, code_changes=None) -> str:  # type: ignore[no-untyped-def]
         """Generate PR description from task information"""
         description = f"""## Summary
 - **Issue:** Issue #{task.github_issue_number}
@@ -115,16 +115,15 @@ class PRCreator:
 """
         return description
 
-    async def create_pr(
-        self, task_id: str | Any, repo: str | None = None
-    ) -> dict[str, Any]:
+    async def create_pr(self, task_id: str | Any, repo: str | None = None) -> dict[str, Any]:
         """Create a PR for a completed task"""
         self._validate_token()
 
         # Handle task_id being a Column object from SQLAlchemy if needed
         actual_task_id = str(task_id)
 
-        task = self.db.query(GitHubTask).filter(GitHubTask.id == actual_task_id).first()
+        result = await self.db.execute(select(GitHubTask).filter(GitHubTask.id == actual_task_id))
+        task = result.scalars().first()
         if not task:
             raise PRCreationError(f"Task {task_id} not found")
 
@@ -141,7 +140,7 @@ class PRCreator:
             }
 
         repo_to_use = repo or task.github_repo
-        owner, repo_name = self._get_repo_info(repo_to_use)
+        owner, repo_name = self._get_repo_info(repo_to_use)  # type: ignore[arg-type]
 
         # Prepare PR data
         pr_title = f"feat: {task.title}"
@@ -175,13 +174,13 @@ class PRCreator:
         pr_url = pr_result["html_url"]
 
         # Update task with PR number
-        task.github_pr_number = pr_number
-        task.updated_at = datetime.utcnow()
+        task.github_pr_number = pr_number  # type: ignore[assignment]
+        task.updated_at = datetime.utcnow()  # type: ignore[assignment]
 
         try:
-            self.db.commit()
+            await self.db.commit()
         except Exception as e:
-            self.db.rollback()
+            await self.db.rollback()
             logger.error(f"Failed to update task with PR number: {str(e)}")
             return {
                 "success": True,
@@ -208,10 +207,11 @@ class PRCreator:
         self._validate_token()
 
         if task_id:
-            task = self.db.query(GitHubTask).filter(GitHubTask.id == task_id).first()
+            result = await self.db.execute(select(GitHubTask).filter(GitHubTask.id == task_id))
+            task = result.scalars().first()
             if task and task.github_pr_number:
-                pr_number = task.github_pr_number
-                repo = repo or task.github_repo
+                pr_number = task.github_pr_number  # type: ignore[assignment]
+                repo = repo or task.github_repo  # type: ignore[assignment]
 
         if not pr_number or not repo:
             return {"error": "Missing PR number or repository", "success": False}
@@ -227,15 +227,13 @@ class PRCreator:
                 data = response.json()
                 # Compatibility with tests
                 result = data.copy()
-                result["pr_number"] = data.get("number")
-                result["success"] = True
-                return result
+                result["pr_number"] = data.get("number")  # type: ignore[index]
+                result["success"] = True  # type: ignore[index]
+                return result  # type: ignore[return-value]
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    async def list_prs_for_repo(
-        self, repo: str, status: str = "open"
-    ) -> list[dict[str, Any]]:
+    async def list_prs_for_repo(self, repo: str, status: str = "open") -> list[dict[str, Any]]:
         """List Pull Requests for a repository"""
         self._validate_token()
         owner, repo_name = self._get_repo_info(repo)
@@ -248,22 +246,21 @@ class PRCreator:
             async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.get(url, headers=headers, params=params)
                 response.raise_for_status()
-                return response.json()
+                return response.json()  # type: ignore[no-any-return]
         except Exception as e:
             logger.error(f"Failed to list PRs: {e}")
             return []
 
-    async def auto_create_prs_for_completed(
-        self, repo: str | None = None
-    ) -> dict[str, Any]:
+    async def auto_create_prs_for_completed(self, repo: str | None = None) -> dict[str, Any]:
         """Automatically create PRs for all completed tasks that don't have one"""
-        query = self.db.query(GitHubTask).filter(
-            GitHubTask.status == "completed", GitHubTask.github_pr_number == None
+        stmt = select(GitHubTask).filter(
+            GitHubTask.status == "completed", GitHubTask.github_pr_number.is_(None)
         )
         if repo:
-            query = query.filter(GitHubTask.github_repo == repo)
+            stmt = stmt.filter(GitHubTask.github_repo == repo)
 
-        tasks = query.all()
+        result = await self.db.execute(stmt)
+        tasks = result.scalars().all()
         created = 0
         results = []
         for task in tasks:
@@ -289,26 +286,23 @@ class PRCreator:
 
         issue_num = github_issue_number or issue_number
 
-        task = (
-            self.db.query(GitHubTask)
-            .filter(
+        result = await self.db.execute(
+            select(GitHubTask).filter(
                 GitHubTask.github_issue_number == issue_num,
                 GitHubTask.github_repo == repo,
                 GitHubTask.status == "completed",
             )
-            .first()
         )
+        task = result.scalars().first()
 
         if not task:
-            raise PRCreationError(
-                f"No completed task found for issue #{issue_num} in {repo}"
-            )
+            raise PRCreationError(f"No completed task found for issue #{issue_num} in {repo}")
 
         return await self.create_pr(task.id)
 
 
 # Dependency
-async def get_pr_creator(db: Session = Depends(get_db)) -> PRCreator:
+async def get_pr_creator(db: AsyncSession = Depends(get_db)) -> PRCreator:
     """Get PR creator instance"""
     return PRCreator(db)
 
