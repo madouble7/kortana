@@ -9,10 +9,10 @@ and dependency tracking for recursive self-optimization cycles.
 import json
 import re
 import shutil
+from collections import defaultdict
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
-from dataclasses import dataclass, field
-from collections import defaultdict
 
 
 class CodeGenerationError(Exception):

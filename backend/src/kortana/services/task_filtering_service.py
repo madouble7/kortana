@@ -190,15 +190,13 @@ class TaskFilteringService:
             "evolution",
             "self-optimization",
         ]
-        
+
         # Safe string joining for robustness
         title = task.title or ""
         body = task.body or ""
         combined_text = (title + " " + body).lower()
-        
-        evolution_relevant = any(
-            tag.lower() in combined_text for tag in evolution_tags
-        )
+
+        evolution_relevant = any(tag.lower() in combined_text for tag in evolution_tags)
 
         # Calculate complexity from task body length and type
         complexity_score = min(len(body) / 2000.0, 1.0)

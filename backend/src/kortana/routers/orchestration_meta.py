@@ -4,9 +4,10 @@ Exposes meta-coordination service for autonomous decision-making across evolutio
 Phase 7 Cycle #5
 """
 
+from typing import Any, Dict, List
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import List, Dict, Any
 
 from src.kortana.services.meta_coordination_hub import MetaCoordinationHub
 
@@ -34,10 +35,10 @@ class MetaStatusResponse(BaseModel):
 async def initialize_evolution_cycle(req: InitializeEvolutionRequest) -> Dict[str, Any]:
     """
     Initialize a new meta-coordination context for parallel evolution.
-    
+
     Args:
         req: InitializeEvolutionRequest with focus areas
-        
+
     Returns:
         Initialized MetaCoordinationContext details
     """
@@ -57,10 +58,10 @@ async def initialize_evolution_cycle(req: InitializeEvolutionRequest) -> Dict[st
 async def synchronize_threads(coordination_id: str) -> Dict[str, Any]:
     """
     Synchronize all parallel evolution threads and update global state.
-    
+
     Args:
         coordination_id: ID of the meta-coordination context
-        
+
     Returns:
         Updated evolutionary state
     """
@@ -81,10 +82,10 @@ async def synchronize_threads(coordination_id: str) -> Dict[str, Any]:
 async def detect_conflicts(coordination_id: str) -> Dict[str, Any]:
     """
     Detect conflicts between parallel evolution threads.
-    
+
     Args:
         coordination_id: ID of the meta-coordination context
-        
+
     Returns:
         Detected conflicts mapping thread pairs to conflict types
     """
@@ -105,10 +106,10 @@ async def detect_conflicts(coordination_id: str) -> Dict[str, Any]:
 async def resolve_conflicts(coordination_id: str) -> Dict[str, Any]:
     """
     Enforce the multi-thread consensus protocol: Detect → Resolve → Synchronize.
-    
+
     Args:
         coordination_id: ID of the meta-coordination context
-        
+
     Returns:
         Resolution results and new evolutionary state
     """
@@ -129,10 +130,10 @@ async def resolve_conflicts(coordination_id: str) -> Dict[str, Any]:
 async def get_meta_status(coordination_id: str) -> Dict[str, Any]:
     """
     Get comprehensive meta-coordination status.
-    
+
     Args:
         coordination_id: ID of the meta-coordination context
-        
+
     Returns:
         Detailed hub status including all threads and dependencies
     """
@@ -147,10 +148,10 @@ async def get_meta_status(coordination_id: str) -> Dict[str, Any]:
 async def get_sacred_consensus(coordination_id: str) -> Dict[str, Any]:
     """
     Get the 'Sacred Consensus' for the next evolutionary step.
-    
+
     Args:
         coordination_id: ID of the meta-coordination context
-        
+
     Returns:
         Consensus determination combining all signals
     """

@@ -3,8 +3,7 @@ Phase 7 Cycle #4: Advanced Orchestration Router
 Exposes meta-task coordination and resource allocation via REST API
 """
 
-from typing import Any, Dict, List, Optional
-from uuid import uuid4
+from typing import Any, Dict, List
 
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
@@ -13,7 +12,6 @@ from src.kortana.logger import log_error, log_request
 from src.kortana.services.advanced_orchestration_service import (
     AdvancedOrchestrationService,
     OrchestrationStrategy,
-    ResourceType,
     TaskDependency,
 )
 
@@ -23,6 +21,7 @@ orchestration_service = AdvancedOrchestrationService()
 
 class TaskDependencyRequest(BaseModel):
     """Request model for defining task dependencies"""
+
     task_id: str
     depends_on: str
     dependency_type: str = "finish_before_start"

@@ -63,12 +63,16 @@ class OrchestrationContext:
 
     orchestration_id: str
     root_task_id: str  # Main task driving the orchestration
-    child_tasks: List[str] = field(default_factory=list)  # Tasks spawned by this orchestration
+    child_tasks: List[str] = field(
+        default_factory=list
+    )  # Tasks spawned by this orchestration
     dependencies: Dict[str, List[TaskDependency]] = field(default_factory=dict)
     resource_budget: Dict[ResourceType, float] = field(default_factory=dict)
     resource_allocated: Dict[str, ResourceAllocation] = field(default_factory=dict)
     strategy: OrchestrationStrategy = OrchestrationStrategy.PRIORITY_WEIGHTED
-    execution_order: List[str] = field(default_factory=list)  # Computed execution sequence
+    execution_order: List[str] = field(
+        default_factory=list
+    )  # Computed execution sequence
     is_completed: bool = False
     error_count: int = 0
     max_retries: int = 3
@@ -79,7 +83,9 @@ class ExecutionPlan:
     """Detailed execution plan for a coordinated task set"""
 
     orchestration_id: str
-    phases: List[List[str]]  # Phases of execution (each phase contains parallelizable tasks)
+    phases: List[
+        List[str]
+    ]  # Phases of execution (each phase contains parallelizable tasks)
     resource_allocation_map: Dict[str, ResourceAllocation]
     estimated_duration: float  # Seconds
     critical_path: List[str]  # Tasks in the critical path
@@ -233,7 +239,9 @@ class AdvancedOrchestrationService:
             total_duration += phase_duration
 
             # Track critical path (longest path through dependency graph)
-            if phase_idx == 0 or any(t in critical_path for phase in phases[: phase_idx + 1] for t in phase):
+            if phase_idx == 0 or any(
+                t in critical_path for phase in phases[: phase_idx + 1] for t in phase
+            ):
                 critical_path.extend(phase_tasks)
 
         # Calculate budget utilization
@@ -251,9 +259,7 @@ class AdvancedOrchestrationService:
         self.execution_plans[orchestration_id] = plan
         return plan
 
-    async def execute_orchestration(
-        self, orchestration_id: str
-    ) -> Dict[str, Any]:
+    async def execute_orchestration(self, orchestration_id: str) -> Dict[str, Any]:
         """
         Execute the coordinated task set according to the plan
 
@@ -287,22 +293,21 @@ class AdvancedOrchestrationService:
                     phase_tasks, plan.resource_allocation_map
                 )
 
-                results["phase_results"].append({
-                    "phase": phase_idx,
-                    "tasks": len(phase_tasks),
-                    "completed": phase_result["completed"],
-                    "failed": phase_result["failed"],
-                })
+                results["phase_results"].append(
+                    {
+                        "phase": phase_idx,
+                        "tasks": len(phase_tasks),
+                        "completed": phase_result["completed"],
+                        "failed": phase_result["failed"],
+                    }
+                )
 
                 results["tasks_completed"] += phase_result["completed"]
                 results["tasks_failed"] += phase_result["failed"]
                 results["phases_completed"] += 1
 
                 # Check for critical failures
-                if (
-                    phase_result["failed"] > 0
-                    and phase_idx < len(plan.critical_path)
-                ):
+                if phase_result["failed"] > 0 and phase_idx < len(plan.critical_path):
                     context.error_count += 1
                     if context.error_count >= context.max_retries:
                         log_error(
@@ -457,16 +462,13 @@ class AdvancedOrchestrationService:
 
         for allocation in allocations.values():
             utilization[allocation.resource_type] = min(
-                utilization[allocation.resource_type]
-                + allocation.allocated_amount,
+                utilization[allocation.resource_type] + allocation.allocated_amount,
                 100.0,
             )
 
         return utilization
 
-    def get_orchestration_status(
-        self, orchestration_id: str
-    ) -> Dict[str, Any]:
+    def get_orchestration_status(self, orchestration_id: str) -> Dict[str, Any]:
         """Get status of an active orchestration"""
         context = self.active_orchestrations.get(orchestration_id)
         if not context:
