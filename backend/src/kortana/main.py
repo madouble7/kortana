@@ -61,6 +61,7 @@ try:
         memory,
         optimization,
         orchestrator,
+        orchestration_advanced,
         pr_creation,
         prayer,
         rclone,
@@ -324,6 +325,11 @@ def create_app() -> FastAPI:
         # Optimization monitoring and control
         app.include_router(
             optimization.router, prefix="/api/optimization", tags=["optimization"]
+        )
+        app.include_router(
+            orchestration_advanced.router,
+            prefix="/api/orchestration/advanced",
+            tags=["advanced-orchestration"],
         )
         app.include_router(
             optimization.router, prefix="/api/optimization", tags=["optimization"]
