@@ -37,6 +37,7 @@ class TaskClassification(Enum):
     AUTO = "auto"  # Fully automatable, execute immediately
     HO = "ho"  # Human Only, requires explicit human action
     APPROVAL = "approval"  # Requires human approval before execution
+    SELF_CORRECTION = "self_correction"  # Autonomous remediation (test fixes, schema updates, etc.)
 
 
 class TaskStatus(Enum):
@@ -270,6 +271,148 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
     def __init__(self):
         self._definitions = self.DEPLOYMENT_TASKS
 
+    def classify_task(
+        self, task_type: str, context: dict[str, Any] | None = None
+    ) -> TaskClassification:
+        """
+        Dynamic task classification engine based on task type and runtime context.
+
+        Implements the Volitional Self-Correction logic to promote tasks to AUTO
+        when they represent autonomous remediation.
+
+        CORE PRINCIPLE: SELF_CORRECTION is the primary classification for all code-evolution
+        tasks in evolution/ branches. Only HO for credential/infrastructure decisions.
+
+        Args:
+            task_type: Type of task (key from DEPLOYMENT_TASKS or dynamic identifier)
+            context: Runtime context dict with keys like 'branch', 'error_type', 'test_failed', etc.
+
+        Returns:
+            TaskClassification: Dynamic classification (AUTO, HO, APPROVAL, SELF_CORRECTION)
+        """
+        if context is None:
+            context = {}
+
+        branch = context.get("branch", "")
+        is_evolution_branch = branch.startswith("evolution/")
+
+        # ====================================================================
+        # HARDCODED PATTERNS: First check explicit task type patterns
+        # ====================================================================
+        if task_type == "fix_test_failure":
+            if is_evolution_branch:
+                logger.info(f"CLASSIFIED: {task_type} in {branch} → SELF_CORRECTION")
+                return TaskClassification.SELF_CORRECTION
+            return TaskClassification.HO
+
+        if task_type == "schema_update":
+            if is_evolution_branch:
+                logger.info(f"CLASSIFIED: {task_type} → SELF_CORRECTION")
+                return TaskClassification.SELF_CORRECTION
+            return TaskClassification.HO
+
+        if task_type == "code_refactor":
+            if is_evolution_branch:
+                return TaskClassification.AUTO
+            return TaskClassification.HO
+
+        # ====================================================================
+        # INFRASTRUCTURE/CREDENTIAL TASKS: Always HO (require human decision)
+        # ====================================================================
+        infrastructure_patterns = {
+            "github_token",
+            "gemini_api_key",
+            "database_url",
+            "configure_env",
+            "start_server",
+            "deployment",
+            "kubernetes",
+            "docker",
+        }
+        for pattern in infrastructure_patterns:
+            if pattern in task_type.lower():
+                logger.info(f"CLASSIFIED: {task_type} → HO (infrastructure decision)")
+                return TaskClassification.HO
+
+        # ====================================================================
+        # CODE-MODIFICATION PATTERNS: In evolution/ = SELF_CORRECTION
+        # ====================================================================
+        code_patterns = {
+            "update_imports",
+            "organize_imports",
+            "format_code",
+            "lint_code",
+            "fix_format",
+            "add_tests",
+            "fix_tests",
+            "write_tests",
+            "add_type_annotations",
+            "fix_type_errors",
+            "fix_type_hints",
+            "add_docstrings",
+            "improve_docs",
+            "create_router",
+            "add_endpoint",
+            "update_endpoint",
+            "fix_endpoint",
+            "add_middleware",
+            "update_middleware",
+            "add_model",
+            "update_model",
+            "migration",
+            "refactor_module",
+            "split_file",
+            "reorganize_code",
+            "optimize_performance",
+            "fix_bug",
+            "fix_error",
+            "security_fix",
+            "patch",
+        }
+
+        task_lower = task_type.lower()
+        for pattern in code_patterns:
+            if pattern in task_lower:
+                if is_evolution_branch:
+                    logger.info(
+                        f"CLASSIFIED: {task_type} in {branch} → SELF_CORRECTION (code evolution)"
+                    )
+                    return TaskClassification.SELF_CORRECTION
+                else:
+                    logger.info(f"CLASSIFIED: {task_type} in main → HO (code change)")
+                    return TaskClassification.HO
+
+        # ====================================================================
+        # DEPLOYMENT_TASKS: Fall back to hardcoded definitions
+        # ====================================================================
+        if task_type in self._definitions:
+            definition = self._definitions[task_type]
+            base_classification = definition.classification
+
+            # ENHANCEMENT: Promote code tasks in evolution/ to SELF_CORRECTION
+            if is_evolution_branch and base_classification == TaskClassification.AUTO:
+                if "test" in task_type.lower() or "fix" in task_type.lower():
+                    logger.info(
+                        f"CLASSIFIED: {task_type} in evolution/ → SELF_CORRECTION (autonomy promotion)"
+                    )
+                    return TaskClassification.SELF_CORRECTION
+
+            return base_classification
+
+        # ====================================================================
+        # DEFAULT CLASSIFICATION: SELF_CORRECTION in evolution/, HO elsewhere
+        # ====================================================================
+        if is_evolution_branch:
+            # Evolution branches default to SELF_CORRECTION (autonomous remediation)
+            logger.warning(
+                f"classify_task: Unknown task '{task_type}' in {branch} → SELF_CORRECTION (evolution default)"
+            )
+            return TaskClassification.SELF_CORRECTION
+        else:
+            # Non-evolution tasks default to HO for safety
+            logger.warning(f"classify_task: Unknown task type '{task_type}' → HO (safety default)")
+            return TaskClassification.HO
+
     async def synchronize_tasks(self, db: AsyncSession):
         """Synchronize hardcoded task definitions with the database"""
         for task_key, task_def in self._definitions.items():
@@ -308,16 +451,27 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
         return list(result.scalars().all())
 
     async def execute_auto_task(self, task_id: str, db: AsyncSession) -> dict[str, Any]:
-        """Execute an AUTO task and persist result in DB"""
+        """
+        Execute an AUTO or SELF_CORRECTION task and persist result in DB.
+
+        SELF_CORRECTION tasks are autonomous remediation actions (test fixes,
+        schema updates in evolution/ branches, etc.).
+        """
         result = await db.execute(select(Task).where(Task.id == task_id))
         task = result.scalar_one_or_none()
 
         if not task:
             raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
 
-        if task.classification != TaskClassification.AUTO.value:
+        # Allow both AUTO and SELF_CORRECTION classifications
+        allowed_classifications = {
+            TaskClassification.AUTO.value,
+            TaskClassification.SELF_CORRECTION.value,
+        }
+        if task.classification not in allowed_classifications:
             raise HTTPException(
-                status_code=400, detail=f"Task {task_id} is not AUTO classifiable"
+                status_code=400,
+                detail=f"Task {task_id} classification '{task.classification}' is not autonomous",
             )
 
         task.status = TaskStatus.IN_PROGRESS.value
@@ -373,21 +527,15 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
             elif command.startswith("pip "):
                 command_to_run = command.replace("pip ", f'"{py_exe}" -m pip ', 1)
             elif command.startswith("alembic "):
-                command_to_run = command.replace(
-                    "alembic ", f'"{py_exe}" -m alembic ', 1
-                )
+                command_to_run = command.replace("alembic ", f'"{py_exe}" -m alembic ', 1)
             else:
                 command_to_run = command
 
             # Execute command relative to project root
-            logger.info(
-                f"Executing AUTO task {task_id}: {command_to_run} in {project_root}"
-            )
+            logger.info(f"Executing AUTO task {task_id}: {command_to_run} in {project_root}")
 
             # Use shell=True only if necessary (file copy on windows)
-            use_shell = (
-                "copy " in command or "if not exist" in command or os.name == "nt"
-            )
+            use_shell = "copy " in command or "if not exist" in command or os.name == "nt"
 
             proc = subprocess.run(
                 command_to_run,
@@ -435,9 +583,7 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
             raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
 
         if task.classification != TaskClassification.HO.value:
-            raise HTTPException(
-                status_code=400, detail=f"Task {task_id} is not an HO task"
-            )
+            raise HTTPException(status_code=400, detail=f"Task {task_id} is not an HO task")
 
         task.status = TaskStatus.COMPLETED.value
         task.completed_at = datetime.utcnow()
@@ -449,12 +595,11 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
         """Get full deployment status from DB"""
         tasks = await self.get_all_tasks(db)
 
-        auto_tasks = [
-            t for t in tasks if t.classification == TaskClassification.AUTO.value
-        ]
+        auto_tasks = [t for t in tasks if t.classification == TaskClassification.AUTO.value]
         ho_tasks = [t for t in tasks if t.classification == TaskClassification.HO.value]
-        approval_tasks = [
-            t for t in tasks if t.classification == TaskClassification.APPROVAL.value
+        approval_tasks = [t for t in tasks if t.classification == TaskClassification.APPROVAL.value]
+        self_correction_tasks = [
+            t for t in tasks if t.classification == TaskClassification.SELF_CORRECTION.value
         ]
 
         return {
@@ -463,39 +608,27 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
             "owner": "Matt",
             "summary": {
                 "total_tasks": len(tasks),
-                "completed": sum(
-                    1 for t in tasks if t.status == TaskStatus.COMPLETED.value
-                ),
-                "in_progress": sum(
-                    1 for t in tasks if t.status == TaskStatus.IN_PROGRESS.value
-                ),
-                "pending": sum(
-                    1 for t in tasks if t.status == TaskStatus.PENDING.value
-                ),
+                "completed": sum(1 for t in tasks if t.status == TaskStatus.COMPLETED.value),
+                "in_progress": sum(1 for t in tasks if t.status == TaskStatus.IN_PROGRESS.value),
+                "pending": sum(1 for t in tasks if t.status == TaskStatus.PENDING.value),
                 "failed": sum(1 for t in tasks if t.status == TaskStatus.FAILED.value),
             },
             "classifications": {
                 "auto": {
-                    "count": sum(
-                        1 for t in auto_tasks if t.status == TaskStatus.COMPLETED.value
-                    ),
+                    "count": sum(1 for t in auto_tasks if t.status == TaskStatus.COMPLETED.value),
                     "total": len(auto_tasks),
                     "tasks": [
                         {
                             "id": t.id,
                             "name": t.title,
                             "status": t.status,
-                            "completed": t.completed_at.isoformat()
-                            if t.completed_at
-                            else None,
+                            "completed": t.completed_at.isoformat() if t.completed_at else None,
                         }
                         for t in auto_tasks
                     ],
                 },
                 "ho": {
-                    "count": sum(
-                        1 for t in ho_tasks if t.status == TaskStatus.COMPLETED.value
-                    ),
+                    "count": sum(1 for t in ho_tasks if t.status == TaskStatus.COMPLETED.value),
                     "total": len(ho_tasks),
                     "pending": [
                         {
@@ -510,9 +643,7 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
                 },
                 "approval": {
                     "count": sum(
-                        1
-                        for t in approval_tasks
-                        if t.status == TaskStatus.COMPLETED.value
+                        1 for t in approval_tasks if t.status == TaskStatus.COMPLETED.value
                     ),
                     "total": len(approval_tasks),
                     "ready": [
@@ -521,15 +652,32 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
                         if t.status == TaskStatus.PENDING.value
                     ],
                 },
+                "self_correction": {
+                    "count": sum(
+                        1 for t in self_correction_tasks if t.status == TaskStatus.COMPLETED.value
+                    ),
+                    "total": len(self_correction_tasks),
+                    "active": [
+                        {"id": t.id, "name": t.title, "description": t.description}
+                        for t in self_correction_tasks
+                        if t.status
+                        in (
+                            TaskStatus.PENDING.value,
+                            TaskStatus.IN_PROGRESS.value,
+                        )
+                    ],
+                },
             },
             "autonomy_progress": {
                 "auto_complete": sum(
                     1 for t in auto_tasks if t.status == TaskStatus.COMPLETED.value
                 ),
                 "auto_total": len(auto_tasks),
-                "ho_complete": sum(
-                    1 for t in ho_tasks if t.status == TaskStatus.COMPLETED.value
+                "self_correction_complete": sum(
+                    1 for t in self_correction_tasks if t.status == TaskStatus.COMPLETED.value
                 ),
+                "self_correction_total": len(self_correction_tasks),
+                "ho_complete": sum(1 for t in ho_tasks if t.status == TaskStatus.COMPLETED.value),
                 "ho_total": len(ho_tasks),
             },
         }
@@ -556,9 +704,7 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
 
         # Find all ready AUTO tasks
         auto_ready = []
-        completed_task_ids = {
-            t.id for t in tasks if t.status == TaskStatus.COMPLETED.value
-        }
+        completed_task_ids = {t.id for t in tasks if t.status == TaskStatus.COMPLETED.value}
 
         # Map titles to IDs for prerequisite checking
         title_to_id = {t.title: t.id for t in tasks}
@@ -567,7 +713,11 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
 
         for task in tasks:
             if (
-                task.classification == TaskClassification.AUTO.value
+                task.classification
+                in (
+                    TaskClassification.AUTO.value,
+                    TaskClassification.SELF_CORRECTION.value,
+                )
                 and task.status == TaskStatus.PENDING.value
             ):
                 # Check prerequisites
@@ -588,15 +738,15 @@ DATABASE_URL=postgresql://user:pass@host:5432/kortana
                         if prereq_id not in completed_task_ids:
                             # Also check if it's a title
                             prereq_task_id = title_to_id.get(prereq_id)
-                            if (
-                                not prereq_task_id
-                                or prereq_task_id not in completed_task_ids
-                            ):
+                            if not prereq_task_id or prereq_task_id not in completed_task_ids:
                                 prereqs_met = False
                                 break
 
                     if prereqs_met:
                         auto_ready.append(task)
+                else:
+                    # No prerequisites defined, ready to run
+                    auto_ready.append(task)
 
         for task in auto_ready:
             exec_res = await self.execute_auto_task(task.id, db)
@@ -663,6 +813,34 @@ async def run_autonomous_cycle_endpoint(
 ) -> dict[str, Any]:
     """Execute all ready AUTO tasks in one cycle"""
     return await hop.run_autonomous_cycle(db)
+
+
+@router.get("/protocol/self-correction/active")
+async def get_active_self_correction_tasks(
+    db: AsyncSession = Depends(get_db),
+) -> list[dict[str, Any]]:
+    """Get all active SELF_CORRECTION tasks (autonomous remediation)"""
+    tasks = await hop.get_all_tasks(db)
+    return [
+        {
+            "id": t.id,
+            "name": t.title,
+            "description": t.description,
+            "status": t.status,
+            "command": t.command,
+        }
+        for t in tasks
+        if t.classification == TaskClassification.SELF_CORRECTION.value
+        and t.status in (TaskStatus.PENDING.value, TaskStatus.IN_PROGRESS.value)
+    ]
+
+
+@router.post("/protocol/self-correction/execute/{task_id}")
+async def execute_self_correction_task(
+    task_id: str, db: AsyncSession = Depends(get_db)
+) -> dict[str, Any]:
+    """Execute a SELF_CORRECTION task (autonomous remediation without human approval)"""
+    return await hop.execute_auto_task(task_id, db)
 
 
 @router.get("/protocol/ho/next")
