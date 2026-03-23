@@ -2,7 +2,6 @@
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     JSON,
@@ -14,15 +13,11 @@ from sqlalchemy import (
     String,
     Text,
 )
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import DeclarativeBase, relationship
 
-if TYPE_CHECKING:
-    from sqlalchemy.orm import DeclarativeBase
-else:
-    DeclarativeBase = object
 
-Base = declarative_base()
+class Base(DeclarativeBase):
+    pass
 
 
 class User(Base):
@@ -41,10 +36,12 @@ class User(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    api_keys = relationship("APIKey", back_populates="user", cascade="all, delete-orphan")
+    api_keys = relationship(
+        "APIKey", back_populates="user", cascade="all, delete-orphan"
+    )
     agents = relationship("Agent", back_populates="owner", cascade="all, delete-orphan")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<User {self.username}>"
 
 
@@ -64,7 +61,7 @@ class APIKey(Base):
     # Relationships
     user = relationship("User", back_populates="api_keys")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<APIKey {self.name}>"
 
 
@@ -90,7 +87,7 @@ class Agent(Base):
         "AgentExecution", back_populates="agent", cascade="all, delete-orphan"
     )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<Agent {self.name}>"
 
 
@@ -113,7 +110,7 @@ class AgentExecution(Base):
     # Relationships
     agent = relationship("Agent", back_populates="executions")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<AgentExecution {self.id}>"
 
 
@@ -130,7 +127,7 @@ class Memory(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     accessed_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<Memory {self.memory_type}>"
 
 
@@ -144,7 +141,9 @@ class Task(Base):
     parent_id = Column(String(36), ForeignKey("tasks.id"), nullable=True)
     title = Column(String(256), nullable=False)
     description = Column(Text, nullable=True)
-    classification = Column(String(32), nullable=True, default="auto")  # auto, ho, approval
+    classification = Column(
+        String(32), nullable=True, default="auto"
+    )  # auto, ho, approval
     status = Column(
         String(32), nullable=False, default="pending"
     )  # pending, running, completed, failed, waiting_for_ho
@@ -165,7 +164,7 @@ class Task(Base):
     # Relationships
     subtasks = relationship("Task", backref="parent", remote_side=[id])
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<Task {self.title}>"
 
 
@@ -194,12 +193,12 @@ class GitHubTask(Base):
     commit_sha = Column(String(40), nullable=True)  # Commit SHA on branch
 
     @property
-    def branch(self):
-        return self.branch_name
+    def branch(self) -> str | None:
+        return self.branch_name  # type: ignore[return-value]
 
     @branch.setter
-    def branch(self, value):
-        self.branch_name = value
+    def branch(self, value: str | None) -> None:
+        self.branch_name = value  # type: ignore[assignment]
 
     code_changes = Column(JSON, nullable=True)
     error_message = Column(Text, nullable=True)
@@ -213,7 +212,7 @@ class GitHubTask(Base):
     executed_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<GitHubTask #{self.github_issue_number}>"
 
 
@@ -232,5 +231,5 @@ class AuditLog(Base):
     user_agent = Column(String(512), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<AuditLog {self.action}>"
