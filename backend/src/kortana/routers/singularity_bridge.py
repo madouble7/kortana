@@ -15,7 +15,7 @@ from src.kortana.services.singularity_bridge import (
     SingularityBridge,
 )
 
-router = APIRouter(prefix="/api/singularity", tags=["singularity-bridge"])
+router = APIRouter(tags=["singularity-bridge"])
 
 # Unified consciousness instance (singleton)
 consciousness = SingularityBridge()
