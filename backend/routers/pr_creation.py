@@ -15,7 +15,8 @@ from logger import setup_logging
 from models import GitHubTask
 from routers.code_reviewer import CodeReviewer
 from routers.test_orchestrator import TestOrchestrator
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
 logger = setup_logging()
@@ -32,7 +33,7 @@ class PRCreationError(Exception):
 class PRCreator:
     """Automated PR creation from task branches"""
 
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession):
         self.db = db
         self.token = GITHUB_TOKEN
         self.test_orchestrator = TestOrchestrator()
@@ -46,14 +47,16 @@ class PRCreator:
             )
         return True
 
-    def _get_repo_info(self, repo: str):
+    def _get_repo_info(self, repo: str):  # type: ignore[no-untyped-def]
         """Parse repo string into owner and name"""
         parts = repo.split("/")
         if len(parts) != 2:
             raise HTTPException(status_code=400, detail=f"Invalid repo format: {repo}")
         return parts[0], parts[1]
 
-    def _generate_pr_description(self, task: GitHubTask, code_changes=None, test_results=None, review_results=None) -> str:
+    def _generate_pr_description(  # type: ignore[no-untyped-def]
+        self, task: GitHubTask, code_changes=None, test_results=None, review_results=None
+    ) -> str:
         """Generate PR description from task information"""
         description = f"""## Summary
 - **Issue:** #{task.github_issue_number}
@@ -173,10 +176,14 @@ class PRCreator:
                 "tests_passed": test_result["tests"].passed if test_result["tests"] else 0,
                 "tests_failed": test_result["tests"].failed if test_result["tests"] else 0,
                 "coverage": test_result["coverage"]["coverage"] if test_result["coverage"] else 0.0,
-                "linting_passed": test_result["linting"]["passed"] if test_result["linting"] else False,
-                "type_check_passed": test_result["type_checking"]["passed"] if test_result["type_checking"] else False,
+                "linting_passed": test_result["linting"]["passed"]
+                if test_result["linting"]
+                else False,
+                "type_check_passed": test_result["type_checking"]["passed"]
+                if test_result["type_checking"]
+                else False,
                 "duration_ms": test_result["duration_ms"],
-                "details": test_result
+                "details": test_result,
             }
         except Exception as e:
             logger.error(f"Test execution failed for task {task.id}: {str(e)}")
@@ -188,7 +195,7 @@ class PRCreator:
                 "coverage": 0.0,
                 "linting_passed": False,
                 "type_check_passed": False,
-                "duration_ms": 0
+                "duration_ms": 0,
             }
 
     def _review_code_for_task(self, task: GitHubTask) -> dict[str, Any]:
@@ -199,12 +206,12 @@ class PRCreator:
             # Get code changes (simplified - in real implementation would get diff from GitHub)
             # For now, we'll do a basic review based on task description
             review = self.code_reviewer.generate_review(
-                code=task.description or "No code provided",
-                plan=task.plan or ""
+                code=task.description or "No code provided", plan=task.plan or ""
             )
 
             # Parse the review JSON
             import json
+
             if isinstance(review, str):
                 try:
                     review_data = json.loads(review)
@@ -219,7 +226,7 @@ class PRCreator:
                 "recommendation": review_data.get("recommendation", "comment"),
                 "summary": review_data.get("summary", "Review completed"),
                 "strengths": review_data.get("strengths", []),
-                "improvements": review_data.get("improvements", [])
+                "improvements": review_data.get("improvements", []),
             }
         except Exception as e:
             logger.error(f"Code review failed for task {task.id}: {str(e)}")
@@ -228,14 +235,17 @@ class PRCreator:
                 "error": str(e),
                 "score": 0,
                 "recommendation": "comment",
-                "summary": "Code review failed"
+                "summary": "Code review failed",
             }
 
-    def create_pr(self, task_id: str, run_tests: bool = True, run_review: bool = True) -> dict[str, Any]:
+    async def create_pr(
+        self, task_id: str, run_tests: bool = True, run_review: bool = True
+    ) -> dict[str, Any]:
         """Create a PR for a completed task with automated testing and review"""
         self._validate_token()
 
-        task = self.db.query(GitHubTask).filter(GitHubTask.id == task_id).first()
+        result = await self.db.execute(select(GitHubTask).where(GitHubTask.id == task_id))
+        task = result.scalars().first()
         if not task:
             raise HTTPException(status_code=404, detail="Task not found")
 
@@ -253,7 +263,7 @@ class PRCreator:
         if not task.branch_name:
             raise HTTPException(status_code=400, detail="No branch name for task")
 
-        owner, repo = self._get_repo_info(task.github_repo)
+        owner, repo = self._get_repo_info(task.github_repo)  # type: ignore[arg-type]
 
         # Run automated tests if requested
         test_results = None
@@ -269,7 +279,9 @@ class PRCreator:
 
         # Prepare PR data
         pr_title = f"feat: {task.title}"
-        pr_body = self._generate_pr_description(task, test_results=test_results, review_results=review_results)
+        pr_body = self._generate_pr_description(
+            task, test_results=test_results, review_results=review_results
+        )
 
         headers = {
             "Authorization": f"token {self.token}",
@@ -302,14 +314,13 @@ class PRCreator:
         if review_results and review_results.get("success") and run_review:
             try:
                 review_comment = self.code_reviewer.create_review_comment(review_results)
-                comment_url = f"https://api.github.com/repos/{owner}/{repo}/issues/{pr_number}/comments"
+                comment_url = (
+                    f"https://api.github.com/repos/{owner}/{repo}/issues/{pr_number}/comments"
+                )
                 comment_data = {"body": review_comment}
 
                 comment_response = requests.post(
-                    comment_url,
-                    headers=headers,
-                    json=comment_data,
-                    timeout=30
+                    comment_url, headers=headers, json=comment_data, timeout=30
                 )
                 if comment_response.status_code == 201:
                     logger.info(f"Posted code review comment to PR #{pr_number}")
@@ -323,9 +334,9 @@ class PRCreator:
         task.updated_at = datetime.utcnow()
 
         try:
-            self.db.commit()
+            await self.db.commit()
         except Exception as e:
-            self.db.rollback()
+            await self.db.rollback()
             logger.error(f"Failed to update task with PR number: {str(e)}")
             # PR was created but we couldn't update the task
             return {
@@ -348,19 +359,18 @@ class PRCreator:
             "review_results": review_results,
         }
 
-    def create_pr_from_issue(self, issue_number: int, repo: str) -> dict[str, Any]:
+    async def create_pr_from_issue(self, issue_number: int, repo: str) -> dict[str, Any]:
         """Create PR from a GitHub issue by finding its task"""
         self._validate_token()
 
-        task = (
-            self.db.query(GitHubTask)
-            .filter(
+        result = await self.db.execute(
+            select(GitHubTask).where(
                 GitHubTask.github_issue_number == issue_number,
                 GitHubTask.github_repo == repo,
                 GitHubTask.status == "completed",
             )
-            .first()
         )
+        task = result.scalars().first()
 
         if not task:
             raise HTTPException(
@@ -368,11 +378,11 @@ class PRCreator:
                 detail=f"No completed task found for issue #{issue_number} in {repo}",
             )
 
-        return self.create_pr(task.id)
+        return await self.create_pr(task.id)  # type: ignore[arg-type]
 
 
 # Dependency
-async def get_pr_creator(db: Session = Depends(get_db)) -> PRCreator:
+async def get_pr_creator(db: AsyncSession = Depends(get_db)) -> PRCreator:
     """Get PR creator instance"""
     return PRCreator(db)
 
@@ -382,11 +392,11 @@ async def create_pr_endpoint(
     task_id: str,
     run_tests: bool = True,
     run_review: bool = True,
-    pr_creator: PRCreator = Depends(get_pr_creator)
+    pr_creator: PRCreator = Depends(get_pr_creator),
 ) -> dict[str, Any]:
     """Create a PR for a completed task with automated testing and review"""
     try:
-        result = pr_creator.create_pr(task_id, run_tests=run_tests, run_review=run_review)
+        result = await pr_creator.create_pr(task_id, run_tests=run_tests, run_review=run_review)
         return result
     except HTTPException:
         raise
@@ -403,7 +413,7 @@ async def create_pr_from_issue_endpoint(
 ) -> dict[str, Any]:
     """Create a PR from a GitHub issue number"""
     try:
-        result = pr_creator.create_pr_from_issue(issue_number, repo)
+        result = await pr_creator.create_pr_from_issue(issue_number, repo)
         return result
     except HTTPException:
         raise
@@ -413,9 +423,10 @@ async def create_pr_from_issue_endpoint(
 
 
 @router.get("/status/{task_id}")
-async def get_pr_status(task_id: str, db: Session = Depends(get_db)) -> dict[str, Any]:
+async def get_pr_status(task_id: str, db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
     """Get PR status for a task"""
-    task = db.query(GitHubTask).filter(GitHubTask.id == task_id).first()
+    result = await db.execute(select(GitHubTask).where(GitHubTask.id == task_id))
+    task = result.scalars().first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
@@ -435,7 +446,7 @@ async def get_pr_status(task_id: str, db: Session = Depends(get_db)) -> dict[str
             "message": "PR created but GitHub token not configured for details",
         }
 
-    owner, repo = task.github_repo.split("/")
+    owner, repo = task.github_repo.split("/")  # type: ignore[union-attr]
     headers = {
         "Authorization": f"token {GITHUB_TOKEN}",
         "Accept": "application/vnd.github.v3+json",
@@ -475,7 +486,7 @@ async def get_pr_status(task_id: str, db: Session = Depends(get_db)) -> dict[str
 
 @router.get("/list/{repo}")
 async def list_prs_for_repo(
-    repo: str, state: str = "open", db: Session = Depends(get_db)
+    repo: str, state: str = "open", db: AsyncSession = Depends(get_db)
 ) -> dict[str, Any]:
     """List PRs created by the system for a repo"""
     if not GITHUB_TOKEN:
@@ -521,18 +532,19 @@ async def list_prs_for_repo(
 
 
 @router.post("/auto-create-all")
-async def auto_create_prs_for_completed(repo: str, db: Session = Depends(get_db)) -> dict[str, Any]:
+async def auto_create_prs_for_completed(
+    repo: str, db: AsyncSession = Depends(get_db)
+) -> dict[str, Any]:
     """Auto-create PRs for all completed tasks without PRs"""
     # Find completed tasks without PRs
-    completed_tasks = (
-        db.query(GitHubTask)
-        .filter(
+    result = await db.execute(
+        select(GitHubTask).where(
             GitHubTask.github_repo == repo,
             GitHubTask.status == "completed",
             GitHubTask.github_pr_number.is_(None),
         )
-        .all()
     )
+    completed_tasks = result.scalars().all()
 
     if not completed_tasks:
         return {
@@ -546,15 +558,15 @@ async def auto_create_prs_for_completed(repo: str, db: Session = Depends(get_db)
 
     for task in completed_tasks:
         try:
-            result = pr_creator.create_pr(task.id, run_tests=True, run_review=True)
+            result = await pr_creator.create_pr(task.id, run_tests=True, run_review=True)  # type: ignore[assignment, arg-type]
             results.append(
                 {
                     "task_id": task.id,
                     "issue_number": task.github_issue_number,
-                    "pr_number": result.get("pr_number"),
+                    "pr_number": result.get("pr_number"),  # type: ignore[attr-defined]
                     "success": True,
-                    "test_results": result.get("test_results"),
-                    "review_results": result.get("review_results"),
+                    "test_results": result.get("test_results"),  # type: ignore[attr-defined]
+                    "review_results": result.get("review_results"),  # type: ignore[attr-defined]
                 }
             )
         except Exception as e:
