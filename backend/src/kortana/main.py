@@ -197,9 +197,6 @@ def create_app() -> FastAPI:
                 ResponseCacheMiddleware,
                 redis_client=redis_client,
                 strategy=cache_strategy,
-                ResponseCacheMiddleware,
-                redis_client=redis_client,
-                strategy=cache_strategy,
             )
         except Exception as e:
             log_error("CACHE_INIT", f"Failed to initialize response caching: {e}")
@@ -217,9 +214,6 @@ def create_app() -> FastAPI:
     async def kortana_exception_handler(
         request: Request, exc: KortanaException
     ) -> JSONResponse:
-    async def kortana_exception_handler(
-        request: Request, exc: KortanaException
-    ) -> JSONResponse:
         """Handle custom Kortana exceptions"""
         log_error(
             exc.error_code,
@@ -229,9 +223,6 @@ def create_app() -> FastAPI:
         return JSONResponse(status_code=exc.status_code, content=exc.to_dict())
 
     @app.exception_handler(HTTPException)
-    async def http_exception_handler(
-        request: Request, exc: HTTPException
-    ) -> JSONResponse:
     async def http_exception_handler(
         request: Request, exc: HTTPException
     ) -> JSONResponse:
@@ -253,9 +244,6 @@ def create_app() -> FastAPI:
         )
 
     @app.exception_handler(Exception)
-    async def general_exception_handler(
-        request: Request, exc: Exception
-    ) -> JSONResponse:
     async def general_exception_handler(
         request: Request, exc: Exception
     ) -> JSONResponse:

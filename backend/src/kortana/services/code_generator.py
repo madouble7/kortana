@@ -96,11 +96,15 @@ class CodeGenerator:
                     return False
                 # Prevent path traversal
                 if ".." in file_change["path"]:
-                    raise CodeGenerationError(f"Invalid path (contains ..): {file_change['path']}")
+                    raise CodeGenerationError(
+                        f"Invalid path (contains ..): {file_change['path']}"
+                    )
 
         return True
 
-    def generate_files(self, parsed_plan: dict[str, Any], dry_run: bool = True) -> dict[str, Any]:
+    def generate_files(
+        self, parsed_plan: dict[str, Any], dry_run: bool = True
+    ) -> dict[str, Any]:
         """
         Generate files from parsed plan
 
@@ -121,8 +125,12 @@ class CodeGenerator:
                 file_path = self.repo_path / file_change["path"]
 
                 # Security check: ensure path is within repo
-                if not str(file_path.resolve()).startswith(str(self.repo_path.resolve())):
-                    raise CodeGenerationError(f"Path escape attempt: {file_change['path']}")
+                if not str(file_path.resolve()).startswith(
+                    str(self.repo_path.resolve())
+                ):
+                    raise CodeGenerationError(
+                        f"Path escape attempt: {file_change['path']}"
+                    )
 
                 action = file_change["action"]
 
