@@ -197,9 +197,6 @@ def create_app() -> FastAPI:
                 ResponseCacheMiddleware,
                 redis_client=redis_client,
                 strategy=cache_strategy,
-                ResponseCacheMiddleware,
-                redis_client=redis_client,
-                strategy=cache_strategy,
             )
         except Exception as e:
             log_error("CACHE_INIT", f"Failed to initialize response caching: {e}")
@@ -217,9 +214,6 @@ def create_app() -> FastAPI:
     async def kortana_exception_handler(
         request: Request, exc: KortanaException
     ) -> JSONResponse:
-    async def kortana_exception_handler(
-        request: Request, exc: KortanaException
-    ) -> JSONResponse:
         """Handle custom Kortana exceptions"""
         log_error(
             exc.error_code,
@@ -229,9 +223,6 @@ def create_app() -> FastAPI:
         return JSONResponse(status_code=exc.status_code, content=exc.to_dict())
 
     @app.exception_handler(HTTPException)
-    async def http_exception_handler(
-        request: Request, exc: HTTPException
-    ) -> JSONResponse:
     async def http_exception_handler(
         request: Request, exc: HTTPException
     ) -> JSONResponse:
@@ -253,9 +244,6 @@ def create_app() -> FastAPI:
         )
 
     @app.exception_handler(Exception)
-    async def general_exception_handler(
-        request: Request, exc: Exception
-    ) -> JSONResponse:
     async def general_exception_handler(
         request: Request, exc: Exception
     ) -> JSONResponse:
@@ -300,20 +288,8 @@ def create_app() -> FastAPI:
         app.include_router(
             task_queue.router, prefix="/api/task-queue", tags=["task-queue"]
         )
-        app.include_router(
-            autonomous_systems.router, prefix="/api/autonomous", tags=["autonomous"]
-        )
-        app.include_router(
-            knowledge.router, prefix="/api/knowledge", tags=["knowledge"]
-        )
-        app.include_router(
-            task_queue.router, prefix="/api/task-queue", tags=["task-queue"]
-        )
         app.include_router(rclone.router, prefix="/api/rclone", tags=["rclone"])
         app.include_router(system.router, prefix="/api/system", tags=["system"])
-        app.include_router(
-            always_on.router, prefix="/api/always-on", tags=["always-on"]
-        )
         app.include_router(
             always_on.router, prefix="/api/always-on", tags=["always-on"]
         )
@@ -326,17 +302,8 @@ def create_app() -> FastAPI:
         app.include_router(
             code_reviewer.router, prefix="/api/code-review", tags=["code-review"]
         )
-        app.include_router(
-            test_orchestrator.router, prefix="/api/testing", tags=["testing"]
-        )
-        app.include_router(
-            code_reviewer.router, prefix="/api/code-review", tags=["code-review"]
-        )
 
         # Optimization monitoring and control
-        app.include_router(
-            optimization.router, prefix="/api/optimization", tags=["optimization"]
-        )
         app.include_router(
             optimization.router, prefix="/api/optimization", tags=["optimization"]
         )

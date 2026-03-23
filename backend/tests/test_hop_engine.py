@@ -22,7 +22,8 @@ class TestTaskClassification:
 
     def test_enum_members(self):
         members = list(TaskClassification)
-        assert len(members) == 3
+        assert len(members) == 4
+        assert TaskClassification.SELF_CORRECTION in members
 
 
 class TestTaskStatus:
