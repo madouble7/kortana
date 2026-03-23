@@ -328,7 +328,6 @@ class CodeGenerator:
 
         return True
 
-    def generate_files(
     def generate_files_atomic(
         self, parsed_plan: dict[str, Any], dry_run: bool = True
     ) -> dict[str, Any]:
@@ -347,17 +346,18 @@ class CodeGenerator:
 
         results = {"created": [], "modified": [], "deleted": [], "errors": []}
 
+        # Validate security for all file changes first
         for file_change in parsed_plan.get("files", []):
-            try:
-                file_path = self.repo_path / file_change["path"]
+            file_path = self.repo_path / file_change["path"]
 
-                # Security check: ensure path is within repo
-                if not str(file_path.resolve()).startswith(
-                    str(self.repo_path.resolve())
-                ):
-                    raise CodeGenerationError(
-                        f"Path escape attempt: {file_change['path']}"
-                    )
+            # Security check: ensure path is within repo
+            if not str(file_path.resolve()).startswith(
+                str(self.repo_path.resolve())
+            ):
+                raise CodeGenerationError(
+                    f"Path escape attempt: {file_change['path']}"
+                )
+
         # Create transaction from plan
         transaction = AtomicTransaction(repo_path=self.repo_path)
 

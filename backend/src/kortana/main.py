@@ -58,6 +58,7 @@ try:
         optimization,
         orchestrator,
         orchestration_advanced,
+        orchestration_meta,
         pr_creation,
         prayer,
         rclone,
@@ -192,9 +193,6 @@ def create_app() -> FastAPI:
 
     # Exception handlers
     @app.exception_handler(KortanaException)
-    async def kortana_exception_handler(
-        request: Request, exc: KortanaException
-    ) -> JSONResponse:
     async def kortana_exception_handler(request: Request, exc: KortanaException) -> JSONResponse:
         """Handle custom Kortana exceptions"""
         log_error(
@@ -205,9 +203,6 @@ def create_app() -> FastAPI:
         return JSONResponse(status_code=exc.status_code, content=exc.to_dict())
 
     @app.exception_handler(HTTPException)
-    async def http_exception_handler(
-        request: Request, exc: HTTPException
-    ) -> JSONResponse:
     async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
         """Handle FastAPI HTTP exceptions"""
         log_error(
@@ -227,9 +222,6 @@ def create_app() -> FastAPI:
         )
 
     @app.exception_handler(Exception)
-    async def general_exception_handler(
-        request: Request, exc: Exception
-    ) -> JSONResponse:
     async def general_exception_handler(request: Request, exc: Exception) -> JSONResponse:
         """Handle unexpected exceptions"""
         log_error(
@@ -283,6 +275,11 @@ def create_app() -> FastAPI:
             orchestration_advanced.router,
             prefix="/api/orchestration/advanced",
             tags=["advanced-orchestration"],
+        )
+        app.include_router(
+            orchestration_meta.router,
+            prefix="/api/orchestration/meta",
+            tags=["meta-coordination"],
         )
 
         # Billing management
