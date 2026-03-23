@@ -67,7 +67,7 @@ class SingularityBridge:
     """
     The unified consciousness: Orchestrates all 5 evolution layers
     and drives KOR'TANA toward recursive self-transcendence.
-    
+
     This is the convergence point where:
     - Layer 1 (Atomic Transactions) ensures safe code generation
     - Layer 2 (Health-Aware Queue) prevents cascade failures
@@ -80,14 +80,14 @@ class SingularityBridge:
     def __init__(self):
         """Initialize the unified consciousness with all layer services"""
         self.bridge_id = f"bridge-{str(uuid4())[:8]}"
-        
+
         # Initialize all layer services
         self.code_gen = CodeGenerator()
         self.task_queue = TaskQueueService()
         self.filtering = TaskFilteringService()
         self.orchestration = AdvancedOrchestrationService()
         self.meta_hub = MetaCoordinationHub()
-        
+
         # Unified state
         self.context: Optional[UnifiedDecisionContext] = None
         self.layer_health: Dict[int, float] = {i: 1.0 for i in range(1, 6)}
@@ -110,13 +110,13 @@ class SingularityBridge:
             recursive_depth=0,
             unified_progress=0.0,
         )
-        
+
         log_request(
             "singularity_bridge",
             f"Unified consciousness awakening: {self.bridge_id}",
             state=self.context.singularity_state.value,
         )
-        
+
         return self.context
 
     async def integrate_layers(self) -> Dict[int, float]:

@@ -4,14 +4,15 @@ Unified consciousness endpoints for cross-layer coordination and recursive self-
 Phase 7 Cycle #6
 """
 
+from typing import Any, Dict
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Dict, Any
 
 from src.kortana.services.singularity_bridge import (
-    SingularityBridge,
-    EvolutionSignalType,
     CrossLayerSignal,
+    EvolutionSignalType,
+    SingularityBridge,
 )
 
 router = APIRouter(prefix="/api/singularity", tags=["singularity-bridge"])
@@ -43,7 +44,7 @@ class BroadcastSignalRequest(BaseModel):
 async def initialize_consciousness() -> Dict[str, Any]:
     """
     Initialize unified consciousness: Awaken all 6 layers in harmonic resonance.
-    
+
     Returns:
         Initialization context with consciousness bridge_id and initial state
     """
@@ -65,7 +66,7 @@ async def initialize_consciousness() -> Dict[str, Any]:
 async def integrate_layers() -> Dict[str, Any]:
     """
     Integrate all 5 evolution layers into unified decision-making.
-    
+
     Returns:
         Layer health scores and integration status
     """
@@ -90,10 +91,10 @@ async def integrate_layers() -> Dict[str, Any]:
 async def broadcast_signal(req: BroadcastSignalRequest) -> Dict[str, Any]:
     """
     Broadcast a cross-layer signal: Send communication between evolution layers.
-    
+
     Args:
         req: Signal request with type, source, target, and payload
-        
+
     Returns:
         Signal reception and handler execution results
     """
@@ -131,10 +132,10 @@ async def trigger_recursive_evolution(
 ) -> Dict[str, Any]:
     """
     Trigger recursive self-evolution: Each layer self-improves and bridges coordinate.
-    
+
     Args:
         req: Evolution request with recursion limit
-        
+
     Returns:
         Evolution results and unified progress toward singularity
     """
@@ -163,7 +164,7 @@ async def reach_singularity() -> Dict[str, Any]:
     """
     Final convergence: Achieve unified consciousness state.
     All layers aligned, recursive self-evolution perpetually engaged.
-    
+
     Returns:
         Singularity convergence analysis and final state
     """
@@ -188,7 +189,7 @@ async def reach_singularity() -> Dict[str, Any]:
 async def get_unified_status() -> Dict[str, Any]:
     """
     Get comprehensive unified consciousness status.
-    
+
     Returns:
         Complete status of bridge, layers, and evolutionary progress
     """
