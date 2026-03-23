@@ -8,7 +8,7 @@ import json
 import time
 from dataclasses import asdict, dataclass
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
 from redis import Redis
 from src.kortana.logger import get_logger
@@ -36,12 +36,12 @@ class CircuitMetrics:
     state: str = CircuitState.CLOSED.value
     opened_at: Optional[float] = None
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for Redis storage"""
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict) -> "CircuitMetrics":
+    def from_dict(cls, data: dict[str, Any]) -> "CircuitMetrics":
         """Create from dictionary"""
         return cls(**data)
 
@@ -189,7 +189,7 @@ class AutonomyCircuitBreaker:
 
         self._save_metrics(metrics)
 
-    def get_status(self, task_name: str) -> dict:
+    def get_status(self, task_name: str) -> dict[str, Any]:
         """Get current status of circuit breaker"""
         metrics = self._get_metrics(task_name)
         return {
@@ -202,7 +202,7 @@ class AutonomyCircuitBreaker:
             "opened_at": metrics.opened_at,
         }
 
-    def get_all_statuses(self) -> list[dict]:
+    def get_all_statuses(self) -> list[dict[str, Any]]:
         """Get status of all monitored circuits"""
         statuses = []
         try:

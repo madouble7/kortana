@@ -14,7 +14,7 @@ from pythonjsonlogger import jsonlogger
 class ContextFilter(logging.Filter):
     """Filter to add contextual information to log records"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.request_id: str | None = None
 
@@ -87,14 +87,11 @@ def setup_logging(log_level: str = "INFO", format_type: str = "json") -> logging
     console_handler.addFilter(context_filter)
 
     # Set formatter
+    formatter: logging.Formatter
     if format_type.lower() == "json":
-        formatter = CustomJsonFormatter(
-            "%(timestamp)s %(level)s %(logger)s %(message)s"
-        )
+        formatter = CustomJsonFormatter("%(timestamp)s %(level)s %(logger)s %(message)s")
     else:
-        formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        )
+        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
@@ -111,13 +108,13 @@ def get_logger(name: str) -> logging.Logger:
 logger = logging.getLogger("kortana")
 
 
-def log_request(module: str, message: str, **kwargs) -> None:
+def log_request(module: str, message: str, **kwargs: Any) -> None:
     """Log request information"""
     logger = get_logger(module)
     logger.info(f"{message}", extra=kwargs)
 
 
-def log_error(module: str, message: str, **kwargs) -> None:
+def log_error(module: str, message: str, **kwargs: Any) -> None:
     """Log error information"""
     logger = get_logger(module)
     logger.error(f"{message}", extra=kwargs)

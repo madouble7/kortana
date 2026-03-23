@@ -7,7 +7,6 @@ from typing import Any, Dict, Optional
 
 import httpx
 from redis import Redis
-
 from src.kortana.circuit_breaker import AutonomyCircuitBreaker
 from src.kortana.logger import get_logger
 
@@ -48,7 +47,7 @@ class ResilientHTTPClient:
             # Create circuit breakers for common APIs
             self._init_circuit_breakers()
 
-    def _init_circuit_breakers(self):
+    def _init_circuit_breakers(self) -> None:
         """Initialize circuit breakers for common external APIs"""
         if not self.redis_client:
             return
@@ -85,7 +84,7 @@ class ResilientHTTPClient:
         return self.circuit_breakers[api_name]
 
     async def request(
-        self, method: str, url: str, api_name: str = "external_api", **kwargs
+        self, method: str, url: str, api_name: str = "external_api", **kwargs: Any
     ) -> httpx.Response:
         """
         Make HTTP request with circuit breaker protection
@@ -133,19 +132,21 @@ class ResilientHTTPClient:
             logger.error(f"HTTP request failed for {api_name} ({url}): {str(e)}")
             raise
 
-    async def get(self, url: str, api_name: str = "external_api", **kwargs) -> httpx.Response:
+    async def get(self, url: str, api_name: str = "external_api", **kwargs: Any) -> httpx.Response:
         """GET request with circuit breaker protection"""
         return await self.request("GET", url, api_name, **kwargs)
 
-    async def post(self, url: str, api_name: str = "external_api", **kwargs) -> httpx.Response:
+    async def post(self, url: str, api_name: str = "external_api", **kwargs: Any) -> httpx.Response:
         """POST request with circuit breaker protection"""
         return await self.request("POST", url, api_name, **kwargs)
 
-    async def put(self, url: str, api_name: str = "external_api", **kwargs) -> httpx.Response:
+    async def put(self, url: str, api_name: str = "external_api", **kwargs: Any) -> httpx.Response:
         """PUT request with circuit breaker protection"""
         return await self.request("PUT", url, api_name, **kwargs)
 
-    async def delete(self, url: str, api_name: str = "external_api", **kwargs) -> httpx.Response:
+    async def delete(
+        self, url: str, api_name: str = "external_api", **kwargs: Any
+    ) -> httpx.Response:
         """DELETE request with circuit breaker protection"""
         return await self.request("DELETE", url, api_name, **kwargs)
 
@@ -194,13 +195,13 @@ def get_http_client() -> ResilientHTTPClient:
 
 
 # Convenience functions for backward compatibility
-async def resilient_get(url: str, api_name: str = "external_api", **kwargs) -> httpx.Response:
+async def resilient_get(url: str, api_name: str = "external_api", **kwargs: Any) -> httpx.Response:
     """Convenience function for GET requests"""
     client = get_http_client()
     return await client.get(url, api_name, **kwargs)
 
 
-async def resilient_post(url: str, api_name: str = "external_api", **kwargs) -> httpx.Response:
+async def resilient_post(url: str, api_name: str = "external_api", **kwargs: Any) -> httpx.Response:
     """Convenience function for POST requests"""
     client = get_http_client()
     return await client.post(url, api_name, **kwargs)
