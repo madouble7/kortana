@@ -109,7 +109,9 @@ class Settings:
 
     # Vector Database
     PINECONE_API_KEY: str | None = _get_env("PINECONE_API_KEY")
-    PINECONE_ENVIRONMENT: str = _get_env("PINECONE_ENVIRONMENT", "us-east-1") or "us-east-1"
+    PINECONE_ENVIRONMENT: str = (
+        _get_env("PINECONE_ENVIRONMENT", "us-east-1") or "us-east-1"
+    )
 
     # Google Integration
     GOOGLE_DRIVE_API_KEY: str = _get_env("GOOGLE_DRIVE_API_KEY", "") or ""
@@ -120,7 +122,9 @@ class Settings:
         or "http://localhost:3000/oauth/callback"
     )
     GOOGLE_REFRESH_TOKEN: str | None = _get_env("GOOGLE_REFRESH_TOKEN")
-    GOOGLE_APPLICATION_CREDENTIALS: str | None = _get_env("GOOGLE_APPLICATION_CREDENTIALS")
+    GOOGLE_APPLICATION_CREDENTIALS: str | None = _get_env(
+        "GOOGLE_APPLICATION_CREDENTIALS"
+    )
 
     # GitHub Integration
     GITHUB_TOKEN: str | None = _get_env("GITHUB_TOKEN")
@@ -182,13 +186,17 @@ class Settings:
     LOG_FORMAT: str = _get_env("LOG_FORMAT", "json") or "json"
 
     # Security
-    ALLOWED_HOSTS: list[str] = (_get_env("ALLOWED_HOSTS", "localhost,127.0.0.1") or "").split(",")
+    ALLOWED_HOSTS: list[str] = (
+        _get_env("ALLOWED_HOSTS", "localhost,127.0.0.1") or ""
+    ).split(",")
     SECRET_KEY: str = _get_env("SECRET_KEY") or (
         _DEV_SECRET_KEY if ENVIRONMENT != "production" else ""
     )
 
     # Rate Limiting
-    RATE_LIMIT_ENABLED: bool = (_get_env("RATE_LIMIT_ENABLED", "true") or "true").lower() == "true"
+    RATE_LIMIT_ENABLED: bool = (
+        _get_env("RATE_LIMIT_ENABLED", "true") or "true"
+    ).lower() == "true"
     RATE_LIMIT_REQUESTS: int = int(_get_env("RATE_LIMIT_REQUESTS", "100") or "100")
     RATE_LIMIT_PERIOD: int = int(_get_env("RATE_LIMIT_PERIOD", "60") or "60")
 
@@ -214,14 +222,17 @@ class Settings:
     TASK_RETRY_DELAY: int = int(_get_env("TASK_RETRY_DELAY", "300") or "300")
     REPO_ROOT: str = _get_env("REPO_ROOT", ".") or "."
     KORTANA_BACKEND_URL: str = (
-        _get_env("KORTANA_BACKEND_URL", "http://localhost:8000") or "http://localhost:8000"
+        _get_env("KORTANA_BACKEND_URL", "http://localhost:8000")
+        or "http://localhost:8000"
     )
 
     # Autonomy Configuration
     AUTONOMOUS_MODE: bool = (
         _get_env("KORTANA_AUTONOMOUS_MODE", "false") or "false"
     ).lower() == "true"
-    AUTONOMY_CYCLE_INTERVAL: int = int(_get_env("AUTONOMY_CYCLE_INTERVAL", "600") or "600")
+    AUTONOMY_CYCLE_INTERVAL: int = int(
+        _get_env("AUTONOMY_CYCLE_INTERVAL", "600") or "600"
+    )
 
     @classmethod
     def validate(cls) -> None:
@@ -272,8 +283,13 @@ class Settings:
         if _is_placeholder(settings.SECRET_KEY):
             raise ValueError("SECRET_KEY must be configured before startup")
 
-        if settings.ENVIRONMENT != "production" and settings.SECRET_KEY == _DEV_SECRET_KEY:
-            print("[!] Warning: SECRET_KEY not set; using an ephemeral development secret")
+        if (
+            settings.ENVIRONMENT != "production"
+            and settings.SECRET_KEY == _DEV_SECRET_KEY
+        ):
+            print(
+                "[!] Warning: SECRET_KEY not set; using an ephemeral development secret"
+            )
 
         # Validate database connection string
         try:
@@ -288,7 +304,9 @@ class Settings:
                     raise ValueError(message)
                 print(f"[!] Warning: {message}")
             elif not _get_env("DATABASE_URL") and not settings.DB_PASSWORD:
-                print("[!] Warning: DATABASE_URL not set; falling back to local SQLite database")
+                print(
+                    "[!] Warning: DATABASE_URL not set; falling back to local SQLite database"
+                )
             if settings.ENVIRONMENT == "production" and db_url.startswith("sqlite"):
                 print(
                     "[!] Warning: Production is configured to use SQLite; verify deployment settings"
