@@ -89,9 +89,13 @@ def setup_logging(log_level: str = "INFO", format_type: str = "json") -> logging
     # Set formatter
     formatter: logging.Formatter
     if format_type.lower() == "json":
-        formatter = CustomJsonFormatter("%(timestamp)s %(level)s %(logger)s %(message)s")
+        formatter = CustomJsonFormatter(
+            "%(timestamp)s %(level)s %(logger)s %(message)s"
+        )
     else:
-        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
 
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)

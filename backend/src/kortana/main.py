@@ -124,6 +124,19 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         print(f"[ERROR] Configuration Error: {e}")
         raise
 
+    # Create database tables if they don't exist
+    try:
+        from src.kortana.database import get_db_manager
+        from src.kortana.models import Base
+
+        db_manager = get_db_manager()
+        await db_manager.initialize()
+        async with db_manager.engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        print("[*] Database tables verified/created")
+    except Exception as e:
+        print(f"[WARN] Database table creation: {e}")
+
     log_request("system", f"Kor'tana API starting in {settings.ENVIRONMENT} mode")
     print(f"[*] Kor'tana API starting in {settings.ENVIRONMENT} mode")
 

@@ -7,6 +7,7 @@ from typing import Any, Dict, Optional
 
 import httpx
 from redis import Redis
+
 from src.kortana.circuit_breaker import AutonomyCircuitBreaker
 from src.kortana.logger import get_logger
 
@@ -21,7 +22,9 @@ class ResilientHTTPClient:
     def __init__(
         self,
         redis_client: Optional[Redis] = None,
-        pool_limits: httpx.Limits = httpx.Limits(max_keepalive_connections=20, max_connections=100),
+        pool_limits: httpx.Limits = httpx.Limits(
+            max_keepalive_connections=20, max_connections=100
+        ),
         timeout: httpx.Timeout = httpx.Timeout(30.0),
         circuit_breaker_failure_threshold: int = 5,
         circuit_breaker_recovery_timeout: int = 60,
@@ -106,7 +109,9 @@ class ResilientHTTPClient:
         if circuit_breaker:
             can_execute, reason = circuit_breaker.can_execute(api_name)
             if not can_execute:
-                logger.warning(f"Circuit breaker blocked request to {api_name}: {reason}")
+                logger.warning(
+                    f"Circuit breaker blocked request to {api_name}: {reason}"
+                )
                 raise Exception(f"Circuit breaker open: {reason}")
 
         # Set default timeout if not provided
@@ -132,15 +137,21 @@ class ResilientHTTPClient:
             logger.error(f"HTTP request failed for {api_name} ({url}): {str(e)}")
             raise
 
-    async def get(self, url: str, api_name: str = "external_api", **kwargs: Any) -> httpx.Response:
+    async def get(
+        self, url: str, api_name: str = "external_api", **kwargs: Any
+    ) -> httpx.Response:
         """GET request with circuit breaker protection"""
         return await self.request("GET", url, api_name, **kwargs)
 
-    async def post(self, url: str, api_name: str = "external_api", **kwargs: Any) -> httpx.Response:
+    async def post(
+        self, url: str, api_name: str = "external_api", **kwargs: Any
+    ) -> httpx.Response:
         """POST request with circuit breaker protection"""
         return await self.request("POST", url, api_name, **kwargs)
 
-    async def put(self, url: str, api_name: str = "external_api", **kwargs: Any) -> httpx.Response:
+    async def put(
+        self, url: str, api_name: str = "external_api", **kwargs: Any
+    ) -> httpx.Response:
         """PUT request with circuit breaker protection"""
         return await self.request("PUT", url, api_name, **kwargs)
 
@@ -182,7 +193,9 @@ def get_http_client() -> ResilientHTTPClient:
         try:
             import redis
 
-            redis_client = redis.Redis(host="localhost", port=6379, db=0, decode_responses=True)
+            redis_client = redis.Redis(
+                host="localhost", port=6379, db=0, decode_responses=True
+            )
             # Test connection
             redis_client.ping()
         except Exception:
@@ -195,13 +208,17 @@ def get_http_client() -> ResilientHTTPClient:
 
 
 # Convenience functions for backward compatibility
-async def resilient_get(url: str, api_name: str = "external_api", **kwargs: Any) -> httpx.Response:
+async def resilient_get(
+    url: str, api_name: str = "external_api", **kwargs: Any
+) -> httpx.Response:
     """Convenience function for GET requests"""
     client = get_http_client()
     return await client.get(url, api_name, **kwargs)
 
 
-async def resilient_post(url: str, api_name: str = "external_api", **kwargs: Any) -> httpx.Response:
+async def resilient_post(
+    url: str, api_name: str = "external_api", **kwargs: Any
+) -> httpx.Response:
     """Convenience function for POST requests"""
     client = get_http_client()
     return await client.post(url, api_name, **kwargs)

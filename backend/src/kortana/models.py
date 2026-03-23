@@ -36,7 +36,9 @@ class User(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    api_keys = relationship("APIKey", back_populates="user", cascade="all, delete-orphan")
+    api_keys = relationship(
+        "APIKey", back_populates="user", cascade="all, delete-orphan"
+    )
     agents = relationship("Agent", back_populates="owner", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
@@ -139,7 +141,9 @@ class Task(Base):
     parent_id = Column(String(36), ForeignKey("tasks.id"), nullable=True)
     title = Column(String(256), nullable=False)
     description = Column(Text, nullable=True)
-    classification = Column(String(32), nullable=True, default="auto")  # auto, ho, approval
+    classification = Column(
+        String(32), nullable=True, default="auto"
+    )  # auto, ho, approval
     status = Column(
         String(32), nullable=False, default="pending"
     )  # pending, running, completed, failed, waiting_for_ho
