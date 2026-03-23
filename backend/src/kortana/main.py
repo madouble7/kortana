@@ -62,6 +62,7 @@ try:
         pr_creation,
         prayer,
         rclone,
+        singularity_bridge,
         system,
         task_queue,
         test_orchestrator,
@@ -280,6 +281,11 @@ def create_app() -> FastAPI:
             orchestration_meta.router,
             prefix="/api/orchestration/meta",
             tags=["meta-coordination"],
+        )
+        app.include_router(
+            singularity_bridge.router,
+            prefix="/api/singularity",
+            tags=["singularity-bridge"],
         )
 
         # Billing management
