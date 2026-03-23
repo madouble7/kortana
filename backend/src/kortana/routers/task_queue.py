@@ -44,9 +44,7 @@ async def create_task(task_in: TaskCreate):
         return f"evolution/{task_id}-{slugify(task_in.name)}"
 
     try:
-        branch_name = await _task_breaker.call_async(
-            f"git_branch_{task_id}", _git_provision
-        )
+        branch_name = await _task_breaker.call_async(f"git_branch_{task_id}", _git_provision)
 
         # Use dynamic classification engine (Volitional Self-Correction)
         # Context includes the evolution/ branch name for intelligent decision-making

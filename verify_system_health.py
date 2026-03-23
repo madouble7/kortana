@@ -208,9 +208,7 @@ def main():
         autonomy = "60% (Phase 1-2 Complete)"
     else:
         status = (
-            HealthStatus.CRITICAL
-            if passed_checks < total_checks // 2
-            else HealthStatus.WARNING
+            HealthStatus.CRITICAL if passed_checks < total_checks // 2 else HealthStatus.WARNING
         )
         autonomy = "UNKNOWN"
 

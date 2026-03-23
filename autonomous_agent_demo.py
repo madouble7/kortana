@@ -128,14 +128,10 @@ class AutonomousAgentDemo:
         print("=" * 80)
 
         auto_count = sum(
-            1
-            for t in self.task_history
-            if t["classification"] in ["auto", "self_correction"]
+            1 for t in self.task_history if t["classification"] in ["auto", "self_correction"]
         )
         ho_count = sum(1 for t in self.task_history if t["classification"] == "ho")
-        approval_count = sum(
-            1 for t in self.task_history if t["classification"] == "approval"
-        )
+        approval_count = sum(1 for t in self.task_history if t["classification"] == "approval")
 
         print(f"\nTotal Tasks Classified: {len(self.task_history)}")
         print(f"Autonomous Tasks (AUTO + SELF_CORRECTION): {auto_count}")
@@ -154,9 +150,7 @@ class AutonomousAgentDemo:
         print("CONTEXT-AWARE CLASSIFICATION LOGIC VERIFICATION")
         print("=" * 80)
         print("\n✅ Evolution/ branches with test fixes → SELF_CORRECTION (autonomous)")
-        print(
-            "✅ Evolution/ branches with schema updates → SELF_CORRECTION (autonomous)"
-        )
+        print("✅ Evolution/ branches with schema updates → SELF_CORRECTION (autonomous)")
         print("✅ Feature branches with changes → HO (human decision)")
         print("✅ Main branch operations → APPROVAL (human gate)")
         print("✅ Production deployments → APPROVAL (human approval required)")

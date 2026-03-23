@@ -105,27 +105,21 @@ class TestHumanOnlyProtocolEngine:
     def test_auto_tasks_present(self):
         hop = HumanOnlyProtocol()
         auto_tasks = [
-            t
-            for t in hop._definitions.values()
-            if t.classification == TaskClassification.AUTO
+            t for t in hop._definitions.values() if t.classification == TaskClassification.AUTO
         ]
         assert len(auto_tasks) > 0
 
     def test_ho_tasks_present(self):
         hop = HumanOnlyProtocol()
         ho_tasks = [
-            t
-            for t in hop._definitions.values()
-            if t.classification == TaskClassification.HO
+            t for t in hop._definitions.values() if t.classification == TaskClassification.HO
         ]
         assert len(ho_tasks) > 0
 
     def test_approval_tasks_present(self):
         hop = HumanOnlyProtocol()
         approval_tasks = [
-            t
-            for t in hop._definitions.values()
-            if t.classification == TaskClassification.APPROVAL
+            t for t in hop._definitions.values() if t.classification == TaskClassification.APPROVAL
         ]
         assert len(approval_tasks) > 0
 
@@ -144,9 +138,7 @@ class TestHumanOnlyProtocolEngine:
     def test_ho_tasks_have_scaffold(self):
         hop = HumanOnlyProtocol()
         ho_tasks = [
-            t
-            for t in hop._definitions.values()
-            if t.classification == TaskClassification.HO
+            t for t in hop._definitions.values() if t.classification == TaskClassification.HO
         ]
         for t in ho_tasks:
             assert t.ho_scaffold is not None, f"HO task {t.id} missing scaffold"

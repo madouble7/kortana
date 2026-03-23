@@ -116,9 +116,7 @@ async def main():
     all_healthy = True
     for check_name, result in checks.items():
         status = result.get("status", "unknown")
-        status_symbol = (
-            "✅" if status == "healthy" else "❌" if status == "error" else "⚠️"
-        )
+        status_symbol = "✅" if status == "healthy" else "❌" if status == "error" else "⚠️"
         all_healthy = all_healthy and (status == "healthy")
 
         print(f"\n{status_symbol} {check_name}: {status.upper()}")

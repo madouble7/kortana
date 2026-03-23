@@ -41,11 +41,7 @@ async def test_phase_2_integration():
     print(f"[PASS] Task classification dynamic resolution: {classification.value}")
 
     # Test 4: Enum value conversion (for DB storage)
-    class_value = (
-        classification.value
-        if hasattr(classification, "value")
-        else str(classification)
-    )
+    class_value = classification.value if hasattr(classification, "value") else str(classification)
     assert class_value == "self_correction"
     print(f"[PASS] Classification stored as enum value: '{class_value}'")
 

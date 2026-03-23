@@ -14,9 +14,7 @@ def test_volitional_self_correction_engine():
     hop = HumanOnlyProtocol()
 
     # Test 1: fix_test_failure in evolution/ branch
-    result = hop.classify_task(
-        "fix_test_failure", {"branch": "evolution/abc-123-fix-test"}
-    )
+    result = hop.classify_task("fix_test_failure", {"branch": "evolution/abc-123-fix-test"})
     assert result == TaskClassification.SELF_CORRECTION
     print("[PASS] fix_test_failure in evolution/ -> SELF_CORRECTION")
 
