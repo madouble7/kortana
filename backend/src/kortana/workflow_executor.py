@@ -15,6 +15,8 @@ from typing import Any, Optional
 from celery import group
 from redis import Redis
 
+from src.kortana.distributed_lock import DistributedLock
+from src.kortana.exceptions import KortanaException
 from src.kortana.logger import get_logger
 
 logger = get_logger(__name__)
@@ -60,10 +62,10 @@ class WorkflowDefinition:
     def add_task(
         self,
         task_name: str,
-        task_args: tuple = None,
-        task_kwargs: dict = None,
-        node_id: str = None,
-        dependencies: list[str] = None,
+        task_args: Optional[tuple[Any, ...]] = None,
+        task_kwargs: Optional[dict[str, Any]] = None,
+        node_id: Optional[str] = None,
+        dependencies: Optional[list[str]] = None,
     ) -> str:
         """Add task node to workflow"""
         node_id = node_id or str(uuid.uuid4())
@@ -192,11 +194,12 @@ class WorkflowExecutor:
         """
         Sort tasks by dependency level
         Returns list of levels, where each level contains nodes that can run in parallel
+        Raises KortanaException on circular dependency
         """
         # Build adjacency info
         in_degree = {node_id: len(node.dependencies) for node_id, node in nodes.items()}
         levels = []
-        processed = set()
+        processed: set[str] = set()
 
         while len(processed) < len(nodes):
             # Find all nodes with no unprocessed dependencies
@@ -208,8 +211,12 @@ class WorkflowExecutor:
 
             if not current_level:
                 # Circular dependency detected
-                logger.error("Circular dependency in workflow")
-                break
+                logger.error("Circular dependency detected in workflow DAG")
+                raise KortanaException(
+                    message="The workflow graph contains cycles and cannot be executed.",
+                    status_code=400,
+                    error_code="CIRCULAR_DEPENDENCY",
+                )
 
             levels.append(current_level)
             processed.update(current_level)
@@ -225,7 +232,7 @@ class WorkflowExecutor:
 
     def execute(self, workflow: WorkflowDefinition) -> tuple[str, Optional[dict]]:
         """
-        Execute workflow with dependency management
+        Execute workflow with dependency management and sharded locking.
 
         Args:
             workflow: WorkflowDefinition to execute
@@ -233,29 +240,40 @@ class WorkflowExecutor:
         Returns:
             Tuple of (task_id, initial_result)
         """
-        try:
-            # Save workflow
-            workflow.status = "active"
-            self.save_workflow(workflow)
+        # Shard the lock namespace for workflows to prevent collision with individual tasks
+        lock_name = f"workflow:lock:{workflow.workflow_id}"
 
-            # Build Celery task graph
-            celery_task = self._build_celery_workflow(workflow)
+        with DistributedLock(self.redis, lock_name, timeout=600):
+            try:
+                # Save workflow
+                workflow.status = "active"
+                self.save_workflow(workflow)
 
-            if celery_task is None:
-                logger.error(f"Failed to build workflow: {workflow.name}")
-                return workflow.workflow_id, None
+                # Build Celery task graph (triggers topological sort + DAG validation)
+                celery_task = self._build_celery_workflow(workflow)
 
-            # Submit to Celery
-            result = celery_task.apply_async()
-            logger.info(f"Executing workflow: {workflow.name} (task_id={result.id})")
+                if celery_task is None:
+                    logger.error(f"Failed to build workflow: {workflow.name}")
+                    return workflow.workflow_id, None
 
-            return result.id, {"workflow_id": workflow.workflow_id}
+                # Submit to Celery
+                result = celery_task.apply_async()
+                logger.info(
+                    f"Executing active workflow: {workflow.name} (task_id={result.id})"
+                )
 
-        except Exception as e:
-            logger.error(f"Workflow execution failed: {e}")
-            workflow.status = "failed"
-            self.save_workflow(workflow)
-            raise
+                return result.id, {"workflow_id": workflow.workflow_id}
+
+            except KortanaException:
+                # Re-raise architectural exceptions
+                workflow.status = "failed"
+                self.save_workflow(workflow)
+                raise
+            except Exception as e:
+                logger.error(f"Workflow execution failed: {e}")
+                workflow.status = "failed"
+                self.save_workflow(workflow)
+                raise
 
 
 def create_autonomous_review_workflow() -> WorkflowDefinition:

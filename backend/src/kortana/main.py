@@ -18,6 +18,9 @@ from fastapi.staticfiles import StaticFiles
 backend_dir = os.path.dirname(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 )
+backend_dir = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
@@ -49,6 +52,7 @@ try:
         auth,
         autonomous_systems,
         autonomy,
+        billing,
         code_reviewer,
         gemini,
         github,
@@ -109,7 +113,19 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         print(
             f"   - Discord Bot: {'[OK]' if settings.DISCORD_BOT_TOKEN else '[MISSING]'}"
         )
+        print(
+            f"   - Discord Bot: {'[OK]' if settings.DISCORD_BOT_TOKEN else '[MISSING]'}"
+        )
         print(f"   - OpenAI Key: {'[OK]' if settings.OPENAI_API_KEY else '[MISSING]'}")
+        print(
+            f"   - Anthropic Key: {'[OK]' if settings.ANTHROPIC_API_KEY else '[MISSING]'}"
+        )
+        print(
+            f"   - Pinecone Key: {'[OK]' if settings.PINECONE_API_KEY else '[MISSING]'}"
+        )
+        print(
+            f"   - Stripe Keys: {'[OK]' if settings.STRIPE_SECRET_KEY else '[MISSING]'}"
+        )
         print(
             f"   - Anthropic Key: {'[OK]' if settings.ANTHROPIC_API_KEY else '[MISSING]'}"
         )
@@ -181,6 +197,9 @@ def create_app() -> FastAPI:
                 ResponseCacheMiddleware,
                 redis_client=redis_client,
                 strategy=cache_strategy,
+                ResponseCacheMiddleware,
+                redis_client=redis_client,
+                strategy=cache_strategy,
             )
         except Exception as e:
             log_error("CACHE_INIT", f"Failed to initialize response caching: {e}")
@@ -198,6 +217,9 @@ def create_app() -> FastAPI:
     async def kortana_exception_handler(
         request: Request, exc: KortanaException
     ) -> JSONResponse:
+    async def kortana_exception_handler(
+        request: Request, exc: KortanaException
+    ) -> JSONResponse:
         """Handle custom Kortana exceptions"""
         log_error(
             exc.error_code,
@@ -207,6 +229,9 @@ def create_app() -> FastAPI:
         return JSONResponse(status_code=exc.status_code, content=exc.to_dict())
 
     @app.exception_handler(HTTPException)
+    async def http_exception_handler(
+        request: Request, exc: HTTPException
+    ) -> JSONResponse:
     async def http_exception_handler(
         request: Request, exc: HTTPException
     ) -> JSONResponse:
@@ -228,6 +253,9 @@ def create_app() -> FastAPI:
         )
 
     @app.exception_handler(Exception)
+    async def general_exception_handler(
+        request: Request, exc: Exception
+    ) -> JSONResponse:
     async def general_exception_handler(
         request: Request, exc: Exception
     ) -> JSONResponse:
@@ -272,8 +300,20 @@ def create_app() -> FastAPI:
         app.include_router(
             task_queue.router, prefix="/api/task-queue", tags=["task-queue"]
         )
+        app.include_router(
+            autonomous_systems.router, prefix="/api/autonomous", tags=["autonomous"]
+        )
+        app.include_router(
+            knowledge.router, prefix="/api/knowledge", tags=["knowledge"]
+        )
+        app.include_router(
+            task_queue.router, prefix="/api/task-queue", tags=["task-queue"]
+        )
         app.include_router(rclone.router, prefix="/api/rclone", tags=["rclone"])
         app.include_router(system.router, prefix="/api/system", tags=["system"])
+        app.include_router(
+            always_on.router, prefix="/api/always-on", tags=["always-on"]
+        )
         app.include_router(
             always_on.router, prefix="/api/always-on", tags=["always-on"]
         )
@@ -286,17 +326,23 @@ def create_app() -> FastAPI:
         app.include_router(
             code_reviewer.router, prefix="/api/code-review", tags=["code-review"]
         )
+        app.include_router(
+            test_orchestrator.router, prefix="/api/testing", tags=["testing"]
+        )
+        app.include_router(
+            code_reviewer.router, prefix="/api/code-review", tags=["code-review"]
+        )
 
         # Optimization monitoring and control
         app.include_router(
             optimization.router, prefix="/api/optimization", tags=["optimization"]
         )
+        app.include_router(
+            optimization.router, prefix="/api/optimization", tags=["optimization"]
+        )
 
-        # Billing (mounted from root router stack for compatibility)
-        if root_billing is not None:
-            app.include_router(
-                root_billing.router, prefix="/api/billing", tags=["billing"]
-            )
+        # Billing management
+        app.include_router(billing.router)
 
         # Frontend Adapters
         app.include_router(
@@ -389,9 +435,13 @@ def create_app() -> FastAPI:
                         import json
 
                         config_script = f"<script>window.__KORTANA__ = {json.dumps(runtime_config)};</script>"
+                        config_script = f"<script>window.__KORTANA__ = {json.dumps(runtime_config)};</script>"
 
                         # Insert before the first script tag or head end
                         if "</head>" in content:
+                            content = content.replace(
+                                "</head>", f"{config_script}\n</head>"
+                            )
                             content = content.replace(
                                 "</head>", f"{config_script}\n</head>"
                             )

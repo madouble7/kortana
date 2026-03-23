@@ -199,6 +199,19 @@ class Settings:
     RATE_LIMIT_REQUESTS: int = int(_get_env("RATE_LIMIT_REQUESTS", "100") or "100")
     RATE_LIMIT_PERIOD: int = int(_get_env("RATE_LIMIT_PERIOD", "60") or "60")
 
+    # Redis Config
+    REDIS_URL: str | None = _get_env("REDIS_URL")
+    REDIS_HOST: str = _get_env("REDIS_HOST", "localhost") or "localhost"
+    REDIS_PORT: int = int(_get_env("REDIS_PORT", "6379") or "6379")
+
+    # Internal Settings
+    @property
+    def INTERNAL_REDIS_URL(self) -> str:
+        """Constructs the Redis URL from settings."""
+        if self.REDIS_URL:
+            return self.REDIS_URL
+        return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/0"
+
     # Timeouts
     REQUEST_TIMEOUT: int = int(_get_env("REQUEST_TIMEOUT", "30") or "30")
     API_TIMEOUT: int = int(_get_env("API_TIMEOUT", "15") or "15")
