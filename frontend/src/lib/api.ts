@@ -136,9 +136,26 @@ const parseRepo = (repo?: string): { owner: string; name: string } | null => {
 
 class ApiClient {
   private baseURL: string;
+  /** True when the backend is unreachable (no VITE_API_URL set and relative calls 404). */
+  offline = false;
+  private _offlineListeners: Array<(v: boolean) => void> = [];
 
   constructor(baseURL: string) {
     this.baseURL = baseURL;
+  }
+
+  onOfflineChange(cb: (offline: boolean) => void) {
+    this._offlineListeners.push(cb);
+    return () => {
+      this._offlineListeners = this._offlineListeners.filter((l) => l !== cb);
+    };
+  }
+
+  private _setOffline(v: boolean) {
+    if (this.offline !== v) {
+      this.offline = v;
+      this._offlineListeners.forEach((cb) => cb(v));
+    }
   }
 
   private async request<T>(
@@ -167,11 +184,14 @@ class ApiClient {
         } as ApiError;
       }
 
+      this._setOffline(false);
       return await response.json();
     } catch (error) {
       if ((error as ApiError).status) {
         throw error;
       }
+      // Network error → mark as offline
+      this._setOffline(true);
       throw {
         message: 'Network error',
         status: 0,

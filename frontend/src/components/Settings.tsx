@@ -19,6 +19,7 @@ export default function Settings() {
       setHealth(data);
     } catch (error) {
       console.error('Failed to fetch health:', error);
+      setHealth(null);
     } finally {
       setLoading(false);
     }

@@ -21,6 +21,7 @@ export default function GitHubPanel() {
       setIssues(data);
     } catch (error) {
       console.error('Failed to fetch GitHub issues:', error);
+      setIssues([]);
     } finally {
       setLoading(false);
     }

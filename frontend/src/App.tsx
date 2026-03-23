@@ -1,4 +1,5 @@
-import { useState, type ElementType } from 'react';
+import { useState, useEffect } from 'react';
+import type { ElementType } from 'react';
 import {
   MessageSquare,
   CheckSquare,
@@ -8,8 +9,10 @@ import {
   Settings as SettingsIcon,
   Menu,
   X,
+  WifiOff,
 } from 'lucide-react';
 import { cn } from './lib/utils';
+import { api } from './lib/api';
 import Chat from './components/Chat';
 import Tasks from './components/Tasks';
 import Autonomy from './components/Autonomy';
@@ -29,6 +32,13 @@ interface NavItem {
 function App() {
   const [currentView, setCurrentView] = useState<View>('chat');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [offline, setOffline] = useState(false);
+
+  useEffect(() => {
+    // Probe backend once on load
+    api.health().catch(() => setOffline(true));
+    return api.onOfflineChange(setOffline);
+  }, []);
 
   const navItems: NavItem[] = [
     {
@@ -156,8 +166,8 @@ function App() {
           {/* Footer */}
           <div className="px-6 py-4 border-t border-gray-800">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              <span className="text-sm text-gray-400">System Online</span>
+              <div className={cn('w-2 h-2 rounded-full', offline ? 'bg-amber-500' : 'bg-green-500 animate-pulse')} />
+              <span className="text-sm text-gray-400">{offline ? 'Demo Mode' : 'System Online'}</span>
             </div>
           </div>
         </div>
@@ -173,6 +183,12 @@ function App() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col mt-16 lg:mt-0">
+        {offline && (
+          <div className="bg-amber-900/60 border-b border-amber-700 px-4 py-2 flex items-center gap-2 text-amber-200 text-sm">
+            <WifiOff className="w-4 h-4 shrink-0" />
+            <span>Backend offline — running in demo mode. UI is fully functional once the API is deployed.</span>
+          </div>
+        )}
         {renderView()}
       </div>
     </div>

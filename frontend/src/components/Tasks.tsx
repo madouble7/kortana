@@ -32,6 +32,7 @@ export default function Tasks() {
       setTasks(data);
     } catch (error) {
       console.error('Failed to fetch tasks:', error);
+      setTasks([]);
     } finally {
       setLoading(false);
     }

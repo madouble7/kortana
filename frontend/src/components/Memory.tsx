@@ -21,6 +21,7 @@ export default function MemoryPanel() {
       setMemories(data);
     } catch (error) {
       console.error('Failed to fetch memories:', error);
+      setMemories([]);
     } finally {
       setLoading(false);
     }
