@@ -115,6 +115,7 @@ class AIConsensusEngine:
             return
         try:
             from google.genai import Client
+
             from src.kortana.services.gemini_config import get_model_name
 
             client = Client(api_key=key)
@@ -176,9 +177,7 @@ class AIConsensusEngine:
         try:
             import openai as openai_mod
 
-            client = openai_mod.AsyncOpenAI(
-                api_key=key, base_url="https://openrouter.ai/api/v1"
-            )
+            client = openai_mod.AsyncOpenAI(api_key=key, base_url="https://openrouter.ai/api/v1")
             self._providers["openrouter"] = {
                 "client": client,
                 "model": "meta-llama/llama-3-70b-instruct",
@@ -293,9 +292,7 @@ class AIConsensusEngine:
         t0 = time.monotonic()
 
         tasks = {
-            asyncio.create_task(
-                self._call_provider(name, prompt, system, max_tokens)
-            ): name
+            asyncio.create_task(self._call_provider(name, prompt, system, max_tokens)): name
             for name in ranked
         }
 
@@ -353,7 +350,12 @@ class AIConsensusEngine:
             answer=best.text,
             provider_used=best.provider,
             responses=[
-                {"provider": r.provider, "latency": round(r.latency, 3), "success": r.success, "length": len(r.text)}
+                {
+                    "provider": r.provider,
+                    "latency": round(r.latency, 3),
+                    "success": r.success,
+                    "length": len(r.text),
+                }
                 for r in responses
             ],
             latency=best.latency,
@@ -398,7 +400,12 @@ class AIConsensusEngine:
             answer=synth_resp.text if synth_resp.success else succeeded[0].text,
             provider_used=providers_used,
             responses=[
-                {"provider": r.provider, "latency": round(r.latency, 3), "success": r.success, "length": len(r.text)}
+                {
+                    "provider": r.provider,
+                    "latency": round(r.latency, 3),
+                    "success": r.success,
+                    "length": len(r.text),
+                }
                 for r in responses
             ],
             latency=max(r.latency for r in responses),
@@ -410,16 +417,18 @@ class AIConsensusEngine:
         self, prompt: str, system: str | None, max_tokens: int, timeout: float
     ) -> list[ProviderResponse]:
         ranked = self._ranked_providers()
-        coros = [
-            self._call_provider(name, prompt, system, max_tokens) for name in ranked
-        ]
+        coros = [self._call_provider(name, prompt, system, max_tokens) for name in ranked]
         results = await asyncio.gather(*coros, return_exceptions=True)
         out: list[ProviderResponse] = []
         for i, r in enumerate(results):
             if isinstance(r, Exception):
                 out.append(
                     ProviderResponse(
-                        provider=ranked[i], text="", latency=0, success=False, error=str(r)
+                        provider=ranked[i],
+                        text="",
+                        latency=0,
+                        success=False,
+                        error=str(r),
                     )
                 )
             else:
@@ -427,9 +436,7 @@ class AIConsensusEngine:
         return out
 
     @staticmethod
-    def _build_synthesis_prompt(
-        original: str, responses: list[ProviderResponse]
-    ) -> str:
+    def _build_synthesis_prompt(original: str, responses: list[ProviderResponse]) -> str:
         parts = [
             "You are a synthesis engine. Multiple AI providers answered the same question.",
             "Combine the best elements of each response into one authoritative answer.",

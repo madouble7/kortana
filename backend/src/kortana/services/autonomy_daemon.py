@@ -175,7 +175,9 @@ class AutonomyDaemon:
     async def _discover_issues(self, session: AsyncSession) -> int:
         """Call the GitHub autonomy service to fetch new issues into the task queue."""
         try:
-            from src.kortana.services.github_autonomy_service import GitHubAutonomyService
+            from src.kortana.services.github_autonomy_service import (
+                GitHubAutonomyService,
+            )
 
             service = GitHubAutonomyService(session)
             tasks = await service.fetch_and_queue_issues()

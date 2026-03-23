@@ -68,6 +68,7 @@ try:
     )
     from src.kortana.routers import consensus as consensus_router
     from src.kortana.routers import daemon as daemon_router
+    from src.kortana.routers import intelligence as intelligence_router
     from src.kortana.routers.adapters import (
         autogen_adapter,
         copilotkit_adapter,
@@ -166,11 +167,28 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         print(f"[WARN] Discord bot startup: {e}")
 
+    # Bootstrap intelligence systems (Self-Awareness, Learner, Goals)
+    try:
+        from src.kortana.services.adaptive_learner import get_adaptive_learner
+        from src.kortana.services.goal_manager import get_goal_manager
+        from src.kortana.services.self_awareness import get_self_awareness
+
+        sa = get_self_awareness()
+        learner = await get_adaptive_learner()
+        gm = get_goal_manager()
+        print(
+            f"[*] Intelligence online — SA:{sa._state.value}  Goals:{gm.get_status()['total_goals']}  Learner:{learner.get_status()['outcomes_recorded']} outcomes"
+        )
+    except Exception as e:
+        print(f"[WARN] Intelligence systems startup: {e}")
+
     yield
 
     # Shutdown
     try:
-        from src.kortana.services.autonomy_daemon import get_autonomy_daemon as _get_daemon
+        from src.kortana.services.autonomy_daemon import (
+            get_autonomy_daemon as _get_daemon,
+        )
 
         await _get_daemon().stop()
     except Exception:
@@ -322,9 +340,7 @@ def create_app() -> FastAPI:
         app.include_router(code_reviewer.router, prefix="/api/code-review", tags=["code-review"])
 
         # Optimization monitoring and control
-        app.include_router(
-            optimization.router, prefix="/api/optimization", tags=["optimization"]
-        )
+        app.include_router(optimization.router, prefix="/api/optimization", tags=["optimization"])
         app.include_router(
             orchestration_advanced.router,
             prefix="/api/orchestration/advanced",
@@ -349,6 +365,9 @@ def create_app() -> FastAPI:
 
         # Autonomy Daemon control
         app.include_router(daemon_router.router)
+
+        # Intelligence systems (Self-Awareness, Learner, Goals)
+        app.include_router(intelligence_router.router)
 
         # Frontend Adapters
         app.include_router(
