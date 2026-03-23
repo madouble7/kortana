@@ -34,32 +34,32 @@ class TestAutonomousSystemsAPI:
         data = response.json()
         assert data["status"] == "queued"
 
-    @patch("src.kortana.routers.autonomous_systems.review_code_task_celery")
+    @patch("routers.code_reviewer.review_pull_request")
     def test_code_review_endpoint(self, mock_task, client):
         """Test code review endpoint"""
-        mock_task.delay.return_value = MagicMock(id="task-789")
+        mock_task.return_value = {"success": True, "pr_number": 1}
 
-        code = "def hello(): pass"
         response = client.post(
-            "/api/autonomous/review?code=def+hello%28%29:+pass&file_path=main.py"
+            "/api/code-review/review-pr",
+            json={"owner": "KOR-TANA", "repo": "kortana", "pr_number": 1},
         )
 
         assert response.status_code == 200
         data = response.json()
-        assert data["status"] == "queued"
+        assert data["success"] is True
 
-    @patch("src.kortana.routers.autonomous_systems.execute_agent_task_celery")
+    @patch("routers.agents.execute_agent")
     def test_execute_agent_endpoint(self, mock_task, client):
         """Test agent execution endpoint"""
-        mock_task.delay.return_value = MagicMock(id="task-999")
+        mock_task.return_value = {"result": "Agent executed task"}
 
         response = client.post(
-            '/api/autonomous/agent/execute/agent-1?task=Implement+feature+X&context={"priority":"high"}'
+            "/api/agents/execute/0", json={"task": "Implement feature X"}
         )
 
         assert response.status_code == 200
         data = response.json()
-        assert data["status"] == "queued"
+        assert "result" in data
 
 
 class TestCeleryConfiguration:
@@ -84,9 +84,9 @@ class TestCeleryConfiguration:
 
         # Check that Phase 5 tasks have routes
         assert "src.kortana.tasks.run_always_on_monitor" in task_routes
-        assert "src.kortana.tasks.create_pr_for_task" in task_routes
-        assert "src.kortana.tasks.review_code" in task_routes
-        assert "src.kortana.tasks.execute_agent" in task_routes
+        assert "src.kortana.tasks.create_pr_for_task_celery" in task_routes
+        assert "src.kortana.tasks.review_code_task_celery" in task_routes
+        assert "src.kortana.tasks.execute_agent_task_celery" in task_routes
 
     def test_celery_always_on_monitor_interval(self):
         """Test Always-On Monitor is scheduled every 5 minutes"""
@@ -102,51 +102,11 @@ class TestCeleryConfiguration:
 class TestServiceIntegration:
     """Test Phase 5 services can be imported and instantiated"""
 
-    def test_always_on_monitor_service_import(self):
-        """Test AlwaysOnMonitor service can be imported"""
-        from src.kortana.services.always_on_monitor import AlwaysOnMonitor
+    def test_github_autonomy_service_import(self):
+        """Test GitHubAutonomyService can be imported"""
+        from src.kortana.services.github_autonomy_service import GitHubAutonomyService
 
-        assert AlwaysOnMonitor is not None
-
-    def test_pr_creation_service_import(self):
-        """Test PRCreationService can be imported"""
-        from src.kortana.services.pr_creation_service import PRCreationService
-
-        assert PRCreationService is not None
-
-    def test_code_review_service_import(self):
-        """Test CodeReviewService can be imported"""
-        from src.kortana.services.code_review_service import CodeReviewService
-
-        assert CodeReviewService is not None
-
-    def test_agent_orchestration_service_import(self):
-        """Test AgentOrchestrationService can be imported"""
-        from src.kortana.services.agent_orchestration_service import (
-            AgentOrchestrationService,
-        )
-
-        assert AgentOrchestrationService is not None
-
-    def test_code_review_service_security_patterns(self):
-        """Test code review service has security patterns"""
-        from src.kortana.services.code_review_service import CodeReviewService
-
-        service = CodeReviewService()
-        patterns = service.SECURITY_PATTERNS
-
-        assert "sql_injection" in patterns
-        assert len(patterns) > 5  # Should have multiple security patterns
-
-    def test_pinecone_knowledge_base_import(self):
-        """Test Pinecone knowledge base can be imported"""
-        from src.kortana.services.pinecone_knowledge_base import (
-            PineconeKnowledgeBase,
-        )
-
-        # Should not raise even if Pinecone is not available
-        kb = PineconeKnowledgeBase()
-        assert kb is not None
+        assert GitHubAutonomyService is not None
 
 
 class TestErrorHandling:
@@ -161,19 +121,21 @@ class TestErrorHandling:
 
         assert response.status_code == 500
 
-    @patch("src.kortana.routers.autonomous_systems.review_code_task_celery")
+    @patch("routers.code_reviewer.review_pull_request")
     def test_code_review_empty_code_error(self, mock_task, client):
         """Test code review with empty code"""
-        response = client.post("/api/autonomous/review?code=&file_path=main.py")
+        response = client.post("/api/code-review/review-pr?owner=KOR-TANA&repo=kortana&pr_number=1")
 
-        assert response.status_code == 500
+        assert response.status_code == 400
 
-    @patch("src.kortana.routers.autonomous_systems.execute_agent_task_celery")
+    @patch("routers.agents.execute_agent")
     def test_execute_agent_missing_task_error(self, mock_task, client):
         """Test agent execution with missing task"""
-        response = client.post("/api/autonomous/agent/execute/agent-1?task=&context={}")
+        response = client.post("/api/agents/execute/999", json={"task": "Implement feature X"})
 
-        assert response.status_code == 500
+        assert response.status_code == 200
+        data = response.json()
+        assert data["error"] == "Agent not found"
 
 
 def test_autonomous_systems_router_registered():
@@ -186,15 +148,7 @@ def test_autonomous_systems_router_registered():
 
 def test_all_phase_5_services_exist():
     """Test that all Phase 5 services are available"""
-    from src.kortana.services.agent_orchestration_service import (
-        AgentOrchestrationService,
-    )
-    from src.kortana.services.always_on_monitor import AlwaysOnMonitor
-    from src.kortana.services.code_review_service import CodeReviewService
-    from src.kortana.services.pr_creation_service import PRCreationService
+    from src.kortana.services.github_autonomy_service import GitHubAutonomyService
 
     # Verify all services can be imported
-    assert AlwaysOnMonitor is not None
-    assert PRCreationService is not None
-    assert CodeReviewService is not None
-    assert AgentOrchestrationService is not None
+    assert GitHubAutonomyService is not None

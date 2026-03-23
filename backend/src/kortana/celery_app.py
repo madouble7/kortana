@@ -46,9 +46,9 @@ app.conf.task_routes = {
     "src.kortana.tasks.run_autonomy_cycle": {"queue": "autonomy"},
     "src.kortana.tasks.execute_hop_task": {"queue": "hop"},
     "src.kortana.tasks.run_github_autonomy_cycle": {"queue": "autonomy"},
-    "src.kortana.tasks.create_pr_for_task": {"queue": "autonomy"},
-    "src.kortana.tasks.review_code": {"queue": "autonomy"},
-    "src.kortana.tasks.execute_agent": {"queue": "autonomy"},
+    "src.kortana.tasks.create_pr_for_task_celery": {"queue": "autonomy"},
+    "src.kortana.tasks.review_code_task_celery": {"queue": "autonomy"},
+    "src.kortana.tasks.execute_agent_task_celery": {"queue": "autonomy"},
 }
 
 # Celery Beat Schedule - Streamlined Autonomous Cycles

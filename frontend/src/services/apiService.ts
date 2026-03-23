@@ -194,11 +194,11 @@ class ApiService {
 
   // Metrics
   async getMetrics(): Promise<SystemMetrics> {
-    return this.request<SystemMetrics>('/api/health/metrics');
+    return this.request<SystemMetrics>('/api/system/health/metrics');
   }
 
   async getDetailedHealth(): Promise<any> {
-    return this.request('/api/health/detailed');
+    return this.request('/api/system/health/detailed');
   }
 }
 

@@ -70,9 +70,17 @@ def analyze_image(
         import requests
 
         # Download image
-        response = requests.get(image_url, timeout=30)
-        response.raise_for_status()
-        image = PIL.Image.open(BytesIO(response.content))
+        import httpx
+        import asyncio
+
+        async def download_image(url):
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url, timeout=30)
+                response.raise_for_status()
+                return response.content
+
+        image_content = asyncio.run(download_image(image_url))
+        image = PIL.Image.open(BytesIO(image_content))
 
         # Analyze with Gemini (using sync version for performance)
         analysis = gemini_service.analyze_multimodal_sync(prompt, [image])
@@ -547,8 +555,14 @@ def trigger_autonomous_review_cycle(self) -> dict[str, Any]:
                 # Select a random file to review
                 selected_file = random.choice(python_files)
                 try:
-                    with open(selected_file, "r", encoding="utf-8") as f:
-                        code_content = f.read()
+                    import aiofiles
+                    import asyncio
+
+                    async def read_file(path):
+                        async with aiofiles.open(path, "r", encoding="utf-8") as f:
+                            return await f.read()
+
+                    code_content = asyncio.run(read_file(selected_file))
 
                     # Limit code size for review
                     if len(code_content) > 10000:
@@ -630,8 +644,14 @@ def trigger_autonomous_agent_cycle(self) -> dict[str, Any]:
 
             for file_path in sample_files:
                 try:
-                    with open(file_path, "r", encoding="utf-8") as f:
-                        content = f.read()
+                    import aiofiles
+                    import asyncio
+
+                    async def read_file(path):
+                        async with aiofiles.open(path, "r", encoding="utf-8") as f:
+                            return await f.read()
+
+                    content = asyncio.run(read_file(file_path))
 
                     # Simple heuristic analysis for potential improvements
                     lines = content.split("\n")
@@ -774,6 +794,19 @@ def autonomous_self_improvement_loop(self) -> dict[str, Any]:
     except Exception as exc:
         log_error("celery_task", f"Master improvement loop failed: {str(exc)}")
         raise
+
+
+@app.task
+def save_metric_task(name: str, value: float, labels: dict | None = None):
+    """Save metric to database"""
+    import asyncio
+    from src.kortana.services.metrics_service import MetricsService
+
+    async def save():
+        service = MetricsService()
+        await service.save_metric(name, value, labels)
+
+    asyncio.run(save())
 
 
 @app.task(bind=True, name="src.kortana.tasks.autonomous_system_monitor_task")

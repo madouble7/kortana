@@ -12,6 +12,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    Float,
 )
 from sqlalchemy.orm import DeclarativeBase, relationship
 

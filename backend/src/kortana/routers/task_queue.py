@@ -14,7 +14,7 @@ from src.kortana.distributed_lock import create_task_lock_manager
 from src.kortana.human_only_protocol import HumanOnlyProtocol, TaskClassification
 from src.kortana.schemas import Task, TaskCreate, TaskStatus
 
-router = APIRouter(prefix="/api/tasks", tags=["tasks"])
+router = APIRouter(tags=["tasks"])
 logger = logging.getLogger("kortana.tasks")
 settings = get_settings()
 

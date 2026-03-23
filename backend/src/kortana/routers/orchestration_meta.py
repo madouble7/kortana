@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 from src.kortana.services.meta_coordination_hub import MetaCoordinationHub
 
-router = APIRouter(prefix="/api/orchestration/meta", tags=["meta-coordination"])
+router = APIRouter(tags=["meta-coordination"])
 
 # Service instance (shared across requests)
 meta_hub = MetaCoordinationHub()

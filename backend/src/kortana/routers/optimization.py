@@ -13,7 +13,7 @@ from src.kortana.middleware.cache import ResponseCacheMiddleware
 
 logger = get_logger(__name__)
 
-router = APIRouter(prefix="/api/optimization", tags=["optimization"])
+router = APIRouter(tags=["optimization"])
 
 # Global instances (will be injected via dependency)
 _circuit_breaker = None

@@ -6,6 +6,8 @@ Supports: Gemini, OpenAI, Claude, OpenRouter, Groq with automatic fallback
 import os
 from typing import Optional
 
+from src.kortana.services.gemini_config import get_model_name
+
 
 class MultiModelAIService:
     """Service that intelligently selects from multiple AI providers"""
@@ -49,7 +51,7 @@ class MultiModelAIService:
             client = Client(api_key=api_key)
             self.providers["gemini"] = {
                 "client": client,
-                "model": "gemini-2.0-flash",
+                "model": get_model_name(),
                 "type": "google",
             }
             print("[OK] Gemini provider initialized")

@@ -7,11 +7,14 @@ import os
 
 logger = logging.getLogger(__name__)
 
-# Primary model (most commonly available)
-DEFAULT_MODEL = "gemini-2.5-flash"
+# Primary model. Google currently exposes 3.1 Flash-Lite via a preview ID.
+DEFAULT_MODEL = "gemini-3.1-flash-lite-preview"
 
 # Fallback models
 FALLBACK_MODELS = [
+    "gemini-3.1-flash-lite",
+    "gemini-3.1-flash-lite-preview",
+    "gemini-flash-lite-latest",
     "gemini-2.5-flash",
     "gemini-2.5-pro",
     "gemini-2.0-flash",
@@ -46,7 +49,9 @@ def get_available_model() -> str:
 
             for candidate in FALLBACK_MODELS:
                 if candidate in avail_set:
-                    logger.info(f"✅ Selected candidate model from fallback list: {candidate}")
+                    logger.info(
+                        f"✅ Selected candidate model from fallback list: {candidate}"
+                    )
                     return candidate
 
             # Otherwise pick first model that appears to support generation

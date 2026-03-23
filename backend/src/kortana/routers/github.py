@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from src.kortana.config import get_settings
+from src.kortana.cache import cache_result_async
 
 router = APIRouter()
 
@@ -66,6 +67,7 @@ class GitHubAnalysisResponse(BaseModel):
 
 
 @router.get("/repos/{owner}/{repo}/issues")
+@cache_result_async(ttl=60, key_prefix="github_issues")
 async def get_repo_issues(
     owner: str, repo: str, state: str | None = "open", page: int = 1, per_page: int = 30
 ):
@@ -117,6 +119,7 @@ async def get_repo_issues(
 
 
 @router.get("/repos/{owner}/{repo}/pulls")
+@cache_result_async(ttl=60, key_prefix="github_pulls")
 async def get_repo_pulls(
     owner: str, repo: str, state: str | None = "open", page: int = 1, per_page: int = 30
 ):
@@ -217,48 +220,32 @@ Please analyze this and provide ONLY a JSON response (no markdown, no code block
 
         response = model.generate_content(analysis_prompt, timeout=30)
         response_text = response.text
-
         # Try to extract JSON
         json_match = re.search(r"\{.*\}", response_text, re.DOTALL)
 
         if json_match:
             try:
                 analysis_data = json.loads(json_match.group())
-            except json.JSONDecodeError:
-                analysis_data = {
-                    "summary": response_text[:200],
-                    "priority": "medium",
-                    "analysis": response_text,
-                    "suggested_actions": [],
-                    "estimated_effort": "TBD",
-                }
-        else:
-            analysis_data = {
-                "summary": response_text[:200],
-                "priority": "medium",
-                "analysis": response_text,
-                "suggested_actions": [],
-                "estimated_effort": "TBD",
-            }
+                return GitHubAnalysisResponse(
+                    issue_number=issue_number,
+                    summary=str(analysis_data.get("summary", ""))[:500],
+                    priority=analysis_data.get("priority", "medium"),
+                    analysis=str(analysis_data.get("analysis", ""))[:2000],
+                    suggested_actions=list(analysis_data.get("suggested_actions", []))[:5],
+                    estimated_effort=str(analysis_data.get("estimated_effort", ""))[:100],
+                    analyzed_at=datetime.now().isoformat(),
+                )
+            except Exception:
+                pass
 
-        # Validate response
-        for key in [
-            "summary",
-            "priority",
-            "analysis",
-            "suggested_actions",
-            "estimated_effort",
-        ]:
-            if key not in analysis_data:
-                analysis_data[key] = "" if key != "suggested_actions" else []
-
+        # Fallback
         return GitHubAnalysisResponse(
             issue_number=issue_number,
-            summary=str(analysis_data.get("summary", ""))[:500],
-            priority=analysis_data.get("priority", "medium"),
-            analysis=str(analysis_data.get("analysis", ""))[:2000],
-            suggested_actions=list(analysis_data.get("suggested_actions", []))[:5],
-            estimated_effort=str(analysis_data.get("estimated_effort", ""))[:100],
+            summary=response_text[:200],
+            priority="medium",
+            analysis=response_text,
+            suggested_actions=[],
+            estimated_effort="TBD",
             analyzed_at=datetime.now().isoformat(),
         )
 

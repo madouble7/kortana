@@ -240,10 +240,14 @@ class WorkflowExecutor:
         Returns:
             Tuple of (task_id, initial_result)
         """
+        import time
+        from src.kortana.tasks import save_metric_task
+
         # Shard the lock namespace for workflows to prevent collision with individual tasks
         lock_name = f"workflow:lock:{workflow.workflow_id}"
 
         with DistributedLock(self.redis, lock_name, timeout=600):
+            start_time = time.time()
             try:
                 # Save workflow
                 workflow.status = "active"
@@ -258,6 +262,9 @@ class WorkflowExecutor:
 
                 # Submit to Celery
                 result = celery_task.apply_async()
+                duration = time.time() - start_time
+                save_metric_task.delay("workflow_execution_duration", duration, {"workflow_id": workflow.workflow_id})
+                
                 logger.info(
                     f"Executing active workflow: {workflow.name} (task_id={result.id})"
                 )
@@ -273,6 +280,7 @@ class WorkflowExecutor:
                 logger.error(f"Workflow execution failed: {e}")
                 workflow.status = "failed"
                 self.save_workflow(workflow)
+                save_metric_task.delay("workflow_execution_error", 1.0, {"workflow_id": workflow.workflow_id, "error": str(e)})
                 raise
 
 

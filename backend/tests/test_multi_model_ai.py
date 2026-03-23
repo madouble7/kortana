@@ -97,13 +97,20 @@ class TestMultiModelAIServiceInitGemini:
         mock_genai = MagicMock()
         mock_genai.Client.return_value = mock_client
 
-        with patch.dict("sys.modules", {"google.genai": mock_genai}):
+        with (
+            patch.dict("sys.modules", {"google.genai": mock_genai}),
+            patch(
+                "src.kortana.services.multi_model_ai.get_model_name",
+                return_value="gemini-3.1-flash-lite-preview",
+            ),
+        ):
             from src.kortana.services.multi_model_ai import MultiModelAIService
 
             service = MultiModelAIService()
             service._init_gemini()
 
         assert "gemini" in service.providers
+        assert service.providers["gemini"]["model"] == "gemini-3.1-flash-lite-preview"
 
 
 class TestMultiModelAIServiceInitOpenAI:
@@ -228,7 +235,7 @@ class TestMultiModelAIServiceAnalyzeText:
 
         service.providers["gemini"] = {
             "client": mock_client,
-            "model": "gemini-2.0-flash-exp",
+            "model": "gemini-3.1-flash-lite-preview",
             "type": "google",
         }
         service.primary_provider = "gemini"
@@ -249,7 +256,7 @@ class TestMultiModelAIServiceAnalyzeText:
             "client": MagicMock(
                 **{"models.generate_content.side_effect": Exception("API error")}
             ),
-            "model": "gemini-2.0-flash-exp",
+            "model": "gemini-3.1-flash-lite-preview",
             "type": "google",
         }
         mock_openai_client = MagicMock()
@@ -314,7 +321,7 @@ class TestMultiModelAICallProvider:
 
         service.providers["gemini"] = {
             "client": mock_client,
-            "model": "gemini-2.0-flash-exp",
+            "model": "gemini-3.1-flash-lite-preview",
             "type": "google",
         }
 
@@ -333,7 +340,7 @@ class TestMultiModelAICallProvider:
 
         service.providers["gemini"] = {
             "client": mock_client,
-            "model": "gemini-2.0-flash-exp",
+            "model": "gemini-3.1-flash-lite-preview",
             "type": "google",
         }
 
@@ -440,7 +447,7 @@ class TestMultiModelAICallProvider:
 
         service.providers["gemini"] = {
             "client": mock_client,
-            "model": "gemini-2.0-flash-exp",
+            "model": "gemini-3.1-flash-lite-preview",
             "type": "google",
         }
 

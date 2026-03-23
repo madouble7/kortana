@@ -126,7 +126,9 @@ class AtomicTransaction:
     def create_backup(self):
         """Create backup of files that will be modified"""
         if not self.repo_path.exists():
-            raise CodeGenerationError(f"Repository path does not exist: {self.repo_path}")
+            raise CodeGenerationError(
+                f"Repository path does not exist: {self.repo_path}"
+            )
 
         self.backup_dir = self.repo_path / ".backup" / "atomic_transaction"
         self.backup_dir.mkdir(parents=True, exist_ok=True)
@@ -167,8 +169,12 @@ class AtomicTransaction:
                 file_path = self.repo_path / file_change.path
 
                 # Security check: ensure path is within repo
-                if not str(file_path.resolve()).startswith(str(self.repo_path.resolve())):
-                    raise CodeGenerationError(f"Path escape attempt: {file_change.path}")
+                if not str(file_path.resolve()).startswith(
+                    str(self.repo_path.resolve())
+                ):
+                    raise CodeGenerationError(
+                        f"Path escape attempt: {file_change.path}"
+                    )
 
                 try:
                     if file_change.action == "create":
@@ -179,14 +185,18 @@ class AtomicTransaction:
 
                     elif file_change.action == "modify":
                         if not file_path.exists():
-                            raise CodeGenerationError(f"File not found: {file_change.path}")
+                            raise CodeGenerationError(
+                                f"File not found: {file_change.path}"
+                            )
                         with open(file_path, "w") as f:
                             f.write(file_change.content)
                         results["modified"].append(str(file_path))
 
                     elif file_change.action == "delete":
                         if not file_path.exists():
-                            raise CodeGenerationError(f"File not found: {file_change.path}")
+                            raise CodeGenerationError(
+                                f"File not found: {file_change.path}"
+                            )
                         file_path.unlink()
                         results["deleted"].append(str(file_path))
 
@@ -251,7 +261,10 @@ class CodeGenerator:
             # Try to extract JSON if present
             json_match = re.search(r"```json\n(.*?)\n```", plan_text, re.DOTALL)
             if json_match:
-                return json.loads(json_match.group(1))
+                try:
+                    return json.loads(json_match.group(1))
+                except json.JSONDecodeError:
+                    pass  # Fall through to YAML-like parser
 
             # Parse file changes section
             parsed = {
@@ -262,7 +275,8 @@ class CodeGenerator:
             }
 
             # Extract file changes (enhanced with dependencies)
-            file_pattern = r"FILE_CHANGES:.*?(?=COMMANDS:|$)"
+            # Accept FILE_CHANGES with or without colon, optional markdown fencing
+            file_pattern = r"(?:```\s*)?FILE_CHANGES:?.*?(?=COMMANDS:|```\s*$|$)"
             file_section = re.search(file_pattern, plan_text, re.DOTALL)
             if file_section:
                 file_matches = re.finditer(
@@ -273,7 +287,9 @@ class CodeGenerator:
                 for match in file_matches:
                     deps = []
                     if match.group(3):  # dependencies group
-                        deps = [d.strip().strip("'\"") for d in match.group(3).split(",")]
+                        deps = [
+                            d.strip().strip("'\"") for d in match.group(3).split(",")
+                        ]
 
                     priority = int(match.group(4)) if match.group(4) else 0
 
@@ -351,12 +367,8 @@ class CodeGenerator:
             file_path = self.repo_path / file_change["path"]
 
             # Security check: ensure path is within repo
-            if not str(file_path.resolve()).startswith(
-                str(self.repo_path.resolve())
-            ):
-                raise CodeGenerationError(
-                    f"Path escape attempt: {file_change['path']}"
-                )
+            if not str(file_path.resolve()).startswith(str(self.repo_path.resolve())):
+                raise CodeGenerationError(f"Path escape attempt: {file_change['path']}")
 
         # Create transaction from plan
         transaction = AtomicTransaction(repo_path=self.repo_path)
@@ -395,7 +407,9 @@ class CodeGenerator:
 
         return True
 
-    def generate_files(self, parsed_plan: dict[str, Any], dry_run: bool = True) -> dict[str, Any]:
+    def generate_files(
+        self, parsed_plan: dict[str, Any], dry_run: bool = True
+    ) -> dict[str, Any]:
         """
         Legacy method - delegates to atomic transaction system
 

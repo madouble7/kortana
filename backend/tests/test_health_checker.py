@@ -275,33 +275,33 @@ class TestHealthRouterEndpoints:
         return SyncTestClient(app)
 
     def test_basic_health_alive(self, client):
-        resp = client.get("/api/system/health/api/health/")
+        resp = client.get("/api/system/health/")
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "alive"
 
     def test_liveness_probe(self, client):
-        resp = client.get("/api/system/health/api/health/live")
+        resp = client.get("/api/system/health/live")
         assert resp.status_code == 200
         data = resp.json()
         assert "alive" in data["status"]
 
     def test_health_system_endpoint(self, client):
-        resp = client.get("/api/system/health/api/health/system")
+        resp = client.get("/api/system/health/system")
         assert resp.status_code == 200
         data = resp.json()
         assert "cpu_count" in data
         assert "python_version" in data
 
     def test_health_metrics_endpoint(self, client):
-        resp = client.get("/api/system/health/api/health/metrics")
+        resp = client.get("/api/system/health/metrics")
         assert resp.status_code == 200
         data = resp.json()
         assert "status" in data
         assert "component_count" in data
 
     def test_health_detailed_endpoint(self, client):
-        resp = client.get("/api/system/health/api/health/detailed")
+        resp = client.get("/api/system/health/detailed")
         assert resp.status_code == 200
         data = resp.json()
         assert "status" in data
@@ -309,6 +309,6 @@ class TestHealthRouterEndpoints:
         assert "summary" in data
 
     def test_health_ready_endpoint(self, client):
-        resp = client.get("/api/system/health/api/health/ready")
+        resp = client.get("/api/system/health/ready")
         # Returns 200 unless unhealthy
         assert resp.status_code in [200, 503]

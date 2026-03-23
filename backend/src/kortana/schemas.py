@@ -261,3 +261,11 @@ class PersistentState(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class AnalysisResponse(BaseModel):
+    summary: str
+    priority: str
+    analysis: str
+    suggested_actions: List[str]
+    estimated_effort: str

@@ -461,7 +461,7 @@ class HealthChecker:
 health_checker = HealthChecker()
 
 # Create router
-router = APIRouter(prefix="/api/health", tags=["health"])
+router = APIRouter(tags=["health"])
 
 
 @router.get("/")

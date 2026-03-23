@@ -16,7 +16,6 @@ from fastapi.staticfiles import StaticFiles
 
 # Add backend directory to path
 backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
@@ -67,6 +66,8 @@ try:
         task_queue,
         test_orchestrator,
     )
+    from src.kortana.routers import consensus as consensus_router
+    from src.kortana.routers import daemon as daemon_router
     from src.kortana.routers.adapters import (
         autogen_adapter,
         copilotkit_adapter,
@@ -110,11 +111,7 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         print(f"   - Gemini API: {'[OK]' if settings.GEMINI_API_KEY else '[MISSING]'}")
         print(f"   - GitHub Token: {'[OK]' if settings.GITHUB_TOKEN else '[MISSING]'}")
         print(f"   - Discord Bot: {'[OK]' if settings.DISCORD_BOT_TOKEN else '[MISSING]'}")
-        print(f"   - Discord Bot: {'[OK]' if settings.DISCORD_BOT_TOKEN else '[MISSING]'}")
         print(f"   - OpenAI Key: {'[OK]' if settings.OPENAI_API_KEY else '[MISSING]'}")
-        print(f"   - Anthropic Key: {'[OK]' if settings.ANTHROPIC_API_KEY else '[MISSING]'}")
-        print(f"   - Pinecone Key: {'[OK]' if settings.PINECONE_API_KEY else '[MISSING]'}")
-        print(f"   - Stripe Keys: {'[OK]' if settings.STRIPE_SECRET_KEY else '[MISSING]'}")
         print(f"   - Anthropic Key: {'[OK]' if settings.ANTHROPIC_API_KEY else '[MISSING]'}")
         print(f"   - Pinecone Key: {'[OK]' if settings.PINECONE_API_KEY else '[MISSING]'}")
         print(f"   - Stripe Keys: {'[OK]' if settings.STRIPE_SECRET_KEY else '[MISSING]'}")
@@ -140,9 +137,52 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     log_request("system", f"Kor'tana API starting in {settings.ENVIRONMENT} mode")
     print(f"[*] Kor'tana API starting in {settings.ENVIRONMENT} mode")
 
+    # Start autonomy daemon
+    try:
+        from src.kortana.services.autonomy_daemon import get_autonomy_daemon
+
+        daemon = get_autonomy_daemon()
+        await daemon.start()
+        print("[*] Autonomy daemon started")
+    except Exception as e:
+        print(f"[WARN] Autonomy daemon startup: {e}")
+
+    # Start Discord bot (non-blocking)
+    try:
+        from src.kortana.services.discord_service import (
+            get_discord_bot,
+            start_discord_bot,
+        )
+
+        await start_discord_bot()
+        bot = get_discord_bot()
+        # Wire daemon events → Discord relay
+        if bot:
+            daemon = get_autonomy_daemon()
+            daemon.on_event(lambda evt: bot.relay_event(evt.type, evt.data))
+            print("[*] Discord bot spawned")
+        else:
+            print("[*] Discord bot disabled (no token)")
+    except Exception as e:
+        print(f"[WARN] Discord bot startup: {e}")
+
     yield
 
     # Shutdown
+    try:
+        from src.kortana.services.autonomy_daemon import get_autonomy_daemon as _get_daemon
+
+        await _get_daemon().stop()
+    except Exception:
+        pass
+    try:
+        from src.kortana.services.discord_service import get_discord_bot as _get_bot
+
+        b = _get_bot()
+        if b:
+            await b.close()
+    except Exception:
+        pass
     log_request("system", "Kor'tana API shutting down")
     print("[-] Kor'tana API shutting down")
 
@@ -303,6 +343,12 @@ def create_app() -> FastAPI:
 
         # Billing management
         app.include_router(billing.router)
+
+        # AI Consensus Engine
+        app.include_router(consensus_router.router)
+
+        # Autonomy Daemon control
+        app.include_router(daemon_router.router)
 
         # Frontend Adapters
         app.include_router(
