@@ -48,6 +48,7 @@ python-dotenv==1.0.0
 
 # Google Gemini API
 google-genai==1.60.0
+Pillow==10.2.0
 
 # Payment Processing
 stripe==7.9.0
