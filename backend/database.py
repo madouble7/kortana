@@ -44,9 +44,7 @@ class DatabaseConfig:
             if "aiosqlite" in self._base_url:
                 return self._base_url  # type: ignore[no-any-return]
             return self._base_url.replace("sqlite://", "sqlite+aiosqlite://", 1)  # type: ignore[no-any-return]
-        return (
-            f"postgresql+asyncpg://{self.user}:{self.password}@{self.host}:{self.port}/{self.name}"
-        )
+        return f"postgresql+asyncpg://{self.user}:{self.password}@{self.host}:{self.port}/{self.name}"
 
     def get_sync_url(self) -> str:
         """Get sync database URL (for migrations)"""
@@ -256,7 +254,9 @@ class QueryMetrics:
             "slow_queries": self.slow_queries,
             "avg_query_time_ms": round(avg_time * 1000, 2),
             "error_count": self.errors,
-            "slow_query_rate": round(self.slow_queries / max(self.total_queries, 1) * 100, 2),
+            "slow_query_rate": round(
+                self.slow_queries / max(self.total_queries, 1) * 100, 2
+            ),
         }
 
 

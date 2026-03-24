@@ -1,24 +1,24 @@
-import { useState, useEffect } from 'react';
-import type { ElementType } from 'react';
 import {
-  MessageSquare,
-  CheckSquare,
   Brain,
+  CheckSquare,
   Database,
   Github,
-  Settings as SettingsIcon,
   Menu,
-  X,
+  MessageSquare,
+  Settings as SettingsIcon,
   WifiOff,
+  X,
 } from 'lucide-react';
-import { cn } from './lib/utils';
-import { api } from './lib/api';
-import Chat from './components/Chat';
-import Tasks from './components/Tasks';
+import type { ElementType } from 'react';
+import { useEffect, useState } from 'react';
 import Autonomy from './components/Autonomy';
-import Memory from './components/Memory';
+import Chat from './components/Chat';
 import GitHubPanel from './components/GitHub';
+import Memory from './components/Memory';
 import Settings from './components/Settings';
+import Tasks from './components/Tasks';
+import { api } from './lib/api';
+import { cn } from './lib/utils';
 
 type View = 'chat' | 'tasks' | 'autonomy' | 'memory' | 'github' | 'settings';
 

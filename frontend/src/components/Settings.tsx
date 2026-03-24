@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Globe, Key, Zap } from 'lucide-react';
+import { Globe, Key, Settings as SettingsIcon, Zap } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import type { HealthStatus } from '../types';
 

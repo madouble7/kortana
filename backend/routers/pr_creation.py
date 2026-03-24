@@ -13,10 +13,11 @@ from database import get_db
 from fastapi import APIRouter, Depends, HTTPException
 from logger import setup_logging
 from models import GitHubTask
-from routers.code_reviewer import CodeReviewer
-from routers.test_orchestrator import TestOrchestrator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from routers.code_reviewer import CodeReviewer
+from routers.test_orchestrator import TestOrchestrator
 
 router = APIRouter()
 logger = setup_logging()
@@ -55,7 +56,11 @@ class PRCreator:
         return parts[0], parts[1]
 
     def _generate_pr_description(  # type: ignore[no-untyped-def]
-        self, task: GitHubTask, code_changes=None, test_results=None, review_results=None
+        self,
+        task: GitHubTask,
+        code_changes=None,
+        test_results=None,
+        review_results=None,
     ) -> str:
         """Generate PR description from task information"""
         description = f"""## Summary
@@ -129,9 +134,13 @@ class PRCreator:
             if score >= 8:
                 description += f"🎉 **Score: {score}/10** - High quality code\n\n"
             elif score >= 6:
-                description += f"👍 **Score: {score}/10** - Good code with minor improvements\n\n"
+                description += (
+                    f"👍 **Score: {score}/10** - Good code with minor improvements\n\n"
+                )
             else:
-                description += f"⚠️ **Score: {score}/10** - Needs significant improvements\n\n"
+                description += (
+                    f"⚠️ **Score: {score}/10** - Needs significant improvements\n\n"
+                )
 
             description += f"**Summary:** {review_results.get('summary', 'N/A')}\n\n"
 
@@ -173,9 +182,15 @@ class PRCreator:
 
             return {
                 "success": test_result["overall_status"] == "passed",
-                "tests_passed": test_result["tests"].passed if test_result["tests"] else 0,
-                "tests_failed": test_result["tests"].failed if test_result["tests"] else 0,
-                "coverage": test_result["coverage"]["coverage"] if test_result["coverage"] else 0.0,
+                "tests_passed": test_result["tests"].passed
+                if test_result["tests"]
+                else 0,
+                "tests_failed": test_result["tests"].failed
+                if test_result["tests"]
+                else 0,
+                "coverage": test_result["coverage"]["coverage"]
+                if test_result["coverage"]
+                else 0.0,
                 "linting_passed": test_result["linting"]["passed"]
                 if test_result["linting"]
                 else False,
@@ -244,7 +259,9 @@ class PRCreator:
         """Create a PR for a completed task with automated testing and review"""
         self._validate_token()
 
-        result = await self.db.execute(select(GitHubTask).where(GitHubTask.id == task_id))
+        result = await self.db.execute(
+            select(GitHubTask).where(GitHubTask.id == task_id)
+        )
         task = result.scalars().first()
         if not task:
             raise HTTPException(status_code=404, detail="Task not found")
@@ -257,7 +274,8 @@ class PRCreator:
 
         if task.github_pr_number:
             raise HTTPException(
-                status_code=400, detail=f"PR already created (PR #{task.github_pr_number})"
+                status_code=400,
+                detail=f"PR already created (PR #{task.github_pr_number})",
             )
 
         if not task.branch_name:
@@ -300,11 +318,15 @@ class PRCreator:
         create_url = f"https://api.github.com/repos/{owner}/{repo}/pulls"
 
         try:
-            response = requests.post(create_url, headers=headers, json=pr_data, timeout=30)
+            response = requests.post(
+                create_url, headers=headers, json=pr_data, timeout=30
+            )
             response.raise_for_status()
         except requests.RequestException as e:
             logger.error(f"Failed to create PR for task {task_id}: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Failed to create PR: {str(e)}")
+            raise HTTPException(
+                status_code=500, detail=f"Failed to create PR: {str(e)}"
+            )
 
         pr_result = response.json()
         pr_number = pr_result["number"]
@@ -313,10 +335,10 @@ class PRCreator:
         # Post code review as comment if review was performed and successful
         if review_results and review_results.get("success") and run_review:
             try:
-                review_comment = self.code_reviewer.create_review_comment(review_results)
-                comment_url = (
-                    f"https://api.github.com/repos/{owner}/{repo}/issues/{pr_number}/comments"
+                review_comment = self.code_reviewer.create_review_comment(
+                    review_results
                 )
+                comment_url = f"https://api.github.com/repos/{owner}/{repo}/issues/{pr_number}/comments"
                 comment_data = {"body": review_comment}
 
                 comment_response = requests.post(
@@ -359,7 +381,9 @@ class PRCreator:
             "review_results": review_results,
         }
 
-    async def create_pr_from_issue(self, issue_number: int, repo: str) -> dict[str, Any]:
+    async def create_pr_from_issue(
+        self, issue_number: int, repo: str
+    ) -> dict[str, Any]:
         """Create PR from a GitHub issue by finding its task"""
         self._validate_token()
 
@@ -396,7 +420,9 @@ async def create_pr_endpoint(
 ) -> dict[str, Any]:
     """Create a PR for a completed task with automated testing and review"""
     try:
-        result = await pr_creator.create_pr(task_id, run_tests=run_tests, run_review=run_review)
+        result = await pr_creator.create_pr(
+            task_id, run_tests=run_tests, run_review=run_review
+        )
         return result
     except HTTPException:
         raise
@@ -423,7 +449,9 @@ async def create_pr_from_issue_endpoint(
 
 
 @router.get("/status/{task_id}")
-async def get_pr_status(task_id: str, db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
+async def get_pr_status(
+    task_id: str, db: AsyncSession = Depends(get_db)
+) -> dict[str, Any]:
     """Get PR status for a task"""
     result = await db.execute(select(GitHubTask).where(GitHubTask.id == task_id))
     task = result.scalars().first()
@@ -452,7 +480,9 @@ async def get_pr_status(task_id: str, db: AsyncSession = Depends(get_db)) -> dic
         "Accept": "application/vnd.github.v3+json",
     }
 
-    pr_url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{task.github_pr_number}"
+    pr_url = (
+        f"https://api.github.com/repos/{owner}/{repo}/pulls/{task.github_pr_number}"
+    )
 
     try:
         response = requests.get(pr_url, headers=headers, timeout=10)
@@ -498,9 +528,7 @@ async def list_prs_for_repo(
         "Accept": "application/vnd.github.v3+json",
     }
 
-    prs_url = (
-        f"https://api.github.com/repos/{owner}/{name}/pulls?state={state}&head={owner}:feature/"
-    )
+    prs_url = f"https://api.github.com/repos/{owner}/{name}/pulls?state={state}&head={owner}:feature/"
 
     try:
         response = requests.get(prs_url, headers=headers, timeout=10)
@@ -558,7 +586,9 @@ async def auto_create_prs_for_completed(
 
     for task in completed_tasks:
         try:
-            result = await pr_creator.create_pr(task.id, run_tests=True, run_review=True)  # type: ignore[assignment, arg-type]
+            result = await pr_creator.create_pr(
+                task.id, run_tests=True, run_review=True
+            )  # type: ignore[assignment, arg-type]
             results.append(
                 {
                     "task_id": task.id,

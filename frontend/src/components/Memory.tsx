@@ -1,5 +1,5 @@
-import { useState, useEffect, type FormEvent } from 'react';
-import { Database, Search, Loader2, Brain } from 'lucide-react';
+import { Brain, Database, Loader2, Search } from 'lucide-react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { api } from '../lib/api';
 import { formatRelativeTime } from '../lib/utils';
 import type { Memory } from '../types';

@@ -37,7 +37,9 @@ class AutonomousTaskQueue:
         if not GITHUB_TOKEN:
             raise HTTPException(status_code=500, detail="GitHub token not configured")
 
-    async def queue_from_github_issues(self, repo: str | None = None) -> list[GitHubTask]:
+    async def queue_from_github_issues(
+        self, repo: str | None = None
+    ) -> list[GitHubTask]:
         """Fetch open issues and queue them as autonomous tasks"""
         self._validate_token()
 
@@ -50,7 +52,9 @@ class AutonomousTaskQueue:
             response.raise_for_status()
         except requests.RequestException as e:
             logger.error(f"Failed to fetch GitHub issues: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Failed to fetch issues: {str(e)}")
+            raise HTTPException(
+                status_code=500, detail=f"Failed to fetch issues: {str(e)}"
+            )
 
         issues = response.json()
         queued_tasks = []
@@ -118,7 +122,9 @@ class AutonomousTaskQueue:
 
     async def analyze_task(self, task_id: str) -> GitHubTask:
         """Analyze a task using Gemini"""
-        result = await self.db.execute(select(GitHubTask).where(GitHubTask.id == task_id))
+        result = await self.db.execute(
+            select(GitHubTask).where(GitHubTask.id == task_id)
+        )
         task = result.scalars().first()
         if not task:
             raise HTTPException(status_code=404, detail="Task not found")
@@ -180,7 +186,9 @@ Format as JSON.
 
     async def generate_task_plan(self, task_id: str) -> GitHubTask:
         """Generate execution plan for task"""
-        result = await self.db.execute(select(GitHubTask).where(GitHubTask.id == task_id))
+        result = await self.db.execute(
+            select(GitHubTask).where(GitHubTask.id == task_id)
+        )
         task = result.scalars().first()
         if not task:
             raise HTTPException(status_code=404, detail="Task not found")
@@ -229,7 +237,9 @@ FILE_CHANGES:
             if task.error_count >= MAX_RETRIES:
                 task.status = "failed"
             await self.db.commit()
-            raise HTTPException(status_code=500, detail=f"Plan generation failed: {str(e)}")
+            raise HTTPException(
+                status_code=500, detail=f"Plan generation failed: {str(e)}"
+            )
 
         task.status = "ready_to_execute"
         task.updated_at = datetime.utcnow()
@@ -239,7 +249,9 @@ FILE_CHANGES:
 
     async def execute_task(self, task_id: str, dry_run: bool = False) -> GitHubTask:
         """Execute task (create branch and code)"""
-        result = await self.db.execute(select(GitHubTask).where(GitHubTask.id == task_id))
+        result = await self.db.execute(
+            select(GitHubTask).where(GitHubTask.id == task_id)
+        )
         task = result.scalars().first()
         if not task:
             raise HTTPException(status_code=404, detail="Task not found")
@@ -270,7 +282,9 @@ FILE_CHANGES:
                     else:
                         task.status = "ready_to_execute"
                     await self.db.commit()
-                    raise Exception(f"Code generation errors: {generation_result['errors']}")
+                    raise Exception(
+                        f"Code generation errors: {generation_result['errors']}"
+                    )
 
             task.status = "completed"
             task.completed_at = datetime.utcnow()
@@ -307,7 +321,9 @@ FILE_CHANGES:
 
             if ref_response.status_code != 200:
                 # Try master branch
-                ref_url = f"https://api.github.com/repos/{owner}/{repo}/git/ref/heads/master"
+                ref_url = (
+                    f"https://api.github.com/repos/{owner}/{repo}/git/ref/heads/master"
+                )
                 ref_response = requests.get(ref_url, headers=headers, timeout=10)
                 if ref_response.status_code != 200:
                     return False
@@ -472,7 +488,9 @@ async def execute_task_endpoint(
 
 
 @router.get("/tasks/{task_id}")
-async def get_task_details(task_id: str, db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
+async def get_task_details(
+    task_id: str, db: AsyncSession = Depends(get_db)
+) -> dict[str, Any]:
     """Get detailed information about a task"""
     result = await db.execute(select(GitHubTask).where(GitHubTask.id == task_id))
     task = result.scalars().first()
@@ -501,7 +519,9 @@ async def get_task_details(task_id: str, db: AsyncSession = Depends(get_db)) -> 
 
 
 @router.post("/tasks/{task_id}/retry")
-async def retry_failed_task(task_id: str, db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
+async def retry_failed_task(
+    task_id: str, db: AsyncSession = Depends(get_db)
+) -> dict[str, Any]:
     """Retry a failed task"""
     result = await db.execute(select(GitHubTask).where(GitHubTask.id == task_id))
     task = result.scalars().first()

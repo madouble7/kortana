@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.pool import AsyncAdaptedQueuePool, StaticPool
+
 from src.kortana.config import get_settings
 from src.kortana.logger import get_logger
 
@@ -252,7 +253,9 @@ class QueryMetrics:
             "slow_queries": self.slow_queries,
             "avg_query_time_ms": round(avg_time * 1000, 2),
             "error_count": self.errors,
-            "slow_query_rate": round(self.slow_queries / max(self.total_queries, 1) * 100, 2),
+            "slow_query_rate": round(
+                self.slow_queries / max(self.total_queries, 1) * 100, 2
+            ),
         }
 
 

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Github, ExternalLink, GitBranch, Loader2, Plus } from 'lucide-react';
+import { ExternalLink, GitBranch, Github, Loader2, Plus } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { formatRelativeTime } from '../lib/utils';
 import type { GitHubIssue } from '../types';
@@ -109,11 +109,10 @@ export default function GitHubPanel() {
                     )}
                     <div className="flex items-center gap-2 flex-wrap">
                       <span
-                        className={`text-xs px-2 py-1 rounded ${
-                          issue.state === 'open'
+                        className={`text-xs px-2 py-1 rounded ${issue.state === 'open'
                             ? 'bg-green-900/20 text-green-400'
                             : 'bg-gray-700 text-gray-400'
-                        }`}
+                          }`}
                       >
                         {issue.state}
                       </span>
