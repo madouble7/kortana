@@ -3,6 +3,7 @@ Redis-based caching layer for Kor'tana Backend
 Provides high-performance caching with TTL management and metrics
 """
 
+import functools
 import hashlib
 import json
 import time
@@ -338,6 +339,7 @@ def cache_result(ttl: int | None = None, key_prefix: str = "func"):
     """Decorator to cache function results"""
 
     def decorator(func):
+        @functools.wraps(func)
         def wrapper(*args, **kwargs):
             cache = get_cache_manager()
             if not cache.config.enabled:
@@ -363,6 +365,7 @@ def cache_result_async(ttl: int | None = None, key_prefix: str = "func"):
     """Decorator to cache async function results"""
 
     def decorator(func):
+        @functools.wraps(func)
         async def wrapper(*args, **kwargs):
             cache = get_cache_manager()
             if not cache.config.enabled:
