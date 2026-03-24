@@ -42,6 +42,16 @@ try:
 except ImportError as e:
     log_error("optimization", f"Could not import optimization modules: {e}")
 
+# Intelligence systems (optional - graceful degradation)
+INTELLIGENCE_AVAILABLE = False
+intelligence_router = None
+try:
+    from src.kortana.routers import intelligence as intelligence_router
+
+    INTELLIGENCE_AVAILABLE = True
+except ImportError as e:
+    log_error("intelligence", f"Could not import intelligence systems: {e}")
+
 # Import routers
 try:
     from routers import (
@@ -254,6 +264,11 @@ def create_app() -> FastAPI:
                 optimization_router, prefix="/api/optimization", tags=["optimization"]
             )
             log_request("router", "Optimization monitoring router mounted")
+
+        # Intelligence systems router (if available)
+        if INTELLIGENCE_AVAILABLE and intelligence_router:
+            app.include_router(intelligence_router.router)
+            log_request("router", "Intelligence systems router mounted")
     except Exception as e:
         log_error("router_error", f"Error including routers: {e}")
         raise
