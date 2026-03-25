@@ -102,7 +102,11 @@ class Settings:
 
     # CORS Configuration
     CORS_ORIGINS: list[str] = (
-        _get_env("CORS_ORIGINS", "http://localhost:3000,http://localhost:8080") or ""
+        _get_env(
+            "CORS_ORIGINS",
+            "http://localhost:3000,http://localhost:8000,http://127.0.0.1:8000,http://localhost:8080,http://localhost:5173,http://localhost:5174,https://kortana.vercel.app,https://kortana-api.onrender.com",
+        )
+        or ""
     ).split(",")
     CORS_CREDENTIALS: bool = True
     CORS_METHODS: list = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
