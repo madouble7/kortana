@@ -100,12 +100,11 @@ class DatabaseManager:
                 autoflush=False,
             )
 
-            # Auto-create tables for SQLite
-            if self.config.is_sqlite:
-                from src.kortana.models import Base
+            # Auto-create tables (checkfirst=True is the default, safe for all DBs)
+            from src.kortana.models import Base
 
-                async with self.engine.begin() as conn:
-                    await conn.run_sync(Base.metadata.create_all)
+            async with self.engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
 
             # Test connection
             async with self.engine.connect() as conn:

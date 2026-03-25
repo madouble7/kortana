@@ -107,12 +107,11 @@ class DatabaseManager:
                 await conn.execute(text("SELECT 1"))
                 await conn.commit()
 
-            # Auto-create tables for SQLite (no Alembic migrations)
-            if self.config.is_sqlite:
-                from models import Base
+            # Auto-create tables (checkfirst=True is the default, safe for all DBs)
+            from models import Base
 
-                async with self.engine.begin() as conn:
-                    await conn.run_sync(Base.metadata.create_all)
+            async with self.engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
 
             self._connected = True
             db_info = (
