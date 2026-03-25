@@ -170,7 +170,7 @@ def create_app() -> FastAPI:
 
     if settings.ENVIRONMENT != "testing" and _redis_available:
         app.add_middleware(
-            RateLimitMiddleware, requests_per_minute=100, redis_url=_redis_url
+            RateLimitMiddleware, requests_per_minute=100
         )
 
     # Response caching middleware (optimization)
