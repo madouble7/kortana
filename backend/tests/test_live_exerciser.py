@@ -3,9 +3,9 @@ Tests for the Live Exerciser router.
 Unit tests use mocked externals; the router is tested via TestClient.
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
 from starlette.testclient import TestClient
 
 from src.kortana.main import app
@@ -14,7 +14,6 @@ from src.kortana.routers.live_exerciser import (
     SYSTEM_USER_ID,
     _ensure_bootstrap,
 )
-
 
 # ------------------------------------------------------------------
 # TestClient for integration tests

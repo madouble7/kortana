@@ -84,7 +84,10 @@ async def _exercise_postgresql(db: AsyncSession) -> dict[str, Any]:
             action="live_exerciser",
             resource_type="system",
             resource_id="exercise",
-            details={"event": "postgresql_exercise", "timestamp": datetime.utcnow().isoformat()},
+            details={
+                "event": "postgresql_exercise",
+                "timestamp": datetime.utcnow().isoformat(),
+            },
             created_at=datetime.utcnow(),
         )
         db.add(log_entry)
@@ -100,7 +103,11 @@ async def _exercise_postgresql(db: AsyncSession) -> dict[str, Any]:
             "latency_ms": round(latency, 1),
         }
     except Exception as e:
-        return {"status": "error", "error": str(e), "latency_ms": round((time.perf_counter() - t0) * 1000, 1)}
+        return {
+            "status": "error",
+            "error": str(e),
+            "latency_ms": round((time.perf_counter() - t0) * 1000, 1),
+        }
 
 
 async def _exercise_redis() -> dict[str, Any]:
@@ -123,7 +130,11 @@ async def _exercise_redis() -> dict[str, Any]:
             "latency_ms": round(latency, 1),
         }
     except Exception as e:
-        return {"status": "error", "error": str(e), "latency_ms": round((time.perf_counter() - t0) * 1000, 1)}
+        return {
+            "status": "error",
+            "error": str(e),
+            "latency_ms": round((time.perf_counter() - t0) * 1000, 1),
+        }
 
 
 async def _exercise_gemini_embedding() -> dict[str, Any]:
@@ -154,7 +165,11 @@ async def _exercise_gemini_embedding() -> dict[str, Any]:
             "latency_ms": round(latency, 1),
         }
     except Exception as e:
-        return {"status": "error", "error": str(e), "latency_ms": round((time.perf_counter() - t0) * 1000, 1)}
+        return {
+            "status": "error",
+            "error": str(e),
+            "latency_ms": round((time.perf_counter() - t0) * 1000, 1),
+        }
 
 
 async def _exercise_gemini_generate() -> dict[str, Any]:
@@ -166,6 +181,7 @@ async def _exercise_gemini_generate() -> dict[str, Any]:
             return {"status": "skip", "reason": "No GEMINI_API_KEY"}
 
         from google import genai
+
         from src.kortana.services.gemini_config import get_model_name
 
         client = genai.Client(api_key=api_key)
@@ -183,7 +199,11 @@ async def _exercise_gemini_generate() -> dict[str, Any]:
             "latency_ms": round(latency, 1),
         }
     except Exception as e:
-        return {"status": "error", "error": str(e), "latency_ms": round((time.perf_counter() - t0) * 1000, 1)}
+        return {
+            "status": "error",
+            "error": str(e),
+            "latency_ms": round((time.perf_counter() - t0) * 1000, 1),
+        }
 
 
 async def _exercise_groq() -> dict[str, Any]:
@@ -199,7 +219,12 @@ async def _exercise_groq() -> dict[str, Any]:
         client = groq.Groq(api_key=api_key)
         resp = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
-            messages=[{"role": "user", "content": "Reply in exactly 5 words: What is an autonomous AI agent?"}],
+            messages=[
+                {
+                    "role": "user",
+                    "content": "Reply in exactly 5 words: What is an autonomous AI agent?",
+                }
+            ],
             max_tokens=30,
         )
         text_out = resp.choices[0].message.content if resp.choices else "(empty)"
@@ -211,7 +236,11 @@ async def _exercise_groq() -> dict[str, Any]:
             "latency_ms": round(latency, 1),
         }
     except Exception as e:
-        return {"status": "error", "error": str(e), "latency_ms": round((time.perf_counter() - t0) * 1000, 1)}
+        return {
+            "status": "error",
+            "error": str(e),
+            "latency_ms": round((time.perf_counter() - t0) * 1000, 1),
+        }
 
 
 async def _exercise_github() -> dict[str, Any]:
@@ -245,10 +274,16 @@ async def _exercise_github() -> dict[str, Any]:
             "latency_ms": round(latency, 1),
         }
     except Exception as e:
-        return {"status": "error", "error": str(e), "latency_ms": round((time.perf_counter() - t0) * 1000, 1)}
+        return {
+            "status": "error",
+            "error": str(e),
+            "latency_ms": round((time.perf_counter() - t0) * 1000, 1),
+        }
 
 
-async def _exercise_memory_store(db: AsyncSession, embedding: list[float] | None) -> dict[str, Any]:
+async def _exercise_memory_store(
+    db: AsyncSession, embedding: list[float] | None
+) -> dict[str, Any]:
     """Store a real memory with embedding in PostgreSQL."""
     t0 = time.perf_counter()
     try:
@@ -272,11 +307,17 @@ async def _exercise_memory_store(db: AsyncSession, embedding: list[float] | None
             "status": "ok",
             "memory_id": mem.id,
             "has_embedding": bool(stored.embedding) if stored else False,
-            "embedding_dims": len(stored.embedding) if stored and isinstance(stored.embedding, list) else 0,
+            "embedding_dims": len(stored.embedding)
+            if stored and isinstance(stored.embedding, list)
+            else 0,
             "latency_ms": round(latency, 1),
         }
     except Exception as e:
-        return {"status": "error", "error": str(e), "latency_ms": round((time.perf_counter() - t0) * 1000, 1)}
+        return {
+            "status": "error",
+            "error": str(e),
+            "latency_ms": round((time.perf_counter() - t0) * 1000, 1),
+        }
 
 
 # ------------------------------------------------------------------
@@ -332,7 +373,9 @@ async def run_full_exercise(db: AsyncSession = Depends(get_db)) -> dict[str, Any
             if emb_list:
                 raw = emb_list[0].values
                 # Validate it's actually a list of numbers
-                if isinstance(raw, list) and all(isinstance(v, (int, float)) for v in raw[:5]):
+                if isinstance(raw, list) and all(
+                    isinstance(v, (int, float)) for v in raw[:5]
+                ):
                     embedding = raw
         except Exception:
             pass
@@ -341,8 +384,12 @@ async def run_full_exercise(db: AsyncSession = Depends(get_db)) -> dict[str, Any
     await db.commit()
 
     total_ms = (time.perf_counter() - t_total) * 1000
-    ok_count = sum(1 for k, v in results.items() if isinstance(v, dict) and v.get("status") == "ok")
-    total_services = sum(1 for k, v in results.items() if isinstance(v, dict) and "status" in v)
+    ok_count = sum(
+        1 for k, v in results.items() if isinstance(v, dict) and v.get("status") == "ok"
+    )
+    total_services = sum(
+        1 for k, v in results.items() if isinstance(v, dict) and "status" in v
+    )
     results["summary"] = {
         "total_ms": round(total_ms, 1),
         "services_ok": ok_count,
@@ -350,7 +397,9 @@ async def run_full_exercise(db: AsyncSession = Depends(get_db)) -> dict[str, Any
         "all_green": ok_count == total_services,
     }
 
-    logger.info(f"Live exercise complete: {ok_count}/{total_services} OK in {total_ms:.0f}ms")
+    logger.info(
+        f"Live exercise complete: {ok_count}/{total_services} OK in {total_ms:.0f}ms"
+    )
     return results
 
 
@@ -370,7 +419,9 @@ async def quick_status(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
     try:
         import redis as redis_lib
 
-        r = redis_lib.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"), socket_timeout=3)
+        r = redis_lib.from_url(
+            os.getenv("REDIS_URL", "redis://localhost:6379/0"), socket_timeout=3
+        )
         r.ping()
         checks["redis"] = "ok"
     except Exception:
@@ -385,4 +436,7 @@ async def quick_status(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
     # GitHub token present
     checks["github_token"] = "ok" if os.getenv("GITHUB_TOKEN") else "missing"
 
-    return {"status": "all_ok" if all(v == "ok" for v in checks.values()) else "degraded", "checks": checks}
+    return {
+        "status": "all_ok" if all(v == "ok" for v in checks.values()) else "degraded",
+        "checks": checks,
+    }
