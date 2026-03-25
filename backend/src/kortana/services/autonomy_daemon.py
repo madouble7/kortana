@@ -226,7 +226,7 @@ class AutonomyDaemon:
                 if task.status == "analyzed":
                     await service.plan_task(task)
                 if task.status == "planning_complete":
-                    await service.execute_task(task, dry_run=True)
+                    await service.execute_task(task, dry_run=False)
 
                 succeeded += 1
                 self._emit(
