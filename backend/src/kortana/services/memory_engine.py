@@ -123,18 +123,14 @@ class MemoryEngine:
             # Fallback: keyword match
             q_lower = query.lower()
             hits = [
-                (m, 1.0)
-                for m in candidates
-                if q_lower in (m.content or "").lower()
+                (m, 1.0) for m in candidates if q_lower in (m.content or "").lower()
             ][:limit]
 
         # Touch accessed_at for retrieved memories
         now = datetime.utcnow()
         for mem, _ in hits:
             await self.db.execute(
-                update(Memory)
-                .where(Memory.id == mem.id)
-                .values(accessed_at=now)
+                update(Memory).where(Memory.id == mem.id).values(accessed_at=now)
             )
         if hits:
             await self.db.commit()
@@ -189,9 +185,7 @@ class MemoryEngine:
             emb = await generate_embedding(mem.content)
             if emb:
                 await self.db.execute(
-                    update(Memory)
-                    .where(Memory.id == mem.id)
-                    .values(embedding=emb)
+                    update(Memory).where(Memory.id == mem.id).values(embedding=emb)
                 )
                 filled += 1
 

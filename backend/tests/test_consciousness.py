@@ -7,7 +7,6 @@ Covers:
   - Consciousness Router endpoints
 """
 
-import math
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

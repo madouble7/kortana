@@ -5,6 +5,12 @@ import os
 import subprocess
 import sys
 
+try:
+    # Compatibility hook for callers and tests that patch the session factory.
+    from src.kortana.database import SessionLocal
+except Exception:  # pragma: no cover - defensive import for script usage
+    SessionLocal = None
+
 
 def setup_alembic():
     """Initialize Alembic migration system"""
@@ -102,7 +108,12 @@ def setup_alembic():
 
 
 async def setup_migrations() -> bool:
-    """Async wrapper for migration setup."""
+    """Async wrapper for migration setup.
+
+    The migration bootstrap remains CLI-driven, but we keep the database session
+    factory importable here so async callers and tests can patch it consistently
+    with the rest of the backend.
+    """
     return setup_alembic()
 
 

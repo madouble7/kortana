@@ -145,8 +145,7 @@ class ExperienceDistiller:
         if capsules:
             await self.db.commit()
             logger.info(
-                f"Distilled {len(old_memories)} memories → "
-                f"{len(capsules)} capsules"
+                f"Distilled {len(old_memories)} memories → " f"{len(capsules)} capsules"
             )
 
         return capsules
@@ -238,7 +237,9 @@ class ExperienceDistiller:
     # ------------------------------------------------------------------
     # Diagnostic history distillation
     # ------------------------------------------------------------------
-    async def distil_diagnostics(self, age_hours: int = 48) -> Optional[ExperienceCapsule]:
+    async def distil_diagnostics(
+        self, age_hours: int = 48
+    ) -> Optional[ExperienceCapsule]:
         """Summarise old diagnostic audit logs into an experience capsule."""
         cutoff = datetime.utcnow() - timedelta(hours=age_hours)
 

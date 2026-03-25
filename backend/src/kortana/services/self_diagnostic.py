@@ -147,19 +147,17 @@ class SelfDiagnostic:
             for line in analysis.strip().split("\n"):
                 line = line.strip()
                 if line.startswith("ROOT_CAUSE:"):
-                    root_cause = line[len("ROOT_CAUSE:"):].strip()
+                    root_cause = line[len("ROOT_CAUSE:") :].strip()
                 elif line.startswith("SUGGESTED_FIX:"):
-                    suggested_fix = line[len("SUGGESTED_FIX:"):].strip()
+                    suggested_fix = line[len("SUGGESTED_FIX:") :].strip()
                 elif line.startswith("CONFIDENCE:"):
                     try:
-                        confidence = float(
-                            line[len("CONFIDENCE:"):].strip()
-                        )
+                        confidence = float(line[len("CONFIDENCE:") :].strip())
                     except ValueError:
                         confidence = 0.5
                 elif line.startswith("AUTO_FIXABLE:"):
                     auto_fixable = (
-                        line[len("AUTO_FIXABLE:"):].strip().lower() == "true"
+                        line[len("AUTO_FIXABLE:") :].strip().lower() == "true"
                     )
 
         result = DiagnosticResult(
@@ -227,19 +225,17 @@ class SelfDiagnostic:
             for line in analysis.strip().split("\n"):
                 line = line.strip()
                 if line.startswith("ROOT_CAUSE:"):
-                    root_cause = line[len("ROOT_CAUSE:"):].strip()
+                    root_cause = line[len("ROOT_CAUSE:") :].strip()
                 elif line.startswith("SUGGESTED_FIX:"):
-                    suggested_fix = line[len("SUGGESTED_FIX:"):].strip()
+                    suggested_fix = line[len("SUGGESTED_FIX:") :].strip()
                 elif line.startswith("CONFIDENCE:"):
                     try:
-                        confidence = float(
-                            line[len("CONFIDENCE:"):].strip()
-                        )
+                        confidence = float(line[len("CONFIDENCE:") :].strip())
                     except ValueError:
                         confidence = 0.5
                 elif line.startswith("AUTO_FIXABLE:"):
                     auto_fixable = (
-                        line[len("AUTO_FIXABLE:"):].strip().lower() == "true"
+                        line[len("AUTO_FIXABLE:") :].strip().lower() == "true"
                     )
 
         result = DiagnosticResult(
