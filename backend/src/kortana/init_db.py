@@ -41,7 +41,9 @@ async def init_db():
             print(f"    ✓ Connection to '{settings.DB_NAME}' successful")
             await conn.close()
         except asyncpg.InvalidCatalogNameError:
-            print(f"    ⚠ Database '{settings.DB_NAME}' not found. Attempting to create...")
+            print(
+                f"    ⚠ Database '{settings.DB_NAME}' not found. Attempting to create..."
+            )
             # Connect to default 'postgres' database to create the new one
             sys_conn = await asyncpg.connect(
                 host=settings.DB_HOST,
@@ -140,4 +142,3 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\n\nSetup cancelled")
         sys.exit(0)
-

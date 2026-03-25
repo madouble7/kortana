@@ -124,7 +124,9 @@ class TestKnowledgeManagerIngestLearning:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
-        with patch("src.kortana.routers.knowledge.httpx.AsyncClient", return_value=mock_client):
+        with patch(
+            "src.kortana.routers.knowledge.httpx.AsyncClient", return_value=mock_client
+        ):
             result = await km.ingest_learning("Test content", "test_source")
 
         assert "insight" in result
@@ -146,7 +148,9 @@ class TestKnowledgeManagerIngestLearning:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
-        with patch("src.kortana.routers.knowledge.httpx.AsyncClient", return_value=mock_client):
+        with patch(
+            "src.kortana.routers.knowledge.httpx.AsyncClient", return_value=mock_client
+        ):
             await km.ingest_learning("Test content", "src")
             await km.ingest_learning("Test content", "src")
 
@@ -167,7 +171,9 @@ class TestKnowledgeManagerIngestLearning:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
-        with patch("src.kortana.routers.knowledge.httpx.AsyncClient", return_value=mock_client):
+        with patch(
+            "src.kortana.routers.knowledge.httpx.AsyncClient", return_value=mock_client
+        ):
             result = await km.ingest_learning("Content", "source", {"key": "value"})
 
         assert result["insight"]["metadata"] == {"key": "value"}
@@ -186,7 +192,9 @@ class TestKnowledgeManagerIngestLearning:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
-        with patch("src.kortana.routers.knowledge.httpx.AsyncClient", return_value=mock_client):
+        with patch(
+            "src.kortana.routers.knowledge.httpx.AsyncClient", return_value=mock_client
+        ):
             result = await km.ingest_learning("Content", "source")
 
         assert "insight" in result  # Still works, just with fallback analysis
@@ -204,7 +212,9 @@ class TestKnowledgeManagerIngestLearning:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
-        with patch("src.kortana.routers.knowledge.httpx.AsyncClient", return_value=mock_client):
+        with patch(
+            "src.kortana.routers.knowledge.httpx.AsyncClient", return_value=mock_client
+        ):
             result = await km.ingest_learning("Content", "source")
 
         assert "insight" in result
@@ -339,8 +349,12 @@ class TestKnowledgeManagerGenerateRitual:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
-        with patch("src.kortana.routers.knowledge.httpx.AsyncClient", return_value=mock_client):
-            ritual = await km.generate_ritual_document("First PR Merged", "Context info")
+        with patch(
+            "src.kortana.routers.knowledge.httpx.AsyncClient", return_value=mock_client
+        ):
+            ritual = await km.generate_ritual_document(
+                "First PR Merged", "Context info"
+            )
 
         assert "ritual_17" == ritual["id"]
         assert ritual["milestone"] == "First PR Merged"
@@ -359,7 +373,9 @@ class TestKnowledgeManagerGenerateRitual:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
-        with patch("src.kortana.routers.knowledge.httpx.AsyncClient", return_value=mock_client):
+        with patch(
+            "src.kortana.routers.knowledge.httpx.AsyncClient", return_value=mock_client
+        ):
             ritual = await km.generate_ritual_document("Milestone", "Context")
 
         assert "content" in ritual  # Graceful fallback

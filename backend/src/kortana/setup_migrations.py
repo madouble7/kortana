@@ -5,8 +5,6 @@ import os
 import subprocess
 import sys
 
-from src.kortana.database import SessionLocal
-
 
 def setup_alembic():
     """Initialize Alembic migration system"""
@@ -46,9 +44,7 @@ def setup_alembic():
 
         # Update sqlalchemy.url
         old_url = "sqlalchemy.url = driver://user:password@localhost/dbname"
-        new_url = (
-            "sqlalchemy.url = postgresql://postgres:supersecretpassword@localhost:5432/kortana"
-        )
+        new_url = "sqlalchemy.url = postgresql://postgres:supersecretpassword@localhost:5432/kortana"
 
         if old_url in content:
             content = content.replace(old_url, new_url)

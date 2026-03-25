@@ -11,9 +11,10 @@ from typing import Callable
 
 from fastapi import Request, Response
 from redis import Redis
-from src.kortana.logger import get_logger
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response as StarletteResponse
+
+from src.kortana.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -161,13 +162,17 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
                     }
 
                     try:
-                        self.redis.setex(cache_key, self.strategy.ttl, json.dumps(cache_entry))
+                        self.redis.setex(
+                            cache_key, self.strategy.ttl, json.dumps(cache_entry)
+                        )
                     except Exception as e:
                         logger.warning(f"Cache write error: {e}")
                         self.stats["errors"] += 1
 
                     # Add cache headers to response
-                    response.headers["cache-control"] = f"max-age={self.strategy.ttl}, public"
+                    response.headers[
+                        "cache-control"
+                    ] = f"max-age={self.strategy.ttl}, public"
                     response.headers["x-cache"] = "MISS"
 
                     # Return response with body
