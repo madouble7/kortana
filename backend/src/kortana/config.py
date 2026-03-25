@@ -48,6 +48,20 @@ def _get_env(name: str, default: str | None = None) -> str | None:
     return _normalize_env_value(os.getenv(name)) or default
 
 
+def _normalize_database_url(url: str) -> str:
+    """Normalize PostgreSQL URLs to the asyncpg dialect while preserving params."""
+    normalized = url.strip()
+    if normalized.startswith("postgresql+asyncpg://"):
+        return normalized
+    if normalized.startswith("postgres://"):
+        return "postgresql+asyncpg://" + normalized[len("postgres://") :]
+    if normalized.startswith("postgresql://"):
+        return "postgresql+asyncpg://" + normalized[len("postgresql://") :]
+    if normalized.startswith("postgresql+") and "://" in normalized:
+        return "postgresql+asyncpg://" + normalized.split("://", 1)[1]
+    return normalized
+
+
 def _find_env_file(start_path: Path | None = None) -> Path | None:
     """Locate the nearest backend .env file by walking up parent directories."""
     current = (start_path or Path(__file__).resolve().parent).resolve()
@@ -163,7 +177,7 @@ class Settings:
         """Constructs the async database URL from settings."""
         env_url = _get_env("DATABASE_URL")
         if env_url:
-            return env_url
+            return _normalize_database_url(env_url)
 
         if self.DB_PASSWORD:
             return (

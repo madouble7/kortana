@@ -18,6 +18,10 @@ services:
         value: "3.11.7"
       - key: SECRET_KEY
         generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
       - key: GEMINI_API_KEY
         sync: false
       - key: GITHUB_TOKEN
