@@ -509,7 +509,9 @@ class TestGitHubAutonomyService:
 
         # Mock http_client: first get (main) raises exception, second get (master) succeeds
         service.http_client = AsyncMock()
-        service.http_client.get = AsyncMock(side_effect=[Exception("Not found"), master_response])
+        service.http_client.get = AsyncMock(
+            side_effect=[Exception("Not found"), master_response]
+        )
         service.http_client.post = AsyncMock(return_value=create_response)
 
         with patch("os.getenv", return_value="test_token"):

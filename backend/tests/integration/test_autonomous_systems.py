@@ -127,7 +127,9 @@ class TestErrorHandling:
 
     def test_execute_agent_missing_task_error(self, client):
         """Test agent execution with non-existent agent"""
-        response = client.post("/api/agents/execute/999", json={"task": "Implement feature X"})
+        response = client.post(
+            "/api/agents/execute/999", json={"task": "Implement feature X"}
+        )
 
         assert response.status_code == 200
         data = response.json()

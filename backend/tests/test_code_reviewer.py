@@ -7,7 +7,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-import httpx
+
 from src.kortana.routers.code_reviewer import CodeReviewer
 
 
@@ -60,7 +60,10 @@ def add_numbers(a, b):
         """Test hardcoded credentials detection"""
         issues = code_reviewer.scan_for_security_issues(sample_code)
 
-        assert any("credential" in issue.lower() or "secret" in issue.lower() for issue in issues)
+        assert any(
+            "credential" in issue.lower() or "secret" in issue.lower()
+            for issue in issues
+        )
 
     def test_scan_for_unsafe_eval(self, code_reviewer):
         """Test unsafe eval detection"""
@@ -145,8 +148,10 @@ x = 1
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
-        with patch.dict("os.environ", {"GEMINI_API_KEY": "test_key"}), \
-             patch("src.kortana.routers.code_reviewer.httpx.AsyncClient", return_value=mock_client):
+        with patch.dict("os.environ", {"GEMINI_API_KEY": "test_key"}), patch(
+            "src.kortana.routers.code_reviewer.httpx.AsyncClient",
+            return_value=mock_client,
+        ):
             review = await code_reviewer.generate_review(
                 code="def hello(): pass", plan="Add hello function"
             )
@@ -162,13 +167,21 @@ x = 1
 
     def test_should_not_auto_approve_low_quality(self, code_reviewer):
         """Test no auto-approval for low quality code"""
-        review = {"score": 5, "recommendation": "review", "summary": "Needs improvement"}
+        review = {
+            "score": 5,
+            "recommendation": "review",
+            "summary": "Needs improvement",
+        }
 
         assert code_reviewer.should_auto_approve(review) is False
 
     def test_should_not_auto_approve_rejections(self, code_reviewer):
         """Test no auto-approval for rejected reviews"""
-        review = {"score": 8, "recommendation": "reject", "summary": "Security issues found"}
+        review = {
+            "score": 8,
+            "recommendation": "reject",
+            "summary": "Security issues found",
+        }
 
         assert code_reviewer.should_auto_approve(review) is False
 
@@ -209,10 +222,16 @@ x = 1
             "recommendation": "approve",
         }
 
-        with patch.dict("os.environ", {"GITHUB_TOKEN": "test_token"}), \
-             patch("src.kortana.routers.code_reviewer.httpx.AsyncClient", return_value=mock_client):
+        with patch.dict("os.environ", {"GITHUB_TOKEN": "test_token"}), patch(
+            "src.kortana.routers.code_reviewer.httpx.AsyncClient",
+            return_value=mock_client,
+        ):
             result = await code_reviewer.post_review(
-                owner="testuser", repo="testrepo", pr_number=123, review=review, token="test_token"
+                owner="testuser",
+                repo="testrepo",
+                pr_number=123,
+                review=review,
+                token="test_token",
             )
 
         assert result["success"] is True or result.get("comment_id") is not None
@@ -268,6 +287,7 @@ class TestCodeReviewAPI:
     def client(self, app_fixture):
         """Create test client"""
         from .conftest import SyncTestClient
+
         return SyncTestClient(app_fixture)
 
     @patch("src.kortana.routers.code_reviewer.CodeReviewer.scan_for_security_issues")
@@ -276,7 +296,8 @@ class TestCodeReviewAPI:
         mock_scan.return_value = ["SQL injection detected"]
 
         response = client.post(
-            "/api/code-review/scan-security", json={"code": "SELECT * FROM users WHERE id = 'test'"}
+            "/api/code-review/scan-security",
+            json={"code": "SELECT * FROM users WHERE id = 'test'"},
         )
 
         assert response.status_code == 200
@@ -290,7 +311,9 @@ class TestCodeReviewAPI:
             "avg_line_length": 40,
         }
 
-        response = client.post("/api/code-review/check-quality", json={"code": "def hello(): pass"})
+        response = client.post(
+            "/api/code-review/check-quality", json={"code": "def hello(): pass"}
+        )
 
         assert response.status_code == 200
         assert "line_count" in response.json()
@@ -323,7 +346,11 @@ class TestCodeReviewAPI:
                 "owner": "testuser",
                 "repo": "testrepo",
                 "pr_number": 123,
-                "review": {"score": 8, "summary": "Good code", "recommendation": "approve"},
+                "review": {
+                    "score": 8,
+                    "summary": "Good code",
+                    "recommendation": "approve",
+                },
             },
         )
 
@@ -335,7 +362,8 @@ class TestCodeReviewAPI:
         mock_approve.return_value = True
 
         response = client.post(
-            "/api/code-review/auto-approve", json={"score": 9, "recommendation": "approve"}
+            "/api/code-review/auto-approve",
+            json={"score": 9, "recommendation": "approve"},
         )
 
         assert response.status_code == 200

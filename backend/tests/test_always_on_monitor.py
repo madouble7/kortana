@@ -2,6 +2,7 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 from src.kortana.models import GitHubTask
 from src.kortana.services.always_on_monitor import AlwaysOnMonitor
 
@@ -27,7 +28,9 @@ def monitor(mock_db_manager):
 class TestAlwaysOnMonitorInit:
     def test_init_defaults(self, mock_db_manager):
         """Test AlwaysOnMonitor initialization with defaults"""
-        with patch("src.kortana.services.always_on_monitor.get_db_manager") as mock_get_db:
+        with patch(
+            "src.kortana.services.always_on_monitor.get_db_manager"
+        ) as mock_get_db:
             mock_get_db.return_value = mock_db_manager
 
             monitor = AlwaysOnMonitor()
@@ -44,7 +47,9 @@ class TestAlwaysOnMonitorInit:
         monkeypatch.setenv("MAX_CONCURRENT_TASKS", "10")
         monkeypatch.setenv("ALWAYS_ON_MONITORING", "true")
 
-        with patch("src.kortana.services.always_on_monitor.get_db_manager") as mock_get_db:
+        with patch(
+            "src.kortana.services.always_on_monitor.get_db_manager"
+        ) as mock_get_db:
             mock_get_db.return_value = mock_db_manager
 
             monitor = AlwaysOnMonitor()
@@ -57,7 +62,9 @@ class TestAlwaysOnMonitorInit:
         """Test initialization when monitoring is disabled"""
         monkeypatch.setenv("ALWAYS_ON_MONITORING", "false")
 
-        with patch("src.kortana.services.always_on_monitor.get_db_manager") as mock_get_db:
+        with patch(
+            "src.kortana.services.always_on_monitor.get_db_manager"
+        ) as mock_get_db:
             mock_get_db.return_value = mock_db_manager
 
             monitor = AlwaysOnMonitor()
@@ -126,7 +133,9 @@ class TestFetchNewIssues:
         mock_session.__aexit__ = AsyncMock(return_value=None)
         monitor.db_manager.get_session = MagicMock(return_value=mock_session)
 
-        with patch("src.kortana.services.always_on_monitor.GitHubAutonomyService") as mock_service:
+        with patch(
+            "src.kortana.services.always_on_monitor.GitHubAutonomyService"
+        ) as mock_service:
             mock_github = AsyncMock()
             mock_github.fetch_and_queue_issues = AsyncMock(return_value=[mock_task])
             mock_service.return_value = mock_github
@@ -145,7 +154,9 @@ class TestFetchNewIssues:
         mock_session.__aexit__ = AsyncMock(return_value=None)
         monitor.db_manager.get_session = MagicMock(return_value=mock_session)
 
-        with patch("src.kortana.services.always_on_monitor.GitHubAutonomyService") as mock_service:
+        with patch(
+            "src.kortana.services.always_on_monitor.GitHubAutonomyService"
+        ) as mock_service:
             mock_github = AsyncMock()
             mock_github.fetch_and_queue_issues = AsyncMock(return_value=[])
             mock_service.return_value = mock_github
@@ -210,7 +221,9 @@ class TestProcessTaskPipeline:
         """Test pipeline with no pending tasks"""
         mock_db = AsyncMock()
         mock_result = AsyncMock()
-        mock_result.scalars = MagicMock(return_value=MagicMock(all=MagicMock(return_value=[])))
+        mock_result.scalars = MagicMock(
+            return_value=MagicMock(all=MagicMock(return_value=[]))
+        )
         mock_db.execute = AsyncMock(return_value=mock_result)
 
         mock_session = AsyncMock()
@@ -235,7 +248,9 @@ class TestProcessSingleTask:
 
         mock_db = AsyncMock()
 
-        with patch("src.kortana.services.always_on_monitor.GitHubAutonomyService") as mock_service:
+        with patch(
+            "src.kortana.services.always_on_monitor.GitHubAutonomyService"
+        ) as mock_service:
             mock_github = AsyncMock()
             mock_github.analyze_task = AsyncMock()
             mock_service.return_value = mock_github
@@ -253,7 +268,9 @@ class TestProcessSingleTask:
 
         mock_db = AsyncMock()
 
-        with patch("src.kortana.services.always_on_monitor.GitHubAutonomyService") as mock_service:
+        with patch(
+            "src.kortana.services.always_on_monitor.GitHubAutonomyService"
+        ) as mock_service:
             mock_github = AsyncMock()
             mock_github.plan_task = AsyncMock()
             mock_service.return_value = mock_github
@@ -267,7 +284,9 @@ class TestRunHOPCycle:
     @pytest.mark.asyncio
     async def test_run_hop_cycle_success(self, monitor):
         """Test successful HOP cycle"""
-        with patch("src.kortana.services.always_on_monitor.HOPAutonomyService") as mock_service:
+        with patch(
+            "src.kortana.services.always_on_monitor.HOPAutonomyService"
+        ) as mock_service:
             mock_hop = AsyncMock()
             mock_hop.run_hop_cycle = AsyncMock(return_value={"status": "success"})
             mock_service.return_value = mock_hop
@@ -279,7 +298,9 @@ class TestRunHOPCycle:
     @pytest.mark.asyncio
     async def test_run_hop_cycle_handles_error(self, monitor):
         """Test HOP cycle error handling"""
-        with patch("src.kortana.services.always_on_monitor.HOPAutonomyService") as mock_service:
+        with patch(
+            "src.kortana.services.always_on_monitor.HOPAutonomyService"
+        ) as mock_service:
             mock_hop = AsyncMock()
             mock_hop.run_hop_cycle = AsyncMock(side_effect=Exception("HOP error"))
             mock_service.return_value = mock_hop

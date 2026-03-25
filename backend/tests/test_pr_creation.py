@@ -86,7 +86,9 @@ class TestPRCreator:
     @pytest.mark.asyncio
     async def test_create_pr_success(self, pr_creator, mock_task):
         """Test successful PR creation"""
-        pr_creator.db.execute = AsyncMock(return_value=_mock_db_result(first_val=mock_task))
+        pr_creator.db.execute = AsyncMock(
+            return_value=_mock_db_result(first_val=mock_task)
+        )
 
         mock_response = MagicMock()
         mock_response.json.return_value = {
@@ -102,8 +104,10 @@ class TestPRCreator:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
-        with patch.dict("os.environ", {"GITHUB_TOKEN": "test_token"}), \
-             patch("src.kortana.routers.pr_creation.httpx.AsyncClient", return_value=mock_client):
+        with patch.dict("os.environ", {"GITHUB_TOKEN": "test_token"}), patch(
+            "src.kortana.routers.pr_creation.httpx.AsyncClient",
+            return_value=mock_client,
+        ):
             result = await pr_creator.create_pr(
                 task_id=mock_task.id,
                 repo="user/repo",
@@ -115,7 +119,9 @@ class TestPRCreator:
     @pytest.mark.asyncio
     async def test_create_pr_from_issue(self, pr_creator, mock_task):
         """Test PR creation from issue number"""
-        pr_creator.db.execute = AsyncMock(return_value=_mock_db_result(first_val=mock_task))
+        pr_creator.db.execute = AsyncMock(
+            return_value=_mock_db_result(first_val=mock_task)
+        )
 
         mock_response = MagicMock()
         mock_response.json.return_value = {
@@ -130,8 +136,10 @@ class TestPRCreator:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
-        with patch.dict("os.environ", {"GITHUB_TOKEN": "test_token"}), \
-             patch("src.kortana.routers.pr_creation.httpx.AsyncClient", return_value=mock_client):
+        with patch.dict("os.environ", {"GITHUB_TOKEN": "test_token"}), patch(
+            "src.kortana.routers.pr_creation.httpx.AsyncClient",
+            return_value=mock_client,
+        ):
             result = await pr_creator.create_pr_from_issue(
                 github_issue_number=42,
                 repo="user/repo",
@@ -145,15 +153,18 @@ class TestPRCreator:
         """Test PR creation with non-existent task"""
         pr_creator.db.execute = AsyncMock(return_value=_mock_db_result(first_val=None))
 
-        with patch.dict("os.environ", {"GITHUB_TOKEN": "test_token"}), \
-             pytest.raises(PRCreationError):
+        with patch.dict("os.environ", {"GITHUB_TOKEN": "test_token"}), pytest.raises(
+            PRCreationError
+        ):
             await pr_creator.create_pr(task_id=99999, repo="user/repo")
 
     @pytest.mark.asyncio
     async def test_get_pr_status(self, pr_creator, mock_task):
         """Test getting PR status"""
         mock_task.github_pr_number = 123
-        pr_creator.db.execute = AsyncMock(return_value=_mock_db_result(first_val=mock_task))
+        pr_creator.db.execute = AsyncMock(
+            return_value=_mock_db_result(first_val=mock_task)
+        )
 
         mock_response = MagicMock()
         mock_response.json.return_value = {
@@ -170,8 +181,10 @@ class TestPRCreator:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
-        with patch.dict("os.environ", {"GITHUB_TOKEN": "test_token"}), \
-             patch("src.kortana.routers.pr_creation.httpx.AsyncClient", return_value=mock_client):
+        with patch.dict("os.environ", {"GITHUB_TOKEN": "test_token"}), patch(
+            "src.kortana.routers.pr_creation.httpx.AsyncClient",
+            return_value=mock_client,
+        ):
             result = await pr_creator.get_pr_status(
                 task_id=mock_task.id,
                 repo="user/repo",
@@ -197,8 +210,10 @@ class TestPRCreator:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
-        with patch.dict("os.environ", {"GITHUB_TOKEN": "test_token"}), \
-             patch("src.kortana.routers.pr_creation.httpx.AsyncClient", return_value=mock_client):
+        with patch.dict("os.environ", {"GITHUB_TOKEN": "test_token"}), patch(
+            "src.kortana.routers.pr_creation.httpx.AsyncClient",
+            return_value=mock_client,
+        ):
             result = await pr_creator.list_prs_for_repo(repo="user/repo")
 
         assert len(result) == 2
@@ -214,11 +229,15 @@ class TestPRCreator:
             branch_name="feature/another",
             plan="Another plan",
         )
-        pr_creator.db.execute = AsyncMock(return_value=_mock_db_result(all_val=[mock_task, task2]))
+        pr_creator.db.execute = AsyncMock(
+            return_value=_mock_db_result(all_val=[mock_task, task2])
+        )
 
         with patch.object(
-            pr_creator, "create_pr", new_callable=AsyncMock,
-            return_value={"success": True, "pr_number": 125}
+            pr_creator,
+            "create_pr",
+            new_callable=AsyncMock,
+            return_value={"success": True, "pr_number": 125},
         ):
             result = await pr_creator.auto_create_prs_for_completed(repo="user/repo")
 
