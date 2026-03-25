@@ -71,6 +71,19 @@ class TestRateLimitMiddlewareUnit:
         middleware = RateLimitMiddleware(mock_app)
         assert middleware.requests_per_minute == 60
 
+    def test_legacy_middleware_accepts_redis_url(self):
+        from middleware.security import RateLimitMiddleware
+
+        mock_app = MagicMock()
+        middleware = RateLimitMiddleware(
+            mock_app,
+            requests_per_minute=100,
+            redis_url="redis://localhost:6379/0",
+        )
+
+        assert middleware.requests_per_minute == 100
+        assert middleware.redis_url == "redis://localhost:6379/0"
+
     @pytest.mark.asyncio
     async def test_dispatch_redis_error_allows_request(self):
         """When Redis fails, request should still be processed (fail-open)."""

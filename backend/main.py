@@ -169,9 +169,7 @@ def create_app() -> FastAPI:
         print("[WARN] Redis not reachable — rate limiting and caching disabled")
 
     if settings.ENVIRONMENT != "testing" and _redis_available:
-        app.add_middleware(
-            RateLimitMiddleware, requests_per_minute=100
-        )
+        app.add_middleware(RateLimitMiddleware, requests_per_minute=100)
 
     # Response caching middleware (optimization)
     if OPTIMIZATION_AVAILABLE and _redis_available:

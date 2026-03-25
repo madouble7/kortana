@@ -15,9 +15,18 @@ from starlette.middleware.base import BaseHTTPMiddleware
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """Rate limiting middleware - limits requests per IP"""
 
-    def __init__(self, app, requests_per_minute: int = 60):
+    def __init__(
+        self,
+        app,
+        requests_per_minute: int = 60,
+        redis_url: str | None = None,
+    ):
         super().__init__(app)
         self.requests_per_minute = requests_per_minute
+        # Kept for compatibility with backend.main, which now passes a Redis URL
+        # after probing availability at startup. The legacy middleware still uses
+        # in-memory counters only.
+        self.redis_url = redis_url
         self.requests: dict[str, list] = defaultdict()
 
     async def dispatch(self, request: Request, call_next):
