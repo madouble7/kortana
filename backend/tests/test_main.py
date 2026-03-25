@@ -64,6 +64,11 @@ class TestHealth:
         assert "version" in data
         assert "status" in data
 
+    def test_root_head_endpoint(self, client):
+        """Test HEAD on root endpoint for platform health checks."""
+        response = client.head("/")
+        assert response.status_code == 200
+
 
 @pytest.mark.unit
 class TestCORS:

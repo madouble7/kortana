@@ -458,6 +458,7 @@ def create_app() -> FastAPI:
                 "timestamp": datetime.now().isoformat(),
             }
 
+        @app.head("/", tags=["system"])
         @app.get("/", tags=["system"])
         @app.get("/api/info", tags=["system"])
         async def api_info():

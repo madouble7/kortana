@@ -108,6 +108,9 @@ class SyncTestClient:
     def options(self, url, **kwargs):
         return self._run_async(self._aoptions(url, **kwargs))
 
+    def head(self, url, **kwargs):
+        return self._run_async(self._ahead(url, **kwargs))
+
     async def _aget(self, url, **kwargs):
         client = await self._get_client()
         return await client.request("GET", url, **kwargs)
@@ -131,6 +134,10 @@ class SyncTestClient:
     async def _aoptions(self, url, **kwargs):
         client = await self._get_client()
         return await client.request("OPTIONS", url, **kwargs)
+
+    async def _ahead(self, url, **kwargs):
+        client = await self._get_client()
+        return await client.request("HEAD", url, **kwargs)
 
     def close(self):
         if self._client and self._loop:
