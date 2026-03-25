@@ -11,7 +11,7 @@ def main() -> bool:
     # Read GitHub token from .env directly
     env_path = ".env"
     github_token = None
-    
+
     if os.path.exists(env_path):
         with open(env_path, "r") as f:
             for line in f:
@@ -19,7 +19,7 @@ def main() -> bool:
                 if line.startswith("GITHUB_TOKEN="):
                     github_token = line.split("=", 1)[1]
                     break
-    
+
     if not github_token:
         print("ERROR: GITHUB_TOKEN not found in .env")
         return False
