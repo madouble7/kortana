@@ -52,6 +52,16 @@ try:
 except ImportError as e:
     log_error("intelligence", f"Could not import intelligence systems: {e}")
 
+# Live Exerciser (optional - real API + PostgreSQL integration)
+LIVE_EXERCISER_AVAILABLE = False
+live_exerciser_router = None
+try:
+    from src.kortana.routers import live_exerciser as live_exerciser_router
+
+    LIVE_EXERCISER_AVAILABLE = True
+except ImportError as e:
+    log_error("live_exerciser", f"Could not import live exerciser: {e}")
+
 # Import routers
 try:
     from routers import (
@@ -268,6 +278,10 @@ def create_app() -> FastAPI:
         # Intelligence systems router (if available)
         if INTELLIGENCE_AVAILABLE and intelligence_router:
             app.include_router(intelligence_router.router)
+
+        # Live Exerciser router (if available)
+        if LIVE_EXERCISER_AVAILABLE and live_exerciser_router:
+            app.include_router(live_exerciser_router.router)
             log_request("router", "Intelligence systems router mounted")
     except Exception as e:
         log_error("router_error", f"Error including routers: {e}")

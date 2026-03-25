@@ -56,6 +56,7 @@ try:
         github,
         health,
         knowledge,
+        live_exerciser,
         memory,
         optimization,
         orchestration_advanced,
@@ -390,6 +391,9 @@ def create_app() -> FastAPI:
 
         # Phase 8: Consciousness Persistence & Self-Repair
         app.include_router(consciousness.router)
+
+        # Live Exerciser: Real API calls + PostgreSQL integration
+        app.include_router(live_exerciser.router)
 
         # Billing management
         app.include_router(billing.router)
