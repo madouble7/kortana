@@ -51,6 +51,7 @@ try:
         autonomy,
         billing,
         code_reviewer,
+        consciousness,
         gemini,
         github,
         health,
@@ -386,6 +387,9 @@ def create_app() -> FastAPI:
             prefix="/api/singularity",
             tags=["singularity-bridge"],
         )
+
+        # Phase 8: Consciousness Persistence & Self-Repair
+        app.include_router(consciousness.router)
 
         # Billing management
         app.include_router(billing.router)
