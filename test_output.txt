@@ -20,3 +20,4 @@ tests\test_cache.py ................................................     [ 35%]
 tests\test_code_reviewer.py ........F....FF...........                   [ 39%]
 tests\test_config_security.py ....                                       [ 39%]
 tests\test_exceptions.py .......................                         [ 43%]
+tests\test_gemini_router.py ...
