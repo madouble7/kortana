@@ -1,12 +1,11 @@
 """
 Tests for the Live Exerciser router.
-Unit tests use mocked externals; the router is tested via TestClient.
+Unit tests use mocked externals; the router is tested via SyncTestClient.
 """
 
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from starlette.testclient import TestClient
 
 from src.kortana.main import app
 from src.kortana.routers.live_exerciser import (
@@ -14,11 +13,12 @@ from src.kortana.routers.live_exerciser import (
     SYSTEM_USER_ID,
     _ensure_bootstrap,
 )
+from tests.conftest import SyncTestClient
 
 # ------------------------------------------------------------------
-# TestClient for integration tests
+# Test client for integration tests
 # ------------------------------------------------------------------
-sync_client = TestClient(app, raise_server_exceptions=False)
+sync_client = SyncTestClient(app)
 
 
 # ------------------------------------------------------------------
