@@ -149,21 +149,34 @@ def create_app() -> FastAPI:
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(RequestIDMiddleware)
     app.add_middleware(RequestLoggingMiddleware)
-    if settings.ENVIRONMENT != "testing":
-        app.add_middleware(RateLimitMiddleware, requests_per_minute=100)
+
+    # Probe Redis once at startup to avoid per-request error spam
+    _redis_available = False
+    try:
+        import redis as _redis_mod
+
+        try:
+            _redis_url = (
+                getattr(settings, "REDIS_URL", None) or "redis://localhost:6379/0"
+            )
+        except (AttributeError, TypeError):
+            _redis_url = "redis://localhost:6379/0"
+        _probe = _redis_mod.from_url(_redis_url, socket_connect_timeout=2)
+        _probe.ping()
+        _probe.close()
+        _redis_available = True
+    except Exception:
+        print("[WARN] Redis not reachable — rate limiting and caching disabled")
+
+    if settings.ENVIRONMENT != "testing" and _redis_available:
+        app.add_middleware(
+            RateLimitMiddleware, requests_per_minute=100, redis_url=_redis_url
+        )
 
     # Response caching middleware (optimization)
-    if OPTIMIZATION_AVAILABLE:
+    if OPTIMIZATION_AVAILABLE and _redis_available:
         try:
-            import redis
-
-            try:
-                redis_url = (
-                    getattr(settings, "REDIS_URL", None) or "redis://localhost:6379/0"
-                )
-            except (AttributeError, TypeError):
-                redis_url = "redis://localhost:6379/0"
-            redis_client = redis.from_url(redis_url, decode_responses=True)
+            redis_client = _redis_mod.from_url(_redis_url, decode_responses=True)
             cache_strategy = CacheStrategy(
                 ttl=300,
                 exclude_paths=[

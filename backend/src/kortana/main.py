@@ -242,11 +242,22 @@ def create_app() -> FastAPI:
         allow_headers=settings.CORS_HEADERS,
     )
 
-    # Response caching middleware for optimization
-    # Initialize Redis for caching if available (skip in testing)
+    # Probe Redis reachability once at startup so we don't spam errors
+    # on every request when Redis is absent (e.g. Render free tier).
+    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    _redis_available = False
     if Redis is not None and settings.ENVIRONMENT != "testing":
         try:
-            redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+            _probe = Redis.from_url(redis_url, socket_connect_timeout=2)
+            _probe.ping()
+            _probe.close()
+            _redis_available = True
+        except Exception:
+            print("[WARN] Redis not reachable — rate limiting and caching disabled")
+
+    # Response caching middleware for optimization
+    if _redis_available:
+        try:
             redis_client = Redis.from_url(redis_url)
             cache_strategy = CacheStrategy(
                 ttl=300,  # 5 minutes
@@ -266,14 +277,20 @@ def create_app() -> FastAPI:
             )
         except Exception as e:
             log_error("CACHE_INIT", f"Failed to initialize response caching: {e}")
-    # Note: caching gracefully disabled if Redis unavailable
 
     # Security middleware
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(RequestIDMiddleware)
     app.add_middleware(RequestLoggingMiddleware)
     if settings.ENVIRONMENT != "testing":
-        app.add_middleware(RateLimitMiddleware, requests_per_minute=100)
+        if _redis_available:
+            app.add_middleware(
+                RateLimitMiddleware,
+                requests_per_minute=100,
+                redis_url=redis_url,
+            )
+        else:
+            print("[WARN] RateLimitMiddleware skipped — no Redis")
 
     # Exception handlers
     @app.exception_handler(KortanaException)

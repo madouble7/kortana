@@ -18,6 +18,9 @@ from src.kortana.logger import get_logger
 
 logger = get_logger(__name__)
 
+# Circuit-breaker cooldown for Redis connection failures.
+_CACHE_CIRCUIT_BREAKER_SECONDS = 60
+
 
 class CacheStrategy:
     """Cache strategy configuration"""
@@ -60,6 +63,7 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
             "bypassed": 0,
             "errors": 0,
         }
+        self._redis_failed_at: float = 0.0
 
     def _should_cache(self, request: Request) -> bool:
         """Determine if request should be cached"""
@@ -105,6 +109,13 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Process request with caching"""
+        # If the circuit breaker is open, skip cache entirely.
+        if self._redis_failed_at:
+            elapsed = time.monotonic() - self._redis_failed_at
+            if elapsed < _CACHE_CIRCUIT_BREAKER_SECONDS:
+                return await call_next(request)
+            self._redis_failed_at = 0.0
+
         try:
             cache_key = self._get_cache_key(request)
 
@@ -193,9 +204,13 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
             return response
 
         except Exception as e:
-            logger.error(f"Cache middleware error: {e}")
+            # Open the circuit breaker — one log line, then silence.
+            self._redis_failed_at = time.monotonic()
+            logger.error(
+                f"Cache middleware error (circuit breaker open for "
+                f"{_CACHE_CIRCUIT_BREAKER_SECONDS}s): {e}"
+            )
             self.stats["errors"] += 1
-            # Continue without caching on error
             return await call_next(request)
 
     def get_stats(self) -> dict:

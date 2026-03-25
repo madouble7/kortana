@@ -15,6 +15,10 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from src.kortana.logger import log_error, log_request
 
+# Circuit-breaker cooldown: after a Redis failure, stop retrying for this
+# many seconds to avoid spamming error logs on every single request.
+_REDIS_CIRCUIT_BREAKER_SECONDS = 60
+
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """Rate limiting middleware - limits requests per IP using Redis.
@@ -32,40 +36,37 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         requests_per_minute: int = 60,
         redis_url: str | None = None,
     ) -> None:
-        """Initialize the rate limiting middleware.
-
-        Args:
-            app: The ASGI application.
-            requests_per_minute: Maximum allowed requests per IP per minute.
-            redis_url: Optional Redis connection URL. If not provided, a
-                sane default of ``redis://localhost:6379/0`` is used.
-        """
         super().__init__(app)
         self.requests_per_minute: int = requests_per_minute
-        # Use a shared Redis instance to support distributed rate limiting across
-        # multiple processes and application instances.
         effective_redis_url = redis_url or "redis://localhost:6379/0"
         self.redis: Redis = Redis.from_url(
             effective_redis_url,
             encoding="utf-8",
             decode_responses=True,
         )
+        # Circuit breaker state — 0.0 means "healthy / never failed".
+        self._redis_failed_at: float = 0.0
 
     async def dispatch(
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
         """Process request and apply Redis-backed rate limiting."""
+        # If the circuit breaker is open, skip Redis entirely.
+        if self._redis_failed_at:
+            elapsed = time.monotonic() - self._redis_failed_at
+            if elapsed < _REDIS_CIRCUIT_BREAKER_SECONDS:
+                return await call_next(request)
+            # Cooldown expired — attempt to re-close the circuit.
+            self._redis_failed_at = 0.0
+
         client_ip = request.client.host if request.client else "unknown"
         key = f"ratelimit:{client_ip}"
 
         try:
-            # Atomically increment the request count for this IP.
             current_count = await self.redis.incr(key)
-            # On first request in the window, set the TTL to 60 seconds.
             if current_count == 1:
                 await self.redis.expire(key, 60)
 
-            # Check if rate limit is exceeded.
             if current_count > self.requests_per_minute:
                 log_error(
                     "RATE_LIMIT_EXCEEDED",
@@ -77,26 +78,15 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     detail="Rate limit exceeded. Maximum requests exceeded.",
                 )
         except (RedisError, RuntimeError, OSError) as exc:
-            # Security-first approach: if Redis is unavailable, fail safely and log.
+            # Open the circuit breaker — one log line, then silence.
+            self._redis_failed_at = time.monotonic()
             log_error(
                 "RATE_LIMIT_REDIS_ERROR",
-                f"Failed to apply rate limiting for IP {client_ip}: {exc}",
+                f"Redis unavailable, rate limiting disabled for {_REDIS_CIRCUIT_BREAKER_SECONDS}s: {exc}",
                 details={"client_ip": client_ip},
             )
-            # FALLBACK: If Redis fails, allow the request but log the error
-            # Or we could raise 503 as it was doing, but for tests without Redis we need a fallback.
-            pass
 
-        # Continue processing the request.
         response = await call_next(request)
-        return response
-
-        # Add rate limit headers
-        response.headers["X-RateLimit-Limit"] = str(self.requests_per_minute)
-        response.headers["X-RateLimit-Remaining"] = str(
-            max(0, self.requests_per_minute - len(self.requests[client_ip]))
-        )
-
         return response
 
     def _cleanup_all(self, now: float) -> None:
