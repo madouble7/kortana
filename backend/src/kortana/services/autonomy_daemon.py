@@ -24,6 +24,7 @@ from typing import Any, Callable
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.kortana.database import get_db_manager
 from src.kortana.logger import get_logger
 from src.kortana.models import GitHubTask
@@ -233,7 +234,7 @@ class AutonomyDaemon:
                         type="task_complete",
                         data={
                             "task_id": str(task.id),
-                            "title": task.github_issue_title,
+                            "title": task.title,
                             "status": task.status,
                         },
                     )
