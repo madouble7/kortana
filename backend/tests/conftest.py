@@ -202,7 +202,10 @@ async def setup_test_db(test_db_url, test_engine):
     # Clean up test database file after tests
     db_file = test_db_url.replace("sqlite+aiosqlite:///", "")
     if os.path.exists(db_file):
-        os.remove(db_file)
+        try:
+            os.remove(db_file)
+        except PermissionError:
+            pass  # Windows file locking - file will be cleaned up next run
 
 
 @pytest.fixture

@@ -99,14 +99,17 @@ class TestMonitoringCycle:
 
     @pytest.mark.asyncio
     async def test_monitoring_cycle_handles_exceptions(self, monitor):
-        """Test monitoring cycle handles exceptions"""
+        """Test monitoring cycle handles exceptions gracefully (error recovery)"""
         monitor._fetch_new_issues = AsyncMock(side_effect=Exception("Fetch error"))
         monitor._process_task_pipeline = AsyncMock()
         monitor._run_hop_cycle = AsyncMock()
 
         with patch("src.kortana.services.always_on_monitor.logger"):
-            with pytest.raises(Exception):
-                await monitor._monitoring_cycle()
+            # _monitoring_cycle has error recovery - it catches individual step
+            # exceptions and continues, so it should NOT raise
+            await monitor._monitoring_cycle()
+            # Verify the fetch was attempted
+            monitor._fetch_new_issues.assert_called_once()
 
 
 class TestFetchNewIssues:
@@ -185,6 +188,15 @@ class TestProcessTaskPipeline:
         mock_session.__aenter__ = AsyncMock(return_value=mock_db)
         mock_session.__aexit__ = AsyncMock(return_value=None)
         monitor.db_manager.get_session = MagicMock(return_value=mock_session)
+
+        # Mock the task filter to return the task with a mock context
+        mock_context = MagicMock()
+        mock_context.impact_level = MagicMock()
+        mock_context.impact_level.value = "high"
+        monitor.task_filter = MagicMock()
+        monitor.task_filter.filter_and_rank_tasks = AsyncMock(
+            return_value=[(mock_task, mock_context)]
+        )
 
         monitor._process_single_task = AsyncMock()
 

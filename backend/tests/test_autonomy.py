@@ -294,12 +294,11 @@ class TestGitHubAutonomyService:
         ]
         mock_response.raise_for_status = MagicMock()
 
-        with patch("httpx.AsyncClient") as mock_client_class, patch(
-            "os.getenv", return_value="test_token"
-        ):
-            mock_client = MagicMock()
-            mock_client_class.return_value.__aenter__.return_value = mock_client
-            mock_client.get = AsyncMock(return_value=mock_response)
+        # Mock the resilient http_client directly on the service
+        service.http_client = AsyncMock()
+        service.http_client.get = AsyncMock(return_value=mock_response)
+
+        with patch("os.getenv", return_value="test_token"):
             # Mock existing issues check
             mock_result = MagicMock()
             mock_result.all.return_value = []
@@ -476,27 +475,19 @@ class TestGitHubAutonomyService:
         """Test branch creation success"""
         task = GitHubTask(branch_name="test-branch", github_repo="owner/repo")
 
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"object": {"sha": "abc123"}}
+        mock_ref_response = MagicMock()
+        mock_ref_response.status_code = 200
+        mock_ref_response.json.return_value = {"object": {"sha": "abc123"}}
 
-        create_response = MagicMock()
-        create_response.status_code = 201
+        mock_create_response = MagicMock()
+        mock_create_response.status_code = 201
 
-        async def mock_get(*args, **kwargs):
-            return mock_response
+        # Mock the resilient http_client directly on the service
+        service.http_client = AsyncMock()
+        service.http_client.get = AsyncMock(return_value=mock_ref_response)
+        service.http_client.post = AsyncMock(return_value=mock_create_response)
 
-        async def mock_post(*args, **kwargs):
-            return create_response
-
-        with patch("httpx.AsyncClient") as mock_client_class, patch(
-            "os.getenv", return_value="test_token"
-        ):
-            mock_client = MagicMock()
-            mock_client_class.return_value.__aenter__.return_value = mock_client
-            mock_client.get = mock_get
-            mock_client.post = mock_post
-
+        with patch("os.getenv", return_value="test_token"):
             result = await service._create_branch(task)
             assert result is True
 
@@ -516,25 +507,12 @@ class TestGitHubAutonomyService:
         create_response = MagicMock()
         create_response.status_code = 201
 
-        with patch("httpx.AsyncClient") as mock_client_class, patch(
-            "os.getenv", return_value="test_token"
-        ):
-            mock_client = MagicMock()
-            mock_client_class.return_value.__aenter__.return_value = mock_client
+        # Mock http_client: first get (main) raises exception, second get (master) succeeds
+        service.http_client = AsyncMock()
+        service.http_client.get = AsyncMock(side_effect=[Exception("Not found"), master_response])
+        service.http_client.post = AsyncMock(return_value=create_response)
 
-            # Mock async methods
-            async def mock_get_main(*args, **kwargs):
-                return main_response
-
-            async def mock_get_master(*args, **kwargs):
-                return master_response
-
-            async def mock_post(*args, **kwargs):
-                return create_response
-
-            mock_client.get = MagicMock(side_effect=[main_response, master_response])
-            mock_client.post = MagicMock(return_value=create_response)
-
+        with patch("os.getenv", return_value="test_token"):
             result = await service._create_branch(task)
             assert result is True
 

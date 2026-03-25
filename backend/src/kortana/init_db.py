@@ -5,6 +5,8 @@ import asyncio
 import os
 import sys
 
+import asyncpg
+
 sys.path.insert(0, os.path.dirname(__file__))
 
 from src.kortana.config import get_settings
@@ -26,8 +28,6 @@ async def init_db():
 
     print("\n[2] Checking PostgreSQL Connection...")
     try:
-        import asyncpg
-
         # Try to connect to target database
         try:
             conn = await asyncpg.connect(

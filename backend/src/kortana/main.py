@@ -241,8 +241,8 @@ def create_app() -> FastAPI:
     )
 
     # Response caching middleware for optimization
-    # Initialize Redis for caching if available
-    if Redis is not None:
+    # Initialize Redis for caching if available (skip in testing)
+    if Redis is not None and settings.ENVIRONMENT != "testing":
         try:
             redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
             redis_client = Redis.from_url(redis_url)

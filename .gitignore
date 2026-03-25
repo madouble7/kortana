@@ -116,7 +116,12 @@ __pypackages__/
 
 # Celery stuff
 celerybeat-schedule
+celerybeat-schedule.*
 celerybeat.pid
+
+# Test artifacts
+test_output.txt
+test_results/
 
 # SageMath parsed files
 *.sage.py
@@ -157,6 +162,16 @@ yarn-error.log*
 # OS files
 .DS_Store
 Thumbs.db
+
+# Temp / diagnostic files
+tempdiff.txt
+test_output.txt
+_diag.txt
+_*.txt
+
+# Lint / coverage output
+ruff_out.*
+coverage_report.txt
 # React
 build/
 .parcel-cache/

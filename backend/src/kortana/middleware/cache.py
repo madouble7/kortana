@@ -87,14 +87,18 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
     def _invalidate_related_cache(self, request: Request) -> None:
         """Invalidate related cache entries on mutations"""
         if request.method in ["POST", "PUT", "DELETE"]:
-            # Simple strategy: invalidate cache entries with similar paths
+            # Invalidate cache entries with similar paths
             base_path = request.url.path.rsplit("/", 1)[0]  # Parent path
-            pattern = f"{self.strategy.key_prefix}{base_path}:*"
+            patterns = [
+                f"{self.strategy.key_prefix}{base_path}:*",
+                f"{self.strategy.key_prefix}{base_path}/*",
+            ]
 
             try:
-                for key in self.redis.scan_iter(match=pattern):
-                    self.redis.delete(key)
-                logger.debug(f"Invalidated cache for path pattern: {pattern}")
+                for pattern in patterns:
+                    for key in self.redis.scan_iter(match=pattern):
+                        self.redis.delete(key)
+                    logger.debug(f"Invalidated cache for path pattern: {pattern}")
             except Exception as e:
                 logger.warning(f"Cache invalidation failed: {e}")
 
@@ -156,7 +160,11 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
                         "time": time.time(),
                     }
 
-                    self.redis.setex(cache_key, self.strategy.ttl, json.dumps(cache_entry))
+                    try:
+                        self.redis.setex(cache_key, self.strategy.ttl, json.dumps(cache_entry))
+                    except Exception as e:
+                        logger.warning(f"Cache write error: {e}")
+                        self.stats["errors"] += 1
 
                     # Add cache headers to response
                     response.headers["cache-control"] = f"max-age={self.strategy.ttl}, public"
@@ -170,7 +178,7 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
                         media_type=response.media_type,
                     )
                 except Exception as e:
-                    logger.warning(f"Cache write error: {e}")
+                    logger.warning(f"Cache response processing error: {e}")
                     self.stats["errors"] += 1
             else:
                 # Invalidate related caches on mutations

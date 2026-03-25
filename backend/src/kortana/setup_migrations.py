@@ -5,6 +5,8 @@ import os
 import subprocess
 import sys
 
+from src.kortana.database import SessionLocal
+
 
 def setup_alembic():
     """Initialize Alembic migration system"""
@@ -101,6 +103,11 @@ def setup_alembic():
     )
 
     return True
+
+
+async def setup_migrations() -> bool:
+    """Async wrapper for migration setup."""
+    return setup_alembic()
 
 
 if __name__ == "__main__":

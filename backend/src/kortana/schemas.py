@@ -62,7 +62,7 @@ class AgentBase(BaseModel):
 
 class AgentCreate(AgentBase):
     model: str
-    temperature: float = 0.7
+    temperature: float = Field(0.7, ge=0.0, le=1.0)
 
 
 class AgentUpdate(BaseModel):
@@ -94,21 +94,26 @@ class TaskClassification(str, Enum):
 
 class TaskStatus(str, Enum):
     PENDING = "pending"
+    RUNNING = "running"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
     FAILED = "failed"
+    CANCELLED = "cancelled"
     WAITING_FOR_HO = "waiting_for_ho"
     BLOCKED = "blocked"
 
 
 class TaskBase(BaseModel):
-    name: str
+    name: Optional[str] = None
+    title: Optional[str] = None
     description: Optional[str] = None
     classification: TaskClassification = TaskClassification.AUTO
+    agent_id: Optional[str] = None
 
 
 class TaskCreate(TaskBase):
     command: Optional[str] = None
+    priority: Optional[int] = Field(None, ge=1, le=5)
 
 
 class Task(TaskBase):
@@ -140,6 +145,7 @@ class ErrorResponse(BaseModel):
     message: str
     status_code: int
     details: Optional[dict] = None
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
 
 
 class BillingPlanType(str, Enum):

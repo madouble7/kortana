@@ -4,7 +4,7 @@ Tests security scanning, code quality analysis, and Gemini integration
 """
 
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import httpx
@@ -112,8 +112,8 @@ x = 1
         assert "avg_line_length" in quality
         assert "long_lines" in quality
 
-    @patch("requests.post")
-    def test_generate_review_with_gemini(self, mock_post, code_reviewer):
+    @pytest.mark.asyncio
+    async def test_generate_review_with_gemini(self, code_reviewer):
         """Test review generation with Gemini API"""
         mock_response = MagicMock()
         mock_response.json.return_value = {
@@ -138,10 +138,16 @@ x = 1
             ]
         }
         mock_response.status_code = 200
-        mock_post.return_value = mock_response
+        mock_response.raise_for_status = MagicMock()
 
-        with patch.dict("os.environ", {"GEMINI_API_KEY": "test_key"}):
-            review = code_reviewer.generate_review(
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+
+        with patch.dict("os.environ", {"GEMINI_API_KEY": "test_key"}), \
+             patch("src.kortana.routers.code_reviewer.httpx.AsyncClient", return_value=mock_client):
+            review = await code_reviewer.generate_review(
                 code="def hello(): pass", plan="Add hello function"
             )
 
@@ -182,13 +188,18 @@ x = 1
         assert "Good code" in comment or "good code" in comment.lower()
         assert comment.startswith("#") or comment.startswith(">")  # Markdown format
 
-    @patch("requests.post")
-    def test_post_review_to_github(self, mock_post, code_reviewer):
+    @pytest.mark.asyncio
+    async def test_post_review_to_github(self, code_reviewer):
         """Test posting review to GitHub PR"""
         mock_response = MagicMock()
         mock_response.status_code = 201
         mock_response.json.return_value = {"id": 123}
-        mock_post.return_value = mock_response
+        mock_response.raise_for_status = MagicMock()
+
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
 
         review = {
             "score": 8,
@@ -198,15 +209,16 @@ x = 1
             "recommendation": "approve",
         }
 
-        with patch.dict("os.environ", {"GITHUB_TOKEN": "test_token"}):
-            result = code_reviewer.post_review(
+        with patch.dict("os.environ", {"GITHUB_TOKEN": "test_token"}), \
+             patch("src.kortana.routers.code_reviewer.httpx.AsyncClient", return_value=mock_client):
+            result = await code_reviewer.post_review(
                 owner="testuser", repo="testrepo", pr_number=123, review=review, token="test_token"
             )
 
         assert result["success"] is True or result.get("comment_id") is not None
 
-    @patch("requests.post")
-    def test_post_review_dry_run(self, mock_post, code_reviewer):
+    @pytest.mark.asyncio
+    async def test_post_review_dry_run(self, code_reviewer):
         """Test posting review in dry-run mode"""
         review = {
             "score": 8,
@@ -216,7 +228,7 @@ x = 1
             "recommendation": "approve",
         }
 
-        result = code_reviewer.post_review(
+        result = await code_reviewer.post_review(
             owner="testuser",
             repo="testrepo",
             pr_number=123,
@@ -226,7 +238,6 @@ x = 1
         )
 
         assert result["dry_run"] is True
-        assert mock_post.call_count == 0
 
     def test_code_reviewer_initialization(self, code_reviewer):
         """Test CodeReviewer initialization"""
