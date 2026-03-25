@@ -5,12 +5,12 @@ Manages the autonomous development loop: monitoring issues, planning, and execut
 
 import inspect
 import os
+import subprocess
 from datetime import datetime
 from typing import Any
 
 import httpx
 from sqlalchemy import select
-
 from src.kortana.config import get_settings
 from src.kortana.http_client import get_http_client
 from src.kortana.logger import get_logger
@@ -39,18 +39,14 @@ class GitHubAutonomyService:
 
         # Validate token is actually set (not placeholder)
         if self.github_token and self.github_token.startswith("your_"):
-            logger.warning(
-                "GitHub token appears to be a placeholder, replacing with env var"
-            )
+            logger.warning("GitHub token appears to be a placeholder, replacing with env var")
             self.github_token = os.getenv("GITHUB_TOKEN", "")
 
         self.repo_owner = os.getenv("GITHUB_OWNER") or self.settings.GITHUB_OWNER
         self.repo_name = os.getenv("GITHUB_REPO") or self.settings.GITHUB_REPO
         self.max_retries = self.settings.TASK_MAX_RETRIES
 
-        logger.info(
-            f"GitHubAutonomyService initialized: {self.repo_owner}/{self.repo_name}"
-        )
+        logger.info(f"GitHubAutonomyService initialized: {self.repo_owner}/{self.repo_name}")
         logger.debug(f"GitHub token present: {bool(self.github_token)}")
 
     @staticmethod
@@ -94,9 +90,7 @@ class GitHubAutonomyService:
             "Authorization": f"token {self.github_token}",
             "Accept": "application/vnd.github.v3+json",
         }
-        url = (
-            f"https://api.github.com/repos/{owner}/{name}/issues?state=open&per_page=50"
-        )
+        url = f"https://api.github.com/repos/{owner}/{name}/issues?state=open&per_page=50"
 
         try:
             response = await self.http_client.get(
@@ -108,9 +102,7 @@ class GitHubAutonomyService:
             return []
 
         queued_tasks = []
-        issue_numbers = [
-            issue["number"] for issue in issues if "pull_request" not in issue
-        ]
+        issue_numbers = [issue["number"] for issue in issues if "pull_request" not in issue]
 
         if not issue_numbers:
             return []
@@ -164,9 +156,7 @@ class GitHubAutonomyService:
             "Authorization": f"token {self.github_token}",
             "Accept": "application/vnd.github.v3+json",
         }
-        url = (
-            f"https://api.github.com/repos/{owner}/{name}/issues?state=open&per_page=50"
-        )
+        url = f"https://api.github.com/repos/{owner}/{name}/issues?state=open&per_page=50"
 
         try:
             # Use sync httpx client for Celery compatibility
@@ -174,9 +164,7 @@ class GitHubAutonomyService:
             response.raise_for_status()
             issues = response.json()
             logger.info(f"Fetched {len(issues)} issues from {owner}/{name}")
-            return [
-                {"number": issue["number"], "title": issue["title"]} for issue in issues
-            ]
+            return [{"number": issue["number"], "title": issue["title"]} for issue in issues]
         except Exception as e:
             logger.error(f"Failed to fetch GitHub issues: {str(e)}")
             return []
@@ -219,11 +207,7 @@ class GitHubAutonomyService:
             self.settings.ENVIRONMENT == "production"
             or os.getenv("KORTANA_AUTONOMOUS_MODE") == "true"
         ):
-            stmt = (
-                select(GitHubTask)
-                .where(GitHubTask.status == "planning_complete")
-                .limit(limit)
-            )
+            stmt = select(GitHubTask).where(GitHubTask.status == "planning_complete").limit(limit)
             result = await self._db_execute(stmt)
             planned = result.scalars().all()
             for task in planned:
@@ -238,9 +222,7 @@ class GitHubAutonomyService:
             if not task:
                 raise ValueError("Task not found")
         else:
-            task = (
-                task_or_id  # Already have the task object, no additional query needed
-            )
+            task = task_or_id  # Already have the task object, no additional query needed
 
         task.status = "analyzing"
         await self._db_commit()
@@ -272,9 +254,7 @@ class GitHubAutonomyService:
             if not task:
                 raise ValueError("Task not found")
         else:
-            task = (
-                task_or_id  # Already have the task object, no additional query needed
-            )
+            task = task_or_id  # Already have the task object, no additional query needed
 
         task.status = "planning"
         await self._db_commit()
@@ -296,9 +276,7 @@ class GitHubAutonomyService:
         await self._db_commit()
         return task
 
-    async def execute_task(
-        self, task_or_id: GitHubTask | str, dry_run: bool = False
-    ) -> GitHubTask:
+    async def execute_task(self, task_or_id: GitHubTask | str, dry_run: bool = False) -> GitHubTask:
         """Execute the task: Create branch, apply changes, and commit"""
         if isinstance(task_or_id, str):
             stmt = select(GitHubTask).where(GitHubTask.id == task_or_id)
@@ -307,9 +285,7 @@ class GitHubAutonomyService:
             if not task:
                 raise ValueError("Task not found")
         else:
-            task = (
-                task_or_id  # Already have the task object, no additional query needed
-            )
+            task = task_or_id  # Already have the task object, no additional query needed
 
         task.status = "executing"
         await self._db_commit()
@@ -329,6 +305,27 @@ class GitHubAutonomyService:
 
             if result.get("errors"):
                 raise Exception(f"Code generation errors: {result['errors']}")
+
+            # 3. Commit changes to the branch (if not dry-run)
+            if not dry_run:
+                files_changed = (
+                    result.get("created", [])
+                    + result.get("modified", [])
+                    + result.get("deleted", [])
+                )
+                if files_changed:
+                    if not await self._commit_branch_changes(task, files_changed):
+                        raise Exception("Failed to commit changes")
+
+                    # 4. Push branch to GitHub
+                    if not await self._push_branch(task):
+                        raise Exception("Failed to push branch")
+
+                    # 5. Create pull request
+                    pr_number = await self._create_pull_request_for_branch(task)
+                    if pr_number:
+                        task.pr_number = pr_number
+                        logger.info(f"Created PR #{pr_number} for task #{task.github_issue_number}")
 
             task.status = "executed"
             task.executed_at = datetime.utcnow()
@@ -369,13 +366,9 @@ class GitHubAutonomyService:
                     )
                     raise Exception("Main branch not found")
             except Exception as e:
-                logger.debug(
-                    f"Getting main branch failed: {str(e)}, trying master branch"
-                )
+                logger.debug(f"Getting main branch failed: {str(e)}, trying master branch")
                 # Try master branch
-                ref_url = (
-                    f"https://api.github.com/repos/{owner}/{repo}/git/ref/heads/master"
-                )
+                ref_url = f"https://api.github.com/repos/{owner}/{repo}/git/ref/heads/master"
                 ref_response = await self.http_client.get(
                     ref_url, api_name="github_api", headers=headers, timeout=10
                 )
@@ -417,6 +410,107 @@ class GitHubAutonomyService:
         except Exception as e:
             logger.error(f"Branch creation failed with exception: {str(e)}")
             return False
+
+    async def _commit_branch_changes(self, task: GitHubTask, files_changed: list[Any]) -> bool:
+        """Commit changed files to the local repository"""
+        try:
+            # Stage the changed files
+            for file_path in files_changed:
+                subprocess.run(
+                    ["git", "add", str(file_path)], cwd=".", check=True, capture_output=True
+                )
+
+            # Create commit with message from issue/task
+            commit_message = (
+                f"Auto: Resolve issue #{task.github_issue_number}\n\n"
+                f"Issue: {task.title}\n"
+                f"Branch: {task.branch_name}"
+            )
+
+            result = subprocess.run(
+                ["git", "commit", "-m", commit_message],
+                cwd=".",
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            logger.info(f"Committed changes: {result.stdout}")
+            return True
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to commit changes: {e.stderr}")
+            return False
+        except Exception as e:
+            logger.error(f"Commit failed with exception: {str(e)}")
+            return False
+
+    async def _push_branch(self, task: GitHubTask) -> bool:
+        """Push the branch to GitHub"""
+        try:
+            owner, repo = task.github_repo.split("/")
+
+            # Push to origin (configure git to use token)
+            push_url = f"https://{self.github_token}@github.com/{owner}/{repo}.git"
+
+            result = subprocess.run(
+                ["git", "push", "-u", push_url, f"HEAD:{task.branch_name}"],
+                cwd=".",
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            logger.info(f"Pushed branch {task.branch_name}: {result.stdout}")
+            return True
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to push branch: {e.stderr}")
+            return False
+        except Exception as e:
+            logger.error(f"Push failed with exception: {str(e)}")
+            return False
+
+    async def _create_pull_request_for_branch(self, task: GitHubTask) -> int | None:
+        """Create a pull request for the branch"""
+        try:
+            owner, repo = task.github_repo.split("/")
+
+            headers = {
+                "Authorization": f"token {self.github_token}",
+                "Accept": "application/vnd.github.v3+json",
+            }
+
+            # Create PR from branch back to main
+            pr_data = {
+                "title": f"[AUTO] {task.title}",
+                "body": f"Autonomous fix for issue #{task.github_issue_number}\n\nGenerated by KOR'TANA autonomy system",
+                "head": task.branch_name,
+                "base": "main",
+            }
+
+            # Fallback to master if main doesn't exist
+            url = f"https://api.github.com/repos/{owner}/{repo}/pulls"
+
+            response = await self.http_client.post(
+                url, api_name="github_api", headers=headers, json=pr_data, timeout=10
+            )
+
+            if response.status_code == 201:
+                pr = response.json()
+                pr_number = pr.get("number")
+                logger.info(f"Created PR #{pr_number} for {task.branch_name}")
+                return pr_number
+            elif response.status_code == 422:
+                # PR might already exist
+                logger.warning(f"PR creation returned 422: {response.text}")
+                return None
+            else:
+                logger.error(
+                    f"PR creation failed with status {response.status_code}: {response.text}"
+                )
+                return None
+        except Exception as e:
+            logger.error(f"PR creation failed with exception: {str(e)}")
+            return None
 
     def close(self):
         """Close database session safely"""
