@@ -39,14 +39,18 @@ class GitHubAutonomyService:
 
         # Validate token is actually set (not placeholder)
         if self.github_token and self.github_token.startswith("your_"):
-            logger.warning("GitHub token appears to be a placeholder, replacing with env var")
+            logger.warning(
+                "GitHub token appears to be a placeholder, replacing with env var"
+            )
             self.github_token = os.getenv("GITHUB_TOKEN", "")
 
         self.repo_owner = os.getenv("GITHUB_OWNER") or self.settings.GITHUB_OWNER
         self.repo_name = os.getenv("GITHUB_REPO") or self.settings.GITHUB_REPO
         self.max_retries = self.settings.TASK_MAX_RETRIES
 
-        logger.info(f"GitHubAutonomyService initialized: {self.repo_owner}/{self.repo_name}")
+        logger.info(
+            f"GitHubAutonomyService initialized: {self.repo_owner}/{self.repo_name}"
+        )
         logger.debug(f"GitHub token present: {bool(self.github_token)}")
 
     @staticmethod
@@ -90,7 +94,9 @@ class GitHubAutonomyService:
             "Authorization": f"token {self.github_token}",
             "Accept": "application/vnd.github.v3+json",
         }
-        url = f"https://api.github.com/repos/{owner}/{name}/issues?state=open&per_page=50"
+        url = (
+            f"https://api.github.com/repos/{owner}/{name}/issues?state=open&per_page=50"
+        )
 
         try:
             response = await self.http_client.get(
@@ -102,7 +108,9 @@ class GitHubAutonomyService:
             return []
 
         queued_tasks = []
-        issue_numbers = [issue["number"] for issue in issues if "pull_request" not in issue]
+        issue_numbers = [
+            issue["number"] for issue in issues if "pull_request" not in issue
+        ]
 
         if not issue_numbers:
             return []
@@ -156,7 +164,9 @@ class GitHubAutonomyService:
             "Authorization": f"token {self.github_token}",
             "Accept": "application/vnd.github.v3+json",
         }
-        url = f"https://api.github.com/repos/{owner}/{name}/issues?state=open&per_page=50"
+        url = (
+            f"https://api.github.com/repos/{owner}/{name}/issues?state=open&per_page=50"
+        )
 
         try:
             # Use sync httpx client for Celery compatibility
@@ -164,7 +174,9 @@ class GitHubAutonomyService:
             response.raise_for_status()
             issues = response.json()
             logger.info(f"Fetched {len(issues)} issues from {owner}/{name}")
-            return [{"number": issue["number"], "title": issue["title"]} for issue in issues]
+            return [
+                {"number": issue["number"], "title": issue["title"]} for issue in issues
+            ]
         except Exception as e:
             logger.error(f"Failed to fetch GitHub issues: {str(e)}")
             return []
@@ -207,7 +219,11 @@ class GitHubAutonomyService:
             self.settings.ENVIRONMENT == "production"
             or os.getenv("KORTANA_AUTONOMOUS_MODE") == "true"
         ):
-            stmt = select(GitHubTask).where(GitHubTask.status == "planning_complete").limit(limit)
+            stmt = (
+                select(GitHubTask)
+                .where(GitHubTask.status == "planning_complete")
+                .limit(limit)
+            )
             result = await self._db_execute(stmt)
             planned = result.scalars().all()
             for task in planned:
@@ -222,7 +238,9 @@ class GitHubAutonomyService:
             if not task:
                 raise ValueError("Task not found")
         else:
-            task = task_or_id  # Already have the task object, no additional query needed
+            task = (
+                task_or_id  # Already have the task object, no additional query needed
+            )
 
         task.status = "analyzing"
         await self._db_commit()
@@ -254,7 +272,9 @@ class GitHubAutonomyService:
             if not task:
                 raise ValueError("Task not found")
         else:
-            task = task_or_id  # Already have the task object, no additional query needed
+            task = (
+                task_or_id  # Already have the task object, no additional query needed
+            )
 
         task.status = "planning"
         await self._db_commit()
@@ -276,7 +296,9 @@ class GitHubAutonomyService:
         await self._db_commit()
         return task
 
-    async def execute_task(self, task_or_id: GitHubTask | str, dry_run: bool = False) -> GitHubTask:
+    async def execute_task(
+        self, task_or_id: GitHubTask | str, dry_run: bool = False
+    ) -> GitHubTask:
         """Execute the task: Create branch, apply changes, and commit"""
         if isinstance(task_or_id, str):
             stmt = select(GitHubTask).where(GitHubTask.id == task_or_id)
@@ -285,7 +307,9 @@ class GitHubAutonomyService:
             if not task:
                 raise ValueError("Task not found")
         else:
-            task = task_or_id  # Already have the task object, no additional query needed
+            task = (
+                task_or_id  # Already have the task object, no additional query needed
+            )
 
         task.status = "executing"
         await self._db_commit()
@@ -323,6 +347,7 @@ class GitHubAutonomyService:
     async def _create_branch(self, task: GitHubTask) -> bool:
         """Create GitHub branch for task using async httpx"""
         if not self.github_token:
+            logger.error("GitHub token not configured for branch creation")
             return False
 
         try:
@@ -338,25 +363,59 @@ class GitHubAutonomyService:
                 ref_response = await self.http_client.get(
                     ref_url, api_name="github_api", headers=headers, timeout=10
                 )
-            except Exception:
+                if ref_response.status_code != 200:
+                    logger.debug(
+                        f"Main branch not found (status {ref_response.status_code}), trying master"
+                    )
+                    raise Exception("Main branch not found")
+            except Exception as e:
+                logger.debug(
+                    f"Getting main branch failed: {str(e)}, trying master branch"
+                )
                 # Try master branch
-                ref_url = f"https://api.github.com/repos/{owner}/{repo}/git/ref/heads/master"
+                ref_url = (
+                    f"https://api.github.com/repos/{owner}/{repo}/git/ref/heads/master"
+                )
                 ref_response = await self.http_client.get(
                     ref_url, api_name="github_api", headers=headers, timeout=10
                 )
+                if ref_response.status_code != 200:
+                    logger.error(
+                        f"Failed to get master branch (status {ref_response.status_code}): {ref_response.text}"
+                    )
+                    return False
 
-            main_sha = ref_response.json()["object"]["sha"]
+            # Parse and validate main_sha
+            try:
+                main_sha = ref_response.json()["object"]["sha"]
+                logger.debug(f"Got base branch SHA: {main_sha[:8]}...")
+            except (KeyError, ValueError) as e:
+                logger.error(f"Failed to parse branch SHA from response: {str(e)}")
+                return False
 
             # Create branch
             branch_data = {"ref": f"refs/heads/{task.branch_name}", "sha": main_sha}
             create_url = f"https://api.github.com/repos/{owner}/{repo}/git/refs"
+            logger.info(f"Creating branch: {task.branch_name}")
+
             create_response = await self.http_client.post(
-                create_url, api_name="github_api", headers=headers, json=branch_data, timeout=10
+                create_url,
+                api_name="github_api",
+                headers=headers,
+                json=branch_data,
+                timeout=10,
             )
 
-            return create_response.status_code == 201
+            if create_response.status_code == 201:
+                logger.info(f"Branch created successfully: {task.branch_name}")
+                return True
+            else:
+                logger.error(
+                    f"Branch creation failed with status {create_response.status_code}: {create_response.text}"
+                )
+                return False
         except Exception as e:
-            logger.error(f"Branch creation failed: {str(e)}")
+            logger.error(f"Branch creation failed with exception: {str(e)}")
             return False
 
     def close(self):
