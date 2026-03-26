@@ -6,6 +6,8 @@ Supports: Gemini, OpenAI, Claude, OpenRouter, Groq with automatic fallback
 import os
 from typing import Optional
 
+import httpx
+
 from src.kortana.services.gemini_config import get_model_name
 
 
@@ -67,9 +69,11 @@ class MultiModelAIService:
 
             import openai
 
-            openai.api_key = api_key
             self.providers["openai"] = {
-                "client": openai,
+                "client": openai.OpenAI(
+                    api_key=api_key,
+                    http_client=httpx.Client(timeout=30.0),
+                ),
                 "model": "gpt-3.5-turbo",
                 "type": "openai",
             }
@@ -124,7 +128,9 @@ class MultiModelAIService:
 
             self.providers["openrouter"] = {
                 "client": openai_module.OpenAI(
-                    api_key=api_key, base_url="https://openrouter.ai/api/v1"
+                    api_key=api_key,
+                    base_url="https://openrouter.ai/api/v1",
+                    http_client=httpx.Client(timeout=30.0),
                 ),
                 "model": "meta-llama/llama-2-70b-chat",
                 "type": "openrouter",

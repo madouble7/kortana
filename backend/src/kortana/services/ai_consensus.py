@@ -20,6 +20,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
+import httpx
+
 from src.kortana.logger import get_logger
 
 logger = get_logger(__name__)
@@ -131,7 +133,10 @@ class AIConsensusEngine:
         try:
             import openai
 
-            client = openai.AsyncOpenAI(api_key=key)
+            client = openai.AsyncOpenAI(
+                api_key=key,
+                http_client=httpx.AsyncClient(timeout=30.0),
+            )
             self._providers["openai"] = {"client": client, "model": "gpt-4o-mini"}
             self._stats["openai"] = ProviderStats()
         except Exception as e:
@@ -176,7 +181,11 @@ class AIConsensusEngine:
         try:
             import openai as openai_mod
 
-            client = openai_mod.AsyncOpenAI(api_key=key, base_url="https://openrouter.ai/api/v1")
+            client = openai_mod.AsyncOpenAI(
+                api_key=key,
+                base_url="https://openrouter.ai/api/v1",
+                http_client=httpx.AsyncClient(timeout=30.0),
+            )
             self._providers["openrouter"] = {
                 "client": client,
                 "model": "meta-llama/llama-3-70b-instruct",
