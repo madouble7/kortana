@@ -99,8 +99,8 @@ async def _create_github_pr(
     branch_name: str,
     task_id: str,
     task_name: str,
-    repo_owner: str = "KOR-TANA",
-    repo_name: str = "kortana",
+    repo_owner: str | None = None,
+    repo_name: str | None = None,
 ) -> dict:
     """
     Autonomously create a GitHub PR for a SELF_CORRECTION task in evolution/ branch.
@@ -108,6 +108,9 @@ async def _create_github_pr(
     Returns: {"pr_number": int, "pr_url": str, "success": bool}
     """
     try:
+        repo_owner = repo_owner or settings.GITHUB_OWNER
+        repo_name = repo_name or settings.GITHUB_REPO
+
         # Validate GitHub token is available
         github_token = getenv_safe("GITHUB_TOKEN")
         if not github_token:
@@ -177,8 +180,8 @@ This PR was created autonomously by the Human Only Protocol (HOP) when a code-mo
 
 async def _merge_github_pr(
     pr_number: int,
-    repo_owner: str = "KOR-TANA",
-    repo_name: str = "kortana",
+    repo_owner: str | None = None,
+    repo_name: str | None = None,
 ) -> dict:
     """
     Autonomously merge a GitHub PR for a verified SELF_CORRECTION task.
@@ -186,6 +189,9 @@ async def _merge_github_pr(
     Returns: {"success": bool, "reason": str}
     """
     try:
+        repo_owner = repo_owner or settings.GITHUB_OWNER
+        repo_name = repo_name or settings.GITHUB_REPO
+
         github_token = getenv_safe("GITHUB_TOKEN")
         if not github_token:
             logger.warning("SKIPPED gh pr merge: GitHub token not configured")
@@ -259,8 +265,8 @@ async def execute_task(task_id: str):
         logger.info(f"🔄 SELF_CORRECTION workflow triggered for {task_id}")
 
         # Step 1: Create GitHub PR
-        repo_owner = "KOR-TANA"  # TODO: Make configurable
-        repo_name = "kortana"
+        repo_owner = settings.GITHUB_OWNER
+        repo_name = settings.GITHUB_REPO
         pr_result = await _create_github_pr(
             branch_name, task_id, task_data.get("name"), repo_owner, repo_name
         )

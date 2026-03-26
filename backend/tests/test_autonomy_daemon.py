@@ -21,7 +21,7 @@ class TestAutonomyDaemon:
         task = GitHubTask(
             id="task-123",
             github_issue_number=53,
-            github_repo="KOR-TANA/kortana",
+            github_repo="madouble7/kortana",
             title="Consolidate dual backend stacks",
             description="desc",
             status="planning_complete",
@@ -63,7 +63,7 @@ class TestAutonomyDaemon:
         task = GitHubTask(
             id="task-queued",
             github_issue_number=11000,
-            github_repo="KOR-TANA/kortana",
+            github_repo="madouble7/kortana",
             title="Queued autonomy task",
             description="desc",
             status="queued",

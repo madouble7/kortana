@@ -6,6 +6,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+OK = "[OK]"
+ERR = "[ERR]"
+WARN = "[WARN]"
+
 
 async def check_token() -> None:
     from src.kortana.http_client import get_http_client
@@ -15,12 +19,11 @@ async def check_token() -> None:
     repo = os.getenv("GITHUB_REPO", "kortana")
     
     if not token:
-        print("✗ GITHUB_TOKEN not found in environment")
+        print(f"{ERR} GITHUB_TOKEN not found in environment")
         return
     
     print(f"Testing token against: {owner}/{repo}")
-    token_display = f"{token[:20]}...{token[-10:]}" if len(token) > 30 else token[:10] + "..."
-    print(f"Token format: {token_display}")
+    print(f"Token format: prefix={token[:4]} length={len(token)}")
     print()
     
     client = get_http_client()
@@ -34,11 +37,11 @@ async def check_token() -> None:
             timeout=10,
         )
         user_data = response.json()
-        print(f"✓ Authenticated as: {user_data.get('login')}")
+        print(f"{OK} Authenticated as: {user_data.get('login')}")
         print(f"  Type: {user_data.get('type')}")
         print()
     except Exception as e:
-        print(f"✗ Failed to authenticate: {e}")
+        print(f"{ERR} Failed to authenticate: {e}")
         return
     
     # Check if token has repo access (read)
@@ -50,11 +53,11 @@ async def check_token() -> None:
             timeout=10,
         )
         repo_data = response.json()
-        print(f"✓ Can read repository: {repo_data.get('full_name')}")
+        print(f"{OK} Can read repository: {repo_data.get('full_name')}")
         print(f"  Permission level: {repo_data.get('permissions')}")
         print()
     except Exception as e:
-        print(f"✗ Cannot read repository: {e}")
+        print(f"{ERR} Cannot read repository: {e}")
         return
     
     # Check if token has push access (write)
@@ -67,13 +70,13 @@ async def check_token() -> None:
             timeout=10,
         )
         branches = response.json()
-        print(f"✓ Can list branches: {len(branches)} found")
+        print(f"{OK} Can list branches: {len(branches)} found")
         main_branch = next((b for b in branches if b['name'] == 'main'), None)
         if main_branch:
             print(f"  Main branch SHA: {main_branch['commit']['sha'][:8]}...")
         print()
     except Exception as e:
-        print(f"✗ Cannot list branches: {e}")
+        print(f"{ERR} Cannot list branches: {e}")
         return
     
     # Check write permissions by trying to access collaborators
@@ -85,14 +88,14 @@ async def check_token() -> None:
             timeout=10,
         )
         _ = response.json()
-        print("✓ Can list collaborators (write permission indicator)")
+        print(f"{OK} Can list collaborators (write permission indicator)")
         print()
     except Exception as e:
-        print(f"⚠ Limited to read-only access: {str(e)[:100]}")
+        print(f"{WARN} Limited to read-only access: {str(e)[:100]}")
         return
     
     print("=" * 60)
-    print("✅ TOKEN APPEARS TO HAVE PROPER PERMISSIONS")
+    print(f"{OK} TOKEN APPEARS TO HAVE PROPER PERMISSIONS")
     print("=" * 60)
 
 

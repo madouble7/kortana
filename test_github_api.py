@@ -6,6 +6,10 @@ from pathlib import Path
 
 import requests
 
+OK = "[OK]"
+ERR = "[ERR]"
+INFO = "[INFO]"
+
 # Load .env file
 env_file = Path(__file__).parent / ".env"
 if env_file.exists():
@@ -16,9 +20,11 @@ if env_file.exists():
                 os.environ[key.strip()] = value.strip()
 
 github_token = os.getenv("GITHUB_TOKEN", "").strip()
+github_owner = os.getenv("GITHUB_OWNER", "madouble7").strip()
+github_repo = os.getenv("GITHUB_REPO", "kortana").strip()
 
 if not github_token:
-    print("❌ GITHUB_TOKEN not set in environment")
+    print(f"{ERR} GITHUB_TOKEN not set in environment")
 else:
     print(f"GitHub token found (length: {len(github_token)})")
     print("Testing GitHub API...")
@@ -33,33 +39,35 @@ else:
     print(f"\n/user endpoint: Status {response.status_code}")
     if response.status_code == 200:
         user = response.json()
-        print(f"  ✓ Authenticated as: {user['login']}")
+        print(f"  {OK} Authenticated as: {user['login']}")
     else:
-        print(f"  ❌ Error: {response.text[:200]}")
+        print(f"  {ERR} Error: {response.text[:200]}")
 
-    # Test 2: Get KOR-TANA repo
+    # Test 2: Get target repo
     response = requests.get(
-        "https://api.github.com/repos/KOR-TANA/kortana", headers=headers, timeout=5
+        f"https://api.github.com/repos/{github_owner}/{github_repo}",
+        headers=headers,
+        timeout=5,
     )
-    print(f"\n/repos/KOR-TANA/kortana endpoint: Status {response.status_code}")
+    print(f"\n/repos/{github_owner}/{github_repo} endpoint: Status {response.status_code}")
     if response.status_code == 200:
         repo = response.json()
-        print(f"  ✓ Repo found: {repo['name']}")
+        print(f"  {OK} Repo found: {repo['name']}")
     else:
-        print(f"  ❌ Error: {response.text[:200]}")
+        print(f"  {ERR} Error: {response.text[:200]}")
 
     # Test 3: Try to get a ref (main branch)
     response = requests.get(
-        "https://api.github.com/repos/KOR-TANA/kortana/git/refs/heads/main",
+        f"https://api.github.com/repos/{github_owner}/{github_repo}/git/refs/heads/main",
         headers=headers,
         timeout=5,
     )
     print(f"\n/git/refs/heads/main endpoint: Status {response.status_code}")
     if response.status_code == 200:
         ref = response.json()
-        print(f"  ✓ Main branch SHA: {ref['object']['sha'][:8]}...")
+        print(f"  {OK} Main branch SHA: {ref['object']['sha'][:8]}...")
     else:
-        print(f"  ❌ Error: {response.text[:200]}")
+        print(f"  {ERR} Error: {response.text[:200]}")
 
     # Test 4: Try creating a branch (prepare data but don't commit)
     print("\nSimulating branch creation API call...")
@@ -68,15 +76,15 @@ else:
         "sha": "3fa8bf1",  # The safe code commit
     }
     response = requests.post(
-        "https://api.github.com/repos/KOR-TANA/kortana/git/refs",
+        f"https://api.github.com/repos/{github_owner}/{github_repo}/git/refs",
         headers=headers,
         json=branch_data,
         timeout=5,
     )
     print(f"POST /git/refs endpoint: Status {response.status_code}")
     if response.status_code == 201:
-        print("  ✓ Branch created successfully")
+        print(f"  {OK} Branch created successfully")
     elif response.status_code == 422:
-        print("  ℹ Branch already exists (expected on retry)")
+        print(f"  {INFO} Branch already exists (expected on retry)")
     else:
-        print(f"  ❌ Error: {response.text[:300]}")
+        print(f"  {ERR} Error: {response.text[:300]}")
