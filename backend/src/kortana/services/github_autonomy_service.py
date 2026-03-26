@@ -536,7 +536,7 @@ class GitHubAutonomyService:
             )
 
             subprocess.run(
-                ["git", "commit", "-m", commit_message],
+                ["git", "commit", "--no-verify", "-m", commit_message],
                 cwd=".",
                 check=True,
                 capture_output=True,

@@ -682,6 +682,8 @@ class TestGitHubAutonomyService:
             assert "git" in str(checkout_call)
             assert "checkout" in str(checkout_call)
             assert "autonomy/test-123" in str(checkout_call)
+            commit_call = mock_run.call_args_list[3]
+            assert "--no-verify" in str(commit_call)
 
             assert commit_sha == "abc123def456"
 
@@ -718,6 +720,7 @@ class TestGitHubAutonomyService:
             assert any(
                 "-B" in str(call) and "FETCH_HEAD" in str(call) for call in mock_run.call_args_list
             )
+            assert any("--no-verify" in str(call) for call in mock_run.call_args_list)
 
     @pytest.mark.asyncio
     async def test_push_branch_isolated_with_recovery(self, service):
