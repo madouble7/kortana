@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from src.kortana.database import get_db_manager
 from src.kortana.logger import get_logger
@@ -16,9 +17,25 @@ from src.kortana.services.always_on_monitor import (
     start_always_on_monitor,
     stop_always_on_monitor,
 )
+from src.kortana.services.autonomy_daemon import get_autonomy_daemon
+from src.kortana.services.operator_directive_service import OperatorDirectiveService
+from src.kortana.services.workspace_bridge_service import get_workspace_bridge
 
 router = APIRouter()
 logger = get_logger(__name__)
+
+
+class DirectiveRequest(BaseModel):
+    content: str = Field(..., min_length=1, max_length=4000)
+    directive_type: str | None = Field(default=None, max_length=32)
+    priority: int = Field(default=50, ge=1, le=100)
+    source: str = Field(default="user", max_length=64)
+    scope: str = Field(default="global", max_length=64)
+
+
+class CommentRequest(BaseModel):
+    content: str = Field(..., min_length=1, max_length=4000)
+    priority: int = Field(default=50, ge=1, le=100)
 
 
 @router.post("/start")
@@ -75,6 +92,166 @@ async def get_monitoring_status() -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Failed to get monitoring status: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get status: {str(e)}")
+
+
+@router.post("/comment")
+async def create_operator_comment(body: CommentRequest) -> Dict[str, Any]:
+    """Record a steering comment for the always-on daemon."""
+    try:
+        service = OperatorDirectiveService()
+        directive = await service.create_directive(
+            content=body.content,
+            directive_type="comment",
+            priority=body.priority,
+            source="comment",
+        )
+        summary = await service.get_active_summary()
+        return {
+            "message": "Operator comment recorded",
+            "directive": service.serialize(directive),
+            "summary": {
+                "pause_requested": summary.pause_requested,
+                "focus_topics": summary.focus_topics,
+                "avoid_topics": summary.avoid_topics,
+                "max_tasks_override": summary.max_tasks_override,
+                "active_count": summary.active_count,
+            },
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+    except Exception as e:
+        logger.error(f"Failed to record operator comment: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to record comment: {str(e)}")
+
+
+@router.post("/prompt")
+async def create_operator_prompt(body: CommentRequest) -> Dict[str, Any]:
+    """Alias for operator steering input from IDE/chat surfaces."""
+    return await create_operator_comment(body)
+
+
+@router.post("/directives")
+async def create_operator_directive(body: DirectiveRequest) -> Dict[str, Any]:
+    """Create a persistent operator directive for the always-on daemon."""
+    try:
+        service = OperatorDirectiveService()
+        directive = await service.create_directive(
+            content=body.content,
+            directive_type=body.directive_type,
+            priority=body.priority,
+            source=body.source,
+            scope=body.scope,
+        )
+        summary = await service.get_active_summary()
+        return {
+            "message": "Operator directive recorded",
+            "directive": service.serialize(directive),
+            "summary": {
+                "pause_requested": summary.pause_requested,
+                "focus_topics": summary.focus_topics,
+                "avoid_topics": summary.avoid_topics,
+                "max_tasks_override": summary.max_tasks_override,
+                "active_count": summary.active_count,
+            },
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+    except Exception as e:
+        logger.error(f"Failed to create operator directive: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to create directive: {str(e)}")
+
+
+@router.get("/directives")
+async def list_operator_directives(
+    status: str | None = "active", limit: int = 20
+) -> Dict[str, Any]:
+    """List operator directives and the current merged guidance."""
+    try:
+        service = OperatorDirectiveService()
+        directives = await service.list_directives(status=status, limit=limit)
+        summary = await service.get_active_summary()
+        return {
+            "directives": [service.serialize(item) for item in directives],
+            "summary": {
+                "pause_requested": summary.pause_requested,
+                "focus_topics": summary.focus_topics,
+                "avoid_topics": summary.avoid_topics,
+                "max_tasks_override": summary.max_tasks_override,
+                "active_count": summary.active_count,
+                "prompt_preamble": summary.prompt_preamble,
+            },
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+    except Exception as e:
+        logger.error(f"Failed to list operator directives: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to list directives: {str(e)}")
+
+
+@router.get("/course")
+async def get_operator_course() -> Dict[str, Any]:
+    """Return the merged course state that guides always-on work."""
+    try:
+        service = OperatorDirectiveService()
+        summary = await service.get_active_summary()
+        daemon = get_autonomy_daemon().get_status()
+        return {
+            "summary": {
+                "pause_requested": summary.pause_requested,
+                "focus_topics": summary.focus_topics,
+                "avoid_topics": summary.avoid_topics,
+                "max_tasks_override": summary.max_tasks_override,
+                "active_count": summary.active_count,
+                "notes": summary.notes,
+                "prompt_preamble": summary.prompt_preamble,
+            },
+            "daemon": {
+                "running": daemon.get("running"),
+                "control_mode": daemon.get("control_mode"),
+                "safe_mode": daemon.get("safe_mode"),
+                "live_execution_enabled": daemon.get("live_execution_enabled"),
+                "max_tasks_per_cycle": daemon.get("max_tasks_per_cycle"),
+                "system_state": daemon.get("system_state"),
+            },
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+    except Exception as e:
+        logger.error(f"Failed to get operator course: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get course: {str(e)}")
+
+
+@router.post("/directives/{directive_id}/resolve")
+async def resolve_operator_directive(directive_id: str) -> Dict[str, Any]:
+    """Resolve an operator directive once it is no longer relevant."""
+    try:
+        service = OperatorDirectiveService()
+        directive = await service.resolve_directive(directive_id)
+        if directive is None:
+            raise HTTPException(status_code=404, detail="Directive not found")
+        return {
+            "message": "Operator directive resolved",
+            "directive": service.serialize(directive),
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to resolve operator directive: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to resolve directive: {str(e)}")
+
+
+@router.get("/workspace")
+async def get_workspace_status() -> Dict[str, Any]:
+    """Return local workspace bridge status for the always-on daemon."""
+    try:
+        bridge = get_workspace_bridge()
+        status = await bridge.poll()
+        return {
+            "workspace": status,
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+    except Exception as e:
+        logger.error(f"Failed to get workspace status: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get workspace status: {str(e)}"
+        )
 
 
 @router.get("/tasks/status")

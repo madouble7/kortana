@@ -6,6 +6,7 @@ Provides async SQLAlchemy with connection pooling and optimization
 import os
 import time
 from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
@@ -126,6 +127,12 @@ class DatabaseManager:
 
     async def get_session(self) -> AsyncGenerator[AsyncSession, None]:
         """Get async database session"""
+        async with self.session_scope() as session:
+            yield session
+
+    @asynccontextmanager
+    async def session_scope(self) -> AsyncGenerator[AsyncSession, None]:
+        """Get async database session as a context manager."""
         if not self._connected:
             await self.initialize()
 

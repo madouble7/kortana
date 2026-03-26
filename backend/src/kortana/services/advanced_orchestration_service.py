@@ -187,7 +187,7 @@ class AdvancedOrchestrationService:
         available = self._get_available_resources()
 
         # Fetch task priorities from database
-        async with self.db_manager.get_session() as db:
+        async with self.db_manager.session_scope() as db:
             priorities = await self._fetch_task_priorities(db, phase_tasks)
 
         # Allocate resources based on priority and availability

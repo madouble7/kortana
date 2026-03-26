@@ -55,6 +55,17 @@ class AlwaysOnMonitor:
             "high_impact_tasks_selected": 0,  # Phase 7 Cycle #3
         }
 
+    def _db_session_scope(self):
+        """Support both the real DB manager context API and older mocked tests."""
+        session_scope_defined = "session_scope" in getattr(self.db_manager, "__dict__", {})
+        session_scope_defined = session_scope_defined or hasattr(
+            type(self.db_manager), "session_scope"
+        )
+        if session_scope_defined:
+            session_scope = self.db_manager.session_scope
+            return session_scope()
+        return self.db_manager.get_session()
+
     async def start_monitoring(self):
         """Start the always-on monitoring loop"""
         if not self.monitoring_enabled:
@@ -156,7 +167,7 @@ class AlwaysOnMonitor:
         Phase 7 Cycle #3: Add intelligent filtering and impact analysis"""
         try:
             logger.info("📥 Fetching new GitHub issues...")
-            async with self.db_manager.get_session() as db:
+            async with self._db_session_scope() as db:
                 try:
                     self.github_service = GitHubAutonomyService(db)
                     new_tasks = await self.github_service.fetch_and_queue_issues()
@@ -205,13 +216,17 @@ class AlwaysOnMonitor:
         try:
             logger.info("⚙️ Processing task pipeline...")
 
-            async with self.db_manager.get_session() as db:
-                # Get pending tasks
+            async with self._db_session_scope() as db:
+                # Pick up new work and tasks already staged for execution.
                 from sqlalchemy import select
 
                 stmt = (
                     select(GitHubTask)
-                    .filter(GitHubTask.status == "pending")
+                    .filter(
+                        GitHubTask.status.in_(
+                            ("pending", "analyzed", "planning_complete")
+                        )
+                    )
                     .limit(
                         self.max_concurrent_tasks * 2
                     )  # Fetch more to intelligently select
@@ -220,12 +235,12 @@ class AlwaysOnMonitor:
                 all_pending_tasks = result.scalars().all()
 
                 if not all_pending_tasks:
-                    logger.info("📭 No pending tasks to process")
+                    logger.info("📭 No queued tasks to process")
                     return
 
                 # Phase 7 Cycle #3: Intelligent task selection
                 logger.info(
-                    f"🧠 Analyzing {len(all_pending_tasks)} pending tasks for intelligent selection..."
+                    f"🧠 Analyzing {len(all_pending_tasks)} queued tasks for intelligent selection..."
                 )
                 ranked_tasks = await self.task_filter.filter_and_rank_tasks(
                     all_pending_tasks, limit=self.max_concurrent_tasks
@@ -238,7 +253,7 @@ class AlwaysOnMonitor:
                 pending_tasks = [task for task, _ in ranked_tasks]
 
                 logger.info(
-                    f"🚀 Processing {len(pending_tasks)} highest-impact pending tasks"
+                    f"🚀 Processing {len(pending_tasks)} highest-impact queued tasks"
                 )
 
                 # Log selected tasks with impact scores
@@ -358,7 +373,7 @@ class AlwaysOnMonitor:
         try:
             from sqlalchemy import func, select
 
-            async with self.db_manager.get_session() as db:
+            async with self._db_session_scope() as db:
                 # Optimized counting
                 async def count_filtered(filter_expr=None):
                     stmt = select(func.count()).select_from(GitHubTask)

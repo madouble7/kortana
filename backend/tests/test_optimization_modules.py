@@ -154,6 +154,20 @@ class TestResponseCacheMiddleware:
         except ImportError as e:
             pytest.skip(f"Cache middleware module not available: {e}")
 
+    def test_cache_strategy_excludes_live_autonomy_routes(self):
+        """Dynamic autonomy routes should bypass Redis response caching."""
+        try:
+            from src.kortana.middleware.cache import CacheStrategy
+
+            strategy = CacheStrategy()
+
+            assert "/api/autonomy" in strategy.exclude_paths
+            assert "/api/always-on" in strategy.exclude_paths
+            assert "/api/daemon" in strategy.exclude_paths
+            assert "/api/intelligence" in strategy.exclude_paths
+        except ImportError as e:
+            pytest.skip(f"Cache middleware module not available: {e}")
+
     def test_cache_middleware_instantiation(self):
         """Test cache middleware can be instantiated with mocked dependencies"""
         try:

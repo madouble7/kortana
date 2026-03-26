@@ -1,0 +1,83 @@
+"""Tests for the workspace bridge service."""
+
+from __future__ import annotations
+
+from unittest.mock import AsyncMock
+
+import pytest
+
+from src.kortana.services.workspace_bridge_service import WorkspaceBridgeService
+
+
+class TestWorkspaceBridgeService:
+    def test_extract_changed_files_handles_renames(self) -> None:
+        lines = [
+            " M backend/src/kortana/services/autonomy_daemon.py",
+            "R  old_name.py -> new_name.py",
+            "?? .kortana/operator_inbox.md",
+        ]
+
+        changed = WorkspaceBridgeService._extract_changed_files(lines)
+
+        assert changed == [
+            "backend/src/kortana/services/autonomy_daemon.py",
+            "new_name.py",
+            ".kortana/operator_inbox.md",
+        ]
+
+    @pytest.mark.asyncio
+    async def test_ingest_inbox_creates_directives_from_non_comment_lines(
+        self, tmp_path, monkeypatch
+    ) -> None:
+        service = WorkspaceBridgeService()
+        service.repo_root = tmp_path
+        service.inbox_path = tmp_path / ".kortana" / "operator_inbox.md"
+        service.inbox_path.parent.mkdir(parents=True, exist_ok=True)
+        service.inbox_path.write_text(
+            "# title\nfocus: tests\navoid: billing\n\nplain note\n",
+            encoding="utf-8",
+        )
+
+        create_directive_mock = AsyncMock()
+
+        class StubDirectiveService:
+            def __init__(self) -> None:
+                self.create_directive = create_directive_mock
+
+        monkeypatch.setattr(
+            "src.kortana.services.workspace_bridge_service.OperatorDirectiveService",
+            StubDirectiveService,
+        )
+
+        ingested = await service._ingest_inbox()
+
+        assert ingested == 3
+        assert create_directive_mock.await_count == 3
+
+    @pytest.mark.asyncio
+    async def test_ingest_inbox_skips_when_digest_unchanged(
+        self, tmp_path, monkeypatch
+    ) -> None:
+        service = WorkspaceBridgeService()
+        service.repo_root = tmp_path
+        service.inbox_path = tmp_path / ".kortana" / "operator_inbox.md"
+        service.inbox_path.parent.mkdir(parents=True, exist_ok=True)
+        service.inbox_path.write_text("focus: tests\n", encoding="utf-8")
+
+        create_directive_mock = AsyncMock()
+
+        class StubDirectiveService:
+            def __init__(self) -> None:
+                self.create_directive = create_directive_mock
+
+        monkeypatch.setattr(
+            "src.kortana.services.workspace_bridge_service.OperatorDirectiveService",
+            StubDirectiveService,
+        )
+
+        first = await service._ingest_inbox()
+        second = await service._ingest_inbox()
+
+        assert first == 1
+        assert second == 0
+        assert create_directive_mock.await_count == 1

@@ -8,6 +8,7 @@ runtime can use to tune its own behavior.
 
 from __future__ import annotations
 
+import inspect
 import os
 from dataclasses import asdict
 from datetime import datetime
@@ -16,6 +17,10 @@ from typing import Any
 from src.kortana.logger import get_logger
 from src.kortana.services.adaptive_learner import get_adaptive_learner
 from src.kortana.services.goal_manager import Goal, GoalStatus, GoalTier, get_goal_manager
+from src.kortana.services.operator_directive_service import (
+    DirectiveSummary,
+    get_active_operator_summary,
+)
 from src.kortana.services.self_awareness import get_self_awareness
 
 logger = get_logger(__name__)
@@ -42,14 +47,25 @@ class AutonomyController:
 
         assessment = await get_self_awareness().assess()
         learner = await get_adaptive_learner()
+        operator_summary = get_active_operator_summary()
+        if inspect.isawaitable(operator_summary):
+            operator_summary = await operator_summary
+        operator_course = self._directive_summary_to_course(
+            operator_summary
+        )
         insights = [asdict(insight) for insight in learner.generate_insights()]
         goal_manager = get_goal_manager()
 
         self._sync_managed_goals(goal_manager, assessment["state"], assessment["snapshot"])
+        self._sync_operator_goal(goal_manager, operator_course)
         goal_manager.reprioritise(assessment["state"], insights)
         current_focus = goal_manager.next_goal()
-        controls = self._recommend_controls(assessment, insights, daemon_status)
-        constraints = self._derive_constraints(assessment, daemon_status)
+        controls = self._recommend_controls(
+            assessment, insights, daemon_status, operator_course
+        )
+        constraints = self._derive_constraints(
+            assessment, daemon_status, operator_course
+        )
         autonomy_index = self._compute_autonomy_index(
             assessment=assessment,
             daemon_status=daemon_status,
@@ -67,6 +83,7 @@ class AutonomyController:
             "snapshot": assessment["snapshot"],
             "corrections": assessment["corrections"],
             "top_insights": insights[:3],
+            "operator_course": operator_course,
             "goal_status": goal_manager.get_status(),
             "daemon": self._summarize_daemon_status(daemon_status),
         }
@@ -114,6 +131,7 @@ class AutonomyController:
         assessment: dict[str, Any],
         insights: list[dict[str, Any]],
         daemon_status: dict[str, Any],
+        operator_course: dict[str, Any],
     ) -> dict[str, Any]:
         snapshot = assessment["snapshot"]
         current_max = int(daemon_status.get("max_tasks_per_cycle", 3) or 3)
@@ -123,6 +141,12 @@ class AutonomyController:
         rationale: list[str] = []
 
         state = assessment["state"]
+        if operator_course.get("paused"):
+            max_tasks = self._min_tasks
+            dry_run_mode = True
+            focus_mode = "hold"
+            rationale.append("operator requested pause")
+
         if state == "critical":
             max_tasks = self._min_tasks
             dry_run_mode = True
@@ -159,6 +183,12 @@ class AutonomyController:
         if snapshot.get("pending_tasks", 0) == 0 and focus_mode != "stabilize":
             focus_mode = "observe"
             rationale.append("no task backlog")
+        elif (
+            operator_course.get("latest_directive") is not None
+            and focus_mode not in {"stabilize", "hold"}
+        ):
+            focus_mode = "align_with_operator"
+            rationale.append("operator guidance is active")
 
         for insight in insights:
             if (
@@ -179,13 +209,34 @@ class AutonomyController:
             "rationale": rationale[:4],
         }
 
+    @staticmethod
+    def _directive_summary_to_course(summary: DirectiveSummary) -> dict[str, Any]:
+        latest = summary.directives[0] if summary.directives else None
+        keywords = list(dict.fromkeys(summary.focus_topics + summary.avoid_topics))
+        text_summary = summary.prompt_preamble or " | ".join(summary.notes[:3])
+        return {
+            "paused": summary.pause_requested,
+            "directive_count": summary.active_count,
+            "latest_directive": latest,
+            "keywords": keywords,
+            "summary": text_summary or "No active operator direction",
+            "focus_topics": summary.focus_topics,
+            "avoid_topics": summary.avoid_topics,
+            "notes": summary.notes,
+        }
+
     def _derive_constraints(
-        self, assessment: dict[str, Any], daemon_status: dict[str, Any]
+        self,
+        assessment: dict[str, Any],
+        daemon_status: dict[str, Any],
+        operator_course: dict[str, Any],
     ) -> list[str]:
         snapshot = assessment["snapshot"]
         capabilities = assessment["capabilities"]
         constraints: list[str] = []
 
+        if operator_course.get("paused"):
+            constraints.append("Operator has paused forward execution")
         if not capabilities.get("github_integration"):
             constraints.append("GitHub integration is unavailable")
         if not capabilities.get("ai_providers"):
@@ -242,6 +293,41 @@ class AutonomyController:
     ) -> None:
         self._sync_stability_goal(goal_manager, state, snapshot)
         self._sync_backlog_goal(goal_manager, snapshot)
+
+    def _sync_operator_goal(
+        self, goal_manager: Any, operator_course: dict[str, Any]
+    ) -> None:
+        goal = self._find_managed_goal(goal_manager, "operator_direction")
+        latest = operator_course.get("latest_directive")
+        if latest is None:
+            if goal is not None and goal.status == GoalStatus.ACTIVE:
+                goal_manager.complete(goal.id)
+            return
+
+        description = latest.get("content") or operator_course.get("summary", "")
+        metadata = {
+            "managed_by": _MANAGED_BY,
+            "kind": "operator_direction",
+            "directive_id": latest.get("id"),
+            "directive_mode": latest.get("directive_type"),
+        }
+        if goal is None:
+            goal_manager.create(
+                title="Follow operator direction",
+                tier=GoalTier.IMMEDIATE,
+                description=description,
+                success_criteria="Operator direction is satisfied or superseded",
+                progress=0.0,
+                priority=99,
+                metadata=metadata,
+            )
+        else:
+            goal_manager.update(
+                goal.id,
+                description=description,
+                priority=99,
+                metadata={**goal.metadata, **metadata},
+            )
 
     def _sync_stability_goal(
         self, goal_manager: Any, state: str, snapshot: dict[str, Any]

@@ -16,6 +16,8 @@ from src.kortana.http_client import get_http_client
 from src.kortana.logger import get_logger
 from src.kortana.models import GitHubTask
 from src.kortana.services.gemini import gemini_service
+from src.kortana.services.operator_directive_service import OperatorDirectiveService
+from src.kortana.services.workspace_bridge_service import get_workspace_bridge
 
 from src.kortana.config import get_settings
 
@@ -98,6 +100,20 @@ class GitHubAutonomyService:
         self.github_token = os.getenv("GITHUB_TOKEN") or get_settings().GITHUB_TOKEN
         if not self.github_token:
             raise ValueError("GitHub token not configured")
+
+    async def _operator_preamble(self) -> str:
+        """Return active operator steering for prompt conditioning."""
+        try:
+            summary = await OperatorDirectiveService(self.db).get_active_summary()
+            workspace_context = get_workspace_bridge().prompt_context()
+            if summary.prompt_preamble and workspace_context:
+                return f"{summary.prompt_preamble}\n{workspace_context}"
+            if workspace_context:
+                return workspace_context
+            return summary.prompt_preamble
+        except Exception as e:
+            logger.debug(f"Operator guidance unavailable for prompt build: {e}")
+            return ""
 
     async def fetch_and_queue_issues(self, repo: str | None = None) -> list[GitHubTask]:
         """Fetch open issues from GitHub and queue them as tasks if not already present"""
@@ -247,7 +263,10 @@ class GitHubAutonomyService:
 
         try:
             logger.info(f"Analyzing task #{task.github_issue_number}: {task.title}")
+            operator_preamble = await self._operator_preamble()
             prompt = (
+                f"{operator_preamble}\n\n" if operator_preamble else ""
+            ) + (
                 f"You are KOR'TANA PRIME, an autonomous AI architect modifying your own application (or another repository).\n"
                 f"Analyze this issue and provide expert-level implementation insights. "
                 f"If this is a [SELF-REPAIR] issue, you must diagnose the internal autonomy logic flaw causing the error and architect a structural fix.\n\n"
@@ -284,7 +303,10 @@ class GitHubAutonomyService:
 
         try:
             logger.info(f"Planning task #{task.github_issue_number}")
+            operator_preamble = await self._operator_preamble()
             prompt = (
+                f"{operator_preamble}\n\n" if operator_preamble else ""
+            ) + (
                 f"You are KOR'TANA PRIME, an autonomous AI entity architecting your own codebase. "
                 f"Generate a detailed file-by-file implementation plan for this issue. "
                 f"You MUST output ONLY a valid JSON object matching this schema:\n"

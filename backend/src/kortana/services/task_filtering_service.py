@@ -94,6 +94,11 @@ class TaskFilteringService:
             "priority_label": 0.2,
         }
 
+    @staticmethod
+    def _task_body(task: GitHubTask) -> str:
+        """Return task long-form text across legacy/current model shapes."""
+        return getattr(task, "body", None) or getattr(task, "description", "") or ""
+
     async def filter_and_rank_tasks(
         self, tasks: List[GitHubTask], limit: int | None = None
     ) -> List[tuple[GitHubTask, TaskImpactContext]]:
@@ -193,7 +198,7 @@ class TaskFilteringService:
 
         # Safe string joining for robustness
         title = task.title or ""
-        body = task.body or ""
+        body = self._task_body(task)
         combined_text = (title + " " + body).lower()
 
         evolution_relevant = any(tag.lower() in combined_text for tag in evolution_tags)
@@ -271,10 +276,8 @@ class TaskFilteringService:
             score += self.impact_weights["priority_label"]
 
         # Evolution relevance impact (high weight for Phase 7 evolution)
-        if any(
-            tag in (task.title + " " + task.body).lower()
-            for tag in ["autonomy", "hop", "phase-7", "evolution"]
-        ):
+        body = self._task_body(task)
+        if any(tag in (task.title + " " + body).lower() for tag in ["autonomy", "hop", "phase-7", "evolution"]):
             score += self.impact_weights["evolution_tag"]
 
         return min(score, 1.0)
@@ -284,13 +287,14 @@ class TaskFilteringService:
         injections = []
 
         try:
-            async with self.db_manager.get_session() as db:
+            async with self.db_manager.session_scope() as db:
                 task = await db.get(GitHubTask, task_id)
                 if not task:
                     return injections
 
                 # Check for related evolution discussions
-                if "phase-7" in task.title.lower() or "evolution" in task.body.lower():
+                body = self._task_body(task)
+                if "phase-7" in task.title.lower() or "evolution" in body.lower():
                     injections.append(
                         ContextInjection(
                             source="github",
@@ -336,13 +340,14 @@ class TaskFilteringService:
         injections = []
 
         try:
-            async with self.db_manager.get_session() as db:
+            async with self.db_manager.session_scope() as db:
                 task = await db.get(GitHubTask, task_id)
                 if not task:
                     return injections
 
                 # Check for explicit priority markers
-                if "blocking" in task.title.lower() or "blocker" in task.body.lower():
+                body = self._task_body(task)
+                if "blocking" in task.title.lower() or "blocker" in body.lower():
                     injections.append(
                         ContextInjection(
                             source="user",
@@ -353,7 +358,7 @@ class TaskFilteringService:
                     )
 
                 # Check for urgent markers
-                if "urgent" in task.title.lower() or "ASAP" in task.body:
+                if "urgent" in task.title.lower() or "ASAP" in body:
                     injections.append(
                         ContextInjection(
                             source="user",
