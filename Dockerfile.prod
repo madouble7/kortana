@@ -1,19 +1,17 @@
 ## syntax=docker/dockerfile:1.7
-# Multi-stage build for Kor'tana Unified Platform - Development
-# Optimized with BuildKit cache mounts and best practices
+# Production Dockerfile for Kor'tana - Optimized for size and security
 
 # --- Stage 1: Frontend Build ---
 FROM node:20-slim AS frontend-builder
 WORKDIR /app/frontend
 
 COPY frontend/package*.json ./
-
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --prefer-offline --no-audit --no-fund
 
 COPY frontend/ ./
-
-RUN npm run build
+RUN npm run build && \
+    npm prune --omit=dev
 
 
 # --- Stage 2: Backend Dependencies ---
@@ -28,50 +26,49 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     && rm -rf /var/lib/apt/lists/*
 
 COPY backend/requirements.txt ./
-
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --user --no-cache-dir --compile -r requirements.txt
 
 
-# --- Stage 3: Runtime Base ---
+# --- Stage 3: Final Production Image ---
 FROM python:3.11-slim
 WORKDIR /app
 
-# Install runtime dependencies only
+# Install only runtime dependencies
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     apt-get update && apt-get install -y --no-install-recommends \
     curl \
     libpq5 \
     ca-certificates \
-    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user for security
-RUN groupadd -r kortana && useradd -r -g kortana -u 1000 -m kortana
+# Create non-root user
+RUN groupadd -r kortana && useradd -r -g kortana -u 1000 -m kortana && \
+    chown -R kortana:kortana /app
 
-# Copy Python dependencies from builder stage
+# Copy Python dependencies
 COPY --from=backend-builder --chown=kortana:kortana /root/.local /home/kortana/.local
 
-# Copy backend application code
+# Copy application code
 COPY --chown=kortana:kortana backend/ ./
 
-# Copy built frontend assets
+# Copy frontend build artifacts
 COPY --from=frontend-builder --chown=kortana:kortana /app/frontend/dist ./static
 
-# Set environment variables
+# Set environment
 ENV PATH=/home/kortana/.local/bin:$PATH \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/app \
+    ENVIRONMENT=production \
     PORT=8000
 
-# Run as non-root user
 USER kortana
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD curl -fsS http://localhost:8000/api/health || exit 1
 
-# Start the application
-CMD ["uvicorn", "src.kortana.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run application
+CMD ["uvicorn", "src.kortana.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4", "--log-level", "info"]
