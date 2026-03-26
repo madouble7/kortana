@@ -351,6 +351,52 @@ class CodeGenerator:
                         }
                     )
 
+                # Fallback for markdown bullet lists such as:
+                # * **NEW:** `path/to/file.ts`
+                if not parsed["files"]:
+                    action_map = {
+                        "NEW": "create",
+                        "CREATE": "create",
+                        "MOD": "modify",
+                        "MODIFY": "modify",
+                        "UPDATE": "modify",
+                        "DEL": "delete",
+                        "DELETE": "delete",
+                    }
+                    markdown_file_matches = re.finditer(
+                        r"\*\s+\*\*(NEW|CREATE|MOD|MODIFY|UPDATE|DEL|DELETE):\*\*\s+`([^`]+)`",
+                        file_section.group(),
+                    )
+                    for match in markdown_file_matches:
+                        parsed["files"].append(
+                            {
+                                "path": match.group(2).strip(),
+                                "action": action_map[match.group(1)],
+                                "dependencies": [],
+                                "priority": 0,
+                                "content": "",
+                            }
+                        )
+
+            # Extract detailed file content sections, for example:
+            # **FILE: `path/to/file.ts`**
+            # ```typescript
+            # // code
+            # ```
+            detailed_file_matches = re.finditer(
+                r"\*\*FILE:\s+`([^`]+)`\*\*.*?```[a-zA-Z0-9_-]*\n(.*?)\n```",
+                plan_text,
+                re.DOTALL,
+            )
+            detailed_file_content: dict[str, str] = {}
+            for match in detailed_file_matches:
+                detailed_file_content[match.group(1).strip()] = match.group(2).strip()
+
+            for file_change in parsed["files"]:
+                path = file_change.get("path")
+                if path in detailed_file_content:
+                    file_change["content"] = detailed_file_content[path]
+
             # Extract commands
             cmd_pattern = r"COMMANDS:.*?(?=TESTS:|$)"
             cmd_section = re.search(cmd_pattern, plan_text, re.DOTALL)
