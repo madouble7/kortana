@@ -24,10 +24,11 @@ from typing import Any, Callable
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from src.kortana.database import get_db_manager
 from src.kortana.logger import get_logger
 from src.kortana.models import GitHubTask
+
+from src.kortana.config import get_settings
 
 logger = get_logger(__name__)
 
@@ -56,10 +57,11 @@ class AutonomyDaemon:
     """Self-sustaining autonomy loop that runs inside FastAPI's event loop."""
 
     def __init__(self) -> None:
+        settings = get_settings()
         self.enabled = os.getenv("AUTONOMY_DAEMON_ENABLED", "true").lower() == "true"
         self.cycle_interval = int(os.getenv("AUTONOMY_CYCLE_INTERVAL", "300"))
         self.max_tasks = int(os.getenv("AUTONOMY_MAX_TASKS_PER_CYCLE", "3"))
-        self.repo = f"{os.getenv('GITHUB_OWNER', 'KOR-TANA')}/{os.getenv('GITHUB_REPO', 'kortana')}"
+        self.repo = f"{settings.GITHUB_OWNER}/{settings.GITHUB_REPO}"
 
         self._running = False
         self._task: asyncio.Task[None] | None = None
@@ -193,11 +195,7 @@ class AutonomyDaemon:
         # Fetch pending tasks
         stmt = (
             select(GitHubTask)
-            .where(
-                GitHubTask.status.in_(
-                    ["queued", "pending", "analyzed", "planning_complete"]
-                )
-            )
+            .where(GitHubTask.status.in_(["queued", "pending", "analyzed", "planning_complete"]))
             .order_by(GitHubTask.created_at)
             .limit(self.max_tasks)
         )
