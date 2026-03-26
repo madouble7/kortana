@@ -143,7 +143,7 @@ class Settings:
 
     # GitHub Integration
     GITHUB_TOKEN: str | None = _get_env("GITHUB_TOKEN")
-    GITHUB_OWNER: str = _get_env("GITHUB_OWNER", "KOR-TANA") or "KOR-TANA"
+    GITHUB_OWNER: str = _get_env("GITHUB_OWNER", "madouble7") or "madouble7"
     GITHUB_REPO: str = _get_env("GITHUB_REPO", "kortana") or "kortana"
 
     # Discord Integration
