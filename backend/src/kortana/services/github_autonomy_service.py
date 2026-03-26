@@ -424,7 +424,7 @@ class GitHubAutonomyService:
                 logger.error(f"Failed to parse branch SHA from response: {str(e)}")
                 return False
 
-            # Create branch
+            # Create branch (idempotent - handle existing branches)
             branch_data = {"ref": f"refs/heads/{task.branch_name}", "sha": main_sha}
             create_url = f"https://api.github.com/repos/{owner}/{repo}/git/refs"
             logger.info(f"Creating branch: {task.branch_name}")
@@ -437,8 +437,12 @@ class GitHubAutonomyService:
                 timeout=10,
             )
 
+            # 201 = created, 422 = already exists (idempotent success)
             if create_response.status_code == 201:
                 logger.info(f"Branch created successfully: {task.branch_name}")
+                return True
+            elif create_response.status_code == 422:
+                logger.info(f"Branch already exists: {task.branch_name} (idempotent)")
                 return True
             else:
                 logger.error(
@@ -452,9 +456,25 @@ class GitHubAutonomyService:
     async def _commit_branch_changes(
         self, task: GitHubTask, files_changed: list[Any]
     ) -> str | None:
-        """Commit changed files to the local repository and return the new SHA."""
+        """Commit changed files to the task branch and return the new SHA."""
         try:
-            # Stage the changed files
+            # Check out and ensure we're on the task branch (isolated from working tree)
+            try:
+                subprocess.run(
+                    ["git", "checkout", task.branch_name],
+                    cwd=".",
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
+                logger.info(f"Checked out branch: {task.branch_name}")
+            except subprocess.CalledProcessError as e:
+                logger.error(
+                    f"Failed to checkout branch {task.branch_name}: {e.stderr}"
+                )
+                return None
+
+            # Stage the changed files on the task branch
             for file_path in files_changed:
                 subprocess.run(
                     ["git", "add", str(file_path)],
@@ -462,6 +482,7 @@ class GitHubAutonomyService:
                     check=True,
                     capture_output=True,
                 )
+                logger.debug(f"Staged file: {file_path}")
 
             # Create commit with message from issue/task
             commit_message = (
@@ -470,7 +491,7 @@ class GitHubAutonomyService:
                 f"Branch: {task.branch_name}"
             )
 
-            result = subprocess.run(
+            subprocess.run(
                 ["git", "commit", "-m", commit_message],
                 cwd=".",
                 check=True,
@@ -487,25 +508,54 @@ class GitHubAutonomyService:
             )
             commit_sha = sha_result.stdout.strip()
 
-            logger.info(f"Committed changes: {result.stdout}")
+            logger.info(f"Committed changes on {task.branch_name}: {commit_sha[:8]}...")
             return commit_sha or None
         except subprocess.CalledProcessError as e:
-            logger.error(f"Failed to commit changes: {e.stderr}")
+            logger.error(f"Failed to commit changes on {task.branch_name}: {e.stderr}")
             return None
         except Exception as e:
             logger.error(f"Commit failed with exception: {str(e)}")
             return None
 
     async def _push_branch(self, task: GitHubTask) -> bool:
-        """Push the branch to GitHub"""
+        """Push the task branch to GitHub with isolation guarantees."""
         try:
             owner, repo = task.github_repo.split("/")
 
-            # Push to origin (configure git to use token)
+            # Verify we're still on the task branch (safety check)
+            branch_check = subprocess.run(
+                ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                cwd=".",
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            current_branch = branch_check.stdout.strip()
+
+            if current_branch != task.branch_name:
+                logger.error(
+                    f"Not on task branch! Current: {current_branch}, Expected: {task.branch_name}"
+                )
+                # Try to recover by checking out the branch
+                subprocess.run(
+                    ["git", "checkout", task.branch_name],
+                    cwd=".",
+                    check=True,
+                    capture_output=True,
+                )
+                logger.info(f"Recovered: checked out {task.branch_name}")
+
+            # Push task branch to origin using explicit branch reference (isolated push)
             push_url = f"https://{self.github_token}@github.com/{owner}/{repo}.git"
 
             result = subprocess.run(
-                ["git", "push", "-u", push_url, f"HEAD:{task.branch_name}"],
+                [
+                    "git",
+                    "push",
+                    "-u",
+                    push_url,
+                    f"{task.branch_name}:{task.branch_name}",
+                ],
                 cwd=".",
                 check=True,
                 capture_output=True,
@@ -515,7 +565,7 @@ class GitHubAutonomyService:
             logger.info(f"Pushed branch {task.branch_name}: {result.stdout}")
             return True
         except subprocess.CalledProcessError as e:
-            logger.error(f"Failed to push branch: {e.stderr}")
+            logger.error(f"Failed to push branch {task.branch_name}: {e.stderr}")
             return False
         except Exception as e:
             logger.error(f"Push failed with exception: {str(e)}")

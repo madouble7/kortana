@@ -564,6 +564,97 @@ class TestGitHubAutonomyService:
             result = await service._create_branch(task)
             assert result is True
 
+    @pytest.mark.asyncio
+    async def test_create_branch_idempotent_on_422(self, service):
+        """Test branch creation is idempotent when branch already exists (422 response)"""
+        task = GitHubTask(branch_name="test-branch", github_repo="owner/repo")
+
+        mock_ref_response = MagicMock()
+        mock_ref_response.status_code = 200
+        mock_ref_response.json.return_value = {"object": {"sha": "abc123"}}
+
+        # 422 = conflict (branch already exists)
+        mock_create_response = MagicMock()
+        mock_create_response.status_code = 422
+        mock_create_response.text = "Branch already exists"
+
+        service.http_client = AsyncMock()
+        service.http_client.get = AsyncMock(return_value=mock_ref_response)
+        service.http_client.post = AsyncMock(return_value=mock_create_response)
+
+        with patch("os.getenv", return_value="test_token"):
+            result = await service._create_branch(task)
+            assert result is True  # Should succeed (idempotent)
+
+    @pytest.mark.asyncio
+    async def test_commit_branch_changes_isolated(self, service):
+        """Test that commits are isolated to the task branch (checkout first)"""
+        task = GitHubTask(
+            github_issue_number=123, branch_name="autonomy/test-123", title="Test Task"
+        )
+        files_changed = ["test.py", "test2.py"]
+
+        with patch("subprocess.run") as mock_run:
+            # First call: checkout - return success
+            # Second-fifth: git add - return success
+            # Sixth: git commit - return success
+            # Seventh: git rev-parse HEAD - return commit SHA
+            mock_results = [
+                MagicMock(returncode=0, stdout=""),  # checkout
+                MagicMock(returncode=0, stdout=""),  # add 1
+                MagicMock(returncode=0, stdout=""),  # add 2
+                MagicMock(returncode=0, stdout=""),  # commit
+                MagicMock(returncode=0, stdout="abc123def456\n"),  # rev-parse
+            ]
+            mock_run.side_effect = mock_results
+
+            commit_sha = await service._commit_branch_changes(task, files_changed)
+
+            # Verify checkout was called first
+            assert mock_run.call_count >= 5
+            checkout_call = mock_run.call_args_list[0]
+            assert "git" in str(checkout_call)
+            assert "checkout" in str(checkout_call)
+            assert "autonomy/test-123" in str(checkout_call)
+
+            assert commit_sha == "abc123def456"
+
+    @pytest.mark.asyncio
+    async def test_push_branch_isolated_with_recovery(self, service):
+        """Test that push uses explicit branch ref and recovers if on wrong branch"""
+        task = GitHubTask(
+            github_issue_number=123,
+            branch_name="autonomy/test-123",
+            github_repo="owner/repo",
+        )
+
+        with patch("subprocess.run") as mock_run:
+            # First call: branch check (returns different branch)
+            # Second: checkout recovery
+            # Third: git push
+            mock_results = [
+                MagicMock(returncode=0, stdout="main\n"),  # Current branch is main
+                MagicMock(returncode=0, stdout=""),  # Checkout recovery
+                MagicMock(returncode=0, stdout=""),  # Push success
+            ]
+            mock_run.side_effect = mock_results
+
+            with patch("os.getenv", return_value="test_token"):
+                result = await service._push_branch(task)
+
+            assert result is True
+            assert mock_run.call_count >= 3
+
+            # Verify recovery checkout was called
+            recovery_checkout_call = mock_run.call_args_list[1]
+            assert "checkout" in str(recovery_checkout_call)
+            assert "autonomy/test-123" in str(recovery_checkout_call)
+
+            # Verify final push uses explicit branch:branch ref (isolated)
+            push_call = mock_run.call_args_list[2]
+            assert "push" in str(push_call)
+            assert "autonomy/test-123:autonomy/test-123" in str(push_call)
+
 
 class TestHOPAutonomyService:
     """Tests for HOPAutonomyService"""
