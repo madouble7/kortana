@@ -8,6 +8,10 @@ from dotenv import load_dotenv
 load_dotenv()
 sys.path.insert(0, "backend")
 
+OK = "[OK]"
+ERR = "[ERR]"
+WARN = "[WARN]"
+
 
 async def test_branch_creation() -> None:
     import httpx
@@ -29,12 +33,12 @@ async def test_branch_creation() -> None:
         )
         
         if response.status_code != 200:
-            print(f"✗ Failed to get main SHA: {response.status_code}")
+            print(f"{ERR} Failed to get main SHA: {response.status_code}")
             print(f"  Response: {response.text[:200]}")
             return
         
         main_sha = response.json()["object"]["sha"]
-        print(f"✓ Got main branch SHA: {main_sha[:8]}...")
+        print(f"{OK} Got main branch SHA: {main_sha[:8]}...")
         print()
         
         # Step 2: Try to create a test branch
@@ -48,7 +52,7 @@ async def test_branch_creation() -> None:
         )
         
         if create_response.status_code == 201:
-            print(f"✅ Successfully created branch: {branch_name}")
+            print(f"{OK} Successfully created branch: {branch_name}")
             print()
             
             # Step 3: Delete test branch to clean up
@@ -60,18 +64,18 @@ async def test_branch_creation() -> None:
             )
             
             if delete_response.status_code == 204:
-                print(f"✓ Deleted test branch: {branch_name}")
+                print(f"{OK} Deleted test branch: {branch_name}")
                 print()
                 print("=" * 60)
-                print("✅ TOKEN HAS FULL WRITE PERMISSIONS")
+                print(f"{OK} TOKEN HAS FULL WRITE PERMISSIONS")
                 print("=" * 60)
             else:
-                print(f"⚠ Could not delete branch: {delete_response.status_code}")
+                print(f"{WARN} Could not delete branch: {delete_response.status_code}")
         elif create_response.status_code == 422:
-            print(f"⚠ Branch already exists (422): {create_response.json().get('message')}")
+            print(f"{WARN} Branch already exists (422): {create_response.json().get('message')}")
             print("  This is expected if run multiple times")
         else:
-            print(f"✗ Failed to create branch: {create_response.status_code}")
+            print(f"{ERR} Failed to create branch: {create_response.status_code}")
             print(f"  Response: {create_response.text}")
 
 

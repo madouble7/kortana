@@ -10,6 +10,8 @@ from dotenv import load_dotenv
 load_dotenv()
 sys.path.insert(0, "backend")
 
+OK = "[OK]"
+
 
 async def diagnose() -> None:
     from sqlalchemy import select
@@ -42,7 +44,7 @@ async def diagnose() -> None:
                 timeout=10,
             )
             main_sha = response.json()["object"]["sha"]
-            print(f"✓ Got main SHA: {main_sha[:8]}...")
+            print(f"{OK} Got main SHA: {main_sha[:8]}...")
 
             # Step 2: Try to create a test branch
             create_url = f"https://api.github.com/repos/{owner}/{repo}/git/refs"
