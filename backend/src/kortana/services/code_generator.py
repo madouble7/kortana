@@ -14,6 +14,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 
 class CodeGenerationError(Exception):
     """Raised when code generation fails"""
@@ -313,6 +315,20 @@ class CodeGenerator:
                         return self._normalize_json_plan(parsed_json)
                 except json.JSONDecodeError:
                     pass  # Fall through to YAML-like parser
+
+            yaml_match = re.search(r"```yaml\n(.*?)\n```", plan_text, re.DOTALL)
+            if yaml_match:
+                try:
+                    parsed_yaml = yaml.safe_load(yaml_match.group(1))
+                    if isinstance(parsed_yaml, dict) and isinstance(
+                        parsed_yaml.get("files"), list
+                    ):
+                        parsed_yaml.setdefault("commands", [])
+                        parsed_yaml.setdefault("tests", [])
+                        parsed_yaml.setdefault("description", plan_text[:500])
+                        return parsed_yaml
+                except yaml.YAMLError:
+                    pass  # Fall through to regex-based parser
 
             # Parse file changes section
             parsed = {

@@ -240,6 +240,32 @@ class TestCodeGenerator:
             }
         ]
 
+    def test_parse_plan_yaml_files_block(self):
+        """Test parsing YAML fenced plans with a files list."""
+        from src.kortana.services.code_generator import CodeGenerator
+
+        gen = CodeGenerator()
+        plan_text = """
+### FILE_CHANGES
+
+```yaml
+files:
+  - path: docs/autonomy-smoke-note.md
+    action: create
+    content: |
+      # Autonomy Smoke Note
+      This file was created by the autonomous GitHub pipeline.
+```
+"""
+        parsed = gen.parse_plan(plan_text)
+        assert len(parsed["files"]) == 1
+        assert parsed["files"][0]["path"] == "docs/autonomy-smoke-note.md"
+        assert parsed["files"][0]["action"] == "create"
+        assert (
+            parsed["files"][0]["content"]
+            == "# Autonomy Smoke Note\nThis file was created by the autonomous GitHub pipeline."
+        )
+
     def test_parse_plan_markdown_file_changes_with_file_blocks(self):
         """Test parsing markdown FILE_CHANGES bullets plus detailed FILE blocks."""
         from src.kortana.services.code_generator import CodeGenerator
