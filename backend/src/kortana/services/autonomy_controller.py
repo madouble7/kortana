@@ -1,14 +1,11 @@
-class AutonomyController:
-    def __init__(self, orchestrator):
-        self.orchestrator = orchestrator
-        self.is_diagnosing = False
+import asyncio
+from .github_autonomy_service import GithubAutonomyService
 
-    def handle_system_failure(self, failure_context):
-        if self.is_diagnosing:
-            return
-        
-        self.is_diagnosing = True
+class AutonomyController:
+    async def execute_task(self, task):
         try:
-            self.orchestrator.remediate(failure_context)
-        finally:
-            self.is_diagnosing = False
+            return await GithubAutonomyService().create_branch(task.branch_name)
+        except PermissionError as e:
+            print(f"[CRITICAL] Authorization Failure: {e}")
+            # Transition to CRITICAL_WAIT for manual token intervention
+            return {"status": "FAILED", "reason": "SCOPE_MISMATCH", "action": "REQUEST_TOKEN_UPDATE"}

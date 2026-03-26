@@ -17,6 +17,7 @@ __all__ = [
     "prayer",
     "rclone",
     "system",
+    "swarm",
     "task_queue",
     "test_orchestrator",
 ]

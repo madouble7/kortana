@@ -5,6 +5,7 @@ Manages the autonomous development loop: monitoring issues, planning, and execut
 
 import inspect
 import os
+import re
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -100,6 +101,20 @@ class GitHubAutonomyService:
         self.github_token = os.getenv("GITHUB_TOKEN") or get_settings().GITHUB_TOKEN
         if not self.github_token:
             raise ValueError("GitHub token not configured")
+
+    def _sanitize_git_output(self, text: str | None) -> str:
+        """Redact embedded GitHub credentials from git subprocess output."""
+        sanitized = text or ""
+        if self.github_token:
+            sanitized = sanitized.replace(
+                self.github_token, "[REDACTED_GITHUB_TOKEN]"
+            )
+        sanitized = re.sub(
+            r"https://[^\s/@]+@github\.com/",
+            "https://[REDACTED]@github.com/",
+            sanitized,
+        )
+        return sanitized
 
     async def _operator_preamble(self) -> str:
         """Return active operator steering for prompt conditioning."""
@@ -649,10 +664,16 @@ class GitHubAutonomyService:
                 text=True,
             )
 
-            logger.info(f"Pushed branch {task.branch_name}: {result.stdout}")
+            logger.info(
+                f"Pushed branch {task.branch_name}: "
+                f"{self._sanitize_git_output(result.stdout)}"
+            )
             return True
         except subprocess.CalledProcessError as e:
-            logger.error(f"Failed to push branch {task.branch_name}: {e.stderr}")
+            logger.error(
+                f"Failed to push branch {task.branch_name}: "
+                f"{self._sanitize_git_output(e.stderr)}"
+            )
             return False
         except Exception as e:
             logger.error(f"Push failed with exception: {str(e)}")

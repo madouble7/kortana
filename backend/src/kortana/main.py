@@ -70,6 +70,7 @@ try:
         prayer,
         rclone,
         singularity_bridge,
+        swarm,
         system,
         task_queue,
         test_orchestrator,
@@ -198,9 +199,28 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         print(f"[WARN] Intelligence systems startup: {e}")
 
+    # Start Phase 9 Fractal Swarm
+    try:
+        from src.kortana.services.autonomy_daemon import get_autonomy_daemon
+        from src.kortana.swarm.manager import get_swarm_manager
+
+        swarm_manager = get_swarm_manager()
+        daemon = get_autonomy_daemon()
+        swarm_manager.attach_daemon(daemon)
+        await swarm_manager.start()
+        print("[*] Phase 9 Fractal Swarm started")
+    except Exception as e:
+        print(f"[WARN] Phase 9 swarm startup: {e}")
+
     yield
 
     # Shutdown
+    try:
+        from src.kortana.swarm.manager import get_swarm_manager as _get_swarm
+
+        await _get_swarm().stop()
+    except Exception:
+        pass
     try:
         from src.kortana.services.autonomy_daemon import (
             get_autonomy_daemon as _get_daemon,
@@ -421,6 +441,9 @@ def create_app() -> FastAPI:
 
         # Autonomy Daemon control
         app.include_router(daemon_router.router)
+
+        # Phase 9 Fractal Swarm control
+        app.include_router(swarm.router)
 
         # Intelligence systems (Self-Awareness, Learner, Goals)
         app.include_router(intelligence_router.router)

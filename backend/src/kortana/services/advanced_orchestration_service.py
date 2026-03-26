@@ -1,10 +1,8 @@
-from ..utils.concurrency import recursion_guard
+class AdvancedOrchestrationService:
+    def reconcile_state(self, report):
+        if report.get("reason") == "SCOPE_MISMATCH":
+            self.transition_to_state("CRITICAL_WAIT")
+            self.notify_admin("KOR'TANA PRIME requires updated GITHUB_TOKEN with repo/workflow scopes.")
 
-# ... within AdvancedOrchestrationService ...
-
-    def log_failure(self, error_data):
-        with recursion_guard() as can_proceed:
-            if can_proceed:
-                self._write_to_db(error_data)
-            else:
-                self.logger.warning("Recursive log attempt blocked in OrchestrationService.")
+    def transition_to_state(self, state):
+        self.current_state = state
