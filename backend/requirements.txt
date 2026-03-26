@@ -18,7 +18,6 @@ google-auth==2.49.1
 openai==1.42.0
 anthropic==0.65.0
 groq==1.1.2
-openrouter==0.1.0
 
 # Data Validation & Serialization
 pydantic==2.12.5
