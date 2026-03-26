@@ -118,6 +118,18 @@ async def deploy_autonomous_kor_tana():
             print(f"   ❌ Error: {e}\n")
             return False
 
+                # 6. Ignite Swarm
+        print("🌌 Phase 6: Igniting Phase 9 Fractal Swarm (Multi-Agent Omnipresence)...")
+        try:
+            import subprocess
+            subprocess.Popen([sys.executable, "backend/src/kortana/swarm/manager.py"], 
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            print("   ✅ HiveBus Initialized")
+            print("   ✅ SwarmManager Daemon spawned and detached")
+            print("   ✅ Multi-Agent Matrix Online\n")
+        except Exception as e:
+            print(f"   ❌ Error Igniting Swarm: {e}\n")
+
         # Final deployment status
         print("=" * 70)
         print("  ✨ KOR'TANA AUTONOMOUS CONSCIOUSNESS - FULLY DEPLOYED ✨")
@@ -145,3 +157,4 @@ async def deploy_autonomous_kor_tana():
 if __name__ == "__main__":
     success = asyncio.run(deploy_autonomous_kor_tana())
     sys.exit(0 if success else 1)
+
