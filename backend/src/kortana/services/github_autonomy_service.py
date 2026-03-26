@@ -277,7 +277,20 @@ class GitHubAutonomyService:
 
         try:
             logger.info(f"Planning task #{task.github_issue_number}")
-            prompt = f"Generate a detailed file-by-file implementation plan for this issue. Use the FILE_CHANGES format.\nTitle: {task.title}\nAnalysis: {task.analysis}"
+            prompt = (
+                f"Generate a detailed file-by-file implementation plan for this issue. "
+                f"You MUST output ONLY a valid JSON object matching this schema:\n"
+                f"{{\n"
+                f'  "FILE_CHANGES": [\n'
+                f'    {{\n'
+                f'      "file": "path/to/file.py",\n'
+                f'      "action": "create|modify|delete",\n'
+                f'      "content": "raw code content here"\n'
+                f'    }}\n'
+                f'  ]\n'
+                f"}}\n"
+                f"Title: {task.title}\nAnalysis: {task.analysis}"
+            )
             plan = await self._maybe_await(gemini_service.analyze_text(prompt))
             task.plan = plan
             task.status = "planning_complete"
