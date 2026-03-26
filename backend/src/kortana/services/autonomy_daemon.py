@@ -28,6 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.kortana.database import get_db_manager
 from src.kortana.logger import get_logger
 from src.kortana.models import GitHubTask
+from src.kortana.services.self_awareness import get_self_awareness
 
 logger = get_logger(__name__)
 
@@ -57,9 +58,15 @@ class AutonomyDaemon:
 
     def __init__(self) -> None:
         self.enabled = os.getenv("AUTONOMY_DAEMON_ENABLED", "true").lower() == "true"
-        self.cycle_interval = int(os.getenv("AUTONOMY_CYCLE_INTERVAL", "300"))
-        self.max_tasks = int(os.getenv("AUTONOMY_MAX_TASKS_PER_CYCLE", "3"))
+        self.base_cycle_interval = int(os.getenv("AUTONOMY_CYCLE_INTERVAL", "300"))
+        self.base_max_tasks = int(os.getenv("AUTONOMY_MAX_TASKS_PER_CYCLE", "3"))
+        self.cycle_interval = self.base_cycle_interval
+        self.max_tasks = self.base_max_tasks
         self.repo = f"{os.getenv('GITHUB_OWNER', 'madouble7')}/{os.getenv('GITHUB_REPO', 'kortana')}"
+        self.safe_mode = False
+        self.live_execution_enabled = True
+        self._adaptation_history: list[dict[str, Any]] = []
+        self._deferred_tasks: set[str] = set()
 
         self._running = False
         self._task: asyncio.Task[None] | None = None
@@ -72,8 +79,13 @@ class AutonomyDaemon:
             "tasks_processed": 0,
             "tasks_succeeded": 0,
             "tasks_failed": 0,
+            "tasks_deferred": 0,
             "self_heals_manifested": 0,
+            "adaptive_adjustments": 0,
+            "safe_mode_cycles": 0,
             "last_cycle": None,
+            "last_assessment": None,
+            "last_self_regulation": None,
             "uptime_start": None,
             "errors": [],
         }
@@ -168,6 +180,7 @@ class AutonomyDaemon:
             self.metrics["last_assessment"] = assessment
         except Exception as e:
             logger.debug(f"Self-assessment unavailable: {e}")
+        await self._self_regulate()
 
         async for session in self._db_manager.get_session():
             # Phase 1: Discover new issues
@@ -177,6 +190,8 @@ class AutonomyDaemon:
             processed, succeeded, failed = await self._process_tasks(
                 session, max_tasks=effective_max_tasks
             )
+            # Phase 2: Drive pending tasks through pipeline
+            processed, succeeded, failed, deferred = await self._process_tasks(session)
 
             # Phase 3: The Zenith Protocol (Self-Healing via Meta-Cognition)
             await self._manifest_self_healing(session)
@@ -201,6 +216,7 @@ class AutonomyDaemon:
         self.metrics["tasks_processed"] += processed
         self.metrics["tasks_succeeded"] += succeeded
         self.metrics["tasks_failed"] += failed
+        self.metrics["tasks_deferred"] += deferred
         self.metrics["last_cycle"] = {
             "completed_at": datetime.utcnow().isoformat(),
             "duration_seconds": elapsed,
@@ -209,6 +225,9 @@ class AutonomyDaemon:
             "succeeded": succeeded,
             "failed": failed,
             "system_state": system_state,
+            "deferred": deferred,
+            "safe_mode": self.safe_mode,
+            "live_execution_enabled": self.live_execution_enabled,
         }
 
         self._emit(DaemonEvent(type="cycle_end", data=self.metrics["last_cycle"]))
@@ -216,6 +235,86 @@ class AutonomyDaemon:
             f"--- Autonomy cycle complete — {elapsed}s, "
             f"+{new_count} issues, {succeeded}/{processed} tasks ok, "
             f"state={system_state} ---"
+        )
+
+    async def _self_regulate(self) -> None:
+        """Apply a runtime profile from self-awareness before each cycle."""
+        try:
+            decision = await get_self_awareness().regulate(
+                base_cycle_interval=self.base_cycle_interval,
+                base_max_tasks=self.base_max_tasks,
+            )
+        except Exception as e:
+            logger.warning(f"Self-regulation unavailable: {e}")
+            return
+
+        profile = decision["runtime_profile"]
+        assessment = decision["assessment"]
+        previous = {
+            "cycle_interval_seconds": self.cycle_interval,
+            "max_tasks_per_cycle": self.max_tasks,
+            "safe_mode": self.safe_mode,
+            "live_execution_enabled": self.live_execution_enabled,
+        }
+
+        self.cycle_interval = profile["cycle_interval_seconds"]
+        self.max_tasks = profile["max_tasks_per_cycle"]
+        self.safe_mode = profile["safe_mode"]
+        self.live_execution_enabled = profile["allow_live_execution"]
+        self.metrics["last_assessment"] = assessment
+        self.metrics["last_self_regulation"] = profile
+
+        if self.safe_mode:
+            self.metrics["safe_mode_cycles"] += 1
+        else:
+            self._deferred_tasks.clear()
+
+        current = {
+            "cycle_interval_seconds": self.cycle_interval,
+            "max_tasks_per_cycle": self.max_tasks,
+            "safe_mode": self.safe_mode,
+            "live_execution_enabled": self.live_execution_enabled,
+        }
+        if current != previous:
+            event = {
+                "timestamp": datetime.utcnow().isoformat(),
+                "state": profile["state"],
+                "execution_confidence": profile["execution_confidence"],
+                "reasons": profile["reasons"],
+                "previous": previous,
+                "current": current,
+            }
+            self.metrics["adaptive_adjustments"] += 1
+            self._adaptation_history.append(event)
+            self._adaptation_history = self._adaptation_history[-25:]
+            logger.info(
+                "Self-regulation updated runtime profile: "
+                f"tasks={self.max_tasks}, interval={self.cycle_interval}s, "
+                f"live_execution={self.live_execution_enabled}"
+            )
+            self._emit(DaemonEvent(type="self_regulation", data=event))
+
+    def _defer_execution(self, task: GitHubTask) -> None:
+        """Hold execution when self-awareness has enabled safe mode."""
+        task_key = str(task.id)
+        if task_key in self._deferred_tasks:
+            return
+
+        self._deferred_tasks.add(task_key)
+        self._emit(
+            DaemonEvent(
+                type="task_deferred",
+                data={
+                    "task_id": task_key,
+                    "title": task.title,
+                    "status": task.status,
+                    "reason": "safe_mode_active",
+                },
+            )
+        )
+        logger.warning(
+            "Deferred live execution for "
+            f"task {task.id} while safe mode is active"
         )
 
     # ----- phases -----
@@ -304,6 +403,8 @@ class AutonomyDaemon:
     async def _process_tasks(
         self, session: AsyncSession, max_tasks: int | None = None
     ) -> tuple[int, int, int]:
+        self, session: AsyncSession
+    ) -> tuple[int, int, int, int]:
         """Drive pending tasks through analyze → plan → execute."""
         from src.kortana.services.github_autonomy_service import GitHubAutonomyService
 
@@ -324,10 +425,10 @@ class AutonomyDaemon:
         tasks = list(result.scalars().all())
 
         if not tasks:
-            return 0, 0, 0
+            return 0, 0, 0, 0
 
         service = GitHubAutonomyService(session)
-        processed = succeeded = failed = 0
+        processed = succeeded = failed = deferred = 0
 
         for task in tasks:
             processed += 1
@@ -350,7 +451,13 @@ class AutonomyDaemon:
                 if task.status == "analyzed":
                     await service.plan_task(task)
                 if task.status == "planning_complete":
-                    await service.execute_task(task, dry_run=False)
+                    if self.live_execution_enabled:
+                        await service.execute_task(task, dry_run=False)
+                        self._deferred_tasks.discard(str(task.id))
+                    else:
+                        deferred += 1
+                        self._defer_execution(task)
+                        continue
 
                 succeeded += 1
                 self._emit(
@@ -385,7 +492,7 @@ class AutonomyDaemon:
                     error=str(e),
                 )
 
-        return processed, succeeded, failed
+        return processed, succeeded, failed, deferred
 
     async def _record_outcome(
         self,
@@ -420,9 +527,14 @@ class AutonomyDaemon:
         return {
             "running": self._running,
             "enabled": self.enabled,
+            "base_cycle_interval_seconds": self.base_cycle_interval,
             "cycle_interval_seconds": self.cycle_interval,
+            "base_max_tasks_per_cycle": self.base_max_tasks,
             "max_tasks_per_cycle": self.max_tasks,
             "repo": self.repo,
+            "safe_mode": self.safe_mode,
+            "live_execution_enabled": self.live_execution_enabled,
+            "adaptation_history": self._adaptation_history[-10:],
             **self.metrics,
         }
 
