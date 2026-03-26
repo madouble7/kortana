@@ -2,6 +2,8 @@
 Unit and integration tests for GitHub autonomy system
 """
 
+import subprocess
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import httpx
@@ -58,9 +60,7 @@ class TestGitHubRouter:
             mock_get.side_effect = mock_awaitable
 
             with patch.dict("os.environ", {"GITHUB_TOKEN": "test-token"}):
-                response = client.get(
-                    "/api/github/repos/test/repo/issues?page=1&per_page=10"
-                )
+                response = client.get("/api/github/repos/test/repo/issues?page=1&per_page=10")
                 assert response.status_code == 200
                 assert "pagination" in response.json()
 
@@ -241,14 +241,76 @@ class TestCodeGenerator:
             }
         ]
 
+    def test_parse_plan_yaml_files_block(self):
+        """Test parsing YAML fenced plans with a files list."""
+        from src.kortana.services.code_generator import CodeGenerator
+
+        gen = CodeGenerator()
+        plan_text = """
+### FILE_CHANGES
+
+```yaml
+files:
+  - path: docs/autonomy-smoke-note.md
+    action: create
+    content: |
+      # Autonomy Smoke Note
+      This file was created by the autonomous GitHub pipeline.
+```
+"""
+        parsed = gen.parse_plan(plan_text)
+        assert len(parsed["files"]) == 1
+        assert parsed["files"][0]["path"] == "docs/autonomy-smoke-note.md"
+        assert parsed["files"][0]["action"] == "create"
+        assert (
+            parsed["files"][0]["content"]
+            == "# Autonomy Smoke Note\nThis file was created by the autonomous GitHub pipeline."
+        )
+
+    def test_parse_plan_markdown_file_changes_with_file_blocks(self):
+        """Test parsing markdown FILE_CHANGES bullets plus detailed FILE blocks."""
+        from src.kortana.services.code_generator import CodeGenerator
+
+        gen = CodeGenerator()
+        plan_text = """
+**FILE_CHANGES**
+*   **NEW:** `tests/e2e/utils/git.ts`
+*   **MOD:** `.env.test`
+
+**FILE: `tests/e2e/utils/git.ts`**
+```typescript
+export const x = 1;
+```
+
+**FILE: `.env.test`**
+```dotenv
+GITHUB_TOKEN=test
+```
+"""
+        parsed = gen.parse_plan(plan_text)
+        assert parsed["files"] == [
+            {
+                "path": "tests/e2e/utils/git.ts",
+                "action": "create",
+                "dependencies": [],
+                "priority": 0,
+                "content": "export const x = 1;",
+            },
+            {
+                "path": ".env.test",
+                "action": "modify",
+                "dependencies": [],
+                "priority": 0,
+                "content": "GITHUB_TOKEN=test",
+            },
+        ]
+
     def test_validate_plan_structure(self):
         """Test plan validation"""
         from src.kortana.services.code_generator import CodeGenerator
 
         gen = CodeGenerator()
-        valid_plan = {
-            "files": [{"path": "test.py", "action": "create", "content": "test"}]
-        }
+        valid_plan = {"files": [{"path": "test.py", "action": "create", "content": "test"}]}
         assert gen.validate_plan(valid_plan)
 
     def test_validate_plan_invalid_action(self):
@@ -256,9 +318,7 @@ class TestCodeGenerator:
         from src.kortana.services.code_generator import CodeGenerator
 
         gen = CodeGenerator()
-        invalid_plan = {
-            "files": [{"path": "test.py", "action": "invalid", "content": "test"}]
-        }
+        invalid_plan = {"files": [{"path": "test.py", "action": "invalid", "content": "test"}]}
         assert not gen.validate_plan(invalid_plan)
 
     def test_path_traversal_protection(self):
@@ -270,9 +330,7 @@ class TestCodeGenerator:
 
         gen = CodeGenerator()
         malicious_plan = {
-            "files": [
-                {"path": "../../../etc/passwd", "action": "create", "content": "test"}
-            ]
+            "files": [{"path": "../../../etc/passwd", "action": "create", "content": "test"}]
         }
         with pytest.raises(CodeGenerationError):
             gen.validate_plan(malicious_plan)
@@ -476,6 +534,7 @@ class TestGitHubAutonomyService:
             "modified": [],
             "deleted": [],
         }
+        service.repo_root = Path("C:/repo-root")
 
         with patch.object(service, "_create_branch", return_value=True), patch.object(
             service, "code_gen", mock_codegen
@@ -497,6 +556,9 @@ class TestGitHubAutonomyService:
             mock_commit.assert_awaited_once_with(task, ["test.py"])
             mock_push.assert_awaited_once_with(task)
             mock_pr.assert_awaited_once_with(task)
+            assert mock_codegen.generate_from_gemini_plan.call_args.kwargs["repo_path"] == str(
+                service.repo_root
+            )
 
     @pytest.mark.asyncio
     async def test_execute_task_branch_creation_failure(self, service, mock_db):
@@ -560,9 +622,7 @@ class TestGitHubAutonomyService:
 
         # Mock http_client: first get (main) raises exception, second get (master) succeeds
         service.http_client = AsyncMock()
-        service.http_client.get = AsyncMock(
-            side_effect=[Exception("Not found"), master_response]
-        )
+        service.http_client.get = AsyncMock(side_effect=[Exception("Not found"), master_response])
         service.http_client.post = AsyncMock(return_value=create_response)
 
         with patch("os.getenv", return_value="test_token"):
@@ -600,9 +660,7 @@ class TestGitHubAutonomyService:
         mock_ref_response.status_code = 200
         mock_ref_response.json.return_value = {"object": {"sha": "abc123"}}
 
-        request = httpx.Request(
-            "POST", "https://api.github.com/repos/owner/repo/git/refs"
-        )
+        request = httpx.Request("POST", "https://api.github.com/repos/owner/repo/git/refs")
         response = httpx.Response(
             403,
             request=request,
@@ -632,6 +690,7 @@ class TestGitHubAutonomyService:
             github_issue_number=123, branch_name="autonomy/test-123", title="Test Task"
         )
         files_changed = ["test.py", "test2.py"]
+        service.repo_root = Path("C:/repo-root")
 
         with patch("subprocess.run") as mock_run:
             # First call: checkout - return success
@@ -655,8 +714,47 @@ class TestGitHubAutonomyService:
             assert "git" in str(checkout_call)
             assert "checkout" in str(checkout_call)
             assert "autonomy/test-123" in str(checkout_call)
+            assert checkout_call.kwargs["cwd"] == service.repo_root
+            commit_call = mock_run.call_args_list[3]
+            assert "--no-verify" in str(commit_call)
+            assert commit_call.kwargs["cwd"] == service.repo_root
 
             assert commit_sha == "abc123def456"
+
+    @pytest.mark.asyncio
+    async def test_commit_branch_changes_bootstraps_local_branch(self, service):
+        """Test commit flow bootstraps a missing local branch from remote state."""
+        task = GitHubTask(
+            github_issue_number=123, branch_name="autonomy/test-123", title="Test Task"
+        )
+        files_changed = ["test.py"]
+
+        checkout_error = subprocess.CalledProcessError(
+            1, ["git", "checkout", task.branch_name], stderr="pathspec not found"
+        )
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.side_effect = [
+                checkout_error,
+                MagicMock(returncode=0, stdout=""),  # fetch origin branch
+                MagicMock(returncode=0, stdout=""),  # checkout -B FETCH_HEAD
+                MagicMock(returncode=0, stdout=""),  # add
+                MagicMock(returncode=0, stdout=""),  # commit
+                MagicMock(returncode=0, stdout="abc123def456\n"),  # rev-parse
+            ]
+
+            commit_sha = await service._commit_branch_changes(task, files_changed)
+
+            assert commit_sha == "abc123def456"
+            assert any(
+                "fetch', 'origin', 'autonomy/test-123" in str(call)
+                or 'fetch", "origin", "autonomy/test-123' in str(call)
+                for call in mock_run.call_args_list
+            )
+            assert any(
+                "-B" in str(call) and "FETCH_HEAD" in str(call) for call in mock_run.call_args_list
+            )
+            assert any("--no-verify" in str(call) for call in mock_run.call_args_list)
 
     @pytest.mark.asyncio
     async def test_push_branch_isolated_with_recovery(self, service):
@@ -746,9 +844,7 @@ class TestHOPAutonomyService:
             assert mock_task.classification == "auto"
 
     @pytest.mark.asyncio
-    async def test_classify_hop_task_invalid_response(
-        self, service, mock_task, mock_db
-    ):
+    async def test_classify_hop_task_invalid_response(self, service, mock_task, mock_db):
         """Test task classification with invalid response defaults to ho"""
         with patch(
             "src.kortana.services.hop_autonomy_service.gemini_service.analyze_text"
@@ -789,9 +885,7 @@ class TestHOPAutonomyService:
     @pytest.mark.asyncio
     async def test_should_require_human_not_classified(self, service, mock_task):
         """Test human requirement check for unclassified task"""
-        with patch.object(
-            service, "classify_hop_task", return_value="ho"
-        ) as mock_classify:
+        with patch.object(service, "classify_hop_task", return_value="ho") as mock_classify:
             result = await service.should_require_human(mock_task)
             assert result is True
             mock_classify.assert_called_once_with(mock_task)
