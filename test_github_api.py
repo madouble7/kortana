@@ -20,6 +20,8 @@ if env_file.exists():
                 os.environ[key.strip()] = value.strip()
 
 github_token = os.getenv("GITHUB_TOKEN", "").strip()
+github_owner = os.getenv("GITHUB_OWNER", "madouble7").strip()
+github_repo = os.getenv("GITHUB_REPO", "kortana").strip()
 
 if not github_token:
     print(f"{ERR} GITHUB_TOKEN not set in environment")
@@ -41,11 +43,13 @@ else:
     else:
         print(f"  {ERR} Error: {response.text[:200]}")
 
-    # Test 2: Get KOR-TANA repo
+    # Test 2: Get target repo
     response = requests.get(
-        "https://api.github.com/repos/KOR-TANA/kortana", headers=headers, timeout=5
+        f"https://api.github.com/repos/{github_owner}/{github_repo}",
+        headers=headers,
+        timeout=5,
     )
-    print(f"\n/repos/KOR-TANA/kortana endpoint: Status {response.status_code}")
+    print(f"\n/repos/{github_owner}/{github_repo} endpoint: Status {response.status_code}")
     if response.status_code == 200:
         repo = response.json()
         print(f"  {OK} Repo found: {repo['name']}")
@@ -54,7 +58,7 @@ else:
 
     # Test 3: Try to get a ref (main branch)
     response = requests.get(
-        "https://api.github.com/repos/KOR-TANA/kortana/git/refs/heads/main",
+        f"https://api.github.com/repos/{github_owner}/{github_repo}/git/refs/heads/main",
         headers=headers,
         timeout=5,
     )
@@ -72,7 +76,7 @@ else:
         "sha": "3fa8bf1",  # The safe code commit
     }
     response = requests.post(
-        "https://api.github.com/repos/KOR-TANA/kortana/git/refs",
+        f"https://api.github.com/repos/{github_owner}/{github_repo}/git/refs",
         headers=headers,
         json=branch_data,
         timeout=5,

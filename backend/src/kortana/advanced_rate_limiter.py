@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from redis import Redis
+
 from src.kortana.logger import get_logger
 
 logger = get_logger(__name__)
@@ -160,14 +161,18 @@ class AdvancedRateLimiter:
             return f"WAIT: Quota exhausted. Reset in {reset_secs}s"
         elif should_defer:
             depletion: int = int(window.depletion_rate * 100)
-            return f"SLOW: {depletion}% consumed. Consider deferring non-urgent requests"
+            return (
+                f"SLOW: {depletion}% consumed. Consider deferring non-urgent requests"
+            )
         elif window.depletion_rate > 0.5:
             depletion = int(window.depletion_rate * 100)
             return f"CAUTION: {depletion}% consumed. Monitor closely"
         else:
             return "OK: Quota available"
 
-    async def acquire(self, service: str, cost: int = 1, timeout_seconds: int = 300) -> bool:
+    async def acquire(
+        self, service: str, cost: int = 1, timeout_seconds: int = 300
+    ) -> bool:
         """
         Attempt to acquire quota permission with timeout.
 

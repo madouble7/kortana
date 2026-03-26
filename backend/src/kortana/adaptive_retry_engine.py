@@ -60,7 +60,9 @@ class RetryPolicy:
             base_delay = self.initial_delay_seconds
         else:
             # Network/resource errors use exponential backoff
-            base_delay = self.initial_delay_seconds * (self.backoff_multiplier**retry_attempt)
+            base_delay = self.initial_delay_seconds * (
+                self.backoff_multiplier**retry_attempt
+            )
 
         # Cap at maximum
         base_delay = min(base_delay, self.max_delay_seconds)
@@ -272,7 +274,8 @@ class AdaptiveRetryEngine:
         return {
             "total_retries": total,
             "by_category": by_category,
-            "success_rate": sum(1 for e in self.retry_history if e["will_retry"]) / total
+            "success_rate": sum(1 for e in self.retry_history if e["will_retry"])
+            / total
             if total > 0
             else 0,
         }

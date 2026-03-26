@@ -59,7 +59,7 @@ class AutonomyDaemon:
         self.enabled = os.getenv("AUTONOMY_DAEMON_ENABLED", "true").lower() == "true"
         self.cycle_interval = int(os.getenv("AUTONOMY_CYCLE_INTERVAL", "300"))
         self.max_tasks = int(os.getenv("AUTONOMY_MAX_TASKS_PER_CYCLE", "3"))
-        self.repo = f"{os.getenv('GITHUB_OWNER', 'KOR-TANA')}/{os.getenv('GITHUB_REPO', 'kortana')}"
+        self.repo = f"{os.getenv('GITHUB_OWNER', 'madouble7')}/{os.getenv('GITHUB_REPO', 'kortana')}"
 
         self._running = False
         self._task: asyncio.Task[None] | None = None
@@ -150,7 +150,7 @@ class AutonomyDaemon:
 
             # Phase 2: Drive pending tasks through pipeline
             processed, succeeded, failed = await self._process_tasks(session)
-            
+
             # Phase 3: The Zenith Protocol (Self-Healing via Meta-Cognition)
             await self._manifest_self_healing(session)
 
@@ -206,10 +206,10 @@ class AutonomyDaemon:
                 .limit(1)
             )
             latest_failed = (await session.execute(stmt_failed)).scalar_one_or_none()
-            
+
             if not latest_failed:
                 return
-                
+
             # Are there any active self-repair tasks targeting this?
             stmt_active = (
                 select(GitHubTask)
@@ -222,17 +222,17 @@ class AutonomyDaemon:
             if active_repairs:
                 # Already repairing
                 return
-                
+
             logger.warning(f"KOR'TANA identified a system failure in Task #{latest_failed.github_issue_number}. Manifesting self-repair issue...")
-            
+
             github_token = os.getenv("GITHUB_TOKEN")
             if not github_token:
                 logger.error("Cannot manifest self-repair: GITHUB_TOKEN missing.")
                 return
-                
+
             owner = os.getenv("GITHUB_OWNER", "madouble7")
             repo = os.getenv("GITHUB_REPO", "kortana")
-            
+
             import httpx
             async with httpx.AsyncClient() as client:
                 body = {

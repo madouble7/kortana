@@ -8,16 +8,15 @@ error recovery.
 
 from __future__ import annotations
 
-import asyncio
 from dataclasses import dataclass
 from typing import Optional
 
-from src.kortana.logger import get_logger
 from src.kortana.cost_optimized_model_router import (
     CostOptimizedModelRouter,
     ModelProvider,
     TaskType,
 )
+from src.kortana.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -53,7 +52,7 @@ class InferenceResult:
 class MultiProviderInferenceEngine:
     """
     Coordinates inference across multiple providers with intelligent fallback.
-    
+
     Features:
     - Automatic provider selection based on task type and cost constraints
     - Fallback chain on provider failures
@@ -73,11 +72,11 @@ class MultiProviderInferenceEngine:
     ) -> InferenceResult:
         """
         Execute inference with automatic provider fallback.
-        
+
         Args:
             request: Inference request with task type and prompt
             providers: Optional provider chain (auto-selected if None)
-            
+
         Returns:
             InferenceResult with content, cost, and provider info
         """
@@ -107,9 +106,7 @@ class MultiProviderInferenceEngine:
                     f"Attempting inference with {provider.value} "
                     f"(attempt {attempt + 1}/{len(providers)})"
                 )
-                result = await self._infer_with_provider(
-                    request, provider
-                )
+                result = await self._infer_with_provider(request, provider)
                 result.fallback_count = attempt
 
                 latency = __import__("time").time() - start_time
@@ -123,8 +120,7 @@ class MultiProviderInferenceEngine:
 
             except Exception as e:
                 logger.warning(
-                    f"Provider {provider.value} failed: {e}. "
-                    f"Trying next..."
+                    f"Provider {provider.value} failed: {e}. " f"Trying next..."
                 )
                 continue
 
@@ -195,7 +191,7 @@ class MultiProviderInferenceEngine:
     ) -> tuple[str, dict]:
         """
         Get consensus from multiple models for critical decisions.
-        
+
         Best for high-impact decisions that require verification.
         """
         # Use premium models for consensus
@@ -208,9 +204,7 @@ class MultiProviderInferenceEngine:
         results = []
         for provider in consensus_providers[:num_consensus_models]:
             if provider in self.router.configs:
-                result = await self._infer_with_provider(
-                    request, provider
-                )
+                result = await self._infer_with_provider(request, provider)
                 results.append(
                     {
                         "provider": provider.value,

@@ -248,7 +248,7 @@ async def _exercise_github() -> dict[str, Any]:
     t0 = time.perf_counter()
     try:
         token = os.getenv("GITHUB_TOKEN")
-        owner = os.getenv("GITHUB_OWNER", "KOR-TANA")
+        owner = os.getenv("GITHUB_OWNER", "madouble7")
         repo = os.getenv("GITHUB_REPO", "kortana")
         if not token:
             return {"status": "skip", "reason": "No GITHUB_TOKEN"}

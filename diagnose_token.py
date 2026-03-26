@@ -20,7 +20,7 @@ async def diagnose() -> None:
     from src.kortana.services.github_autonomy_service import GitHubAutonomyService
 
     # Get target repo from environment
-    owner = os.getenv("GITHUB_OWNER", "KOR-TANA")
+    owner = os.getenv("GITHUB_OWNER", "madouble7")
     repo = os.getenv("GITHUB_REPO", "kortana")
 
     manager = get_db_manager()

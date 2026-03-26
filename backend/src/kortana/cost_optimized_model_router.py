@@ -19,7 +19,7 @@ Strategy:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
 from typing import Optional
 
@@ -82,12 +82,8 @@ class CostEstimate:
 
     def calculate_cost(self, config: ModelConfig) -> float:
         """Calculate total cost for this request"""
-        input_cost = (
-            self.estimated_input_tokens / 1000 * config.cost_per_1k_input
-        )
-        output_cost = (
-            self.estimated_output_tokens / 1000 * config.cost_per_1k_output
-        )
+        input_cost = self.estimated_input_tokens / 1000 * config.cost_per_1k_input
+        output_cost = self.estimated_output_tokens / 1000 * config.cost_per_1k_output
         return input_cost + output_cost
 
     def update_daily_spend(self, cost: float) -> None:
@@ -103,7 +99,7 @@ class CostEstimate:
 class CostOptimizedModelRouter:
     """
     Intelligently routes requests to minimize costs while maximizing autonomy.
-    
+
     Priority Order by Task Type:
     - FREE TIER FIRST: Groq (unlimited, fast)
     - FALLBACK 1: OpenRouter (cost-efficient)
@@ -203,11 +199,11 @@ class CostOptimizedModelRouter:
     ) -> list[ModelProvider]:
         """
         Select models for task type in priority order.
-        
+
         Args:
             task_type: Type of work to perform
             budget_limit: Maximum cost acceptable (USD)
-            
+
         Returns:
             List of providers in recommended order
         """
@@ -253,7 +249,8 @@ class CostOptimizedModelRouter:
 
         preferred = task_preferences.get(task_type, [ModelProvider.GROQ])
         available = [
-            p for p in preferred
+            p
+            for p in preferred
             if p in self.configs and self._within_budget(p, budget_limit)
         ]
 
@@ -261,9 +258,7 @@ class CostOptimizedModelRouter:
             # Fallback: use any available provider
             available = list(self.configs.keys())
 
-        logger.info(
-            f"Route {task_type.value}: {[p.value for p in available[:3]]}"
-        )
+        logger.info(f"Route {task_type.value}: {[p.value for p in available[:3]]}")
         return available
 
     def _within_budget(self, provider: ModelProvider, limit: float) -> bool:
@@ -321,9 +316,7 @@ class CostOptimizedModelRouter:
         if not config:
             return
 
-        cost = self.estimate_cost(
-            provider, task_type, input_tokens, output_tokens
-        )
+        cost = self.estimate_cost(provider, task_type, input_tokens, output_tokens)
 
         if provider not in self.cost_tracking:
             self.cost_tracking[provider] = CostEstimate(
@@ -332,9 +325,7 @@ class CostOptimizedModelRouter:
 
         self.cost_tracking[provider].update_daily_spend(cost)
 
-        self.request_counts[provider] = (
-            self.request_counts.get(provider, 0) + 1
-        )
+        self.request_counts[provider] = self.request_counts.get(provider, 0) + 1
 
         logger.info(
             f"Recorded usage: {provider.value}, "
@@ -344,21 +335,19 @@ class CostOptimizedModelRouter:
 
     def get_cost_report(self) -> dict:
         """Get comprehensive cost analysis"""
-        total_daily = sum(
-            c.daily_spend for c in self.cost_tracking.values()
-        )
-        total_monthly = sum(
-            c.monthly_spend for c in self.cost_tracking.values()
-        )
+        total_daily = sum(c.daily_spend for c in self.cost_tracking.values())
+        total_monthly = sum(c.monthly_spend for c in self.cost_tracking.values())
 
         provider_breakdown = {
             provider: {
-                "daily": self.cost_tracking.get(provider, CostEstimate(
-                    provider=provider, task_type=TaskType.ANALYSIS
-                )).daily_spend,
-                "monthly": self.cost_tracking.get(provider, CostEstimate(
-                    provider=provider, task_type=TaskType.ANALYSIS
-                )).monthly_spend,
+                "daily": self.cost_tracking.get(
+                    provider,
+                    CostEstimate(provider=provider, task_type=TaskType.ANALYSIS),
+                ).daily_spend,
+                "monthly": self.cost_tracking.get(
+                    provider,
+                    CostEstimate(provider=provider, task_type=TaskType.ANALYSIS),
+                ).monthly_spend,
                 "requests": self.request_counts.get(provider, 0),
             }
             for provider in self.configs.keys()
