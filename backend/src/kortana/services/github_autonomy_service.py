@@ -79,6 +79,21 @@ class GitHubAutonomyService:
             return
         await self._maybe_await(self.db.rollback())
 
+    @staticmethod
+    def _extract_http_error_detail(exc: Exception) -> tuple[int | None, str]:
+        """Extract status code and body from HTTP errors when available."""
+        if isinstance(exc, httpx.HTTPStatusError) and exc.response is not None:
+            response = exc.response
+            detail = response.text
+            try:
+                payload = response.json()
+                if isinstance(payload, dict):
+                    detail = payload.get("message") or payload.get("error") or detail
+            except ValueError:
+                pass
+            return response.status_code, detail
+        return None, str(exc)
+
     def _validate_token(self) -> None:
         """Validate GitHub token is configured"""
         # Reload token from environment to support test mocks
@@ -321,7 +336,9 @@ class GitHubAutonomyService:
             # 1. Create GitHub branch
             if not dry_run:
                 if not await self._maybe_await(self._create_branch(task)):
-                    raise Exception("Failed to create GitHub branch")
+                    raise Exception(
+                        task.error_message or "Failed to create GitHub branch"
+                    )
 
             # 2. Use CodeGenerator to apply changes
             result = self.code_gen.generate_from_gemini_plan(
@@ -411,8 +428,12 @@ class GitHubAutonomyService:
                     ref_url, api_name="github_api", headers=headers, timeout=10
                 )
                 if ref_response.status_code != 200:
+                    task.error_message = (
+                        f"Failed to get master branch ({ref_response.status_code}): "
+                        f"{ref_response.text}"
+                    )
                     logger.error(
-                        f"Failed to get master branch (status {ref_response.status_code}): {ref_response.text}"
+                        task.error_message
                     )
                     return False
 
@@ -421,6 +442,7 @@ class GitHubAutonomyService:
                 main_sha = ref_response.json()["object"]["sha"]
                 logger.debug(f"Got base branch SHA: {main_sha[:8]}...")
             except (KeyError, ValueError) as e:
+                task.error_message = f"Failed to parse branch SHA from response: {str(e)}"
                 logger.error(f"Failed to parse branch SHA from response: {str(e)}")
                 return False
 
@@ -429,13 +451,33 @@ class GitHubAutonomyService:
             create_url = f"https://api.github.com/repos/{owner}/{repo}/git/refs"
             logger.info(f"Creating branch: {task.branch_name}")
 
-            create_response = await self.http_client.post(
-                create_url,
-                api_name="github_api",
-                headers=headers,
-                json=branch_data,
-                timeout=10,
-            )
+            try:
+                create_response = await self.http_client.post(
+                    create_url,
+                    api_name="github_api",
+                    headers=headers,
+                    json=branch_data,
+                    timeout=10,
+                )
+            except Exception as e:
+                status_code, detail = self._extract_http_error_detail(e)
+                if status_code == 422:
+                    logger.info(
+                        f"Branch already exists: {task.branch_name} (idempotent)"
+                    )
+                    return True
+
+                if status_code is not None:
+                    task.error_message = (
+                        f"Branch creation failed with status {status_code}: {detail}"
+                    )
+                    logger.error(
+                        task.error_message
+                    )
+                else:
+                    task.error_message = f"Branch creation failed with exception: {detail}"
+                    logger.error(task.error_message)
+                return False
 
             # 201 = created, 422 = already exists (idempotent success)
             if create_response.status_code == 201:
@@ -445,12 +487,17 @@ class GitHubAutonomyService:
                 logger.info(f"Branch already exists: {task.branch_name} (idempotent)")
                 return True
             else:
+                task.error_message = (
+                    f"Branch creation failed with status "
+                    f"{create_response.status_code}: {create_response.text}"
+                )
                 logger.error(
-                    f"Branch creation failed with status {create_response.status_code}: {create_response.text}"
+                    task.error_message
                 )
                 return False
         except Exception as e:
-            logger.error(f"Branch creation failed with exception: {str(e)}")
+            task.error_message = f"Branch creation failed with exception: {str(e)}"
+            logger.error(task.error_message)
             return False
 
     async def _commit_branch_changes(

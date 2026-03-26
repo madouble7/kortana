@@ -193,7 +193,11 @@ class AutonomyDaemon:
         # Fetch pending tasks
         stmt = (
             select(GitHubTask)
-            .where(GitHubTask.status.in_(["pending", "analyzed", "planning_complete"]))
+            .where(
+                GitHubTask.status.in_(
+                    ["queued", "pending", "analyzed", "planning_complete"]
+                )
+            )
             .order_by(GitHubTask.created_at)
             .limit(self.max_tasks)
         )
@@ -221,7 +225,7 @@ class AutonomyDaemon:
 
             try:
                 # Advance through pipeline stages
-                if task.status == "pending":
+                if task.status in {"queued", "pending"}:
                     await service.analyze_task(task)
                 if task.status == "analyzed":
                     await service.plan_task(task)

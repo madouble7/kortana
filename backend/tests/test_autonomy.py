@@ -4,6 +4,7 @@ Unit and integration tests for GitHub autonomy system
 
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
+import httpx
 import pytest
 
 # Import the app and models
@@ -510,10 +511,14 @@ class TestGitHubAutonomyService:
             branch_name="test-branch",
         )
 
+        task.error_message = "Branch creation failed with status 403: forbidden"
+
         with patch.object(service, "_create_branch", return_value=False):
             mock_db.commit = MagicMock()
 
-            with pytest.raises(Exception, match="Failed to create GitHub branch"):
+            with pytest.raises(
+                Exception, match="Branch creation failed with status 403: forbidden"
+            ):
                 await service.execute_task(task)
 
     @pytest.mark.asyncio
@@ -585,6 +590,40 @@ class TestGitHubAutonomyService:
         with patch("os.getenv", return_value="test_token"):
             result = await service._create_branch(task)
             assert result is True  # Should succeed (idempotent)
+
+    @pytest.mark.asyncio
+    async def test_create_branch_logs_http_status_error_details(self, service):
+        """Test branch creation logs useful details when httpx raises before returning."""
+        task = GitHubTask(branch_name="test-branch", github_repo="owner/repo")
+
+        mock_ref_response = MagicMock()
+        mock_ref_response.status_code = 200
+        mock_ref_response.json.return_value = {"object": {"sha": "abc123"}}
+
+        request = httpx.Request(
+            "POST", "https://api.github.com/repos/owner/repo/git/refs"
+        )
+        response = httpx.Response(
+            403,
+            request=request,
+            json={"message": "Resource not accessible by integration"},
+        )
+
+        service.http_client = AsyncMock()
+        service.http_client.get = AsyncMock(return_value=mock_ref_response)
+        service.http_client.post = AsyncMock(
+            side_effect=httpx.HTTPStatusError(
+                "403 Client Error", request=request, response=response
+            )
+        )
+
+        with patch("src.kortana.services.github_autonomy_service.logger") as mock_logger:
+            result = await service._create_branch(task)
+
+        assert result is False
+        mock_logger.error.assert_any_call(
+            "Branch creation failed with status 403: Resource not accessible by integration"
+        )
 
     @pytest.mark.asyncio
     async def test_commit_branch_changes_isolated(self, service):

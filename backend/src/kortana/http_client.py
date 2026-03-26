@@ -121,7 +121,11 @@ class ResilientHTTPClient:
         try:
             async with httpx.AsyncClient(limits=self.pool_limits) as client:
                 response = await client.request(method, url, **kwargs)
-                response.raise_for_status()
+
+                # Don't raise on 422 - allow callers to handle idempotent operations
+                # (branch already exists, etc.)
+                if response.status_code >= 400 and response.status_code != 422:
+                    response.raise_for_status()
 
                 # Record success
                 if circuit_breaker:
