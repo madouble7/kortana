@@ -67,7 +67,6 @@ def analyze_image(
         from io import BytesIO
 
         import PIL.Image
-        import requests
 
         # Download image
         import httpx

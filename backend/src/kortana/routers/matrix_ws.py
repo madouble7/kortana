@@ -1,5 +1,4 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-import asyncio
 from src.kortana.swarm.hive_bus import HiveBus
 from src.kortana.logger import get_logger
 
