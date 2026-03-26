@@ -84,6 +84,10 @@ class GoalManager:
     def get(self, goal_id: str) -> Goal | None:
         return self._goals.get(goal_id)
 
+    def all(self) -> list[Goal]:
+        """Return every goal regardless of state."""
+        return list(self._goals.values())
+
     def update(self, goal_id: str, **kwargs: Any) -> Goal | None:
         goal = self._goals.get(goal_id)
         if not goal:
