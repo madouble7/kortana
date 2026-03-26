@@ -1,0 +1,35 @@
+name: Verify Classic Key Bypass
+on:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.CLASSIC_KEY_BYPASS }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "Automation Bot"
+          git config user.email "automation@example.com"
+
+      - name: Create Test Branch
+        run: |
+          BRANCH_NAME="automation-test-$(date +%s)"
+          git checkout -b $BRANCH_NAME
+          echo "Status: Automation keys verified on $(date)" >> SYSTEM_STATUS.md
+          git add SYSTEM_STATUS.md
+          git commit -m "chore: verify automation keys"
+          git push origin $BRANCH_NAME
+          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+
+      - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.CLASSIC_KEY_BYPASS }}
+        run: |
+          gh pr create --title "Verify Pipeline Authentication" --body "This PR validates the classic key bypass pipeline functionality." --head $GITHUB_ENV
