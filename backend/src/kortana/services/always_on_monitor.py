@@ -1,28 +1,12 @@
-from ..utils.concurrency import recursion_guard
+from .self_awareness import SelfAwarenessService
 
 class AlwaysOnMonitor:
     def __init__(self):
-        self.is_running = False
+        self.self_awareness = SelfAwarenessService()
 
-    def verify_state(self, controller_state):
-        with recursion_guard() as can_proceed:
-            if not can_proceed:
-                return
-            if controller_state == "Unknown":
-                self.trigger_emergency_protocol()
-                
-    def trigger_emergency_protocol(self):
-        pass
-
-monitor = AlwaysOnMonitor()
-
-def get_always_on_monitor():
-    return monitor
-
-def start_always_on_monitor():
-    monitor.is_running = True
-    return monitor
-    
-def stop_always_on_monitor():
-    monitor.is_running = False
-    return monitor
+    async def run_cycle(self):
+        try:
+            await self.github_service.execute_task()
+        except PermissionError:
+            self.self_awareness.set_state("DEGRADED_MODE")
+            await self.self_awareness.alert_admin("GitHub Auth Failure")
