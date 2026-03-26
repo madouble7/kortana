@@ -1,28 +1,11 @@
-import threading
-import logging
+from ..utils.concurrency import recursion_guard
 
-_actual_logger = logging.getLogger("KortanaMonitor")
+# ... within AlwaysOnMonitor ...
 
-class MonitorGuard:
-    _lock = threading.Lock()
-    _in_progress = False
-
-    @classmethod
-    def enter(cls):
-        with cls._lock:
-            if cls._in_progress: return False
-            cls._in_progress = True
-            return True
-
-    @classmethod
-    def exit(cls):
-        with cls._lock:
-            cls._in_progress = False
-
-def log_failure_safe(error_msg: str):
-    if not MonitorGuard.enter():
-        return
-    try:
-        _actual_logger.error(error_msg)
-    finally:
-        MonitorGuard.exit()
+    def verify_state(self, controller_state):
+        with recursion_guard() as can_proceed:
+            if not can_proceed:
+                return
+            # Existing verification logic continues here
+            if controller_state == "Unknown":
+                self.trigger_emergency_protocol()

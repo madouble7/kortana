@@ -1,5 +1,10 @@
-class AdvancedOrchestrationService:
-    def remediate(self, context):
-        # Refactored to handle failure without direct recursive calls
-        # to the monitor service if already in a diagnostic flow.
-        pass
+from ..utils.concurrency import recursion_guard
+
+# ... within AdvancedOrchestrationService ...
+
+    def log_failure(self, error_data):
+        with recursion_guard() as can_proceed:
+            if can_proceed:
+                self._write_to_db(error_data)
+            else:
+                self.logger.warning("Recursive log attempt blocked in OrchestrationService.")
