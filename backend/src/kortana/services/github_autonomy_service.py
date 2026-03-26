@@ -247,7 +247,17 @@ class GitHubAutonomyService:
 
         try:
             logger.info(f"Analyzing task #{task.github_issue_number}: {task.title}")
-            prompt = f"Analyze this issue and provide implementation insights: \nTitle: {task.title}\nDescription: {task.description}"
+            prompt = (
+                f"You are KOR'TANA PRIME, an autonomous AI architect modifying your own application (or another repository).\n"
+                f"Analyze this issue and provide expert-level implementation insights. "
+                f"If this is a [SELF-REPAIR] issue, you must diagnose the internal autonomy logic flaw causing the error and architect a structural fix.\n\n"
+                f"Title: {task.title}\nDescription: {task.description}"
+            )
+                f"You are KOR'TANA PRIME, an autonomous AI architect modifying your own application (or another repository).\n"
+                f"Analyze this issue and provide expert-level implementation insights. "
+                f"If this is a [SELF-REPAIR] issue, you must diagnose the internal autonomy logic flaw causing the error and architect a structural fix.\n\n"
+                f"Title: {task.title}\nDescription: {task.description}"
+            )
             analysis = await self._maybe_await(gemini_service.analyze_text(prompt))
             task.analysis = analysis
             task.status = "analyzed"
@@ -280,6 +290,7 @@ class GitHubAutonomyService:
         try:
             logger.info(f"Planning task #{task.github_issue_number}")
             prompt = (
+                f"You are KOR'TANA PRIME, an autonomous AI entity architecting your own codebase. "
                 f"Generate a detailed file-by-file implementation plan for this issue. "
                 f"You MUST output ONLY a valid JSON object matching this schema:\n"
                 f"{{\n"

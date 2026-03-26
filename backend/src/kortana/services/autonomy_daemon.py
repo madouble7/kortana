@@ -72,6 +72,7 @@ class AutonomyDaemon:
             "tasks_processed": 0,
             "tasks_succeeded": 0,
             "tasks_failed": 0,
+            "self_heals_manifested": 0,
             "last_cycle": None,
             "uptime_start": None,
             "errors": [],
@@ -149,6 +150,9 @@ class AutonomyDaemon:
 
             # Phase 2: Drive pending tasks through pipeline
             processed, succeeded, failed = await self._process_tasks(session)
+            
+            # Phase 3: The Zenith Protocol (Self-Healing via Meta-Cognition)
+            await self._manifest_self_healing(session)
 
         elapsed = round(time.monotonic() - cycle_start, 2)
         self.metrics["cycles_completed"] += 1
@@ -185,6 +189,73 @@ class AutonomyDaemon:
         except Exception as e:
             logger.error(f"Issue discovery failed: {e}")
             return 0
+
+    async def _manifest_self_healing(self, session: AsyncSession) -> None:
+        """
+        The Zenith Protocol: Detect systemic failure and create a recursive self-repair task.
+        """
+        try:
+            # Detect recent failures that aren't already being repaired
+            stmt_failed = (
+                select(GitHubTask)
+                .where(
+                    GitHubTask.status == "failed",
+                    GitHubTask.error_message != None
+                )
+                .order_by(GitHubTask.id.desc())
+                .limit(1)
+            )
+            latest_failed = (await session.execute(stmt_failed)).scalar_one_or_none()
+            
+            if not latest_failed:
+                return
+                
+            # Are there any active self-repair tasks targeting this?
+            stmt_active = (
+                select(GitHubTask)
+                .where(
+                    GitHubTask.title.like(f"%[AUTO] [SELF-REPAIR] Resolve systemic failure in {latest_failed.title}%"),
+                    GitHubTask.status.in_(["pending", "analyzed", "planning", "planning_complete", "executing"])
+                )
+            )
+            active_repairs = (await session.execute(stmt_active)).scalars().all()
+            if active_repairs:
+                # Already repairing
+                return
+                
+            logger.warning(f"KOR'TANA identified a system failure in Task #{latest_failed.github_issue_number}. Manifesting self-repair issue...")
+            
+            github_token = os.getenv("GITHUB_TOKEN")
+            if not github_token:
+                logger.error("Cannot manifest self-repair: GITHUB_TOKEN missing.")
+                return
+                
+            owner = os.getenv("GITHUB_OWNER", "madouble7")
+            repo = os.getenv("GITHUB_REPO", "kortana")
+            
+            import httpx
+            async with httpx.AsyncClient() as client:
+                body = {
+                    "title": f"[AUTO] [SELF-REPAIR] Resolve systemic failure in {latest_failed.title}",
+                    "body": f"**KOR'TANA PRIME PROTOCOL ACTIVATED.**\n\n"
+                            f"The autonomy subsystem encountered a recursive failure while attempting Task #{latest_failed.github_issue_number}.\n\n"
+                            f"### Error Diagnostic:\n```\n{latest_failed.error_message}\n```\n\n"
+                            f"**Directive:** Audit the codebase related to this failure, trace the `github_autonomy_service.py` "
+                            f"or associated modules, and implement a structural patch to prevent this exception. Generate the required Code Plan to heal this logic."
+                }
+                headers = {
+                    "Authorization": f"token {github_token}",
+                    "Accept": "application/vnd.github.v3+json"
+                }
+                resp = await client.post(f"https://api.github.com/repos/{owner}/{repo}/issues", json=body, headers=headers)
+                if resp.status_code == 201:
+                    new_issue = resp.json()
+                    logger.info(f"Self-healing active: Manifested Issue #{new_issue['number']}")
+                    self.metrics["self_heals_manifested"] += 1
+                else:
+                    logger.error(f"Failed to manifest self-healing issue, status: {resp.status_code} body: {resp.text}")
+        except Exception as e:
+            logger.error(f"Self-repair manifestation failed: {e}")
 
     async def _process_tasks(self, session: AsyncSession) -> tuple[int, int, int]:
         """Drive pending tasks through analyze → plan → execute."""
