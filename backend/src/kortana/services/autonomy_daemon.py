@@ -156,17 +156,60 @@ class AutonomyDaemon:
         self._emit(DaemonEvent(type="cycle_start"))
         logger.info("--- Autonomy cycle starting ---")
 
+        # Phase 0: Self-assessment — know thyself before acting
+        system_state = "nominal"
+        effective_max_tasks = self.max_tasks
+        try:
+            from src.kortana.services.self_awareness import get_self_awareness
+
+            awareness = get_self_awareness()
+            assessment = await awareness.assess()
+            system_state = assessment.get("state", "nominal")
+            # Throttle task processing when the system is under stress
+            if system_state == "critical":
+                effective_max_tasks = max(1, self.max_tasks // 3)
+                logger.warning(
+                    f"System state CRITICAL — throttling to {effective_max_tasks} task(s)/cycle"
+                )
+            elif system_state == "degraded":
+                effective_max_tasks = max(1, self.max_tasks // 2)
+                logger.warning(
+                    f"System state DEGRADED — throttling to {effective_max_tasks} task(s)/cycle"
+                )
+            self.metrics["system_state"] = system_state
+            self.metrics["last_assessment"] = assessment
+        except Exception as e:
+            logger.debug(f"Self-assessment unavailable: {e}")
         await self._self_regulate()
 
         async for session in self._db_manager.get_session():
             # Phase 1: Discover new issues
             new_count = await self._discover_issues(session)
 
+            # Phase 2: Drive pending tasks through pipeline (with effective limit)
+            processed, succeeded, failed = await self._process_tasks(
+                session, max_tasks=effective_max_tasks
+            )
             # Phase 2: Drive pending tasks through pipeline
             processed, succeeded, failed, deferred = await self._process_tasks(session)
 
             # Phase 3: The Zenith Protocol (Self-Healing via Meta-Cognition)
             await self._manifest_self_healing(session)
+
+        # Phase 4: Re-prioritise goals based on current system state and learner insights
+        try:
+            from dataclasses import asdict as _dc_asdict
+
+            from src.kortana.services.goal_manager import get_goal_manager
+            from src.kortana.services.adaptive_learner import get_adaptive_learner
+
+            goal_mgr = get_goal_manager()
+            learner = await get_adaptive_learner()
+            insights = [_dc_asdict(i) for i in learner.generate_insights()]
+            goal_mgr.reprioritise(system_state=system_state, insights=insights)
+            self.metrics["goal_status"] = goal_mgr.get_status()
+        except Exception as e:
+            logger.debug(f"Goal reprioritisation unavailable: {e}")
 
         elapsed = round(time.monotonic() - cycle_start, 2)
         self.metrics["cycles_completed"] += 1
@@ -181,6 +224,7 @@ class AutonomyDaemon:
             "processed": processed,
             "succeeded": succeeded,
             "failed": failed,
+            "system_state": system_state,
             "deferred": deferred,
             "safe_mode": self.safe_mode,
             "live_execution_enabled": self.live_execution_enabled,
@@ -189,7 +233,8 @@ class AutonomyDaemon:
         self._emit(DaemonEvent(type="cycle_end", data=self.metrics["last_cycle"]))
         logger.info(
             f"--- Autonomy cycle complete — {elapsed}s, "
-            f"+{new_count} issues, {succeeded}/{processed} tasks ok ---"
+            f"+{new_count} issues, {succeeded}/{processed} tasks ok, "
+            f"state={system_state} ---"
         )
 
     async def _self_regulate(self) -> None:
@@ -298,7 +343,7 @@ class AutonomyDaemon:
                 select(GitHubTask)
                 .where(
                     GitHubTask.status == "failed",
-                    GitHubTask.error_message != None
+                    GitHubTask.error_message is not None,
                 )
                 .order_by(GitHubTask.id.desc())
                 .limit(1)
@@ -356,10 +401,14 @@ class AutonomyDaemon:
             logger.error(f"Self-repair manifestation failed: {e}")
 
     async def _process_tasks(
+        self, session: AsyncSession, max_tasks: int | None = None
+    ) -> tuple[int, int, int]:
         self, session: AsyncSession
     ) -> tuple[int, int, int, int]:
         """Drive pending tasks through analyze → plan → execute."""
         from src.kortana.services.github_autonomy_service import GitHubAutonomyService
+
+        limit = max_tasks if max_tasks is not None else self.max_tasks
 
         # Fetch pending tasks
         stmt = (
@@ -370,7 +419,7 @@ class AutonomyDaemon:
                 )
             )
             .order_by(GitHubTask.created_at)
-            .limit(self.max_tasks)
+            .limit(limit)
         )
         result = await session.execute(stmt)
         tasks = list(result.scalars().all())
@@ -383,6 +432,7 @@ class AutonomyDaemon:
 
         for task in tasks:
             processed += 1
+            task_start = time.monotonic()
             self._emit(
                 DaemonEvent(
                     type="task_progress",
@@ -420,6 +470,9 @@ class AutonomyDaemon:
                         },
                     )
                 )
+                await self._record_outcome(
+                    task, success=True, latency=time.monotonic() - task_start
+                )
             except Exception as e:
                 failed += 1
                 logger.error(f"Task {task.id} failed: {e}")
@@ -432,8 +485,41 @@ class AutonomyDaemon:
                         },
                     )
                 )
+                await self._record_outcome(
+                    task,
+                    success=False,
+                    latency=time.monotonic() - task_start,
+                    error=str(e),
+                )
 
         return processed, succeeded, failed, deferred
+
+    async def _record_outcome(
+        self,
+        task: GitHubTask,
+        *,
+        success: bool,
+        latency: float,
+        error: str | None = None,
+    ) -> None:
+        """Record task outcome with the AdaptiveLearner for continuous improvement."""
+        try:
+            from src.kortana.services.adaptive_learner import Outcome, get_adaptive_learner
+
+            learner = await get_adaptive_learner()
+            outcome = Outcome(
+                task_id=str(task.id),
+                # task_type and ai_provider are not yet in the GitHubTask model;
+                # use safe fallbacks until those columns are added.
+                task_type=getattr(task, "task_type", "github_issue"),
+                success=success,
+                latency_seconds=round(latency, 2),
+                provider_used=getattr(task, "ai_provider", "unknown"),
+                error=error,
+            )
+            await learner.record(outcome)
+        except Exception as e:
+            logger.debug(f"Outcome recording skipped: {e}")
 
     # ----- introspection -----
 
