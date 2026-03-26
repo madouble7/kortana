@@ -1,3 +1,5 @@
+from typing import Any
+
 """Tests for src/kortana/services/autonomy_daemon.py."""
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -35,7 +37,7 @@ class TestAutonomyDaemon:
         service = MagicMock()
         service.execute_task = AsyncMock()
 
-        events: list[dict[str, str]] = []
+        events: list[Any] = []
         daemon.on_event(events.append)
 
         with patch(
@@ -137,7 +139,7 @@ class TestAutonomyDaemon:
         service.analyze_task = AsyncMock()
         service.execute_task = AsyncMock()
 
-        events: list[dict[str, str]] = []
+        events: list[Any] = []
         daemon.on_event(events.append)
 
         with patch(
@@ -159,7 +161,7 @@ class TestAutonomyDaemon:
         with patch("src.kortana.services.autonomy_daemon.get_db_manager") as mock_get_db:
             mock_db = MagicMock()
 
-            async def _fake_session() -> AsyncMock:
+            async def _fake_session() -> Any:
                 yield AsyncMock()
 
             mock_db.get_session = _fake_session
@@ -216,7 +218,7 @@ class TestAutonomyDaemon:
         with patch("src.kortana.services.autonomy_daemon.get_db_manager") as mock_get_db:
             mock_db = MagicMock()
 
-            async def _fake_session() -> AsyncMock:
+            async def _fake_session() -> Any:
                 yield AsyncMock()
 
             mock_db.get_session = _fake_session
