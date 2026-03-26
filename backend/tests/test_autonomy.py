@@ -57,7 +57,9 @@ class TestGitHubRouter:
             mock_get.side_effect = mock_awaitable
 
             with patch.dict("os.environ", {"GITHUB_TOKEN": "test-token"}):
-                response = client.get("/api/github/repos/test/repo/issues?page=1&per_page=10")
+                response = client.get(
+                    "/api/github/repos/test/repo/issues?page=1&per_page=10"
+                )
                 assert response.status_code == 200
                 assert "pagination" in response.json()
 
@@ -243,7 +245,9 @@ class TestCodeGenerator:
         from src.kortana.services.code_generator import CodeGenerator
 
         gen = CodeGenerator()
-        valid_plan = {"files": [{"path": "test.py", "action": "create", "content": "test"}]}
+        valid_plan = {
+            "files": [{"path": "test.py", "action": "create", "content": "test"}]
+        }
         assert gen.validate_plan(valid_plan)
 
     def test_validate_plan_invalid_action(self):
@@ -251,7 +255,9 @@ class TestCodeGenerator:
         from src.kortana.services.code_generator import CodeGenerator
 
         gen = CodeGenerator()
-        invalid_plan = {"files": [{"path": "test.py", "action": "invalid", "content": "test"}]}
+        invalid_plan = {
+            "files": [{"path": "test.py", "action": "invalid", "content": "test"}]
+        }
         assert not gen.validate_plan(invalid_plan)
 
     def test_path_traversal_protection(self):
@@ -263,7 +269,9 @@ class TestCodeGenerator:
 
         gen = CodeGenerator()
         malicious_plan = {
-            "files": [{"path": "../../../etc/passwd", "action": "create", "content": "test"}]
+            "files": [
+                {"path": "../../../etc/passwd", "action": "create", "content": "test"}
+            ]
         }
         with pytest.raises(CodeGenerationError):
             gen.validate_plan(malicious_plan)
@@ -547,7 +555,9 @@ class TestGitHubAutonomyService:
 
         # Mock http_client: first get (main) raises exception, second get (master) succeeds
         service.http_client = AsyncMock()
-        service.http_client.get = AsyncMock(side_effect=[Exception("Not found"), master_response])
+        service.http_client.get = AsyncMock(
+            side_effect=[Exception("Not found"), master_response]
+        )
         service.http_client.post = AsyncMock(return_value=create_response)
 
         with patch("os.getenv", return_value="test_token"):
@@ -613,7 +623,9 @@ class TestGitHubAutonomyService:
     async def test_push_branch_isolated_with_recovery(self, service):
         """Test that push uses explicit branch ref and recovers if on wrong branch"""
         task = GitHubTask(
-            github_issue_number=123, branch_name="autonomy/test-123", github_repo="owner/repo"
+            github_issue_number=123,
+            branch_name="autonomy/test-123",
+            github_repo="owner/repo",
         )
 
         with patch("subprocess.run") as mock_run:
@@ -695,7 +707,9 @@ class TestHOPAutonomyService:
             assert mock_task.classification == "auto"
 
     @pytest.mark.asyncio
-    async def test_classify_hop_task_invalid_response(self, service, mock_task, mock_db):
+    async def test_classify_hop_task_invalid_response(
+        self, service, mock_task, mock_db
+    ):
         """Test task classification with invalid response defaults to ho"""
         with patch(
             "src.kortana.services.hop_autonomy_service.gemini_service.analyze_text"
@@ -736,7 +750,9 @@ class TestHOPAutonomyService:
     @pytest.mark.asyncio
     async def test_should_require_human_not_classified(self, service, mock_task):
         """Test human requirement check for unclassified task"""
-        with patch.object(service, "classify_hop_task", return_value="ho") as mock_classify:
+        with patch.object(
+            service, "classify_hop_task", return_value="ho"
+        ) as mock_classify:
             result = await service.should_require_human(mock_task)
             assert result is True
             mock_classify.assert_called_once_with(mock_task)
