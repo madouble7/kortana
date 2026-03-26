@@ -1,28 +1,12 @@
-from ..utils.concurrency import recursion_guard
-
 class AlwaysOnMonitor:
-    def __init__(self):
-        self.is_running = False
+    def __init__(self, github_service):
+        self.github_service = github_service
+        self.state = "ACTIVE"
 
-    def verify_state(self, controller_state):
-        with recursion_guard() as can_proceed:
-            if not can_proceed:
-                return
-            if controller_state == "Unknown":
-                self.trigger_emergency_protocol()
-                
-    def trigger_emergency_protocol(self):
-        pass
-
-monitor = AlwaysOnMonitor()
-
-def get_always_on_monitor():
-    return monitor
-
-def start_always_on_monitor():
-    monitor.is_running = True
-    return monitor
-    
-def stop_always_on_monitor():
-    monitor.is_running = False
-    return monitor
+    def monitor_loop(self):
+        if self.state == "SUSPENDED": return
+        try:
+            self.github_service.create_branch("patch-test")
+        except PermissionError:
+            self.state = "SUSPENDED"
+            print("Autonomy suspended: Insufficient GitHub Scopes.")
