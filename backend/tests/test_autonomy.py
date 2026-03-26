@@ -211,6 +211,35 @@ class TestCodeGenerator:
         assert "files" in parsed
         assert len(parsed["files"]) > 0
 
+    def test_parse_plan_raw_json_file_changes_format(self):
+        """Test parsing raw JSON plans stored directly in the task record."""
+        from src.kortana.services.code_generator import CodeGenerator
+
+        gen = CodeGenerator()
+        plan_text = """
+{
+  "action": "create-files",
+  "description": "Create a test file",
+  "FILE_CHANGES": [
+    {
+      "path": "test_pipeline_execution.py",
+      "action": "create",
+      "content": "print('success')"
+    }
+  ]
+}
+"""
+        parsed = gen.parse_plan(plan_text)
+        assert parsed["files"] == [
+            {
+                "path": "test_pipeline_execution.py",
+                "action": "create",
+                "dependencies": [],
+                "priority": 0,
+                "content": "print('success')",
+            }
+        ]
+
     def test_validate_plan_structure(self):
         """Test plan validation"""
         from src.kortana.services.code_generator import CodeGenerator
@@ -439,17 +468,34 @@ class TestGitHubAutonomyService:
             branch_name="test-branch",
         )
 
-        with patch.object(service, "_create_branch", return_value=True), patch(
-            "src.kortana.services.github_autonomy_service.CodeGenerator"
-        ) as mock_codegen:
-            mock_instance = MagicMock()
-            mock_instance.generate_from_gemini_plan.return_value = {"errors": None}
-            mock_codegen.return_value = mock_instance
+        mock_codegen = MagicMock()
+        mock_codegen.generate_from_gemini_plan.return_value = {
+            "errors": None,
+            "created": ["test.py"],
+            "modified": [],
+            "deleted": [],
+        }
+
+        with patch.object(service, "_create_branch", return_value=True), patch.object(
+            service, "code_gen", mock_codegen
+        ), patch.object(
+            service, "_commit_branch_changes", AsyncMock(return_value="abc123")
+        ) as mock_commit, patch.object(
+            service, "_push_branch", AsyncMock(return_value=True)
+        ) as mock_push, patch.object(
+            service, "_create_pull_request_for_branch", AsyncMock(return_value=42)
+        ) as mock_pr:
             mock_db.commit = MagicMock()
 
             result = await service.execute_task(task)
             assert result.status == "executed"
             assert result.executed_at is not None
+            assert result.code_changes == ["test.py"]
+            assert result.commit_sha == "abc123"
+            assert result.github_pr_number == 42
+            mock_commit.assert_awaited_once_with(task, ["test.py"])
+            mock_push.assert_awaited_once_with(task)
+            mock_pr.assert_awaited_once_with(task)
 
     @pytest.mark.asyncio
     async def test_execute_task_branch_creation_failure(self, service, mock_db):

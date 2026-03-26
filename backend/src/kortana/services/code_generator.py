@@ -242,6 +242,41 @@ class CodeGenerator:
         if not self.repo_path.exists():
             raise CodeGenerationError(f"Repository path does not exist: {repo_path}")
 
+    def _normalize_json_plan(self, parsed_json: dict[str, Any]) -> dict[str, Any]:
+        """Normalize JSON plan variants into the internal parsed-plan shape."""
+        if "files" in parsed_json and isinstance(parsed_json["files"], list):
+            return parsed_json
+
+        normalized = {
+            "files": [],
+            "commands": parsed_json.get("COMMANDS", []),
+            "tests": parsed_json.get("TESTS", []),
+            "description": (
+                parsed_json.get("description") or json.dumps(parsed_json)[:500]
+            ),
+        }
+
+        for file_change in parsed_json.get("FILE_CHANGES", []):
+            if not isinstance(file_change, dict):
+                continue
+
+            normalized["files"].append(
+                {
+                    "path": (
+                        file_change.get("path")
+                        or file_change.get("file")
+                        or file_change.get("filename")
+                        or ""
+                    ),
+                    "action": file_change.get("action", "modify"),
+                    "dependencies": file_change.get("dependencies", []),
+                    "priority": int(file_change.get("priority", 0) or 0),
+                    "content": file_change.get("content", ""),
+                }
+            )
+
+        return normalized
+
     def parse_plan(self, plan_text: str) -> dict[str, Any]:
         """
         Parse Gemini-generated plan into structured format
@@ -258,11 +293,24 @@ class CodeGenerator:
         ```
         """
         try:
+            stripped_plan = plan_text.strip()
+
+            # Accept raw JSON plans stored directly in the database.
+            if stripped_plan.startswith("{"):
+                try:
+                    parsed_json = json.loads(stripped_plan)
+                    if isinstance(parsed_json, dict):
+                        return self._normalize_json_plan(parsed_json)
+                except json.JSONDecodeError:
+                    pass  # Fall through to fenced JSON / YAML-like parser
+
             # Try to extract JSON if present
             json_match = re.search(r"```json\n(.*?)\n```", plan_text, re.DOTALL)
             if json_match:
                 try:
-                    return json.loads(json_match.group(1))
+                    parsed_json = json.loads(json_match.group(1))
+                    if isinstance(parsed_json, dict):
+                        return self._normalize_json_plan(parsed_json)
                 except json.JSONDecodeError:
                     pass  # Fall through to YAML-like parser
 

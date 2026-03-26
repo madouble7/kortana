@@ -331,16 +331,23 @@ class GitHubAutonomyService:
             if result.get("errors"):
                 raise Exception(f"Code generation errors: {result['errors']}")
 
-            # 3. Commit changes to the branch (if not dry-run)
-            if not dry_run:
-                files_changed = (
+            files_changed = [
+                str(path)
+                for path in (
                     result.get("created", [])
                     + result.get("modified", [])
                     + result.get("deleted", [])
                 )
+            ]
+            task.code_changes = files_changed or None
+
+            # 3. Commit changes to the branch (if not dry-run)
+            if not dry_run:
                 if files_changed:
-                    if not await self._commit_branch_changes(task, files_changed):
+                    commit_sha = await self._commit_branch_changes(task, files_changed)
+                    if not commit_sha:
                         raise Exception("Failed to commit changes")
+                    task.commit_sha = commit_sha
 
                     # 4. Push branch to GitHub
                     if not await self._push_branch(task):
@@ -349,7 +356,7 @@ class GitHubAutonomyService:
                     # 5. Create pull request
                     pr_number = await self._create_pull_request_for_branch(task)
                     if pr_number:
-                        task.pr_number = pr_number
+                        task.github_pr_number = pr_number
                         logger.info(
                             f"Created PR #{pr_number} for task #{task.github_issue_number}"
                         )
@@ -444,8 +451,8 @@ class GitHubAutonomyService:
 
     async def _commit_branch_changes(
         self, task: GitHubTask, files_changed: list[Any]
-    ) -> bool:
-        """Commit changed files to the local repository"""
+    ) -> str | None:
+        """Commit changed files to the local repository and return the new SHA."""
         try:
             # Stage the changed files
             for file_path in files_changed:
@@ -471,14 +478,23 @@ class GitHubAutonomyService:
                 text=True,
             )
 
+            sha_result = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=".",
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            commit_sha = sha_result.stdout.strip()
+
             logger.info(f"Committed changes: {result.stdout}")
-            return True
+            return commit_sha or None
         except subprocess.CalledProcessError as e:
             logger.error(f"Failed to commit changes: {e.stderr}")
-            return False
+            return None
         except Exception as e:
             logger.error(f"Commit failed with exception: {str(e)}")
-            return False
+            return None
 
     async def _push_branch(self, task: GitHubTask) -> bool:
         """Push the branch to GitHub"""
