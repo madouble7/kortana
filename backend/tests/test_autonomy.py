@@ -3,6 +3,7 @@ Unit and integration tests for GitHub autonomy system
 """
 
 import subprocess
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import httpx
@@ -533,6 +534,7 @@ class TestGitHubAutonomyService:
             "modified": [],
             "deleted": [],
         }
+        service.repo_root = Path("C:/repo-root")
 
         with patch.object(service, "_create_branch", return_value=True), patch.object(
             service, "code_gen", mock_codegen
@@ -554,6 +556,9 @@ class TestGitHubAutonomyService:
             mock_commit.assert_awaited_once_with(task, ["test.py"])
             mock_push.assert_awaited_once_with(task)
             mock_pr.assert_awaited_once_with(task)
+            assert mock_codegen.generate_from_gemini_plan.call_args.kwargs["repo_path"] == str(
+                service.repo_root
+            )
 
     @pytest.mark.asyncio
     async def test_execute_task_branch_creation_failure(self, service, mock_db):
@@ -685,6 +690,7 @@ class TestGitHubAutonomyService:
             github_issue_number=123, branch_name="autonomy/test-123", title="Test Task"
         )
         files_changed = ["test.py", "test2.py"]
+        service.repo_root = Path("C:/repo-root")
 
         with patch("subprocess.run") as mock_run:
             # First call: checkout - return success
@@ -708,8 +714,10 @@ class TestGitHubAutonomyService:
             assert "git" in str(checkout_call)
             assert "checkout" in str(checkout_call)
             assert "autonomy/test-123" in str(checkout_call)
+            assert checkout_call.kwargs["cwd"] == service.repo_root
             commit_call = mock_run.call_args_list[3]
             assert "--no-verify" in str(commit_call)
+            assert commit_call.kwargs["cwd"] == service.repo_root
 
             assert commit_sha == "abc123def456"
 

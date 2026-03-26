@@ -7,6 +7,7 @@ import inspect
 import os
 import subprocess
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -32,6 +33,7 @@ class GitHubAutonomyService:
         self.code_gen = CodeGenerator()
         self.settings = get_settings()
         self.http_client = get_http_client()
+        self.repo_root = Path(__file__).resolve().parents[4]
 
         # Get GitHub token from environment first, then fallback to settings
         self.github_token = os.getenv("GITHUB_TOKEN")
@@ -282,12 +284,12 @@ class GitHubAutonomyService:
                 f"You MUST output ONLY a valid JSON object matching this schema:\n"
                 f"{{\n"
                 f'  "FILE_CHANGES": [\n'
-                f'    {{\n'
+                f"    {{\n"
                 f'      "file": "path/to/file.py",\n'
                 f'      "action": "create|modify|delete",\n'
                 f'      "content": "raw code content here"\n'
-                f'    }}\n'
-                f'  ]\n'
+                f"    }}\n"
+                f"  ]\n"
                 f"}}\n"
                 f"Title: {task.title}\nAnalysis: {task.analysis}"
             )
@@ -329,7 +331,7 @@ class GitHubAutonomyService:
 
             # 2. Use CodeGenerator to apply changes
             result = self.code_gen.generate_from_gemini_plan(
-                task.plan, repo_path=".", dry_run=dry_run
+                task.plan, repo_path=str(self.repo_root), dry_run=dry_run
             )
 
             if result.get("errors"):
@@ -482,7 +484,7 @@ class GitHubAutonomyService:
             try:
                 subprocess.run(
                     ["git", "checkout", task.branch_name],
-                    cwd=".",
+                    cwd=self.repo_root,
                     check=True,
                     capture_output=True,
                     text=True,
@@ -495,14 +497,14 @@ class GitHubAutonomyService:
                 try:
                     subprocess.run(
                         ["git", "fetch", "origin", task.branch_name],
-                        cwd=".",
+                        cwd=self.repo_root,
                         check=True,
                         capture_output=True,
                         text=True,
                     )
                     subprocess.run(
                         ["git", "checkout", "-B", task.branch_name, "FETCH_HEAD"],
-                        cwd=".",
+                        cwd=self.repo_root,
                         check=True,
                         capture_output=True,
                         text=True,
@@ -512,14 +514,14 @@ class GitHubAutonomyService:
                     try:
                         subprocess.run(
                             ["git", "fetch", "origin", "main"],
-                            cwd=".",
+                            cwd=self.repo_root,
                             check=True,
                             capture_output=True,
                             text=True,
                         )
                         subprocess.run(
                             ["git", "checkout", "-B", task.branch_name, "origin/main"],
-                            cwd=".",
+                            cwd=self.repo_root,
                             check=True,
                             capture_output=True,
                             text=True,
@@ -535,7 +537,7 @@ class GitHubAutonomyService:
             for file_path in files_changed:
                 subprocess.run(
                     ["git", "add", str(file_path)],
-                    cwd=".",
+                    cwd=self.repo_root,
                     check=True,
                     capture_output=True,
                 )
@@ -550,7 +552,7 @@ class GitHubAutonomyService:
 
             subprocess.run(
                 ["git", "commit", "--no-verify", "-m", commit_message],
-                cwd=".",
+                cwd=self.repo_root,
                 check=True,
                 capture_output=True,
                 text=True,
@@ -558,7 +560,7 @@ class GitHubAutonomyService:
 
             sha_result = subprocess.run(
                 ["git", "rev-parse", "HEAD"],
-                cwd=".",
+                cwd=self.repo_root,
                 check=True,
                 capture_output=True,
                 text=True,
@@ -582,7 +584,7 @@ class GitHubAutonomyService:
             # Verify we're still on the task branch (safety check)
             branch_check = subprocess.run(
                 ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-                cwd=".",
+                cwd=self.repo_root,
                 check=True,
                 capture_output=True,
                 text=True,
@@ -596,7 +598,7 @@ class GitHubAutonomyService:
                 # Try to recover by checking out the branch
                 subprocess.run(
                     ["git", "checkout", task.branch_name],
-                    cwd=".",
+                    cwd=self.repo_root,
                     check=True,
                     capture_output=True,
                 )
@@ -613,7 +615,7 @@ class GitHubAutonomyService:
                     push_url,
                     f"{task.branch_name}:{task.branch_name}",
                 ],
-                cwd=".",
+                cwd=self.repo_root,
                 check=True,
                 capture_output=True,
                 text=True,
