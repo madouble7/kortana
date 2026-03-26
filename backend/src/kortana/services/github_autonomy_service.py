@@ -253,11 +253,6 @@ class GitHubAutonomyService:
                 f"If this is a [SELF-REPAIR] issue, you must diagnose the internal autonomy logic flaw causing the error and architect a structural fix.\n\n"
                 f"Title: {task.title}\nDescription: {task.description}"
             )
-                f"You are KOR'TANA PRIME, an autonomous AI architect modifying your own application (or another repository).\n"
-                f"Analyze this issue and provide expert-level implementation insights. "
-                f"If this is a [SELF-REPAIR] issue, you must diagnose the internal autonomy logic flaw causing the error and architect a structural fix.\n\n"
-                f"Title: {task.title}\nDescription: {task.description}"
-            )
             analysis = await self._maybe_await(gemini_service.analyze_text(prompt))
             task.analysis = analysis
             task.status = "analyzed"
