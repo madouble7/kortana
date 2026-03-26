@@ -240,6 +240,44 @@ class TestCodeGenerator:
             }
         ]
 
+    def test_parse_plan_markdown_file_changes_with_file_blocks(self):
+        """Test parsing markdown FILE_CHANGES bullets plus detailed FILE blocks."""
+        from src.kortana.services.code_generator import CodeGenerator
+
+        gen = CodeGenerator()
+        plan_text = """
+**FILE_CHANGES**
+*   **NEW:** `tests/e2e/utils/git.ts`
+*   **MOD:** `.env.test`
+
+**FILE: `tests/e2e/utils/git.ts`**
+```typescript
+export const x = 1;
+```
+
+**FILE: `.env.test`**
+```dotenv
+GITHUB_TOKEN=test
+```
+"""
+        parsed = gen.parse_plan(plan_text)
+        assert parsed["files"] == [
+            {
+                "path": "tests/e2e/utils/git.ts",
+                "action": "create",
+                "dependencies": [],
+                "priority": 0,
+                "content": "export const x = 1;",
+            },
+            {
+                "path": ".env.test",
+                "action": "modify",
+                "dependencies": [],
+                "priority": 0,
+                "content": "GITHUB_TOKEN=test",
+            },
+        ]
+
     def test_validate_plan_structure(self):
         """Test plan validation"""
         from src.kortana.services.code_generator import CodeGenerator
