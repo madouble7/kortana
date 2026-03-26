@@ -23,6 +23,41 @@
     "contributes": {
         "commands": [
             {
+                "command": "kortana.openAIStudio",
+                "title": "Kor'tana: Open AI Studio",
+                "category": "Kor'tana"
+            },
+            {
+                "command": "kortana.openDeployPage",
+                "title": "Kor'tana: Open Deploy Page",
+                "category": "Kor'tana"
+            },
+            {
+                "command": "kortana.checkHealth",
+                "title": "Kor'tana: Check Runtime Health",
+                "category": "Kor'tana"
+            },
+            {
+                "command": "kortana.unsealRuntime",
+                "title": "Kor'tana: Unseal Runtime",
+                "category": "Kor'tana"
+            },
+            {
+                "command": "kortana.direction.submit",
+                "title": "Kor'tana: Redirect Course",
+                "category": "Kor'tana"
+            },
+            {
+                "command": "kortana.operatorInbox.open",
+                "title": "Kor'tana: Open Operator Inbox",
+                "category": "Kor'tana"
+            },
+            {
+                "command": "kortana.alwaysOn.start",
+                "title": "Kor'tana: Start Always-On Monitor",
+                "category": "Kor'tana"
+            },
+            {
                 "command": "kortana.elevation.iam",
                 "title": "Kor'tana: I AM (Elevation Ritual)",
                 "category": "Kor'tana"

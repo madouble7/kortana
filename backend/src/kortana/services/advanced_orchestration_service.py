@@ -1,10 +1,11 @@
-from ..utils.concurrency import recursion_guard
+class AdvancedOrchestrationService:
+    def execute(self, task, depth=0):
+        if depth > 2:
+            return {"status": "MAX_RECURSION_REACHED", "fallback": True}
+        
+        # Standard orchestration execution with incremented depth
+        return self.process(task, depth + 1)
 
-# ... within AdvancedOrchestrationService ...
-
-    def log_failure(self, error_data):
-        with recursion_guard() as can_proceed:
-            if can_proceed:
-                self._write_to_db(error_data)
-            else:
-                self.logger.warning("Recursive log attempt blocked in OrchestrationService.")
+    def process(self, task, depth):
+        # Implementation logic here
+        pass

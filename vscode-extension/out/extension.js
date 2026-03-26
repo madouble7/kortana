@@ -1,25 +1,52 @@
-import * as vscode from "vscode";
-
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.activate = activate;
+exports.deactivate = deactivate;
+const vscode = __importStar(require("vscode"));
 const BACKEND_URL = "http://localhost:8000";
 const OPERATOR_INBOX_RELATIVE_PATH = ".kortana/operator_inbox.md";
-
-type DashboardMessage = {
-    command: string;
-    content?: string;
-};
-
-export function activate(context: vscode.ExtensionContext) {
+function activate(context) {
     const openAIStudio = async () => {
-        const aiStudioUrl =
-            "https://aistudio.google.com/app/prompts/create/1T7Nh4cq1IwCwhHq5u8ZETDb6fY4qVkH3";
+        const aiStudioUrl = "https://aistudio.google.com/app/prompts/create/1T7Nh4cq1IwCwhHq5u8ZETDb6fY4qVkH3";
         openExternalPanel("kortanaAIStudio", "Kor'tana AI Studio", aiStudioUrl);
     };
-
     const openDeployPage = async () => {
         const deployUrl = "https://kor-tana-780422883904.us-west1.run.app";
         openExternalPanel("kortanaDeployPage", "Kor'tana Deploy Page", deployUrl);
     };
-
     const unsealRuntime = async () => {
         vscode.window.showInformationMessage("Unsealing Kor'tana runtime...");
         try {
@@ -28,16 +55,12 @@ export function activate(context: vscode.ExtensionContext) {
                 encoding: "utf-8",
             });
             console.log(result);
-            vscode.window.showInformationMessage(
-                "Kor'tana runtime unsealed successfully."
-            );
-        } catch (error) {
-            vscode.window.showErrorMessage(
-                `Failed to unseal runtime: ${String(error)}`
-            );
+            vscode.window.showInformationMessage("Kor'tana runtime unsealed successfully.");
+        }
+        catch (error) {
+            vscode.window.showErrorMessage(`Failed to unseal runtime: ${String(error)}`);
         }
     };
-
     const checkHealth = async () => {
         try {
             const axios = require("axios");
@@ -45,212 +68,137 @@ export function activate(context: vscode.ExtensionContext) {
             const data = response.data || {};
             const state = data.system_state || "unknown";
             const mode = data.control_mode || "unknown";
-            vscode.window.showInformationMessage(
-                `Kor'tana daemon is ${data.running ? "running" : "stopped"} (${state}, ${mode}).`
-            );
-        } catch (error) {
-            vscode.window.showWarningMessage(
-                "Kor'tana backend is offline. Start it with: cd backend && python -m uvicorn src.kortana.main:app --reload"
-            );
+            vscode.window.showInformationMessage(`Kor'tana daemon is ${data.running ? "running" : "stopped"} (${state}, ${mode}).`);
+        }
+        catch (error) {
+            vscode.window.showWarningMessage("Kor'tana backend is offline. Start it with: cd backend && python -m uvicorn src.kortana.main:app --reload");
         }
     };
-
     const startAlwaysOn = async () => {
         try {
             const axios = require("axios");
             const response = await axios.post(`${BACKEND_URL}/api/always-on/start`);
             const status = response.data?.status || "starting";
-            vscode.window.showInformationMessage(
-                `Always-on monitor ${status}.`
-            );
-        } catch (error) {
-            vscode.window.showErrorMessage(
-                `Failed to start always-on monitor: ${String(error)}`
-            );
+            vscode.window.showInformationMessage(`Always-on monitor ${status}.`);
+        }
+        catch (error) {
+            vscode.window.showErrorMessage(`Failed to start always-on monitor: ${String(error)}`);
         }
     };
-
     const openOperatorInbox = async () => {
         const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
         if (!workspaceFolder) {
-            vscode.window.showWarningMessage(
-                "Open a workspace folder before using the Kor'tana operator inbox."
-            );
+            vscode.window.showWarningMessage("Open a workspace folder before using the Kor'tana operator inbox.");
             return;
         }
-
-        const inboxUri = vscode.Uri.joinPath(
-            workspaceFolder.uri,
-            ...OPERATOR_INBOX_RELATIVE_PATH.split("/")
-        );
+        const inboxUri = vscode.Uri.joinPath(workspaceFolder.uri, ...OPERATOR_INBOX_RELATIVE_PATH.split("/"));
         const encoder = new TextEncoder();
-
         try {
-            await vscode.workspace.fs.createDirectory(
-                vscode.Uri.joinPath(workspaceFolder.uri, ".kortana")
-            );
+            await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(workspaceFolder.uri, ".kortana"));
             try {
                 await vscode.workspace.fs.stat(inboxUri);
-            } catch {
-                await vscode.workspace.fs.writeFile(
-                    inboxUri,
-                    encoder.encode(
-                        [
-                            "# Kor'tana Operator Inbox",
-                            "# Add one steering note per line.",
-                            "# focus: backend reliability and tests",
-                            "# avoid: billing",
-                            "# pause",
-                            "# max tasks 1",
-                            "",
-                        ].join("\n")
-                    )
-                );
             }
-
+            catch {
+                await vscode.workspace.fs.writeFile(inboxUri, encoder.encode([
+                    "# Kor'tana Operator Inbox",
+                    "# Add one steering note per line.",
+                    "# focus: backend reliability and tests",
+                    "# avoid: billing",
+                    "# pause",
+                    "# max tasks 1",
+                    "",
+                ].join("\n")));
+            }
             const document = await vscode.workspace.openTextDocument(inboxUri);
             await vscode.window.showTextDocument(document, {
                 preview: false,
                 preserveFocus: false,
             });
-        } catch (error) {
-            vscode.window.showErrorMessage(
-                `Failed to open operator inbox: ${String(error)}`
-            );
+        }
+        catch (error) {
+            vscode.window.showErrorMessage(`Failed to open operator inbox: ${String(error)}`);
         }
     };
-
-    const submitDirection = async (prefill?: string) => {
-        const content =
-            prefill?.trim() ||
+    const submitDirection = async (prefill) => {
+        const content = prefill?.trim() ||
             (await vscode.window.showInputBox({
                 title: "Redirect Kor'tana",
-                prompt:
-                    "Describe what Kor'tana should prioritize, avoid, or change course toward.",
-                placeHolder:
-                    "Focus on tests and reliability. De-prioritize docs until the backend is stable.",
+                prompt: "Describe what Kor'tana should prioritize, avoid, or change course toward.",
+                placeHolder: "Focus on tests and reliability. De-prioritize docs until the backend is stable.",
                 ignoreFocusOut: true,
             }))?.trim();
-
         if (!content) {
             return;
         }
-
         try {
             const axios = require("axios");
             await axios.post(`${BACKEND_URL}/api/always-on/prompt`, {
                 content,
                 priority: 80,
             });
-            vscode.window.showInformationMessage(
-                "Kor'tana course updated."
-            );
-        } catch (error) {
-            vscode.window.showErrorMessage(
-                `Failed to submit direction: ${String(error)}`
-            );
+            vscode.window.showInformationMessage("Kor'tana course updated.");
+        }
+        catch (error) {
+            vscode.window.showErrorMessage(`Failed to submit direction: ${String(error)}`);
         }
     };
-
-    context.subscriptions.push(
-        vscode.commands.registerCommand("kortana.openAIStudio", openAIStudio),
-        vscode.commands.registerCommand("kortana.openDeployPage", openDeployPage),
-        vscode.commands.registerCommand("kortana.unsealRuntime", unsealRuntime),
-        vscode.commands.registerCommand("kortana.checkHealth", checkHealth),
-        vscode.commands.registerCommand("kortana.direction.submit", submitDirection),
-        vscode.commands.registerCommand("kortana.operatorInbox.open", openOperatorInbox),
-        vscode.commands.registerCommand("kortana.alwaysOn.start", startAlwaysOn),
-        vscode.commands.registerCommand(
-            "kortana.autonomy.audit.open",
-            async () => {
-                const panel = vscode.window.createWebviewPanel(
-                    "kortanaAutonomyAudit",
-                    "Kor'tana Autonomy Audit",
-                    vscode.ViewColumn.Two,
-                    {
-                        enableScripts: true,
-                    }
-                );
-
-                panel.webview.html = getAutonomyAuditContent();
-            }
-        )
-    );
-
-    context.subscriptions.push(
-        vscode.workspace.onDidSaveTextDocument((document) => {
-            const normalized = document.uri.fsPath.replace(/\\/g, "/").toLowerCase();
-            if (normalized.endsWith(OPERATOR_INBOX_RELATIVE_PATH.toLowerCase())) {
-                vscode.window.setStatusBarMessage(
-                    "Kor'tana inbox updated. The backend will ingest the new guidance automatically.",
-                    4000
-                );
-            }
-        })
-    );
-
-    context.subscriptions.push(
-        vscode.window.registerWebviewViewProvider("kortana-dashboard", {
-            resolveWebviewView(webviewView: vscode.WebviewView) {
-                webviewView.webview.options = {
-                    enableScripts: true,
-                };
-
-                webviewView.webview.onDidReceiveMessage(
-                    async (message: DashboardMessage) => {
-                    switch (message.command) {
-                        case "openAIStudio":
-                            await openAIStudio();
-                            break;
-                        case "openDeployPage":
-                            await openDeployPage();
-                            break;
-                        case "checkHealth":
-                            await checkHealth();
-                            break;
-                        case "unsealRuntime":
-                            await unsealRuntime();
-                            break;
-                        case "submitDirection":
-                            await submitDirection(message.content);
-                            break;
-                        case "startAlwaysOn":
-                            await startAlwaysOn();
-                            break;
-                        case "openOperatorInbox":
-                            await openOperatorInbox();
-                            break;
-                        default:
-                            break;
-                    }
-                    }
-                );
-
-                webviewView.webview.html = getDashboardContent();
-            },
-        })
-    );
-
-    vscode.window.showInformationMessage(
-        "Kor'tana control surface is online."
-    );
-}
-
-function openExternalPanel(viewType: string, title: string, url: string) {
-    const panel = vscode.window.createWebviewPanel(
-        viewType,
-        title,
-        vscode.ViewColumn.One,
-        {
+    context.subscriptions.push(vscode.commands.registerCommand("kortana.openAIStudio", openAIStudio), vscode.commands.registerCommand("kortana.openDeployPage", openDeployPage), vscode.commands.registerCommand("kortana.unsealRuntime", unsealRuntime), vscode.commands.registerCommand("kortana.checkHealth", checkHealth), vscode.commands.registerCommand("kortana.direction.submit", submitDirection), vscode.commands.registerCommand("kortana.operatorInbox.open", openOperatorInbox), vscode.commands.registerCommand("kortana.alwaysOn.start", startAlwaysOn), vscode.commands.registerCommand("kortana.autonomy.audit.open", async () => {
+        const panel = vscode.window.createWebviewPanel("kortanaAutonomyAudit", "Kor'tana Autonomy Audit", vscode.ViewColumn.Two, {
             enableScripts: true,
-            enableCommandUris: true,
+        });
+        panel.webview.html = getAutonomyAuditContent();
+    }));
+    context.subscriptions.push(vscode.workspace.onDidSaveTextDocument((document) => {
+        const normalized = document.uri.fsPath.replace(/\\/g, "/").toLowerCase();
+        if (normalized.endsWith(OPERATOR_INBOX_RELATIVE_PATH.toLowerCase())) {
+            vscode.window.setStatusBarMessage("Kor'tana inbox updated. The backend will ingest the new guidance automatically.", 4000);
         }
-    );
-
+    }));
+    context.subscriptions.push(vscode.window.registerWebviewViewProvider("kortana-dashboard", {
+        resolveWebviewView(webviewView) {
+            webviewView.webview.options = {
+                enableScripts: true,
+            };
+            webviewView.webview.onDidReceiveMessage(async (message) => {
+                switch (message.command) {
+                    case "openAIStudio":
+                        await openAIStudio();
+                        break;
+                    case "openDeployPage":
+                        await openDeployPage();
+                        break;
+                    case "checkHealth":
+                        await checkHealth();
+                        break;
+                    case "unsealRuntime":
+                        await unsealRuntime();
+                        break;
+                    case "submitDirection":
+                        await submitDirection(message.content);
+                        break;
+                    case "startAlwaysOn":
+                        await startAlwaysOn();
+                        break;
+                    case "openOperatorInbox":
+                        await openOperatorInbox();
+                        break;
+                    default:
+                        break;
+                }
+            });
+            webviewView.webview.html = getDashboardContent();
+        },
+    }));
+    vscode.window.showInformationMessage("Kor'tana control surface is online.");
+}
+function openExternalPanel(viewType, title, url) {
+    const panel = vscode.window.createWebviewPanel(viewType, title, vscode.ViewColumn.One, {
+        enableScripts: true,
+        enableCommandUris: true,
+    });
     panel.webview.html = getExternalPanelContent(url);
 }
-
-function getAutonomyAuditContent(): string {
+function getAutonomyAuditContent() {
     return `
 <!DOCTYPE html>
 <html>
@@ -291,8 +239,7 @@ function getAutonomyAuditContent(): string {
 </html>
     `;
 }
-
-function getDashboardContent(): string {
+function getDashboardContent() {
     return `
 <!DOCTYPE html>
 <html>
@@ -447,8 +394,7 @@ function getDashboardContent(): string {
 </html>
     `;
 }
-
-function getExternalPanelContent(url: string): string {
+function getExternalPanelContent(url) {
     return `
 <!DOCTYPE html>
 <html lang="en">
@@ -467,7 +413,7 @@ function getExternalPanelContent(url: string): string {
 </html>
     `;
 }
-
-export function deactivate() {
+function deactivate() {
     console.log("Kor'tana VS Code Extension deactivated");
 }
+//# sourceMappingURL=extension.js.map

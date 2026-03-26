@@ -1,11 +1,20 @@
-from ..utils.concurrency import recursion_guard
+import threading
 
-# ... within AlwaysOnMonitor ...
+class AlwaysOnMonitor:
+    _lock = threading.Lock()
+    _in_progress = False
 
-    def verify_state(self, controller_state):
-        with recursion_guard() as can_proceed:
-            if not can_proceed:
-                return
-            # Existing verification logic continues here
-            if controller_state == "Unknown":
-                self.trigger_emergency_protocol()
+    def trigger_log(self, data):
+        if self._in_progress:
+            return  # Prevent recursive logging triggers
+        
+        with self._lock:
+            self._in_progress = True
+            try:
+                self._process_test_log(data)
+            finally:
+                self._in_progress = False
+
+    def _process_test_log(self, data):
+        # Existing logging implementation
+        pass
