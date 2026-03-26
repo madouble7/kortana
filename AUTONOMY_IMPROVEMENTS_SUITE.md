@@ -7,6 +7,7 @@ This document outlines a comprehensive enhancement suite that transforms KOR'TAN
 **User Goal:** "audit and improve kor'tana to make her the most autonomous ai on the planet"
 
 **Status:**
+
 - ✅ Autonomy audit complete (AUTONOMY_SYSTEM_ARCHITECTURE_ANALYSIS.md)
 - ✅ 3 core improvement modules created
 - ⏳ Implementation and integration in progress
@@ -16,11 +17,13 @@ This document outlines a comprehensive enhancement suite that transforms KOR'TAN
 ## Part 1: Core Improvement Modules Created
 
 ### 1. Advanced Rate Limiter & API Quota Management
+
 **File:** `backend/src/kortana/advanced_rate_limiter.py` (340 lines)
 
 **Problem Addressed:** GitHub API rate limit (5,000 req/hour) and Gemini quota exhaustion (60 req/min, 1,500/day) are not tracked, causing hard stops when quotas are exceeded.
 
 **Solution:**
+
 - `APIQuotaWindow` class tracks requests in real-time per service
 - `AdvancedRateLimiter` manages multi-service quota across GitHub, Gemini, OpenAI
 - Pre-request quota checks prevent hitting limits
@@ -29,6 +32,7 @@ This document outlines a comprehensive enhancement suite that transforms KOR'TAN
 - Redis-backed distributed quota tracking for multi-instance coordination
 
 **Key Features:**
+
 ```python
 # Check if quota available before API call
 quota_check = await limiter.check_quota("github", required=5)
@@ -44,19 +48,21 @@ status = limiter.get_status()
 ```
 
 **Integration Points:**
+
 - Modify `github_autonomy_service.py` to call `limiter.check_quota()` before API calls
 - Modify `code_generator.py` Gemini calls to use quota checking
 - Add quota status endpoint to `/api/system/quota-status`
 
 **Expected Impact:** Prevents 100% of quota-exhaustion-induced daemon halts
 
-
 ### 2. Intelligent Task Prioritization Queue
+
 **File:** `backend/src/kortana/intelligent_task_queue.py` (430 lines)
 
 **Problem Addressed:** Current daemon processes tasks FIFO, ignoring priority field. Critical security fixes can be delayed behind low-priority documentation work.
 
 **Solution:**
+
 - `TaskPriority` enum with 5 levels (CRITICAL, HIGH, MEDIUM, LOW, DEFERRED)
 - `TaskPriorityScore` with weighted composite scoring:
   - Impact score (25%): Lines of code changed, test coverage affected
@@ -69,6 +75,7 @@ status = limiter.get_status()
 - Starvation prevention: Identifies tasks waiting >1 hour for execution
 
 **Key Features:**
+
 ```python
 # Add task with multi-factor priority
 queue.add_task(
@@ -92,6 +99,7 @@ queue.update_signals("fix-security-regression", [
 ```
 
 **Integration Points:**
+
 - Modify `autonomy_daemon.py` lines 50-80 to replace task list iteration with `queue.pop_next()`
 - Add `intelligent_task_queue.py` initialization in main daemon setup
 - Integrate with GitHub webhook system to emit `USER_MENTION` signals
@@ -99,13 +107,14 @@ queue.update_signals("fix-security-regression", [
 
 **Expected Impact:** Critical work executes within 5 minutes; starvation prevented
 
-
 ### 3. Adaptive Retry Strategy Engine
+
 **File:** `backend/src/kortana/adaptive_retry_engine.py` (380 lines)
 
 **Problem Addressed:** Current retry logic uses fixed 3 retries regardless of error type. Transient network errors treated same as permanent authentication failures.
 
 **Solution:**
+
 - `ErrorCategory` enum (9 types):
   - TRANSIENT (retry 5x, 0.1s initial delay): Temporary glitches
   - NETWORK (retry 4x, 1s initial, 60s max): Connection timeouts
@@ -123,6 +132,7 @@ queue.update_signals("fix-security-regression", [
 - Quota-reset-aware waits for rate limit errors
 
 **Key Features:**
+
 ```python
 # Adaptive retry decision
 error = ConnectionError("timeout")
@@ -143,6 +153,7 @@ engine.should_retry(AuthError("invalid token"), attempt=0)  # False
 ```
 
 **Integration Points:**
+
 - Modify `workflow_executor.py` lines 80-100 to use `AdaptiveRetryEngine`
 - Replace fixed retry=3 in task nodes with category-specific retry logic
 - Add error categorization to all HTTP error handlers
@@ -150,13 +161,14 @@ engine.should_retry(AuthError("invalid token"), attempt=0)  # False
 
 **Expected Impact:** 70% reduction in wasted retry attempts; critical failures handled 10x faster
 
-
 ### 4. [PENDING] Rollback & Undo Manager
+
 **Planned File:** `backend/src/kortana/rollback_manager.py`
 
 **Problem Addressed:** Autonomous code execution has no reversal mechanism. Failed PRs stay broken; no automatic remediation.
 
 **Solution (Planned):**
+
 - Track commit SHA before each major operation
 - Maintain operation history with reversibility metadata
 - Provide `/api/rollback/{task_id}` endpoint
@@ -165,13 +177,14 @@ engine.should_retry(AuthError("invalid token"), attempt=0)  # False
 
 **Expected Impact:** 100% recovery from autonomous mistakes
 
-
 ### 5. [PENDING] Consensus-Based Decision Verification
+
 **Integration Point:** Modify `human_only_protocol.py`
 
 **Problem Addressed:** High-impact decisions (schema migrations, data deletion) made with single AI model. No verification mechanism.
 
 **Solution (Planned):**
+
 - Call consensus service for decisions with impact_score >0.8
 - Require >70% agreement from 3 AI models
 - Log consensus scoring for explainability
@@ -179,13 +192,14 @@ engine.should_retry(AuthError("invalid token"), attempt=0)  # False
 
 **Expected Impact:** Prevents 99% of catastrophic mistakes
 
-
 ### 6. [PENDING] Gemini Quota Manager
+
 **Planned File:** `backend/src/kortana/gemini_quota_manager.py`
 
 **Problem Addressed:** Gemini has tight quotas (60 req/min, 1,500/day) but no adaptation strategy.
 
 **Solution (Planned):**
+
 - Real-time quota tracking per endpoint
 - Token-reducing inference modes (shorter prompts, faster models)
 - Daily quota allocation strategy (reserve headroom)
@@ -194,12 +208,12 @@ engine.should_retry(AuthError("invalid token"), attempt=0)  # False
 
 **Expected Impact:** 24/7 continuous operation without quota halts
 
-
 ---
 
 ## Part 2: Architecture Integration Plan
 
 ### Phase 1: Quick Wins (24 hours)
+
 1. ✅ Create `advanced_rate_limiter.py`
 2. ✅ Create `intelligent_task_queue.py`
 3. ✅ Create `adaptive_retry_engine.py`
@@ -208,6 +222,7 @@ engine.should_retry(AuthError("invalid token"), attempt=0)  # False
 6. ⏳ Update workflow executor retry logic
 
 ### Phase 2: Medium-Term (48-72 hours)
+
 1. Create `rollback_manager.py`
 2. Implement Gemini quota manager
 3. Consensus service integration
@@ -215,6 +230,7 @@ engine.should_retry(AuthError("invalid token"), attempt=0)  # False
 5. Quota status dashboard
 
 ### Phase 3: Advanced Features (1 week+)
+
 1. Self-healing mechanisms
 2. Predictive quota depletion alerts
 3. Resource-aware task scheduling
@@ -226,6 +242,7 @@ engine.should_retry(AuthError("invalid token"), attempt=0)  # False
 ## Part 3: Technical Implementation Details
 
 ### Rate Limiter Integration Example
+
 ```python
 # In github_autonomy_service.py
 from advanced_rate_limiter import AdvancedRateLimiter
@@ -249,6 +266,7 @@ async def create_github_issue(title: str, body: str):
 ```
 
 ### Task Priority Queue Integration Example
+
 ```python
 # In autonomy_daemon.py
 from intelligent_task_queue import IntelligentTaskQueue, TaskPriority, TaskSignal
@@ -280,6 +298,7 @@ while daemon_running:
 ```
 
 ### Adaptive Retry Integration Example
+
 ```python
 # In workflow_executor.py
 from adaptive_retry_engine import AdaptiveRetryEngine, ErrorCategory
@@ -332,6 +351,7 @@ async def execute_with_adaptive_retry(task, max_attempts=3):
 ## Part 5: Expected Autonomy Improvements
 
 ### Before Enhancements
+
 - ❌ Daemon halts at API quota limits (blocking for hours)
 - ❌ Critical tasks delayed behind low-priority work
 - ❌ Transient errors retried 3x with no backoff
@@ -340,6 +360,7 @@ async def execute_with_adaptive_retry(task, max_attempts=3):
 - ⏰ Effective autonomous operation: ~4-8 hours before hitting quota
 
 ### After Enhancements
+
 - ✅ Graceful degradation under quota pressure
 - ✅ Critical work prioritized automatically
 - ✅ Smart retry prevents wasted attempts
@@ -348,6 +369,7 @@ async def execute_with_adaptive_retry(task, max_attempts=3):
 - ⏰ Effective autonomous operation: 24-48 hours without intervention
 
 ### Autonomy Quotient Increase
+
 - **Current:** ~30% (system halts multiple times per day)
 - **Enhanced:** ~85% (handles >99% of scenarios autonomously)
 - **User Overhead:** 5 minutes/day → 1 minute/month
@@ -357,6 +379,7 @@ async def execute_with_adaptive_retry(task, max_attempts=3):
 ## Part 6: Integration Checklist
 
 ### Rate Limiter
+
 - [ ] Import in `github_autonomy_service.py`
 - [ ] Add quota check before GitHub API calls
 - [ ] Record requests in quota tracking
@@ -365,6 +388,7 @@ async def execute_with_adaptive_retry(task, max_attempts=3):
 - [ ] Test with mock rate limit scenarios
 
 ### Task Priority Queue
+
 - [ ] Import in `autonomy_daemon.py`
 - [ ] Replace task list iteration with queue
 - [ ] Add signal emission from webhooks
@@ -373,6 +397,7 @@ async def execute_with_adaptive_retry(task, max_attempts=3):
 - [ ] Test priority ranking scenarios
 
 ### Retry Engine
+
 - [ ] Import in `workflow_executor.py`
 - [ ] Replace fixed retry=3 with adaptive logic
 - [ ] Add error categorization to all HTTP handlers
@@ -381,6 +406,7 @@ async def execute_with_adaptive_retry(task, max_attempts=3):
 - [ ] Add retry analytics dashboard
 
 ### Rollback Manager (Future)
+
 - [ ] Create module
 - [ ] Track operation history
 - [ ] Implement rollback endpoint
@@ -392,6 +418,7 @@ async def execute_with_adaptive_retry(task, max_attempts=3):
 ## Part 7: Testing & Validation
 
 ### Rate Limiter Tests
+
 ```bash
 # Test quota tracking
 python -m pytest tests/test_advanced_rate_limiter.py -v
@@ -404,6 +431,7 @@ python -m pytest tests/test_advanced_rate_limiter.py -v
 ```
 
 ### Task Queue Tests
+
 ```bash
 # Test priority ranking
 python -m pytest tests/test_intelligent_task_queue.py -v
@@ -416,6 +444,7 @@ python -m pytest tests/test_intelligent_task_queue.py -v
 ```
 
 ### Retry Engine Tests
+
 ```bash
 # Test error categorization
 python -m pytest tests/test_adaptive_retry_engine.py -v
@@ -432,19 +461,23 @@ python -m pytest tests/test_adaptive_retry_engine.py -v
 ## Part 8: Success Metrics
 
 ### Daemon Uptime
+
 - **Current:** ~6-8 hours before quota halt
 - **Target:** 24+ hours without human intervention
 
 ### Task Execution Quality
+
 - **Impact Score:** Average priority of executed tasks
 - **Current:** 0.45 (mix of important and trivial)
 - **Target:** 0.75 (focused on high-impact work)
 
 ### Resilience
+
 - **Current:** Single quota limit causes complete daemon halt
 - **Target:** Graceful degradation with automatic retry
 
 ### Decision Quality
+
 - **Current:** ~95% success rate (some bad decisions)
 - **Target:** 99%+ success rate (consensus verification)
 
@@ -484,6 +517,7 @@ This autonomy enhancement suite removes ALL identified bottlenecks that limit au
 The goal—"make her the most autonomous AI on the planet"—becomes achievable through systematic elimination of autonomy bottlenecks.
 
 **User Goal Mapping:**
+
 - Audit: ✅ COMPLETE (AUTONOMY_SYSTEM_ARCHITECTURE_ANALYSIS.md)
 - Improve: ✅ IN PROGRESS (3 core modules created, 4 planned)
 - Most Autonomous: ✅ ACHIEVABLE (integration path clear)

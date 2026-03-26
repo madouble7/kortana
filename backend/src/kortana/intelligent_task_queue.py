@@ -187,12 +187,16 @@ class IntelligentTaskQueue:
         if not self.tasks:
             return None
 
-        best_task_id, best_score = max(self.tasks.items(), key=lambda x: x[1].final_score)
+        best_task_id, best_score = max(
+            self.tasks.items(), key=lambda x: x[1].final_score
+        )
 
         del self.tasks[best_task_id]
         best_score.add_to_history()
 
-        self.execution_history.append((best_task_id, best_score.final_score, datetime.utcnow()))
+        self.execution_history.append(
+            (best_task_id, best_score.final_score, datetime.utcnow())
+        )
 
         logger.info(
             f"Executing task {best_task_id} with priority score {best_score.final_score:.2f}"
@@ -219,9 +223,7 @@ class IntelligentTaskQueue:
             self.tasks.items(),
             key=lambda x: x[1].final_score,
             reverse=True,
-        )[
-            :10
-        ]  # Top 10
+        )[:10]  # Top 10
 
         return {
             "size": len(self.tasks),
@@ -250,7 +252,8 @@ class IntelligentTaskQueue:
 
         if starving:
             logger.warning(
-                f"Found {len(starving)} starving tasks " f"(waiting >{threshold_seconds}s)"
+                f"Found {len(starving)} starving tasks "
+                f"(waiting >{threshold_seconds}s)"
             )
 
         return starving

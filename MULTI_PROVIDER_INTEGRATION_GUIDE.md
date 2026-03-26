@@ -5,6 +5,7 @@
 KOR'TANA now has complete multi-provider support using intelligent cost-optimized routing. This guide shows how to integrate the new modules with your existing code.
 
 **Created Modules:**
+
 1. `cost_optimized_model_router.py` - Intelligent provider selection based on task type and budget
 2. `unified_model_gateway.py` - Simple interface for integrating with existing code
 3. `MULTI_PROVIDER_COST_OPTIMIZATION.md` - Strategy documentation
@@ -14,6 +15,7 @@ KOR'TANA now has complete multi-provider support using intelligent cost-optimize
 ### 1. Check Provider Configuration
 
 Your `.env` already has all API keys:
+
 ```bash
 # Verify keys are loaded
 python -c "
@@ -24,6 +26,7 @@ print(gateway.get_all_providers_info())
 ```
 
 **Expected Output:**
+
 ```
 ✅ Unified Model Gateway initialized
 Free tier providers: ['groq', 'gemini']
@@ -40,6 +43,7 @@ Provider priority order:
 Replace single-provider calls with multi-provider fallback:
 
 **BEFORE (Gemini-only, quota-limited):**
+
 ```python
 # In autonomy_daemon.py
 import google.generativeai as genai
@@ -52,6 +56,7 @@ async def analyze_code(task_id: str):
 ```
 
 **AFTER (Multi-provider with fallback):**
+
 ```python
 # In autonomy_daemon.py
 from backend.src.kortana.unified_model_gateway import UnifiedModelGateway
@@ -65,9 +70,9 @@ async def analyze_code(task_id: str):
         task_type=TaskType.ANALYSIS,
         budget_limit=0.01  # Max $0.01 per request
     )
-    
+
     logger.info(f"Trying providers: {[p.value for p in providers]}")
-    
+
     for provider in providers:
         if provider.value == "groq":
             # Call Groq (free, unlimited)
@@ -79,19 +84,19 @@ async def analyze_code(task_id: str):
                 output_tokens=200
             )
             return response
-        
+
         elif provider.value == "gemini":
             # Call Gemini (free, quota-limited)
             response = await call_gemini(task_description)
             gateway.record_api_call(...)
             return response
-        
+
         elif provider.value == "openrouter":
             # Call OpenRouter (cost-efficient fallback)
             response = await call_openrouter(task_description)
             gateway.record_api_call(...)
             return response
-    
+
     logger.error("All providers failed")
     return None
 ```
@@ -104,7 +109,7 @@ Monitor spending in realtime:
 # In monitoring endpoint or periodic health check
 def get_cost_status():
     report = gateway.get_cost_report()
-    
+
     return {
         "daily_spend": report["total_daily_spend"],
         "monthly_spend": report["total_monthly_spend"],
@@ -115,7 +120,7 @@ def get_cost_status():
 # Output example:
 {
     "daily_spend": "$0.25",
-    "monthly_spend": "$7.50", 
+    "monthly_spend": "$7.50",
     "free_requests": {"groq": 8000, "gemini": 400},
     "breakdown": {
         "groq": {"daily": "$0.00", "monthly": "$0.00", "requests": 8000},
@@ -172,24 +177,28 @@ volume_providers = gateway.get_provider_chain(
 ## Integration Checklist
 
 ### Phase 1: Monitoring (2-4 hours)
+
 - [ ] Add cost report endpoint to API
 - [ ] Display daily/monthly spending in dashboard
 - [ ] Set up alerts when daily spend > $5.00
 - [ ] Verify all providers initialize correctly
 
 ### Phase 2: Governance (4-6 hours)
+
 - [ ] Update autonomy daemon to use gateway for provider selection
 - [ ] Add budget checking before expensive operations
 - [ ] Implement fallback chain for each task type
 - [ ] Log provider selection decisions
 
 ### Phase 3: Optimization (6-8 hours)
+
 - [ ] Tune task type scoring weights based on real data
 - [ ] Implement provider-specific request formatting
 - [ ] Add request deduplication to save API calls
 - [ ] Create provider failover metrics
 
 ### Phase 4: Advanced (8+ hours)
+
 - [ ] Implement consensus voting for critical decisions
 - [ ] Add predictive quota warnings
 - [ ] Create dynamic provider switching based on latency
@@ -198,6 +207,7 @@ volume_providers = gateway.get_provider_chain(
 ## Real Usage Examples
 
 ### Example 1: Code Generation Task
+
 ```python
 from backend.src.kortana.cost_optimized_model_router import TaskType
 
@@ -206,7 +216,7 @@ async def generate_code_for_issue(issue_id: str, description: str):
         TaskType.CODE_GENERATION,
         budget_limit=0.02
     )
-    
+
     for provider in providers:
         try:
             # Route to appropriate API based on provider
@@ -216,7 +226,7 @@ async def generate_code_for_issue(issue_id: str, description: str):
                 code = await openrouter_client.generate(description)
             elif provider.value == "openai":
                 code = await openai_client.generate(description)
-            
+
             # Record usage
             gateway.record_api_call(
                 provider,
@@ -224,90 +234,92 @@ async def generate_code_for_issue(issue_id: str, description: str):
                 input_tokens=len(description)//4,
                 output_tokens=len(code)//4
             )
-            
+
             logger.info(f"Generated code with {provider.value}")
             return code
-        
+
         except Exception as e:
             logger.warning(f"Provider {provider.value} failed: {e}")
             continue
-    
+
     raise Exception("All providers exhausted for code generation")
 ```
 
 ### Example 2: Cost-Aware Batch Processing
+
 ```python
 async def process_batch(items: list[str]):
     results = []
     daily_cost = 0.0
     max_daily = 5.0
-    
+
     for item in items:
         # Check if we'd exceed daily budget
         cost_report = gateway.get_cost_report()
         if daily_cost >= max_daily:
             logger.warning(f"Daily budget reached: ${daily_cost:.2f}")
             break
-        
+
         # Route based on budget remaining
         remaining_budget = max_daily - daily_cost
-        
+
         providers = gateway.get_provider_chain(
             TaskType.ANALYSIS,
             budget_limit=remaining_budget
         )
-        
+
         if not providers:
             logger.warning("No providers available within budget")
             break
-        
+
         # Process with selected providers
         result = await process_item(item, providers)
         results.append(result)
-        
+
         # Update estimated cost
         daily_cost += 0.05  # Rough estimate
-    
+
     return results
 ```
 
 ### Example 3: Critical Decision Verification
+
 ```python
 async def verify_critical_decision(decision: dict):
     """Verify important decision with multiple models"""
-    
+
     # For critical decisions, use consensus voting
     consensus_providers = [
         ModelProvider.CLAUDE,      # Premium quality
         ModelProvider.GROQ,        # Fast verification
     ]
-    
+
     verifications = []
-    
+
     for provider in consensus_providers:
         chain = gateway.get_provider_chain(
             TaskType.VERIFICATION,
             budget_limit=0.20  # Allow premium for critical
         )
-        
+
         if provider in chain:
             result = await verify_with_provider(
                 decision,
                 provider
             )
             verifications.append(result)
-            
+
             gateway.record_api_call(
                 provider,
                 TaskType.VERIFICATION,
                 input_tokens=200,
                 output_tokens=100
             )
-    
+
     # Return consensus
     approved = sum(1 for v in verifications if v["approved"])
     consensus_score = approved / len(verifications)
-    
+
     return {
         "approved": consensus_score > 0.5,
         "confidence": consensus_score,
@@ -357,28 +369,35 @@ async def check_provider_for_task(task_type: str):
 ## Troubleshooting
 
 ### Q: Why use multiple providers?
+
 A: Quota limits. Gemini is limited to 1,500 requests/day. Groq is unlimited and free. Combined = no blocking.
 
 ### Q: Which provider should I use for X task?
+
 A: Check `gateway.get_provider_chain(TaskType.YOUR_TASK)`. First provider is optimal.
 
 ### Q: How do I reduce costs?
+
 A: Set strict `budget_limit` parameters. Groq and Gemini are free (use them 80% of the time).
 
 ### Q: What if a provider fails?
+
 A: Gateway automatically tries the next provider in the chain.
 
 ### Q: How do I know current spending?
+
 A: Call `gateway.get_cost_report()` anytime.
 
 ## Success Metrics
 
 ### Before Multi-Provider
+
 - 6-8 hour autonomous uptime (blocked by Gemini quota)
 - Single point of failure (if Gemini down, daemon blocked)
 - $0.00 cost but limited capability
 
 ### After Multi-Provider
+
 - 24+ hour continuous autonomous operation
 - Multiple fallback providers (99.9% uptime)
 - ~$1-2/day cost (highly cost-efficient)
