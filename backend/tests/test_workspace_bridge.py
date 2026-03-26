@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -81,3 +81,24 @@ class TestWorkspaceBridgeService:
         assert first == 1
         assert second == 0
         assert create_directive_mock.await_count == 1
+
+    def test_git_output_adds_safe_directory(self, tmp_path) -> None:
+        service = WorkspaceBridgeService()
+        service.repo_root = tmp_path.resolve()
+
+        with patch(
+            "src.kortana.services.workspace_bridge_service.subprocess.run"
+        ) as mock_run:
+            mock_run.return_value = MagicMock(stdout="main\n")
+
+            output = service._git_output(["git", "branch", "--show-current"])
+
+        assert output == "main"
+        mock_run.assert_called_once()
+        assert mock_run.call_args.args[0] == [
+            "git",
+            "-c",
+            f"safe.directory={service.repo_root}",
+            "branch",
+            "--show-current",
+        ]

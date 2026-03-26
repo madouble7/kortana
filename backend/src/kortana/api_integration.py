@@ -10,6 +10,9 @@ from __future__ import annotations
 import asyncio
 import os
 
+import aiohttp
+import httpx
+
 from src.kortana.cost_optimized_model_router import (
     CostOptimizedModelRouter,
     ModelProvider,
@@ -208,14 +211,20 @@ class OpenAIAPIClient:
         try:
             from openai import AsyncOpenAI
 
-            client = AsyncOpenAI(api_key=self.api_key)
-
-            response = await client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=max_tokens,
-                temperature=temperature,
+            client = AsyncOpenAI(
+                api_key=self.api_key,
+                http_client=httpx.AsyncClient(timeout=30.0),
             )
+
+            try:
+                response = await client.chat.completions.create(
+                    model=self.model,
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                )
+            finally:
+                await client.close()
 
             content = response.choices[0].message.content
             usage = response.usage

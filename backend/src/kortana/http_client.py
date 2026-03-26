@@ -9,6 +9,7 @@ import httpx
 from redis import Redis
 
 from src.kortana.circuit_breaker import AutonomyCircuitBreaker
+from src.kortana.config import get_settings
 from src.kortana.logger import get_logger
 
 logger = get_logger(__name__)
@@ -197,8 +198,11 @@ def get_http_client() -> ResilientHTTPClient:
         try:
             import redis
 
-            redis_client = redis.Redis(
-                host="localhost", port=6379, db=0, decode_responses=True
+            redis_client = redis.Redis.from_url(
+                get_settings().INTERNAL_REDIS_URL,
+                decode_responses=True,
+                socket_connect_timeout=2,
+                socket_timeout=2,
             )
             # Test connection
             redis_client.ping()

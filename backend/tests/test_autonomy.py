@@ -2,6 +2,7 @@
 Unit and integration tests for GitHub autonomy system
 """
 
+import json
 import subprocess
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
@@ -513,6 +514,69 @@ class TestGitHubAutonomyService:
             result = await service.plan_task(task)
             assert result.status == "planning_complete"
             assert result.plan == "Planning result"
+
+    def test_sanitize_plan_for_repo_removes_hallucinated_paths(self, service, tmp_path):
+        """Repo-grounded planning should drop file changes outside the observed repo shape."""
+        (tmp_path / "backend" / "src" / "kortana" / "services").mkdir(parents=True)
+        (tmp_path / "frontend" / "src").mkdir(parents=True)
+        (tmp_path / "backend" / "src" / "kortana" / "main.py").write_text(
+            "print('ok')\n",
+            encoding="utf-8",
+        )
+        (tmp_path / "frontend" / "src" / "main.tsx").write_text(
+            "export {};\n",
+            encoding="utf-8",
+        )
+
+        service.repo_root = tmp_path
+        service._repo_inventory_cache = None
+        service._repo_shape_cache = None
+
+        raw_plan = json.dumps(
+            {
+                "FILE_CHANGES": [
+                    {
+                        "file": "backend/src/kortana/services/deploy_guard.py",
+                        "action": "create",
+                        "content": "def guard():\n    return True\n",
+                    },
+                    {
+                        "file": "core/boot.go",
+                        "action": "create",
+                        "content": "package main\n",
+                    },
+                ]
+            }
+        )
+
+        sanitized = service._sanitize_plan_for_repo(raw_plan)
+        payload = json.loads(sanitized)
+
+        assert payload["FILE_CHANGES"] == [
+            {
+                "path": "backend/src/kortana/services/deploy_guard.py",
+                "action": "create",
+                "content": "def guard():\n    return True\n",
+                "dependencies": [],
+                "priority": 0,
+            }
+        ]
+        assert payload["VALIDATION_NOTES"] == [
+            "core/boot.go: top-level root is not present in the repository"
+        ]
+
+    def test_service_prefers_configured_workspace_root_when_it_looks_like_repo(
+        self, mock_db, tmp_path, monkeypatch
+    ):
+        """The autonomy service should use a mounted workspace when available."""
+        (tmp_path / ".git").mkdir()
+        monkeypatch.setenv("KORTANA_WORKSPACE_ROOT", str(tmp_path))
+
+        from src.kortana.services.github_autonomy_service import GitHubAutonomyService
+
+        service = GitHubAutonomyService(db_session=mock_db)
+
+        assert service.repo_root == tmp_path.resolve()
 
     @pytest.mark.asyncio
     async def test_execute_task_success(self, service, mock_db):

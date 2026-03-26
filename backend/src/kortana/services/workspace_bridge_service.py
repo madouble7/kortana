@@ -45,7 +45,7 @@ class WorkspaceBridgeService:
         fallback_root = Path(__file__).resolve().parents[4]
         self.repo_root = (
             configured_root.resolve()
-            if configured_root.exists()
+            if self._looks_like_repo_root(configured_root)
             else fallback_root.resolve()
         )
         inbox_default = self.repo_root / ".kortana" / "operator_inbox.md"
@@ -155,7 +155,7 @@ class WorkspaceBridgeService:
     def _git_output(self, command: list[str]) -> str:
         try:
             result = subprocess.run(
-                command,
+                self._git_command(command),
                 cwd=self.repo_root,
                 check=True,
                 capture_output=True,
@@ -165,6 +165,16 @@ class WorkspaceBridgeService:
         except Exception as exc:
             logger.debug(f"Workspace bridge command failed ({command}): {exc}")
             return ""
+
+    def _git_command(self, command: list[str]) -> list[str]:
+        if not command or command[0] != "git":
+            return command
+        return [
+            "git",
+            "-c",
+            f"safe.directory={self.repo_root}",
+            *command[1:],
+        ]
 
     @staticmethod
     def _extract_changed_files(status_lines: list[str]) -> list[str]:
@@ -202,6 +212,23 @@ class WorkspaceBridgeService:
         if lowered.startswith("limit:") or lowered.startswith("max tasks"):
             return "limit"
         return None
+
+    @staticmethod
+    def _looks_like_repo_root(candidate: Path) -> bool:
+        if not candidate.exists():
+            return False
+
+        markers = [
+            ".git",
+            "backend",
+            "frontend",
+            "app",
+            "src",
+            "package.json",
+            "pyproject.toml",
+            "README.md",
+        ]
+        return any((candidate / marker).exists() for marker in markers)
 
     def _ensure_inbox_exists(self) -> None:
         try:

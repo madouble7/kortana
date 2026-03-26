@@ -4,10 +4,12 @@ Manages the autonomous development loop: monitoring issues, planning, and execut
 """
 
 import inspect
+import json
 import os
+import re
 import subprocess
 from datetime import datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 import httpx
@@ -25,6 +27,42 @@ from .code_generator import CodeGenerator
 
 logger = get_logger(__name__)
 settings = get_settings()
+_REPO_SCAN_SKIP_DIRS = {
+    ".git",
+    ".hg",
+    ".svn",
+    "__pycache__",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".venv",
+    "venv",
+    "env",
+    "node_modules",
+    "dist",
+    "build",
+    "coverage",
+    "htmlcov",
+    ".backup",
+    "logs",
+}
+_REPO_CONTEXT_PREFERRED_FILES = (
+    "backend/src/kortana/main.py",
+    "backend/src/kortana/services/autonomy_daemon.py",
+    "backend/src/kortana/services/github_autonomy_service.py",
+    "backend/src/kortana/services/autonomy_controller.py",
+    "backend/src/kortana/routers/always_on.py",
+    "backend/tests/test_autonomy_daemon.py",
+    "backend/tests/test_autonomy.py",
+    "frontend/src/main.tsx",
+    "app/app/page.tsx",
+    "src/server.ts",
+    "Dockerfile",
+    "backend/Dockerfile",
+    "docker-compose.yml",
+    "package.json",
+    "backend/requirements.txt",
+)
 
 
 class GitHubAutonomyService:
@@ -35,7 +73,9 @@ class GitHubAutonomyService:
         self.code_gen = CodeGenerator()
         self.settings = get_settings()
         self.http_client = get_http_client()
-        self.repo_root = Path(__file__).resolve().parents[4]
+        self.repo_root = self._resolve_repo_root()
+        self._repo_inventory_cache: list[str] | None = None
+        self._repo_shape_cache: dict[str, Any] | None = None
 
         # Get GitHub token from environment first, then fallback to settings
         self.github_token = os.getenv("GITHUB_TOKEN")
@@ -53,6 +93,215 @@ class GitHubAutonomyService:
 
         logger.info(f"GitHubAutonomyService initialized: {self.repo_owner}/{self.repo_name}")
         logger.debug(f"GitHub token present: {bool(self.github_token)}")
+        logger.debug(f"GitHubAutonomyService repo root: {self.repo_root}")
+
+    def _resolve_repo_root(self) -> Path:
+        configured = os.getenv("KORTANA_WORKSPACE_ROOT") or self.settings.REPO_ROOT
+        candidate = Path(configured).resolve()
+        if self._looks_like_repo_root(candidate):
+            return candidate
+        return Path(__file__).resolve().parents[4]
+
+    @staticmethod
+    def _looks_like_repo_root(candidate: Path) -> bool:
+        if not candidate.exists():
+            return False
+
+        markers = [
+            ".git",
+            "backend",
+            "frontend",
+            "app",
+            "src",
+            "package.json",
+            "pyproject.toml",
+            "Dockerfile",
+        ]
+        return any((candidate / marker).exists() for marker in markers)
+
+    @staticmethod
+    def _normalize_repo_path(path: str) -> str:
+        return path.replace("\\", "/").strip().lstrip("./")
+
+    def _repo_inventory(self) -> list[str]:
+        if self._repo_inventory_cache is not None:
+            return self._repo_inventory_cache
+
+        inventory: list[str] = []
+        git_manifest = self._git_output(["git", "ls-files"])
+        if git_manifest:
+            inventory = [
+                self._normalize_repo_path(line)
+                for line in git_manifest.splitlines()
+                if line.strip()
+            ]
+        else:
+            for path in self.repo_root.rglob("*"):
+                if not path.is_file():
+                    continue
+                relative = path.relative_to(self.repo_root)
+                if any(part in _REPO_SCAN_SKIP_DIRS for part in relative.parts):
+                    continue
+                inventory.append(relative.as_posix())
+                if len(inventory) >= 500:
+                    break
+
+        inventory = sorted(dict.fromkeys(item for item in inventory if item))
+        self._repo_inventory_cache = inventory
+        return inventory
+
+    def _repo_shape(self) -> dict[str, Any]:
+        if self._repo_shape_cache is not None:
+            return self._repo_shape_cache
+
+        inventory = self._repo_inventory()
+        existing_files = set(inventory)
+        roots = sorted(
+            {
+                PurePosixPath(item).parts[0]
+                for item in inventory
+                if len(PurePosixPath(item).parts) > 1
+            }
+        )
+        extensions = sorted(
+            {
+                PurePosixPath(item).suffix.lower()
+                for item in inventory
+                if PurePosixPath(item).suffix
+            }
+        )
+
+        sample_files: list[str] = []
+        for preferred in _REPO_CONTEXT_PREFERRED_FILES:
+            if preferred in existing_files:
+                sample_files.append(preferred)
+        for item in inventory:
+            if item in sample_files:
+                continue
+            sample_files.append(item)
+            if len(sample_files) >= 60:
+                break
+
+        self._repo_shape_cache = {
+            "existing_files": existing_files,
+            "roots": roots,
+            "extensions": extensions,
+            "sample_files": sample_files[:60],
+        }
+        return self._repo_shape_cache
+
+    def _build_repo_context(self) -> str:
+        shape = self._repo_shape()
+        extensions = ", ".join(shape["extensions"][:12]) or "(none detected)"
+        roots = ", ".join(shape["roots"][:12]) or "(repo root only)"
+        sample_files = "\n".join(f"- {path}" for path in shape["sample_files"][:30])
+        return (
+            "Repository grounding:\n"
+            f"- Workspace root: {self.repo_root}\n"
+            f"- Existing top-level roots: {roots}\n"
+            f"- Observed file extensions: {extensions}\n"
+            "- Only reference files that already exist in this repository, or create new files "
+            "inside an existing top-level root using an already-observed language/extension.\n"
+            "- Do not invent new stacks, languages, or top-level directories.\n"
+            "- Prefer modifying existing files over creating new ones.\n"
+            "Representative files:\n"
+            f"{sample_files}"
+        )
+
+    def _validate_file_change_against_repo(
+        self, file_change: dict[str, Any], shape: dict[str, Any]
+    ) -> str | None:
+        path = self._normalize_repo_path(str(file_change.get("path", "")))
+        if not path:
+            return "path is empty"
+        if re.match(r"^[A-Za-z]:", path):
+            return "absolute Windows paths are not allowed"
+
+        pure_path = PurePosixPath(path)
+        if pure_path.is_absolute() or ".." in pure_path.parts:
+            return "path escapes the repository root"
+
+        action = str(file_change.get("action", "modify")).lower()
+        if action in {"modify", "delete"} and path not in shape["existing_files"]:
+            return "target file does not exist in the repository"
+
+        if action == "create":
+            if len(pure_path.parts) > 1 and pure_path.parts[0] not in shape["roots"]:
+                return "top-level root is not present in the repository"
+
+            suffix = pure_path.suffix.lower()
+            if suffix and suffix not in shape["extensions"]:
+                return f"file extension {suffix} is not present in the repository"
+
+        return None
+
+    def _sanitize_plan_for_repo(self, plan_text: str) -> str:
+        try:
+            parsed = CodeGenerator(str(self.repo_root)).parse_plan(plan_text)
+        except Exception:
+            return plan_text
+
+        file_changes = parsed.get("files", [])
+        if not file_changes:
+            return plan_text
+
+        shape = self._repo_shape()
+        valid_changes: list[dict[str, Any]] = []
+        validation_notes: list[str] = []
+
+        for file_change in file_changes:
+            normalized_change = {
+                "path": self._normalize_repo_path(str(file_change.get("path", ""))),
+                "action": str(file_change.get("action", "modify")).lower(),
+                "content": file_change.get("content", ""),
+                "dependencies": file_change.get("dependencies", []),
+                "priority": int(file_change.get("priority", 0) or 0),
+            }
+            reason = self._validate_file_change_against_repo(normalized_change, shape)
+            if reason is None:
+                valid_changes.append(normalized_change)
+            else:
+                validation_notes.append(f"{normalized_change['path']}: {reason}")
+
+        if len(valid_changes) == len(file_changes):
+            return plan_text
+
+        logger.warning(
+            "Repo-grounded plan sanitization removed invalid file changes: "
+            + " | ".join(validation_notes[:5])
+        )
+
+        sanitized_plan = {
+            "description": parsed.get("description") or "Repo-grounded implementation plan",
+            "FILE_CHANGES": valid_changes,
+            "COMMANDS": parsed.get("commands", []),
+            "TESTS": parsed.get("tests", []),
+            "VALIDATION_NOTES": validation_notes,
+        }
+        return json.dumps(sanitized_plan, indent=2)
+
+    def _git_output(self, command: list[str]) -> str:
+        try:
+            result = subprocess.run(
+                self._git_command(command),
+                cwd=self.repo_root,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            return result.stdout.strip()
+        except Exception:
+            return ""
+
+    def _git_command(self, command: list[str]) -> list[str]:
+        if not command or command[0] != "git":
+            return command
+        return [
+            "git",
+            "-c",
+            f"safe.directory={self.repo_root}",
+            *command[1:],
+        ]
 
     @staticmethod
     async def _maybe_await(value: Any) -> Any:
@@ -264,12 +513,14 @@ class GitHubAutonomyService:
         try:
             logger.info(f"Analyzing task #{task.github_issue_number}: {task.title}")
             operator_preamble = await self._operator_preamble()
+            repo_context = self._build_repo_context()
             prompt = (
                 f"{operator_preamble}\n\n" if operator_preamble else ""
             ) + (
                 f"You are KOR'TANA PRIME, an autonomous AI architect modifying your own application (or another repository).\n"
                 f"Analyze this issue and provide expert-level implementation insights. "
                 f"If this is a [SELF-REPAIR] issue, you must diagnose the internal autonomy logic flaw causing the error and architect a structural fix.\n\n"
+                f"{repo_context}\n\n"
                 f"Title: {task.title}\nDescription: {task.description}"
             )
             analysis = await self._maybe_await(gemini_service.analyze_text(prompt))
@@ -304,11 +555,13 @@ class GitHubAutonomyService:
         try:
             logger.info(f"Planning task #{task.github_issue_number}")
             operator_preamble = await self._operator_preamble()
+            repo_context = self._build_repo_context()
             prompt = (
                 f"{operator_preamble}\n\n" if operator_preamble else ""
             ) + (
                 f"You are KOR'TANA PRIME, an autonomous AI entity architecting your own codebase. "
-                f"Generate a detailed file-by-file implementation plan for this issue. "
+                f"Generate a detailed file-by-file implementation plan for this issue and keep it grounded to this repository only. "
+                f"If the request cannot be satisfied safely inside the observed repo structure, return FILE_CHANGES as an empty list. "
                 f"You MUST output ONLY a valid JSON object matching this schema:\n"
                 f"{{\n"
                 f'  "FILE_CHANGES": [\n'
@@ -319,9 +572,12 @@ class GitHubAutonomyService:
                 f"    }}\n"
                 f"  ]\n"
                 f"}}\n"
+                f"Strict constraints:\n"
+                f"{repo_context}\n\n"
                 f"Title: {task.title}\nAnalysis: {task.analysis}"
             )
-            plan = await self._maybe_await(gemini_service.analyze_text(prompt))
+            raw_plan = await self._maybe_await(gemini_service.analyze_text(prompt))
+            plan = self._sanitize_plan_for_repo(raw_plan)
             task.plan = plan
             task.status = "planning_complete"
         except Exception as e:
