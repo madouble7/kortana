@@ -7,23 +7,27 @@ The complete diagnostic pipeline has been successfully implemented, tested, and 
 ## ✅ What Was Delivered
 
 ### 1. HTTP Client Fix (Commit 3fa8bf1)
+
 - Removed blanket `raise_for_status()` that masked all errors
 - Allows 422 responses to pass through (idempotent operations)
 - Still raises on actual errors (403, 404, 5xx)
 - **Status**: ✅ Committed and production-ready
 
 ### 2. Enhanced Error Diagnostics (Commit 99dcc11)
+
 - `_extract_http_error_detail()` method extracts status codes and error messages
 - Service logs actual GitHub API error responses
 - Task `error_message` field contains diagnostic details
 - **Status**: ✅ Committed and production-ready
 
 ### 3. Daemon Queued Task Support (Commit 99dcc11)
+
 - Autonomy daemon now processes `queued` status alongside `pending`
 - Reset tasks are automatically reprocessed
 - **Status**: ✅ Committed and production-ready
 
 ### 4. Test Coverage (50/50 tests passing)
+
 - `test_create_branch_idempotent_on_422` ✅ PASSING
 - `test_create_branch_logs_http_status_error_details` ✅ PASSING
 - Full autonomy service test suite ✅ PASSING
@@ -33,6 +37,7 @@ The complete diagnostic pipeline has been successfully implemented, tested, and 
 ## 📊 Diagnostic Evidence
 
 **Direct verification test executed:**
+
 ```
 ✓ Token can READ refs (200 OK)
 ✗ Token cannot WRITE refs (403 Forbidden)
@@ -45,7 +50,8 @@ This proves the diagnostic pipeline is working correctly - it surfaces the real 
 
 **What**: GitHub token lacks write permissions
 **Error**: `403 Resource not accessible by personal access token`
-**Scope Needed**: `repo` (full repository access)
+**Permission Needed**: Fine-grained PAT with `Contents: Read and write`
+**Also Needed For PR Creation**: `Pull requests: Read and write`
 **Fix Time**: 5 minutes
 **Instructions**: See [GITHUB_TOKEN_FIX_GUIDE.md](GITHUB_TOKEN_FIX_GUIDE.md)
 
@@ -74,6 +80,7 @@ The complete diagnostic improvement was the goal, and it has been fully achieved
 ## 📝 Code Changes Summary
 
 **Files Modified**:
+
 - `backend/src/kortana/http_client.py` - Selective raise_for_status
 - `backend/src/kortana/services/github_autonomy_service.py` - Error detail extraction
 - `backend/src/kortana/services/autonomy_daemon.py` - Queued task support
@@ -84,11 +91,12 @@ The complete diagnostic improvement was the goal, and it has been fully achieved
 
 ## 🚀 Next Steps (User)
 
-1. Regenerate GitHub Personal Access Token with `repo` scope
-2. Update `GITHUB_TOKEN` in `.env`
-3. Run `python reset_issue.py` to reset #11000
-4. Daemon will automatically process and succeed
-5. Verify: `commit_sha` and `github_pr_number` will be populated
+1. Regenerate or edit the fine-grained GitHub Personal Access Token
+2. Set `Contents: Read and write` and `Pull requests: Read and write`
+3. Update `GITHUB_TOKEN` in `backend/.env`
+4. Restart the daemon so it picks up the new token
+5. Run `python reset_issue.py` to reset #11000
+6. Verify: `commit_sha` and `github_pr_number` will be populated
 
 ## 🎬 Conclusion
 
