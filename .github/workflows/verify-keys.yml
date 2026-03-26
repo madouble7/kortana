@@ -21,15 +21,15 @@ jobs:
       - name: Create Test Branch
         run: |
           BRANCH_NAME="automation-test-$(date +%s)"
-          git checkout -b $BRANCH_NAME
-          echo "Status: Automation keys verified on $(date)" >> SYSTEM_STATUS.md
-          git add SYSTEM_STATUS.md
+          git checkout -b "$BRANCH_NAME"
+          echo "Status: Automation keys verified on $(date)" >> docs/reports/SYSTEM_STATUS_REPORT.txt
+          git add docs/reports/SYSTEM_STATUS_REPORT.txt
           git commit -m "chore: verify automation keys"
-          git push origin $BRANCH_NAME
+          git push origin "$BRANCH_NAME"
           echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
 
       - name: Create Pull Request
         env:
           GH_TOKEN: ${{ secrets.CLASSIC_KEY_BYPASS }}
         run: |
-          gh pr create --title "Verify Pipeline Authentication" --body "This PR validates the classic key bypass pipeline functionality." --head $GITHUB_ENV
+          gh pr create --title "Verify Pipeline Authentication" --body "This PR validates the classic key bypass pipeline functionality." --head "${{ env.BRANCH_NAME }}"
