@@ -16,6 +16,7 @@ from __future__ import annotations
 import os
 import platform
 import time
+from dataclasses import asdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -76,6 +77,19 @@ class CorrectionPlan:
     params: dict[str, Any] = field(default_factory=dict)
 
 
+@dataclass
+class RuntimeProfile:
+    generated_at: str
+    state: str
+    safe_mode: bool
+    allow_live_execution: bool
+    max_tasks_per_cycle: int
+    cycle_interval_seconds: int
+    execution_confidence: float
+    reasons: list[str] = field(default_factory=list)
+    corrections: list[dict[str, Any]] = field(default_factory=list)
+
+
 # ---------------------------------------------------------------------------
 # Engine
 # ---------------------------------------------------------------------------
@@ -88,6 +102,8 @@ class SelfAwarenessEngine:
         self._boot_time = time.monotonic()
         self._state = SystemState.NOMINAL
         self._baseline: PerformanceSnapshot | None = None
+        self._last_assessment: dict[str, Any] | None = None
+        self._last_runtime_profile: dict[str, Any] | None = None
         self._history: list[dict[str, Any]] = []
         self._max_history = 500
         self._db = get_db_manager()
@@ -99,6 +115,7 @@ class SelfAwarenessEngine:
         self._mem_crit = float(os.getenv("SA_MEM_CRIT", "90"))
         self._err_warn = float(os.getenv("SA_ERR_WARN", "5"))
         self._err_crit = float(os.getenv("SA_ERR_CRIT", "15"))
+        self._exec_conf_min = float(os.getenv("SA_EXEC_CONF_MIN", "0.72"))
 
     # ----- core introspection -----
 
@@ -127,13 +144,15 @@ class SelfAwarenessEngine:
         if len(self._history) > self._max_history:
             self._history = self._history[-self._max_history :]
 
-        return {
+        assessment = {
             "state": state.value,
             "snapshot": snap.__dict__,
             "drift": [d.__dict__ for d in drift],
             "corrections": [c.__dict__ for c in corrections],
             "capabilities": self._capabilities(),
         }
+        self._last_assessment = assessment
+        return assessment
 
     async def confidence(self, decision: dict[str, Any]) -> float:
         """Score confidence in an autonomous decision (0.0 – 1.0).
@@ -174,6 +193,96 @@ class SelfAwarenessEngine:
         )
         return round(num / sum(weights.values()), 3)
 
+    async def regulate(
+        self, base_cycle_interval: int, base_max_tasks: int
+    ) -> dict[str, Any]:
+        """Generate a runtime profile that can tune the autonomy daemon."""
+        assessment = await self.assess()
+        snapshot = assessment["snapshot"]
+        state = SystemState(assessment["state"])
+        corrections = assessment["corrections"]
+
+        max_tasks = max(1, int(base_max_tasks))
+        cycle_interval = max(30, int(base_cycle_interval))
+        safe_mode = False
+        reasons: list[str] = []
+
+        health_score = {
+            SystemState.NOMINAL: 1.0,
+            SystemState.RECOVERING: 0.8,
+            SystemState.DEGRADED: 0.55,
+            SystemState.CRITICAL: 0.25,
+        }[state]
+        success_score = max(0.0, min(1.0, snapshot["success_rate"] / 100.0))
+        load_penalty = 0.0
+        if snapshot["cpu_percent"] > self._cpu_warn:
+            load_penalty += 0.15
+        if snapshot["memory_percent"] > self._mem_warn:
+            load_penalty += 0.15
+        if snapshot["avg_cycle_time"] and snapshot["avg_cycle_time"] > base_cycle_interval:
+            load_penalty += 0.1
+
+        execution_confidence = round(
+            max(0.0, min(1.0, (health_score * 0.55) + (success_score * 0.45) - load_penalty)),
+            3,
+        )
+
+        if state == SystemState.CRITICAL:
+            max_tasks = 1
+            cycle_interval = max(cycle_interval, int(base_cycle_interval * 2))
+            safe_mode = True
+            reasons.append("critical_system_state")
+        elif state == SystemState.RECOVERING:
+            max_tasks = min(max_tasks, max(1, base_max_tasks - 1))
+            cycle_interval = max(cycle_interval, int(base_cycle_interval * 1.25))
+            reasons.append("recovering_after_critical_state")
+        elif state == SystemState.DEGRADED:
+            max_tasks = min(max_tasks, max(1, base_max_tasks - 1))
+            cycle_interval = max(cycle_interval, int(base_cycle_interval * 1.5))
+            reasons.append("degraded_system_state")
+        else:
+            backlog_threshold = max(base_max_tasks * 3, 6)
+            low_cpu = snapshot["cpu_percent"] < max(5.0, self._cpu_warn - 15)
+            low_mem = snapshot["memory_percent"] < max(5.0, self._mem_warn - 10)
+            if snapshot["pending_tasks"] >= backlog_threshold and low_cpu and low_mem:
+                max_tasks = min(max(base_max_tasks + 1, 2), max(base_max_tasks * 2, 2))
+                cycle_interval = max(30, int(base_cycle_interval * 0.75))
+                reasons.append("healthy_backlog_burst_mode")
+
+        for correction in corrections:
+            action = correction.get("action")
+            if action == "reduce_concurrent_tasks":
+                suggested = int(correction.get("params", {}).get("max_tasks_per_cycle", 1))
+                max_tasks = max(1, min(max_tasks, suggested))
+                reasons.append("correction_reduce_concurrent_tasks")
+            elif action == "enable_dry_run_mode":
+                safe_mode = True
+                reasons.append("correction_enable_dry_run_mode")
+            elif action == "clear_caches":
+                cycle_interval = max(cycle_interval, int(base_cycle_interval * 1.25))
+                reasons.append("correction_clear_caches")
+
+        if execution_confidence < self._exec_conf_min:
+            safe_mode = True
+            reasons.append("low_execution_confidence")
+
+        profile = RuntimeProfile(
+            generated_at=datetime.utcnow().isoformat(),
+            state=state.value,
+            safe_mode=safe_mode,
+            allow_live_execution=not safe_mode,
+            max_tasks_per_cycle=max_tasks,
+            cycle_interval_seconds=cycle_interval,
+            execution_confidence=execution_confidence,
+            reasons=reasons,
+            corrections=corrections,
+        )
+        self._last_runtime_profile = asdict(profile)
+        return {
+            "assessment": assessment,
+            "runtime_profile": self._last_runtime_profile,
+        }
+
     # ----- helpers -----
 
     async def _collect_snapshot(self) -> PerformanceSnapshot:
@@ -194,7 +303,21 @@ class SelfAwarenessEngine:
             async for session in self._db.get_session():
                 row = await session.execute(
                     select(
-                        func.count().filter(GitHubTask.status == "pending").label("pending"),
+                        func.count()
+                        .filter(
+                            GitHubTask.status.in_(
+                                [
+                                    "queued",
+                                    "pending",
+                                    "analyzing",
+                                    "analyzed",
+                                    "planning",
+                                    "planning_complete",
+                                    "executing",
+                                ]
+                            )
+                        )
+                        .label("pending"),
                         func.count()
                         .filter(GitHubTask.status.in_(["executed", "completed", "pr_created"]))
                         .label("ok"),
@@ -348,6 +471,8 @@ class SelfAwarenessEngine:
             "uptime_seconds": round(time.monotonic() - self._boot_time, 1),
             "assessments_recorded": len(self._history),
             "baseline_set": self._baseline is not None,
+            "last_assessment": self._last_assessment,
+            "last_runtime_profile": self._last_runtime_profile,
             "last_5": self._history[-5:] if self._history else [],
         }
 
