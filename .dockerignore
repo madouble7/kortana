@@ -1,45 +1,61 @@
-# Dependencies
-node_modules
-client/node_modules
-frontend/node_modules
-backend/venv
-backend/.venv
-venv
-.venv
+# Docker Build Context Ignore
+# Reduces build context size and improves build performance
 
-# Environment files
-.env
-.env.local
-.env.production
-.env.*
-
-# Git
+# Version Control
 .git
 .gitignore
+.gitattributes
 
-# Documentation (keep for now, can be excluded later)
-# README.md
-# LICENSE
+# Environment
+.env
+.env.*
+!.env.example
 
-# CI/CD
-.github
-
-# Build artifacts (will be included for Docker - comment out)
-# dist
-# client/build
-frontend/dist
-frontend/build
-
-# Logs
-*.log
+# Node
+node_modules
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-logs/
+package-lock.json.bak
+.pnpm-debug.log*
+dist
+build
 
-# Testing
-coverage
-.nyc_output
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv
+venv
+env
+ENV
+build
+develop
+eggs
+.eggs
+lib
+lib64
+parts
+sdist
+var
+wheels
+*.egg-info
+.installed.cfg
+*.egg
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis
+.pytest_cache
+htmlcov
 
 # IDE
 .vscode
@@ -47,25 +63,40 @@ coverage
 *.swp
 *.swo
 *~
-
-# OS files
 .DS_Store
-Thumbs.db
+*.sublime-project
+*.sublime-workspace
+.editorconfig
 
-# Temporary files
+# CI/CD
+.github/workflows
+.gitlab-ci.yml
+.circleci
+
+# Documentation
+docs
+README.md
+CHANGELOG.md
+*.md
+
+# Logs
+logs
+*.log
+
+# Temporary
 tmp
 temp
-.cache
+*.tmp
 
-# Python caches
-backend/__pycache__/
-backend/.pytest_cache/
-backend/.mypy_cache/
-backend/.ruff_cache/
-backend/*.db
-backend/*.sqlite
+# Tests
+tests
+test
+coverage
+.pytest_cache
+cypress
 
-# Source files (not needed if pre-built)
-src
-client/src
-tsconfig.json
+# Build artifacts
+dist
+build
+*.tgz
+*.tar.gz
