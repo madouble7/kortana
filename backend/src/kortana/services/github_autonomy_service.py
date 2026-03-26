@@ -371,6 +371,8 @@ class GitHubAutonomyService:
             if not dry_run:
                 if not await self._maybe_await(self._create_branch(task)):
                     raise Exception(task.error_message or "Failed to create GitHub branch")
+                if not await self._ensure_local_branch(task):
+                    raise Exception("Failed to prepare local task branch")
 
             # 2. Use CodeGenerator to apply changes
             result = self.code_gen.generate_from_gemini_plan(
@@ -518,63 +520,73 @@ class GitHubAutonomyService:
             logger.error(task.error_message)
             return False
 
-    async def _commit_branch_changes(
-        self, task: GitHubTask, files_changed: list[Any]
-    ) -> str | None:
-        """Commit changed files to the task branch and return the new SHA."""
+    async def _ensure_local_branch(self, task: GitHubTask) -> bool:
+        """Ensure the task branch is checked out locally before code changes are applied."""
         try:
-            # Ensure the task branch exists locally before staging changes.
+            subprocess.run(
+                ["git", "checkout", task.branch_name],
+                cwd=self.repo_root,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            logger.info(f"Checked out branch: {task.branch_name}")
+            return True
+        except subprocess.CalledProcessError as e:
+            logger.warning(
+                f"Local checkout missing for {task.branch_name}, bootstrapping branch: "
+                f"{e.stderr}"
+            )
+
+        try:
+            subprocess.run(
+                ["git", "fetch", "origin", task.branch_name],
+                cwd=self.repo_root,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            subprocess.run(
+                ["git", "checkout", "-B", task.branch_name, "FETCH_HEAD"],
+                cwd=self.repo_root,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            logger.info(f"Created local branch {task.branch_name} from remote branch")
+            return True
+        except subprocess.CalledProcessError:
             try:
                 subprocess.run(
-                    ["git", "checkout", task.branch_name],
+                    ["git", "fetch", "origin", "main"],
                     cwd=self.repo_root,
                     check=True,
                     capture_output=True,
                     text=True,
                 )
-                logger.info(f"Checked out branch: {task.branch_name}")
-            except subprocess.CalledProcessError as e:
-                logger.warning(
-                    f"Local checkout missing for {task.branch_name}, bootstrapping branch: {e.stderr}"
+                subprocess.run(
+                    ["git", "checkout", "-B", task.branch_name, "origin/main"],
+                    cwd=self.repo_root,
+                    check=True,
+                    capture_output=True,
+                    text=True,
                 )
-                try:
-                    subprocess.run(
-                        ["git", "fetch", "origin", task.branch_name],
-                        cwd=self.repo_root,
-                        check=True,
-                        capture_output=True,
-                        text=True,
-                    )
-                    subprocess.run(
-                        ["git", "checkout", "-B", task.branch_name, "FETCH_HEAD"],
-                        cwd=self.repo_root,
-                        check=True,
-                        capture_output=True,
-                        text=True,
-                    )
-                    logger.info(f"Created local branch {task.branch_name} from remote branch")
-                except subprocess.CalledProcessError:
-                    try:
-                        subprocess.run(
-                            ["git", "fetch", "origin", "main"],
-                            cwd=self.repo_root,
-                            check=True,
-                            capture_output=True,
-                            text=True,
-                        )
-                        subprocess.run(
-                            ["git", "checkout", "-B", task.branch_name, "origin/main"],
-                            cwd=self.repo_root,
-                            check=True,
-                            capture_output=True,
-                            text=True,
-                        )
-                        logger.info(f"Created local branch {task.branch_name} from origin/main")
-                    except subprocess.CalledProcessError as bootstrap_error:
-                        logger.error(
-                            f"Failed to bootstrap branch {task.branch_name}: {bootstrap_error.stderr}"
-                        )
-                        return None
+                logger.info(f"Created local branch {task.branch_name} from origin/main")
+                return True
+            except subprocess.CalledProcessError as bootstrap_error:
+                logger.error(
+                    f"Failed to bootstrap branch {task.branch_name}: "
+                    f"{bootstrap_error.stderr}"
+                )
+                return False
+
+    async def _commit_branch_changes(
+        self, task: GitHubTask, files_changed: list[Any]
+    ) -> str | None:
+        """Commit changed files to the task branch and return the new SHA."""
+        try:
+            if not await self._ensure_local_branch(task):
+                return None
 
             # Stage the changed files on the task branch
             for file_path in files_changed:
