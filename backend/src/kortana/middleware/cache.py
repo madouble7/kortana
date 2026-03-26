@@ -20,6 +20,21 @@ logger = get_logger(__name__)
 
 # Circuit-breaker cooldown for Redis connection failures.
 _CACHE_CIRCUIT_BREAKER_SECONDS = 60
+DEFAULT_CACHE_EXCLUDE_PATHS = [
+    "/health",
+    "/docs",
+    "/openapi.json",
+    "/protocol/auto/execute",
+    "/api/tasks/execute",
+    "/api/health",
+    "/api/system/health",
+    "/api/autonomy",
+    "/api/autonomous",
+    "/api/always-on",
+    "/api/daemon",
+    "/api/intelligence",
+    "/api/task-queue",
+]
 
 
 class CacheStrategy:
@@ -35,13 +50,7 @@ class CacheStrategy:
         self.ttl = ttl
         self.key_prefix = key_prefix
         self.include_status_codes = include_status_codes or [200, 404]
-        self.exclude_paths = exclude_paths or [
-            "/health",
-            "/docs",
-            "/openapi.json",
-            "/protocol/auto/execute",
-            "/api/tasks/execute",
-        ]
+        self.exclude_paths = exclude_paths or list(DEFAULT_CACHE_EXCLUDE_PATHS)
 
 
 class ResponseCacheMiddleware(BaseHTTPMiddleware):

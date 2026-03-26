@@ -1,16 +1,12 @@
 """
-Self-Sustaining Autonomy Daemon
+Self-sustaining autonomy daemon.
 
-Runs as a FastAPI background task (no Celery dependency) that continuously:
-  1. Discovers new GitHub issues and creates tasks
-  2. Drives pending tasks through analyze → plan → execute pipeline
-  3. Tracks cycle metrics and self-heals on failure
-  4. Emits real-time events for WebSocket / Discord consumers
-
-Configurable via environment:
-  AUTONOMY_DAEMON_ENABLED=true
-  AUTONOMY_CYCLE_INTERVAL=300      (seconds between full cycles)
-  AUTONOMY_MAX_TASKS_PER_CYCLE=3   (max tasks to process per cycle)
+Runs inside the FastAPI event loop and continuously:
+  1. Discovers GitHub issues
+  2. Moves tasks through analyze -> plan -> execute
+  3. Self-regulates based on runtime health
+  4. Accepts operator directives to change course without stopping the daemon
+  5. Manifests self-repair work when core autonomy fails
 """
 
 from __future__ import annotations
@@ -22,25 +18,27 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Callable
 
+import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.kortana.config import get_settings
 from src.kortana.database import get_db_manager
 from src.kortana.logger import get_logger
 from src.kortana.models import GitHubTask
+from src.kortana.services.operator_directive_service import (
+    DirectiveSummary,
+    get_active_operator_summary,
+)
 from src.kortana.services.self_awareness import get_self_awareness
+from src.kortana.services.workspace_bridge_service import get_workspace_bridge
 
 logger = get_logger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# Events
-# ---------------------------------------------------------------------------
-
-
 @dataclass
 class DaemonEvent:
-    type: str  # cycle_start, task_progress, task_complete, cycle_end, error
+    type: str
     timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat())
     data: dict[str, Any] = field(default_factory=dict)
 
@@ -48,23 +46,26 @@ class DaemonEvent:
 EventCallback = Callable[[DaemonEvent], Any]
 
 
-# ---------------------------------------------------------------------------
-# Daemon
-# ---------------------------------------------------------------------------
-
-
 class AutonomyDaemon:
-    """Self-sustaining autonomy loop that runs inside FastAPI's event loop."""
+    """Always-on autonomous loop for GitHub-driven development work."""
 
     def __init__(self) -> None:
+        settings = get_settings()
         self.enabled = os.getenv("AUTONOMY_DAEMON_ENABLED", "true").lower() == "true"
-        self.base_cycle_interval = int(os.getenv("AUTONOMY_CYCLE_INTERVAL", "300"))
+        self.base_cycle_interval = int(
+            os.getenv("AUTONOMY_CYCLE_INTERVAL", str(settings.AUTONOMY_CYCLE_INTERVAL))
+        )
         self.base_max_tasks = int(os.getenv("AUTONOMY_MAX_TASKS_PER_CYCLE", "3"))
         self.cycle_interval = self.base_cycle_interval
         self.max_tasks = self.base_max_tasks
-        self.repo = f"{os.getenv('GITHUB_OWNER', 'madouble7')}/{os.getenv('GITHUB_REPO', 'kortana')}"
+        self.repo = (
+            f"{os.getenv('GITHUB_OWNER') or settings.GITHUB_OWNER}/"
+            f"{os.getenv('GITHUB_REPO') or settings.GITHUB_REPO}"
+        )
         self.safe_mode = False
         self.live_execution_enabled = True
+        self.control_mode = "execute"
+        self.operator_guidance: dict[str, Any] | None = None
         self._adaptation_history: list[dict[str, Any]] = []
         self._deferred_tasks: set[str] = set()
 
@@ -72,8 +73,8 @@ class AutonomyDaemon:
         self._task: asyncio.Task[None] | None = None
         self._listeners: list[EventCallback] = []
         self._db_manager = get_db_manager()
+        self._workspace_bridge = get_workspace_bridge()
 
-        # Metrics
         self.metrics: dict[str, Any] = {
             "cycles_completed": 0,
             "tasks_processed": 0,
@@ -83,14 +84,15 @@ class AutonomyDaemon:
             "self_heals_manifested": 0,
             "adaptive_adjustments": 0,
             "safe_mode_cycles": 0,
+            "system_state": "nominal",
             "last_cycle": None,
             "last_assessment": None,
             "last_self_regulation": None,
+            "operator_guidance": None,
+            "workspace_bridge": None,
             "uptime_start": None,
             "errors": [],
         }
-
-    # ----- lifecycle -----
 
     async def start(self) -> None:
         if not self.enabled:
@@ -103,8 +105,8 @@ class AutonomyDaemon:
         self._running = True
         self.metrics["uptime_start"] = datetime.utcnow().isoformat()
         logger.info(
-            f"Autonomy daemon started — cycle every {self.cycle_interval}s, "
-            f"max {self.max_tasks} tasks/cycle"
+            "Autonomy daemon started "
+            f"(interval={self.cycle_interval}s, max_tasks={self.max_tasks})"
         )
         self._task = asyncio.create_task(self._loop())
 
@@ -118,35 +120,28 @@ class AutonomyDaemon:
                 pass
         logger.info("Autonomy daemon stopped")
 
-    # ----- event system -----
-
     def on_event(self, callback: EventCallback) -> None:
         self._listeners.append(callback)
 
     def _emit(self, event: DaemonEvent) -> None:
-        for cb in self._listeners:
+        for callback in self._listeners:
             try:
-                result = cb(event)
+                result = callback(event)
                 if asyncio.iscoroutine(result):
                     asyncio.create_task(result)
             except Exception:
-                pass  # Listeners must not crash the daemon
-
-    # ----- main loop -----
+                pass
 
     async def _loop(self) -> None:
-        # small initial delay to let the app finish startup
         await asyncio.sleep(5)
-
         while self._running:
             try:
                 await self._run_cycle()
-            except Exception as e:
-                logger.error(f"Daemon cycle error: {e}")
+            except Exception as exc:
+                logger.error(f"Daemon cycle error: {exc}")
                 self.metrics["errors"].append(
-                    {"time": datetime.utcnow().isoformat(), "error": str(e)}
+                    {"time": datetime.utcnow().isoformat(), "error": str(exc)}
                 )
-                # Keep only last 20 errors
                 self.metrics["errors"] = self.metrics["errors"][-20:]
 
             await asyncio.sleep(self.cycle_interval)
@@ -156,62 +151,41 @@ class AutonomyDaemon:
         self._emit(DaemonEvent(type="cycle_start"))
         logger.info("--- Autonomy cycle starting ---")
 
-        # Phase 0: Self-assessment — know thyself before acting
-        system_state = "nominal"
-        effective_max_tasks = self.max_tasks
-        try:
-            from src.kortana.services.self_awareness import get_self_awareness
-
-            awareness = get_self_awareness()
-            assessment = await awareness.assess()
-            system_state = assessment.get("state", "nominal")
-            # Throttle task processing when the system is under stress
-            if system_state == "critical":
-                effective_max_tasks = max(1, self.max_tasks // 3)
-                logger.warning(
-                    f"System state CRITICAL — throttling to {effective_max_tasks} task(s)/cycle"
-                )
-            elif system_state == "degraded":
-                effective_max_tasks = max(1, self.max_tasks // 2)
-                logger.warning(
-                    f"System state DEGRADED — throttling to {effective_max_tasks} task(s)/cycle"
-                )
-            self.metrics["system_state"] = system_state
-            self.metrics["last_assessment"] = assessment
-        except Exception as e:
-            logger.debug(f"Self-assessment unavailable: {e}")
         await self._self_regulate()
+        guidance = await self._load_operator_guidance()
+        self._apply_operator_guidance(guidance)
+        workspace_status = await self._poll_workspace_bridge()
 
+        new_count = processed = succeeded = failed = deferred = 0
         async for session in self._db_manager.get_session():
-            # Phase 1: Discover new issues
             new_count = await self._discover_issues(session)
-
-            # Phase 2: Drive pending tasks through pipeline (with effective limit)
-            processed, succeeded, failed = await self._process_tasks(
-                session, max_tasks=effective_max_tasks
+            effective_limit = 0 if guidance.pause_requested else self.max_tasks
+            processed, succeeded, failed, deferred = await self._process_tasks(
+                session, max_tasks=effective_limit, guidance=guidance
             )
-            # Phase 2: Drive pending tasks through pipeline
-            processed, succeeded, failed, deferred = await self._process_tasks(session)
-
-            # Phase 3: The Zenith Protocol (Self-Healing via Meta-Cognition)
             await self._manifest_self_healing(session)
 
-        # Phase 4: Re-prioritise goals based on current system state and learner insights
         try:
-            from dataclasses import asdict as _dc_asdict
+            from dataclasses import asdict
 
-            from src.kortana.services.goal_manager import get_goal_manager
             from src.kortana.services.adaptive_learner import get_adaptive_learner
+            from src.kortana.services.goal_manager import get_goal_manager
 
-            goal_mgr = get_goal_manager()
+            goal_manager = get_goal_manager()
             learner = await get_adaptive_learner()
-            insights = [_dc_asdict(i) for i in learner.generate_insights()]
-            goal_mgr.reprioritise(system_state=system_state, insights=insights)
-            self.metrics["goal_status"] = goal_mgr.get_status()
-        except Exception as e:
-            logger.debug(f"Goal reprioritisation unavailable: {e}")
+            insights = [asdict(item) for item in learner.generate_insights()]
+            goal_manager.reprioritise(
+                system_state=str(self.metrics["system_state"]),
+                insights=insights,
+            )
+            self.metrics["goal_status"] = goal_manager.get_status()
+        except Exception as exc:
+            logger.debug(f"Goal reprioritisation unavailable: {exc}")
 
         elapsed = round(time.monotonic() - cycle_start, 2)
+        if self.safe_mode:
+            self.metrics["safe_mode_cycles"] += 1
+
         self.metrics["cycles_completed"] += 1
         self.metrics["tasks_processed"] += processed
         self.metrics["tasks_succeeded"] += succeeded
@@ -224,28 +198,31 @@ class AutonomyDaemon:
             "processed": processed,
             "succeeded": succeeded,
             "failed": failed,
-            "system_state": system_state,
             "deferred": deferred,
+            "system_state": self.metrics["system_state"],
             "safe_mode": self.safe_mode,
             "live_execution_enabled": self.live_execution_enabled,
+            "control_mode": self.control_mode,
+            "operator_guidance": self.metrics["operator_guidance"],
+            "workspace_bridge": workspace_status,
         }
 
         self._emit(DaemonEvent(type="cycle_end", data=self.metrics["last_cycle"]))
         logger.info(
-            f"--- Autonomy cycle complete — {elapsed}s, "
-            f"+{new_count} issues, {succeeded}/{processed} tasks ok, "
-            f"state={system_state} ---"
+            "--- Autonomy cycle complete "
+            f"({elapsed}s, processed={processed}, succeeded={succeeded}, "
+            f"deferred={deferred}, state={self.metrics['system_state']}) ---"
         )
 
     async def _self_regulate(self) -> None:
-        """Apply a runtime profile from self-awareness before each cycle."""
+        """Apply runtime tuning from self-awareness."""
         try:
             decision = await get_self_awareness().regulate(
                 base_cycle_interval=self.base_cycle_interval,
                 base_max_tasks=self.base_max_tasks,
             )
-        except Exception as e:
-            logger.warning(f"Self-regulation unavailable: {e}")
+        except Exception as exc:
+            logger.warning(f"Self-regulation unavailable: {exc}")
             return
 
         profile = decision["runtime_profile"]
@@ -257,17 +234,13 @@ class AutonomyDaemon:
             "live_execution_enabled": self.live_execution_enabled,
         }
 
-        self.cycle_interval = profile["cycle_interval_seconds"]
-        self.max_tasks = profile["max_tasks_per_cycle"]
-        self.safe_mode = profile["safe_mode"]
-        self.live_execution_enabled = profile["allow_live_execution"]
+        self.cycle_interval = int(profile["cycle_interval_seconds"])
+        self.max_tasks = int(profile["max_tasks_per_cycle"])
+        self.safe_mode = bool(profile["safe_mode"])
+        self.live_execution_enabled = bool(profile["allow_live_execution"])
+        self.metrics["system_state"] = profile["state"]
         self.metrics["last_assessment"] = assessment
         self.metrics["last_self_regulation"] = profile
-
-        if self.safe_mode:
-            self.metrics["safe_mode_cycles"] += 1
-        else:
-            self._deferred_tasks.clear()
 
         current = {
             "cycle_interval_seconds": self.cycle_interval,
@@ -287,40 +260,49 @@ class AutonomyDaemon:
             self.metrics["adaptive_adjustments"] += 1
             self._adaptation_history.append(event)
             self._adaptation_history = self._adaptation_history[-25:]
-            logger.info(
-                "Self-regulation updated runtime profile: "
-                f"tasks={self.max_tasks}, interval={self.cycle_interval}s, "
-                f"live_execution={self.live_execution_enabled}"
-            )
             self._emit(DaemonEvent(type="self_regulation", data=event))
 
-    def _defer_execution(self, task: GitHubTask) -> None:
-        """Hold execution when self-awareness has enabled safe mode."""
-        task_key = str(task.id)
-        if task_key in self._deferred_tasks:
-            return
+    async def _load_operator_guidance(self) -> DirectiveSummary:
+        try:
+            return await get_active_operator_summary()
+        except Exception as exc:
+            logger.warning(f"Operator guidance unavailable: {exc}")
+            return DirectiveSummary()
 
-        self._deferred_tasks.add(task_key)
-        self._emit(
-            DaemonEvent(
-                type="task_deferred",
-                data={
-                    "task_id": task_key,
-                    "title": task.title,
-                    "status": task.status,
-                    "reason": "safe_mode_active",
-                },
+    async def _poll_workspace_bridge(self) -> dict[str, Any]:
+        try:
+            status = await self._workspace_bridge.poll()
+            self.metrics["workspace_bridge"] = status
+            return status
+        except Exception as exc:
+            logger.warning(f"Workspace bridge unavailable: {exc}")
+            return self.metrics.get("workspace_bridge") or {}
+
+    def _apply_operator_guidance(self, guidance: DirectiveSummary) -> None:
+        self.operator_guidance = {
+            "active_count": guidance.active_count,
+            "pause_requested": guidance.pause_requested,
+            "focus_topics": guidance.focus_topics,
+            "avoid_topics": guidance.avoid_topics,
+            "max_tasks_override": guidance.max_tasks_override,
+        }
+        self.metrics["operator_guidance"] = self.operator_guidance
+
+        if guidance.max_tasks_override is not None:
+            self.max_tasks = max(1, min(self.max_tasks, guidance.max_tasks_override))
+
+        if guidance.pause_requested:
+            self.safe_mode = True
+            self.live_execution_enabled = False
+            self.control_mode = "paused_by_operator"
+        elif guidance.focus_topics or guidance.avoid_topics:
+            self.control_mode = (
+                "guided_execute" if self.live_execution_enabled else "guided_observe"
             )
-        )
-        logger.warning(
-            "Deferred live execution for "
-            f"task {task.id} while safe mode is active"
-        )
-
-    # ----- phases -----
+        else:
+            self.control_mode = "safe_mode" if self.safe_mode else "execute"
 
     async def _discover_issues(self, session: AsyncSession) -> int:
-        """Call the GitHub autonomy service to fetch new issues into the task queue."""
         try:
             from src.kortana.services.github_autonomy_service import (
                 GitHubAutonomyService,
@@ -329,88 +311,94 @@ class AutonomyDaemon:
             service = GitHubAutonomyService(session)
             tasks = await service.fetch_and_queue_issues()
             return len(tasks) if tasks else 0
-        except Exception as e:
-            logger.error(f"Issue discovery failed: {e}")
+        except Exception as exc:
+            logger.error(f"Issue discovery failed: {exc}")
             return 0
 
     async def _manifest_self_healing(self, session: AsyncSession) -> None:
-        """
-        The Zenith Protocol: Detect systemic failure and create a recursive self-repair task.
-        """
+        """Create one recursive self-repair issue when core autonomy fails."""
         try:
-            # Detect recent failures that aren't already being repaired
             stmt_failed = (
                 select(GitHubTask)
                 .where(
                     GitHubTask.status == "failed",
-                    GitHubTask.error_message is not None,
+                    GitHubTask.error_message.is_not(None),
                 )
-                .order_by(GitHubTask.id.desc())
+                .order_by(GitHubTask.updated_at.desc(), GitHubTask.created_at.desc())
                 .limit(1)
             )
             latest_failed = (await session.execute(stmt_failed)).scalar_one_or_none()
-
-            if not latest_failed:
+            if latest_failed is None:
                 return
 
-            # Are there any active self-repair tasks targeting this?
-            stmt_active = (
-                select(GitHubTask)
-                .where(
-                    GitHubTask.title.like(f"%[AUTO] [SELF-REPAIR] Resolve systemic failure in {latest_failed.title}%"),
-                    GitHubTask.status.in_(["pending", "analyzed", "planning", "planning_complete", "executing"])
-                )
+            title = (
+                "[AUTO] [SELF-REPAIR] Resolve systemic failure in "
+                f"{latest_failed.title}"
+            )
+            stmt_active = select(GitHubTask).where(
+                GitHubTask.title == title,
+                GitHubTask.status.in_(
+                    ["pending", "analyzed", "planning", "planning_complete", "executing"]
+                ),
             )
             active_repairs = (await session.execute(stmt_active)).scalars().all()
             if active_repairs:
-                # Already repairing
                 return
 
-            logger.warning(f"KOR'TANA identified a system failure in Task #{latest_failed.github_issue_number}. Manifesting self-repair issue...")
-
-            github_token = os.getenv("GITHUB_TOKEN")
+            settings = get_settings()
+            github_token = os.getenv("GITHUB_TOKEN") or settings.GITHUB_TOKEN
             if not github_token:
-                logger.error("Cannot manifest self-repair: GITHUB_TOKEN missing.")
+                logger.error("Cannot manifest self-repair: GitHub token missing")
                 return
 
-            owner = os.getenv("GITHUB_OWNER", "madouble7")
-            repo = os.getenv("GITHUB_REPO", "kortana")
+            owner = os.getenv("GITHUB_OWNER") or settings.GITHUB_OWNER
+            repo = os.getenv("GITHUB_REPO") or settings.GITHUB_REPO
+            payload = {
+                "title": title,
+                "body": (
+                    "**KOR'TANA PRIME PROTOCOL ACTIVATED.**\n\n"
+                    f"The autonomy subsystem encountered a failure while attempting "
+                    f"Task #{latest_failed.github_issue_number}.\n\n"
+                    f"### Error Diagnostic\n```\n{latest_failed.error_message}\n```\n\n"
+                    "Directive: audit the autonomy path, trace the failing service, "
+                    "and create a structural patch that prevents recurrence."
+                ),
+            }
+            headers = {
+                "Authorization": f"token {github_token}",
+                "Accept": "application/vnd.github.v3+json",
+            }
 
-            import httpx
-            async with httpx.AsyncClient() as client:
-                body = {
-                    "title": f"[AUTO] [SELF-REPAIR] Resolve systemic failure in {latest_failed.title}",
-                    "body": f"**KOR'TANA PRIME PROTOCOL ACTIVATED.**\n\n"
-                            f"The autonomy subsystem encountered a recursive failure while attempting Task #{latest_failed.github_issue_number}.\n\n"
-                            f"### Error Diagnostic:\n```\n{latest_failed.error_message}\n```\n\n"
-                            f"**Directive:** Audit the codebase related to this failure, trace the `github_autonomy_service.py` "
-                            f"or associated modules, and implement a structural patch to prevent this exception. Generate the required Code Plan to heal this logic."
-                }
-                headers = {
-                    "Authorization": f"token {github_token}",
-                    "Accept": "application/vnd.github.v3+json"
-                }
-                resp = await client.post(f"https://api.github.com/repos/{owner}/{repo}/issues", json=body, headers=headers)
-                if resp.status_code == 201:
-                    new_issue = resp.json()
-                    logger.info(f"Self-healing active: Manifested Issue #{new_issue['number']}")
-                    self.metrics["self_heals_manifested"] += 1
-                else:
-                    logger.error(f"Failed to manifest self-healing issue, status: {resp.status_code} body: {resp.text}")
-        except Exception as e:
-            logger.error(f"Self-repair manifestation failed: {e}")
+            async with httpx.AsyncClient(timeout=15) as client:
+                response = await client.post(
+                    f"https://api.github.com/repos/{owner}/{repo}/issues",
+                    json=payload,
+                    headers=headers,
+                )
+            if response.status_code == 201:
+                self.metrics["self_heals_manifested"] += 1
+                logger.info("Manifested self-repair issue successfully")
+            else:
+                logger.error(
+                    "Failed to manifest self-healing issue: "
+                    f"status={response.status_code} body={response.text}"
+                )
+        except Exception as exc:
+            logger.error(f"Self-repair manifestation failed: {exc}")
 
     async def _process_tasks(
-        self, session: AsyncSession, max_tasks: int | None = None
-    ) -> tuple[int, int, int]:
-        self, session: AsyncSession
+        self,
+        session: AsyncSession,
+        max_tasks: int | None = None,
+        guidance: DirectiveSummary | None = None,
     ) -> tuple[int, int, int, int]:
-        """Drive pending tasks through analyze → plan → execute."""
+        """Drive tasks through analyze -> plan -> execute."""
         from src.kortana.services.github_autonomy_service import GitHubAutonomyService
 
-        limit = max_tasks if max_tasks is not None else self.max_tasks
+        limit = self.max_tasks if max_tasks is None else max_tasks
+        if limit <= 0:
+            return 0, 0, 0, 0
 
-        # Fetch pending tasks
         stmt = (
             select(GitHubTask)
             .where(
@@ -419,11 +407,11 @@ class AutonomyDaemon:
                 )
             )
             .order_by(GitHubTask.created_at)
-            .limit(limit)
+            .limit(max(limit * 3, limit))
         )
         result = await session.execute(stmt)
-        tasks = list(result.scalars().all())
-
+        candidates = list(result.scalars().all())
+        tasks = self._prioritize_tasks(candidates, guidance, limit)
         if not tasks:
             return 0, 0, 0, 0
 
@@ -432,7 +420,7 @@ class AutonomyDaemon:
 
         for task in tasks:
             processed += 1
-            task_start = time.monotonic()
+            task_started = time.monotonic()
             self._emit(
                 DaemonEvent(
                     type="task_progress",
@@ -445,7 +433,6 @@ class AutonomyDaemon:
             )
 
             try:
-                # Advance through pipeline stages
                 if task.status in {"queued", "pending"}:
                     await service.analyze_task(task)
                 if task.status == "analyzed":
@@ -460,6 +447,12 @@ class AutonomyDaemon:
                         continue
 
                 succeeded += 1
+                await self._record_outcome(
+                    task=task,
+                    success=True,
+                    latency_seconds=time.monotonic() - task_started,
+                    error=None,
+                )
                 self._emit(
                     DaemonEvent(
                         type="task_complete",
@@ -470,76 +463,140 @@ class AutonomyDaemon:
                         },
                     )
                 )
-                await self._record_outcome(
-                    task, success=True, latency=time.monotonic() - task_start
-                )
-            except Exception as e:
+            except Exception as exc:
                 failed += 1
-                logger.error(f"Task {task.id} failed: {e}")
+                await self._record_outcome(
+                    task=task,
+                    success=False,
+                    latency_seconds=time.monotonic() - task_started,
+                    error=str(exc),
+                )
                 self._emit(
                     DaemonEvent(
                         type="error",
-                        data={
-                            "task_id": str(task.id),
-                            "error": str(e),
-                        },
+                        data={"task_id": str(task.id), "error": str(exc)},
                     )
                 )
-                await self._record_outcome(
-                    task,
-                    success=False,
-                    latency=time.monotonic() - task_start,
-                    error=str(e),
-                )
+                logger.error(f"Task {task.id} failed: {exc}")
 
         return processed, succeeded, failed, deferred
 
+    def _prioritize_tasks(
+        self,
+        candidates: list[GitHubTask],
+        guidance: DirectiveSummary | None,
+        limit: int,
+    ) -> list[GitHubTask]:
+        if not candidates:
+            return []
+        if guidance is None or (
+            not guidance.focus_topics and not guidance.avoid_topics
+        ):
+            return candidates[:limit]
+
+        ranked: list[tuple[int, GitHubTask]] = []
+        fallback: list[GitHubTask] = []
+        for task in candidates:
+            corpus = f"{task.title} {task.description or ''}".lower()
+            focus_hits = sum(topic in corpus for topic in guidance.focus_topics)
+            avoid_hits = sum(topic in corpus for topic in guidance.avoid_topics)
+
+            if avoid_hits and focus_hits == 0:
+                continue
+
+            score = focus_hits * 10 - avoid_hits * 5
+            if score > 0:
+                ranked.append((score, task))
+            else:
+                fallback.append(task)
+
+        ranked.sort(key=lambda item: item[0], reverse=True)
+        ordered = [task for _, task in ranked] + fallback
+        return ordered[:limit]
+
+    def _defer_execution(self, task: GitHubTask) -> None:
+        task_key = str(task.id)
+        if task_key in self._deferred_tasks:
+            return
+
+        self._deferred_tasks.add(task_key)
+        event = DaemonEvent(
+            type="task_deferred",
+            data={
+                "task_id": task_key,
+                "title": task.title,
+                "status": task.status,
+                "reason": "live_execution_disabled",
+            },
+        )
+        self._emit(event)
+
     async def _record_outcome(
         self,
-        task: GitHubTask,
         *,
+        task: GitHubTask,
         success: bool,
-        latency: float,
+        latency_seconds: float,
         error: str | None = None,
     ) -> None:
-        """Record task outcome with the AdaptiveLearner for continuous improvement."""
         try:
-            from src.kortana.services.adaptive_learner import Outcome, get_adaptive_learner
+            from src.kortana.services.adaptive_learner import (
+                Outcome,
+                get_adaptive_learner,
+            )
 
             learner = await get_adaptive_learner()
-            outcome = Outcome(
-                task_id=str(task.id),
-                # task_type and ai_provider are not yet in the GitHubTask model;
-                # use safe fallbacks until those columns are added.
-                task_type=getattr(task, "task_type", "github_issue"),
-                success=success,
-                latency_seconds=round(latency, 2),
-                provider_used=getattr(task, "ai_provider", "unknown"),
-                error=error,
+            await learner.record(
+                Outcome(
+                    task_id=str(task.id),
+                    task_type=self._infer_task_type(task),
+                    success=success,
+                    latency_seconds=round(latency_seconds, 3),
+                    provider_used="gemini",
+                    error=error,
+                    metadata={
+                        "status": task.status,
+                        "repo": task.github_repo,
+                        "safe_mode": self.safe_mode,
+                    },
+                )
             )
-            await learner.record(outcome)
-        except Exception as e:
-            logger.debug(f"Outcome recording skipped: {e}")
+        except Exception as exc:
+            logger.debug(f"Outcome recording failed for task {task.id}: {exc}")
 
-    # ----- introspection -----
+    @staticmethod
+    def _infer_task_type(task: GitHubTask) -> str:
+        corpus = f"{task.title} {task.description or ''}".lower()
+        if any(token in corpus for token in ("test", "coverage", "pytest")):
+            return "test"
+        if any(token in corpus for token in ("doc", "readme", "documentation")):
+            return "docs"
+        if any(token in corpus for token in ("deploy", "docker", "infra", "pipeline")):
+            return "infra"
+        if any(token in corpus for token in ("refactor", "cleanup", "restructure")):
+            return "refactor"
+        if any(token in corpus for token in ("bug", "fix", "error", "failure", "crash")):
+            return "code_fix"
+        return "feature"
 
     def get_status(self) -> dict[str, Any]:
         return {
             "running": self._running,
             "enabled": self.enabled,
-            "base_cycle_interval_seconds": self.base_cycle_interval,
             "cycle_interval_seconds": self.cycle_interval,
-            "base_max_tasks_per_cycle": self.base_max_tasks,
+            "base_cycle_interval_seconds": self.base_cycle_interval,
             "max_tasks_per_cycle": self.max_tasks,
+            "base_max_tasks_per_cycle": self.base_max_tasks,
             "repo": self.repo,
             "safe_mode": self.safe_mode,
             "live_execution_enabled": self.live_execution_enabled,
+            "control_mode": self.control_mode,
             "adaptation_history": self._adaptation_history[-10:],
+            "workspace_bridge": self.metrics.get("workspace_bridge"),
             **self.metrics,
         }
 
 
-# Singleton
 _daemon: AutonomyDaemon | None = None
 
 

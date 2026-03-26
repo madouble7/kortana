@@ -3,6 +3,7 @@ import pytest
 from src.kortana.services.adaptive_learner import Insight
 from src.kortana.services.autonomy_controller import AutonomyController
 from src.kortana.services.goal_manager import GoalManager
+from src.kortana.services.operator_directive_service import DirectiveSummary
 
 
 class StubSelfAwareness:
@@ -65,6 +66,12 @@ async def test_controller_enters_protective_mode_when_system_is_critical(monkeyp
         "src.kortana.services.autonomy_controller.get_goal_manager",
         lambda: goal_manager,
     )
+    async def fake_operator_summary():
+        return DirectiveSummary()
+    monkeypatch.setattr(
+        "src.kortana.services.autonomy_controller.get_active_operator_summary",
+        fake_operator_summary,
+    )
 
     controller = AutonomyController()
     reflection = await controller.reflect(
@@ -123,6 +130,12 @@ async def test_controller_increases_throughput_when_runtime_is_healthy(monkeypat
     monkeypatch.setattr(
         "src.kortana.services.autonomy_controller.get_goal_manager",
         lambda: goal_manager,
+    )
+    async def fake_operator_summary():
+        return DirectiveSummary()
+    monkeypatch.setattr(
+        "src.kortana.services.autonomy_controller.get_active_operator_summary",
+        fake_operator_summary,
     )
 
     controller = AutonomyController()

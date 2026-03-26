@@ -33,7 +33,11 @@ except ImportError:
     Redis = None
 
 # Import middleware
-from src.kortana.middleware.cache import CacheStrategy, ResponseCacheMiddleware
+from src.kortana.middleware.cache import (
+    DEFAULT_CACHE_EXCLUDE_PATHS,
+    CacheStrategy,
+    ResponseCacheMiddleware,
+)
 from src.kortana.middleware.security import (
     RateLimitMiddleware,
     RequestIDMiddleware,
@@ -263,10 +267,7 @@ def create_app() -> FastAPI:
                 ttl=300,  # 5 minutes
                 key_prefix="api_cache:",
                 exclude_paths=[
-                    "/health",
-                    "/docs",
-                    "/openapi.json",
-                    "/protocol/auto/execute",
+                    *DEFAULT_CACHE_EXCLUDE_PATHS,
                     "/api/optimization",
                 ],
             )

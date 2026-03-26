@@ -97,7 +97,7 @@ def analyze_image(
 
 
 @app.task(bind=True)
-def run_autonomy_cycle() -> dict[str, Any]:
+def run_autonomy_cycle(self) -> dict[str, Any]:
     """
     Run HOP autonomy cycle - classify and execute tasks
 

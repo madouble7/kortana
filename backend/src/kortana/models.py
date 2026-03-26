@@ -217,6 +217,27 @@ class GitHubTask(Base):
         return f"<GitHubTask #{self.github_issue_number}>"
 
 
+class OperatorDirective(Base):
+    """Persistent operator guidance for always-on autonomy."""
+
+    __tablename__ = "operator_directives"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    source = Column(String(64), nullable=False, default="user", index=True)
+    directive_type = Column(String(32), nullable=False, default="comment", index=True)
+    status = Column(String(32), nullable=False, default="active", index=True)
+    priority = Column(Integer, default=50, nullable=False)
+    content = Column(Text, nullable=False)
+    scope = Column(String(64), nullable=False, default="global")
+    directive_data = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    resolved_at = Column(DateTime, nullable=True)
+
+    def __repr__(self) -> str:
+        return f"<OperatorDirective {self.directive_type}:{self.status}>"
+
+
 class AuditLog(Base):
     """Audit trail for compliance and debugging"""
 
