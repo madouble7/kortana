@@ -2,8 +2,12 @@
 """Diagnose GitHub token permissions."""
 import asyncio
 import json
+import os
 import sys
 
+from dotenv import load_dotenv
+
+load_dotenv()
 sys.path.insert(0, "backend")
 
 
@@ -12,6 +16,10 @@ async def diagnose() -> None:
     from src.kortana.database import get_db_manager
     from src.kortana.models import GitHubTask
     from src.kortana.services.github_autonomy_service import GitHubAutonomyService
+
+    # Get target repo from environment
+    owner = os.getenv("GITHUB_OWNER", "KOR-TANA")
+    repo = os.getenv("GITHUB_REPO", "kortana")
 
     manager = get_db_manager()
     async for db in manager.get_session():
@@ -23,7 +31,7 @@ async def diagnose() -> None:
             service = GitHubAutonomyService(db)
 
             # Step 1: Get main branch SHA
-            url = "https://api.github.com/repos/KOR-TANA/kortana/git/ref/heads/main"
+            url = f"https://api.github.com/repos/{owner}/{repo}/git/ref/heads/main"
             response = await service.http_client.get(
                 url,
                 api_name="github_api",
@@ -37,7 +45,7 @@ async def diagnose() -> None:
             print(f"✓ Got main SHA: {main_sha[:8]}...")
 
             # Step 2: Try to create a test branch
-            create_url = "https://api.github.com/repos/KOR-TANA/kortana/git/refs"
+            create_url = f"https://api.github.com/repos/{owner}/{repo}/git/refs"
             branch_data = {"ref": "refs/heads/test-branch-perms", "sha": main_sha}
 
             create_response = await service.http_client.post(
