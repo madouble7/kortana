@@ -53,6 +53,19 @@ def test_find_env_file_searches_parent_directories(
     assert config_module._find_env_file(package_dir) == env_file
 
 
+def test_find_env_file_falls_back_to_repo_root_env(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The config loader should discover a repo-root .env when backend/.env is absent."""
+    config_module = reload_config_module(monkeypatch)
+    package_dir = tmp_path / "backend" / "src" / "kortana"
+    package_dir.mkdir(parents=True)
+    env_file = tmp_path / ".env"
+    env_file.write_text("SECRET_KEY=test\n", encoding="utf-8")
+
+    assert config_module._find_env_file(package_dir) == env_file
+
+
 def test_secret_key_is_generated_for_development(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

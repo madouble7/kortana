@@ -15,8 +15,8 @@ class TestAlwaysOnMonitorInit:
         mod._monitor = None
         monitor = mod.AlwaysOnMonitor()
         assert monitor.is_running is False
-        assert monitor.github_service is None
-        assert monitor.hop_service is None
+        assert monitor._task is None
+        assert monitor._cycle_in_progress is False
         assert monitor.last_check is None
         assert monitor.stats["issues_fetched"] == 0
         assert monitor.stats["tasks_processed"] == 0
@@ -33,6 +33,7 @@ class TestAlwaysOnMonitorInit:
         assert "tasks_failed" in stats
         assert "human_interventions" in stats
         assert "last_run" in stats
+        assert "cycles_skipped" in stats
 
     def test_check_interval_default(self):
         from src.kortana.services.always_on_monitor import AlwaysOnMonitor
@@ -88,6 +89,8 @@ class TestAlwaysOnMonitorGetStatus:
         assert "check_interval" in status
         assert "max_concurrent_tasks" in status
         assert "statistics" in status
+        assert "cycle_in_progress" in status
+        assert "daemon" in status
         assert "timestamp" in status
 
     def test_get_status_not_running(self):
@@ -115,23 +118,28 @@ class TestAlwaysOnMonitorStopMonitoring:
         monitor.stop_monitoring()
         assert monitor.is_running is False
 
-    def test_stop_calls_github_service_close(self):
+    def test_stop_cancels_active_task(self):
         from src.kortana.services.always_on_monitor import AlwaysOnMonitor
 
         monitor = AlwaysOnMonitor()
-        mock_github = MagicMock()
-        monitor.github_service = mock_github
+        monitor.is_running = True
+        task = MagicMock()
+        task.done.return_value = False
+        monitor._task = task
         monitor.stop_monitoring()
-        mock_github.close.assert_called_once()
+        task.cancel.assert_called_once()
+        assert monitor._task is None
 
-    def test_stop_calls_hop_service_close(self):
+    def test_stop_keeps_completed_task_uncancelled(self):
         from src.kortana.services.always_on_monitor import AlwaysOnMonitor
 
         monitor = AlwaysOnMonitor()
-        mock_hop = MagicMock()
-        monitor.hop_service = mock_hop
+        task = MagicMock()
+        task.done.return_value = True
+        monitor._task = task
         monitor.stop_monitoring()
-        mock_hop.close.assert_called_once()
+        task.cancel.assert_not_called()
+        assert monitor._task is None
 
     def test_stop_with_no_services(self):
         from src.kortana.services.always_on_monitor import AlwaysOnMonitor
@@ -230,57 +238,64 @@ class TestAlwaysOnMonitorSingleton:
         mod.stop_always_on_monitor()  # Should not raise
 
 
-class TestAlwaysOnMonitorFetchIssues:
+class TestAlwaysOnMonitorCycle:
     @pytest.mark.asyncio
-    async def test_fetch_issues_returns_empty_on_db_failure(self):
+    async def test_monitoring_cycle_syncs_daemon_status(self):
         from src.kortana.services.always_on_monitor import AlwaysOnMonitor
 
         monitor = AlwaysOnMonitor()
-        mock_manager = MagicMock()
-        mock_manager.get_session.side_effect = Exception("DB unavailable")
-        monitor.db_manager = mock_manager
-        result = await monitor._fetch_new_issues()
-        assert result == []
+        daemon = MagicMock()
+        daemon.get_status.return_value = {
+            "tasks_processed": 4,
+            "tasks_succeeded": 3,
+            "tasks_failed": 1,
+        }
 
-
-class TestAlwaysOnMonitorRunHOPCycle:
-    @pytest.mark.asyncio
-    async def test_hop_cycle_handles_exception(self):
-        from src.kortana.services.always_on_monitor import AlwaysOnMonitor
-
-        monitor = AlwaysOnMonitor()
         with patch(
-            "src.kortana.services.always_on_monitor.HOPAutonomyService"
-        ) as MockHOP:
-            instance = MockHOP.return_value
-            instance.run_hop_cycle = AsyncMock(side_effect=Exception("HOP failure"))
-            # Should not raise - exception is caught
-            await monitor._run_hop_cycle()
+            "src.kortana.services.always_on_monitor.get_autonomy_daemon",
+            return_value=daemon,
+        ):
+            await monitor._monitoring_cycle()
+
+        assert monitor.stats["tasks_processed"] == 4
+        assert monitor.stats["tasks_completed"] == 3
+        assert monitor.stats["tasks_failed"] == 1
+        assert monitor.last_check is not None
 
     @pytest.mark.asyncio
-    async def test_hop_cycle_success(self):
+    async def test_start_monitoring_runs_cycle_once_before_stop(self):
         from src.kortana.services.always_on_monitor import AlwaysOnMonitor
 
         monitor = AlwaysOnMonitor()
-        with patch(
-            "src.kortana.services.always_on_monitor.HOPAutonomyService"
-        ) as MockHOP:
-            instance = MockHOP.return_value
-            instance.run_hop_cycle = AsyncMock(return_value={"status": "completed"})
-            await monitor._run_hop_cycle()  # Should complete without error
+
+        async def stop_after_first_cycle() -> None:
+            monitor.is_running = False
+
+        with patch.object(
+            monitor,
+            "_monitoring_cycle",
+            new=AsyncMock(side_effect=stop_after_first_cycle),
+        ):
+            with patch("src.kortana.services.always_on_monitor.asyncio.sleep", new=AsyncMock()):
+                await monitor.start_monitoring()
+
+        assert monitor.is_running is False
 
 
 class TestAlwaysOnMonitorGetTaskStatus:
     @pytest.mark.asyncio
-    async def test_get_task_status_returns_error_on_db_failure(self):
+    async def test_get_task_status_raises_on_db_failure(self):
         from src.kortana.services.always_on_monitor import AlwaysOnMonitor
 
         monitor = AlwaysOnMonitor()
         mock_manager = MagicMock()
-        mock_manager.get_session.side_effect = Exception("DB unavailable")
+        session_scope = AsyncMock()
+        session_scope.__aenter__.side_effect = Exception("DB unavailable")
+        mock_manager.session_scope.return_value = session_scope
         monitor.db_manager = mock_manager
-        result = await monitor.get_task_status()
-        assert "error" in result
+
+        with pytest.raises(Exception, match="DB unavailable"):
+            await monitor.get_task_status()
 
 
 # ========================================

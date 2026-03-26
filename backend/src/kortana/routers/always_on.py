@@ -286,8 +286,7 @@ async def get_recent_tasks(limit: int = 10) -> List[Dict[str, Any]]:
     """Get recent tasks for monitoring dashboard"""
     try:
         db_manager = get_db_manager()
-        db = await db_manager.get_session().__anext__()
-        try:
+        async with db_manager.session_scope() as db:
             result = await db.execute(
                 select(GitHubTask).order_by(GitHubTask.updated_at.desc()).limit(limit)
             )
@@ -307,8 +306,6 @@ async def get_recent_tasks(limit: int = 10) -> List[Dict[str, Any]]:
                 }
                 for task in tasks
             ]
-        finally:
-            await db.close()
     except Exception as e:
         logger.error(f"Failed to get recent tasks: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get tasks: {str(e)}")
@@ -344,8 +341,7 @@ async def retry_task(task_id: str) -> Dict[str, Any]:
     """Retry a failed task"""
     try:
         db_manager = get_db_manager()
-        db = await db_manager.get_session().__anext__()
-        try:
+        async with db_manager.session_scope() as db:
             result = await db.execute(select(GitHubTask).filter(GitHubTask.id == task_id))
             task = result.scalar_one_or_none()
             if not task:
@@ -356,16 +352,12 @@ async def retry_task(task_id: str) -> Dict[str, Any]:
             task.error_message = None
             task.updated_at = datetime.utcnow()
 
-            await db.commit()
-
             return {
                 "message": f"Task {task_id} reset for retry",
                 "task_id": task_id,
                 "status": "pending",
                 "timestamp": datetime.utcnow().isoformat(),
             }
-        finally:
-            await db.close()
     except HTTPException:
         raise
     except Exception as e:
@@ -378,8 +370,7 @@ async def get_monitoring_actions(limit: int = 20) -> List[Dict[str, Any]]:
     """Get recent monitoring actions for dashboard"""
     try:
         db_manager = get_db_manager()
-        db = await db_manager.get_session().__anext__()
-        try:
+        async with db_manager.session_scope() as db:
             result = await db.execute(
                 select(GitHubTask).order_by(GitHubTask.updated_at.desc()).limit(limit)
             )
@@ -400,8 +391,6 @@ async def get_monitoring_actions(limit: int = 20) -> List[Dict[str, Any]]:
                 )
 
             return actions
-        finally:
-            await db.close()
     except Exception as e:
         logger.error(f"Failed to get monitoring actions: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get actions: {str(e)}")
@@ -449,8 +438,7 @@ async def approve_task(task_id: str, approved: bool, notes: str | None = None) -
     """Approve or reject a task requiring human oversight"""
     try:
         db_manager = get_db_manager()
-        db = await db_manager.get_session().__anext__()
-        try:
+        async with db_manager.session_scope() as db:
             result = await db.execute(select(GitHubTask).filter(GitHubTask.id == task_id))
             task = result.scalar_one_or_none()
             if not task:
@@ -479,7 +467,7 @@ async def approve_task(task_id: str, approved: bool, notes: str | None = None) -
             }
 
             task.updated_at = datetime.utcnow()
-            await db.commit()
+            await db.flush()
             await db.refresh(task)
 
             return {
@@ -489,8 +477,6 @@ async def approve_task(task_id: str, approved: bool, notes: str | None = None) -
                 "approved": approved,
                 "timestamp": datetime.utcnow().isoformat(),
             }
-        finally:
-            await db.close()
     except HTTPException:
         raise
     except Exception as e:

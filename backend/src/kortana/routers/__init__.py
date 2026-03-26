@@ -19,4 +19,5 @@ __all__ = [
     "system",
     "task_queue",
     "test_orchestrator",
+    "matrix_ws",
 ]
