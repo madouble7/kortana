@@ -3,8 +3,6 @@ GitHub Automation Engine - Enhanced issue analysis and PR automation
 Handles smart issue routing, analysis, planning, and autonomous PR creation
 """
 
-import asyncio
-import json
 from datetime import datetime
 from typing import Optional
 

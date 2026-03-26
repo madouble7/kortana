@@ -1,7 +1,5 @@
 import redis.asyncio as redis
 import os
-import json
-import logging
 
 class HiveBus:
     """

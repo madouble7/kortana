@@ -7,7 +7,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.kortana.models import Task
 
 
 @pytest.fixture

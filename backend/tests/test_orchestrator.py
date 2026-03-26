@@ -8,7 +8,6 @@ import subprocess
 from unittest.mock import MagicMock, patch
 
 import pytest
-import httpx
 from src.kortana.routers.test_orchestrator import (
     TestOrchestrationError,
     TestOrchestrator,

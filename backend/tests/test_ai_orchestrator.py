@@ -5,7 +5,6 @@ Tests for Unified AI Orchestrator Router
 from unittest.mock import patch
 
 import pytest
-import httpx
 
 from src.kortana.main import create_app
 

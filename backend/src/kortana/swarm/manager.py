@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import sys
 from .hive_bus import HiveBus
 from .workers.architect_agent import ArchitectAgent
 from .workers.devops_agent import DevOpsSentinel
