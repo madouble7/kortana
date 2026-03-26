@@ -266,6 +266,17 @@ class SelfAwarenessEngine:
             safe_mode = True
             reasons.append("low_execution_confidence")
 
+        force_live_execution = (
+            os.getenv("AUTONOMY_FORCE_LIVE_EXECUTION", "false").lower() == "true"
+        )
+        if (
+            force_live_execution
+            and state != SystemState.CRITICAL
+            and "correction_enable_dry_run_mode" not in reasons
+        ):
+            safe_mode = False
+            reasons.append("force_live_execution_override")
+
         profile = RuntimeProfile(
             generated_at=datetime.utcnow().isoformat(),
             state=state.value,

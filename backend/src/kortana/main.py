@@ -24,26 +24,29 @@ if backend_dir not in sys.path:
 # Import configuration and utilities
 from src.kortana.config import get_settings
 from src.kortana.exceptions import KortanaException
+
 from src.kortana.logger import log_error, log_request, setup_logging
 
-# Import Redis for caching
+# Import security middleware
+from src.kortana.middleware.security import (
+    SecurityHeadersMiddleware,
+    RateLimitMiddleware,
+    RequestIDMiddleware,
+    RequestLoggingMiddleware,
+)
+
 try:
     from redis import Redis
 except ImportError:
     Redis = None
 
-# Import middleware
-from src.kortana.middleware.cache import (
-    DEFAULT_CACHE_EXCLUDE_PATHS,
-    CacheStrategy,
-    ResponseCacheMiddleware,
-)
-from src.kortana.middleware.security import (
-    RateLimitMiddleware,
-    RequestIDMiddleware,
-    RequestLoggingMiddleware,
-    SecurityHeadersMiddleware,
-)
+try:
+    from src.kortana.human_only_protocol import router as hop_router
+    HOP_AVAILABLE = True
+except ImportError as e:
+    print(f"Warning: Could not import Human Only Protocol: {e}")
+    HOP_AVAILABLE = False
+    hop_router = APIRouter()  # Provide empty router as fallback
 
 # Import routers
 try:
@@ -74,6 +77,7 @@ try:
         task_queue,
         test_orchestrator,
     )
+    from src.kortana.routers import matrix_ws
     from src.kortana.routers import consensus as consensus_router
     from src.kortana.routers import daemon as daemon_router
     from src.kortana.routers import intelligence as intelligence_router
@@ -87,21 +91,7 @@ except ImportError as e:
     print(f"Error importing routers: {e}")
     raise
 
-# Billing router currently lives in the root backend router stack.
-try:
-    from routers import billing as root_billing
-except ImportError:
-    root_billing = None
-
-# Import Human Only Protocol (HOP) for autonomy
-try:
-    from src.kortana.human_only_protocol import router as hop_router
-
-    HOP_AVAILABLE = True
-except ImportError as e:
-    print(f"Warning: Could not import Human Only Protocol: {e}")
-    HOP_AVAILABLE = False
-    hop_router = APIRouter()  # Provide empty router as fallback
+hop_router = APIRouter()  # Provide empty router as fallback
 
 
 @asynccontextmanager
@@ -409,6 +399,7 @@ def create_app() -> FastAPI:
 
         # Phase 8: Consciousness Persistence & Self-Repair
         app.include_router(consciousness.router)
+        app.include_router(matrix_ws.router, prefix="/api/matrix", tags=["matrix"])
 
         # Live Exerciser: Real API calls + PostgreSQL integration
         app.include_router(live_exerciser.router)
