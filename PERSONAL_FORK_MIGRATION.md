@@ -18,7 +18,7 @@ GITHUB_REPO=kortana         # No change needed
 
 **Latest Commits on `madouble7/kortana`:**
 - `644e812` docs: Fix type annotation for diagnose function
-- `99dcc11` Treat 422 as idempotent; add diagnostics/scripts  
+- `99dcc11` Treat 422 as idempotent; add diagnostics/scripts
 - `3fa8bf1` Merge pull request #61 from KOR-TANA/fix/git-operations-idempotent
 
 ## What This Achieves
@@ -48,7 +48,7 @@ All components confirmed targeting `madouble7/kortana`:
 ### HTTP Client Fixes (Already in Fork)
 The diagnostic improvements from previous work are included:
 - Selective `raise_for_status()` handling (allows 422, raises on 403/404/5xx)
-- Error detail extraction via `_extract_http_error_detail()` 
+- Error detail extraction via `_extract_http_error_detail()`
 - Proper exception message reporting
 
 ### Daemon Enhancement (Already in Fork)
@@ -92,6 +92,6 @@ git checkout kor-tana-org/main
 
 ---
 
-**Migration completed:** 2026-03-25  
-**Status:** ✅ Production Ready  
+**Migration completed:** 2026-03-25
+**Status:** ✅ Production Ready
 **Daemon target:** `madouble7/kortana`
