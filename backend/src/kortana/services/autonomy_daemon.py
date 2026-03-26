@@ -24,7 +24,6 @@ from typing import Any, Callable
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from src.kortana.database import get_db_manager
 from src.kortana.logger import get_logger
 from src.kortana.models import GitHubTask
@@ -62,7 +61,9 @@ class AutonomyDaemon:
         self.base_max_tasks = int(os.getenv("AUTONOMY_MAX_TASKS_PER_CYCLE", "3"))
         self.cycle_interval = self.base_cycle_interval
         self.max_tasks = self.base_max_tasks
-        self.repo = f"{os.getenv('GITHUB_OWNER', 'madouble7')}/{os.getenv('GITHUB_REPO', 'kortana')}"
+        self.repo = (
+            f"{os.getenv('GITHUB_OWNER', 'madouble7')}/{os.getenv('GITHUB_REPO', 'kortana')}"
+        )
         self.safe_mode = False
         self.live_execution_enabled = True
         self._adaptation_history: list[dict[str, Any]] = []
@@ -187,11 +188,9 @@ class AutonomyDaemon:
             new_count = await self._discover_issues(session)
 
             # Phase 2: Drive pending tasks through pipeline (with effective limit)
-            processed, succeeded, failed = await self._process_tasks(
+            processed, succeeded, failed, deferred = await self._process_tasks(
                 session, max_tasks=effective_max_tasks
             )
-            # Phase 2: Drive pending tasks through pipeline
-            processed, succeeded, failed, deferred = await self._process_tasks(session)
 
             # Phase 3: The Zenith Protocol (Self-Healing via Meta-Cognition)
             await self._manifest_self_healing(session)
@@ -200,8 +199,8 @@ class AutonomyDaemon:
         try:
             from dataclasses import asdict as _dc_asdict
 
-            from src.kortana.services.goal_manager import get_goal_manager
             from src.kortana.services.adaptive_learner import get_adaptive_learner
+            from src.kortana.services.goal_manager import get_goal_manager
 
             goal_mgr = get_goal_manager()
             learner = await get_adaptive_learner()
@@ -312,10 +311,7 @@ class AutonomyDaemon:
                 },
             )
         )
-        logger.warning(
-            "Deferred live execution for "
-            f"task {task.id} while safe mode is active"
-        )
+        logger.warning("Deferred live execution for " f"task {task.id} while safe mode is active")
 
     # ----- phases -----
 
@@ -343,7 +339,7 @@ class AutonomyDaemon:
                 select(GitHubTask)
                 .where(
                     GitHubTask.status == "failed",
-                    GitHubTask.error_message is not None,
+                    GitHubTask.error_message.is_not(None),
                 )
                 .order_by(GitHubTask.id.desc())
                 .limit(1)
@@ -354,19 +350,22 @@ class AutonomyDaemon:
                 return
 
             # Are there any active self-repair tasks targeting this?
-            stmt_active = (
-                select(GitHubTask)
-                .where(
-                    GitHubTask.title.like(f"%[AUTO] [SELF-REPAIR] Resolve systemic failure in {latest_failed.title}%"),
-                    GitHubTask.status.in_(["pending", "analyzed", "planning", "planning_complete", "executing"])
-                )
+            stmt_active = select(GitHubTask).where(
+                GitHubTask.title.like(
+                    f"%[AUTO] [SELF-REPAIR] Resolve systemic failure in {latest_failed.title}%"
+                ),
+                GitHubTask.status.in_(
+                    ["pending", "analyzed", "planning", "planning_complete", "executing"]
+                ),
             )
             active_repairs = (await session.execute(stmt_active)).scalars().all()
             if active_repairs:
                 # Already repairing
                 return
 
-            logger.warning(f"KOR'TANA identified a system failure in Task #{latest_failed.github_issue_number}. Manifesting self-repair issue...")
+            logger.warning(
+                f"KOR'TANA identified a system failure in Task #{latest_failed.github_issue_number}. Manifesting self-repair issue..."
+            )
 
             github_token = os.getenv("GITHUB_TOKEN")
             if not github_token:
@@ -377,33 +376,38 @@ class AutonomyDaemon:
             repo = os.getenv("GITHUB_REPO", "kortana")
 
             import httpx
+
             async with httpx.AsyncClient() as client:
                 body = {
                     "title": f"[AUTO] [SELF-REPAIR] Resolve systemic failure in {latest_failed.title}",
                     "body": f"**KOR'TANA PRIME PROTOCOL ACTIVATED.**\n\n"
-                            f"The autonomy subsystem encountered a recursive failure while attempting Task #{latest_failed.github_issue_number}.\n\n"
-                            f"### Error Diagnostic:\n```\n{latest_failed.error_message}\n```\n\n"
-                            f"**Directive:** Audit the codebase related to this failure, trace the `github_autonomy_service.py` "
-                            f"or associated modules, and implement a structural patch to prevent this exception. Generate the required Code Plan to heal this logic."
+                    f"The autonomy subsystem encountered a recursive failure while attempting Task #{latest_failed.github_issue_number}.\n\n"
+                    f"### Error Diagnostic:\n```\n{latest_failed.error_message}\n```\n\n"
+                    f"**Directive:** Audit the codebase related to this failure, trace the `github_autonomy_service.py` "
+                    f"or associated modules, and implement a structural patch to prevent this exception. Generate the required Code Plan to heal this logic.",
                 }
                 headers = {
                     "Authorization": f"token {github_token}",
-                    "Accept": "application/vnd.github.v3+json"
+                    "Accept": "application/vnd.github.v3+json",
                 }
-                resp = await client.post(f"https://api.github.com/repos/{owner}/{repo}/issues", json=body, headers=headers)
+                resp = await client.post(
+                    f"https://api.github.com/repos/{owner}/{repo}/issues",
+                    json=body,
+                    headers=headers,
+                )
                 if resp.status_code == 201:
                     new_issue = resp.json()
                     logger.info(f"Self-healing active: Manifested Issue #{new_issue['number']}")
                     self.metrics["self_heals_manifested"] += 1
                 else:
-                    logger.error(f"Failed to manifest self-healing issue, status: {resp.status_code} body: {resp.text}")
+                    logger.error(
+                        f"Failed to manifest self-healing issue, status: {resp.status_code} body: {resp.text}"
+                    )
         except Exception as e:
             logger.error(f"Self-repair manifestation failed: {e}")
 
     async def _process_tasks(
         self, session: AsyncSession, max_tasks: int | None = None
-    ) -> tuple[int, int, int]:
-        self, session: AsyncSession
     ) -> tuple[int, int, int, int]:
         """Drive pending tasks through analyze → plan → execute."""
         from src.kortana.services.github_autonomy_service import GitHubAutonomyService
@@ -413,11 +417,7 @@ class AutonomyDaemon:
         # Fetch pending tasks
         stmt = (
             select(GitHubTask)
-            .where(
-                GitHubTask.status.in_(
-                    ["queued", "pending", "analyzed", "planning_complete"]
-                )
-            )
+            .where(GitHubTask.status.in_(["queued", "pending", "analyzed", "planning_complete"]))
             .order_by(GitHubTask.created_at)
             .limit(limit)
         )
@@ -504,7 +504,10 @@ class AutonomyDaemon:
     ) -> None:
         """Record task outcome with the AdaptiveLearner for continuous improvement."""
         try:
-            from src.kortana.services.adaptive_learner import Outcome, get_adaptive_learner
+            from src.kortana.services.adaptive_learner import (
+                Outcome,
+                get_adaptive_learner,
+            )
 
             learner = await get_adaptive_learner()
             outcome = Outcome(
