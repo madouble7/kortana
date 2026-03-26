@@ -11,12 +11,12 @@ from typing import Any
 
 import httpx
 from sqlalchemy import select
-
-from src.kortana.config import get_settings
 from src.kortana.http_client import get_http_client
 from src.kortana.logger import get_logger
 from src.kortana.models import GitHubTask
 from src.kortana.services.gemini import gemini_service
+
+from src.kortana.config import get_settings
 
 from .code_generator import CodeGenerator
 
@@ -40,18 +40,14 @@ class GitHubAutonomyService:
 
         # Validate token is actually set (not placeholder)
         if self.github_token and self.github_token.startswith("your_"):
-            logger.warning(
-                "GitHub token appears to be a placeholder, replacing with env var"
-            )
+            logger.warning("GitHub token appears to be a placeholder, replacing with env var")
             self.github_token = os.getenv("GITHUB_TOKEN", "")
 
         self.repo_owner = os.getenv("GITHUB_OWNER") or self.settings.GITHUB_OWNER
         self.repo_name = os.getenv("GITHUB_REPO") or self.settings.GITHUB_REPO
         self.max_retries = self.settings.TASK_MAX_RETRIES
 
-        logger.info(
-            f"GitHubAutonomyService initialized: {self.repo_owner}/{self.repo_name}"
-        )
+        logger.info(f"GitHubAutonomyService initialized: {self.repo_owner}/{self.repo_name}")
         logger.debug(f"GitHub token present: {bool(self.github_token)}")
 
     @staticmethod
@@ -110,9 +106,7 @@ class GitHubAutonomyService:
             "Authorization": f"token {self.github_token}",
             "Accept": "application/vnd.github.v3+json",
         }
-        url = (
-            f"https://api.github.com/repos/{owner}/{name}/issues?state=open&per_page=50"
-        )
+        url = f"https://api.github.com/repos/{owner}/{name}/issues?state=open&per_page=50"
 
         try:
             response = await self.http_client.get(
@@ -124,9 +118,7 @@ class GitHubAutonomyService:
             return []
 
         queued_tasks = []
-        issue_numbers = [
-            issue["number"] for issue in issues if "pull_request" not in issue
-        ]
+        issue_numbers = [issue["number"] for issue in issues if "pull_request" not in issue]
 
         if not issue_numbers:
             return []
@@ -180,9 +172,7 @@ class GitHubAutonomyService:
             "Authorization": f"token {self.github_token}",
             "Accept": "application/vnd.github.v3+json",
         }
-        url = (
-            f"https://api.github.com/repos/{owner}/{name}/issues?state=open&per_page=50"
-        )
+        url = f"https://api.github.com/repos/{owner}/{name}/issues?state=open&per_page=50"
 
         try:
             # Use sync httpx client for Celery compatibility
@@ -190,9 +180,7 @@ class GitHubAutonomyService:
             response.raise_for_status()
             issues = response.json()
             logger.info(f"Fetched {len(issues)} issues from {owner}/{name}")
-            return [
-                {"number": issue["number"], "title": issue["title"]} for issue in issues
-            ]
+            return [{"number": issue["number"], "title": issue["title"]} for issue in issues]
         except Exception as e:
             logger.error(f"Failed to fetch GitHub issues: {str(e)}")
             return []
@@ -235,11 +223,7 @@ class GitHubAutonomyService:
             self.settings.ENVIRONMENT == "production"
             or os.getenv("KORTANA_AUTONOMOUS_MODE") == "true"
         ):
-            stmt = (
-                select(GitHubTask)
-                .where(GitHubTask.status == "planning_complete")
-                .limit(limit)
-            )
+            stmt = select(GitHubTask).where(GitHubTask.status == "planning_complete").limit(limit)
             result = await self._db_execute(stmt)
             planned = result.scalars().all()
             for task in planned:
@@ -254,9 +238,7 @@ class GitHubAutonomyService:
             if not task:
                 raise ValueError("Task not found")
         else:
-            task = (
-                task_or_id  # Already have the task object, no additional query needed
-            )
+            task = task_or_id  # Already have the task object, no additional query needed
 
         task.status = "analyzing"
         await self._db_commit()
@@ -288,9 +270,7 @@ class GitHubAutonomyService:
             if not task:
                 raise ValueError("Task not found")
         else:
-            task = (
-                task_or_id  # Already have the task object, no additional query needed
-            )
+            task = task_or_id  # Already have the task object, no additional query needed
 
         task.status = "planning"
         await self._db_commit()
@@ -312,9 +292,7 @@ class GitHubAutonomyService:
         await self._db_commit()
         return task
 
-    async def execute_task(
-        self, task_or_id: GitHubTask | str, dry_run: bool = False
-    ) -> GitHubTask:
+    async def execute_task(self, task_or_id: GitHubTask | str, dry_run: bool = False) -> GitHubTask:
         """Execute the task: Create branch, apply changes, and commit"""
         if isinstance(task_or_id, str):
             stmt = select(GitHubTask).where(GitHubTask.id == task_or_id)
@@ -323,9 +301,7 @@ class GitHubAutonomyService:
             if not task:
                 raise ValueError("Task not found")
         else:
-            task = (
-                task_or_id  # Already have the task object, no additional query needed
-            )
+            task = task_or_id  # Already have the task object, no additional query needed
 
         task.status = "executing"
         await self._db_commit()
@@ -336,9 +312,7 @@ class GitHubAutonomyService:
             # 1. Create GitHub branch
             if not dry_run:
                 if not await self._maybe_await(self._create_branch(task)):
-                    raise Exception(
-                        task.error_message or "Failed to create GitHub branch"
-                    )
+                    raise Exception(task.error_message or "Failed to create GitHub branch")
 
             # 2. Use CodeGenerator to apply changes
             result = self.code_gen.generate_from_gemini_plan(
@@ -374,9 +348,7 @@ class GitHubAutonomyService:
                     pr_number = await self._create_pull_request_for_branch(task)
                     if pr_number:
                         task.github_pr_number = pr_number
-                        logger.info(
-                            f"Created PR #{pr_number} for task #{task.github_issue_number}"
-                        )
+                        logger.info(f"Created PR #{pr_number} for task #{task.github_issue_number}")
 
             task.status = "executed"
             task.executed_at = datetime.utcnow()
@@ -417,13 +389,9 @@ class GitHubAutonomyService:
                     )
                     raise Exception("Main branch not found")
             except Exception as e:
-                logger.debug(
-                    f"Getting main branch failed: {str(e)}, trying master branch"
-                )
+                logger.debug(f"Getting main branch failed: {str(e)}, trying master branch")
                 # Try master branch
-                ref_url = (
-                    f"https://api.github.com/repos/{owner}/{repo}/git/ref/heads/master"
-                )
+                ref_url = f"https://api.github.com/repos/{owner}/{repo}/git/ref/heads/master"
                 ref_response = await self.http_client.get(
                     ref_url, api_name="github_api", headers=headers, timeout=10
                 )
@@ -432,9 +400,7 @@ class GitHubAutonomyService:
                         f"Failed to get master branch ({ref_response.status_code}): "
                         f"{ref_response.text}"
                     )
-                    logger.error(
-                        task.error_message
-                    )
+                    logger.error(task.error_message)
                     return False
 
             # Parse and validate main_sha
@@ -462,18 +428,14 @@ class GitHubAutonomyService:
             except Exception as e:
                 status_code, detail = self._extract_http_error_detail(e)
                 if status_code == 422:
-                    logger.info(
-                        f"Branch already exists: {task.branch_name} (idempotent)"
-                    )
+                    logger.info(f"Branch already exists: {task.branch_name} (idempotent)")
                     return True
 
                 if status_code is not None:
                     task.error_message = (
                         f"Branch creation failed with status {status_code}: {detail}"
                     )
-                    logger.error(
-                        task.error_message
-                    )
+                    logger.error(task.error_message)
                 else:
                     task.error_message = f"Branch creation failed with exception: {detail}"
                     logger.error(task.error_message)
@@ -491,9 +453,7 @@ class GitHubAutonomyService:
                     f"Branch creation failed with status "
                     f"{create_response.status_code}: {create_response.text}"
                 )
-                logger.error(
-                    task.error_message
-                )
+                logger.error(task.error_message)
                 return False
         except Exception as e:
             task.error_message = f"Branch creation failed with exception: {str(e)}"
@@ -505,7 +465,7 @@ class GitHubAutonomyService:
     ) -> str | None:
         """Commit changed files to the task branch and return the new SHA."""
         try:
-            # Check out and ensure we're on the task branch (isolated from working tree)
+            # Ensure the task branch exists locally before staging changes.
             try:
                 subprocess.run(
                     ["git", "checkout", task.branch_name],
@@ -516,10 +476,47 @@ class GitHubAutonomyService:
                 )
                 logger.info(f"Checked out branch: {task.branch_name}")
             except subprocess.CalledProcessError as e:
-                logger.error(
-                    f"Failed to checkout branch {task.branch_name}: {e.stderr}"
+                logger.warning(
+                    f"Local checkout missing for {task.branch_name}, bootstrapping branch: {e.stderr}"
                 )
-                return None
+                try:
+                    subprocess.run(
+                        ["git", "fetch", "origin", task.branch_name],
+                        cwd=".",
+                        check=True,
+                        capture_output=True,
+                        text=True,
+                    )
+                    subprocess.run(
+                        ["git", "checkout", "-B", task.branch_name, "FETCH_HEAD"],
+                        cwd=".",
+                        check=True,
+                        capture_output=True,
+                        text=True,
+                    )
+                    logger.info(f"Created local branch {task.branch_name} from remote branch")
+                except subprocess.CalledProcessError:
+                    try:
+                        subprocess.run(
+                            ["git", "fetch", "origin", "main"],
+                            cwd=".",
+                            check=True,
+                            capture_output=True,
+                            text=True,
+                        )
+                        subprocess.run(
+                            ["git", "checkout", "-B", task.branch_name, "origin/main"],
+                            cwd=".",
+                            check=True,
+                            capture_output=True,
+                            text=True,
+                        )
+                        logger.info(f"Created local branch {task.branch_name} from origin/main")
+                    except subprocess.CalledProcessError as bootstrap_error:
+                        logger.error(
+                            f"Failed to bootstrap branch {task.branch_name}: {bootstrap_error.stderr}"
+                        )
+                        return None
 
             # Stage the changed files on the task branch
             for file_path in files_changed:
