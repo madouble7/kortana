@@ -10,6 +10,7 @@ from typing import Any
 
 from fastapi import APIRouter
 from src.kortana.services.adaptive_learner import get_adaptive_learner
+from src.kortana.services.autonomy_controller import get_autonomy_controller
 from src.kortana.services.goal_manager import GoalTier, get_goal_manager
 from src.kortana.services.self_awareness import get_self_awareness
 
@@ -38,6 +39,28 @@ async def sa_confidence(decision: dict[str, Any]) -> dict[str, Any]:
     """Score confidence for an autonomous decision."""
     score = await get_self_awareness().confidence(decision)
     return {"confidence": score, "decision": decision}
+
+
+@router.get("/self-model")
+async def self_model() -> dict[str, Any]:
+    """Return the latest operational self-model, reflecting if needed."""
+    controller = get_autonomy_controller()
+    status = controller.get_status()
+    if status["last_reflection"] is None:
+        return await controller.reflect()
+    return status["last_reflection"]
+
+
+@router.get("/controller/status")
+async def controller_status() -> dict[str, Any]:
+    """Current closed-loop autonomy controller status."""
+    return get_autonomy_controller().get_status()
+
+
+@router.post("/controller/reflect")
+async def controller_reflect() -> dict[str, Any]:
+    """Force a fresh reflection and control recommendation."""
+    return await get_autonomy_controller().reflect()
 
 
 # ---------------------------------------------------------------------------
