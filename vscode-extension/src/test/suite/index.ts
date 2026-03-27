@@ -1,6 +1,7 @@
 import * as assert from "assert";
 import * as vscode from "vscode";
 import { runContractTests } from "./contract";
+import { runDomHelperTests } from "./dom";
 import { runRuntimeTests } from "./runtime";
 
 import {
@@ -37,6 +38,7 @@ const EXPECTED_REQUEST_TYPES: Record<string, string> = {
 
 export async function run(): Promise<void> {
     runContractTests();
+    runDomHelperTests();
     runRuntimeTests();
 
     const extension = vscode.extensions.all.find(

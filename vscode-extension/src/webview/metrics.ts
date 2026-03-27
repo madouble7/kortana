@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 
+import { createWebviewDomHelpersScript } from "./dom";
 import { createNonce, renderHtmlDocument } from "./html";
 import {
     createRequestMessage,
@@ -44,12 +45,18 @@ function getMetricsBody(): string {
 
 function getMetricsScript(): string {
     return `
+${createWebviewDomHelpersScript()}
 function updateMetricsState(payload) {
-    const backendStatus = document.getElementById("backend-status");
-    backendStatus.textContent = payload.backendOnline ? payload.backendMessage : "Offline";
-    backendStatus.className = payload.backendOnline ? "status-alive" : "status-offline";
-    document.getElementById("deploy-time").textContent = payload.lastDeployment;
-    document.getElementById("tasks-count").textContent = payload.tasksCount;
+    setElementText(
+        "backend-status",
+        payload.backendOnline ? payload.backendMessage : "Offline"
+    );
+    setElementClassName(
+        "backend-status",
+        payload.backendOnline ? "status-alive" : "status-offline"
+    );
+    setElementText("deploy-time", payload.lastDeployment);
+    setElementText("tasks-count", payload.tasksCount);
 }
 ${createWebviewRuntimeScript({
         requestPollers: [

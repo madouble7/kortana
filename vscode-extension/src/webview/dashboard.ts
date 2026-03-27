@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 
+import { createWebviewDomHelpersScript } from "./dom";
 import { createNonce, renderHtmlDocument } from "./html";
 import {
     createCommandMessage,
@@ -63,16 +64,21 @@ function getDashboardBody(): string {
 
 function getDashboardScript(): string {
     return `
+${createWebviewDomHelpersScript()}
 function updateDashboardState(payload) {
-    const indicator = document.getElementById("backend-status-indicator");
-    const text = document.getElementById("backend-status-text");
-    const tasksCount = document.getElementById("tasks-count");
-    const lastSync = document.getElementById("last-sync");
-
-    indicator.style.background = payload.backendOnline ? "#28a745" : "#dc3545";
-    text.textContent = payload.backendOnline ? "Backend: " + payload.backendMessage : "Backend: Offline";
-    tasksCount.textContent = payload.tasksCount;
-    lastSync.textContent = payload.lastSync;
+    setElementStyle(
+        "backend-status-indicator",
+        "background",
+        payload.backendOnline ? "#28a745" : "#dc3545"
+    );
+    setElementText(
+        "backend-status-text",
+        payload.backendOnline
+            ? "Backend: " + payload.backendMessage
+            : "Backend: Offline"
+    );
+    setElementText("tasks-count", payload.tasksCount);
+    setElementText("last-sync", payload.lastSync);
 }
 ${createWebviewRuntimeScript({
         commandBindings: [
