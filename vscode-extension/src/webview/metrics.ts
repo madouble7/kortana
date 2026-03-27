@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 
 import { createWebviewDomHelpersScript } from "./dom";
+import { createMetricCard, createTextSpan } from "./fragments";
 import { createNonce, renderHtmlDocument } from "./html";
 import {
     createRequestMessage,
@@ -31,15 +32,22 @@ function getMetricsBody(): string {
     .status-offline { color: #dc3545; }
 </style>
 <h1>Kor'tana Autonomy Metrics</h1>
-<div class="metric">
-    <strong>Backend Status:</strong> <span id="backend-status" class="status-offline">Checking...</span>
-</div>
-<div class="metric">
-    <strong>Last Deployment:</strong> <span id="deploy-time">Loading...</span>
-</div>
-<div class="metric">
-    <strong>Tasks Completed:</strong> <span id="tasks-count">Loading...</span>
-</div>
+${createMetricCard({
+        label: "Backend Status:",
+        valueHtml: createTextSpan({
+            className: "status-offline",
+            id: "backend-status",
+            text: "Checking...",
+        }),
+    })}
+${createMetricCard({
+        label: "Last Deployment:",
+        valueHtml: createTextSpan({ id: "deploy-time", text: "Loading..." }),
+    })}
+${createMetricCard({
+        label: "Tasks Completed:",
+        valueHtml: createTextSpan({ id: "tasks-count", text: "Loading..." }),
+    })}
     `;
 }
 

@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 
 import { createWebviewDomHelpersScript } from "./dom";
+import { createEmptyStateBlock } from "./fragments";
 import { createNonce, renderHtmlDocument } from "./html";
 import {
     createRequestMessage,
@@ -34,10 +35,11 @@ function getAuditBody(): string {
 <h1>Kor'tana Autonomy Audit</h1>
 <p>Real-time monitoring of autonomous operations...</p>
 <div id="audit-log">
-    <div class="audit-item status-pending">
-        <strong>Initializing audit system...</strong><br />
-        <small>Loading recent actions...</small>
-    </div>
+    ${createEmptyStateBlock({
+        className: "audit-item status-pending",
+        detail: "Loading recent actions...",
+        title: "Initializing audit system...",
+    })}
 </div>
     `;
 }

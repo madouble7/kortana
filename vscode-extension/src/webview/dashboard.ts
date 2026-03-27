@@ -1,6 +1,13 @@
 import * as vscode from "vscode";
 
 import { createWebviewDomHelpersScript } from "./dom";
+import {
+    createButtonGroup,
+    createLabeledValueRow,
+    createPanel,
+    createStatusLine,
+    createTextSpan,
+} from "./fragments";
 import { createNonce, renderHtmlDocument } from "./html";
 import {
     createCommandMessage,
@@ -35,30 +42,52 @@ function getDashboardBody(): string {
 </style>
 <h3>Kor'tana Control Panel</h3>
 
-<div class="dashboard-card">
-    <h4>System Status</h4>
-    <p><span class="status-indicator status-alive"></span>Extension Active</p>
-    <p>
-        <span class="status-indicator" id="backend-status-indicator" style="background: #ffc107;"></span>
-        <span id="backend-status-text">Backend: Checking...</span>
-    </p>
-</div>
+${createPanel({
+        body: `
+    ${createStatusLine({
+            contentHtml: "Extension Active",
+            indicatorClassName: "status-indicator status-alive",
+        })}
+    ${createStatusLine({
+            contentHtml: createTextSpan({
+                id: "backend-status-text",
+                text: "Backend: Checking...",
+            }),
+            indicatorId: "backend-status-indicator",
+            indicatorStyle: "background: #ffc107;",
+        })}
+        `,
+        className: "dashboard-card",
+        title: "System Status",
+    })}
 
-<div class="dashboard-card">
-    <h4>Quick Actions</h4>
-    <button id="action-ai-studio">AI Studio</button>
-    <button id="action-deploy-page">Deploy Page</button>
-    <button id="action-health-check">Health Check</button>
-    <button id="action-unseal-runtime">Unseal Runtime</button>
-    <button id="action-metrics">Metrics</button>
-    <button id="action-audit">Audit</button>
-</div>
+${createPanel({
+        body: createButtonGroup([
+            { id: "action-ai-studio", label: "AI Studio" },
+            { id: "action-deploy-page", label: "Deploy Page" },
+            { id: "action-health-check", label: "Health Check" },
+            { id: "action-unseal-runtime", label: "Unseal Runtime" },
+            { id: "action-metrics", label: "Metrics" },
+            { id: "action-audit", label: "Audit" },
+        ]),
+        className: "dashboard-card",
+        title: "Quick Actions",
+    })}
 
-<div class="dashboard-card">
-    <h4>Autonomy Metrics</h4>
-    <p>Tasks Processed: <span id="tasks-count">-</span></p>
-    <p>Last Sync: <span id="last-sync">-</span></p>
-</div>
+${createPanel({
+        body: `
+    ${createLabeledValueRow({
+            label: "Tasks Processed:",
+            valueHtml: createTextSpan({ id: "tasks-count", text: "-" }),
+        })}
+    ${createLabeledValueRow({
+            label: "Last Sync:",
+            valueHtml: createTextSpan({ id: "last-sync", text: "-" }),
+        })}
+        `,
+        className: "dashboard-card",
+        title: "Autonomy Metrics",
+    })}
     `;
 }
 
