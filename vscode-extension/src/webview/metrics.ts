@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 
 import { createWebviewDomHelpersScript } from "./dom";
+import { createWebviewFormattingHelpersScript } from "./formatting";
 import { createMetricCard, createTextSpan } from "./fragments";
 import { createNonce, renderHtmlDocument } from "./html";
 import {
@@ -54,15 +55,14 @@ ${createMetricCard({
 function getMetricsScript(): string {
     return `
 ${createWebviewDomHelpersScript()}
+${createWebviewFormattingHelpersScript()}
 function updateMetricsState(payload) {
-    setElementText(
+    applyStatusText(
         "backend-status",
-        payload.backendOnline ? payload.backendMessage : "Offline"
+        payload.backendOnline,
+        payload.backendMessage
     );
-    setElementClassName(
-        "backend-status",
-        payload.backendOnline ? "status-alive" : "status-offline"
-    );
+    applyStatusClassName("backend-status", payload.backendOnline);
     setElementText("deploy-time", payload.lastDeployment);
     setElementText("tasks-count", payload.tasksCount);
 }
