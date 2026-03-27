@@ -194,7 +194,18 @@ class WorkspaceBridgeService:
         normalized = entry.lstrip("-*>\t ").strip()
         if ":" in normalized:
             prefix, rest = normalized.split(":", 1)
-            if prefix.lower() in {"focus", "avoid", "pause", "resume", "limit"}:
+            if prefix.lower() in {
+                "focus",
+                "avoid",
+                "pause",
+                "resume",
+                "limit",
+                "mode",
+                "approval",
+                "handoff",
+                "override",
+                "note",
+            }:
                 return f"{prefix.lower()}: {rest.strip()}"
         return normalized
 
@@ -211,6 +222,14 @@ class WorkspaceBridgeService:
             return "resume"
         if lowered.startswith("limit:") or lowered.startswith("max tasks"):
             return "limit"
+        if lowered.startswith("mode:"):
+            return "mode"
+        if lowered.startswith("approval:"):
+            return "approval"
+        if lowered.startswith("handoff:"):
+            return "handoff"
+        if lowered.startswith("override:"):
+            return "override"
         return None
 
     @staticmethod
@@ -237,11 +256,13 @@ class WorkspaceBridgeService:
                 self.inbox_path.write_text(
                     (
                         "# Kor'tana Operator Inbox\n"
-                        "# Add one steering note per line. Examples:\n"
+                        "# Add one directive per line using protocol v1. Examples:\n"
+                        "# mode: plan\n"
+                        "# approval: manual\n"
+                        "# limit: max_tasks=1\n"
+                        "# handoff: analyzer -> planner -> executor\n"
+                        "# override: halt\n"
                         "# focus: backend reliability and tests\n"
-                        "# avoid: billing\n"
-                        "# pause\n"
-                        "# max tasks 1\n"
                     ),
                     encoding="utf-8",
                 )
