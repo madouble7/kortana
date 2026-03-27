@@ -182,6 +182,7 @@ build/
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+!.vscode/README.md
 .idea/
 *.swp
 *.swo
@@ -209,6 +210,10 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+
+# VS Code extension build/test artifacts
+vscode-extension/out/
+vscode-extension/.vscode-test/
 
 # Secrets
 secrets.json

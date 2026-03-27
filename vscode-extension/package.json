@@ -23,28 +23,28 @@
     "contributes": {
         "commands": [
             {
-                "command": "kortana.elevation.iam",
-                "title": "Kor'tana: I AM (Elevation Ritual)",
+                "command": "kortana.openAIStudio",
+                "title": "Kor'tana: Open AI Studio",
                 "category": "Kor'tana"
             },
             {
-                "command": "kortana.elevation.dashboard",
-                "title": "Kor'tana: Open Local Dashboard",
+                "command": "kortana.openDeployPage",
+                "title": "Kor'tana: Open Deploy Page",
                 "category": "Kor'tana"
             },
             {
-                "command": "kortana.elevation.deploy",
-                "title": "Kor'tana: Deploy & Orchestrate",
+                "command": "kortana.unsealRuntime",
+                "title": "Kor'tana: Unseal Runtime",
                 "category": "Kor'tana"
             },
             {
-                "command": "kortana.ensemble.orchestrate",
-                "title": "Kor'tana: Ensemble Orchestration",
+                "command": "kortana.checkHealth",
+                "title": "Kor'tana: Check Backend Health",
                 "category": "Kor'tana"
             },
             {
-                "command": "kortana.ai.studio.open",
-                "title": "Kor'tana: Open AI Studio Workspace",
+                "command": "kortana.viewMetrics",
+                "title": "Kor'tana: View Autonomy Metrics",
                 "category": "Kor'tana"
             },
             {
@@ -91,9 +91,12 @@
         "compile": "tsc -p ./",
         "watch": "tsc -watch -p ./",
         "lint": "eslint src",
+        "pretest": "npm run compile",
         "test": "node ./out/test/runTest.js"
     },
     "devDependencies": {
+        "@vscode/test-electron": "^2.5.2",
+        "@types/mocha": "^10.0.10",
         "@types/vscode": "^1.85.0",
         "@types/node": "^20.10.0",
         "typescript": "^5.3.0",

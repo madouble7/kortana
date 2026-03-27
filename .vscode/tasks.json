@@ -515,6 +515,24 @@
             ]
         },
         {
+            "label": "extension: test",
+            "type": "shell",
+            "command": "npm",
+            "args": [
+                "test"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/vscode-extension"
+            },
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            },
+            "problemMatcher": []
+        },
+        {
             "label": "stack: backend + root ui",
             "dependsOrder": "parallel",
             "dependsOn": [
@@ -553,7 +571,8 @@
             "dependsOrder": "sequence",
             "dependsOn": [
                 "extension: lint",
-                "extension: compile"
+                "extension: compile",
+                "extension: test"
             ]
         },
         {
