@@ -84,6 +84,41 @@ _PROTECTED_PATH_PATTERNS = (
     ".kortana/operator_inbox.md",
     ".kortana/OPERATOR_PROTOCOL.md",
 )
+_VALIDATION_COMMAND_PREFIXES = (
+    "pytest",
+    "python -m pytest",
+    "py -m pytest",
+    "python -m unittest",
+    "py -m unittest",
+    "python -m py_compile",
+    "py -m py_compile",
+    "ruff check",
+    "python -m ruff check",
+    "uv run pytest",
+    "uv run ruff check",
+    "poetry run pytest",
+    "poetry run ruff check",
+    "npm test",
+    "npm run test",
+    "npm run lint",
+    "pnpm test",
+    "pnpm run test",
+    "pnpm lint",
+    "pnpm run lint",
+    "yarn test",
+    "yarn lint",
+    "go test",
+    "cargo test",
+)
+_VALIDATION_KEYWORDS = ("test", "pytest", "lint", "check", "validate", "py_compile")
+
+
+class TaskValidationFailure(RuntimeError):
+    """Raised when task-scoped validation fails inside the isolated workspace."""
+
+    def __init__(self, message: str, result: dict[str, Any]) -> None:
+        super().__init__(message)
+        self.result = result
 
 
 class GitHubAutonomyService:
@@ -383,6 +418,174 @@ class GitHubAutonomyService:
         notes = payload.get("VALIDATION_NOTES") or payload.get("validation_notes") or []
         return [str(note).strip() for note in notes if str(note).strip()]
 
+    def _candidate_validation_commands(self, plan_text: str) -> list[str]:
+        commands: list[str] = []
+        max_commands = max(
+            1,
+            int(os.getenv("KORTANA_VALIDATION_MAX_COMMANDS", "3") or "3"),
+        )
+
+        for command in self._planned_tests(plan_text):
+            normalized = " ".join(command.split())
+            if normalized and normalized not in commands:
+                commands.append(normalized)
+
+        for command in self._planned_commands(plan_text):
+            normalized = " ".join(command.split())
+            if (
+                normalized
+                and normalized not in commands
+                and self._looks_like_validation_command(normalized)
+            ):
+                commands.append(normalized)
+
+        return commands[:max_commands]
+
+    @staticmethod
+    def _looks_like_validation_command(command: str) -> bool:
+        lowered = " ".join(command.strip().split()).lower()
+        if not lowered:
+            return False
+        if any(lowered.startswith(prefix) for prefix in _VALIDATION_COMMAND_PREFIXES):
+            return True
+        return any(keyword in lowered for keyword in _VALIDATION_KEYWORDS)
+
+    @staticmethod
+    def _truncate_output(value: str | None, limit: int = 4000) -> str:
+        if not value:
+            return ""
+        text = value.strip()
+        if len(text) <= limit:
+            return text
+        return text[: limit - 15] + "\n...[truncated]"
+
+    def _execute_validation_command(
+        self,
+        command: str,
+        workspace: Path,
+        *,
+        timeout_seconds: int,
+    ) -> dict[str, Any]:
+        started_at = datetime.utcnow()
+        try:
+            completed = subprocess.run(
+                command,
+                cwd=workspace,
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=timeout_seconds,
+                shell=True,
+            )
+            duration_ms = int((datetime.utcnow() - started_at).total_seconds() * 1000)
+            return {
+                "command": command,
+                "status": "passed" if completed.returncode == 0 else "failed",
+                "exit_code": completed.returncode,
+                "stdout": self._truncate_output(completed.stdout),
+                "stderr": self._truncate_output(completed.stderr),
+                "duration_ms": duration_ms,
+            }
+        except subprocess.TimeoutExpired as exc:
+            duration_ms = int((datetime.utcnow() - started_at).total_seconds() * 1000)
+            return {
+                "command": command,
+                "status": "failed",
+                "exit_code": None,
+                "stdout": self._truncate_output(exc.stdout or ""),
+                "stderr": self._truncate_output(
+                    (exc.stderr or "") + "\nCommand timed out"
+                ),
+                "duration_ms": duration_ms,
+                "timeout": True,
+            }
+        except Exception as exc:
+            duration_ms = int((datetime.utcnow() - started_at).total_seconds() * 1000)
+            return {
+                "command": command,
+                "status": "failed",
+                "exit_code": None,
+                "stdout": "",
+                "stderr": self._truncate_output(str(exc)),
+                "duration_ms": duration_ms,
+            }
+
+    def _run_task_scoped_validation(
+        self,
+        plan_text: str,
+        workspace: Path,
+    ) -> dict[str, Any]:
+        commands = self._candidate_validation_commands(plan_text)
+        if not commands:
+            return {
+                "status": "skipped",
+                "commands": [],
+                "runs": [],
+                "executed_count": 0,
+                "failed_count": 0,
+                "skipped_count": 0,
+                "details": "No task-scoped validation commands were planned",
+            }
+
+        timeout_seconds = max(
+            15,
+            int(os.getenv("KORTANA_VALIDATION_TIMEOUT_SEC", "180") or "180"),
+        )
+        runs: list[dict[str, Any]] = []
+        failed_commands: list[str] = []
+        skipped_count = 0
+
+        for command in commands:
+            if not self._looks_like_validation_command(command):
+                runs.append(
+                    {
+                        "command": command,
+                        "status": "skipped",
+                        "exit_code": None,
+                        "stdout": "",
+                        "stderr": "Command is not allowed for task-scoped validation",
+                        "duration_ms": 0,
+                    }
+                )
+                skipped_count += 1
+                continue
+
+            run = self._execute_validation_command(
+                command,
+                workspace,
+                timeout_seconds=timeout_seconds,
+            )
+            runs.append(run)
+            if run["status"] == "failed":
+                failed_commands.append(command)
+
+        executed_count = len([run for run in runs if run["status"] != "skipped"])
+        failed_count = len(failed_commands)
+        result = {
+            "status": (
+                "failed" if failed_count else "passed" if executed_count else "skipped"
+            ),
+            "commands": commands,
+            "runs": runs,
+            "executed_count": executed_count,
+            "failed_count": failed_count,
+            "skipped_count": skipped_count,
+            "details": (
+                "All task-scoped validation commands passed"
+                if failed_count == 0 and executed_count > 0
+                else "No executable validation commands were allowed"
+                if executed_count == 0
+                else "Validation failures: " + ", ".join(failed_commands[:4])
+            ),
+        }
+
+        if failed_count:
+            raise TaskValidationFailure(
+                "Task-scoped validation failed: " + ", ".join(failed_commands[:4]),
+                result,
+            )
+        return result
+
     def _build_plan_validation_report(
         self,
         task: GitHubTask,
@@ -441,6 +644,7 @@ class GitHubAutonomyService:
         publish_to_github: bool,
         workspace: Path,
         codegen_result: dict[str, Any],
+        validation_result: dict[str, Any] | None,
     ) -> dict[str, Any]:
         workspace_mode = (
             "repo"
@@ -452,6 +656,13 @@ class GitHubAutonomyService:
         created = [str(item) for item in codegen_result.get("created", [])]
         modified = [str(item) for item in codegen_result.get("modified", [])]
         deleted = [str(item) for item in codegen_result.get("deleted", [])]
+        validation_status = str(
+            (validation_result or {}).get("status") or "skipped"
+        ).lower()
+        validation_details = (
+            str((validation_result or {}).get("details") or "")
+            or "No task-scoped validation commands were planned"
+        )
         validations = [
             {
                 "name": "protected_path_guard",
@@ -464,6 +675,11 @@ class GitHubAutonomyService:
                 "details": (
                     f"created={len(created)} modified={len(modified)} deleted={len(deleted)}"
                 ),
+            },
+            {
+                "name": "task_scoped_validation",
+                "status": validation_status,
+                "details": validation_details,
             },
             {
                 "name": "artifact_publish",
@@ -485,6 +701,16 @@ class GitHubAutonomyService:
                 "created": len(created),
                 "modified": len(modified),
                 "deleted": len(deleted),
+            },
+            "validation_result": validation_result
+            or {
+                "status": "skipped",
+                "commands": [],
+                "runs": [],
+                "executed_count": 0,
+                "failed_count": 0,
+                "skipped_count": 0,
+                "details": "No task-scoped validation commands were planned",
             },
             "commit_sha": task.commit_sha,
             "github_pr_number": task.github_pr_number,
@@ -893,6 +1119,7 @@ class GitHubAutonomyService:
 
         workspace: Path | None = None
         publish_to_github = not dry_run and self._should_publish_to_github(task)
+        validation_result: dict[str, Any] | None = None
         try:
             logger.info(f"Executing task #{task.github_issue_number}")
 
@@ -928,6 +1155,9 @@ class GitHubAutonomyService:
             normalized_files = self._normalize_changed_files(files_changed, workspace)
             self._enforce_execution_paths(normalized_files)
             task.code_changes = normalized_files or None
+            validation_result = self._run_task_scoped_validation(
+                task.plan or "", workspace
+            )
 
             # 3. Commit changes to the branch (if not dry-run)
             if not dry_run:
@@ -967,6 +1197,7 @@ class GitHubAutonomyService:
                     publish_to_github=publish_to_github,
                     workspace=workspace,
                     codegen_result=result,
+                    validation_result=validation_result,
                 ),
             )
 
@@ -976,6 +1207,11 @@ class GitHubAutonomyService:
             return task
         except Exception as e:
             logger.error(f"Execution failed: {str(e)}")
+            failure_details = (
+                dict(e.result)
+                if isinstance(e, TaskValidationFailure)
+                else validation_result or None
+            )
             self._record_validation_report(
                 task,
                 {
@@ -993,6 +1229,7 @@ class GitHubAutonomyService:
                         else None
                     ),
                     "error": str(e),
+                    "validation_result": failure_details,
                 },
             )
             task.status = "planning_complete"

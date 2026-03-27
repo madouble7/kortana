@@ -158,6 +158,19 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         print(f"[WARN] Autonomy daemon startup: {e}")
 
+    try:
+        from src.kortana.services.workspace_bridge_service import get_workspace_bridge
+
+        workspace_status = get_workspace_bridge().get_status()
+        if workspace_status.get("canonical_warning"):
+            print(
+                f"[WARN] Workspace root drift: {workspace_status['canonical_warning']}"
+            )
+        else:
+            print(f"[*] Workspace root verified: {workspace_status['repo_root']}")
+    except Exception as e:
+        print(f"[WARN] Workspace root verification: {e}")
+
     # Start Discord bot (non-blocking) only when explicitly enabled.
     if settings.DISCORD_ENABLED:
         try:
