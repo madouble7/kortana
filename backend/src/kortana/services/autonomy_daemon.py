@@ -68,6 +68,7 @@ class AutonomyDaemon:
         self.operator_guidance: dict[str, Any] | None = None
         self._adaptation_history: list[dict[str, Any]] = []
         self._deferred_tasks: set[str] = set()
+        self._cycle_failed_task_ids: list[str] = []
 
         self._running = False
         self._task: asyncio.Task[None] | None = None
@@ -155,15 +156,24 @@ class AutonomyDaemon:
         guidance = await self._load_operator_guidance()
         self._apply_operator_guidance(guidance)
         workspace_status = await self._poll_workspace_bridge()
+        self._cycle_failed_task_ids = []
 
         new_count = processed = succeeded = failed = deferred = 0
         async for session in self._db_manager.get_session():
             new_count = await self._discover_issues(session)
-            effective_limit = 0 if guidance.pause_requested else self.max_tasks
+            effective_limit = (
+                0
+                if guidance.pause_requested
+                or guidance.execution_mode == "observe"
+                or guidance.override_mode == "halt"
+                else self.max_tasks
+            )
             processed, succeeded, failed, deferred = await self._process_tasks(
                 session, max_tasks=effective_limit, guidance=guidance
             )
-            await self._manifest_self_healing(session)
+            await self._manifest_self_healing(
+                session, candidate_task_ids=self._cycle_failed_task_ids
+            )
 
         try:
             from dataclasses import asdict
@@ -279,27 +289,53 @@ class AutonomyDaemon:
             return self.metrics.get("workspace_bridge") or {}
 
     def _apply_operator_guidance(self, guidance: DirectiveSummary) -> None:
+        default_live_execution = not self.safe_mode
         self.operator_guidance = {
+            "protocol_version": guidance.protocol_version,
             "active_count": guidance.active_count,
             "pause_requested": guidance.pause_requested,
             "focus_topics": guidance.focus_topics,
             "avoid_topics": guidance.avoid_topics,
             "max_tasks_override": guidance.max_tasks_override,
+            "execution_mode": guidance.execution_mode,
+            "approval_mode": guidance.approval_mode,
+            "approval_required": guidance.approval_required,
+            "handoff_rules": guidance.handoff_rules,
+            "override_mode": guidance.override_mode,
         }
         self.metrics["operator_guidance"] = self.operator_guidance
 
         if guidance.max_tasks_override is not None:
             self.max_tasks = max(1, min(self.max_tasks, guidance.max_tasks_override))
 
-        if guidance.pause_requested:
+        if guidance.override_mode == "halt":
+            self.safe_mode = True
+            self.live_execution_enabled = False
+            self.control_mode = "operator_override_halt"
+        elif guidance.pause_requested:
             self.safe_mode = True
             self.live_execution_enabled = False
             self.control_mode = "paused_by_operator"
-        elif guidance.focus_topics or guidance.avoid_topics:
+        elif guidance.execution_mode == "observe":
+            self.safe_mode = True
+            self.live_execution_enabled = False
+            self.control_mode = "observe_only"
+        elif guidance.execution_mode == "plan":
+            self.live_execution_enabled = False
+            self.control_mode = "plan_only"
+        elif guidance.approval_required:
+            self.live_execution_enabled = False
+            self.control_mode = "approval_required"
+        elif guidance.override_mode == "execute" and not self.safe_mode:
+            self.live_execution_enabled = True
+            self.control_mode = "operator_override_execute"
+        elif guidance.handoff_rules or guidance.focus_topics or guidance.avoid_topics:
+            self.live_execution_enabled = default_live_execution
             self.control_mode = (
                 "guided_execute" if self.live_execution_enabled else "guided_observe"
             )
         else:
+            self.live_execution_enabled = default_live_execution
             self.control_mode = "safe_mode" if self.safe_mode else "execute"
 
     async def _discover_issues(self, session: AsyncSession) -> int:
@@ -315,12 +351,25 @@ class AutonomyDaemon:
             logger.error(f"Issue discovery failed: {exc}")
             return 0
 
-    async def _manifest_self_healing(self, session: AsyncSession) -> None:
+    async def _manifest_self_healing(
+        self,
+        session: AsyncSession,
+        candidate_task_ids: list[str] | None = None,
+    ) -> None:
         """Create one recursive self-repair issue when core autonomy fails."""
         try:
+            candidate_ids = [
+                task_id
+                for task_id in (candidate_task_ids or self._cycle_failed_task_ids)
+                if task_id
+            ]
+            if not candidate_ids:
+                return
+
             stmt_failed = (
                 select(GitHubTask)
                 .where(
+                    GitHubTask.id.in_(candidate_ids),
                     GitHubTask.status == "failed",
                     GitHubTask.error_message.is_not(None),
                 )
@@ -335,6 +384,7 @@ class AutonomyDaemon:
                 "[AUTO] [SELF-REPAIR] Resolve systemic failure in "
                 f"{latest_failed.title}"
             )
+            repair_anchor = f"[SELF-REPAIR-ANCHOR] task:{latest_failed.id}"
             stmt_active = select(GitHubTask).where(
                 GitHubTask.title == title,
                 GitHubTask.status.in_(
@@ -343,6 +393,14 @@ class AutonomyDaemon:
             )
             active_repairs = (await session.execute(stmt_active)).scalars().all()
             if active_repairs:
+                return
+
+            stmt_existing = select(GitHubTask).where(
+                GitHubTask.title == title,
+                GitHubTask.description.contains(repair_anchor),
+            )
+            existing_repairs = (await session.execute(stmt_existing)).scalars().all()
+            if existing_repairs:
                 return
 
             settings = get_settings()
@@ -359,6 +417,7 @@ class AutonomyDaemon:
                     "**KOR'TANA PRIME PROTOCOL ACTIVATED.**\n\n"
                     f"The autonomy subsystem encountered a failure while attempting "
                     f"Task #{latest_failed.github_issue_number}.\n\n"
+                    f"{repair_anchor}\n\n"
                     f"### Error Diagnostic\n```\n{latest_failed.error_message}\n```\n\n"
                     "Directive: audit the autonomy path, trace the failing service, "
                     "and create a structural patch that prevents recurrence."
@@ -435,15 +494,33 @@ class AutonomyDaemon:
             try:
                 if task.status in {"queued", "pending"}:
                     await service.analyze_task(task)
+                    if task.status != "analyzed":
+                        raise RuntimeError(
+                            task.error_message
+                            or "Task analysis did not complete successfully"
+                        )
                 if task.status == "analyzed":
                     await service.plan_task(task)
+                    if task.status != "planning_complete":
+                        raise RuntimeError(
+                            task.error_message
+                            or "Task planning did not complete successfully"
+                        )
                 if task.status == "planning_complete":
                     if self.live_execution_enabled:
                         await service.execute_task(task, dry_run=False)
+                        if task.status != "executed":
+                            raise RuntimeError(
+                                task.error_message
+                                or "Task execution did not complete successfully"
+                            )
                         self._deferred_tasks.discard(str(task.id))
                     else:
                         deferred += 1
-                        self._defer_execution(task)
+                        self._defer_execution(
+                            task,
+                            reason=self._defer_reason(guidance),
+                        )
                         continue
 
                 succeeded += 1
@@ -465,6 +542,9 @@ class AutonomyDaemon:
                 )
             except Exception as exc:
                 failed += 1
+                task_id = str(task.id)
+                if task.status == "failed" and task_id not in self._cycle_failed_task_ids:
+                    self._cycle_failed_task_ids.append(task_id)
                 await self._record_outcome(
                     task=task,
                     success=False,
@@ -514,7 +594,23 @@ class AutonomyDaemon:
         ordered = [task for _, task in ranked] + fallback
         return ordered[:limit]
 
-    def _defer_execution(self, task: GitHubTask) -> None:
+    @staticmethod
+    def _defer_reason(guidance: DirectiveSummary | None) -> str:
+        if guidance is None:
+            return "live_execution_disabled"
+        if guidance.override_mode == "halt":
+            return "operator_override_halt"
+        if guidance.pause_requested:
+            return "paused_by_operator"
+        if guidance.execution_mode == "observe":
+            return "observe_only_mode"
+        if guidance.execution_mode == "plan":
+            return "plan_only_mode"
+        if guidance.approval_required:
+            return "approval_required"
+        return "live_execution_disabled"
+
+    def _defer_execution(self, task: GitHubTask, reason: str = "live_execution_disabled") -> None:
         task_key = str(task.id)
         if task_key in self._deferred_tasks:
             return
@@ -526,7 +622,7 @@ class AutonomyDaemon:
                 "task_id": task_key,
                 "title": task.title,
                 "status": task.status,
-                "reason": "live_execution_disabled",
+                "reason": reason,
             },
         )
         self._emit(event)

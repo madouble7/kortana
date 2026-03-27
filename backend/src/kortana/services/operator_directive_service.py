@@ -24,11 +24,17 @@ logger = get_logger(__name__)
 
 @dataclass
 class DirectiveSummary:
+    protocol_version: str = "v1"
     active_count: int = 0
     pause_requested: bool = False
     focus_topics: list[str] = field(default_factory=list)
     avoid_topics: list[str] = field(default_factory=list)
     max_tasks_override: int | None = None
+    execution_mode: str | None = None
+    approval_mode: str | None = None
+    approval_required: bool = False
+    handoff_rules: list[str] = field(default_factory=list)
+    override_mode: str | None = None
     notes: list[str] = field(default_factory=list)
     directives: list[dict[str, Any]] = field(default_factory=list)
     prompt_preamble: str = ""
@@ -108,10 +114,30 @@ class OperatorDirectiveService:
     async def get_active_summary(self) -> DirectiveSummary:
         directives = await self.list_directives(status="active", limit=50)
         summary = DirectiveSummary(active_count=len(directives))
+        ordered_directives = sorted(
+            directives,
+            key=lambda directive: directive.created_at or datetime.min,
+        )
 
         latest_limit_created_at = None
-        for directive in reversed(directives):
+        latest_mode_created_at = None
+        latest_approval_created_at = None
+        latest_override_created_at = None
+        for directive in ordered_directives:
             payload = directive.directive_data or {}
+            override_mode = payload.get("override_mode")
+            if override_mode == "clear":
+                summary.pause_requested = False
+                summary.focus_topics = []
+                summary.avoid_topics = []
+                summary.max_tasks_override = None
+                summary.execution_mode = None
+                summary.approval_mode = None
+                summary.approval_required = False
+                summary.handoff_rules = []
+                summary.notes = []
+                summary.override_mode = "clear"
+
             if payload.get("pause_requested"):
                 summary.pause_requested = True
 
@@ -134,6 +160,43 @@ class OperatorDirectiveService:
                 summary.max_tasks_override = int(max_tasks)
                 latest_limit_created_at = directive.created_at
 
+            execution_mode = payload.get("execution_mode")
+            if execution_mode and (
+                latest_mode_created_at is None
+                or (
+                    directive.created_at is not None
+                    and directive.created_at >= latest_mode_created_at
+                )
+            ):
+                summary.execution_mode = str(execution_mode)
+                latest_mode_created_at = directive.created_at
+
+            approval_mode = payload.get("approval_mode")
+            if approval_mode and (
+                latest_approval_created_at is None
+                or (
+                    directive.created_at is not None
+                    and directive.created_at >= latest_approval_created_at
+                )
+            ):
+                summary.approval_mode = str(approval_mode)
+                summary.approval_required = str(approval_mode) == "manual"
+                latest_approval_created_at = directive.created_at
+
+            if override_mode and (
+                latest_override_created_at is None
+                or (
+                    directive.created_at is not None
+                    and directive.created_at >= latest_override_created_at
+                )
+            ):
+                summary.override_mode = str(override_mode)
+                latest_override_created_at = directive.created_at
+
+            for handoff_rule in payload.get("handoff_rules", []):
+                if handoff_rule not in summary.handoff_rules:
+                    summary.handoff_rules.append(str(handoff_rule))
+
             if directive.directive_type == "comment" or payload.get("notes"):
                 summary.notes.append(directive.content)
 
@@ -147,6 +210,7 @@ class OperatorDirectiveService:
         text = content.strip()
         lowered = text.lower()
         parsed: dict[str, Any] = {
+            "protocol_version": "v1",
             "raw": text,
             "directive_type": directive_type,
             "pause_requested": False,
@@ -154,6 +218,11 @@ class OperatorDirectiveService:
             "focus_topics": [],
             "avoid_topics": [],
             "max_tasks_override": None,
+            "execution_mode": None,
+            "approval_mode": None,
+            "approval_required": False,
+            "handoff_rules": [],
+            "override_mode": None,
             "notes": [],
         }
 
@@ -194,6 +263,50 @@ class OperatorDirectiveService:
         if max_tasks_match:
             parsed["max_tasks_override"] = max(1, int(max_tasks_match.group(1)))
 
+        if directive_type == "mode":
+            mode_match = re.search(r"(observe|plan|execute)", lowered)
+        else:
+            mode_match = re.search(
+                r"(?:mode\s*:?\s*|run in\s+)(observe|plan|execute)\b", lowered
+            )
+        if mode_match:
+            parsed["execution_mode"] = mode_match.group(1)
+
+        if directive_type == "approval":
+            approval_match = re.search(r"(manual|auto)", lowered)
+        else:
+            approval_match = re.search(
+                r"(?:approval\s*:?\s*|approval mode\s*:?\s*|require approval|manual approval|auto approval)(manual|auto)?",
+                lowered,
+            )
+        if approval_match:
+            inferred = approval_match.group(1)
+            if inferred is None:
+                inferred = "manual" if "manual" in lowered or "require approval" in lowered else "auto"
+            parsed["approval_mode"] = inferred
+            parsed["approval_required"] = inferred == "manual"
+
+        handoff_match = re.search(
+            r"(?:handoff\s*:?\s*)(.+?)(?=(?:\s*[;|]\s*(?:focus|avoid|mode|approval|limit|override|note)\s*:)|$)",
+            text,
+            re.IGNORECASE,
+        )
+        if directive_type == "handoff" and not handoff_match:
+            handoff_match = re.search(r"(.+)", text)
+        if handoff_match:
+            parsed["handoff_rules"] = OperatorDirectiveService._split_handoffs(
+                handoff_match.group(1)
+            )
+
+        if directive_type == "override":
+            override_match = re.search(r"(halt|execute|clear)", lowered)
+        else:
+            override_match = re.search(
+                r"(?:override\s*:?\s*)(halt|execute|clear)\b", lowered
+            )
+        if override_match:
+            parsed["override_mode"] = override_match.group(1)
+
         if not any(
             [
                 parsed["pause_requested"],
@@ -201,6 +314,10 @@ class OperatorDirectiveService:
                 parsed["focus_topics"],
                 parsed["avoid_topics"],
                 parsed["max_tasks_override"] is not None,
+                parsed["execution_mode"] is not None,
+                parsed["approval_mode"] is not None,
+                bool(parsed["handoff_rules"]),
+                parsed["override_mode"] is not None,
             ]
         ):
             parsed["notes"] = [text]
@@ -215,15 +332,50 @@ class OperatorDirectiveService:
         lines = [
             "Operator guidance is active. Treat it as higher priority than generic autonomy heuristics."
         ]
+        lines.append(f"Directive protocol: {summary.protocol_version}.")
+        if summary.override_mode:
+            lines.append(f"Operator override is active: {summary.override_mode}.")
         if summary.pause_requested:
             lines.append("Pause direct execution unless the runtime explicitly allows observation-only work.")
+        if summary.execution_mode:
+            lines.append(f"Execution mode: {summary.execution_mode}.")
+        if summary.approval_mode:
+            lines.append(f"Approval mode: {summary.approval_mode}.")
+        if summary.max_tasks_override is not None:
+            lines.append(f"Max tasks per cycle: {summary.max_tasks_override}.")
         if summary.focus_topics:
             lines.append("Focus on: " + ", ".join(summary.focus_topics) + ".")
         if summary.avoid_topics:
             lines.append("Avoid or de-prioritize: " + ", ".join(summary.avoid_topics) + ".")
+        if summary.handoff_rules:
+            lines.append("Agent handoff rules: " + " | ".join(summary.handoff_rules[:3]))
         if summary.notes:
             lines.append("Recent operator notes: " + " | ".join(summary.notes[:3]))
         return "\n".join(lines)
+
+    @staticmethod
+    def protocol_spec() -> dict[str, Any]:
+        return {
+            "version": "v1",
+            "directives": {
+                "focus": "FOCUS: backend reliability, tests",
+                "avoid": "AVOID: billing, docs churn",
+                "mode": "MODE: execute|plan|observe",
+                "approval": "APPROVAL: auto|manual",
+                "limit": "LIMIT: max_tasks=2",
+                "handoff": "HANDOFF: analyzer -> planner -> executor",
+                "override": "OVERRIDE: halt|execute|clear",
+                "note": "NOTE: keep changes surgical",
+            },
+            "examples": [
+                "MODE: plan",
+                "APPROVAL: manual",
+                "LIMIT: max_tasks=1",
+                "HANDOFF: analyzer -> planner -> executor",
+                "OVERRIDE: halt",
+                "FOCUS: daemon reliability and tests",
+            ],
+        }
 
     @staticmethod
     def serialize(directive: OperatorDirective) -> dict[str, Any]:
@@ -258,6 +410,18 @@ class OperatorDirectiveService:
             ):
                 directive.status = "resolved"
                 directive.resolved_at = datetime.utcnow()
+            if parsed.get("execution_mode") and directive.directive_type == "mode":
+                directive.status = "resolved"
+                directive.resolved_at = datetime.utcnow()
+            if parsed.get("approval_mode") and directive.directive_type == "approval":
+                directive.status = "resolved"
+                directive.resolved_at = datetime.utcnow()
+            if parsed.get("override_mode") and directive.directive_type == "override":
+                directive.status = "resolved"
+                directive.resolved_at = datetime.utcnow()
+            if parsed.get("override_mode") == "clear" and directive.status == "active":
+                directive.status = "resolved"
+                directive.resolved_at = datetime.utcnow()
 
     async def _find_existing_active(
         self, session: AsyncSession, content: str, directive_type: str
@@ -272,12 +436,20 @@ class OperatorDirectiveService:
 
     @staticmethod
     def _infer_type(parsed: dict[str, Any]) -> str:
+        if parsed.get("override_mode") is not None:
+            return "override"
         if parsed.get("resume_requested"):
             return "resume"
         if parsed.get("pause_requested"):
             return "pause"
+        if parsed.get("execution_mode") is not None:
+            return "mode"
+        if parsed.get("approval_mode") is not None:
+            return "approval"
         if parsed.get("max_tasks_override") is not None:
             return "limit"
+        if parsed.get("handoff_rules"):
+            return "handoff"
         if parsed.get("focus_topics"):
             return "focus"
         if parsed.get("avoid_topics"):
@@ -293,6 +465,15 @@ class OperatorDirectiveService:
             if cleaned and cleaned not in topics:
                 topics.append(cleaned)
         return topics[:5]
+
+    @staticmethod
+    def _split_handoffs(raw: str) -> list[str]:
+        rules: list[str] = []
+        for item in re.split(r"\||;|\n", raw):
+            cleaned = item.strip(" .")
+            if cleaned and cleaned not in rules:
+                rules.append(cleaned)
+        return rules[:5]
 
     async def _with_session(self, callback):
         if self.db is not None:

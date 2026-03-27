@@ -38,6 +38,19 @@ class CommentRequest(BaseModel):
     priority: int = Field(default=50, ge=1, le=100)
 
 
+def _refresh_daemon_guidance(summary: Any) -> Dict[str, Any]:
+    daemon = get_autonomy_daemon()
+    daemon._apply_operator_guidance(summary)
+    return {
+        "running": daemon.get_status().get("running"),
+        "control_mode": daemon.get_status().get("control_mode"),
+        "safe_mode": daemon.get_status().get("safe_mode"),
+        "live_execution_enabled": daemon.get_status().get("live_execution_enabled"),
+        "max_tasks_per_cycle": daemon.get_status().get("max_tasks_per_cycle"),
+        "system_state": daemon.get_status().get("system_state"),
+    }
+
+
 @router.post("/start")
 async def start_monitoring() -> Dict[str, Any]:
     """Start the always-on monitoring system in the background"""
@@ -106,16 +119,24 @@ async def create_operator_comment(body: CommentRequest) -> Dict[str, Any]:
             source="comment",
         )
         summary = await service.get_active_summary()
+        daemon_state = _refresh_daemon_guidance(summary)
         return {
             "message": "Operator comment recorded",
             "directive": service.serialize(directive),
             "summary": {
+                "protocol_version": summary.protocol_version,
                 "pause_requested": summary.pause_requested,
                 "focus_topics": summary.focus_topics,
                 "avoid_topics": summary.avoid_topics,
                 "max_tasks_override": summary.max_tasks_override,
+                "execution_mode": summary.execution_mode,
+                "approval_mode": summary.approval_mode,
+                "approval_required": summary.approval_required,
+                "handoff_rules": summary.handoff_rules,
+                "override_mode": summary.override_mode,
                 "active_count": summary.active_count,
             },
+            "daemon": daemon_state,
             "timestamp": datetime.utcnow().isoformat(),
         }
     except Exception as e:
@@ -142,16 +163,24 @@ async def create_operator_directive(body: DirectiveRequest) -> Dict[str, Any]:
             scope=body.scope,
         )
         summary = await service.get_active_summary()
+        daemon_state = _refresh_daemon_guidance(summary)
         return {
             "message": "Operator directive recorded",
             "directive": service.serialize(directive),
             "summary": {
+                "protocol_version": summary.protocol_version,
                 "pause_requested": summary.pause_requested,
                 "focus_topics": summary.focus_topics,
                 "avoid_topics": summary.avoid_topics,
                 "max_tasks_override": summary.max_tasks_override,
+                "execution_mode": summary.execution_mode,
+                "approval_mode": summary.approval_mode,
+                "approval_required": summary.approval_required,
+                "handoff_rules": summary.handoff_rules,
+                "override_mode": summary.override_mode,
                 "active_count": summary.active_count,
             },
+            "daemon": daemon_state,
             "timestamp": datetime.utcnow().isoformat(),
         }
     except Exception as e:
@@ -171,10 +200,16 @@ async def list_operator_directives(
         return {
             "directives": [service.serialize(item) for item in directives],
             "summary": {
+                "protocol_version": summary.protocol_version,
                 "pause_requested": summary.pause_requested,
                 "focus_topics": summary.focus_topics,
                 "avoid_topics": summary.avoid_topics,
                 "max_tasks_override": summary.max_tasks_override,
+                "execution_mode": summary.execution_mode,
+                "approval_mode": summary.approval_mode,
+                "approval_required": summary.approval_required,
+                "handoff_rules": summary.handoff_rules,
+                "override_mode": summary.override_mode,
                 "active_count": summary.active_count,
                 "prompt_preamble": summary.prompt_preamble,
             },
@@ -194,10 +229,16 @@ async def get_operator_course() -> Dict[str, Any]:
         daemon = get_autonomy_daemon().get_status()
         return {
             "summary": {
+                "protocol_version": summary.protocol_version,
                 "pause_requested": summary.pause_requested,
                 "focus_topics": summary.focus_topics,
                 "avoid_topics": summary.avoid_topics,
                 "max_tasks_override": summary.max_tasks_override,
+                "execution_mode": summary.execution_mode,
+                "approval_mode": summary.approval_mode,
+                "approval_required": summary.approval_required,
+                "handoff_rules": summary.handoff_rules,
+                "override_mode": summary.override_mode,
                 "active_count": summary.active_count,
                 "notes": summary.notes,
                 "prompt_preamble": summary.prompt_preamble,
@@ -217,6 +258,19 @@ async def get_operator_course() -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"Failed to get course: {str(e)}")
 
 
+@router.get("/protocol")
+async def get_operator_protocol() -> Dict[str, Any]:
+    """Return the explicit operator protocol for always-on steering."""
+    try:
+        return {
+            "protocol": OperatorDirectiveService.protocol_spec(),
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+    except Exception as e:
+        logger.error(f"Failed to get operator protocol: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get protocol: {str(e)}")
+
+
 @router.post("/directives/{directive_id}/resolve")
 async def resolve_operator_directive(directive_id: str) -> Dict[str, Any]:
     """Resolve an operator directive once it is no longer relevant."""
@@ -225,9 +279,25 @@ async def resolve_operator_directive(directive_id: str) -> Dict[str, Any]:
         directive = await service.resolve_directive(directive_id)
         if directive is None:
             raise HTTPException(status_code=404, detail="Directive not found")
+        summary = await service.get_active_summary()
+        daemon_state = _refresh_daemon_guidance(summary)
         return {
             "message": "Operator directive resolved",
             "directive": service.serialize(directive),
+            "summary": {
+                "protocol_version": summary.protocol_version,
+                "pause_requested": summary.pause_requested,
+                "focus_topics": summary.focus_topics,
+                "avoid_topics": summary.avoid_topics,
+                "max_tasks_override": summary.max_tasks_override,
+                "execution_mode": summary.execution_mode,
+                "approval_mode": summary.approval_mode,
+                "approval_required": summary.approval_required,
+                "handoff_rules": summary.handoff_rules,
+                "override_mode": summary.override_mode,
+                "active_count": summary.active_count,
+            },
+            "daemon": daemon_state,
             "timestamp": datetime.utcnow().isoformat(),
         }
     except HTTPException:
