@@ -1,7 +1,12 @@
 import * as vscode from "vscode";
 
 import { createNonce, renderHtmlDocument } from "./html";
-import { REQUEST_DASHBOARD_STATE } from "./messages";
+import {
+    createCommandMessage,
+    createRequestMessage,
+    REQUEST_DASHBOARD_STATE,
+    RESPONSE_DASHBOARD_STATE,
+} from "./messages";
 
 export function getDashboardContent(webview: vscode.Webview): string {
     const nonce = createNonce();
@@ -56,15 +61,37 @@ function getDashboardBody(): string {
 }
 
 function getDashboardScript(): string {
+    const requestDashboardStateMessage = JSON.stringify(
+        createRequestMessage(REQUEST_DASHBOARD_STATE)
+    );
+    const openAIStudioMessage = JSON.stringify(
+        createCommandMessage("openAIStudio")
+    );
+    const openDeployPageMessage = JSON.stringify(
+        createCommandMessage("openDeployPage")
+    );
+    const checkHealthMessage = JSON.stringify(
+        createCommandMessage("checkHealth")
+    );
+    const unsealRuntimeMessage = JSON.stringify(
+        createCommandMessage("unsealRuntime")
+    );
+    const viewMetricsMessage = JSON.stringify(
+        createCommandMessage("viewMetrics")
+    );
+    const openAutonomyAuditMessage = JSON.stringify(
+        createCommandMessage("openAutonomyAudit")
+    );
+
     return `
 const vscodeApi = acquireVsCodeApi();
 
-function postCommand(command) {
-    vscodeApi.postMessage({ command });
+function postMessage(message) {
+    vscodeApi.postMessage(message);
 }
 
 function requestDashboardState() {
-    vscodeApi.postMessage({ type: "${REQUEST_DASHBOARD_STATE}" });
+    postMessage(${requestDashboardStateMessage});
 }
 
 function updateDashboardState(payload) {
@@ -81,17 +108,17 @@ function updateDashboardState(payload) {
 
 window.addEventListener("message", (event) => {
     const message = event.data;
-    if (message.type === "dashboardState") {
+    if (message.type === "${RESPONSE_DASHBOARD_STATE}") {
         updateDashboardState(message.payload);
     }
 });
 
-document.getElementById("action-ai-studio").addEventListener("click", () => postCommand("openAIStudio"));
-document.getElementById("action-deploy-page").addEventListener("click", () => postCommand("openDeployPage"));
-document.getElementById("action-health-check").addEventListener("click", () => postCommand("checkHealth"));
-document.getElementById("action-unseal-runtime").addEventListener("click", () => postCommand("unsealRuntime"));
-document.getElementById("action-metrics").addEventListener("click", () => postCommand("viewMetrics"));
-document.getElementById("action-audit").addEventListener("click", () => postCommand("openAutonomyAudit"));
+document.getElementById("action-ai-studio").addEventListener("click", () => postMessage(${openAIStudioMessage}));
+document.getElementById("action-deploy-page").addEventListener("click", () => postMessage(${openDeployPageMessage}));
+document.getElementById("action-health-check").addEventListener("click", () => postMessage(${checkHealthMessage}));
+document.getElementById("action-unseal-runtime").addEventListener("click", () => postMessage(${unsealRuntimeMessage}));
+document.getElementById("action-metrics").addEventListener("click", () => postMessage(${viewMetricsMessage}));
+document.getElementById("action-audit").addEventListener("click", () => postMessage(${openAutonomyAuditMessage}));
 
 requestDashboardState();
 setInterval(requestDashboardState, 10000);

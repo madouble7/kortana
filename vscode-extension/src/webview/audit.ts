@@ -1,7 +1,11 @@
 import * as vscode from "vscode";
 
 import { createNonce, renderHtmlDocument } from "./html";
-import { REQUEST_AUDIT_LOG } from "./messages";
+import {
+    createRequestMessage,
+    REQUEST_AUDIT_LOG,
+    RESPONSE_AUDIT_LOG,
+} from "./messages";
 
 export function getAutonomyAuditContent(webview: vscode.Webview): string {
     const nonce = createNonce();
@@ -37,11 +41,15 @@ function getAuditBody(): string {
 }
 
 function getAuditScript(): string {
+    const requestAuditLogMessage = JSON.stringify(
+        createRequestMessage(REQUEST_AUDIT_LOG)
+    );
+
     return `
 const vscodeApi = acquireVsCodeApi();
 
 function requestAuditLog() {
-    vscodeApi.postMessage({ type: "${REQUEST_AUDIT_LOG}" });
+    vscodeApi.postMessage(${requestAuditLogMessage});
 }
 
 function formatTimestamp(value) {
@@ -86,7 +94,7 @@ function renderAuditLog(actions) {
 
 window.addEventListener("message", (event) => {
     const message = event.data;
-    if (message.type === "auditLog") {
+    if (message.type === "${RESPONSE_AUDIT_LOG}") {
         renderAuditLog(message.payload);
     }
 });

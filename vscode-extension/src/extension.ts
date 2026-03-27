@@ -18,13 +18,24 @@ import { getAutonomyAuditContent } from "./webview/audit";
 import { getDashboardContent } from "./webview/dashboard";
 import { getFrameWebviewContent } from "./webview/html";
 import {
+    createAuditLogEnvelope,
+    createDashboardStateEnvelope,
+    createMetricsStateEnvelope,
     resolveDashboardCommand,
     resolveWebviewMessage,
     type WebviewMessage,
 } from "./webview/messages";
 import { getMetricsContent } from "./webview/metrics";
 
-export { resolveDashboardCommand, resolveWebviewMessage } from "./webview/messages";
+export {
+    createAuditLogEnvelope,
+    createCommandMessage,
+    createDashboardStateEnvelope,
+    createMetricsStateEnvelope,
+    createRequestMessage,
+    resolveDashboardCommand,
+    resolveWebviewMessage,
+} from "./webview/messages";
 export {
     buildAuditLogPayload,
     buildDashboardStatePayload,
@@ -212,22 +223,19 @@ async function handleWebviewMessage(
             await vscode.commands.executeCommand(route.command);
             return;
         case "dashboardState":
-            await webview.postMessage({
-                type: "dashboardState",
-                payload: await getDashboardStatePayload(),
-            });
+            await webview.postMessage(
+                createDashboardStateEnvelope(await getDashboardStatePayload())
+            );
             return;
         case "metricsState":
-            await webview.postMessage({
-                type: "metricsState",
-                payload: await getMetricsStatePayload(),
-            });
+            await webview.postMessage(
+                createMetricsStateEnvelope(await getMetricsStatePayload())
+            );
             return;
         case "auditLog":
-            await webview.postMessage({
-                type: "auditLog",
-                payload: await getAuditLogPayload(),
-            });
+            await webview.postMessage(
+                createAuditLogEnvelope(await getAuditLogPayload())
+            );
             return;
     }
 }
