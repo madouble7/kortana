@@ -2,6 +2,9 @@ import * as assert from "assert";
 import * as vscode from "vscode";
 
 import {
+    buildAuditLogPayload,
+    buildDashboardStatePayload,
+    buildMetricsStatePayload,
     resolveDashboardCommand,
     resolveWebviewMessage,
 } from "../../extension";
@@ -89,4 +92,84 @@ export async function run(): Promise<void> {
     assert.strictEqual(resolveWebviewMessage({ command: "unknown" }), undefined);
     assert.strictEqual(resolveDashboardCommand({}), undefined);
     assert.strictEqual(resolveWebviewMessage({}), undefined);
+
+    assert.deepStrictEqual(buildDashboardStatePayload({}), {
+        backendOnline: false,
+        backendMessage: "Offline",
+        tasksCount: "-",
+        lastSync: "N/A",
+    });
+    assert.deepStrictEqual(
+        buildDashboardStatePayload({
+            health: { message: "Awake" },
+            metrics: {
+                tasks_processed: 108,
+                last_sync: "2026-03-27T12:00:00Z",
+            },
+        }),
+        {
+            backendOnline: true,
+            backendMessage: "Awake",
+            tasksCount: "108",
+            lastSync: "2026-03-27T12:00:00Z",
+        }
+    );
+
+    assert.deepStrictEqual(buildMetricsStatePayload({}), {
+        backendOnline: false,
+        backendMessage: "Offline",
+        lastDeployment: "N/A",
+        tasksCount: "0",
+    });
+    assert.deepStrictEqual(
+        buildMetricsStatePayload({
+            health: { message: "Nominal" },
+            metrics: {
+                completed_tasks: 42,
+                last_deployment: "2026-03-27T12:34:56Z",
+            },
+        }),
+        {
+            backendOnline: true,
+            backendMessage: "Nominal",
+            lastDeployment: "2026-03-27T12:34:56Z",
+            tasksCount: "42",
+        }
+    );
+
+    assert.deepStrictEqual(buildAuditLogPayload("not-an-array"), []);
+    assert.deepStrictEqual(
+        buildAuditLogPayload([
+            {
+                type: "deploy",
+                description: "Runtime promoted",
+                timestamp: "2026-03-27T12:34:56Z",
+                status: "success",
+            },
+            {
+                description: "Missing type falls back",
+            },
+            "noise",
+        ]),
+        [
+            {
+                type: "deploy",
+                description: "Runtime promoted",
+                timestamp: "2026-03-27T12:34:56Z",
+                status: "success",
+            },
+            {
+                type: "Action",
+                description: "Missing type falls back",
+                timestamp: "",
+                status: "pending",
+            },
+            {
+                type: "Action",
+                description: "No details",
+                timestamp: "",
+                status: "pending",
+            },
+        ]
+    );
 }
