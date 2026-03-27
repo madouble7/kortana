@@ -25,6 +25,23 @@ class TestWorkspaceBridgeService:
             ".kortana/operator_inbox.md",
         ]
 
+    def test_directive_type_from_entry_supports_protocol_fields(self) -> None:
+        assert WorkspaceBridgeService._directive_type_from_entry("mode: plan") == "mode"
+        assert (
+            WorkspaceBridgeService._directive_type_from_entry("approval: manual")
+            == "approval"
+        )
+        assert (
+            WorkspaceBridgeService._directive_type_from_entry(
+                "handoff: analyzer -> planner -> executor"
+            )
+            == "handoff"
+        )
+        assert (
+            WorkspaceBridgeService._directive_type_from_entry("override: halt")
+            == "override"
+        )
+
     @pytest.mark.asyncio
     async def test_ingest_inbox_creates_directives_from_non_comment_lines(
         self, tmp_path, monkeypatch
