@@ -2,6 +2,7 @@ import * as assert from "assert";
 import * as vscode from "vscode";
 import { runContractTests } from "./contract";
 import { runDomHelperTests } from "./dom";
+import { runFormattingHelperTests } from "./formatting";
 import { runFragmentTests } from "./fragments";
 import { runRuntimeTests } from "./runtime";
 
@@ -40,6 +41,7 @@ const EXPECTED_REQUEST_TYPES: Record<string, string> = {
 export async function run(): Promise<void> {
     runContractTests();
     runDomHelperTests();
+    runFormattingHelperTests();
     runFragmentTests();
     runRuntimeTests();
 

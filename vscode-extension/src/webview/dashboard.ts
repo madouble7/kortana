@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 
 import { createWebviewDomHelpersScript } from "./dom";
+import { createWebviewFormattingHelpersScript } from "./formatting";
 import {
     createButtonGroup,
     createLabeledValueRow,
@@ -94,17 +95,15 @@ ${createPanel({
 function getDashboardScript(): string {
     return `
 ${createWebviewDomHelpersScript()}
+${createWebviewFormattingHelpersScript()}
 function updateDashboardState(payload) {
-    setElementStyle(
-        "backend-status-indicator",
-        "background",
-        payload.backendOnline ? "#28a745" : "#dc3545"
-    );
-    setElementText(
+    applyStatusIndicatorColor("backend-status-indicator", payload.backendOnline);
+    applyStatusText(
         "backend-status-text",
-        payload.backendOnline
-            ? "Backend: " + payload.backendMessage
-            : "Backend: Offline"
+        payload.backendOnline,
+        payload.backendMessage,
+        "Offline",
+        "Backend: "
     );
     setElementText("tasks-count", payload.tasksCount);
     setElementText("last-sync", payload.lastSync);

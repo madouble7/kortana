@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 
 import { createWebviewDomHelpersScript } from "./dom";
+import { createWebviewFormattingHelpersScript } from "./formatting";
 import { createEmptyStateBlock } from "./fragments";
 import { createNonce, renderHtmlDocument } from "./html";
 import {
@@ -47,47 +48,10 @@ function getAuditBody(): string {
 function getAuditScript(): string {
     return `
 ${createWebviewDomHelpersScript()}
-function formatTimestamp(value) {
-    if (!value) {
-        return "";
-    }
-
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toLocaleString();
-}
+${createWebviewFormattingHelpersScript()}
 
 function renderAuditLog(actions) {
-    if (!actions.length) {
-        renderStateBlock(
-            "audit-log",
-            "No audit actions available",
-            "",
-            "audit-item status-pending"
-        );
-        return;
-    }
-
-    const log = getRequiredElement("audit-log");
-    replaceElementChildren("audit-log");
-
-    for (const action of actions) {
-        const item = createDomElement("div", {
-            className: "audit-item status-" + action.status,
-        });
-
-        const title = createDomElement("strong", {
-            textContent: action.type + ": " + action.description,
-        });
-        item.appendChild(title);
-        item.appendChild(document.createElement("br"));
-
-        const timestamp = createDomElement("small", {
-            textContent: formatTimestamp(action.timestamp),
-        });
-        item.appendChild(timestamp);
-
-        log.appendChild(item);
-    }
+    renderAuditActionList("audit-log", actions);
 }
 ${createWebviewRuntimeScript({
         requestPollers: [
