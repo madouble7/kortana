@@ -1,7 +1,10 @@
 import * as assert from "assert";
 import * as vscode from "vscode";
 
-import { resolveDashboardCommand } from "../../extension";
+import {
+    resolveDashboardCommand,
+    resolveWebviewMessage,
+} from "../../extension";
 
 const EXPECTED_COMMANDS = [
     "kortana.openAIStudio",
@@ -19,6 +22,12 @@ const EXPECTED_DASHBOARD_MAPPINGS: Record<string, string> = {
     checkHealth: "kortana.checkHealth",
     viewMetrics: "kortana.viewMetrics",
     openAutonomyAudit: "kortana.autonomy.audit.open",
+};
+
+const EXPECTED_REQUEST_TYPES: Record<string, string> = {
+    requestDashboardState: "dashboardState",
+    requestMetricsState: "metricsState",
+    requestAuditLog: "auditLog",
 };
 
 export async function run(): Promise<void> {
@@ -55,12 +64,29 @@ export async function run(): Promise<void> {
             command,
             `Expected dashboard action ${action} to resolve to ${command}`
         );
+        assert.deepStrictEqual(
+            resolveWebviewMessage({ command: action }),
+            { kind: "command", command },
+            `Expected webview command ${action} to resolve to ${command}`
+        );
+    }
+
+    for (const [requestType, kind] of Object.entries(EXPECTED_REQUEST_TYPES)) {
+        assert.deepStrictEqual(resolveWebviewMessage({ type: requestType }), {
+            kind,
+        });
     }
 
     assert.strictEqual(
         resolveDashboardCommand({ command: "kortana.openAIStudio" }),
         "kortana.openAIStudio"
     );
+    assert.deepStrictEqual(resolveWebviewMessage({ command: "kortana.openAIStudio" }), {
+        kind: "command",
+        command: "kortana.openAIStudio",
+    });
     assert.strictEqual(resolveDashboardCommand({ command: "unknown" }), undefined);
+    assert.strictEqual(resolveWebviewMessage({ command: "unknown" }), undefined);
     assert.strictEqual(resolveDashboardCommand({}), undefined);
+    assert.strictEqual(resolveWebviewMessage({}), undefined);
 }
