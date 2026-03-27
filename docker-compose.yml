@@ -67,6 +67,12 @@ services:
       ENVIRONMENT: development
       LOG_LEVEL: debug
       PYTHONUNBUFFERED: "1"
+      KORTANA_WORKSPACE_ROOT: /workspace
+      DISCORD_ENABLED: "false"
+      KORTANA_DEFAULT_APPROVAL_MODE: "auto"
+      KORTANA_GITHUB_MODE: "deferred"
+      KORTANA_LOCAL_BACKLOG_ENABLED: "true"
+      KORTANA_SELF_AWARE_APPROVAL: "false"
     ports:
       - "${API_PORT:-8000}:8000"
     depends_on:
@@ -78,6 +84,7 @@ services:
       # Hot reload: mount source code for live changes
       - ./backend/src:/app/src
       - ./backend/migrations:/app/migrations
+      - .:/workspace
     command: uvicorn src.kortana.main:app --host 0.0.0.0 --port 8000 --reload
     networks:
       - kortana-network

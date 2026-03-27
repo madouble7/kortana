@@ -148,8 +148,17 @@ class Settings:
     GITHUB_TOKEN: str | None = _get_env("GITHUB_TOKEN")
     GITHUB_OWNER: str = _get_env("GITHUB_OWNER", "madouble7") or "madouble7"
     GITHUB_REPO: str = _get_env("GITHUB_REPO", "kortana") or "kortana"
+    KORTANA_GITHUB_MODE: str = (
+        _get_env("KORTANA_GITHUB_MODE", "full") or "full"
+    ).lower()
+    KORTANA_LOCAL_BACKLOG_ENABLED: bool = (
+        _get_env("KORTANA_LOCAL_BACKLOG_ENABLED", "true") or "true"
+    ).lower() == "true"
 
     # Discord Integration
+    DISCORD_ENABLED: bool = (
+        _get_env("DISCORD_ENABLED", "false") or "false"
+    ).lower() == "true"
     DISCORD_BOT_TOKEN: str | None = _get_env("DISCORD_BOT_TOKEN")
     DISCORD_CLIENT_ID: str | None = _get_env("CLIENT_ID")
 
@@ -270,10 +279,19 @@ class Settings:
                 ["GEMINI_API_KEY", "GOOGLE_API_KEY"],
                 "Gemini/Google API",
             ),
-            ("GITHUB_TOKEN", ["GITHUB_TOKEN"], "GitHub Token"),
-            ("DISCORD_BOT_TOKEN", ["DISCORD_BOT_TOKEN"], "Discord Bot Token"),
             ("OPENAI_API_KEY", ["OPENAI_API_KEY"], "OpenAI API Key"),
         ]
+        if settings.KORTANA_GITHUB_MODE == "full":
+            critical_keys.append(("GITHUB_TOKEN", ["GITHUB_TOKEN"], "GitHub Token"))
+        elif settings.KORTANA_GITHUB_MODE in {"deferred", "disabled"}:
+            print(
+                "[i] GitHub is running in "
+                f"{settings.KORTANA_GITHUB_MODE} mode; local autonomy is primary"
+            )
+        if settings.DISCORD_ENABLED:
+            critical_keys.append(
+                ("DISCORD_BOT_TOKEN", ["DISCORD_BOT_TOKEN"], "Discord Bot Token")
+            )
 
         missing = []
         for key, fallbacks, desc in critical_keys:

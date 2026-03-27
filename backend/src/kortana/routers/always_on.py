@@ -19,6 +19,7 @@ from src.kortana.services.always_on_monitor import (
 )
 from src.kortana.services.autonomy_daemon import get_autonomy_daemon
 from src.kortana.services.operator_directive_service import OperatorDirectiveService
+from src.kortana.services.task_approval_service import TaskApprovalService
 from src.kortana.services.workspace_bridge_service import get_workspace_bridge
 
 router = APIRouter()
@@ -78,7 +79,9 @@ async def start_monitoring() -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Failed to initiate monitoring start: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to start monitoring: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to start monitoring: {str(e)}"
+        )
 
 
 @router.post("/stop")
@@ -93,7 +96,9 @@ async def stop_monitoring() -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Failed to stop monitoring: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to stop monitoring: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to stop monitoring: {str(e)}"
+        )
 
 
 @router.get("/status")
@@ -141,7 +146,9 @@ async def create_operator_comment(body: CommentRequest) -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Failed to record operator comment: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to record comment: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to record comment: {str(e)}"
+        )
 
 
 @router.post("/prompt")
@@ -185,7 +192,9 @@ async def create_operator_directive(body: DirectiveRequest) -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Failed to create operator directive: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to create directive: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to create directive: {str(e)}"
+        )
 
 
 @router.get("/directives")
@@ -217,7 +226,9 @@ async def list_operator_directives(
         }
     except Exception as e:
         logger.error(f"Failed to list operator directives: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to list directives: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to list directives: {str(e)}"
+        )
 
 
 @router.get("/course")
@@ -304,7 +315,9 @@ async def resolve_operator_directive(directive_id: str) -> Dict[str, Any]:
         raise
     except Exception as e:
         logger.error(f"Failed to resolve operator directive: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to resolve directive: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to resolve directive: {str(e)}"
+        )
 
 
 @router.get("/workspace")
@@ -332,7 +345,9 @@ async def get_task_status() -> Dict[str, Any]:
         return await monitor.get_task_status()
     except Exception as e:
         logger.error(f"Failed to get task status: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to get task status: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get task status: {str(e)}"
+        )
 
 
 @router.post("/force-check")
@@ -368,11 +383,17 @@ async def get_recent_tasks(limit: int = 10) -> List[Dict[str, Any]]:
                     "github_issue_number": int(task.github_issue_number),
                     "title": str(task.title),
                     "status": str(task.status),
-                    "classification": str(task.classification) if task.classification else None,
+                    "classification": str(task.classification)
+                    if task.classification
+                    else None,
                     "priority": str(task.priority) if task.priority else None,
                     "branch_name": str(task.branch_name) if task.branch_name else None,
-                    "created_at": task.created_at.isoformat() if task.created_at else None,
-                    "updated_at": task.updated_at.isoformat() if task.updated_at else None,
+                    "created_at": task.created_at.isoformat()
+                    if task.created_at
+                    else None,
+                    "updated_at": task.updated_at.isoformat()
+                    if task.updated_at
+                    else None,
                 }
                 for task in tasks
             ]
@@ -412,7 +433,9 @@ async def retry_task(task_id: str) -> Dict[str, Any]:
     try:
         db_manager = get_db_manager()
         async with db_manager.session_scope() as db:
-            result = await db.execute(select(GitHubTask).filter(GitHubTask.id == task_id))
+            result = await db.execute(
+                select(GitHubTask).filter(GitHubTask.id == task_id)
+            )
             task = result.scalar_one_or_none()
             if not task:
                 raise HTTPException(status_code=404, detail="Task not found")
@@ -504,41 +527,26 @@ async def get_monitoring_metrics() -> Dict[str, Any]:
 
 
 @router.post("/tasks/{task_id}/approve")
-async def approve_task(task_id: str, approved: bool, notes: str | None = None) -> Dict[str, Any]:
+async def approve_task(
+    task_id: str, approved: bool, notes: str | None = None
+) -> Dict[str, Any]:
     """Approve or reject a task requiring human oversight"""
     try:
         db_manager = get_db_manager()
         async with db_manager.session_scope() as db:
-            result = await db.execute(select(GitHubTask).filter(GitHubTask.id == task_id))
-            task = result.scalar_one_or_none()
-            if not task:
-                raise HTTPException(status_code=404, detail="Task not found")
-
-            if task.status != "waiting_for_ho":
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Task is not awaiting approval (status: {task.status})",
+            service = TaskApprovalService(db)
+            try:
+                task = await service.approve_task(
+                    task_id,
+                    approved=approved,
+                    reviewer="operator",
+                    notes=notes,
                 )
-
-            if approved:
-                task.status = "pending"  # Ready for execution
-                task.classification = "auto"  # Upgrade to auto after approval
-            else:
-                task.status = "cancelled"
-
-            # Store approval metadata
-            if not task.metadata_json:
-                task.metadata_json = {}
-
-            task.metadata_json["approval"] = {
-                "approved": approved,
-                "notes": notes,
-                "timestamp": datetime.utcnow().isoformat(),
-            }
-
-            task.updated_at = datetime.utcnow()
-            await db.flush()
-            await db.refresh(task)
+            except ValueError as exc:
+                message = str(exc)
+                if message == "Task not found":
+                    raise HTTPException(status_code=404, detail=message) from exc
+                raise HTTPException(status_code=400, detail=message) from exc
 
             return {
                 "message": f"Task {task_id} {'approved' if approved else 'rejected'}",
@@ -552,6 +560,54 @@ async def approve_task(task_id: str, approved: bool, notes: str | None = None) -
     except Exception as e:
         logger.error(f"Failed to approve task {task_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to approve task: {str(e)}")
+
+
+@router.get("/approval-queue")
+async def get_approval_queue(limit: int = 20) -> Dict[str, Any]:
+    """List tasks currently waiting in the approval queue."""
+    try:
+        db_manager = get_db_manager()
+        async with db_manager.session_scope() as db:
+            service = TaskApprovalService(db)
+            approvals = await service.list_pending(limit=limit)
+
+            task_ids = [approval.github_task_id for approval in approvals]
+            tasks_by_id: Dict[str, GitHubTask] = {}
+            if task_ids:
+                result = await db.execute(
+                    select(GitHubTask).where(GitHubTask.id.in_(task_ids))
+                )
+                tasks_by_id = {str(task.id): task for task in result.scalars().all()}
+
+            items = []
+            for approval in approvals:
+                task = tasks_by_id.get(approval.github_task_id)
+                items.append(
+                    {
+                        **service.serialize(approval),
+                        "task": {
+                            "id": approval.github_task_id,
+                            "title": task.title if task else None,
+                            "status": task.status if task else None,
+                            "priority": task.priority if task else None,
+                            "branch_name": task.branch_name if task else None,
+                            "github_issue_number": (
+                                task.github_issue_number if task else None
+                            ),
+                        },
+                    }
+                )
+
+            return {
+                "items": items,
+                "count": len(items),
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+    except Exception as e:
+        logger.error(f"Failed to get approval queue: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get approval queue: {str(e)}"
+        )
 
 
 @router.get("/dashboard")
@@ -569,4 +625,6 @@ async def get_monitoring_dashboard() -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Failed to get monitoring dashboard: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to get dashboard: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get dashboard: {str(e)}"
+        )

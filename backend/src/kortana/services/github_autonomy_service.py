@@ -7,7 +7,10 @@ import inspect
 import json
 import os
 import re
+import shutil
 import subprocess
+import tempfile
+from base64 import b64encode
 from datetime import datetime
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -76,6 +79,7 @@ class GitHubAutonomyService:
         self.repo_root = self._resolve_repo_root()
         self._repo_inventory_cache: list[str] | None = None
         self._repo_shape_cache: dict[str, Any] | None = None
+        self._workspace_modes: dict[str, str] = {}
 
         # Get GitHub token from environment first, then fallback to settings
         self.github_token = os.getenv("GITHUB_TOKEN")
@@ -84,16 +88,42 @@ class GitHubAutonomyService:
 
         # Validate token is actually set (not placeholder)
         if self.github_token and self.github_token.startswith("your_"):
-            logger.warning("GitHub token appears to be a placeholder, replacing with env var")
+            logger.warning(
+                "GitHub token appears to be a placeholder, replacing with env var"
+            )
             self.github_token = os.getenv("GITHUB_TOKEN", "")
 
         self.repo_owner = os.getenv("GITHUB_OWNER") or self.settings.GITHUB_OWNER
         self.repo_name = os.getenv("GITHUB_REPO") or self.settings.GITHUB_REPO
         self.max_retries = self.settings.TASK_MAX_RETRIES
 
-        logger.info(f"GitHubAutonomyService initialized: {self.repo_owner}/{self.repo_name}")
+        logger.info(
+            f"GitHubAutonomyService initialized: {self.repo_owner}/{self.repo_name}"
+        )
         logger.debug(f"GitHub token present: {bool(self.github_token)}")
         logger.debug(f"GitHubAutonomyService repo root: {self.repo_root}")
+
+    def _github_mode(self) -> str:
+        mode = (
+            (os.getenv("KORTANA_GITHUB_MODE") or self.settings.KORTANA_GITHUB_MODE)
+            .strip()
+            .lower()
+        )
+        if mode in {"full", "deferred", "disabled"}:
+            return mode
+        return "full"
+
+    def _should_fetch_github(self) -> bool:
+        return self._github_mode() == "full"
+
+    def _should_publish_to_github(self, task: GitHubTask) -> bool:
+        return self._github_mode() == "full" and not self._is_local_task(task)
+
+    @staticmethod
+    def _is_local_task(task: GitHubTask) -> bool:
+        repo = (task.github_repo or "").lower()
+        classification = (task.classification or "").lower()
+        return repo.startswith("local/") or classification in {"local", "self_repair"}
 
     def _resolve_repo_root(self) -> Path:
         configured = os.getenv("KORTANA_WORKSPACE_ROOT") or self.settings.REPO_ROOT
@@ -272,7 +302,8 @@ class GitHubAutonomyService:
         )
 
         sanitized_plan = {
-            "description": parsed.get("description") or "Repo-grounded implementation plan",
+            "description": parsed.get("description")
+            or "Repo-grounded implementation plan",
             "FILE_CHANGES": valid_changes,
             "COMMANDS": parsed.get("commands", []),
             "TESTS": parsed.get("tests", []),
@@ -280,11 +311,12 @@ class GitHubAutonomyService:
         }
         return json.dumps(sanitized_plan, indent=2)
 
-    def _git_output(self, command: list[str]) -> str:
+    def _git_output(self, command: list[str], cwd: Path | None = None) -> str:
+        working_dir = cwd or self.repo_root
         try:
             result = subprocess.run(
-                self._git_command(command),
-                cwd=self.repo_root,
+                self._git_command(command, safe_dir=working_dir),
+                cwd=working_dir,
                 check=True,
                 capture_output=True,
                 text=True,
@@ -293,15 +325,20 @@ class GitHubAutonomyService:
         except Exception:
             return ""
 
-    def _git_command(self, command: list[str]) -> list[str]:
+    def _git_command(
+        self, command: list[str], safe_dir: Path | None = None
+    ) -> list[str]:
         if not command or command[0] != "git":
             return command
-        return [
-            "git",
-            "-c",
-            f"safe.directory={self.repo_root}",
-            *command[1:],
-        ]
+        safe_directories = {str(self.repo_root.resolve())}
+        if safe_dir is not None:
+            safe_directories.add(str(Path(safe_dir).resolve()))
+
+        git_command = ["git"]
+        for directory in sorted(safe_directories):
+            git_command.extend(["-c", f"safe.directory={directory}"])
+        git_command.extend(command[1:])
+        return git_command
 
     @staticmethod
     async def _maybe_await(value: Any) -> Any:
@@ -366,6 +403,11 @@ class GitHubAutonomyService:
 
     async def fetch_and_queue_issues(self, repo: str | None = None) -> list[GitHubTask]:
         """Fetch open issues from GitHub and queue them as tasks if not already present"""
+        if not self._should_fetch_github():
+            logger.info(
+                "GitHub issue discovery skipped in %s mode", self._github_mode()
+            )
+            return []
         self._validate_token()
 
         owner, name = repo.split("/") if repo else (self.repo_owner, self.repo_name)
@@ -373,7 +415,9 @@ class GitHubAutonomyService:
             "Authorization": f"token {self.github_token}",
             "Accept": "application/vnd.github.v3+json",
         }
-        url = f"https://api.github.com/repos/{owner}/{name}/issues?state=open&per_page=50"
+        url = (
+            f"https://api.github.com/repos/{owner}/{name}/issues?state=open&per_page=50"
+        )
 
         try:
             response = await self.http_client.get(
@@ -385,7 +429,9 @@ class GitHubAutonomyService:
             return []
 
         queued_tasks = []
-        issue_numbers = [issue["number"] for issue in issues if "pull_request" not in issue]
+        issue_numbers = [
+            issue["number"] for issue in issues if "pull_request" not in issue
+        ]
 
         if not issue_numbers:
             return []
@@ -432,6 +478,11 @@ class GitHubAutonomyService:
 
     def fetch_and_queue_issues_sync(self, repo: str | None = None) -> list[dict]:
         """Sync wrapper for fetch_and_queue_issues - fetches GitHub issues synchronously"""
+        if not self._should_fetch_github():
+            logger.info(
+                "GitHub issue discovery skipped in %s mode", self._github_mode()
+            )
+            return []
         self._validate_token()
 
         owner, name = repo.split("/") if repo else (self.repo_owner, self.repo_name)
@@ -439,7 +490,9 @@ class GitHubAutonomyService:
             "Authorization": f"token {self.github_token}",
             "Accept": "application/vnd.github.v3+json",
         }
-        url = f"https://api.github.com/repos/{owner}/{name}/issues?state=open&per_page=50"
+        url = (
+            f"https://api.github.com/repos/{owner}/{name}/issues?state=open&per_page=50"
+        )
 
         try:
             # Use sync httpx client for Celery compatibility
@@ -447,7 +500,9 @@ class GitHubAutonomyService:
             response.raise_for_status()
             issues = response.json()
             logger.info(f"Fetched {len(issues)} issues from {owner}/{name}")
-            return [{"number": issue["number"], "title": issue["title"]} for issue in issues]
+            return [
+                {"number": issue["number"], "title": issue["title"]} for issue in issues
+            ]
         except Exception as e:
             logger.error(f"Failed to fetch GitHub issues: {str(e)}")
             return []
@@ -490,7 +545,11 @@ class GitHubAutonomyService:
             self.settings.ENVIRONMENT == "production"
             or os.getenv("KORTANA_AUTONOMOUS_MODE") == "true"
         ):
-            stmt = select(GitHubTask).where(GitHubTask.status == "planning_complete").limit(limit)
+            stmt = (
+                select(GitHubTask)
+                .where(GitHubTask.status == "planning_complete")
+                .limit(limit)
+            )
             result = await self._db_execute(stmt)
             planned = result.scalars().all()
             for task in planned:
@@ -505,7 +564,9 @@ class GitHubAutonomyService:
             if not task:
                 raise ValueError("Task not found")
         else:
-            task = task_or_id  # Already have the task object, no additional query needed
+            task = (
+                task_or_id  # Already have the task object, no additional query needed
+            )
 
         task.status = "analyzing"
         await self._db_commit()
@@ -514,9 +575,7 @@ class GitHubAutonomyService:
             logger.info(f"Analyzing task #{task.github_issue_number}: {task.title}")
             operator_preamble = await self._operator_preamble()
             repo_context = self._build_repo_context()
-            prompt = (
-                f"{operator_preamble}\n\n" if operator_preamble else ""
-            ) + (
+            prompt = (f"{operator_preamble}\n\n" if operator_preamble else "") + (
                 f"You are KOR'TANA PRIME, an autonomous AI architect modifying your own application (or another repository).\n"
                 f"Analyze this issue and provide expert-level implementation insights. "
                 f"If this is a [SELF-REPAIR] issue, you must diagnose the internal autonomy logic flaw causing the error and architect a structural fix.\n\n"
@@ -547,7 +606,9 @@ class GitHubAutonomyService:
             if not task:
                 raise ValueError("Task not found")
         else:
-            task = task_or_id  # Already have the task object, no additional query needed
+            task = (
+                task_or_id  # Already have the task object, no additional query needed
+            )
 
         task.status = "planning"
         await self._db_commit()
@@ -556,9 +617,7 @@ class GitHubAutonomyService:
             logger.info(f"Planning task #{task.github_issue_number}")
             operator_preamble = await self._operator_preamble()
             repo_context = self._build_repo_context()
-            prompt = (
-                f"{operator_preamble}\n\n" if operator_preamble else ""
-            ) + (
+            prompt = (f"{operator_preamble}\n\n" if operator_preamble else "") + (
                 f"You are KOR'TANA PRIME, an autonomous AI entity architecting your own codebase. "
                 f"Generate a detailed file-by-file implementation plan for this issue and keep it grounded to this repository only. "
                 f"If the request cannot be satisfied safely inside the observed repo structure, return FILE_CHANGES as an empty list. "
@@ -591,7 +650,9 @@ class GitHubAutonomyService:
         await self._db_commit()
         return task
 
-    async def execute_task(self, task_or_id: GitHubTask | str, dry_run: bool = False) -> GitHubTask:
+    async def execute_task(
+        self, task_or_id: GitHubTask | str, dry_run: bool = False
+    ) -> GitHubTask:
         """Execute the task: Create branch, apply changes, and commit"""
         if isinstance(task_or_id, str):
             stmt = select(GitHubTask).where(GitHubTask.id == task_or_id)
@@ -600,22 +661,34 @@ class GitHubAutonomyService:
             if not task:
                 raise ValueError("Task not found")
         else:
-            task = task_or_id  # Already have the task object, no additional query needed
+            task = (
+                task_or_id  # Already have the task object, no additional query needed
+            )
 
         task.status = "executing"
         await self._db_commit()
 
+        workspace: Path | None = None
+        publish_to_github = not dry_run and self._should_publish_to_github(task)
         try:
             logger.info(f"Executing task #{task.github_issue_number}")
 
             # 1. Create GitHub branch
-            if not dry_run:
+            if publish_to_github:
                 if not await self._maybe_await(self._create_branch(task)):
-                    raise Exception(task.error_message or "Failed to create GitHub branch")
+                    raise Exception(
+                        task.error_message or "Failed to create GitHub branch"
+                    )
+
+            workspace = (
+                self.repo_root
+                if dry_run
+                else await self._prepare_execution_workspace(task)
+            )
 
             # 2. Use CodeGenerator to apply changes
             result = self.code_gen.generate_from_gemini_plan(
-                task.plan, repo_path=str(self.repo_root), dry_run=dry_run
+                task.plan, repo_path=str(workspace), dry_run=dry_run
             )
 
             if result.get("errors"):
@@ -629,25 +702,37 @@ class GitHubAutonomyService:
                     + result.get("deleted", [])
                 )
             ]
-            task.code_changes = files_changed or None
+            normalized_files = self._normalize_changed_files(files_changed, workspace)
+            task.code_changes = normalized_files or None
 
             # 3. Commit changes to the branch (if not dry-run)
             if not dry_run:
-                if files_changed:
-                    commit_sha = await self._commit_branch_changes(task, files_changed)
+                if normalized_files:
+                    commit_sha = await self._commit_workspace_changes(
+                        task, normalized_files, workspace
+                    )
                     if not commit_sha:
                         raise Exception("Failed to commit changes")
                     task.commit_sha = commit_sha
 
-                    # 4. Push branch to GitHub
-                    if not await self._push_branch(task):
-                        raise Exception("Failed to push branch")
+                    if publish_to_github:
+                        # 4. Push branch to GitHub
+                        if not await self._push_workspace_branch(task, workspace):
+                            raise Exception("Failed to push branch")
 
-                    # 5. Create pull request
-                    pr_number = await self._create_pull_request_for_branch(task)
-                    if pr_number:
-                        task.github_pr_number = pr_number
-                        logger.info(f"Created PR #{pr_number} for task #{task.github_issue_number}")
+                        # 5. Create pull request
+                        pr_number = await self._create_pull_request_for_branch(task)
+                        if pr_number:
+                            task.github_pr_number = pr_number
+                            logger.info(
+                                f"Created PR #{pr_number} for task #{task.github_issue_number}"
+                            )
+                    else:
+                        logger.info(
+                            "Executed task %s locally on branch %s without GitHub publish",
+                            task.id,
+                            task.branch_name,
+                        )
 
             task.status = "executed"
             task.executed_at = datetime.utcnow()
@@ -662,9 +747,218 @@ class GitHubAutonomyService:
                 task.status = "failed"
             await self._db_commit()
             raise
+        finally:
+            if workspace is not None and not dry_run:
+                await self._cleanup_execution_workspace(workspace)
+
+    async def _prepare_execution_workspace(self, task: GitHubTask) -> Path:
+        if self._should_publish_to_github(task):
+            return await self._prepare_remote_execution_workspace(task)
+        return await self._prepare_local_execution_workspace(task)
+
+    async def _prepare_remote_execution_workspace(self, task: GitHubTask) -> Path:
+        """Clone the repo into an isolated temp workspace and check out the task branch."""
+        workspace = Path(
+            tempfile.mkdtemp(prefix=f"kortana-task-{task.github_issue_number}-")
+        )
+        self._workspace_modes[str(workspace)] = "clone"
+        self._run_git(
+            ["git", "clone", str(self.repo_root), str(workspace)], cwd=self.repo_root
+        )
+
+        origin_url = self._git_output(["git", "remote", "get-url", "origin"])
+        if origin_url:
+            self._run_git(
+                ["git", "remote", "set-url", "origin", origin_url],
+                cwd=workspace,
+            )
+
+        try:
+            self._run_git(["git", "fetch", "origin", task.branch_name], cwd=workspace)
+            self._run_git(
+                [
+                    "git",
+                    "checkout",
+                    "-B",
+                    task.branch_name,
+                    f"origin/{task.branch_name}",
+                ],
+                cwd=workspace,
+            )
+        except subprocess.CalledProcessError:
+            base_ref = "origin/main"
+            try:
+                self._run_git(["git", "fetch", "origin", "main"], cwd=workspace)
+            except subprocess.CalledProcessError:
+                self._run_git(["git", "fetch", "origin", "master"], cwd=workspace)
+                base_ref = "origin/master"
+            self._run_git(
+                ["git", "checkout", "-B", task.branch_name, base_ref],
+                cwd=workspace,
+            )
+
+        return workspace
+
+    async def _prepare_local_execution_workspace(self, task: GitHubTask) -> Path:
+        """Create an isolated local worktree so commits persist without GitHub."""
+        workspace = Path(
+            tempfile.mkdtemp(prefix=f"kortana-local-{abs(task.github_issue_number)}-")
+        )
+        shutil.rmtree(workspace, ignore_errors=True)
+        self._workspace_modes[str(workspace)] = "worktree"
+
+        branch_name = task.branch_name or self._generate_branch_name(
+            abs(task.github_issue_number or 1),
+            task.title,
+        )
+        task.branch_name = branch_name
+        base_ref = self._resolve_local_base_ref()
+
+        if self._local_branch_exists(branch_name):
+            self._run_git(["git", "worktree", "add", str(workspace), branch_name])
+        else:
+            self._run_git(
+                ["git", "worktree", "add", "-b", branch_name, str(workspace), base_ref]
+            )
+
+        return workspace
+
+    def _resolve_local_base_ref(self) -> str:
+        current_branch = self._git_output(["git", "branch", "--show-current"])
+        if current_branch:
+            return current_branch
+
+        for candidate in ("main", "master"):
+            if self._local_branch_exists(candidate):
+                return candidate
+        return "HEAD"
+
+    def _local_branch_exists(self, branch_name: str) -> bool:
+        try:
+            self._run_git(["git", "rev-parse", "--verify", f"refs/heads/{branch_name}"])
+            return True
+        except subprocess.CalledProcessError:
+            return False
+
+    def _normalize_changed_files(
+        self, files_changed: list[str], workspace: Path
+    ) -> list[str]:
+        normalized: list[str] = []
+        workspace_root = workspace.resolve()
+        repo_root = self.repo_root.resolve()
+        for item in files_changed:
+            candidate = Path(item)
+            value = str(item).replace("\\", "/").lstrip("./")
+            try:
+                resolved = candidate.resolve()
+            except Exception:
+                resolved = None
+
+            if resolved is not None:
+                try:
+                    value = resolved.relative_to(workspace_root).as_posix()
+                except ValueError:
+                    try:
+                        value = resolved.relative_to(repo_root).as_posix()
+                    except ValueError:
+                        value = str(item).replace("\\", "/").lstrip("./")
+
+            if value and value not in normalized:
+                normalized.append(value)
+        return normalized
+
+    async def _commit_workspace_changes(
+        self,
+        task: GitHubTask,
+        files_changed: list[Any],
+        workspace: Path,
+    ) -> str | None:
+        """Commit changed files in an isolated workspace and return the new SHA."""
+        try:
+            for file_path in files_changed:
+                self._run_git(["git", "add", str(file_path)], cwd=workspace)
+
+            commit_message = (
+                f"Auto: Resolve issue #{task.github_issue_number}\n\n"
+                f"Issue: {task.title}\n"
+                f"Branch: {task.branch_name}"
+            )
+            self._run_git(
+                ["git", "commit", "--no-verify", "-m", commit_message],
+                cwd=workspace,
+            )
+            sha_result = self._run_git(
+                ["git", "rev-parse", "HEAD"],
+                cwd=workspace,
+            )
+            commit_sha = sha_result.stdout.strip()
+            logger.info(f"Committed changes on {task.branch_name}: {commit_sha[:8]}...")
+            return commit_sha or None
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to commit changes on {task.branch_name}: {e.stderr}")
+            return None
+        except Exception as e:
+            logger.error(f"Commit failed with exception: {str(e)}")
+            return None
+
+    async def _push_workspace_branch(self, task: GitHubTask, workspace: Path) -> bool:
+        """Push the task branch from an isolated workspace without mutating origin URLs."""
+        try:
+            auth_header = self._build_push_auth_header()
+            self._run_git(
+                [
+                    "git",
+                    f"-chttp.extraheader={auth_header}",
+                    "push",
+                    "-u",
+                    "origin",
+                    f"{task.branch_name}:{task.branch_name}",
+                ],
+                cwd=workspace,
+            )
+            logger.info(f"Pushed branch {task.branch_name}")
+            return True
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to push branch {task.branch_name}: {e.stderr}")
+            return False
+        except Exception as e:
+            logger.error(f"Push failed with exception: {str(e)}")
+            return False
+
+    async def _cleanup_execution_workspace(self, workspace: Path) -> None:
+        try:
+            mode = self._workspace_modes.pop(str(workspace), "clone")
+            if mode == "worktree":
+                self._run_git(["git", "worktree", "remove", "--force", str(workspace)])
+                shutil.rmtree(workspace, ignore_errors=True)
+                return
+            shutil.rmtree(workspace, ignore_errors=True)
+        except Exception as exc:
+            logger.warning(f"Failed to cleanup workspace {workspace}: {exc}")
+
+    def _build_push_auth_header(self) -> str:
+        if not self.github_token:
+            raise ValueError("GitHub token not configured")
+        token_bytes = f"x-access-token:{self.github_token}".encode("utf-8")
+        encoded = b64encode(token_bytes).decode("ascii")
+        return f"AUTHORIZATION: basic {encoded}"
+
+    def _run_git(
+        self, command: list[str], cwd: Path | None = None
+    ) -> subprocess.CompletedProcess[str]:
+        working_dir = cwd or self.repo_root
+        return subprocess.run(
+            self._git_command(command, safe_dir=working_dir),
+            cwd=working_dir,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
 
     async def _create_branch(self, task: GitHubTask) -> bool:
         """Create GitHub branch for task using async httpx"""
+        if not self._should_publish_to_github(task):
+            return True
         if not self.github_token:
             logger.error("GitHub token not configured for branch creation")
             return False
@@ -688,9 +982,13 @@ class GitHubAutonomyService:
                     )
                     raise Exception("Main branch not found")
             except Exception as e:
-                logger.debug(f"Getting main branch failed: {str(e)}, trying master branch")
+                logger.debug(
+                    f"Getting main branch failed: {str(e)}, trying master branch"
+                )
                 # Try master branch
-                ref_url = f"https://api.github.com/repos/{owner}/{repo}/git/ref/heads/master"
+                ref_url = (
+                    f"https://api.github.com/repos/{owner}/{repo}/git/ref/heads/master"
+                )
                 ref_response = await self.http_client.get(
                     ref_url, api_name="github_api", headers=headers, timeout=10
                 )
@@ -707,7 +1005,9 @@ class GitHubAutonomyService:
                 main_sha = ref_response.json()["object"]["sha"]
                 logger.debug(f"Got base branch SHA: {main_sha[:8]}...")
             except (KeyError, ValueError) as e:
-                task.error_message = f"Failed to parse branch SHA from response: {str(e)}"
+                task.error_message = (
+                    f"Failed to parse branch SHA from response: {str(e)}"
+                )
                 logger.error(f"Failed to parse branch SHA from response: {str(e)}")
                 return False
 
@@ -727,7 +1027,9 @@ class GitHubAutonomyService:
             except Exception as e:
                 status_code, detail = self._extract_http_error_detail(e)
                 if status_code == 422:
-                    logger.info(f"Branch already exists: {task.branch_name} (idempotent)")
+                    logger.info(
+                        f"Branch already exists: {task.branch_name} (idempotent)"
+                    )
                     return True
 
                 if status_code is not None:
@@ -736,7 +1038,9 @@ class GitHubAutonomyService:
                     )
                     logger.error(task.error_message)
                 else:
-                    task.error_message = f"Branch creation failed with exception: {detail}"
+                    task.error_message = (
+                        f"Branch creation failed with exception: {detail}"
+                    )
                     logger.error(task.error_message)
                 return False
 
@@ -762,160 +1066,17 @@ class GitHubAutonomyService:
     async def _commit_branch_changes(
         self, task: GitHubTask, files_changed: list[Any]
     ) -> str | None:
-        """Commit changed files to the task branch and return the new SHA."""
-        try:
-            # Ensure the task branch exists locally before staging changes.
-            try:
-                subprocess.run(
-                    ["git", "checkout", task.branch_name],
-                    cwd=self.repo_root,
-                    check=True,
-                    capture_output=True,
-                    text=True,
-                )
-                logger.info(f"Checked out branch: {task.branch_name}")
-            except subprocess.CalledProcessError as e:
-                logger.warning(
-                    f"Local checkout missing for {task.branch_name}, bootstrapping branch: {e.stderr}"
-                )
-                try:
-                    subprocess.run(
-                        ["git", "fetch", "origin", task.branch_name],
-                        cwd=self.repo_root,
-                        check=True,
-                        capture_output=True,
-                        text=True,
-                    )
-                    subprocess.run(
-                        ["git", "checkout", "-B", task.branch_name, "FETCH_HEAD"],
-                        cwd=self.repo_root,
-                        check=True,
-                        capture_output=True,
-                        text=True,
-                    )
-                    logger.info(f"Created local branch {task.branch_name} from remote branch")
-                except subprocess.CalledProcessError:
-                    try:
-                        subprocess.run(
-                            ["git", "fetch", "origin", "main"],
-                            cwd=self.repo_root,
-                            check=True,
-                            capture_output=True,
-                            text=True,
-                        )
-                        subprocess.run(
-                            ["git", "checkout", "-B", task.branch_name, "origin/main"],
-                            cwd=self.repo_root,
-                            check=True,
-                            capture_output=True,
-                            text=True,
-                        )
-                        logger.info(f"Created local branch {task.branch_name} from origin/main")
-                    except subprocess.CalledProcessError as bootstrap_error:
-                        logger.error(
-                            f"Failed to bootstrap branch {task.branch_name}: {bootstrap_error.stderr}"
-                        )
-                        return None
-
-            # Stage the changed files on the task branch
-            for file_path in files_changed:
-                subprocess.run(
-                    ["git", "add", str(file_path)],
-                    cwd=self.repo_root,
-                    check=True,
-                    capture_output=True,
-                )
-                logger.debug(f"Staged file: {file_path}")
-
-            # Create commit with message from issue/task
-            commit_message = (
-                f"Auto: Resolve issue #{task.github_issue_number}\n\n"
-                f"Issue: {task.title}\n"
-                f"Branch: {task.branch_name}"
-            )
-
-            subprocess.run(
-                ["git", "commit", "--no-verify", "-m", commit_message],
-                cwd=self.repo_root,
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-
-            sha_result = subprocess.run(
-                ["git", "rev-parse", "HEAD"],
-                cwd=self.repo_root,
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-            commit_sha = sha_result.stdout.strip()
-
-            logger.info(f"Committed changes on {task.branch_name}: {commit_sha[:8]}...")
-            return commit_sha or None
-        except subprocess.CalledProcessError as e:
-            logger.error(f"Failed to commit changes on {task.branch_name}: {e.stderr}")
-            return None
-        except Exception as e:
-            logger.error(f"Commit failed with exception: {str(e)}")
-            return None
+        """Backward-compatible wrapper around isolated commits."""
+        return await self._commit_workspace_changes(task, files_changed, self.repo_root)
 
     async def _push_branch(self, task: GitHubTask) -> bool:
-        """Push the task branch to GitHub with isolation guarantees."""
-        try:
-            owner, repo = task.github_repo.split("/")
-
-            # Verify we're still on the task branch (safety check)
-            branch_check = subprocess.run(
-                ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-                cwd=self.repo_root,
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-            current_branch = branch_check.stdout.strip()
-
-            if current_branch != task.branch_name:
-                logger.error(
-                    f"Not on task branch! Current: {current_branch}, Expected: {task.branch_name}"
-                )
-                # Try to recover by checking out the branch
-                subprocess.run(
-                    ["git", "checkout", task.branch_name],
-                    cwd=self.repo_root,
-                    check=True,
-                    capture_output=True,
-                )
-                logger.info(f"Recovered: checked out {task.branch_name}")
-
-            # Push task branch to origin using explicit branch reference (isolated push)
-            push_url = f"https://{self.github_token}@github.com/{owner}/{repo}.git"
-
-            result = subprocess.run(
-                [
-                    "git",
-                    "push",
-                    "-u",
-                    push_url,
-                    f"{task.branch_name}:{task.branch_name}",
-                ],
-                cwd=self.repo_root,
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-
-            logger.info(f"Pushed branch {task.branch_name}: {result.stdout}")
-            return True
-        except subprocess.CalledProcessError as e:
-            logger.error(f"Failed to push branch {task.branch_name}: {e.stderr}")
-            return False
-        except Exception as e:
-            logger.error(f"Push failed with exception: {str(e)}")
-            return False
+        """Backward-compatible wrapper around isolated pushes."""
+        return await self._push_workspace_branch(task, self.repo_root)
 
     async def _create_pull_request_for_branch(self, task: GitHubTask) -> int | None:
         """Create a pull request for the branch"""
+        if not self._should_publish_to_github(task):
+            return None
         try:
             owner, repo = task.github_repo.split("/")
 
