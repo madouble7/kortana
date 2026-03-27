@@ -1,7 +1,11 @@
 import * as vscode from "vscode";
 
 import { createNonce, renderHtmlDocument } from "./html";
-import { REQUEST_METRICS_STATE } from "./messages";
+import {
+    createRequestMessage,
+    REQUEST_METRICS_STATE,
+    RESPONSE_METRICS_STATE,
+} from "./messages";
 
 export function getMetricsContent(webview: vscode.Webview): string {
     const nonce = createNonce();
@@ -38,11 +42,15 @@ function getMetricsBody(): string {
 }
 
 function getMetricsScript(): string {
+    const requestMetricsStateMessage = JSON.stringify(
+        createRequestMessage(REQUEST_METRICS_STATE)
+    );
+
     return `
 const vscodeApi = acquireVsCodeApi();
 
 function requestMetricsState() {
-    vscodeApi.postMessage({ type: "${REQUEST_METRICS_STATE}" });
+    vscodeApi.postMessage(${requestMetricsStateMessage});
 }
 
 function updateMetricsState(payload) {
@@ -55,7 +63,7 @@ function updateMetricsState(payload) {
 
 window.addEventListener("message", (event) => {
     const message = event.data;
-    if (message.type === "metricsState") {
+    if (message.type === "${RESPONSE_METRICS_STATE}") {
         updateMetricsState(message.payload);
     }
 });

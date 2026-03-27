@@ -1,5 +1,6 @@
 import * as assert from "assert";
 import * as vscode from "vscode";
+import { runContractTests } from "./contract";
 
 import {
     buildAuditLogPayload,
@@ -34,6 +35,8 @@ const EXPECTED_REQUEST_TYPES: Record<string, string> = {
 };
 
 export async function run(): Promise<void> {
+    runContractTests();
+
     const extension = vscode.extensions.all.find(
         (candidate) => candidate.packageJSON.name === "kortana-vscode"
     );
