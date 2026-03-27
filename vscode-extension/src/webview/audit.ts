@@ -6,6 +6,7 @@ import {
     REQUEST_AUDIT_LOG,
     RESPONSE_AUDIT_LOG,
 } from "./messages";
+import { createWebviewRuntimeScript } from "./runtime";
 
 export function getAutonomyAuditContent(webview: vscode.Webview): string {
     const nonce = createNonce();
@@ -41,17 +42,7 @@ function getAuditBody(): string {
 }
 
 function getAuditScript(): string {
-    const requestAuditLogMessage = JSON.stringify(
-        createRequestMessage(REQUEST_AUDIT_LOG)
-    );
-
     return `
-const vscodeApi = acquireVsCodeApi();
-
-function requestAuditLog() {
-    vscodeApi.postMessage(${requestAuditLogMessage});
-}
-
 function formatTimestamp(value) {
     if (!value) {
         return "";
@@ -91,15 +82,21 @@ function renderAuditLog(actions) {
         log.appendChild(item);
     }
 }
-
-window.addEventListener("message", (event) => {
-    const message = event.data;
-    if (message.type === "${RESPONSE_AUDIT_LOG}") {
-        renderAuditLog(message.payload);
-    }
-});
-
-requestAuditLog();
-setInterval(requestAuditLog, 5000);
+${createWebviewRuntimeScript({
+        requestPollers: [
+            {
+                functionName: "requestAuditLog",
+                message: createRequestMessage(REQUEST_AUDIT_LOG),
+                intervalMs: 5000,
+                invokeImmediately: true,
+            },
+        ],
+        responseBindings: [
+            {
+                type: RESPONSE_AUDIT_LOG,
+                handlerName: "renderAuditLog",
+            },
+        ],
+    })}
     `;
 }
