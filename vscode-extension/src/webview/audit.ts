@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 
+import { createWebviewDomHelpersScript } from "./dom";
 import { createNonce, renderHtmlDocument } from "./html";
 import {
     createRequestMessage,
@@ -43,6 +44,7 @@ function getAuditBody(): string {
 
 function getAuditScript(): string {
     return `
+${createWebviewDomHelpersScript()}
 function formatTimestamp(value) {
     if (!value) {
         return "";
@@ -53,30 +55,33 @@ function formatTimestamp(value) {
 }
 
 function renderAuditLog(actions) {
-    const log = document.getElementById("audit-log");
-    log.replaceChildren();
-
     if (!actions.length) {
-        const empty = document.createElement("div");
-        empty.className = "audit-item status-pending";
-        const strong = document.createElement("strong");
-        strong.textContent = "No audit actions available";
-        empty.appendChild(strong);
-        log.appendChild(empty);
+        renderStateBlock(
+            "audit-log",
+            "No audit actions available",
+            "",
+            "audit-item status-pending"
+        );
         return;
     }
 
-    for (const action of actions) {
-        const item = document.createElement("div");
-        item.className = "audit-item status-" + action.status;
+    const log = getRequiredElement("audit-log");
+    replaceElementChildren("audit-log");
 
-        const title = document.createElement("strong");
-        title.textContent = action.type + ": " + action.description;
+    for (const action of actions) {
+        const item = createDomElement("div", {
+            className: "audit-item status-" + action.status,
+        });
+
+        const title = createDomElement("strong", {
+            textContent: action.type + ": " + action.description,
+        });
         item.appendChild(title);
         item.appendChild(document.createElement("br"));
 
-        const timestamp = document.createElement("small");
-        timestamp.textContent = formatTimestamp(action.timestamp);
+        const timestamp = createDomElement("small", {
+            textContent: formatTimestamp(action.timestamp),
+        });
         item.appendChild(timestamp);
 
         log.appendChild(item);
