@@ -12,6 +12,7 @@ import subprocess
 import tempfile
 from base64 import b64encode
 from datetime import datetime
+from fnmatch import fnmatch
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -65,6 +66,23 @@ _REPO_CONTEXT_PREFERRED_FILES = (
     "docker-compose.yml",
     "package.json",
     "backend/requirements.txt",
+)
+_PROTECTED_PATH_PATTERNS = (
+    ".env",
+    ".env.*",
+    "**/.env",
+    "**/.env.*",
+    "*.pem",
+    "*.key",
+    "*.crt",
+    "*.p12",
+    "*.pfx",
+    "*.secrets.*",
+    "*secret*.json",
+    "*secret*.yaml",
+    "*secret*.yml",
+    ".kortana/operator_inbox.md",
+    ".kortana/OPERATOR_PROTOCOL.md",
 )
 
 
@@ -151,7 +169,22 @@ class GitHubAutonomyService:
 
     @staticmethod
     def _normalize_repo_path(path: str) -> str:
-        return path.replace("\\", "/").strip().lstrip("./")
+        normalized = path.replace("\\", "/").strip()
+        while normalized.startswith("./"):
+            normalized = normalized[2:]
+        return normalized
+
+    @staticmethod
+    def _protected_path_reason(path: str) -> str | None:
+        normalized = GitHubAutonomyService._normalize_repo_path(path)
+        if not normalized:
+            return None
+
+        basename = PurePosixPath(normalized).name
+        for pattern in _PROTECTED_PATH_PATTERNS:
+            if fnmatch(normalized, pattern) or fnmatch(basename, pattern):
+                return f"path matches protected pattern {pattern}"
+        return None
 
     def _repo_inventory(self) -> list[str]:
         if self._repo_inventory_cache is not None:
@@ -250,6 +283,9 @@ class GitHubAutonomyService:
         pure_path = PurePosixPath(path)
         if pure_path.is_absolute() or ".." in pure_path.parts:
             return "path escapes the repository root"
+        protected_reason = self._protected_path_reason(path)
+        if protected_reason is not None:
+            return protected_reason
 
         action = str(file_change.get("action", "modify")).lower()
         if action in {"modify", "delete"} and path not in shape["existing_files"]:
@@ -310,6 +346,189 @@ class GitHubAutonomyService:
             "VALIDATION_NOTES": validation_notes,
         }
         return json.dumps(sanitized_plan, indent=2)
+
+    def _plan_payload(self, plan_text: str) -> dict[str, Any]:
+        try:
+            payload = json.loads(plan_text or "{}")
+        except json.JSONDecodeError:
+            return {}
+        return payload if isinstance(payload, dict) else {}
+
+    def _planned_file_changes(self, plan_text: str) -> list[str]:
+        payload = self._plan_payload(plan_text)
+        files = payload.get("FILE_CHANGES") or payload.get("files") or []
+        normalized: list[str] = []
+        for item in files:
+            if not isinstance(item, dict):
+                continue
+            candidate = self._normalize_repo_path(
+                str(item.get("file") or item.get("path") or "")
+            )
+            if candidate and candidate not in normalized:
+                normalized.append(candidate)
+        return normalized
+
+    def _planned_commands(self, plan_text: str) -> list[str]:
+        payload = self._plan_payload(plan_text)
+        commands = payload.get("COMMANDS") or payload.get("commands") or []
+        return [str(command).strip() for command in commands if str(command).strip()]
+
+    def _planned_tests(self, plan_text: str) -> list[str]:
+        payload = self._plan_payload(plan_text)
+        tests = payload.get("TESTS") or payload.get("tests") or []
+        return [str(test).strip() for test in tests if str(test).strip()]
+
+    def _validation_notes(self, plan_text: str) -> list[str]:
+        payload = self._plan_payload(plan_text)
+        notes = payload.get("VALIDATION_NOTES") or payload.get("validation_notes") or []
+        return [str(note).strip() for note in notes if str(note).strip()]
+
+    def _build_plan_validation_report(
+        self,
+        task: GitHubTask,
+        plan_text: str,
+    ) -> dict[str, Any]:
+        planned_files = self._planned_file_changes(plan_text)
+        validation_notes = self._validation_notes(plan_text)
+        blocked_paths = [
+            note.split(":", 1)[0].strip()
+            for note in validation_notes
+            if "protected pattern" in note
+        ]
+        validations = [
+            {
+                "name": "repo_grounding",
+                "status": "adjusted" if validation_notes else "passed",
+                "details": (
+                    f"{len(validation_notes)} plan adjustments applied"
+                    if validation_notes
+                    else "Plan remained inside observed repository shape"
+                ),
+            },
+            {
+                "name": "protected_path_guard",
+                "status": "blocked" if blocked_paths else "passed",
+                "details": (
+                    "Blocked protected paths: " + ", ".join(blocked_paths[:6])
+                    if blocked_paths
+                    else "No protected paths were requested"
+                ),
+            },
+        ]
+        return {
+            "stage": "planning_complete",
+            "updated_at": datetime.utcnow().isoformat(),
+            "publish_target": (
+                "github" if self._should_publish_to_github(task) else "local"
+            ),
+            "workspace_strategy": (
+                "clone" if self._should_publish_to_github(task) else "worktree"
+            ),
+            "planned_files": planned_files,
+            "planned_commands": self._planned_commands(plan_text),
+            "planned_tests": self._planned_tests(plan_text),
+            "validation_notes": validation_notes,
+            "blocked_paths": blocked_paths,
+            "validations": validations,
+        }
+
+    def _build_execution_validation_report(
+        self,
+        *,
+        task: GitHubTask,
+        normalized_files: list[str],
+        dry_run: bool,
+        publish_to_github: bool,
+        workspace: Path,
+        codegen_result: dict[str, Any],
+    ) -> dict[str, Any]:
+        workspace_mode = (
+            "repo"
+            if dry_run
+            else self._workspace_modes.get(
+                str(workspace), "worktree" if not publish_to_github else "clone"
+            )
+        )
+        created = [str(item) for item in codegen_result.get("created", [])]
+        modified = [str(item) for item in codegen_result.get("modified", [])]
+        deleted = [str(item) for item in codegen_result.get("deleted", [])]
+        validations = [
+            {
+                "name": "protected_path_guard",
+                "status": "passed",
+                "details": f"Checked {len(normalized_files)} changed files against protected patterns",
+            },
+            {
+                "name": "code_generation",
+                "status": "passed",
+                "details": (
+                    f"created={len(created)} modified={len(modified)} deleted={len(deleted)}"
+                ),
+            },
+            {
+                "name": "artifact_publish",
+                "status": "passed" if task.commit_sha or dry_run else "skipped",
+                "details": (
+                    f"commit={task.commit_sha or 'dry-run'} "
+                    f"pr={task.github_pr_number or 'none'} "
+                    f"target={'github' if publish_to_github else 'local'}"
+                ),
+            },
+        ]
+        return {
+            "stage": "executed" if not dry_run else "dry_run",
+            "updated_at": datetime.utcnow().isoformat(),
+            "publish_target": "github" if publish_to_github else "local",
+            "workspace_strategy": workspace_mode,
+            "changed_files": normalized_files,
+            "change_counts": {
+                "created": len(created),
+                "modified": len(modified),
+                "deleted": len(deleted),
+            },
+            "commit_sha": task.commit_sha,
+            "github_pr_number": task.github_pr_number,
+            "validations": validations,
+        }
+
+    def _merge_validation_report(
+        self,
+        existing: Any,
+        entry: dict[str, Any],
+    ) -> dict[str, Any]:
+        if isinstance(existing, dict):
+            merged = dict(existing)
+            history = list(merged.get("history") or [])
+        else:
+            merged = {}
+            history = []
+
+        history.append(entry)
+        merged.update(entry)
+        merged["history"] = history[-10:]
+        return merged
+
+    def _record_validation_report(
+        self,
+        task: GitHubTask,
+        entry: dict[str, Any],
+    ) -> None:
+        task.validation_report = self._merge_validation_report(
+            getattr(task, "validation_report", None),
+            entry,
+        )
+
+    def _enforce_execution_paths(self, paths: list[str]) -> None:
+        blocked = [
+            path
+            for path in paths
+            if self._protected_path_reason(self._normalize_repo_path(path)) is not None
+        ]
+        if blocked:
+            raise ValueError(
+                "Execution attempted to touch protected paths: "
+                + ", ".join(blocked[:6])
+            )
 
     def _git_output(self, command: list[str], cwd: Path | None = None) -> str:
         working_dir = cwd or self.repo_root
@@ -638,6 +857,10 @@ class GitHubAutonomyService:
             raw_plan = await self._maybe_await(gemini_service.analyze_text(prompt))
             plan = self._sanitize_plan_for_repo(raw_plan)
             task.plan = plan
+            self._record_validation_report(
+                task,
+                self._build_plan_validation_report(task, plan),
+            )
             task.status = "planning_complete"
         except Exception as e:
             logger.error(f"Planning failed: {str(e)}")
@@ -703,6 +926,7 @@ class GitHubAutonomyService:
                 )
             ]
             normalized_files = self._normalize_changed_files(files_changed, workspace)
+            self._enforce_execution_paths(normalized_files)
             task.code_changes = normalized_files or None
 
             # 3. Commit changes to the branch (if not dry-run)
@@ -734,12 +958,43 @@ class GitHubAutonomyService:
                             task.branch_name,
                         )
 
+            self._record_validation_report(
+                task,
+                self._build_execution_validation_report(
+                    task=task,
+                    normalized_files=normalized_files,
+                    dry_run=dry_run,
+                    publish_to_github=publish_to_github,
+                    workspace=workspace,
+                    codegen_result=result,
+                ),
+            )
+
             task.status = "executed"
             task.executed_at = datetime.utcnow()
             await self._db_commit()
             return task
         except Exception as e:
             logger.error(f"Execution failed: {str(e)}")
+            self._record_validation_report(
+                task,
+                {
+                    "stage": "execution_failed",
+                    "updated_at": datetime.utcnow().isoformat(),
+                    "publish_target": "github" if publish_to_github else "local",
+                    "workspace_strategy": (
+                        "repo"
+                        if dry_run
+                        else self._workspace_modes.get(
+                            str(workspace),
+                            "worktree" if not publish_to_github else "clone",
+                        )
+                        if workspace is not None
+                        else None
+                    ),
+                    "error": str(e),
+                },
+            )
             task.status = "planning_complete"
             task.error_message = str(e)
             task.error_count = (task.error_count or 0) + 1

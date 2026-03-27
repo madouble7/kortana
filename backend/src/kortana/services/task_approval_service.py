@@ -51,6 +51,7 @@ class ApprovalDecision:
     file_count: int
     sensitive_paths: list[str] = field(default_factory=list)
     factors: list[str] = field(default_factory=list)
+    validation_summary: dict[str, Any] = field(default_factory=dict)
 
 
 class TaskApprovalService:
@@ -81,6 +82,13 @@ class TaskApprovalService:
             for path in file_changes
             if any(path.startswith(prefix) for prefix in _SENSITIVE_PATH_PREFIXES)
         ]
+        validation_summary = self.summarize_validation(task)
+        blocked_paths = list(validation_summary.get("blocked_paths") or [])
+        failed_validations = list(validation_summary.get("failed_validations") or [])
+        adjusted_validations = list(
+            validation_summary.get("adjusted_validations") or []
+        )
+        planned_tests = list(validation_summary.get("planned_tests") or [])
 
         risk_score = 0
         factors: list[str] = []
@@ -110,6 +118,22 @@ class TaskApprovalService:
         if sensitive_paths:
             risk_score += min(4, 2 + len(sensitive_paths))
             factors.append("sensitive_paths")
+        if blocked_paths:
+            risk_score += min(5, 3 + len(blocked_paths))
+            factors.append("validation:blocked_paths")
+        if failed_validations:
+            risk_score += min(3, len(failed_validations))
+            factors.append("validation:failed_checks")
+        if adjusted_validations:
+            risk_score += 1
+            factors.append("validation:adjusted_plan")
+        if (
+            validation_summary.get("report_present")
+            and file_count > 0
+            and not planned_tests
+        ):
+            risk_score += 1
+            factors.append("validation:no_tests")
 
         if system_state == "critical":
             risk_score += 6
@@ -177,6 +201,7 @@ class TaskApprovalService:
             file_count=file_count,
             sensitive_paths=sensitive_paths,
             factors=factors,
+            validation_summary=validation_summary,
         )
 
     async def record_decision(
@@ -201,6 +226,7 @@ class TaskApprovalService:
             "factors": decision.factors,
             "sensitive_paths": decision.sensitive_paths,
             "file_count": decision.file_count,
+            "validation_summary": decision.validation_summary,
         }
         approval.risk_score = decision.risk_score
         approval.risk_level = decision.risk_level
@@ -273,6 +299,7 @@ class TaskApprovalService:
 
     @staticmethod
     def serialize(approval: TaskApproval) -> dict[str, Any]:
+        decision_factors = approval.decision_factors or {}
         return {
             "id": approval.id,
             "github_task_id": approval.github_task_id,
@@ -281,7 +308,8 @@ class TaskApprovalService:
             "review_required": approval.review_required,
             "reviewer": approval.reviewer,
             "rationale": approval.rationale,
-            "decision_factors": approval.decision_factors or {},
+            "decision_factors": decision_factors,
+            "validation_summary": decision_factors.get("validation_summary") or {},
             "risk_score": approval.risk_score,
             "risk_level": approval.risk_level,
             "confidence": approval.confidence,
@@ -295,6 +323,64 @@ class TaskApprovalService:
             "resolved_at": approval.resolved_at.isoformat()
             if approval.resolved_at
             else None,
+        }
+
+    @staticmethod
+    def summarize_validation(task: GitHubTask | None) -> dict[str, Any]:
+        report = getattr(task, "validation_report", None)
+        if not isinstance(report, dict):
+            return {
+                "report_present": False,
+                "stage": None,
+                "blocked_paths": [],
+                "planned_tests": [],
+                "changed_files": [],
+                "validation_notes": [],
+                "failed_validations": [],
+                "adjusted_validations": [],
+                "history_length": 0,
+            }
+
+        blocked_paths = TaskApprovalService._normalized_strings(
+            report.get("blocked_paths")
+        )
+        planned_tests = TaskApprovalService._normalized_strings(
+            report.get("planned_tests")
+        )
+        changed_files = TaskApprovalService._normalized_strings(
+            report.get("changed_files") or report.get("planned_files")
+        )
+        validation_notes = TaskApprovalService._normalized_strings(
+            report.get("validation_notes")
+        )
+
+        failed_validations: list[str] = []
+        adjusted_validations: list[str] = []
+        validations = report.get("validations")
+        if isinstance(validations, list):
+            for item in validations:
+                if not isinstance(item, dict):
+                    continue
+                name = str(item.get("name") or "unknown").strip()
+                status = str(item.get("status") or "unknown").strip().lower()
+                if status in {"blocked", "failed"}:
+                    failed_validations.append(name)
+                elif status == "adjusted":
+                    adjusted_validations.append(name)
+
+        history = report.get("history")
+        history_length = len(history) if isinstance(history, list) else 0
+
+        return {
+            "report_present": True,
+            "stage": report.get("stage"),
+            "blocked_paths": blocked_paths,
+            "planned_tests": planned_tests,
+            "changed_files": changed_files,
+            "validation_notes": validation_notes,
+            "failed_validations": failed_validations,
+            "adjusted_validations": adjusted_validations,
+            "history_length": history_length,
         }
 
     async def _get_open_approval(self, task_id: str) -> TaskApproval | None:
@@ -393,3 +479,14 @@ class TaskApprovalService:
             f"{mode} approval {verb} with confidence {confidence:.2f} "
             f"and {risk_level} risk. Factors: {factor_text}.{sensitive_text}"
         )
+
+    @staticmethod
+    def _normalized_strings(value: Any) -> list[str]:
+        if not isinstance(value, list):
+            return []
+        normalized: list[str] = []
+        for item in value:
+            candidate = str(item).strip()
+            if candidate and candidate not in normalized:
+                normalized.append(candidate)
+        return normalized

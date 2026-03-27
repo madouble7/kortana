@@ -202,6 +202,7 @@ class GitHubTask(Base):
         self.branch_name = value  # type: ignore[assignment]
 
     code_changes = Column(JSON, nullable=True)
+    validation_report = Column(JSON, nullable=True)
     error_message = Column(Text, nullable=True)
     error_count = Column(Integer, default=0, nullable=False)  # Track retry attempts
     max_retries = Column(Integer, default=3, nullable=False)

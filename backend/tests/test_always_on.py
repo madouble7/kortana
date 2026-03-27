@@ -2,6 +2,7 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from src.kortana.models import GitHubTask
 
 # ========================================
 # AlwaysOnMonitor unit tests
@@ -276,7 +277,9 @@ class TestAlwaysOnMonitorCycle:
             "_monitoring_cycle",
             new=AsyncMock(side_effect=stop_after_first_cycle),
         ):
-            with patch("src.kortana.services.always_on_monitor.asyncio.sleep", new=AsyncMock()):
+            with patch(
+                "src.kortana.services.always_on_monitor.asyncio.sleep", new=AsyncMock()
+            ):
                 await monitor.start_monitoring()
 
         assert monitor.is_running is False
@@ -414,3 +417,44 @@ class TestAlwaysOnRouter:
             assert resp.status_code == 200
             data = resp.json()
             assert "result" in data
+
+
+def test_serialize_task_includes_validation_evidence():
+    from src.kortana.routers.always_on import _serialize_task
+
+    task = GitHubTask(
+        id="task-observe",
+        github_issue_number=321,
+        github_repo="madouble7/kortana",
+        title="Surface validation",
+        description="desc",
+        status="waiting_for_approval",
+        classification="approval",
+        priority="high",
+        branch_name="auto/local/321-surface-validation",
+        commit_sha="deadbeef",
+        github_pr_number=17,
+        code_changes=["backend/src/kortana/demo.py"],
+        error_message="guardrail hold",
+        validation_report={
+            "stage": "planning_complete",
+            "blocked_paths": [".env"],
+            "planned_tests": ["python -m pytest backend/tests/test_always_on.py -q"],
+            "validations": [
+                {"name": "repo_grounding", "status": "adjusted"},
+                {"name": "protected_path_guard", "status": "blocked"},
+            ],
+        },
+    )
+
+    payload = _serialize_task(task)
+
+    assert payload["id"] == "task-observe"
+    assert payload["commit_sha"] == "deadbeef"
+    assert payload["github_pr_number"] == 17
+    assert payload["code_changes"] == ["backend/src/kortana/demo.py"]
+    assert payload["validation_report"]["stage"] == "planning_complete"
+    assert payload["validation_summary"]["blocked_paths"] == [".env"]
+    assert payload["validation_summary"]["failed_validations"] == [
+        "protected_path_guard"
+    ]

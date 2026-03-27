@@ -80,6 +80,50 @@ async def test_self_aware_approval_auto_approves_low_risk_task(
 
 
 @pytest.mark.asyncio
+async def test_self_aware_approval_holds_when_validation_blocks_protected_paths(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setenv("KORTANA_SELF_AWARE_APPROVAL", "true")
+    session = AsyncMock()
+    service = TaskApprovalService(session)
+    task = GitHubTask(
+        id="task-guarded",
+        github_issue_number=150,
+        github_repo="madouble7/kortana",
+        title="Touch protected config",
+        description="guardrail check",
+        priority="medium",
+        classification="auto",
+        plan='{"FILE_CHANGES":[{"file":"backend/src/kortana/demo.py","action":"modify"}]}',
+        validation_report={
+            "stage": "planning_complete",
+            "blocked_paths": [".env"],
+            "planned_tests": [],
+            "validation_notes": [".env: path matches protected pattern .env"],
+            "validations": [
+                {"name": "repo_grounding", "status": "adjusted"},
+                {"name": "protected_path_guard", "status": "blocked"},
+            ],
+        },
+    )
+
+    decision = await service.evaluate_task(
+        task,
+        approval_mode="self-aware",
+        system_state="nominal",
+        runtime_profile={"execution_confidence": 0.91},
+        workspace_status={"changed_count": 3},
+    )
+
+    assert decision is not None
+    assert decision.approved is False
+    assert decision.review_required is True
+    assert "validation:blocked_paths" in decision.factors
+    assert decision.validation_summary["blocked_paths"] == [".env"]
+    assert decision.validation_summary["failed_validations"] == ["protected_path_guard"]
+
+
+@pytest.mark.asyncio
 async def test_auto_approval_bypasses_risk_holds(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("KORTANA_DEFAULT_APPROVAL_MODE", "auto")
     session = AsyncMock()
@@ -147,6 +191,7 @@ async def test_record_decision_moves_task_into_approval_queue():
 
     assert task.status == "waiting_for_approval"
     assert approval.status == "pending"
+    assert approval.decision_factors["validation_summary"]["report_present"] is False
     session.add.assert_called_once()
 
 
@@ -185,6 +230,51 @@ async def test_record_decision_marks_auto_mode_as_autonomous():
 
     assert approval.status == "auto_approved"
     assert approval.reviewer == "autonomous"
+
+
+@pytest.mark.asyncio
+async def test_record_decision_persists_validation_summary():
+    session = AsyncMock()
+    session.execute = AsyncMock(
+        return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=None))
+    )
+    session.flush = AsyncMock()
+    session.add = MagicMock()
+    service = TaskApprovalService(session)
+
+    task = GitHubTask(
+        id="task-validation",
+        github_issue_number=151,
+        github_repo="madouble7/kortana",
+        title="Approval payload",
+        description="desc",
+        status="planning_complete",
+        priority="medium",
+        validation_report={
+            "stage": "planning_complete",
+            "blocked_paths": [".env"],
+            "planned_tests": [
+                "python -m pytest backend/tests/test_task_approval_service.py -q"
+            ],
+            "validations": [
+                {"name": "protected_path_guard", "status": "blocked"},
+            ],
+        },
+    )
+
+    decision = await service.evaluate_task(
+        task,
+        approval_mode="manual",
+        system_state="nominal",
+        runtime_profile={"execution_confidence": 0.9},
+        workspace_status={"changed_count": 2},
+    )
+
+    assert decision is not None
+    approval = await service.record_decision(task, decision)
+
+    assert approval.decision_factors["validation_summary"]["blocked_paths"] == [".env"]
+    assert approval.decision_factors["validation_summary"]["report_present"] is True
 
 
 @pytest.mark.asyncio

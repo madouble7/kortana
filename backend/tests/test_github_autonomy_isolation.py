@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
@@ -28,6 +29,7 @@ async def test_execute_task_uses_isolated_workspace(tmp_path, monkeypatch):
     task.error_count = 0
     task.commit_sha = None
     task.github_pr_number = None
+    task.validation_report = None
 
     workspace = tmp_path / "task-worktree"
     generated = workspace / "backend" / "src" / "kortana" / "demo.py"
@@ -56,6 +58,9 @@ async def test_execute_task_uses_isolated_workspace(tmp_path, monkeypatch):
     assert task.commit_sha == "abc123def"
     assert task.github_pr_number == 99
     assert task.code_changes == ["backend/src/kortana/demo.py"]
+    assert task.validation_report["stage"] == "executed"
+    assert task.validation_report["changed_files"] == ["backend/src/kortana/demo.py"]
+    assert task.validation_report["publish_target"] == "github"
     assert service.code_gen.generate_from_gemini_plan.call_args.kwargs[
         "repo_path"
     ] == str(workspace)
@@ -90,6 +95,7 @@ async def test_execute_task_skips_github_publish_when_mode_deferred(
     task.error_count = 0
     task.commit_sha = None
     task.github_pr_number = None
+    task.validation_report = None
 
     workspace = tmp_path / "task-worktree"
     generated = workspace / "backend" / "src" / "kortana" / "demo.py"
@@ -117,9 +123,48 @@ async def test_execute_task_skips_github_publish_when_mode_deferred(
     assert task.status == "executed"
     assert task.commit_sha == "feedface1234"
     assert task.github_pr_number is None
+    assert task.validation_report["publish_target"] == "local"
     service._create_branch.assert_not_awaited()
     service._push_workspace_branch.assert_not_awaited()
     service._create_pull_request_for_branch.assert_not_awaited()
+
+
+def test_sanitize_plan_blocks_protected_paths(monkeypatch):
+    monkeypatch.setenv("GITHUB_TOKEN", "test-token")
+    service = GitHubAutonomyService(db_session=MagicMock())
+
+    sanitized = service._sanitize_plan_for_repo(
+        json.dumps(
+            {
+                "FILE_CHANGES": [
+                    {
+                        "file": ".env",
+                        "action": "modify",
+                        "content": "OPENAI_API_KEY=badidea\n",
+                    },
+                    {
+                        "file": "backend/src/kortana/demo.py",
+                        "action": "create",
+                        "content": "print(1)\n",
+                    },
+                ],
+                "TESTS": ["python -m pytest backend/tests/test_demo.py -q"],
+            }
+        )
+    )
+
+    payload = json.loads(sanitized)
+
+    assert payload["FILE_CHANGES"] == [
+        {
+            "path": "backend/src/kortana/demo.py",
+            "action": "create",
+            "content": "print(1)\n",
+            "dependencies": [],
+            "priority": 0,
+        }
+    ]
+    assert any("protected pattern .env" in note for note in payload["VALIDATION_NOTES"])
 
 
 def test_normalize_changed_files_relativizes_workspace_paths(tmp_path, monkeypatch):
@@ -162,6 +207,55 @@ async def test_commit_workspace_changes_uses_passed_workspace(tmp_path, monkeypa
     assert service._run_git.call_args_list[0].kwargs["cwd"] == workspace
     assert service._run_git.call_args_list[1].kwargs["cwd"] == workspace
     assert service._run_git.call_args_list[2].kwargs["cwd"] == workspace
+
+
+@pytest.mark.asyncio
+async def test_execute_task_rejects_protected_paths(tmp_path, monkeypatch):
+    monkeypatch.setenv("GITHUB_TOKEN", "test-token")
+    monkeypatch.setenv("KORTANA_GITHUB_MODE", "deferred")
+
+    service = GitHubAutonomyService(db_session=MagicMock())
+    service._db_commit = AsyncMock()
+    service._db_rollback = AsyncMock()
+
+    task = GitHubTask(
+        id="task-protected",
+        github_issue_number=88,
+        github_repo="madouble7/kortana",
+        title="Protected path",
+        description="desc",
+        branch_name="auto/local/88-protected-path",
+        plan='{"FILE_CHANGES":[{"file":".env","action":"modify","content":"SECRET=1\\n"}]}',
+        status="planning_complete",
+        error_count=0,
+    )
+
+    workspace = tmp_path / "task-worktree"
+    secret_file = workspace / ".env"
+    secret_file.parent.mkdir(parents=True, exist_ok=True)
+    secret_file.write_text("SECRET=1\n", encoding="utf-8")
+
+    service._prepare_execution_workspace = AsyncMock(return_value=workspace)
+    service._commit_workspace_changes = AsyncMock()
+    service._cleanup_execution_workspace = AsyncMock()
+    service.code_gen.generate_from_gemini_plan = MagicMock(
+        return_value={
+            "created": [str(secret_file)],
+            "modified": [],
+            "deleted": [],
+            "errors": [],
+        }
+    )
+
+    with pytest.raises(Exception, match="protected paths"):
+        await service.execute_task(task)
+
+    assert task.status == "planning_complete"
+    assert "protected paths" in str(task.error_message)
+    assert task.validation_report["stage"] == "execution_failed"
+    assert ".env" in str(task.validation_report["error"])
+    service._commit_workspace_changes.assert_not_awaited()
+    service._cleanup_execution_workspace.assert_awaited_once_with(workspace)
 
 
 @pytest.mark.asyncio

@@ -178,12 +178,21 @@ async def setup_test_db(test_db_url, test_engine):
     import subprocess
     from pathlib import Path
 
+    backend_dir = Path(__file__).parent.parent
+    relative_db_path = test_db_url.replace("sqlite+aiosqlite:///", "")
+    db_path = (backend_dir / relative_db_path).resolve()
+
+    if db_path.exists():
+        try:
+            db_path.unlink()
+        except PermissionError:
+            pass
+
     # Set DATABASE_URL for alembic
     env = os.environ.copy()
-    env["DATABASE_URL"] = test_db_url.replace("sqlite+aiosqlite", "sqlite")
+    env["DATABASE_URL"] = f"sqlite:///{db_path.as_posix()}"
 
     # Run alembic upgrade to head
-    backend_dir = Path(__file__).parent.parent
     try:
         subprocess.run(
             [sys.executable, "-m", "alembic", "upgrade", "head"],
@@ -195,11 +204,17 @@ async def setup_test_db(test_db_url, test_engine):
         )
     except (subprocess.CalledProcessError, FileNotFoundError):
         # If alembic fails, fall back to creating tables directly
+        if db_path.exists():
+            try:
+                db_path.unlink()
+            except PermissionError:
+                pass
+
         from sqlalchemy import create_engine
 
         from src.kortana.models import Base
 
-        sync_url = test_db_url.replace("sqlite+aiosqlite", "sqlite")
+        sync_url = f"sqlite:///{db_path.as_posix()}"
         engine = create_engine(sync_url)
         Base.metadata.create_all(engine)
         engine.dispose()
@@ -207,10 +222,9 @@ async def setup_test_db(test_db_url, test_engine):
     yield
 
     # Clean up test database file after tests
-    db_file = test_db_url.replace("sqlite+aiosqlite:///", "")
-    if os.path.exists(db_file):
+    if db_path.exists():
         try:
-            os.remove(db_file)
+            db_path.unlink()
         except PermissionError:
             pass  # Windows file locking - file will be cleaned up next run
 

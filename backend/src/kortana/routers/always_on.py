@@ -52,6 +52,45 @@ def _refresh_daemon_guidance(summary: Any) -> Dict[str, Any]:
     }
 
 
+def _serialize_task(task: GitHubTask | None) -> Dict[str, Any]:
+    if task is None:
+        return {
+            "id": None,
+            "github_issue_number": None,
+            "title": None,
+            "status": None,
+            "classification": None,
+            "priority": None,
+            "branch_name": None,
+            "commit_sha": None,
+            "github_pr_number": None,
+            "code_changes": None,
+            "error_message": None,
+            "validation_report": None,
+            "validation_summary": TaskApprovalService.summarize_validation(None),
+            "created_at": None,
+            "updated_at": None,
+        }
+
+    return {
+        "id": str(task.id),
+        "github_issue_number": task.github_issue_number,
+        "title": str(task.title),
+        "status": str(task.status),
+        "classification": str(task.classification) if task.classification else None,
+        "priority": str(task.priority) if task.priority else None,
+        "branch_name": str(task.branch_name) if task.branch_name else None,
+        "commit_sha": str(task.commit_sha) if task.commit_sha else None,
+        "github_pr_number": task.github_pr_number,
+        "code_changes": task.code_changes,
+        "error_message": task.error_message,
+        "validation_report": task.validation_report,
+        "validation_summary": TaskApprovalService.summarize_validation(task),
+        "created_at": task.created_at.isoformat() if task.created_at else None,
+        "updated_at": task.updated_at.isoformat() if task.updated_at else None,
+    }
+
+
 @router.post("/start")
 async def start_monitoring() -> Dict[str, Any]:
     """Start the always-on monitoring system in the background"""
@@ -377,26 +416,7 @@ async def get_recent_tasks(limit: int = 10) -> List[Dict[str, Any]]:
             )
             tasks = result.scalars().all()
 
-            return [
-                {
-                    "id": str(task.id),
-                    "github_issue_number": int(task.github_issue_number),
-                    "title": str(task.title),
-                    "status": str(task.status),
-                    "classification": str(task.classification)
-                    if task.classification
-                    else None,
-                    "priority": str(task.priority) if task.priority else None,
-                    "branch_name": str(task.branch_name) if task.branch_name else None,
-                    "created_at": task.created_at.isoformat()
-                    if task.created_at
-                    else None,
-                    "updated_at": task.updated_at.isoformat()
-                    if task.updated_at
-                    else None,
-                }
-                for task in tasks
-            ]
+            return [_serialize_task(task) for task in tasks]
     except Exception as e:
         logger.error(f"Failed to get recent tasks: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get tasks: {str(e)}")
@@ -582,19 +602,13 @@ async def get_approval_queue(limit: int = 20) -> Dict[str, Any]:
             items = []
             for approval in approvals:
                 task = tasks_by_id.get(approval.github_task_id)
+                task_payload = _serialize_task(task)
+                if task is None:
+                    task_payload["id"] = approval.github_task_id
                 items.append(
                     {
                         **service.serialize(approval),
-                        "task": {
-                            "id": approval.github_task_id,
-                            "title": task.title if task else None,
-                            "status": task.status if task else None,
-                            "priority": task.priority if task else None,
-                            "branch_name": task.branch_name if task else None,
-                            "github_issue_number": (
-                                task.github_issue_number if task else None
-                            ),
-                        },
+                        "task": task_payload,
                     }
                 )
 
