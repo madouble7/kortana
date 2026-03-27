@@ -2,6 +2,8 @@ import { randomBytes } from "crypto";
 
 import * as vscode from "vscode";
 
+import { createFrameStyles } from "./styles";
+
 type HtmlDocumentOptions = {
     body: string;
     nonce?: string;
@@ -50,10 +52,7 @@ export function getFrameWebviewContent(
 
     return renderHtmlDocument({
         body: `
-<style>
-    body { margin: 0; padding: 0; overflow: hidden; background: var(--vscode-editor-background); }
-    iframe { width: 100%; height: 100vh; border: none; }
-</style>
+${createFrameStyles()}
 <iframe src="${url}" title="${title}" allow="camera *; microphone *; geolocation *; clipboard-write *;"></iframe>
         `,
         frameSources: [frameOrigin],

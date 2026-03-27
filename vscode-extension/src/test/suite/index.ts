@@ -5,6 +5,7 @@ import { runDomHelperTests } from "./dom";
 import { runFormattingHelperTests } from "./formatting";
 import { runFragmentTests } from "./fragments";
 import { runRuntimeTests } from "./runtime";
+import { runStyleTests } from "./styles";
 
 import {
     buildAuditLogPayload,
@@ -44,6 +45,7 @@ export async function run(): Promise<void> {
     runFormattingHelperTests();
     runFragmentTests();
     runRuntimeTests();
+    runStyleTests();
 
     const extension = vscode.extensions.all.find(
         (candidate) => candidate.packageJSON.name === "kortana-vscode"

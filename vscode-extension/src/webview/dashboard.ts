@@ -17,6 +17,7 @@ import {
     RESPONSE_DASHBOARD_STATE,
 } from "./messages";
 import { createWebviewRuntimeScript } from "./runtime";
+import { createDashboardStyles, STATUS_PENDING_COLOR } from "./styles";
 
 export function getDashboardContent(webview: vscode.Webview): string {
     const nonce = createNonce();
@@ -32,15 +33,7 @@ export function getDashboardContent(webview: vscode.Webview): string {
 
 function getDashboardBody(): string {
     return `
-<style>
-    body { font-family: var(--vscode-font-family); padding: 15px; color: var(--vscode-foreground); background: var(--vscode-editor-background); }
-    .dashboard-card { margin: 10px 0; padding: 15px; background: var(--vscode-editorWidget-background); border: 1px solid var(--vscode-panel-border); border-radius: 4px; }
-    .status-indicator { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; }
-    .status-alive { background: #28a745; }
-    .status-offline { background: #dc3545; }
-    button { background: var(--vscode-button-background); color: var(--vscode-button-foreground); border: none; padding: 6px 12px; border-radius: 2px; cursor: pointer; margin: 2px; }
-    button:hover { background: var(--vscode-button-hoverBackground); }
-</style>
+${createDashboardStyles()}
 <h3>Kor'tana Control Panel</h3>
 
 ${createPanel({
@@ -55,7 +48,7 @@ ${createPanel({
                 text: "Backend: Checking...",
             }),
             indicatorId: "backend-status-indicator",
-            indicatorStyle: "background: #ffc107;",
+            indicatorStyle: `background: ${STATUS_PENDING_COLOR};`,
         })}
         `,
         className: "dashboard-card",

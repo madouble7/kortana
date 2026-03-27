@@ -1,9 +1,16 @@
+import {
+    STATUS_ALIVE_CLASS,
+    STATUS_ALIVE_COLOR,
+    STATUS_OFFLINE_CLASS,
+    STATUS_OFFLINE_COLOR,
+} from "./styles";
+
 export function createWebviewFormattingHelpersScript(): string {
     return `
-const STATUS_ALIVE_CLASS = "status-alive";
-const STATUS_OFFLINE_CLASS = "status-offline";
-const STATUS_ALIVE_COLOR = "#28a745";
-const STATUS_OFFLINE_COLOR = "#dc3545";
+const STATUS_ALIVE_CLASS = "${STATUS_ALIVE_CLASS}";
+const STATUS_OFFLINE_CLASS = "${STATUS_OFFLINE_CLASS}";
+const STATUS_ALIVE_COLOR = "${STATUS_ALIVE_COLOR}";
+const STATUS_OFFLINE_COLOR = "${STATUS_OFFLINE_COLOR}";
 
 function formatStatusText(isOnline, onlineText, offlineText = "Offline", label = "") {
     return label + (isOnline ? onlineText : offlineText);

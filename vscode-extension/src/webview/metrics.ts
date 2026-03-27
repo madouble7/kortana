@@ -10,6 +10,7 @@ import {
     RESPONSE_METRICS_STATE,
 } from "./messages";
 import { createWebviewRuntimeScript } from "./runtime";
+import { createMetricsStyles } from "./styles";
 
 export function getMetricsContent(webview: vscode.Webview): string {
     const nonce = createNonce();
@@ -25,13 +26,7 @@ export function getMetricsContent(webview: vscode.Webview): string {
 
 function getMetricsBody(): string {
     return `
-<style>
-    body { font-family: var(--vscode-font-family); padding: 20px; color: var(--vscode-foreground); background: var(--vscode-editor-background); }
-    h1 { color: var(--vscode-textLink-foreground); }
-    .metric { margin: 10px 0; padding: 10px; background: var(--vscode-editorWidget-background); border-left: 3px solid var(--vscode-textLink-foreground); }
-    .status-alive { color: #28a745; }
-    .status-offline { color: #dc3545; }
-</style>
+${createMetricsStyles()}
 <h1>Kor'tana Autonomy Metrics</h1>
 ${createMetricCard({
         label: "Backend Status:",
