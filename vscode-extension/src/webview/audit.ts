@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 
 import { createWebviewDomHelpersScript } from "./dom";
 import { createWebviewFormattingHelpersScript } from "./formatting";
-import { createEmptyStateBlock } from "./fragments";
+import { createEmptyStateBlock, createHeroSection, createTextSpan } from "./fragments";
 import { createNonce, renderHtmlDocument } from "./html";
 import {
     createRequestMessage,
@@ -27,14 +27,42 @@ export function getAutonomyAuditContent(webview: vscode.Webview): string {
 function getAuditBody(): string {
     return `
 ${createAuditStyles()}
-<h1>Kor'tana Autonomy Audit</h1>
-<p>Real-time monitoring of autonomous operations...</p>
-<div id="audit-log">
-    ${createEmptyStateBlock({
+<div class="page-shell">
+${createHeroSection({
+        description:
+            "A live trace of what Kor'tana is doing, what completed cleanly, and where the next intervention point lives.",
+        kicker: "Trace Feed",
+        signals: [
+            {
+                label: "Refresh",
+                valueHtml: createTextSpan({
+                    className: "signal-accent",
+                    text: "5s cadence",
+                }),
+            },
+            {
+                label: "Scope",
+                valueHtml: createTextSpan({
+                    className: "signal-accent",
+                    text: "Runtime + operator actions",
+                }),
+            },
+        ],
+        title: "Kor'tana Audit",
+    })}
+<section class="audit-log-card">
+    <div class="panel-heading audit-heading">
+        <h2 class="panel-title">Recent Actions</h2>
+        <span class="panel-note">Newest activity appears at the top of the feed.</span>
+    </div>
+    <div class="audit-log-list" id="audit-log">
+        ${createEmptyStateBlock({
         className: "audit-item status-pending",
         detail: "Loading recent actions...",
         title: "Initializing audit system...",
     })}
+    </div>
+</section>
 </div>
     `;
 }

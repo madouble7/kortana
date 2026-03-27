@@ -5,6 +5,20 @@ type PanelOptions = {
     title: string;
 };
 
+type HeroSignalOptions = {
+    className?: string;
+    label: string;
+    valueHtml: string;
+};
+
+type HeroSectionOptions = {
+    className?: string;
+    description: string;
+    kicker: string;
+    signals?: HeroSignalOptions[];
+    title: string;
+};
+
 type TextSpanOptions = {
     className?: string;
     id?: string;
@@ -59,9 +73,31 @@ export function createPanel(options: PanelOptions): string {
 
     return `
 <div class="${escapeHtml(className)}">
-    <h${headingLevel}>${escapeHtml(options.title)}</h${headingLevel}>
-    ${options.body}
+    <div class="panel-heading">
+        <h${headingLevel} class="panel-title">${escapeHtml(options.title)}</h${headingLevel}>
+    </div>
+    <div class="panel-body">
+        ${options.body}
+    </div>
 </div>`;
+}
+
+export function createHeroSection(options: HeroSectionOptions): string {
+    const className = options.className ?? "hero-card";
+    const signals =
+        options.signals && options.signals.length > 0
+            ? `<div class="signal-strip">
+${options.signals.map((signal) => createHeroSignal(signal)).join("\n")}
+</div>`
+            : "";
+
+    return `
+<section class="${escapeHtml(className)}">
+    <span class="eyebrow">${escapeHtml(options.kicker)}</span>
+    <h1 class="hero-title">${escapeHtml(options.title)}</h1>
+    <p class="hero-copy">${escapeHtml(options.description)}</p>
+    ${signals}
+</section>`;
 }
 
 export function createTextSpan(options: TextSpanOptions): string {
@@ -75,30 +111,42 @@ export function createStatusLine(options: StatusLineOptions): string {
 }
 
 export function createLabeledValueRow(options: LabeledValueOptions): string {
-    return `<p>${escapeHtml(options.label)} ${options.valueHtml}</p>`;
+    return `<div class="data-row"><span class="data-label">${escapeHtml(options.label)}</span><span class="data-value">${options.valueHtml}</span></div>`;
 }
 
 export function createMetricCard(options: MetricCardOptions): string {
     const className = options.className ?? "metric";
     return `
 <div class="${escapeHtml(className)}">
-    <strong>${escapeHtml(options.label)}</strong> ${options.valueHtml}
+    <span class="metric-label">${escapeHtml(options.label)}</span>
+    <div class="metric-value">${options.valueHtml}</div>
 </div>`;
 }
 
 export function createButtonGroup(buttons: ButtonDefinition[]): string {
-    return buttons
-        .map(
-            (button) =>
-                `<button id="${escapeHtml(button.id)}">${escapeHtml(button.label)}</button>`
-        )
-        .join("\n");
+    return `<div class="action-grid">
+${buttons
+    .map(
+        (button) =>
+            `<button id="${escapeHtml(button.id)}">${escapeHtml(button.label)}</button>`
+    )
+    .join("\n")}
+</div>`;
 }
 
 export function createEmptyStateBlock(options: EmptyStateOptions): string {
     return `
-<div class="${escapeHtml(options.className ?? "")}">
+<div class="empty-state ${escapeHtml(options.className ?? "")}">
     <strong>${escapeHtml(options.title)}</strong>${options.detail ? `<br />
     <small>${escapeHtml(options.detail)}</small>` : ""}
+</div>`;
+}
+
+function createHeroSignal(options: HeroSignalOptions): string {
+    const className = options.className ? ` signal-chip ${escapeHtml(options.className)}` : " signal-chip";
+
+    return `<div class="${className.trim()}">
+    <span class="signal-label">${escapeHtml(options.label)}</span>
+    <div class="signal-value">${options.valueHtml}</div>
 </div>`;
 }

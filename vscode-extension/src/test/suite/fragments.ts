@@ -3,10 +3,10 @@ import * as assert from "assert";
 import {
     createButtonGroup,
     createEmptyStateBlock,
+    createHeroSection,
     createLabeledValueRow,
     createMetricCard,
     createPanel,
-    createStatusLine,
     createTextSpan,
 } from "../../webview/fragments";
 
@@ -32,37 +32,49 @@ export function runFragmentTests(): void {
     );
 
     assert.ok(
-        createStatusLine({
-            contentHtml: "<span>Checking...</span>",
-            indicatorId: "backend-status-indicator",
-            indicatorStyle: "background: #ffc107;",
-        }).includes('id="backend-status-indicator"')
+        createHeroSection({
+            description: "Live control surface",
+            kicker: "Always-On Companion",
+            signals: [
+                {
+                    label: "Runtime",
+                    valueHtml: '<span id="backend-status-text">Checking...</span>',
+                },
+            ],
+            title: "Kor'tana Control Deck",
+        }).includes('class="hero-card"')
     );
     assert.ok(
-        createStatusLine({
-            contentHtml: "<span>Checking...</span>",
-            indicatorId: "backend-status-indicator",
-            indicatorStyle: "background: #ffc107;",
-        }).includes('style="background: #ffc107;"')
+        createHeroSection({
+            description: "Live control surface",
+            kicker: "Always-On Companion",
+            signals: [
+                {
+                    label: "Runtime",
+                    valueHtml: '<span id="backend-status-text">Checking...</span>',
+                },
+            ],
+            title: "Kor'tana Control Deck",
+        }).includes("Always-On Companion")
     );
 
     assert.ok(
         createLabeledValueRow({
             label: "Tasks Processed:",
             valueHtml: '<span id="tasks-count">-</span>',
-        }).includes("Tasks Processed:")
+        }).includes('class="data-row"')
     );
 
     assert.ok(
         createMetricCard({
             label: "Tasks Completed:",
             valueHtml: '<span id="tasks-count">Loading...</span>',
-        }).includes("<strong>Tasks Completed:</strong>")
+        }).includes('class="metric-value"')
     );
 
     assert.ok(
         createButtonGroup([{ id: "action-metrics", label: "Metrics & Audit" }]).includes(
-            "Metrics &amp; Audit"
+            'class="action-grid"'
         )
     );
 

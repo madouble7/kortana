@@ -4,9 +4,9 @@ import { createWebviewDomHelpersScript } from "./dom";
 import { createWebviewFormattingHelpersScript } from "./formatting";
 import {
     createButtonGroup,
+    createHeroSection,
     createLabeledValueRow,
     createPanel,
-    createStatusLine,
     createTextSpan,
 } from "./fragments";
 import { createNonce, renderHtmlDocument } from "./html";
@@ -34,27 +34,38 @@ export function getDashboardContent(webview: vscode.Webview): string {
 function getDashboardBody(): string {
     return `
 ${createDashboardStyles()}
-<h3>Kor'tana Control Panel</h3>
-
-${createPanel({
-        body: `
-    ${createStatusLine({
-            contentHtml: "Extension Active",
-            indicatorClassName: "status-indicator status-alive",
-        })}
-    ${createStatusLine({
-            contentHtml: createTextSpan({
-                id: "backend-status-text",
-                text: "Backend: Checking...",
-            }),
-            indicatorId: "backend-status-indicator",
-            indicatorStyle: `background: ${STATUS_PENDING_COLOR};`,
-        })}
-        `,
-        className: "dashboard-card",
-        title: "System Status",
+<div class="page-shell">
+${createHeroSection({
+        description:
+            "Steer the live runtime, inspect the machine state, and jump into the highest-signal actions without leaving the editor.",
+        kicker: "Always-On Companion",
+        signals: [
+            {
+                label: "Runtime",
+                valueHtml: `<span class="signal-inline"><span class="status-indicator" id="backend-status-indicator" style="background: ${STATUS_PENDING_COLOR};"></span>${createTextSpan({
+                    id: "backend-status-text",
+                    text: "Backend: Checking...",
+                })}</span>`,
+            },
+            {
+                label: "Steering",
+                valueHtml: createTextSpan({
+                    className: "signal-accent",
+                    text: "Live + local-first",
+                }),
+            },
+            {
+                label: "Operator",
+                valueHtml: createTextSpan({
+                    className: "signal-accent",
+                    text: "Override ready",
+                }),
+            },
+        ],
+        title: "Kor'tana Control Deck",
     })}
 
+<div class="panel-grid two-up">
 ${createPanel({
         body: createButtonGroup([
             { id: "action-ai-studio", label: "AI Studio" },
@@ -65,23 +76,35 @@ ${createPanel({
             { id: "action-audit", label: "Audit" },
         ]),
         className: "dashboard-card",
-        title: "Quick Actions",
+        title: "Launch Surfaces",
     })}
 
 ${createPanel({
         body: `
-    ${createLabeledValueRow({
-            label: "Tasks Processed:",
-            valueHtml: createTextSpan({ id: "tasks-count", text: "-" }),
+    <div class="data-stack">
+        ${createLabeledValueRow({
+            label: "Tasks Processed",
+            valueHtml: createTextSpan({
+                className: "mono-value",
+                id: "tasks-count",
+                text: "-",
+            }),
         })}
-    ${createLabeledValueRow({
-            label: "Last Sync:",
-            valueHtml: createTextSpan({ id: "last-sync", text: "-" }),
+        ${createLabeledValueRow({
+            label: "Last Sync",
+            valueHtml: createTextSpan({
+                className: "mono-value",
+                id: "last-sync",
+                text: "-",
+            }),
         })}
+    </div>
         `,
         className: "dashboard-card",
-        title: "Autonomy Metrics",
+        title: "Runtime Pulse",
     })}
+</div>
+</div>
     `;
 }
 

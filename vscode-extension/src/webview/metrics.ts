@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 
 import { createWebviewDomHelpersScript } from "./dom";
 import { createWebviewFormattingHelpersScript } from "./formatting";
-import { createMetricCard, createTextSpan } from "./fragments";
+import { createHeroSection, createMetricCard, createTextSpan } from "./fragments";
 import { createNonce, renderHtmlDocument } from "./html";
 import {
     createRequestMessage,
@@ -27,7 +27,30 @@ export function getMetricsContent(webview: vscode.Webview): string {
 function getMetricsBody(): string {
     return `
 ${createMetricsStyles()}
-<h1>Kor'tana Autonomy Metrics</h1>
+<div class="page-shell">
+${createHeroSection({
+        description:
+            "A tighter read on runtime heartbeat, delivery velocity, and recent deployment cadence.",
+        kicker: "Telemetry Feed",
+        signals: [
+            {
+                label: "Link",
+                valueHtml: createTextSpan({
+                    className: "signal-accent",
+                    text: "Host-mediated telemetry",
+                }),
+            },
+            {
+                label: "Cadence",
+                valueHtml: createTextSpan({
+                    className: "signal-accent",
+                    text: "15s refresh",
+                }),
+            },
+        ],
+        title: "Kor'tana Metrics",
+    })}
+<div class="metric-grid">
 ${createMetricCard({
         label: "Backend Status:",
         valueHtml: createTextSpan({
@@ -42,8 +65,21 @@ ${createMetricCard({
     })}
 ${createMetricCard({
         label: "Tasks Completed:",
-        valueHtml: createTextSpan({ id: "tasks-count", text: "Loading..." }),
+        valueHtml: createTextSpan({
+            className: "mono-value",
+            id: "tasks-count",
+            text: "Loading...",
+        }),
     })}
+${createMetricCard({
+        label: "Signal Path:",
+        valueHtml: createTextSpan({
+            className: "signal-accent",
+            text: "Daemon -> runtime -> webview",
+        }),
+    })}
+</div>
+</div>
     `;
 }
 
