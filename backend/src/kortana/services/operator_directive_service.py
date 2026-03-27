@@ -206,7 +206,9 @@ class OperatorDirectiveService:
         return summary
 
     @staticmethod
-    def parse_content(content: str, directive_type: str | None = None) -> dict[str, Any]:
+    def parse_content(
+        content: str, directive_type: str | None = None
+    ) -> dict[str, Any]:
         text = content.strip()
         lowered = text.lower()
         parsed: dict[str, Any] = {
@@ -226,10 +228,14 @@ class OperatorDirectiveService:
             "notes": [],
         }
 
-        if directive_type == "pause" or re.search(r"\b(pause|hold|stand by|stop)\b", lowered):
+        if directive_type == "pause" or re.search(
+            r"\b(pause|hold|stand by|stop)\b", lowered
+        ):
             parsed["pause_requested"] = True
 
-        if directive_type == "resume" or re.search(r"\b(resume|continue|unpause)\b", lowered):
+        if directive_type == "resume" or re.search(
+            r"\b(resume|continue|unpause)\b", lowered
+        ):
             parsed["resume_requested"] = True
 
         focus_match = re.search(
@@ -273,16 +279,29 @@ class OperatorDirectiveService:
             parsed["execution_mode"] = mode_match.group(1)
 
         if directive_type == "approval":
-            approval_match = re.search(r"(manual|auto)", lowered)
+            approval_match = re.search(
+                r"(manual|auto|self-aware|self aware|autonomous)", lowered
+            )
         else:
             approval_match = re.search(
-                r"(?:approval\s*:?\s*|approval mode\s*:?\s*|require approval|manual approval|auto approval)(manual|auto)?",
+                r"(?:approval\s*:?\s*|approval mode\s*:?\s*|require approval|manual approval|auto approval|self-aware approval|autonomous approval)(manual|auto|self-aware|self aware|autonomous)?",
                 lowered,
             )
         if approval_match:
             inferred = approval_match.group(1)
             if inferred is None:
-                inferred = "manual" if "manual" in lowered or "require approval" in lowered else "auto"
+                if "manual" in lowered or "require approval" in lowered:
+                    inferred = "manual"
+                elif (
+                    "self-aware" in lowered
+                    or "self aware" in lowered
+                    or "autonomous" in lowered
+                ):
+                    inferred = "self-aware"
+                else:
+                    inferred = "auto"
+            if inferred in {"self aware", "autonomous"}:
+                inferred = "self-aware"
             parsed["approval_mode"] = inferred
             parsed["approval_required"] = inferred == "manual"
 
@@ -336,7 +355,9 @@ class OperatorDirectiveService:
         if summary.override_mode:
             lines.append(f"Operator override is active: {summary.override_mode}.")
         if summary.pause_requested:
-            lines.append("Pause direct execution unless the runtime explicitly allows observation-only work.")
+            lines.append(
+                "Pause direct execution unless the runtime explicitly allows observation-only work."
+            )
         if summary.execution_mode:
             lines.append(f"Execution mode: {summary.execution_mode}.")
         if summary.approval_mode:
@@ -346,9 +367,13 @@ class OperatorDirectiveService:
         if summary.focus_topics:
             lines.append("Focus on: " + ", ".join(summary.focus_topics) + ".")
         if summary.avoid_topics:
-            lines.append("Avoid or de-prioritize: " + ", ".join(summary.avoid_topics) + ".")
+            lines.append(
+                "Avoid or de-prioritize: " + ", ".join(summary.avoid_topics) + "."
+            )
         if summary.handoff_rules:
-            lines.append("Agent handoff rules: " + " | ".join(summary.handoff_rules[:3]))
+            lines.append(
+                "Agent handoff rules: " + " | ".join(summary.handoff_rules[:3])
+            )
         if summary.notes:
             lines.append("Recent operator notes: " + " | ".join(summary.notes[:3]))
         return "\n".join(lines)
@@ -361,7 +386,7 @@ class OperatorDirectiveService:
                 "focus": "FOCUS: backend reliability, tests",
                 "avoid": "AVOID: billing, docs churn",
                 "mode": "MODE: execute|plan|observe",
-                "approval": "APPROVAL: auto|manual",
+                "approval": "APPROVAL: auto|manual|self-aware",
                 "limit": "LIMIT: max_tasks=2",
                 "handoff": "HANDOFF: analyzer -> planner -> executor",
                 "override": "OVERRIDE: halt|execute|clear",
@@ -370,6 +395,7 @@ class OperatorDirectiveService:
             "examples": [
                 "MODE: plan",
                 "APPROVAL: manual",
+                "APPROVAL: self-aware",
                 "LIMIT: max_tasks=1",
                 "HANDOFF: analyzer -> planner -> executor",
                 "OVERRIDE: halt",
@@ -388,9 +414,15 @@ class OperatorDirectiveService:
             "content": directive.content,
             "scope": directive.scope,
             "directive_data": directive.directive_data or {},
-            "created_at": directive.created_at.isoformat() if directive.created_at else None,
-            "updated_at": directive.updated_at.isoformat() if directive.updated_at else None,
-            "resolved_at": directive.resolved_at.isoformat() if directive.resolved_at else None,
+            "created_at": directive.created_at.isoformat()
+            if directive.created_at
+            else None,
+            "updated_at": directive.updated_at.isoformat()
+            if directive.updated_at
+            else None,
+            "resolved_at": directive.resolved_at.isoformat()
+            if directive.resolved_at
+            else None,
         }
 
     async def _retire_conflicts(

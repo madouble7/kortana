@@ -24,6 +24,7 @@ from typing import Any
 
 import psutil
 from sqlalchemy import func, select
+from src.kortana.config import get_settings
 from src.kortana.database import get_db_manager
 from src.kortana.logger import get_logger
 from src.kortana.models import GitHubTask
@@ -219,11 +220,17 @@ class SelfAwarenessEngine:
             load_penalty += 0.15
         if snapshot["memory_percent"] > self._mem_warn:
             load_penalty += 0.15
-        if snapshot["avg_cycle_time"] and snapshot["avg_cycle_time"] > base_cycle_interval:
+        if (
+            snapshot["avg_cycle_time"]
+            and snapshot["avg_cycle_time"] > base_cycle_interval
+        ):
             load_penalty += 0.1
 
         execution_confidence = round(
-            max(0.0, min(1.0, (health_score * 0.55) + (success_score * 0.45) - load_penalty)),
+            max(
+                0.0,
+                min(1.0, (health_score * 0.55) + (success_score * 0.45) - load_penalty),
+            ),
             3,
         )
 
@@ -252,7 +259,9 @@ class SelfAwarenessEngine:
         for correction in corrections:
             action = correction.get("action")
             if action == "reduce_concurrent_tasks":
-                suggested = int(correction.get("params", {}).get("max_tasks_per_cycle", 1))
+                suggested = int(
+                    correction.get("params", {}).get("max_tasks_per_cycle", 1)
+                )
                 max_tasks = max(1, min(max_tasks, suggested))
                 reasons.append("correction_reduce_concurrent_tasks")
             elif action == "enable_dry_run_mode":
@@ -305,7 +314,9 @@ class SelfAwarenessEngine:
             else psutil.disk_usage("C:\\").percent
         )
         proc = psutil.Process()
-        open_fds = proc.num_handles() if platform.system() == "Windows" else proc.num_fds()
+        open_fds = (
+            proc.num_handles() if platform.system() == "Windows" else proc.num_fds()
+        )
 
         # DB stats
         pending = completed = failed = 0
@@ -330,9 +341,15 @@ class SelfAwarenessEngine:
                         )
                         .label("pending"),
                         func.count()
-                        .filter(GitHubTask.status.in_(["executed", "completed", "pr_created"]))
+                        .filter(
+                            GitHubTask.status.in_(
+                                ["executed", "completed", "pr_created"]
+                            )
+                        )
                         .label("ok"),
-                        func.count().filter(GitHubTask.status == "failed").label("fail"),
+                        func.count()
+                        .filter(GitHubTask.status == "failed")
+                        .label("fail"),
                     )
                 )
                 r = row.one()
@@ -463,10 +480,13 @@ class SelfAwarenessEngine:
             caps["autonomy_daemon"] = False
 
         try:
-            from src.kortana.services.discord_service import get_discord_bot
+            if not get_settings().DISCORD_ENABLED:
+                caps["discord_bot"] = False
+            else:
+                from src.kortana.services.discord_service import get_discord_bot
 
-            bot = get_discord_bot()
-            caps["discord_bot"] = bot is not None and bot.is_ready()
+                bot = get_discord_bot()
+                caps["discord_bot"] = bot is not None and bot.is_ready()
         except Exception:
             caps["discord_bot"] = False
 

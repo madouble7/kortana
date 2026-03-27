@@ -36,8 +36,13 @@ class TestAutonomyDaemon:
         session = AsyncMock()
         session.execute = AsyncMock(return_value=result)
 
+        async def execute_task(
+            task_to_execute: GitHubTask, dry_run: bool = False
+        ) -> None:
+            task_to_execute.status = "executed"
+
         service = MagicMock()
-        service.execute_task = AsyncMock()
+        service.execute_task = AsyncMock(side_effect=execute_task)
 
         events: list[Any] = []
         daemon.on_event(events.append)
@@ -46,7 +51,9 @@ class TestAutonomyDaemon:
             "src.kortana.services.github_autonomy_service.GitHubAutonomyService",
             return_value=service,
         ):
-            processed, succeeded, failed, deferred = await daemon._process_tasks(session)
+            processed, succeeded, failed, deferred = await daemon._process_tasks(
+                session
+            )
 
         assert (processed, succeeded, failed, deferred) == (1, 1, 0, 0)
         task_complete = next(event for event in events if event.type == "task_complete")
@@ -70,14 +77,29 @@ class TestAutonomyDaemon:
         session = AsyncMock()
         session.execute = AsyncMock(return_value=result)
 
+        async def analyze_task(task_to_analyze: GitHubTask) -> None:
+            task_to_analyze.status = "analyzed"
+
+        async def plan_task(task_to_plan: GitHubTask) -> None:
+            task_to_plan.status = "planning_complete"
+
+        async def execute_task(
+            task_to_execute: GitHubTask, dry_run: bool = False
+        ) -> None:
+            task_to_execute.status = "executed"
+
         service = MagicMock()
-        service.analyze_task = AsyncMock()
+        service.analyze_task = AsyncMock(side_effect=analyze_task)
+        service.plan_task = AsyncMock(side_effect=plan_task)
+        service.execute_task = AsyncMock(side_effect=execute_task)
 
         with patch(
             "src.kortana.services.github_autonomy_service.GitHubAutonomyService",
             return_value=service,
         ):
-            processed, succeeded, failed, deferred = await daemon._process_tasks(session)
+            processed, succeeded, failed, deferred = await daemon._process_tasks(
+                session
+            )
 
         assert (processed, succeeded, failed, deferred) == (1, 1, 0, 0)
         service.analyze_task.assert_awaited_once_with(task)
@@ -113,12 +135,142 @@ class TestAutonomyDaemon:
             "src.kortana.services.github_autonomy_service.GitHubAutonomyService",
             return_value=service,
         ):
-            processed, succeeded, failed, deferred = await daemon._process_tasks(session)
+            processed, succeeded, failed, deferred = await daemon._process_tasks(
+                session
+            )
 
         assert (processed, succeeded, failed, deferred) == (1, 0, 0, 1)
         service.execute_task.assert_not_awaited()
         task_deferred = next(event for event in events if event.type == "task_deferred")
         assert task_deferred.data["task_id"] == "task-deferred"
+
+    @pytest.mark.asyncio
+    async def test_process_tasks_defers_execution_when_approval_is_required(
+        self,
+    ) -> None:
+        daemon = build_daemon()
+        daemon.live_execution_enabled = False
+
+        task = GitHubTask(
+            id="task-review",
+            github_issue_number=90,
+            github_repo="madouble7/kortana",
+            title="Stage for review",
+            description="desc",
+            status="planning_complete",
+        )
+
+        result = MagicMock()
+        result.scalars.return_value.all.return_value = [task]
+        session = AsyncMock()
+        session.execute = AsyncMock(return_value=result)
+
+        service = MagicMock()
+        service.execute_task = AsyncMock()
+
+        events: list[Any] = []
+        daemon.on_event(events.append)
+        guidance = DirectiveSummary(
+            active_count=1,
+            approval_mode="manual",
+            approval_required=True,
+        )
+
+        with patch(
+            "src.kortana.services.github_autonomy_service.GitHubAutonomyService",
+            return_value=service,
+        ):
+            processed, succeeded, failed, deferred = await daemon._process_tasks(
+                session,
+                guidance=guidance,
+            )
+
+        assert (processed, succeeded, failed, deferred) == (1, 0, 0, 1)
+        task_deferred = next(event for event in events if event.type == "task_deferred")
+        assert task_deferred.data["reason"] == "approval_required"
+
+    @pytest.mark.asyncio
+    async def test_process_tasks_holds_self_aware_review_when_risk_is_high(
+        self,
+    ) -> None:
+        daemon = build_daemon()
+        daemon.live_execution_enabled = True
+        daemon.metrics["system_state"] = "degraded"
+        daemon.metrics["workspace_bridge"] = {"changed_count": 200}
+        daemon.metrics["last_self_regulation"] = {"execution_confidence": 0.58}
+
+        task = GitHubTask(
+            id="task-review",
+            github_issue_number=91,
+            github_repo="madouble7/kortana",
+            title="Risky infra rewrite",
+            description="desc",
+            status="planning_complete",
+            priority="high",
+            classification="approval",
+        )
+
+        result = MagicMock()
+        result.scalars.return_value.all.return_value = [task]
+        session = AsyncMock()
+        session.execute = AsyncMock(return_value=result)
+        session.flush = AsyncMock()
+        session.add = MagicMock()
+
+        service = MagicMock()
+        service.execute_task = AsyncMock()
+        events: list[Any] = []
+        daemon.on_event(events.append)
+
+        with patch(
+            "src.kortana.services.github_autonomy_service.GitHubAutonomyService",
+            return_value=service,
+        ):
+            processed, succeeded, failed, deferred = await daemon._process_tasks(
+                session,
+                guidance=DirectiveSummary(approval_mode="self-aware"),
+            )
+
+        assert (processed, succeeded, failed, deferred) == (1, 0, 0, 1)
+        assert task.status == "waiting_for_approval"
+        service.execute_task.assert_not_awaited()
+        task_deferred = next(event for event in events if event.type == "task_deferred")
+        assert task_deferred.data["reason"] == "self_approval_hold"
+
+    @pytest.mark.asyncio
+    async def test_process_tasks_marks_terminal_analysis_failures(self) -> None:
+        daemon = build_daemon()
+        task = GitHubTask(
+            id="task-failed",
+            github_issue_number=89,
+            github_repo="madouble7/kortana",
+            title="Broken autonomy task",
+            description="desc",
+            status="pending",
+        )
+
+        result = MagicMock()
+        result.scalars.return_value.all.return_value = [task]
+        session = AsyncMock()
+        session.execute = AsyncMock(return_value=result)
+
+        async def fail_analysis(task_to_fail: GitHubTask) -> None:
+            task_to_fail.status = "failed"
+            task_to_fail.error_message = "analysis pipeline crashed"
+
+        service = MagicMock()
+        service.analyze_task = AsyncMock(side_effect=fail_analysis)
+
+        with patch(
+            "src.kortana.services.github_autonomy_service.GitHubAutonomyService",
+            return_value=service,
+        ):
+            processed, succeeded, failed, deferred = await daemon._process_tasks(
+                session
+            )
+
+        assert (processed, succeeded, failed, deferred) == (1, 0, 1, 0)
+        assert daemon._cycle_failed_task_ids == ["task-failed"]
 
     def test_prioritize_tasks_prefers_focus_topics_and_filters_avoid(self) -> None:
         daemon = build_daemon()
@@ -158,13 +310,95 @@ class TestAutonomyDaemon:
 
         assert [task.id for task in selected] == ["1", "3"]
 
+    def test_apply_operator_guidance_supports_protocol_controls(self) -> None:
+        daemon = build_daemon()
+        guidance = DirectiveSummary(
+            active_count=1,
+            execution_mode="plan",
+            approval_mode="manual",
+            approval_required=True,
+            handoff_rules=["analyzer -> planner -> executor"],
+            override_mode="halt",
+            max_tasks_override=1,
+        )
+
+        daemon._apply_operator_guidance(guidance)
+
+        assert daemon.max_tasks == 1
+        assert daemon.live_execution_enabled is False
+        assert daemon.safe_mode is True
+        assert daemon.control_mode == "operator_override_halt"
+        assert daemon.operator_guidance["execution_mode"] == "plan"
+        assert daemon.operator_guidance["approval_required"] is True
+
+    def test_apply_operator_guidance_sets_auto_approval_execute_mode(self) -> None:
+        daemon = build_daemon()
+        daemon.default_approval_mode = "auto"
+
+        daemon._apply_operator_guidance(DirectiveSummary(active_count=0))
+
+        assert daemon.live_execution_enabled is True
+        assert daemon.control_mode == "auto_approval_execute"
+
+    def test_apply_operator_guidance_restores_live_execution_when_cleared(self) -> None:
+        daemon = build_daemon()
+        daemon.live_execution_enabled = False
+        guidance = DirectiveSummary(active_count=0)
+
+        daemon._apply_operator_guidance(guidance)
+
+        assert daemon.control_mode == "execute"
+        assert daemon.live_execution_enabled is True
+
+    @pytest.mark.asyncio
+    async def test_discover_tasks_uses_local_backlog_when_github_demoted(
+        self, monkeypatch
+    ) -> None:
+        monkeypatch.setenv("KORTANA_GITHUB_MODE", "deferred")
+        daemon = build_daemon()
+        session = AsyncMock()
+        local_task = GitHubTask(
+            id="local-1",
+            github_issue_number=-1,
+            github_repo="local/workspace",
+            title="Local task",
+            description="desc",
+            status="pending",
+        )
+        local_service = MagicMock()
+        local_service.discover_workspace_tasks = AsyncMock(return_value=[local_task])
+
+        with (
+            patch(
+                "src.kortana.services.autonomy_daemon.LocalBacklogService",
+                return_value=local_service,
+            ),
+            patch(
+                "src.kortana.services.github_autonomy_service.GitHubAutonomyService"
+            ) as mock_github,
+        ):
+            discovered = await daemon._discover_tasks(
+                session,
+                guidance=DirectiveSummary(focus_topics=["autonomy"]),
+                workspace_status={"dirty": True, "changed_files": ["a.py"]},
+            )
+
+        assert discovered == 1
+        local_service.discover_workspace_tasks.assert_awaited_once()
+        mock_github.assert_not_called()
+
     @pytest.mark.asyncio
     async def test_self_regulate_applies_runtime_profile(self) -> None:
         daemon = build_daemon()
         fake_engine = MagicMock()
         fake_engine.regulate = AsyncMock(
             return_value={
-                "assessment": {"state": "degraded", "snapshot": {}, "drift": [], "corrections": []},
+                "assessment": {
+                    "state": "degraded",
+                    "snapshot": {},
+                    "drift": [],
+                    "corrections": [],
+                },
                 "runtime_profile": {
                     "generated_at": "2026-03-26T00:00:00",
                     "state": "degraded",
@@ -240,7 +474,9 @@ class TestAutonomyDaemon:
         failed_result.scalar_one_or_none.return_value = failed_task
         active_result = MagicMock()
         active_result.scalars.return_value.all.return_value = []
-        session.execute.side_effect = [failed_result, active_result]
+        existing_result = MagicMock()
+        existing_result.scalars.return_value.all.return_value = []
+        session.execute.side_effect = [failed_result, active_result, existing_result]
 
         client = AsyncMock()
         response = MagicMock()
@@ -257,15 +493,15 @@ class TestAutonomyDaemon:
             ),
             patch("src.kortana.services.autonomy_daemon.os.getenv") as mock_env,
         ):
-            mock_env.side_effect = (
-                lambda key, default=None: {
-                    "GITHUB_TOKEN": "fake-token",
-                    "GITHUB_OWNER": "madouble7",
-                    "GITHUB_REPO": "kortana",
-                }.get(key, default)
-            )
+            mock_env.side_effect = lambda key, default=None: {
+                "GITHUB_TOKEN": "fake-token",
+                "GITHUB_OWNER": "madouble7",
+                "GITHUB_REPO": "kortana",
+            }.get(key, default)
 
-            await daemon._manifest_self_healing(session)
+            await daemon._manifest_self_healing(
+                session, candidate_task_ids=[failed_task.id]
+            )
 
         client.post.assert_awaited_once()
         args, kwargs = client.post.call_args
@@ -274,6 +510,59 @@ class TestAutonomyDaemon:
             "[AUTO] [SELF-REPAIR] Resolve systemic failure in Failed task"
             == kwargs["json"]["title"]
         )
+        assert "[SELF-REPAIR-ANCHOR] task:task-fail" in kwargs["json"]["body"]
+        assert daemon.metrics["self_heals_manifested"] == 1
+
+    @pytest.mark.asyncio
+    async def test_manifest_self_healing_falls_back_to_local_task_when_github_demoted(
+        self, monkeypatch
+    ) -> None:
+        monkeypatch.setenv("KORTANA_GITHUB_MODE", "deferred")
+        daemon = build_daemon()
+        failed_task = GitHubTask(
+            id="task-fail",
+            github_issue_number=1,
+            github_repo="madouble7/kortana",
+            title="Failed task",
+            error_message="Systematic logic failure",
+            status="failed",
+        )
+
+        session = AsyncMock()
+        failed_result = MagicMock()
+        failed_result.scalar_one_or_none.return_value = failed_task
+        active_result = MagicMock()
+        active_result.scalars.return_value.all.return_value = []
+        existing_result = MagicMock()
+        existing_result.scalars.return_value.all.return_value = []
+        session.execute.side_effect = [failed_result, active_result, existing_result]
+
+        local_repair = GitHubTask(
+            id="repair-1",
+            github_issue_number=-1,
+            github_repo="local/self-heal",
+            title="[AUTO] [SELF-REPAIR] Resolve systemic failure in Failed task",
+            description="desc",
+            status="pending",
+        )
+        local_service = MagicMock()
+        local_service.manifest_self_repair = AsyncMock(return_value=local_repair)
+
+        with (
+            patch(
+                "src.kortana.services.autonomy_daemon.LocalBacklogService",
+                return_value=local_service,
+            ),
+            patch(
+                "src.kortana.services.autonomy_daemon.httpx.AsyncClient"
+            ) as mock_client,
+        ):
+            await daemon._manifest_self_healing(
+                session, candidate_task_ids=[failed_task.id]
+            )
+
+        local_service.manifest_self_repair.assert_awaited_once()
+        mock_client.assert_not_called()
         assert daemon.metrics["self_heals_manifested"] == 1
 
     @pytest.mark.asyncio
@@ -305,7 +594,67 @@ class TestAutonomyDaemon:
         with patch(
             "src.kortana.services.autonomy_daemon.httpx.AsyncClient"
         ) as mock_client:
-            await daemon._manifest_self_healing(session)
+            await daemon._manifest_self_healing(
+                session, candidate_task_ids=[failed_task.id]
+            )
+
+        mock_client.assert_not_called()
+        assert daemon.metrics["self_heals_manifested"] == 0
+
+    @pytest.mark.asyncio
+    async def test_manifest_self_healing_skips_without_current_cycle_failures(
+        self,
+    ) -> None:
+        daemon = build_daemon()
+        session = AsyncMock()
+
+        with patch(
+            "src.kortana.services.autonomy_daemon.httpx.AsyncClient"
+        ) as mock_client:
+            await daemon._manifest_self_healing(session, candidate_task_ids=[])
+
+        session.execute.assert_not_called()
+        mock_client.assert_not_called()
+        assert daemon.metrics["self_heals_manifested"] == 0
+
+    @pytest.mark.asyncio
+    async def test_manifest_self_healing_skips_when_repair_anchor_already_exists(
+        self,
+    ) -> None:
+        daemon = build_daemon()
+        failed_task = GitHubTask(
+            id="task-fail",
+            github_issue_number=1,
+            github_repo="madouble7/kortana",
+            title="Failed task",
+            description="desc",
+            error_message="Systematic logic failure",
+            status="failed",
+        )
+        existing_repair = GitHubTask(
+            id="task-repair",
+            github_issue_number=3,
+            github_repo="madouble7/kortana",
+            title="[AUTO] [SELF-REPAIR] Resolve systemic failure in Failed task",
+            description="[SELF-REPAIR-ANCHOR] task:task-fail",
+            status="completed",
+        )
+
+        session = AsyncMock()
+        failed_result = MagicMock()
+        failed_result.scalar_one_or_none.return_value = failed_task
+        active_result = MagicMock()
+        active_result.scalars.return_value.all.return_value = []
+        existing_result = MagicMock()
+        existing_result.scalars.return_value.all.return_value = [existing_repair]
+        session.execute.side_effect = [failed_result, active_result, existing_result]
+
+        with patch(
+            "src.kortana.services.autonomy_daemon.httpx.AsyncClient"
+        ) as mock_client:
+            await daemon._manifest_self_healing(
+                session, candidate_task_ids=[failed_task.id]
+            )
 
         mock_client.assert_not_called()
         assert daemon.metrics["self_heals_manifested"] == 0

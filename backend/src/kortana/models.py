@@ -12,6 +12,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    Float,
 )
 from sqlalchemy.orm import DeclarativeBase, relationship
 
@@ -235,6 +236,37 @@ class OperatorDirective(Base):
 
     def __repr__(self) -> str:
         return f"<OperatorDirective {self.directive_type}:{self.status}>"
+
+
+class TaskApproval(Base):
+    """Approval decisions for autonomous GitHub tasks."""
+
+    __tablename__ = "task_approvals"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    github_task_id = Column(
+        String(36), ForeignKey("github_tasks.id"), nullable=False, index=True
+    )
+    status = Column(
+        String(32), nullable=False, default="pending", index=True
+    )  # pending, auto_approved, approved, rejected
+    approval_mode = Column(String(32), nullable=False, default="self-aware")
+    review_required = Column(Boolean, nullable=False, default=False)
+    reviewer = Column(String(64), nullable=True)
+    rationale = Column(Text, nullable=True)
+    decision_factors = Column(JSON, nullable=True)
+    risk_score = Column(Integer, nullable=False, default=0)
+    risk_level = Column(String(16), nullable=False, default="low")
+    confidence = Column(Float, nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    resolved_at = Column(DateTime, nullable=True)
+
+    task = relationship("GitHubTask")
+
+    def __repr__(self) -> str:
+        return f"<TaskApproval {self.github_task_id}:{self.status}>"
 
 
 class AuditLog(Base):

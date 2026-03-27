@@ -26,6 +26,11 @@ from src.kortana.config import get_settings
 from src.kortana.exceptions import KortanaException
 
 from src.kortana.logger import log_error, log_request, setup_logging
+from src.kortana.middleware.cache import (
+    DEFAULT_CACHE_EXCLUDE_PATHS,
+    CacheStrategy,
+    ResponseCacheMiddleware,
+)
 
 # Import security middleware
 from src.kortana.middleware.security import (
@@ -42,6 +47,7 @@ except ImportError:
 
 try:
     from src.kortana.human_only_protocol import router as hop_router
+
     HOP_AVAILABLE = True
 except ImportError as e:
     print(f"Warning: Could not import Human Only Protocol: {e}")
@@ -90,8 +96,6 @@ try:
 except ImportError as e:
     print(f"Error importing routers: {e}")
     raise
-
-hop_router = APIRouter()  # Provide empty router as fallback
 
 
 @asynccontextmanager
@@ -154,24 +158,26 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         print(f"[WARN] Autonomy daemon startup: {e}")
 
-    # Start Discord bot (non-blocking)
-    try:
-        from src.kortana.services.discord_service import (
-            get_discord_bot,
-            start_discord_bot,
-        )
+    # Start Discord bot (non-blocking) only when explicitly enabled.
+    if settings.DISCORD_ENABLED:
+        try:
+            from src.kortana.services.discord_service import (
+                get_discord_bot,
+                start_discord_bot,
+            )
 
-        await start_discord_bot()
-        bot = get_discord_bot()
-        # Wire daemon events → Discord relay
-        if bot:
-            daemon = get_autonomy_daemon()
-            daemon.on_event(lambda evt: bot.relay_event(evt.type, evt.data))
-            print("[*] Discord bot spawned")
-        else:
-            print("[*] Discord bot disabled (no token)")
-    except Exception as e:
-        print(f"[WARN] Discord bot startup: {e}")
+            await start_discord_bot()
+            bot = get_discord_bot()
+            if bot:
+                daemon = get_autonomy_daemon()
+                daemon.on_event(lambda evt: bot.relay_event(evt.type, evt.data))
+                print("[*] Discord bot spawned")
+            else:
+                print("[*] Discord bot disabled (no token)")
+        except Exception as e:
+            print(f"[WARN] Discord bot startup: {e}")
+    else:
+        print("[*] Discord integration disabled by configuration")
 
     # Bootstrap intelligence systems (Self-Awareness, Learner, Goals)
     try:
@@ -199,14 +205,15 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         await _get_daemon().stop()
     except Exception:
         pass
-    try:
-        from src.kortana.services.discord_service import get_discord_bot as _get_bot
+    if settings.DISCORD_ENABLED:
+        try:
+            from src.kortana.services.discord_service import get_discord_bot as _get_bot
 
-        b = _get_bot()
-        if b:
-            await b.close()
-    except Exception:
-        pass
+            b = _get_bot()
+            if b:
+                await b.close()
+        except Exception:
+            pass
     log_request("system", "Kor'tana API shutting down")
     print("[-] Kor'tana API shutting down")
 

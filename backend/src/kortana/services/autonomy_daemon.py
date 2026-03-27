@@ -30,7 +30,9 @@ from src.kortana.services.operator_directive_service import (
     DirectiveSummary,
     get_active_operator_summary,
 )
+from src.kortana.services.local_backlog_service import LocalBacklogService
 from src.kortana.services.self_awareness import get_self_awareness
+from src.kortana.services.task_approval_service import TaskApprovalService
 from src.kortana.services.workspace_bridge_service import get_workspace_bridge
 
 logger = get_logger(__name__)
@@ -65,6 +67,15 @@ class AutonomyDaemon:
         self.safe_mode = False
         self.live_execution_enabled = True
         self.control_mode = "execute"
+        default_approval_mode = (
+            (os.getenv("KORTANA_DEFAULT_APPROVAL_MODE") or "").strip().lower()
+        )
+        if default_approval_mode in {"auto", "manual", "self-aware"}:
+            self.default_approval_mode = default_approval_mode
+        elif os.getenv("KORTANA_SELF_AWARE_APPROVAL", "false").lower() == "true":
+            self.default_approval_mode = "self-aware"
+        else:
+            self.default_approval_mode = None
         self.operator_guidance: dict[str, Any] | None = None
         self._adaptation_history: list[dict[str, Any]] = []
         self._deferred_tasks: set[str] = set()
@@ -85,6 +96,8 @@ class AutonomyDaemon:
             "self_heals_manifested": 0,
             "adaptive_adjustments": 0,
             "safe_mode_cycles": 0,
+            "approvals_auto_granted": 0,
+            "approvals_held": 0,
             "system_state": "nominal",
             "last_cycle": None,
             "last_assessment": None,
@@ -94,6 +107,16 @@ class AutonomyDaemon:
             "uptime_start": None,
             "errors": [],
         }
+
+    def _github_mode(self) -> str:
+        mode = (
+            (os.getenv("KORTANA_GITHUB_MODE") or get_settings().KORTANA_GITHUB_MODE)
+            .strip()
+            .lower()
+        )
+        if mode in {"full", "deferred", "disabled"}:
+            return mode
+        return "full"
 
     async def start(self) -> None:
         if not self.enabled:
@@ -160,7 +183,11 @@ class AutonomyDaemon:
 
         new_count = processed = succeeded = failed = deferred = 0
         async for session in self._db_manager.get_session():
-            new_count = await self._discover_issues(session)
+            new_count = await self._discover_tasks(
+                session,
+                guidance=guidance,
+                workspace_status=workspace_status,
+            )
             effective_limit = (
                 0
                 if guidance.pause_requested
@@ -205,6 +232,7 @@ class AutonomyDaemon:
             "completed_at": datetime.utcnow().isoformat(),
             "duration_seconds": elapsed,
             "new_issues": new_count,
+            "new_tasks": new_count,
             "processed": processed,
             "succeeded": succeeded,
             "failed": failed,
@@ -290,6 +318,7 @@ class AutonomyDaemon:
 
     def _apply_operator_guidance(self, guidance: DirectiveSummary) -> None:
         default_live_execution = not self.safe_mode
+        approval_mode = guidance.approval_mode or self.default_approval_mode
         self.operator_guidance = {
             "protocol_version": guidance.protocol_version,
             "active_count": guidance.active_count,
@@ -298,7 +327,7 @@ class AutonomyDaemon:
             "avoid_topics": guidance.avoid_topics,
             "max_tasks_override": guidance.max_tasks_override,
             "execution_mode": guidance.execution_mode,
-            "approval_mode": guidance.approval_mode,
+            "approval_mode": approval_mode,
             "approval_required": guidance.approval_required,
             "handoff_rules": guidance.handoff_rules,
             "override_mode": guidance.override_mode,
@@ -326,6 +355,20 @@ class AutonomyDaemon:
         elif guidance.approval_required:
             self.live_execution_enabled = False
             self.control_mode = "approval_required"
+        elif approval_mode == "auto":
+            self.live_execution_enabled = default_live_execution
+            self.control_mode = (
+                "auto_approval_execute"
+                if self.live_execution_enabled
+                else "auto_approval_observe"
+            )
+        elif approval_mode == "self-aware":
+            self.live_execution_enabled = default_live_execution
+            self.control_mode = (
+                "self_approval_execute"
+                if self.live_execution_enabled
+                else "self_approval_observe"
+            )
         elif guidance.override_mode == "execute" and not self.safe_mode:
             self.live_execution_enabled = True
             self.control_mode = "operator_override_execute"
@@ -338,7 +381,27 @@ class AutonomyDaemon:
             self.live_execution_enabled = default_live_execution
             self.control_mode = "safe_mode" if self.safe_mode else "execute"
 
-    async def _discover_issues(self, session: AsyncSession) -> int:
+    async def _discover_tasks(
+        self,
+        session: AsyncSession,
+        *,
+        guidance: DirectiveSummary,
+        workspace_status: dict[str, Any] | None,
+    ) -> int:
+        discovered = 0
+        try:
+            local_service = LocalBacklogService(session)
+            local_tasks = await local_service.discover_workspace_tasks(
+                workspace_status=workspace_status,
+                guidance=guidance,
+            )
+            discovered += len(local_tasks)
+        except Exception as exc:
+            logger.error(f"Local task discovery failed: {exc}")
+
+        if self._github_mode() != "full":
+            return discovered
+
         try:
             from src.kortana.services.github_autonomy_service import (
                 GitHubAutonomyService,
@@ -346,10 +409,10 @@ class AutonomyDaemon:
 
             service = GitHubAutonomyService(session)
             tasks = await service.fetch_and_queue_issues()
-            return len(tasks) if tasks else 0
+            discovered += len(tasks) if tasks else 0
         except Exception as exc:
             logger.error(f"Issue discovery failed: {exc}")
-            return 0
+        return discovered
 
     async def _manifest_self_healing(
         self,
@@ -388,7 +451,13 @@ class AutonomyDaemon:
             stmt_active = select(GitHubTask).where(
                 GitHubTask.title == title,
                 GitHubTask.status.in_(
-                    ["pending", "analyzed", "planning", "planning_complete", "executing"]
+                    [
+                        "pending",
+                        "analyzed",
+                        "planning",
+                        "planning_complete",
+                        "executing",
+                    ]
                 ),
             )
             active_repairs = (await session.execute(stmt_active)).scalars().all()
@@ -403,10 +472,27 @@ class AutonomyDaemon:
             if existing_repairs:
                 return
 
+            local_backlog = LocalBacklogService(session)
+            if self._github_mode() != "full":
+                created = await local_backlog.manifest_self_repair(
+                    failed_task=latest_failed,
+                    repair_anchor=repair_anchor,
+                )
+                if created is not None:
+                    self.metrics["self_heals_manifested"] += 1
+                return
+
             settings = get_settings()
             github_token = os.getenv("GITHUB_TOKEN") or settings.GITHUB_TOKEN
             if not github_token:
-                logger.error("Cannot manifest self-repair: GitHub token missing")
+                created = await local_backlog.manifest_self_repair(
+                    failed_task=latest_failed,
+                    repair_anchor=repair_anchor,
+                )
+                if created is not None:
+                    self.metrics["self_heals_manifested"] += 1
+                else:
+                    logger.error("Cannot manifest self-repair: GitHub token missing")
                 return
 
             owner = os.getenv("GITHUB_OWNER") or settings.GITHUB_OWNER
@@ -442,8 +528,27 @@ class AutonomyDaemon:
                     "Failed to manifest self-healing issue: "
                     f"status={response.status_code} body={response.text}"
                 )
+                created = await local_backlog.manifest_self_repair(
+                    failed_task=latest_failed,
+                    repair_anchor=repair_anchor,
+                )
+                if created is not None:
+                    self.metrics["self_heals_manifested"] += 1
         except Exception as exc:
             logger.error(f"Self-repair manifestation failed: {exc}")
+            try:
+                if "local_backlog" in locals() and "latest_failed" in locals():
+                    created = await local_backlog.manifest_self_repair(
+                        failed_task=latest_failed,
+                        repair_anchor=repair_anchor,
+                    )
+                    if created is not None:
+                        self.metrics["self_heals_manifested"] += 1
+            except Exception as fallback_exc:
+                logger.error(
+                    "Local self-repair fallback failed after manifestation error: "
+                    f"{fallback_exc}"
+                )
 
     async def _process_tasks(
         self,
@@ -475,6 +580,7 @@ class AutonomyDaemon:
             return 0, 0, 0, 0
 
         service = GitHubAutonomyService(session)
+        approval_service = TaskApprovalService(session)
         processed = succeeded = failed = deferred = 0
 
         for task in tasks:
@@ -507,6 +613,41 @@ class AutonomyDaemon:
                             or "Task planning did not complete successfully"
                         )
                 if task.status == "planning_complete":
+                    approval_decision = await approval_service.evaluate_task(
+                        task,
+                        approval_mode=(
+                            guidance.approval_mode
+                            if guidance and guidance.approval_mode
+                            else self.default_approval_mode
+                        ),
+                        system_state=str(self.metrics["system_state"]),
+                        runtime_profile=self.metrics.get("last_self_regulation"),
+                        workspace_status=self.metrics.get("workspace_bridge"),
+                    )
+                    if approval_decision is not None:
+                        await approval_service.record_decision(task, approval_decision)
+                        if approval_decision.approved:
+                            self.metrics["approvals_auto_granted"] += 1
+                            self._emit(
+                                DaemonEvent(
+                                    type="approval_auto_granted",
+                                    data={
+                                        "task_id": str(task.id),
+                                        "title": task.title,
+                                        "risk_level": approval_decision.risk_level,
+                                        "confidence": approval_decision.confidence,
+                                    },
+                                )
+                            )
+                        else:
+                            deferred += 1
+                            self.metrics["approvals_held"] += 1
+                            self._defer_execution(
+                                task,
+                                reason=approval_decision.reason_code,
+                            )
+                            continue
+
                     if self.live_execution_enabled:
                         await service.execute_task(task, dry_run=False)
                         if task.status != "executed":
@@ -543,7 +684,10 @@ class AutonomyDaemon:
             except Exception as exc:
                 failed += 1
                 task_id = str(task.id)
-                if task.status == "failed" and task_id not in self._cycle_failed_task_ids:
+                if (
+                    task.status == "failed"
+                    and task_id not in self._cycle_failed_task_ids
+                ):
                     self._cycle_failed_task_ids.append(task_id)
                 await self._record_outcome(
                     task=task,
@@ -597,6 +741,8 @@ class AutonomyDaemon:
     @staticmethod
     def _defer_reason(guidance: DirectiveSummary | None) -> str:
         if guidance is None:
+            if os.getenv("KORTANA_SELF_AWARE_APPROVAL", "false").lower() == "true":
+                return "self_approval_hold"
             return "live_execution_disabled"
         if guidance.override_mode == "halt":
             return "operator_override_halt"
@@ -608,9 +754,15 @@ class AutonomyDaemon:
             return "plan_only_mode"
         if guidance.approval_required:
             return "approval_required"
+        if guidance.approval_mode == "auto":
+            return "auto_approved"
+        if guidance.approval_mode == "self-aware":
+            return "self_approval_hold"
         return "live_execution_disabled"
 
-    def _defer_execution(self, task: GitHubTask, reason: str = "live_execution_disabled") -> None:
+    def _defer_execution(
+        self, task: GitHubTask, reason: str = "live_execution_disabled"
+    ) -> None:
         task_key = str(task.id)
         if task_key in self._deferred_tasks:
             return
@@ -671,7 +823,9 @@ class AutonomyDaemon:
             return "infra"
         if any(token in corpus for token in ("refactor", "cleanup", "restructure")):
             return "refactor"
-        if any(token in corpus for token in ("bug", "fix", "error", "failure", "crash")):
+        if any(
+            token in corpus for token in ("bug", "fix", "error", "failure", "crash")
+        ):
             return "code_fix"
         return "feature"
 
@@ -684,6 +838,7 @@ class AutonomyDaemon:
             "max_tasks_per_cycle": self.max_tasks,
             "base_max_tasks_per_cycle": self.base_max_tasks,
             "repo": self.repo,
+            "github_mode": self._github_mode(),
             "safe_mode": self.safe_mode,
             "live_execution_enabled": self.live_execution_enabled,
             "control_mode": self.control_mode,

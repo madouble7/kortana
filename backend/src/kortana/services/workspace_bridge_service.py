@@ -259,6 +259,7 @@ class WorkspaceBridgeService:
                         "# Add one directive per line using protocol v1. Examples:\n"
                         "# mode: plan\n"
                         "# approval: manual\n"
+                        "# approval: self-aware\n"
                         "# limit: max_tasks=1\n"
                         "# handoff: analyzer -> planner -> executor\n"
                         "# override: halt\n"
