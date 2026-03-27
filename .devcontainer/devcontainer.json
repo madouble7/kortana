@@ -1,0 +1,101 @@
+{
+    "$schema": "./devcontainer.local.schema.json",
+    "name": "KOR'TANA Devcontainer",
+    "dockerComposeFile": [
+        "../docker-compose.yml",
+        "docker-compose.devcontainer.yml"
+    ],
+    "service": "devcontainer",
+    "runServices": [
+        "postgres",
+        "redis",
+        "devcontainer"
+    ],
+    "workspaceFolder": "/workspace",
+    "shutdownAction": "stopCompose",
+    "overrideCommand": false,
+    "remoteUser": "vscode",
+    "forwardPorts": [
+        8000,
+        3000,
+        3001,
+        5173,
+        5174,
+        5432,
+        8080,
+        9090,
+        9093,
+        3100,
+        6379
+    ],
+    "portsAttributes": {
+        "8000": {
+            "label": "KOR'TANA Backend",
+            "onAutoForward": "notify"
+        },
+        "3000": {
+            "label": "KOR'TANA Frontend (Compose)",
+            "onAutoForward": "silent"
+        },
+        "3001": {
+            "label": "Grafana",
+            "onAutoForward": "silent"
+        },
+        "5173": {
+            "label": "KOR'TANA Root UI",
+            "onAutoForward": "silent"
+        },
+        "5174": {
+            "label": "KOR'TANA Frontend UI",
+            "onAutoForward": "silent"
+        },
+        "8080": {
+            "label": "cAdvisor",
+            "onAutoForward": "silent"
+        },
+        "9090": {
+            "label": "Prometheus",
+            "onAutoForward": "silent"
+        },
+        "9093": {
+            "label": "Alertmanager",
+            "onAutoForward": "silent"
+        },
+        "3100": {
+            "label": "Loki",
+            "onAutoForward": "ignore"
+        },
+        "5432": {
+            "label": "PostgreSQL",
+            "onAutoForward": "ignore"
+        },
+        "6379": {
+            "label": "Redis",
+            "onAutoForward": "ignore"
+        }
+    },
+    "postCreateCommand": "python -m pip install --user -r backend/requirements.txt -r backend/requirements-dev.txt && npm install && npm install --prefix frontend && npm install --prefix vscode-extension",
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "python.defaultInterpreterPath": "/usr/local/bin/python",
+                "python.envFile": "${workspaceFolder}/.env",
+                "terminal.integrated.defaultProfile.linux": "bash"
+            },
+            "extensions": [
+                "github.copilot",
+                "github.copilot-chat",
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "ms-python.debugpy",
+                "charliermarsh.ruff",
+                "dbaeumer.vscode-eslint",
+                "bradlc.vscode-tailwindcss",
+                "redhat.vscode-yaml",
+                "ms-azuretools.vscode-docker",
+                "eamodio.gitlens",
+                "DavidAnson.vscode-markdownlint"
+            ]
+        }
+    }
+}

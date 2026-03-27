@@ -1,0 +1,6 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Local fallback schema for devcontainer.json",
+    "type": "object",
+    "additionalProperties": true
+}
