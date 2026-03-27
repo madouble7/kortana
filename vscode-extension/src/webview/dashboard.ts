@@ -7,6 +7,7 @@ import {
     REQUEST_DASHBOARD_STATE,
     RESPONSE_DASHBOARD_STATE,
 } from "./messages";
+import { createWebviewRuntimeScript } from "./runtime";
 
 export function getDashboardContent(webview: vscode.Webview): string {
     const nonce = createNonce();
@@ -61,39 +62,7 @@ function getDashboardBody(): string {
 }
 
 function getDashboardScript(): string {
-    const requestDashboardStateMessage = JSON.stringify(
-        createRequestMessage(REQUEST_DASHBOARD_STATE)
-    );
-    const openAIStudioMessage = JSON.stringify(
-        createCommandMessage("openAIStudio")
-    );
-    const openDeployPageMessage = JSON.stringify(
-        createCommandMessage("openDeployPage")
-    );
-    const checkHealthMessage = JSON.stringify(
-        createCommandMessage("checkHealth")
-    );
-    const unsealRuntimeMessage = JSON.stringify(
-        createCommandMessage("unsealRuntime")
-    );
-    const viewMetricsMessage = JSON.stringify(
-        createCommandMessage("viewMetrics")
-    );
-    const openAutonomyAuditMessage = JSON.stringify(
-        createCommandMessage("openAutonomyAudit")
-    );
-
     return `
-const vscodeApi = acquireVsCodeApi();
-
-function postMessage(message) {
-    vscodeApi.postMessage(message);
-}
-
-function requestDashboardState() {
-    postMessage(${requestDashboardStateMessage});
-}
-
 function updateDashboardState(payload) {
     const indicator = document.getElementById("backend-status-indicator");
     const text = document.getElementById("backend-status-text");
@@ -105,22 +74,47 @@ function updateDashboardState(payload) {
     tasksCount.textContent = payload.tasksCount;
     lastSync.textContent = payload.lastSync;
 }
-
-window.addEventListener("message", (event) => {
-    const message = event.data;
-    if (message.type === "${RESPONSE_DASHBOARD_STATE}") {
-        updateDashboardState(message.payload);
-    }
-});
-
-document.getElementById("action-ai-studio").addEventListener("click", () => postMessage(${openAIStudioMessage}));
-document.getElementById("action-deploy-page").addEventListener("click", () => postMessage(${openDeployPageMessage}));
-document.getElementById("action-health-check").addEventListener("click", () => postMessage(${checkHealthMessage}));
-document.getElementById("action-unseal-runtime").addEventListener("click", () => postMessage(${unsealRuntimeMessage}));
-document.getElementById("action-metrics").addEventListener("click", () => postMessage(${viewMetricsMessage}));
-document.getElementById("action-audit").addEventListener("click", () => postMessage(${openAutonomyAuditMessage}));
-
-requestDashboardState();
-setInterval(requestDashboardState, 10000);
+${createWebviewRuntimeScript({
+        commandBindings: [
+            {
+                elementId: "action-ai-studio",
+                message: createCommandMessage("openAIStudio"),
+            },
+            {
+                elementId: "action-deploy-page",
+                message: createCommandMessage("openDeployPage"),
+            },
+            {
+                elementId: "action-health-check",
+                message: createCommandMessage("checkHealth"),
+            },
+            {
+                elementId: "action-unseal-runtime",
+                message: createCommandMessage("unsealRuntime"),
+            },
+            {
+                elementId: "action-metrics",
+                message: createCommandMessage("viewMetrics"),
+            },
+            {
+                elementId: "action-audit",
+                message: createCommandMessage("openAutonomyAudit"),
+            },
+        ],
+        requestPollers: [
+            {
+                functionName: "requestDashboardState",
+                message: createRequestMessage(REQUEST_DASHBOARD_STATE),
+                intervalMs: 10000,
+                invokeImmediately: true,
+            },
+        ],
+        responseBindings: [
+            {
+                type: RESPONSE_DASHBOARD_STATE,
+                handlerName: "updateDashboardState",
+            },
+        ],
+    })}
     `;
 }

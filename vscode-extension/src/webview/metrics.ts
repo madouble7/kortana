@@ -6,6 +6,7 @@ import {
     REQUEST_METRICS_STATE,
     RESPONSE_METRICS_STATE,
 } from "./messages";
+import { createWebviewRuntimeScript } from "./runtime";
 
 export function getMetricsContent(webview: vscode.Webview): string {
     const nonce = createNonce();
@@ -42,17 +43,7 @@ function getMetricsBody(): string {
 }
 
 function getMetricsScript(): string {
-    const requestMetricsStateMessage = JSON.stringify(
-        createRequestMessage(REQUEST_METRICS_STATE)
-    );
-
     return `
-const vscodeApi = acquireVsCodeApi();
-
-function requestMetricsState() {
-    vscodeApi.postMessage(${requestMetricsStateMessage});
-}
-
 function updateMetricsState(payload) {
     const backendStatus = document.getElementById("backend-status");
     backendStatus.textContent = payload.backendOnline ? payload.backendMessage : "Offline";
@@ -60,15 +51,21 @@ function updateMetricsState(payload) {
     document.getElementById("deploy-time").textContent = payload.lastDeployment;
     document.getElementById("tasks-count").textContent = payload.tasksCount;
 }
-
-window.addEventListener("message", (event) => {
-    const message = event.data;
-    if (message.type === "${RESPONSE_METRICS_STATE}") {
-        updateMetricsState(message.payload);
-    }
-});
-
-requestMetricsState();
-setInterval(requestMetricsState, 15000);
+${createWebviewRuntimeScript({
+        requestPollers: [
+            {
+                functionName: "requestMetricsState",
+                message: createRequestMessage(REQUEST_METRICS_STATE),
+                intervalMs: 15000,
+                invokeImmediately: true,
+            },
+        ],
+        responseBindings: [
+            {
+                type: RESPONSE_METRICS_STATE,
+                handlerName: "updateMetricsState",
+            },
+        ],
+    })}
     `;
 }
