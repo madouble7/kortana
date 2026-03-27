@@ -215,3 +215,4 @@ key.json
 .terraform/
 *.tfstate
 celerybeat-schedule.*
+.kortana/operator_inbox.md
