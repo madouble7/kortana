@@ -10,6 +10,30 @@ from src.kortana.services.workspace_bridge_service import WorkspaceBridgeService
 
 
 class TestWorkspaceBridgeService:
+    def test_get_status_reports_canonical_warning_when_falling_back(
+        self, tmp_path
+    ) -> None:
+        service = WorkspaceBridgeService()
+        service.repo_root = tmp_path.resolve()
+        service.configured_root = (tmp_path / "missing-root").resolve()
+        service.root_source = "fallback"
+
+        status = service.get_status()
+
+        assert status["canonical_match"] is False
+        assert "using fallback" in status["canonical_warning"]
+
+    def test_get_status_marks_configured_root_as_canonical(self, tmp_path) -> None:
+        service = WorkspaceBridgeService()
+        service.repo_root = tmp_path.resolve()
+        service.configured_root = tmp_path.resolve()
+        service.root_source = "configured"
+
+        status = service.get_status()
+
+        assert status["canonical_match"] is True
+        assert status["canonical_warning"] is None
+
     def test_extract_changed_files_handles_renames(self) -> None:
         lines = [
             " M backend/src/kortana/services/autonomy_daemon.py",

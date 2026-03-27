@@ -25,6 +25,10 @@ logger = get_logger(__name__)
 @dataclass
 class WorkspaceSnapshot:
     repo_root: str
+    configured_root: str = ""
+    root_source: str = "configured"
+    canonical_match: bool = True
+    canonical_warning: str | None = None
     branch: str = "unknown"
     dirty: bool = False
     changed_files: list[str] = field(default_factory=list)
@@ -41,12 +45,20 @@ class WorkspaceBridgeService:
 
     def __init__(self) -> None:
         settings = get_settings()
-        configured_root = Path(os.getenv("KORTANA_WORKSPACE_ROOT", settings.REPO_ROOT))
+        configured_root = Path(
+            os.getenv("KORTANA_WORKSPACE_ROOT", settings.REPO_ROOT)
+        ).expanduser()
         fallback_root = Path(__file__).resolve().parents[4]
+        self.configured_root = configured_root.resolve()
         self.repo_root = (
-            configured_root.resolve()
-            if self._looks_like_repo_root(configured_root)
+            self.configured_root
+            if self._looks_like_repo_root(self.configured_root)
             else fallback_root.resolve()
+        )
+        self.root_source = (
+            "configured"
+            if self._looks_like_repo_root(self.configured_root)
+            else "fallback"
         )
         inbox_default = self.repo_root / ".kortana" / "operator_inbox.md"
         self.inbox_path = Path(
@@ -64,6 +76,10 @@ class WorkspaceBridgeService:
 
         snapshot = WorkspaceSnapshot(
             repo_root=str(self.repo_root),
+            configured_root=str(self.configured_root),
+            root_source=self.root_source,
+            canonical_match=self.root_source == "configured",
+            canonical_warning=self._canonical_warning(),
             branch=branch,
             dirty=bool(status_lines),
             changed_files=self._extract_changed_files(status_lines),
@@ -81,6 +97,10 @@ class WorkspaceBridgeService:
         if self._last_snapshot is None:
             return {
                 "repo_root": str(self.repo_root),
+                "configured_root": str(self.configured_root),
+                "root_source": self.root_source,
+                "canonical_match": self.root_source == "configured",
+                "canonical_warning": self._canonical_warning(),
                 "branch": "unknown",
                 "dirty": False,
                 "changed_files": [],
@@ -93,6 +113,10 @@ class WorkspaceBridgeService:
             }
         return {
             "repo_root": self._last_snapshot.repo_root,
+            "configured_root": self._last_snapshot.configured_root,
+            "root_source": self._last_snapshot.root_source,
+            "canonical_match": self._last_snapshot.canonical_match,
+            "canonical_warning": self._last_snapshot.canonical_warning,
             "branch": self._last_snapshot.branch,
             "dirty": self._last_snapshot.dirty,
             "changed_files": self._last_snapshot.changed_files,
@@ -248,6 +272,14 @@ class WorkspaceBridgeService:
             "README.md",
         ]
         return any((candidate / marker).exists() for marker in markers)
+
+    def _canonical_warning(self) -> str | None:
+        if self.root_source == "configured":
+            return None
+        return (
+            f"Configured workspace root {self.configured_root} did not look like a "
+            f"repo root; using fallback {self.repo_root}"
+        )
 
     def _ensure_inbox_exists(self) -> None:
         try:
