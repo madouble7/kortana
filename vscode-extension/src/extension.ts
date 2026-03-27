@@ -1,11 +1,62 @@
 import * as vscode from "vscode";
 
+const COMMAND_OPEN_AI_STUDIO = "kortana.openAIStudio";
+const COMMAND_OPEN_DEPLOY_PAGE = "kortana.openDeployPage";
+const COMMAND_UNSEAL_RUNTIME = "kortana.unsealRuntime";
+const COMMAND_CHECK_HEALTH = "kortana.checkHealth";
+const COMMAND_VIEW_METRICS = "kortana.viewMetrics";
+const COMMAND_OPEN_AUTONOMY_AUDIT = "kortana.autonomy.audit.open";
+
+const DASHBOARD_COMMAND_MAP: Record<string, string> = {
+    openAIStudio: COMMAND_OPEN_AI_STUDIO,
+    openDeployPage: COMMAND_OPEN_DEPLOY_PAGE,
+    unsealRuntime: COMMAND_UNSEAL_RUNTIME,
+    checkHealth: COMMAND_CHECK_HEALTH,
+    viewMetrics: COMMAND_VIEW_METRICS,
+    openAutonomyAudit: COMMAND_OPEN_AUTONOMY_AUDIT,
+    [COMMAND_OPEN_AI_STUDIO]: COMMAND_OPEN_AI_STUDIO,
+    [COMMAND_OPEN_DEPLOY_PAGE]: COMMAND_OPEN_DEPLOY_PAGE,
+    [COMMAND_UNSEAL_RUNTIME]: COMMAND_UNSEAL_RUNTIME,
+    [COMMAND_CHECK_HEALTH]: COMMAND_CHECK_HEALTH,
+    [COMMAND_VIEW_METRICS]: COMMAND_VIEW_METRICS,
+    [COMMAND_OPEN_AUTONOMY_AUDIT]: COMMAND_OPEN_AUTONOMY_AUDIT,
+};
+
+type DashboardMessage = {
+    command?: string;
+};
+
+export function resolveDashboardCommand(
+    message: DashboardMessage
+): string | undefined {
+    const candidate = message.command?.trim();
+
+    if (!candidate) {
+        return undefined;
+    }
+
+    return DASHBOARD_COMMAND_MAP[candidate];
+}
+
+async function handleDashboardMessage(message: DashboardMessage): Promise<void> {
+    const command = resolveDashboardCommand(message);
+
+    if (!command) {
+        vscode.window.showWarningMessage(
+            `Kor'tana received an unknown dashboard action: ${message.command ?? "<missing>"}`
+        );
+        return;
+    }
+
+    await vscode.commands.executeCommand(command);
+}
+
 export function activate(context: vscode.ExtensionContext) {
     console.log("Kor'tana VS Code Extension activated");
 
     // Command: Open AI Studio
     context.subscriptions.push(
-        vscode.commands.registerCommand("kortana.openAIStudio", async () => {
+        vscode.commands.registerCommand(COMMAND_OPEN_AI_STUDIO, async () => {
             const aiStudioUrl =
                 "https://aistudio.google.com/app/prompts/create/1T7Nh4cq1IwCwhHq5u8ZETDb6fY4qVkH3";
 
@@ -25,7 +76,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Command: Open Deploy Page
     context.subscriptions.push(
-        vscode.commands.registerCommand("kortana.openDeployPage", async () => {
+        vscode.commands.registerCommand(COMMAND_OPEN_DEPLOY_PAGE, async () => {
             const deployUrl =
                 "https://kor-tana-780422883904.us-west1.run.app";
 
@@ -45,7 +96,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Command: Unseal Runtime
     context.subscriptions.push(
-        vscode.commands.registerCommand("kortana.unsealRuntime", async () => {
+        vscode.commands.registerCommand(COMMAND_UNSEAL_RUNTIME, async () => {
             vscode.window.showInformationMessage(
                 "Unsealing Kor'tana runtime..."
             );
@@ -71,7 +122,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Command: Check Health
     context.subscriptions.push(
-        vscode.commands.registerCommand("kortana.checkHealth", async () => {
+        vscode.commands.registerCommand(COMMAND_CHECK_HEALTH, async () => {
             try {
                 const axios = require("axios");
                 const response = await axios.get(
@@ -93,7 +144,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Command: Open Autonomy Audit
     context.subscriptions.push(
-        vscode.commands.registerCommand("kortana.autonomy.audit.open", async () => {
+        vscode.commands.registerCommand(COMMAND_OPEN_AUTONOMY_AUDIT, async () => {
             const panel = vscode.window.createWebviewPanel(
                 "kortanaAutonomyAudit",
                 "Kor'tana Autonomy Audit",
@@ -124,6 +175,17 @@ export function activate(context: vscode.ExtensionContext) {
                     ]
                 };
 
+                webviewView.webview.onDidReceiveMessage(async (message: DashboardMessage) => {
+                    try {
+                        await handleDashboardMessage(message);
+                    } catch (error) {
+                        const detail = error instanceof Error ? error.message : String(error);
+                        vscode.window.showErrorMessage(
+                            `Kor'tana dashboard action failed: ${detail}`
+                        );
+                    }
+                });
+
                 webviewView.webview.html = getDashboardContent();
             }
         })
@@ -131,7 +193,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Command: View Metrics
     context.subscriptions.push(
-        vscode.commands.registerCommand("kortana.viewMetrics", async () => {
+        vscode.commands.registerCommand(COMMAND_VIEW_METRICS, async () => {
             const panel = vscode.window.createWebviewPanel(
                 "kortanaMetrics",
                 "Kor'tana Metrics",
@@ -255,7 +317,10 @@ function getDashboardContent(): string {
     <div class="dashboard-card">
         <h4>System Status</h4>
         <p><span class="status-indicator status-alive"></span>Extension Active</p>
-        <p><span class="status-indicator" id="backend-status" style="background: #ffc107;"></span>Backend: Checking...</p>
+        <p>
+            <span class="status-indicator" id="backend-status-indicator" style="background: #ffc107;"></span>
+            <span id="backend-status-text">Backend: Checking...</span>
+        </p>
     </div>
 
     <div class="dashboard-card">
@@ -264,6 +329,8 @@ function getDashboardContent(): string {
         <button onclick="openDeployPage()">🚀 Deploy Page</button>
         <button onclick="checkHealth()">💚 Health Check</button>
         <button onclick="unsealRuntime()">🔓 Unseal Runtime</button>
+        <button onclick="viewMetrics()">📊 Metrics</button>
+        <button onclick="openAutonomyAudit()">🔮 Audit</button>
     </div>
 
     <div class="dashboard-card">
@@ -291,19 +358,30 @@ function getDashboardContent(): string {
             vscode.postMessage({ command: 'unsealRuntime' });
         }
 
+        function viewMetrics() {
+            vscode.postMessage({ command: 'viewMetrics' });
+        }
+
+        function openAutonomyAudit() {
+            vscode.postMessage({ command: 'openAutonomyAudit' });
+        }
+
         // Check backend status periodically
         async function checkBackend() {
+            const indicator = document.getElementById('backend-status-indicator');
+            const text = document.getElementById('backend-status-text');
+
             try {
                 const response = await fetch('http://localhost:8000/api/health');
                 if (response.ok) {
-                    document.getElementById('backend-status').style.background = '#28a745';
-                    document.getElementById('backend-status').parentElement.textContent = 'Backend: Online';
+                    indicator.style.background = '#28a745';
+                    text.textContent = 'Backend: Online';
                 } else {
                     throw new Error();
                 }
             } catch (e) {
-                document.getElementById('backend-status').style.background = '#dc3545';
-                document.getElementById('backend-status').parentElement.textContent = 'Backend: Offline';
+                indicator.style.background = '#dc3545';
+                text.textContent = 'Backend: Offline';
             }
         }
 
