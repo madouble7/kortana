@@ -10,6 +10,7 @@ import {
     RESPONSE_AUDIT_LOG,
 } from "./messages";
 import { createWebviewRuntimeScript } from "./runtime";
+import { createAuditStyles } from "./styles";
 
 export function getAutonomyAuditContent(webview: vscode.Webview): string {
     const nonce = createNonce();
@@ -25,14 +26,7 @@ export function getAutonomyAuditContent(webview: vscode.Webview): string {
 
 function getAuditBody(): string {
     return `
-<style>
-    body { font-family: var(--vscode-font-family); padding: 20px; color: var(--vscode-foreground); background: var(--vscode-editor-background); }
-    h1 { color: var(--vscode-textLink-foreground); }
-    .audit-item { margin: 10px 0; padding: 10px; background: var(--vscode-list-inactiveSelectionBackground); border-radius: 4px; }
-    .status-success { border-left: 3px solid #28a745; }
-    .status-failed { border-left: 3px solid #dc3545; }
-    .status-pending { border-left: 3px solid #ffc107; }
-</style>
+${createAuditStyles()}
 <h1>Kor'tana Autonomy Audit</h1>
 <p>Real-time monitoring of autonomous operations...</p>
 <div id="audit-log">
