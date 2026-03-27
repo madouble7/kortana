@@ -1,6 +1,8 @@
 import * as assert from "assert";
 import * as vscode from "vscode";
 
+import { resolveDashboardCommand } from "../../extension";
+
 const EXPECTED_COMMANDS = [
     "kortana.openAIStudio",
     "kortana.openDeployPage",
@@ -9,6 +11,15 @@ const EXPECTED_COMMANDS = [
     "kortana.viewMetrics",
     "kortana.autonomy.audit.open",
 ];
+
+const EXPECTED_DASHBOARD_MAPPINGS: Record<string, string> = {
+    openAIStudio: "kortana.openAIStudio",
+    openDeployPage: "kortana.openDeployPage",
+    unsealRuntime: "kortana.unsealRuntime",
+    checkHealth: "kortana.checkHealth",
+    viewMetrics: "kortana.viewMetrics",
+    openAutonomyAudit: "kortana.autonomy.audit.open",
+};
 
 export async function run(): Promise<void> {
     const extension = vscode.extensions.all.find(
@@ -37,4 +48,19 @@ export async function run(): Promise<void> {
             `Expected command to be contributed: ${command}`
         );
     }
+
+    for (const [action, command] of Object.entries(EXPECTED_DASHBOARD_MAPPINGS)) {
+        assert.strictEqual(
+            resolveDashboardCommand({ command: action }),
+            command,
+            `Expected dashboard action ${action} to resolve to ${command}`
+        );
+    }
+
+    assert.strictEqual(
+        resolveDashboardCommand({ command: "kortana.openAIStudio" }),
+        "kortana.openAIStudio"
+    );
+    assert.strictEqual(resolveDashboardCommand({ command: "unknown" }), undefined);
+    assert.strictEqual(resolveDashboardCommand({}), undefined);
 }
