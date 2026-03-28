@@ -1,5 +1,5 @@
-import GitHubIssueAnalyzer from './components/GitHubIssueAnalyzer'
-import { FractalDashboard } from './components/FractalDashboard'
+import { FractalDashboard } from './components/FractalDashboard';
+import GitHubIssueAnalyzer from './components/GitHubIssueAnalyzer';
 
 function App() {
   return (

@@ -5,6 +5,7 @@ import { defineConfig, loadEnv } from 'vite'
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
+  const vendorChunkPackages = ['react', 'react-dom', 'clsx', 'tailwind-merge']
 
   return {
     plugins: [
@@ -34,9 +35,14 @@ export default defineConfig(({ mode }) => {
       sourcemap: mode === 'development',
       rollupOptions: {
         output: {
-          manualChunks: {
-            vendor: ['react', 'react-dom'],
-            utils: ['clsx', 'tailwind-merge']
+          manualChunks(id) {
+            if (!id.includes('node_modules')) {
+              return undefined
+            }
+
+            return vendorChunkPackages.some((pkg) => id.includes(pkg))
+              ? 'vendor'
+              : undefined
           }
         }
       }

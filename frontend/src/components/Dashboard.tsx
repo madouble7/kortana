@@ -3,15 +3,15 @@
  * Main dashboard for system interaction and monitoring
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { AgentInfo, apiService, SystemMetrics, TaskInfo } from '../services/apiService';
 import './Dashboard.css';
-import { apiService, SystemMetrics, AgentInfo, TaskInfo } from '../services/apiService';
 
 interface DashboardProps {
   apiUrl?: string;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ apiUrl }) => {
+export const Dashboard: React.FC<DashboardProps> = () => {
   const [activeSection, setActiveSection] = useState('overview');
   const [systemInfo, setSystemInfo] = useState<any>(null);
   const [agents, setAgents] = useState<AgentInfo[]>([]);
