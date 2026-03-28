@@ -21,7 +21,8 @@ function App() {
       <div className="w-full md:w-[400px] lg:w-[500px] border-t md:border-t-0 md:border-l border-gray-800">
         <FractalDashboard />
       </div>
-      )
+    </div>
+  );
 }
 
-      export default App
+export default App;
