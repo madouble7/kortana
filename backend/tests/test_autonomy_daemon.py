@@ -244,6 +244,79 @@ class TestAutonomyDaemon:
         assert (processed, succeeded, failed, deferred) == (1, 0, 0, 1)
         task_deferred = next(event for event in events if event.type == "task_deferred")
         assert task_deferred.data["reason"] == "approval_required"
+        service.post_issue_comment.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_process_tasks_retries_approval_comment_when_github_fails(
+        self,
+    ) -> None:
+        daemon = build_daemon()
+        daemon.live_execution_enabled = True
+
+        task = GitHubTask(
+            id="task-retry",
+            title="Retry Test",
+            status="planning_complete",
+            github_issue_number=100,
+            github_repo="madouble7/kortana",
+        )
+
+        result = MagicMock()
+        result.scalars.return_value.all.return_value = [task]
+        session = AsyncMock()
+        session.execute = AsyncMock(return_value=result)
+
+        service = AsyncMock()
+        # Mock github comment to fail explicitly
+        service.post_issue_comment = AsyncMock(return_value=False)
+
+        events: list[Any] = []
+        daemon.on_event(events.append)
+        guidance = DirectiveSummary(
+            active_count=1,
+            approval_mode="manual",
+            approval_required=True,
+        )
+
+        with (
+            patch(
+                "src.kortana.services.github_autonomy_service.GitHubAutonomyService",
+                return_value=service,
+            ),
+            patch(
+                "src.kortana.services.autonomy_daemon.TaskApprovalService",
+                return_value=AsyncMock(
+                    evaluate_task=AsyncMock(
+                        return_value=MagicMock(
+                            approved=False,
+                            reason_code="approval_required",
+                            rationale="test",
+                            shadow_summary=None,
+                        )
+                    ),
+                    record_decision=AsyncMock(return_value=None),
+                ),
+            ),
+        ):
+            processed, succeeded, failed, deferred = await daemon._process_tasks(
+                session,
+                guidance=guidance,
+            )
+
+        # Deferred should not be incremented because we continued early
+        assert (processed, succeeded, failed, deferred) == (1, 0, 0, 0)
+
+        # State should be reverted to planning_complete
+        assert task.status == "planning_complete"
+
+        # Emits a failure event indicating retryability
+        failed_event = next(
+            event for event in events if event.type == "github_comment_failed"
+        )
+        assert failed_event.data["task_id"] == "task-retry"
+
+        # Method was actually called
+        service.post_issue_comment.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_process_tasks_holds_self_aware_review_when_risk_is_high(
