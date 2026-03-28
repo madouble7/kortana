@@ -6,6 +6,7 @@ RequestLoggingMiddleware, and RateLimitMiddleware fallback behavior.
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from starlette.responses import Response
 
 
 class TestSecurityHeadersMiddleware:
@@ -72,7 +73,7 @@ class TestRateLimitMiddlewareUnit:
         assert middleware.requests_per_minute == 60
 
     def test_legacy_middleware_accepts_redis_url(self):
-        from middleware.security import RateLimitMiddleware
+        from src.kortana.middleware.security import RateLimitMiddleware
 
         mock_app = MagicMock()
         middleware = RateLimitMiddleware(
@@ -96,6 +97,9 @@ class TestRateLimitMiddlewareUnit:
 
         mock_request = MagicMock()
         mock_request.client.host = "127.0.0.1"
+        mock_request.headers = {}
+        mock_request.method = "GET"
+        mock_request.url.path = "/api/gemini/chat"
 
         expected_response = MagicMock()
         call_next = AsyncMock(return_value=expected_response)
@@ -119,6 +123,9 @@ class TestRateLimitMiddlewareUnit:
 
         mock_request = MagicMock()
         mock_request.client.host = "127.0.0.1"
+        mock_request.headers = {}
+        mock_request.method = "GET"
+        mock_request.url.path = "/api/gemini/chat"
 
         expected_response = MagicMock()
         call_next = AsyncMock(return_value=expected_response)
@@ -129,6 +136,52 @@ class TestRateLimitMiddlewareUnit:
             response = await middleware.dispatch(mock_request, call_next)
 
         assert response == expected_response
+
+    @pytest.mark.asyncio
+    async def test_dispatch_rate_limit_returns_429_json_response(self):
+        from src.kortana.middleware.security import RateLimitMiddleware
+
+        mock_app = MagicMock()
+        middleware = RateLimitMiddleware(mock_app, requests_per_minute=2)
+
+        mock_request = MagicMock()
+        mock_request.client.host = "127.0.0.1"
+        mock_request.headers = {}
+        mock_request.method = "GET"
+        mock_request.url.path = "/api/gemini/chat"
+
+        call_next = AsyncMock()
+
+        with patch.object(middleware.redis, "incr", AsyncMock(return_value=3)), patch.object(
+            middleware.redis, "expire", AsyncMock()
+        ):
+            response = await middleware.dispatch(mock_request, call_next)
+
+        assert response.status_code == 429
+        assert response.headers["Retry-After"] == "60"
+        assert response.headers["X-RateLimit-Limit"] == "2"
+        assert call_next.await_count == 0
+
+    @pytest.mark.asyncio
+    async def test_dispatch_excluded_path_skips_rate_limit(self):
+        from src.kortana.middleware.security import RateLimitMiddleware
+
+        mock_app = MagicMock()
+        middleware = RateLimitMiddleware(mock_app, requests_per_minute=2)
+
+        mock_request = MagicMock()
+        mock_request.client.host = "127.0.0.1"
+        mock_request.headers = {}
+        mock_request.method = "GET"
+        mock_request.url.path = "/assets/index.js"
+
+        expected_response = Response(status_code=200)
+        call_next = AsyncMock(return_value=expected_response)
+
+        response = await middleware.dispatch(mock_request, call_next)
+
+        assert response.status_code == 200
+        call_next.assert_awaited_once()
 
 
 class TestSecurityHeadersMiddlewareUnit:

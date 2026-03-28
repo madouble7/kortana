@@ -10,8 +10,8 @@ from typing import Any, Optional
 
 from pydantic import BaseModel
 
-from config import get_settings
-from logger import log_error, log_request
+from src.kortana.config import get_settings
+from src.kortana.logger import log_error, log_request
 
 
 class ModelProvider(str, Enum):

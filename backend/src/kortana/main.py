@@ -294,12 +294,14 @@ def create_app() -> FastAPI:
     app.add_middleware(RequestIDMiddleware)
     app.add_middleware(RequestLoggingMiddleware)
     if settings.ENVIRONMENT != "testing":
-        if _redis_available:
+        if settings.RATE_LIMIT_ENABLED and _redis_available:
             app.add_middleware(
                 RateLimitMiddleware,
-                requests_per_minute=100,
+                requests_per_minute=settings.RATE_LIMIT_REQUESTS,
                 redis_url=redis_url,
             )
+        elif not settings.RATE_LIMIT_ENABLED:
+            print("[*] RateLimitMiddleware disabled by configuration")
         else:
             print("[WARN] RateLimitMiddleware skipped — no Redis")
 

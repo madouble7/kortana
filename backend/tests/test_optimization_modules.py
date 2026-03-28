@@ -247,7 +247,7 @@ class TestOptimizationIntegration:
             backend_path = os.path.join(os.path.dirname(__file__), "..\\")
             sys.path.insert(0, backend_path)
 
-            from main import app
+            from src.kortana.main import app
 
             assert app is not None
             assert hasattr(app, "routes")

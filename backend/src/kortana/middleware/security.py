@@ -9,6 +9,7 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 from fastapi import HTTPException, Request, Response, status
+from fastapi.responses import JSONResponse
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -35,10 +36,23 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         app: Any,
         requests_per_minute: int = 60,
         redis_url: str | None = None,
+        exclude_paths: tuple[str, ...] | None = None,
     ) -> None:
         super().__init__(app)
         self.requests_per_minute: int = requests_per_minute
+        self.exclude_paths = exclude_paths or (
+            "/",
+            "/index.html",
+            "/favicon.ico",
+            "/manifest.json",
+            "/sw.js",
+            "/icon-192.png",
+            "/icon-512.png",
+            "/assets",
+            "/api/health",
+        )
         effective_redis_url = redis_url or "redis://localhost:6379/0"
+        self.redis_url = effective_redis_url
         self.redis: Redis = Redis.from_url(
             effective_redis_url,
             encoding="utf-8",
@@ -51,6 +65,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
         """Process request and apply Redis-backed rate limiting."""
+        if request.method == "OPTIONS" or self._is_excluded_path(request.url.path):
+            return await call_next(request)
+
         # If the circuit breaker is open, skip Redis entirely.
         if self._redis_failed_at:
             elapsed = time.monotonic() - self._redis_failed_at
@@ -59,7 +76,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             # Cooldown expired — attempt to re-close the circuit.
             self._redis_failed_at = 0.0
 
-        client_ip = request.client.host if request.client else "unknown"
+        client_ip = self._get_client_ip(request)
         key = f"ratelimit:{client_ip}"
 
         try:
@@ -73,9 +90,24 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     f"IP {client_ip} exceeded {self.requests_per_minute} requests/minute",
                     details={"client_ip": client_ip, "current_count": current_count},
                 )
-                raise HTTPException(
+                return JSONResponse(
                     status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    detail="Rate limit exceeded. Maximum requests exceeded.",
+                    content={
+                        "error": "RATE_LIMIT_EXCEEDED",
+                        "detail": "Rate limit exceeded. Maximum requests exceeded.",
+                        "message": "Rate limit exceeded. Maximum requests exceeded.",
+                        "status_code": status.HTTP_429_TOO_MANY_REQUESTS,
+                        "details": {
+                            "client_ip": client_ip,
+                            "limit": self.requests_per_minute,
+                            "current_count": current_count,
+                        },
+                    },
+                    headers={
+                        "Retry-After": "60",
+                        "X-RateLimit-Limit": str(self.requests_per_minute),
+                        "X-RateLimit-Remaining": "0",
+                    },
                 )
         except (RedisError, RuntimeError, OSError) as exc:
             # Open the circuit breaker — one log line, then silence.
@@ -88,6 +120,18 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         response = await call_next(request)
         return response
+
+    def _get_client_ip(self, request: Request) -> str:
+        forwarded_for = request.headers.get("x-forwarded-for")
+        if forwarded_for:
+            return forwarded_for.split(",")[0].strip()
+        return request.client.host if request.client else "unknown"
+
+    def _is_excluded_path(self, path: str) -> bool:
+        return any(
+            path == excluded or path.startswith(f"{excluded}/")
+            for excluded in self.exclude_paths
+        )
 
     def _cleanup_all(self, now: float) -> None:
         """Remove all IPs that haven't made a request in the last minute"""
