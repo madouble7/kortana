@@ -71,6 +71,7 @@ def _serialize_task(task: GitHubTask | None) -> Dict[str, Any]:
             "error_message": None,
             "validation_report": None,
             "validation_summary": TaskApprovalService.summarize_validation(None),
+            "sandbox_result": None,
             "created_at": None,
             "updated_at": None,
         }
@@ -89,6 +90,7 @@ def _serialize_task(task: GitHubTask | None) -> Dict[str, Any]:
         "error_message": task.error_message,
         "validation_report": task.validation_report,
         "validation_summary": TaskApprovalService.summarize_validation(task),
+        "sandbox_result": task.sandbox_result,
         "created_at": task.created_at.isoformat() if task.created_at else None,
         "updated_at": task.updated_at.isoformat() if task.updated_at else None,
     }
