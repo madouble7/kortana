@@ -34,9 +34,9 @@ def test_handshake_standard(client):
 
 
 def test_handshake_elevated(client):
-    """Test elevated handshake response with 'I AM'."""
+    """Test elevated handshake response with 'we are'."""
     response = client.post(
-        "/api/orchestrator/handshake", json={"message": "I AM ready"}
+        "/api/orchestrator/handshake", json={"message": "we are ready"}
     )
     assert response.status_code == 200
     assert response.json()["status"] == "ELEVATED"
