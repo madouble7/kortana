@@ -35,9 +35,19 @@ function App() {
   const [offline, setOffline] = useState(false);
 
   useEffect(() => {
-    // Probe backend once on load
-    api.health().catch(() => setOffline(true));
-    return api.onOfflineChange(setOffline);
+    const probeHealth = () => {
+      api.health().catch(() => setOffline(true));
+    };
+
+    // Probe backend on load and keep the availability banner fresh.
+    probeHealth();
+    const interval = setInterval(probeHealth, 15000);
+    const unsubscribe = api.onOfflineChange(setOffline);
+
+    return () => {
+      clearInterval(interval);
+      unsubscribe();
+    };
   }, []);
 
   const navItems: NavItem[] = [
