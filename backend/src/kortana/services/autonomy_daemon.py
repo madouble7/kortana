@@ -536,7 +536,7 @@ class AutonomyDaemon:
                 if created is not None:
                     self.metrics["self_heals_manifested"] += 1
         except Exception as exc:
-            logger.error(f"Self-repair manifestation failed: {exc}")
+            logger.exception(f"Self-repair manifestation failed: {exc}")
             try:
                 if "local_backlog" in locals() and "latest_failed" in locals():
                     created = await local_backlog.manifest_self_repair(
@@ -694,6 +694,13 @@ class AutonomyDaemon:
                                 task,
                                 reason=approval_decision.reason_code,
                             )
+
+                            # [Phase 3] Externalize Shadow Advisory to GitHub
+                            # Idempotent: record_decision transitions task state so this only runs once.
+                            comment_body = self._format_approval_hold_comment(
+                                task, approval_decision
+                            )
+                            await service.post_issue_comment(task, comment_body)
                             continue
 
                     if self.live_execution_enabled:
@@ -749,7 +756,7 @@ class AutonomyDaemon:
                         data={"task_id": str(task.id), "error": str(exc)},
                     )
                 )
-                logger.error(f"Task {task.id} failed: {exc}")
+                logger.exception(f"Task {task.id} failed: {exc}")
 
         return processed, succeeded, failed, deferred
 
@@ -877,6 +884,35 @@ class AutonomyDaemon:
             return "code_fix"
         return "feature"
 
+    def _format_approval_hold_comment(
+        self, task: GitHubTask, decision: "ApprovalDecision"
+    ) -> str:
+        body = "## 🛑 HO Barrier Reached: Approval Required\n"
+        body += f"**Task:** {task.title}\n"
+        body += f"**Rationale:** {decision.rationale}\n\n"
+
+        if decision.shadow_summary:
+            body += "### 🪞 Shadow Trace Summary\n"
+            ok = decision.shadow_summary.get("shadow_ok")
+            if ok is not None:
+                body += (
+                    f"- **Simulation Status:** {'✅ Passed' if ok else '❌ Failed'}\n"
+                )
+            review = decision.shadow_summary.get("shadow_review_approved")
+            if review is not None:
+                body += (
+                    f"- **Mock Review:** {'✅ Approved' if review else '❌ Rejected'}\n"
+                )
+            tests = decision.shadow_summary.get("shadow_test_exit_code")
+            if tests is not None:
+                body += f"- **Test Exit Code:** {tests} {'(Passed)' if tests == 0 else '(Failed)'}\n"
+            risk = decision.shadow_summary.get("shadow_risk_assessment")
+            if risk:
+                body += f"- **Risk Assessment:** {risk}\n"
+
+        body += "\n[Review in Dashboard](http://localhost:5173)\n"
+        return body
+
     def _derive_shadow_advisory(self, shadow_result: dict[str, Any]) -> dict[str, Any]:
         """Synthesize a lightweight operational summary from raw diagnostic sandbox output."""
         advisory = {
@@ -890,15 +926,15 @@ class AutonomyDaemon:
             review = artifacts.get("review_summary") or {}
             if "approved" in review:
                 advisory["shadow_review_approved"] = review.get("approved")
-            
+
             tests = artifacts.get("test_report") or {}
             if "exit_code" in tests:
                 advisory["shadow_test_exit_code"] = tests.get("exit_code")
-                
+
             plan = artifacts.get("plan") or {}
             if "risk_assessment" in plan:
                 advisory["shadow_risk_assessment"] = plan.get("risk_assessment")
-                
+
         return advisory
 
     def get_status(self) -> dict[str, Any]:

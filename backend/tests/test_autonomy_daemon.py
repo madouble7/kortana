@@ -6,7 +6,6 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from src.kortana.models import GitHubTask
 from src.kortana.services.autonomy_daemon import AutonomyDaemon
 from src.kortana.services.operator_directive_service import DirectiveSummary
@@ -41,7 +40,7 @@ class TestAutonomyDaemon:
         ) -> None:
             task_to_execute.status = "executed"
 
-        service = MagicMock()
+        service = AsyncMock()
         service.execute_task = AsyncMock(side_effect=execute_task)
 
         events: list[Any] = []
@@ -90,7 +89,7 @@ class TestAutonomyDaemon:
         async def execute_task(task_to_execute: GitHubTask, dry_run: bool = False) -> None:
             task_to_execute.status = "executed"
 
-        service = MagicMock()
+        service = AsyncMock()
         service.analyze_task = AsyncMock(side_effect=analyze_task)
         service.plan_task = AsyncMock(side_effect=plan_task)
         service.execute_task = AsyncMock(side_effect=execute_task)
@@ -145,7 +144,7 @@ class TestAutonomyDaemon:
         ) -> None:
             task_to_execute.status = "executed"
 
-        service = MagicMock()
+        service = AsyncMock()
         service.analyze_task = AsyncMock(side_effect=analyze_task)
         service.plan_task = AsyncMock(side_effect=plan_task)
         service.execute_task = AsyncMock(side_effect=execute_task)
@@ -182,7 +181,7 @@ class TestAutonomyDaemon:
         session = AsyncMock()
         session.execute = AsyncMock(return_value=result)
 
-        service = MagicMock()
+        service = AsyncMock()
         service.execute_task = AsyncMock()
 
         events: list[Any] = []
@@ -222,7 +221,7 @@ class TestAutonomyDaemon:
         session = AsyncMock()
         session.execute = AsyncMock(return_value=result)
 
-        service = MagicMock()
+        service = AsyncMock()
         service.execute_task = AsyncMock()
 
         events: list[Any] = []
@@ -274,7 +273,7 @@ class TestAutonomyDaemon:
         session.flush = AsyncMock()
         session.add = MagicMock()
 
-        service = MagicMock()
+        service = AsyncMock()
         service.execute_task = AsyncMock()
         events: list[Any] = []
         daemon.on_event(events.append)
@@ -315,7 +314,7 @@ class TestAutonomyDaemon:
             task_to_fail.status = "failed"
             task_to_fail.error_message = "analysis pipeline crashed"
 
-        service = MagicMock()
+        service = AsyncMock()
         service.analyze_task = AsyncMock(side_effect=fail_analysis)
 
         with patch(
@@ -404,7 +403,12 @@ class TestAutonomyDaemon:
 
         daemon._apply_operator_guidance(guidance)
 
-        assert daemon.control_mode == "execute"
+        expected_control = (
+            "auto_approval_execute"
+            if daemon.default_approval_mode == "auto"
+            else "execute"
+        )
+        assert daemon.control_mode == expected_control
         assert daemon.live_execution_enabled is True
 
     @pytest.mark.asyncio
@@ -422,7 +426,7 @@ class TestAutonomyDaemon:
             description="desc",
             status="pending",
         )
-        local_service = MagicMock()
+        local_service = AsyncMock()
         local_service.discover_workspace_tasks = AsyncMock(return_value=[local_task])
 
         with (
@@ -554,6 +558,7 @@ class TestAutonomyDaemon:
                 "GITHUB_TOKEN": "fake-token",
                 "GITHUB_OWNER": "madouble7",
                 "GITHUB_REPO": "kortana",
+                "KORTANA_GITHUB_MODE": "full",
             }.get(key, default)
 
             await daemon._manifest_self_healing(
@@ -602,7 +607,7 @@ class TestAutonomyDaemon:
             description="desc",
             status="pending",
         )
-        local_service = MagicMock()
+        local_service = AsyncMock()
         local_service.manifest_self_repair = AsyncMock(return_value=local_repair)
 
         with (
