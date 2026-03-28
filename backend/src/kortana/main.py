@@ -458,6 +458,35 @@ def create_app() -> FastAPI:
             tags=["adapters", "lobechat"],
         )
 
+        static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+
+        def render_frontend_index() -> Response | None:
+            """Serve the SPA shell with runtime config injection."""
+            index_path = os.path.join(static_dir, "index.html")
+            if not os.path.exists(index_path):
+                return None
+
+            with open(index_path, "r", encoding="utf-8") as f:
+                content = f.read()
+
+            runtime_config = {
+                "VITE_API_URL": "",  # Empty for relative paths in unified mode
+                "ENVIRONMENT": settings.ENVIRONMENT,
+                "VERSION": settings.API_VERSION,
+            }
+            import json
+
+            config_script = (
+                f"<script>window.__KORTANA__ = {json.dumps(runtime_config)};</script>"
+            )
+
+            if "window.__KORTANA__ =" not in content and "</head>" in content:
+                content = content.replace("</head>", f"{config_script}\n</head>")
+
+            from fastapi.responses import HTMLResponse
+
+            return HTMLResponse(content=content)
+
         # Basic API endpoints (defined before catch-all)
         @app.get("/api/health", tags=["system"])
         async def api_health() -> dict[str, Any]:
@@ -470,12 +499,29 @@ def create_app() -> FastAPI:
                 "timestamp": datetime.now().isoformat(),
             }
 
+        @app.get("/", tags=["system"], response_model=None)
+        async def root(request: Request):
+            """Serve the SPA shell for browsers and JSON info for API callers."""
+            accepts = request.headers.get("accept", "")
+            if "text/html" in accepts:
+                frontend = render_frontend_index()
+                if frontend is not None:
+                    return frontend
+
+            return {
+                "name": settings.API_TITLE,
+                "version": settings.API_VERSION,
+                "status": "running",
+                "environment": settings.ENVIRONMENT,
+            }
+
         @app.head("/", tags=["system"])
-        @app.get("/", tags=["system"])
+        async def root_head() -> Response:
+            return Response(status_code=200)
+
         @app.get("/api/info", tags=["system"])
         async def api_info() -> dict[str, Any]:
             """Basic API information"""
-            settings = get_settings()
             return {
                 "name": settings.API_TITLE,
                 "version": settings.API_VERSION,
@@ -488,7 +534,6 @@ def create_app() -> FastAPI:
             app.include_router(hop_router, prefix="/api", tags=["protocol"])
 
         # Mount static files for frontend in production
-        static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
         if os.path.exists(static_dir):
             app.mount(
                 "/assets",
@@ -509,40 +554,31 @@ def create_app() -> FastAPI:
                         },
                     )
 
-                file_path = os.path.join(static_dir, full_path)
+                normalized_path = full_path.strip("/")
+                if normalized_path in ("", "index.html"):
+                    frontend = render_frontend_index()
+                    if frontend is not None:
+                        return frontend
 
-                # Check if it's the index.html or a directory (which serves index.html)
+                file_path = os.path.join(static_dir, normalized_path)
+
+                # Check if it's a direct asset; otherwise, serve the SPA shell.
                 if not os.path.isfile(file_path):
-                    index_path = os.path.join(static_dir, "index.html")
-                    if os.path.exists(index_path):
-                        with open(index_path, "r", encoding="utf-8") as f:
-                            content = f.read()
-
-                        # Inject runtime configuration
-                        settings = get_settings()
-                        runtime_config = {
-                            "VITE_API_URL": "",  # Empty for relative paths in unified mode
-                            "ENVIRONMENT": settings.ENVIRONMENT,
-                            "VERSION": settings.API_VERSION,
-                        }
-                        import json
-
-                        config_script = f"<script>window.__KORTANA__ = {json.dumps(runtime_config)};</script>"
-
-                        # Insert before the first script tag or head end
-                        if "</head>" in content:
-                            content = content.replace(
-                                "</head>", f"{config_script}\n</head>"
-                            )
-
-                        from fastapi.responses import HTMLResponse
-
-                        return HTMLResponse(content=content)
+                    frontend = render_frontend_index()
+                    if frontend is not None:
+                        return frontend
 
                 if os.path.isfile(file_path):
                     return FileResponse(file_path)
 
-                return FileResponse(os.path.join(static_dir, "index.html"))
+                frontend = render_frontend_index()
+                if frontend is not None:
+                    return frontend
+
+                return JSONResponse(
+                    status_code=404,
+                    content={"error": "Not Found", "message": "Frontend not built"},
+                )
 
     except Exception as e:
         log_error("router_error", f"Error including routers: {e}")

@@ -22,20 +22,32 @@
     <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
 
     <title>Kor'tana - AI Constellation</title>
-  <script type="module" crossorigin src="/assets/index-9d94c2a7.js"></script>
-  <link rel="modulepreload" crossorigin href="/assets/vendor-b1791c80.js">
-  <link rel="modulepreload" crossorigin href="/assets/utils-c3574202.js">
-  <link rel="stylesheet" href="/assets/index-f324949c.css">
-<link rel="manifest" href="/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/registerSW.js"></script></head>
+  <script type="module" crossorigin src="/assets/index-CVHx4-XE.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/vendor-DRyyt6ib.js">
+  <link rel="stylesheet" crossorigin href="/assets/index-DTugnwH5.css">
+</head>
 
 <body>
-    <div id="root"></div>
+    <div id="root"></div>
 
-
-    <!-- Register Service Worker for PWA -->
+    <!-- Register Service Worker only for injected production runtime.
+         For local/LAN access, aggressively unregister stale workers so the
+         backend-injected runtime config always wins. -->
     <script>
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
+            window.addEventListener('load', async () => {
+                const runtime = window.__KORTANA__;
+                const shouldRegister =
+                    window.location.protocol === 'https:' &&
+                    runtime &&
+                    runtime.ENVIRONMENT === 'production';
+
+                if (!shouldRegister) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    await Promise.all(registrations.map((registration) => registration.unregister()));
+                    return;
+                }
+
                 navigator.serviceWorker.register('/sw.js')
                     .then((registration) => {
                         console.log('🌌 Kor\'tana Service Worker registered:', registration);
