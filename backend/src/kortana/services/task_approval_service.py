@@ -52,6 +52,7 @@ class ApprovalDecision:
     sensitive_paths: list[str] = field(default_factory=list)
     factors: list[str] = field(default_factory=list)
     validation_summary: dict[str, Any] = field(default_factory=dict)
+    shadow_summary: dict[str, Any] = field(default_factory=dict)
 
 
 class TaskApprovalService:
@@ -225,6 +226,7 @@ class TaskApprovalService:
             sensitive_paths=sensitive_paths,
             factors=factors,
             validation_summary=validation_summary,
+            shadow_summary=shadow_advisory,
         )
 
     async def record_decision(
@@ -250,6 +252,7 @@ class TaskApprovalService:
             "sensitive_paths": decision.sensitive_paths,
             "file_count": decision.file_count,
             "validation_summary": decision.validation_summary,
+            "shadow_summary": decision.shadow_summary,
         }
         approval.risk_score = decision.risk_score
         approval.risk_level = decision.risk_level
@@ -333,6 +336,7 @@ class TaskApprovalService:
             "rationale": approval.rationale,
             "decision_factors": decision_factors,
             "validation_summary": decision_factors.get("validation_summary") or {},
+            "shadow_summary": decision_factors.get("shadow_summary") or {},
             "risk_score": approval.risk_score,
             "risk_level": approval.risk_level,
             "confidence": approval.confidence,
@@ -513,3 +517,7 @@ class TaskApprovalService:
             if candidate and candidate not in normalized:
                 normalized.append(candidate)
         return normalized
+
+
+
+

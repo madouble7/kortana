@@ -1569,6 +1569,35 @@ class GitHubAutonomyService:
         """Backward-compatible wrapper around isolated pushes."""
         return await self._push_workspace_branch(task, self.repo_root)
 
+    async def post_issue_comment(self, task: GitHubTask, body: str) -> bool:
+        """Post a comment to the GitHub issue"""
+        if not self._should_publish_to_github(task):
+            return True
+        try:
+            owner, repo = task.github_repo.split("/")
+            headers = {
+                "Authorization": f"token {self.github_token}",
+                "Accept": "application/vnd.github.v3+json",
+            }
+            url = f"https://api.github.com/repos/{owner}/{repo}/issues/{task.github_issue_number}/comments"
+            payload = {"body": body}
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    url, headers=headers, json=payload, timeout=15
+                )
+            if response.status_code != 201:
+                logger.error(
+                    f"Failed to post comment to #{task.github_issue_number}: {response.text}"
+                )
+                return False
+            return True
+        except Exception as e:
+            status_code, detail = self._extract_http_error_detail(e)
+            logger.error(
+                f"Error posting comment to issue #{task.github_issue_number}: {detail or str(e)}"
+            )
+            return False
+
     async def _create_pull_request_for_branch(self, task: GitHubTask) -> int | None:
         """Create a pull request for the branch"""
         if not self._should_publish_to_github(task):
