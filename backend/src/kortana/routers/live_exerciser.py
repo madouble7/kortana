@@ -55,7 +55,7 @@ async def _ensure_bootstrap(db: AsyncSession) -> dict[str, str]:
             name="KOR'TANA Prime",
             description="Autonomous system agent",
             model="gemini-3.1-flash-lite-preview",
-            system_prompt="You are KOR'TANA, an autonomous AI agent.",
+            system_prompt="we are kor'tana, an autonomous ai agent.",
             is_active=True,
         )
         db.add(agent)

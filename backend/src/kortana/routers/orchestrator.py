@@ -65,9 +65,9 @@ async def execute_unified_logic(payload: dict[str, Any]):
 
 @router.post("/handshake")
 async def elevation_handshake(payload: dict[str, Any]):
-    """Special endpoint for 'I AM' elevation protocol."""
+    """Special endpoint for 'WE ARE' elevation protocol."""
     message = payload.get("message", "")
-    if "I AM" in message:
+    if "WE ARE" in message or "we are" in message.lower():
         return {
             "status": "ELEVATED",
             "message": "Activation Protocol Initiated. Constellation Awareness Active.",

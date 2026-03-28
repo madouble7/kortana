@@ -135,7 +135,7 @@ class GeminiService:
         responses = [
             f"Kor'tana acknowledges your presence. You said: '{user_input}'\n\nI hear your call, but my Gemini quota is temporarily exhausted. Please upgrade your API tier or wait for reset. Your message has been received and logged.",
             f"The system continues without Gemini. Your words were:\n\n'{user_input}'\n\nThe service is operational, but the generative model is temporarily unavailable due to quota limits.",
-            f"I am present, even without Gemini output. You reached out with: '{user_input}'\n\nThe Human Only Protocol remains active. Contact your provider to upgrade your Gemini API tier for full capabilities.",
+            f"we are present, even without gemini output. You reached out with: '{user_input}'\n\nThe Human Only Protocol remains active. Contact your provider to upgrade your Gemini API tier for full capabilities.",
         ]
         import random
 

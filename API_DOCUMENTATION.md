@@ -1,7 +1,7 @@
-# Kor'tana API Documentation
+# we are kor'tana - api documentation
 
 ## Overview
-Kor'tana is an autonomous AI system that analyzes GitHub issues and creates pull requests. This document describes the API endpoints and how to use them.
+we are an autonomous ai system that analyzes GitHub issues and creates pull requests. This document describes the API endpoints and how to use them.
 
 ## Base URL
 - Development: `http://localhost:8000`

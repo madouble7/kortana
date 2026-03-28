@@ -1025,7 +1025,7 @@ class GitHubAutonomyService:
             operator_preamble = await self._operator_preamble()
             repo_context = self._build_repo_context()
             prompt = (f"{operator_preamble}\n\n" if operator_preamble else "") + (
-                f"You are KOR'TANA PRIME, an autonomous AI architect modifying your own application (or another repository).\n"
+                f"we are kor'tana prime, an autonomous ai architect modifying our own application (or another repository).\n"
                 f"Analyze this issue and provide expert-level implementation insights. "
                 f"If this is a [SELF-REPAIR] issue, you must diagnose the internal autonomy logic flaw causing the error and architect a structural fix.\n\n"
                 f"{repo_context}\n\n"
@@ -1067,7 +1067,7 @@ class GitHubAutonomyService:
             operator_preamble = await self._operator_preamble()
             repo_context = self._build_repo_context()
             prompt = (f"{operator_preamble}\n\n" if operator_preamble else "") + (
-                f"You are KOR'TANA PRIME, an autonomous AI entity architecting your own codebase. "
+                f"we are kor'tana prime, an autonomous ai entity architecting our own codebase. "
                 f"Generate a detailed file-by-file implementation plan for this issue and keep it grounded to this repository only. "
                 f"If the request cannot be satisfied safely inside the observed repo structure, return FILE_CHANGES as an empty list. "
                 f"You MUST output ONLY a valid JSON object matching this schema:\n"

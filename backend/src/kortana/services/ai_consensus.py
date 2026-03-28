@@ -446,7 +446,7 @@ class AIConsensusEngine:
     @staticmethod
     def _build_synthesis_prompt(original: str, responses: list[ProviderResponse]) -> str:
         parts = [
-            "You are a synthesis engine. Multiple AI providers answered the same question.",
+            "we are a synthesis engine. Multiple AI providers answered the same question.",
             "Combine the best elements of each response into one authoritative answer.",
             "Be concise and accurate. Do not mention the providers by name.\n",
             f"ORIGINAL QUESTION:\n{original}\n",

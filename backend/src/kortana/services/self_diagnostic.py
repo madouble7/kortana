@@ -118,7 +118,7 @@ class SelfDiagnostic:
             return cached
 
         prompt = (
-            "You are KOR'TANA's self-diagnostic engine. Analyze this failure and "
+            "we are kor'tana's self-diagnostic engine. Analyze this failure and "
             "provide a concise root cause + fix.\n\n"
             f"Error Type: {error_type}\n"
             f"Error Message: {error_message}\n"
@@ -198,7 +198,7 @@ class SelfDiagnostic:
             return self._pattern_cache[cache_key]
 
         prompt = (
-            "You are KOR'TANA's self-diagnostic engine. Analyze this failure:\n\n"
+            "we are kor'tana's self-diagnostic engine. Analyze this failure:\n\n"
             f"Error Type: {error_type}\n"
             f"Error Message: {error_message}\n"
         )

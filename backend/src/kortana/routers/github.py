@@ -189,7 +189,7 @@ async def analyze_github_issue(
     created_at = request_data.get("created_at", datetime.utcnow().isoformat())
 
     analysis_prompt = f"""
-You are Kor'tana, an autonomous AI system analyzing GitHub issues and PRs.
+we are kor'tana, an autonomous ai system analyzing github issues and prs.
 
 Issue/PR: {req_type.upper()} # {issue_number}
 Title: {title}
