@@ -22,16 +22,20 @@ class AutonomyLoopBridgeService:
         Communicates via JSON stdin/stdout using the CLI adapter boundary.
         Guarantees no external side effects such as repository mutations or live deploys.
         """
-        sandbox_dir = os.path.join(
-            os.path.dirname(
+        workspace_root = os.environ.get("KORTANA_WORKSPACE_ROOT")
+        if workspace_root:
+            sandbox_dir = os.path.join(workspace_root, "autonomy_loop")
+        else:
+            sandbox_dir = os.path.join(
                 os.path.dirname(
                     os.path.dirname(
-                        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                        os.path.dirname(
+                            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                        )
                     )
-                )
-            ),
-            "autonomy_loop",
-        )
+                ),
+                "autonomy_loop",
+            )
         cli_path = os.path.join(sandbox_dir, "cli_adapter.ts")
 
         if not os.path.exists(cli_path):
