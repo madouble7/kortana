@@ -4,31 +4,9 @@
  */
 
 import type { AutonomyStatus, GitHubIssue, HealthStatus, Memory, Task } from '../types';
+import { getApiBaseUrl } from './runtimeConfig';
 
-// Helper to determine the API base URL
-const getBaseUrl = () => {
-  // 1. Check for runtime configuration injected by the backend
-  const runtimeConfig = (window as any).__KORTANA__;
-  if (runtimeConfig && runtimeConfig.VITE_API_URL !== undefined) {
-    return runtimeConfig.VITE_API_URL;
-  }
-
-  // 2. Check for build-time environment variable
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
-  }
-
-  // 3. Smart fallback: If we're on the Vite dev port (5173), target the backend on 8000
-  // using the current browser hostname so LAN/mobile dev access works too.
-  // Otherwise, use relative paths (unified mode)
-  if (typeof window !== 'undefined' && window.location.port === '5173') {
-    return `http://${window.location.hostname}:8000`;
-  }
-
-  return ''; // Relative paths
-};
-
-const API_URL = getBaseUrl();
+const API_URL = getApiBaseUrl();
 
 interface ApiError {
   message: string;
@@ -161,7 +139,8 @@ class ApiClient {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    trackAvailability = false
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
 
@@ -185,14 +164,18 @@ class ApiClient {
         } as ApiError;
       }
 
-      this._setOffline(false);
+      if (trackAvailability) {
+        this._setOffline(false);
+      }
       return await response.json();
     } catch (error) {
       if ((error as ApiError).status) {
         throw error;
       }
-      // Network error → mark as offline
-      this._setOffline(true);
+      // Only health probes should drive the global offline banner.
+      if (trackAvailability) {
+        this._setOffline(true);
+      }
       throw {
         message: 'Network error',
         status: 0,
@@ -203,7 +186,7 @@ class ApiClient {
 
   // Health check
   async health(): Promise<HealthStatus> {
-    const data = await this.request<HealthStatus>('/api/health');
+    const data = await this.request<HealthStatus>('/api/health', {}, true);
     return {
       ...data,
       timestamp: toIsoTimestamp(data?.timestamp),

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { AutonomyStatus } from '../types';
+import { getApiBaseUrl, getWebSocketBaseUrl } from '../lib/runtimeConfig';
 
 interface ConnectionState {
   isConnected: boolean;
@@ -53,25 +54,10 @@ export function useAutonomyRealtime(options: UseAutonomyRealtimeOptions = {}): U
   const eventSourceRef = useRef<EventSource | null>(null);
   const pollingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Get API base URL
-  const getBaseUrl = useCallback(() => {
-    const runtimeConfig = (window as any).__KORTANA__;
-    if (runtimeConfig && runtimeConfig.VITE_API_URL) {
-      return runtimeConfig.VITE_API_URL;
-    }
-    if (import.meta.env.VITE_API_URL) {
-      return import.meta.env.VITE_API_URL;
-    }
-    if (typeof window !== 'undefined' && window.location.port === '5173') {
-      return 'http://localhost:8000';
-    }
-    return '';
-  }, []);
-
   // Fetch status via REST API (for polling fallback)
   const fetchStatus = useCallback(async () => {
     try {
-      const baseUrl = getBaseUrl();
+      const baseUrl = getApiBaseUrl();
       const response = await fetch(`${baseUrl}/api/autonomy/status`);
 
       if (!response.ok) {
@@ -94,7 +80,7 @@ export function useAutonomyRealtime(options: UseAutonomyRealtimeOptions = {}): U
       }));
       throw err;
     }
-  }, [getBaseUrl]);
+  }, []);
 
   // Start polling fallback
   const startPolling = useCallback(() => {
@@ -137,8 +123,8 @@ export function useAutonomyRealtime(options: UseAutonomyRealtimeOptions = {}): U
     }));
 
     try {
-      const baseUrl = getBaseUrl();
-      const wsUrl = baseUrl.replace(/^http/, 'ws') + '/api/autonomy/ws';
+      const wsBaseUrl = getWebSocketBaseUrl();
+      const wsUrl = `${wsBaseUrl}/api/autonomy/ws`;
 
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
@@ -209,7 +195,7 @@ export function useAutonomyRealtime(options: UseAutonomyRealtimeOptions = {}): U
         startPolling();
       }
     }
-  }, [enabled, getBaseUrl, connectionState.retryCount, maxRetries, reconnectDelay, startPolling]);
+  }, [enabled, connectionState.retryCount, maxRetries, reconnectDelay, startPolling]);
 
   // Try Server-Sent Events connection
   const connectSSE = useCallback(() => {
@@ -222,7 +208,7 @@ export function useAutonomyRealtime(options: UseAutonomyRealtimeOptions = {}): U
     }));
 
     try {
-      const baseUrl = getBaseUrl();
+      const baseUrl = getApiBaseUrl();
       const sseUrl = `${baseUrl}/api/autonomy/sse`;
 
       const eventSource = new EventSource(sseUrl);
@@ -284,7 +270,7 @@ export function useAutonomyRealtime(options: UseAutonomyRealtimeOptions = {}): U
       // Fall back to polling
       startPolling();
     }
-  }, [enabled, getBaseUrl, connectionState.retryCount, maxRetries, reconnectDelay, startPolling, connectWebSocket]);
+  }, [enabled, connectionState.retryCount, maxRetries, reconnectDelay, startPolling, connectWebSocket]);
 
   // Manual reconnect
   const reconnect = useCallback(() => {

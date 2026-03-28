@@ -1,6 +1,7 @@
 import { Globe, Key, Settings as SettingsIcon, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
+import { getDisplayApiBaseUrl, getRuntimeEnvironment } from '../lib/runtimeConfig';
 import type { HealthStatus } from '../types';
 
 export default function Settings() {
@@ -126,13 +127,13 @@ export default function Settings() {
             <div>
               <label className="text-gray-400 text-sm">Backend URL</label>
               <p className="text-white font-mono text-sm mt-1 bg-gray-900 rounded px-3 py-2">
-                {import.meta.env.VITE_API_URL || 'http://localhost:8000'}
+                {getDisplayApiBaseUrl()}
               </p>
             </div>
             <div>
               <label className="text-gray-400 text-sm">Environment</label>
               <p className="text-white font-mono text-sm mt-1 bg-gray-900 rounded px-3 py-2">
-                {import.meta.env.VITE_ENVIRONMENT || 'development'}
+                {getRuntimeEnvironment()}
               </p>
             </div>
           </div>
