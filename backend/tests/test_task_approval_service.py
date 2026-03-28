@@ -315,3 +315,70 @@ async def test_approve_task_reactivates_planning_complete():
     assert result.status == "planning_complete"
     assert result.classification == "auto"
     assert approval_row.status == "approved"
+
+@pytest.mark.asyncio
+async def test_shadow_advisory_success_increases_confidence(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("KORTANA_SELF_AWARE_APPROVAL", "true")
+    session = AsyncMock()
+    service = TaskApprovalService(session)
+    task = GitHubTask(
+        id="task-safe-shadow",
+        github_issue_number=105,
+        github_repo="madouble7/kortana",
+        title="Test shadow success",
+        description="low risk",
+        priority="low",
+        classification="auto",
+        sandbox_result={"advisory": {"shadow_ok": True}},
+        plan='{"FILE_CHANGES":[]}'
+    )
+
+    decision = await service.evaluate_task(
+        task,
+        approval_mode="self-aware",
+        system_state="nominal",
+        runtime_profile={"execution_confidence": 0.8},
+        workspace_status={"changed_count": 1}
+    )
+
+    assert decision is not None
+    assert "shadow:passed" in decision.factors
+
+@pytest.mark.asyncio
+async def test_shadow_advisory_failures_increase_risk(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("KORTANA_SELF_AWARE_APPROVAL", "true")
+    session = AsyncMock()
+    service = TaskApprovalService(session)
+    task = GitHubTask(
+        id="task-fail-shadow",
+        github_issue_number=106,
+        github_repo="madouble7/kortana",
+        title="Test shadow failure",
+        description="low risk",
+        priority="low",
+        classification="auto",
+        sandbox_result={"advisory": {
+            "shadow_ok": False,
+            "shadow_test_exit_code": 1,
+            "shadow_review_approved": False
+        }},
+        plan='{"FILE_CHANGES":[]}'
+    )
+
+    decision = await service.evaluate_task(
+        task,
+        approval_mode="self-aware",
+        system_state="nominal",
+        runtime_profile={"execution_confidence": 0.8},
+        workspace_status={"changed_count": 1}
+    )
+
+    assert decision is not None
+    assert decision.approved is False
+    assert decision.review_required is True
+    assert "shadow:failed" in decision.factors
+    assert "shadow:tests_failed" in decision.factors
+    assert "shadow:review_rejected" in decision.factors
+    assert decision.risk_level in {"medium", "high"}
+
+
