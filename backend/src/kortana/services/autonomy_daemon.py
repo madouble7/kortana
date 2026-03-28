@@ -16,7 +16,10 @@ import os
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
+
+if TYPE_CHECKING:
+    from src.kortana.services.task_approval_service import ApprovalDecision
 
 import httpx
 from sqlalchemy import select
@@ -72,7 +75,7 @@ class AutonomyDaemon:
             (os.getenv("KORTANA_DEFAULT_APPROVAL_MODE") or "").strip().lower()
         )
         if default_approval_mode in {"auto", "manual", "self-aware"}:
-            self.default_approval_mode = default_approval_mode
+            self.default_approval_mode: str | None = default_approval_mode
         elif os.getenv("KORTANA_SELF_AWARE_APPROVAL", "false").lower() == "true":
             self.default_approval_mode = "self-aware"
         else:
@@ -538,7 +541,7 @@ class AutonomyDaemon:
         except Exception as exc:
             logger.exception(f"Self-repair manifestation failed: {exc}")
             try:
-                if "local_backlog" in locals() and "latest_failed" in locals():
+                if "local_backlog" in locals() and "latest_failed" in locals() and latest_failed is not None:
                     created = await local_backlog.manifest_self_repair(
                         failed_task=latest_failed,
                         repair_anchor=repair_anchor,
@@ -673,8 +676,8 @@ class AutonomyDaemon:
                         workspace_status=self.metrics.get("workspace_bridge"),
                     )
                     if approval_decision is not None:
-                        await approval_service.record_decision(task, approval_decision)
                         if approval_decision.approved:
+                            await approval_service.record_decision(task, approval_decision)
                             self.metrics["approvals_auto_granted"] += 1
                             self._emit(
                                 DaemonEvent(
@@ -688,19 +691,43 @@ class AutonomyDaemon:
                                 )
                             )
                         else:
+                            # [Phase 3] Externalize Shadow Advisory to GitHub
+                            comment_body = self._format_approval_hold_comment(
+                                task, approval_decision
+                            )
+
+                            try:
+                                success = await service.post_issue_comment(
+                                    task, comment_body
+                                )
+                            except Exception as e:
+                                logger.error(
+                                    f"Error posting approval hold comment for {task.id}: {e}"
+                                )
+                                success = False
+
+                            if not success:
+                                logger.warning(
+                                    f"Failed to post approval hold comment for {task.id}. Skipping state transition to retry."
+                                )
+                                # State remains 'planning_complete' since we didn't call record_decision
+                                self._emit(
+                                    DaemonEvent(
+                                        type="github_comment_failed",
+                                        data={"task_id": str(task.id)},
+                                    )
+                                )
+                                continue
+
+                            # On successful comment, actually persist the workflow state
+                            await approval_service.record_decision(task, approval_decision)
+
                             deferred += 1
                             self.metrics["approvals_held"] += 1
                             self._defer_execution(
                                 task,
                                 reason=approval_decision.reason_code,
                             )
-
-                            # [Phase 3] Externalize Shadow Advisory to GitHub
-                            # Idempotent: record_decision transitions task state so this only runs once.
-                            comment_body = self._format_approval_hold_comment(
-                                task, approval_decision
-                            )
-                            await service.post_issue_comment(task, comment_body)
                             continue
 
                     if self.live_execution_enabled:
@@ -910,7 +937,9 @@ class AutonomyDaemon:
             if risk:
                 body += f"- **Risk Assessment:** {risk}\n"
 
-        body += "\n[Review in Dashboard](http://localhost:5173)\n"
+        settings = get_settings()
+        dashboard_url = settings.KORTANA_FRONTEND_URL
+        body += f"\n[Review in Dashboard]({dashboard_url})\n"
         return body
 
     def _derive_shadow_advisory(self, shadow_result: dict[str, Any]) -> dict[str, Any]:

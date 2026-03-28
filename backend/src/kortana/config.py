@@ -271,6 +271,12 @@ class Settings:
         or "http://localhost:8000"
     )
 
+    # Frontend Dashboard URL
+    KORTANA_FRONTEND_URL: str = (
+        _get_env("KORTANA_FRONTEND_URL", "http://localhost:5173")
+        or "http://localhost:5173"
+    )
+
     # Autonomy Configuration
     AUTONOMOUS_MODE: bool = (
         _get_env("KORTANA_AUTONOMOUS_MODE", "false") or "false"
