@@ -253,6 +253,10 @@ def build_rate_limit_test_app(
     async def limited():
         return {"ok": True}
 
+    @app.get("/api/info")
+    async def info():
+        return {"name": "kor'tana", "status": "ready"}
+
     @app.get("/api/health")
     async def health():
         return {"status": "alive"}
