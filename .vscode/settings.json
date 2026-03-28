@@ -94,5 +94,6 @@
         "requirements.txt": "requirements-dev.txt, pytest.ini, alembic.ini",
         "package.json": "package-lock.json, tsconfig*.json, vite.config.*, postcss.config.*, tailwind.config.*, .eslintrc.cjs",
         "docker-compose.yml": "docker-compose.*.yml, Dockerfile*"
-    }
+    },
+    "pieces.cloudCapabilities": "Local"
 }

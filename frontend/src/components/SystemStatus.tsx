@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { apiService, HealthResponse } from '../services/apiService';
+import React, { useEffect, useState } from 'react';
+import { HealthResponse } from '../services/apiService';
 
 interface SystemStatusProps {
   health: HealthResponse | null;

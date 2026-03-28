@@ -18,14 +18,14 @@ from typing import Any
 
 import httpx
 from sqlalchemy import select
+
+from src.kortana.config import get_settings
 from src.kortana.http_client import get_http_client
 from src.kortana.logger import get_logger
 from src.kortana.models import GitHubTask
 from src.kortana.services.gemini import gemini_service
 from src.kortana.services.operator_directive_service import OperatorDirectiveService
 from src.kortana.services.workspace_bridge_service import get_workspace_bridge
-
-from src.kortana.config import get_settings
 
 from .code_generator import CodeGenerator
 
@@ -190,17 +190,21 @@ class GitHubAutonomyService:
         if not candidate.exists():
             return False
 
-        markers = [
-            ".git",
-            "backend",
-            "frontend",
-            "app",
-            "src",
-            "package.json",
-            "pyproject.toml",
-            "Dockerfile",
-        ]
-        return any((candidate / marker).exists() for marker in markers)
+        if (candidate / ".git").exists():
+            return True
+
+        has_backend = (candidate / "backend").exists()
+        has_frontend_surface = any(
+            (candidate / marker).exists()
+            for marker in (
+                "frontend",
+                "app",
+                "src",
+                "package.json",
+                "docker-compose.yml",
+            )
+        )
+        return has_backend and has_frontend_surface
 
     @staticmethod
     def _normalize_repo_path(path: str) -> str:

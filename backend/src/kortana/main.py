@@ -8,10 +8,11 @@ import sys
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from datetime import datetime
+from typing import Any
 
 from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 # Add backend directory to path
@@ -24,7 +25,6 @@ if backend_dir not in sys.path:
 # Import configuration and utilities
 from src.kortana.config import get_settings
 from src.kortana.exceptions import KortanaException
-
 from src.kortana.logger import log_error, log_request, setup_logging
 from src.kortana.middleware.cache import (
     DEFAULT_CACHE_EXCLUDE_PATHS,
@@ -34,16 +34,16 @@ from src.kortana.middleware.cache import (
 
 # Import security middleware
 from src.kortana.middleware.security import (
-    SecurityHeadersMiddleware,
     RateLimitMiddleware,
     RequestIDMiddleware,
     RequestLoggingMiddleware,
+    SecurityHeadersMiddleware,
 )
 
 try:
-    from redis import Redis
+    from redis import Redis as RedisClient
 except ImportError:
-    Redis = None
+    RedisClient = None
 
 try:
     from src.kortana.human_only_protocol import router as hop_router
@@ -70,6 +70,7 @@ try:
         health,
         knowledge,
         live_exerciser,
+        matrix_ws,
         memory,
         optimization,
         orchestration_advanced,
@@ -83,7 +84,6 @@ try:
         task_queue,
         test_orchestrator,
     )
-    from src.kortana.routers import matrix_ws
     from src.kortana.routers import consensus as consensus_router
     from src.kortana.routers import daemon as daemon_router
     from src.kortana.routers import intelligence as intelligence_router
@@ -260,9 +260,9 @@ def create_app() -> FastAPI:
     # on every request when Redis is absent (e.g. Render free tier).
     redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     _redis_available = False
-    if Redis is not None and settings.ENVIRONMENT != "testing":
+    if RedisClient is not None and settings.ENVIRONMENT != "testing":
         try:
-            _probe = Redis.from_url(redis_url, socket_connect_timeout=2)
+            _probe = RedisClient.from_url(redis_url, socket_connect_timeout=2)
             _probe.ping()
             _probe.close()
             _redis_available = True
@@ -272,7 +272,7 @@ def create_app() -> FastAPI:
     # Response caching middleware for optimization
     if _redis_available:
         try:
-            redis_client = Redis.from_url(redis_url)
+            redis_client = RedisClient.from_url(redis_url)
             cache_strategy = CacheStrategy(
                 ttl=300,  # 5 minutes
                 key_prefix="api_cache:",
@@ -460,7 +460,7 @@ def create_app() -> FastAPI:
 
         # Basic API endpoints (defined before catch-all)
         @app.get("/api/health", tags=["system"])
-        async def api_health():
+        async def api_health() -> dict[str, Any]:
             """Health check endpoint for the frontend"""
             return {
                 "status": "alive",
@@ -473,7 +473,7 @@ def create_app() -> FastAPI:
         @app.head("/", tags=["system"])
         @app.get("/", tags=["system"])
         @app.get("/api/info", tags=["system"])
-        async def api_info():
+        async def api_info() -> dict[str, Any]:
             """Basic API information"""
             settings = get_settings()
             return {
@@ -497,7 +497,7 @@ def create_app() -> FastAPI:
             )
 
             @app.get("/{full_path:path}")
-            async def serve_frontend(request: Request, full_path: str):
+            async def serve_frontend(request: Request, full_path: str) -> Response:
                 """Serve the frontend SPA for any unmatched routes with runtime config injection"""
                 # Don't intercept /api routes
                 if full_path.startswith("api"):
@@ -528,13 +528,9 @@ def create_app() -> FastAPI:
                         import json
 
                         config_script = f"<script>window.__KORTANA__ = {json.dumps(runtime_config)};</script>"
-                        config_script = f"<script>window.__KORTANA__ = {json.dumps(runtime_config)};</script>"
 
                         # Insert before the first script tag or head end
                         if "</head>" in content:
-                            content = content.replace(
-                                "</head>", f"{config_script}\n</head>"
-                            )
                             content = content.replace(
                                 "</head>", f"{config_script}\n</head>"
                             )
