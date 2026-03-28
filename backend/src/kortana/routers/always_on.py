@@ -3,12 +3,14 @@ Always-On Autonomous Development Router
 REST API endpoints for the always-on monitoring system
 """
 
+import asyncio
 from datetime import datetime
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+
 from src.kortana.database import get_db_manager
 from src.kortana.logger import get_logger
 from src.kortana.models import GitHubTask
@@ -18,6 +20,7 @@ from src.kortana.services.always_on_monitor import (
     stop_always_on_monitor,
 )
 from src.kortana.services.autonomy_daemon import get_autonomy_daemon
+from src.kortana.services.autonomy_loop_bridge_service import AutonomyLoopBridgeService
 from src.kortana.services.operator_directive_service import OperatorDirectiveService
 from src.kortana.services.task_approval_service import TaskApprovalService
 from src.kortana.services.workspace_bridge_service import get_workspace_bridge
@@ -641,4 +644,29 @@ async def get_monitoring_dashboard() -> Dict[str, Any]:
         logger.error(f"Failed to get monitoring dashboard: {str(e)}")
         raise HTTPException(
             status_code=500, detail=f"Failed to get dashboard: {str(e)}"
+        )
+
+@router.post("/sandbox/dry-run")
+async def execute_dry_run_sandbox(task_payload: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Executes an explicitly isolated dry-run cycle of a task within the Autonomy Loop Sandbox.
+    Will never mutate the repository, write to the production database, or perform network merges.
+    Used purely for diagnostic verification of the agent bridge.
+    """
+    try:
+        if "id" not in task_payload or "description" not in task_payload:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid Task format. Requires at least 'id' and 'description'.",
+            )
+        result = await asyncio.to_thread(
+            AutonomyLoopBridgeService.run_dry_run, task_payload
+        )
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Exception invoking sandbox bridge directly: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed bridging task to sandbox: {e}"
         )

@@ -8,11 +8,11 @@ from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
+    Float,
     ForeignKey,
     Integer,
     String,
     Text,
-    Float,
 )
 from sqlalchemy.orm import DeclarativeBase, relationship
 
@@ -213,6 +213,9 @@ class GitHubTask(Base):
     analyzed_at = Column(DateTime, nullable=True)
     executed_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
+
+    # Shadow execution diagnostic capture
+    sandbox_result = Column(JSON, nullable=True)
 
     def __repr__(self) -> str:
         return f"<GitHubTask #{self.github_issue_number}>"
