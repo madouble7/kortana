@@ -6,6 +6,7 @@ Includes rate limiting, security headers, and request tracking
 import time
 import uuid
 from collections.abc import Awaitable, Callable
+from ipaddress import ip_address, ip_network
 from typing import Any
 
 from fastapi import HTTPException, Request, Response, status
@@ -15,6 +16,7 @@ from redis.exceptions import RedisError
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from src.kortana.logger import log_error, log_request
+from src.kortana.metrics import track_rate_limit_event, track_rate_limit_hit
 
 # Circuit-breaker cooldown: after a Redis failure, stop retrying for this
 # many seconds to avoid spamming error logs on every single request.
@@ -35,11 +37,19 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self,
         app: Any,
         requests_per_minute: int = 60,
+        period_seconds: int = 60,
         redis_url: str | None = None,
+        proxy_mode: bool = False,
+        trusted_proxies: tuple[str, ...] | None = None,
         exclude_paths: tuple[str, ...] | None = None,
     ) -> None:
         super().__init__(app)
         self.requests_per_minute: int = requests_per_minute
+        self.period_seconds = period_seconds
+        self.proxy_mode = proxy_mode
+        self.trusted_proxies = tuple(
+            entry.strip() for entry in (trusted_proxies or ()) if entry.strip()
+        )
         self.exclude_paths = exclude_paths or (
             "/",
             "/index.html",
@@ -76,39 +86,79 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             # Cooldown expired — attempt to re-close the circuit.
             self._redis_failed_at = 0.0
 
-        client_ip = self._get_client_ip(request)
+        client_ip, immediate_proxy, forwarded_ip, spoof_ignored = (
+            self._resolve_client_identity(request)
+        )
+        route = request.url.path
         key = f"ratelimit:{client_ip}"
 
         try:
             current_count = await self.redis.incr(key)
             if current_count == 1:
-                await self.redis.expire(key, 60)
+                await self.redis.expire(key, self.period_seconds)
+
+            ttl = await self.redis.ttl(key)
+            retry_after = (
+                int(ttl) if isinstance(ttl, int) and ttl and ttl > 0 else self.period_seconds
+            )
+            reset_at = int(time.time()) + retry_after
+            remaining = max(self.requests_per_minute - current_count, 0)
 
             if current_count > self.requests_per_minute:
+                track_rate_limit_hit(route, "global")
+                track_rate_limit_event(route, client_ip, forwarded_ip, "limited")
                 log_error(
                     "RATE_LIMIT_EXCEEDED",
                     f"IP {client_ip} exceeded {self.requests_per_minute} requests/minute",
-                    details={"client_ip": client_ip, "current_count": current_count},
+                    details={
+                        "client_ip": client_ip,
+                        "forwarded_ip": forwarded_ip,
+                        "immediate_proxy": immediate_proxy,
+                        "current_count": current_count,
+                        "route": route,
+                        "retry_after": retry_after,
+                    },
                 )
                 return JSONResponse(
                     status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                     content={
-                        "error": "RATE_LIMIT_EXCEEDED",
-                        "detail": "Rate limit exceeded. Maximum requests exceeded.",
-                        "message": "Rate limit exceeded. Maximum requests exceeded.",
+                        "error": "rate_limited",
+                        "detail": "Too many requests",
+                        "message": "Too many requests",
                         "status_code": status.HTTP_429_TOO_MANY_REQUESTS,
+                        "retry_after": retry_after,
                         "details": {
+                            "route": route,
                             "client_ip": client_ip,
+                            "forwarded_ip": forwarded_ip,
+                            "immediate_proxy": immediate_proxy,
                             "limit": self.requests_per_minute,
                             "current_count": current_count,
                         },
                     },
                     headers={
-                        "Retry-After": "60",
+                        "Retry-After": str(retry_after),
                         "X-RateLimit-Limit": str(self.requests_per_minute),
                         "X-RateLimit-Remaining": "0",
+                        "X-RateLimit-Reset": str(reset_at),
                     },
                 )
+
+            if spoof_ignored:
+                track_rate_limit_event(route, client_ip, forwarded_ip, "spoof-ignored")
+                log_request(
+                    "security",
+                    "Ignored untrusted X-Forwarded-For header",
+                    details={
+                        "route": route,
+                        "client_ip": client_ip,
+                        "forwarded_ip": forwarded_ip,
+                        "immediate_proxy": immediate_proxy,
+                        "status": "spoof-ignored",
+                    },
+                )
+            else:
+                track_rate_limit_event(route, client_ip, forwarded_ip, "allowed")
         except (RedisError, RuntimeError, OSError) as exc:
             # Open the circuit breaker — one log line, then silence.
             self._redis_failed_at = time.monotonic()
@@ -119,13 +169,48 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             )
 
         response = await call_next(request)
+        if "remaining" in locals():
+            response.headers["X-RateLimit-Limit"] = str(self.requests_per_minute)
+            response.headers["X-RateLimit-Remaining"] = str(remaining)
+            response.headers["X-RateLimit-Reset"] = str(reset_at)
         return response
 
-    def _get_client_ip(self, request: Request) -> str:
+    def _resolve_client_identity(
+        self, request: Request
+    ) -> tuple[str, str | None, str | None, bool]:
+        immediate_proxy = request.client.host if request.client else "unknown"
         forwarded_for = request.headers.get("x-forwarded-for")
-        if forwarded_for:
-            return forwarded_for.split(",")[0].strip()
-        return request.client.host if request.client else "unknown"
+        forwarded_ip = (
+            forwarded_for.split(",")[0].strip() if forwarded_for else None
+        )
+
+        if forwarded_ip:
+            if self.proxy_mode or self._is_trusted_proxy(immediate_proxy):
+                return forwarded_ip, immediate_proxy, forwarded_ip, False
+            return immediate_proxy, immediate_proxy, forwarded_ip, True
+
+        return immediate_proxy, immediate_proxy, None, False
+
+    def _is_trusted_proxy(self, client_ip: str | None) -> bool:
+        if not client_ip:
+            return False
+
+        try:
+            parsed_ip = ip_address(client_ip)
+        except ValueError:
+            return False
+
+        for entry in self.trusted_proxies:
+            try:
+                if "/" in entry:
+                    if parsed_ip in ip_network(entry, strict=False):
+                        return True
+                elif parsed_ip == ip_address(entry):
+                    return True
+            except ValueError:
+                continue
+
+        return False
 
     def _is_excluded_path(self, path: str) -> bool:
         return any(

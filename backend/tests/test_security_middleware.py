@@ -5,7 +5,9 @@ RequestLoggingMiddleware, and RateLimitMiddleware fallback behavior.
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
+from fastapi import FastAPI
 from starlette.responses import Response
 
 
@@ -154,7 +156,7 @@ class TestRateLimitMiddlewareUnit:
 
         with patch.object(middleware.redis, "incr", AsyncMock(return_value=3)), patch.object(
             middleware.redis, "expire", AsyncMock()
-        ):
+        ), patch.object(middleware.redis, "ttl", AsyncMock(return_value=60)):
             response = await middleware.dispatch(mock_request, call_next)
 
         assert response.status_code == 429
@@ -182,6 +184,181 @@ class TestRateLimitMiddlewareUnit:
 
         assert response.status_code == 200
         call_next.assert_awaited_once()
+
+    def test_trusted_proxy_supports_cidr_entries(self):
+        from src.kortana.middleware.security import RateLimitMiddleware
+
+        middleware = RateLimitMiddleware(
+            MagicMock(), trusted_proxies=("127.0.0.0/24", "10.0.0.5")
+        )
+
+        assert middleware._is_trusted_proxy("127.0.0.1") is True
+        assert middleware._is_trusted_proxy("10.0.0.5") is True
+        assert middleware._is_trusted_proxy("192.168.1.10") is False
+
+
+class FakeAsyncRedis:
+    def __init__(self):
+        self.counts: dict[str, int] = {}
+        self.ttls: dict[str, int] = {}
+
+    async def incr(self, key: str) -> int:
+        self.counts[key] = self.counts.get(key, 0) + 1
+        return self.counts[key]
+
+    async def expire(self, key: str, seconds: int) -> bool:
+        self.ttls[key] = seconds
+        return True
+
+    async def ttl(self, key: str) -> int:
+        return self.ttls.get(key, 60)
+
+
+def build_rate_limit_test_app(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    requests_per_minute: int = 2,
+    period_seconds: int = 60,
+    proxy_mode: bool = False,
+    trusted_proxies: tuple[str, ...] = (),
+    event_recorder: list[tuple[str, str, str | None, str]] | None = None,
+):
+    from src.kortana.middleware import security as security_module
+
+    fake_redis = FakeAsyncRedis()
+    fake_redis_factory = MagicMock()
+    fake_redis_factory.from_url = MagicMock(return_value=fake_redis)
+    monkeypatch.setattr(security_module, "Redis", fake_redis_factory)
+
+    if event_recorder is not None:
+        monkeypatch.setattr(
+            security_module,
+            "track_rate_limit_event",
+            lambda route, client_ip, forwarded_ip, status: event_recorder.append(
+                (route, client_ip, forwarded_ip, status)
+            ),
+        )
+        monkeypatch.setattr(security_module, "track_rate_limit_hit", lambda *args: None)
+
+    app = FastAPI()
+    app.add_middleware(
+        security_module.RateLimitMiddleware,
+        requests_per_minute=requests_per_minute,
+        period_seconds=period_seconds,
+        proxy_mode=proxy_mode,
+        trusted_proxies=trusted_proxies,
+    )
+
+    @app.get("/limited")
+    async def limited():
+        return {"ok": True}
+
+    @app.get("/api/health")
+    async def health():
+        return {"status": "alive"}
+
+    return app, fake_redis
+
+
+class TestRateLimitMiddlewareIntegration:
+    @pytest.mark.asyncio
+    async def test_trusted_proxy_uses_forwarded_ip_and_returns_429(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        events: list[tuple[str, str, str | None, str]] = []
+        app, fake_redis = build_rate_limit_test_app(
+            monkeypatch,
+            trusted_proxies=("127.0.0.1",),
+            event_recorder=events,
+        )
+
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://testserver",
+        ) as client:
+            headers = {"X-Forwarded-For": "1.2.3.4"}
+            await client.get("/limited", headers=headers)
+            await client.get("/limited", headers=headers)
+            response = await client.get("/limited", headers=headers)
+
+        assert fake_redis.counts["ratelimit:1.2.3.4"] == 3
+        assert response.status_code == 429
+        assert response.json()["error"] == "rate_limited"
+        assert response.json()["retry_after"] == 60
+        assert response.headers["Retry-After"] == "60"
+        assert response.headers["X-RateLimit-Limit"] == "2"
+        assert response.headers["X-RateLimit-Remaining"] == "0"
+        assert int(response.headers["X-RateLimit-Reset"]) > 0
+        assert any(status == "limited" for _, _, _, status in events)
+
+    @pytest.mark.asyncio
+    async def test_spoofed_forwarded_for_is_ignored_when_proxy_not_trusted(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        events: list[tuple[str, str, str | None, str]] = []
+        app, fake_redis = build_rate_limit_test_app(
+            monkeypatch,
+            trusted_proxies=(),
+            proxy_mode=False,
+            event_recorder=events,
+        )
+
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://testserver",
+        ) as client:
+            headers = {"X-Forwarded-For": "9.9.9.9"}
+            await client.get("/limited", headers=headers)
+            await client.get("/limited", headers=headers)
+            response = await client.get("/limited", headers=headers)
+
+        assert "ratelimit:9.9.9.9" not in fake_redis.counts
+        assert len(fake_redis.counts) == 1
+        assert response.status_code == 429
+        assert any(status == "spoof-ignored" for _, _, _, status in events)
+
+    @pytest.mark.asyncio
+    async def test_health_endpoint_bypasses_rate_limit(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        app, fake_redis = build_rate_limit_test_app(monkeypatch)
+
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://testserver",
+        ) as client:
+            headers = {"X-Forwarded-For": "7.7.7.7"}
+            await client.get("/limited", headers=headers)
+            await client.get("/limited", headers=headers)
+            over_limit = await client.get("/limited", headers=headers)
+            counts_before = dict(fake_redis.counts)
+            health = await client.get("/api/health", headers=headers)
+
+        assert over_limit.status_code == 429
+        assert health.status_code == 200
+        assert fake_redis.counts == counts_before
+
+    @pytest.mark.asyncio
+    async def test_proxy_mode_trusts_forwarded_ip_without_trusted_proxy_list(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        app, fake_redis = build_rate_limit_test_app(
+            monkeypatch,
+            proxy_mode=True,
+            trusted_proxies=(),
+        )
+
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://testserver",
+        ) as client:
+            headers = {"X-Forwarded-For": "8.8.8.8"}
+            await client.get("/limited", headers=headers)
+            await client.get("/limited", headers=headers)
+            response = await client.get("/limited", headers=headers)
+
+        assert fake_redis.counts["ratelimit:8.8.8.8"] == 3
+        assert response.status_code == 429
 
 
 class TestSecurityHeadersMiddlewareUnit:
