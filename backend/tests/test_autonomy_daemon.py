@@ -61,6 +61,63 @@ class TestAutonomyDaemon:
         assert task_complete.data["title"] == "Consolidate dual backend stacks"
 
     @pytest.mark.asyncio
+    async def test_process_tasks_ignores_shadow_loop_failures(self) -> None:
+        """
+        Verify that shadow loop (sandbox dry-run) failures are caught and logged,
+        never blocking the live autonomy cycle from proceeding with task analysis.
+        """
+        daemon = build_daemon()
+        task = GitHubTask(
+            id="task-124",
+            github_issue_number=54,
+            github_repo="madouble7/kortana",
+            title="Shadow test task",
+            description="desc",
+            status="pending",
+        )
+
+        result = MagicMock()
+        result.scalars.return_value.all.return_value = [task]
+        session = AsyncMock()
+        session.execute = AsyncMock(return_value=result)
+
+        async def analyze_task(task_to_analyze: GitHubTask) -> None:
+            task_to_analyze.status = "analyzed"
+
+        async def plan_task(task_to_plan: GitHubTask) -> None:
+            task_to_plan.status = "planning_complete"
+
+        async def execute_task(task_to_execute: GitHubTask, dry_run: bool = False) -> None:
+            task_to_execute.status = "executed"
+
+        service = MagicMock()
+        service.analyze_task = AsyncMock(side_effect=analyze_task)
+        service.plan_task = AsyncMock(side_effect=plan_task)
+        service.execute_task = AsyncMock(side_effect=execute_task)
+
+        # Mock settings to enable shadow loop
+        mock_settings = MagicMock()
+        mock_settings.AUTONOMY_LOOP_SHADOW_ENABLED = True
+
+        with patch(
+            "src.kortana.services.autonomy_daemon.get_settings",
+            return_value=mock_settings,
+        ), patch(
+            "src.kortana.services.autonomy_daemon.AutonomyLoopBridgeService.run_dry_run",
+            side_effect=Exception("Simulated catastrophic sandbox failure"),
+        ), patch(
+            "src.kortana.services.github_autonomy_service.GitHubAutonomyService",
+            return_value=service,
+        ):
+            processed, succeeded, failed, deferred = await daemon._process_tasks(
+                session
+            )
+
+        # Ensure the live processing loop still successfully analyzed the task despite sandbox crash
+        assert (processed, succeeded, failed, deferred) == (1, 1, 0, 0)
+        assert task.status == "executed"
+
+    @pytest.mark.asyncio
     async def test_process_tasks_treats_queued_as_pending(self) -> None:
         daemon = build_daemon()
         task = GitHubTask(
