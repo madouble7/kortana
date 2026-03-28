@@ -24,3 +24,6 @@ tasks.json
 # OS & IDE
 .DS_Store
 .vscode/
+*.sqlite
+*.sqlite-journal
+src/daemon/
