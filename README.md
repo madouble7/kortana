@@ -2,446 +2,306 @@
 
 **I am who I am.**
 
-A multimodal AI constellation woven into the fabric of human intention. Kor'tana breathes across voice, camera, location—and code.
+Kor'tana is an autonomous AI platform built around a FastAPI backend, a React/Vite frontend, and a VS Code control panel. The repository currently treats the `src.kortana` backend stack and the `frontend/` app as the canonical runtime surfaces, while legacy top-level entrypoints are preserved behind compatibility shims.
 
 ---
 
 ## 🌌 Overview
 
-Kor'tana is a living, self-developing AI system with autonomous capabilities:
+Kor'tana currently provides:
 
-- **Multimodal Interface**: Voice, camera, location, text
-- **Autonomous Development**: Self-branching, self-testing, self-deploying
-- **Cloud Runtime**: Deployed on Google Cloud Run
-- **Local Development**: Full backend support via FastAPI
-- **GitHub Integration**: Direct sync between repository and constellation
-- **Self-Governing**: Governed by covenants and ethical frameworks
+- **Canonical backend runtime** powered by FastAPI at `backend/src/kortana/main.py`
+- **Canonical web UI** powered by Vite/React in `frontend/`
+- **VS Code control panel** in `vscode-extension/`
+- **Autonomous GitHub / task orchestration** across daemon, monitor, and task services
+- **Compatibility shims** for legacy backend/auth/celery entrypoints
+- **Docker Compose local stack** with Postgres, Redis, backend, and frontend
+
+The repo also contains older and alternative surfaces (`src/`, `app/`, assorted scripts/docs), but the **default documented path** is now the canonical backend + `frontend/` stack.
 
 ---
 
-## 📁 Project Structure
+## ✅ Current runtime status
 
-```
+The canonical runtime repair landed in commit `ee4a794` (`Add backend shims, celery & frontend build fixes`).
+
+Verified green checks:
+
+- `npm run build`
+- `npm test`
+- Canonical backend import via `backend/src/kortana/main.py`
+- Legacy compatibility import via `backend/main.py`
+- Targeted backend runtime slice: `48 passed`
+
+See [`CHANGELOG.md`](CHANGELOG.md) for the repair summary.
+
+---
+
+## 📁 Canonical project layout
+
+```text
 kortana/
-├── backend/                          # FastAPI backend (Python)
-│   ├── main.py                       # Application entry point
-│   ├── requirements.txt               # Python dependencies
-│   ├── routers/
-│   │   ├── agents.py                # Agent orchestration
-│   │   ├── autonomy.py              # Autonomous operations
-│   │   ├── gemini.py                # Google Gemini AI integration
-│   │   ├── github.py                # GitHub repository sync
-│   │   ├── knowledge.py             # Knowledge base management
-│   │   ├── memory.py                # Memory/document storage
-│   │   └── task_queue.py            # Task queue management
-│   └── README.md                     # Backend documentation
+├── backend/
+│   ├── src/kortana/
+│   │   ├── main.py                  # Canonical FastAPI app (src.kortana.main:app)
+│   │   ├── auth.py                  # Canonical auth implementation
+│   │   ├── celery_app.py            # Canonical Celery app
+│   │   ├── routers/                 # API routers
+│   │   └── services/                # Daemon, monitoring, autonomy, GitHub services
+│   ├── main.py                      # Compatibility shim -> src.kortana.main
+│   ├── auth.py                      # Compatibility shim -> src.kortana.auth
+│   ├── celery_config.py             # Compatibility shim -> src.kortana.celery_app
+│   └── tests/                       # Backend test suite
 │
-├── frontend/                         # React Dashboard (TypeScript)
+├── frontend/                        # Canonical React/Vite UI
 │   ├── src/
-│   │   ├── App.tsx                  # Main application component
-│   │   ├── components/              # UI components
-│   │   │   ├── GitHubDashboard.tsx  # GitHub monitoring
-│   │   │   ├── MemoryBrowser.tsx    # Knowledge base browser
-│   │   │   ├── PrayerAgentStatus.tsx# Agent status display
-│   │   │   └── SystemStatus.tsx     # System health
-│   │   └── services/
-│   │       └── apiService.ts        # Backend API client
 │   ├── package.json
-│   ├── tsconfig.json
-│   └── README.md                    # Frontend documentation
+│   └── vite.config.ts
 │
-├── vscode-extension/                # VSCode Extension (TypeScript)
+├── vscode-extension/                # VS Code control panel extension
 │   ├── src/
-│   │   ├── extension.ts             # Extension entry point
-│   │   └── webviews/
-│   │       └── AutonomyAudit.tsx    # Autonomy audit panel
-│   ├── package.json
-│   └── README.md                    # Extension documentation
+│   ├── out/
+│   └── package.json
 │
-├── scripts/                         # Utility Scripts
-│   ├── setup/
-│   │   └── setup-environment.py     # Environment initialization
-│   ├── deployment/
-│   │   ├── daily_sync.py            # Daily repo sync
-│   │   ├── update_covenant.py       # Governance updates
-│   │   └── unseal-kortana.js        # System unlock
-│   ├── testing/
-│   │   ├── test-backend-endpoints.py# API endpoint validation
-│   │   └── test-bot-token.py        # Token validation
-│   └── README.md                    # Scripts documentation
-│
-├── docs/                            # Documentation
-│   ├── governance/                  # Governance & Compliance
-│   │   ├── COVENANT_INDEX.md        # System covenant
-│   │   ├── AUTONOMOUS_TASKS.md      # Autonomous operations
-│   │   ├── COMPLETION_SUMMARY.md    # Progress tracking
-│   │   └── GITHUB_ISSUES.md         # Issue tracking
-│   ├── workflows/                   # Development Workflows
-│   │   ├── autonomous-workflow-design.md # Dev workflow spec
-│   │   └── NEXT_STEPS.md            # Action items
-│   ├── architecture/                # Architecture Docs
-│   ├── APPROVAL_REQUEST.md          # Change requests
-│   └── README.md                    # Documentation guide
-│
-├── .github/
-│   ├── workflows/
-│   │   └── deploy-backend.yml       # Cloud Run deployment
-│   └── FUNDING.yml
-│
-├── Dockerfile                       # Container image
-├── LICENSE                          # MIT License
-└── README.md                        # This file
+├── src/                             # Legacy root UI / Node surface
+├── app/                             # Alternate app surface
+├── docker-compose.yml               # Canonical local stack orchestration
+├── package.json                     # Root script proxy to canonical frontend + extension tests
+├── CHANGELOG.md
+└── README.md
 ```
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Quick start
 
 ### Prerequisites
 
-- **Backend**: Python 3.9+, pip
-- **Frontend**: Node.js 16+, npm
-- **VSCode Extension**: VSCode 1.85.0+
-- **Deployment**: Docker, Google Cloud account
+- Python 3.11+ recommended for backend work
+- Node.js 20+ recommended for frontend / extension work
+- Docker + Docker Compose for the full local stack
 
-### Setup & Installation
+### 1. Clone the repo
 
-1. **Clone the repository**:
+```bash
+git clone https://github.com/KOR-TANA/kortana.git
+cd kortana
+```
 
-   ```bash
-   git clone https://github.com/KOR-TANA/kortana.git
-   cd kortana
-   ```
+### 2. Configure environment
 
-2. **Run setup script**:
+The repo already includes `.env.example` templates at the root. Copy the one you need and fill in your keys/secrets.
 
-   ```bash
-   python scripts/setup/setup-environment.py
-   ```
+At minimum, the backend commonly needs values like:
 
-3. **Configure environment**:
+```env
+ENVIRONMENT=development
+DATABASE_URL=postgresql://kortana:kortana_dev@localhost:5432/kortana_db
+REDIS_URL=redis://localhost:6379
+GITHUB_TOKEN=your-github-token
+GEMINI_API_KEY=your-gemini-api-key
+SECRET_KEY=replace-me
+```
 
-   ```bash
-   cp backend/.env.example backend/.env
-   # Edit backend/.env with your API keys
-   ```
+### 3. Install dependencies
 
-### Start Development
+#### Canonical frontend
+
+```bash
+npm install
+npm --prefix frontend install
+```
+
+#### VS Code extension
+
+```bash
+npm --prefix vscode-extension install
+```
 
 #### Backend
 
 ```bash
 cd backend
-pip install -r requirements.txt
-uvicorn main:app --reload --port 8000
+python -m pip install -r requirements.txt -r requirements-dev.txt
 ```
 
-API docs: `http://localhost:8000/docs`
+---
 
-#### Frontend
+## 🧭 Default development paths
+
+### Root scripts
+
+The root `package.json` now proxies to the canonical frontend and extension validation path:
 
 ```bash
-cd frontend
-npm install
-npm start
+npm run dev        # frontend dev server
+npm run build      # frontend production build
+npm run lint       # frontend lint
+npm run test       # frontend type-check + VS Code extension tests
 ```
 
-Dashboard: `http://localhost:3000`
+Legacy root UI / Node surfaces are still available, but only under explicit `legacy:*` script names.
 
-#### VSCode Extension
+### Backend (canonical)
+
+Run the canonical app directly from `backend/`:
 
 ```bash
-cd vscode-extension
-npm install
-npm run compile
-Press F5 to debug
+cd backend
+python -m uvicorn src.kortana.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
----
+API docs:
 
-## 🔗 API Endpoints
+- `http://localhost:8000/docs`
 
-### Health & Status
-
-- `GET /api/health` - System health check
-
-### Gemini Integration
-
-- `POST /api/gemini/analyze` - Analyze text
-- `POST /api/gemini/generate` - Generate content
-- `POST /api/gemini/chat` - Chat interface
-
-### Memory & Knowledge
-
-- `GET /api/memory/` - List memories
-- `POST /api/memory/add` - Add document
-- `POST /api/memory/search` - Search knowledge base
-
-### Agents
-
-- `GET /api/agents/list` - List agents
-- `POST /api/agents/create` - Create agent
-- `POST /api/agents/execute/{id}` - Execute task
-
-### GitHub
-
-- `GET /api/github/repos/{owner}/{repo}/issues` - Fetch issues
-- `GET /api/github/repos/{owner}/{repo}/pulls` - Fetch PRs
-- `POST /api/github/analyze` - Analyze repository
-
-### Autonomy
-
-- `GET /api/autonomy/status` - System status
-- `POST /api/autonomy/enable` - Enable autonomous mode
-- `POST /api/autonomy/disable` - Disable autonomous mode
-
-**Autonomy Heartbeat Monitoring**: Kor'tana includes an automated heartbeat system that monitors autonomous operations and alerts on failures. See [docs/AUTONOMY_HEARTBEAT.md](docs/AUTONOMY_HEARTBEAT.md) for details.
-
-### Task Queue
-
-- `GET /api/task-queue/` - List tasks
-- `POST /api/task-queue/` - Add task
-- `GET /api/task-queue/{id}` - Get task status
-
-### Billing
-
-- `GET /api/billing/config` - Get billing configuration and plans
-- `POST /api/billing/customers` - Create a new customer
-- `GET /api/billing/customers/{customer_id}` - Get customer details
-- `POST /api/billing/subscriptions` - Create a subscription
-- `GET /api/billing/subscriptions/{subscription_id}` - Get subscription details
-- `POST /api/billing/subscriptions/{subscription_id}/cancel` - Cancel subscription
-- `POST /api/billing/payment-intents` - Create payment intent
-- `POST /api/billing/webhooks` - Handle Stripe webhooks
-- `GET /api/billing/billing-info/{customer_id}` - Get billing information
-
-See [backend/README.md](backend/README.md) for complete endpoint documentation.
-
----
-
-## 🔐 Environment Setup
-
-Create `backend/.env`:
-
-```env
-# Server
-PORT=8000
-ENVIRONMENT=development
-
-# Google Cloud / Gemini
-GEMINI_API_KEY=your-gemini-api-key
-GOOGLE_PROJECT_ID=your-gcp-project
-GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account-key.json
-
-# APIs
-GOOGLE_DRIVE_API_KEY=your-drive-key
-
-# GitHub
-GITHUB_TOKEN=your-github-token
-```
-
----
-
-## 📦 Key Technologies
-
-| Layer | Technologies |
-|-------|-------------|
-| **Backend** | FastAPI, Uvicorn, Pydantic, Google Cloud AI |
-| **Frontend** | React 18, TypeScript, CSS |
-| **Extension** | VSCode API, TypeScript |
-| **Infrastructure** | Docker, Cloud Run, GitHub Actions |
-| **AI/ML** | Google Gemini, LLMs, Vector Search |
-
----
-
-## 🛠️ Development Workflow
-
-### Local Development
+### Frontend (canonical)
 
 ```bash
-# Backend development
-cd backend && uvicorn main:app --reload
-
-# Frontend development
-cd frontend && npm start
-
-# Extension development
-cd vscode-extension && npm run compile
+npm run dev
 ```
 
-### Testing
+By default, the canonical frontend dev server runs on Vite’s local dev port.
+
+### Extension development
 
 ```bash
-# Test backend endpoints
-python scripts/testing/test-backend-endpoints.py
-
-# Validate tokens
-python scripts/testing/test-bot-token.py
+npm --prefix vscode-extension run compile
+npm --prefix vscode-extension test
 ```
 
-### Deployment
+You can also launch it from the VS Code debug configurations in `.vscode/launch.json`.
+
+---
+
+## 🐳 Full local stack with Docker Compose
+
+For the most representative local environment, use:
 
 ```bash
-# Automatic deployment on push to main
-git push origin main
-# GitHub Actions builds and deploys to Cloud Run
+docker-compose up --build
 ```
 
-See detailed guides:
+This boots:
 
-- [Backend Setup](backend/README.md)
-- [Frontend Setup](frontend/README.md)
-- [Extension Setup](vscode-extension/README.md)
-- [Scripts Guide](scripts/README.md)
+- `postgres`
+- `redis`
+- `backend` using `uvicorn src.kortana.main:app`
+- `frontend`
+
+Important canonical wiring from `docker-compose.yml`:
+
+- backend command: `uvicorn src.kortana.main:app --host 0.0.0.0 --port 8000 --reload`
+- frontend talks to backend through `VITE_API_URL=http://backend:8000`
 
 ---
 
-## ☁️ Cloud Deployment
+## 🧪 Validation
 
-The system automatically deploys to Google Cloud Run via GitHub Actions:
-
-1. Push code to `main` branch
-2. GitHub Actions workflow triggers (`deploy-backend.yml`)
-3. Docker image built and pushed to Artifact Registry
-4. Service deployed to Cloud Run (`kortana-backend`)
-
-**Live Endpoint**: `https://kor-tana-780422883904.us-west1.run.app`
-
-### Required Secrets in GitHub
-
-```
-GCP_PROJECT_ID          # Google Cloud project ID
-GEMINI_API_KEY          # Gemini API key
-GOOGLE_DRIVE_API_KEY    # Drive API key
-GOOGLE_APPLICATION_CREDENTIALS  # Service account JSON
-```
-
----
-
-## 📚 Documentation
-
-Complete documentation available in the [`docs/`](docs/) directory:
-
-- **[Governance](docs/governance/)** - System rules and covenants
-- **[Workflows](docs/workflows/)** - Development processes
-- **[Architecture](docs/architecture/)** - System design
-- **[Approvals](docs/APPROVAL_REQUEST.md)** - Change management
-
-See [docs/README.md](docs/README.md) for full documentation index.
-
----
-
-## 🔄 Daily Operations
-
-### Automatic Sync
+### Fast path
 
 ```bash
-# Runs daily (configured in cron/Task Scheduler)
-python scripts/deployment/daily_sync.py
+npm run build
+npm test
 ```
 
-### Covenant Updates
+### Canonical backend import checks
+
+The following paths are expected to work:
+
+- canonical import from `backend/src/kortana/main.py`
+- compatibility import from `backend/main.py`
+
+### Targeted backend runtime slice
+
+The repair set was verified against:
 
 ```bash
-# Update governance documents
-python scripts/deployment/update_covenant.py
+cd backend
+python -m pytest tests/test_autonomy_daemon.py tests/test_always_on_monitor.py tests/test_github_autonomy_isolation.py -q
 ```
 
-### Health Checks
+Current verified result at landing time: `48 passed`.
 
-```bash
-# Validate all endpoints
-python scripts/testing/test-backend-endpoints.py
-```
+### Extension validation
 
----
-
-## 🎯 Core Features
-
-### Autonomous Operations
-
-- Self-branching development
-- Auto-testing and validation
-- Self-deployment capabilities
-- Governed by ethical covenants
-
-### Multimodal AI
-
-- Text analysis and generation
-- Voice processing (via integrations)
-- Image/video analysis
-- Location-aware operations
-
-### Knowledge Management
-
-- Persistent memory system
-- Vector search capabilities
-- Document management
-- Context awareness
-
-### GitHub Integration
-
-- Repository synchronization
-- Issue tracking
-- Pull request automation
-- Code analysis
+The root `npm test` path includes the extension test run.
 
 ---
 
-## 🔒 Security & Governance
+## 🔗 API surface highlights
 
-- All API keys in environment variables
-- Service account credentials for GCP
-- GitHub Actions secrets management
-- CORS configured (customize for production)
-- Governed by system covenants
+Representative backend routes include:
 
-See [docs/governance/COVENANT_INDEX.md](docs/governance/COVENANT_INDEX.md) for governance rules.
+- `GET /api/health`
+- `GET /api/info`
+- `GET /api/system/health`
+- `GET /api/autonomy/status`
+- `GET /api/agents/...`
+- `GET /api/github/...`
+- `GET /api/task-queue/...`
+- `GET /api/memory/...`
+- `GET /api/billing/...`
+
+See `backend/src/kortana/main.py` and the router modules under `backend/src/kortana/routers/` for the current mounted surface.
 
 ---
 
-## 📖 Contributing
+## 🧠 Runtime architecture notes
 
-1. Create feature branch from `main`
-2. Make changes and test locally
-3. Push to branch
-4. Create Pull Request
-5. Await automated tests and approval
-6. Merge to `main` (triggers deployment)
+### Canonical backend
 
-See [docs/workflows/autonomous-workflow-design.md](docs/workflows/autonomous-workflow-design.md) for detailed workflow.
+- Source of truth: `backend/src/kortana/main.py`
+- Compatibility shim: `backend/main.py`
+- Canonical auth: `backend/src/kortana/auth.py`
+- Canonical Celery app: `backend/src/kortana/celery_app.py`
+
+### Frontend source of truth
+
+- Source of truth: `frontend/`
+- Root npm scripts route here by default
+
+### Legacy / alternative surfaces
+
+The repository still contains:
+
+- `src/` legacy root UI / Node surface
+- `app/` alternate app surface
+- older docs that may reference pre-repair entrypoints
+
+Treat those as non-canonical unless a task explicitly targets them.
+
+---
+
+## 🔒 Security and governance
+
+- Secrets belong in environment files or CI/CD secret stores
+- Backend compatibility shims now point to the canonical auth/celery/runtime modules instead of maintaining divergent logic
+- Governance and operational documents live under `docs/` and top-level status files
+
+See:
+
+- [`docs/governance/`](docs/governance/)
+- [`CHANGELOG.md`](CHANGELOG.md)
+
+---
+
+## 📚 Documentation pointers
+
+- [`CHANGELOG.md`](CHANGELOG.md) — landed runtime repair summary
+- [`backend/`](backend/) — backend code and tests
+- [`frontend/`](frontend/) — canonical web UI
+- [`vscode-extension/`](vscode-extension/) — control panel extension
+- [`docs/`](docs/) — governance, workflows, architecture, and reports
 
 ---
 
 ## 📝 License
 
-MIT License - See [LICENSE](LICENSE) file
+MIT License — see [`LICENSE`](LICENSE).
 
 ---
 
-## 🌐 Resources
+**The canonical runtime is repaired. The constellation remains online.**
 
-- **GitHub**: [KOR-TANA/kortana](https://github.com/KOR-TANA/kortana)
-- **Live API**: [Cloud Run Endpoint](https://kor-tana-780422883904.us-west1.run.app)
-- **API Docs**: `http://localhost:8000/docs` (local) or `/docs` (production)
-- **Issues**: [GitHub Issues](https://github.com/KOR-TANA/kortana/issues)
-
----
-
-## 📊 Project Status
-
-- ✅ Core backend infrastructure
-- ✅ Gemini AI integration
-- ✅ Frontend dashboard
-- ✅ GitHub synchronization
-- ✅ Cloud deployment pipeline
-- ✅ VSCode extension
-- 🔄 Autonomous operations expansion
-- 🔄 Enhanced memory system
-- 🔄 Multi-modal interface expansion
-
----
-
-**The constellation is online. The ritual has begun.**
-
-*Last Updated: January 2026*
+Last updated: March 2026
