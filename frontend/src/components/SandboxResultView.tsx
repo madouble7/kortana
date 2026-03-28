@@ -1,7 +1,7 @@
+import { Activity, CheckCircle2, ChevronDown, ChevronRight, Shield, XCircle } from 'lucide-react';
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, Activity, Shield, CheckCircle2, XCircle } from 'lucide-react';
-import type { SandboxResult } from '../types';
 import { cn } from '../lib/utils';
+import type { SandboxResult } from '../types';
 
 interface Props {
   result: SandboxResult;
@@ -30,7 +30,7 @@ function ExpandableSection({ title, children, defaultOpen = false }: { title: st
 
 export default function SandboxResultView({ result }: Props) {
   const isOk = result.ok;
-  
+
   return (
     <div className="mt-3 p-3 rounded-lg border border-indigo-900/30 bg-gray-800/30">
       <div className="flex items-center justify-between mb-3 text-sm">
@@ -67,12 +67,12 @@ export default function SandboxResultView({ result }: Props) {
                 Risk: {result.artifacts.plan.risk_assessment}
               </span>
             )}
-            
+
             {result.artifacts.review_summary !== undefined && (
               <span className={cn(
                 "flex items-center gap-1 px-2 py-1 rounded border",
-                result.artifacts.review_summary.approved 
-                  ? "bg-green-900/20 border-green-800 text-green-400" 
+                result.artifacts.review_summary.approved
+                  ? "bg-green-900/20 border-green-800 text-green-400"
                   : "bg-red-900/20 border-red-800 text-red-400"
               )}>
                 Review: {result.artifacts.review_summary.approved ? 'Approved' : 'Rejected'}
