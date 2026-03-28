@@ -257,6 +257,10 @@ def build_rate_limit_test_app(
     async def health():
         return {"status": "alive"}
 
+    @app.get("/api/autonomy/status")
+    async def autonomy_status():
+        return {"status": "active"}
+
     return app, fake_redis
 
 
@@ -336,6 +340,27 @@ class TestRateLimitMiddlewareIntegration:
 
         assert over_limit.status_code == 429
         assert health.status_code == 200
+        assert fake_redis.counts == counts_before
+
+    @pytest.mark.asyncio
+    async def test_autonomy_status_endpoint_bypasses_rate_limit(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        app, fake_redis = build_rate_limit_test_app(monkeypatch)
+
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://testserver",
+        ) as client:
+            headers = {"X-Forwarded-For": "7.7.7.7"}
+            await client.get("/limited", headers=headers)
+            await client.get("/limited", headers=headers)
+            over_limit = await client.get("/limited", headers=headers)
+            counts_before = dict(fake_redis.counts)
+            autonomy_status = await client.get("/api/autonomy/status", headers=headers)
+
+        assert over_limit.status_code == 429
+        assert autonomy_status.status_code == 200
         assert fake_redis.counts == counts_before
 
     @pytest.mark.asyncio

@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AutonomyStatus } from '../types';
-import { getApiBaseUrl, getWebSocketBaseUrl } from '../lib/runtimeConfig';
+import { getApiBaseUrl } from '../lib/runtimeConfig';
 
 interface ConnectionState {
   isConnected: boolean;
@@ -26,15 +26,94 @@ interface UseAutonomyRealtimeReturn {
   disconnect: () => void;
 }
 
+interface AutonomyRealtimeError extends Error {
+  status?: number;
+  retryAfterMs?: number;
+}
+
+interface RawAutonomyStatusResponse {
+  total_tasks?: number;
+  stats?: Record<string, number | string | undefined>;
+  recent_tasks?: Array<{
+    updated_at?: string;
+  }>;
+}
+
+const toAutonomyStatus = (data: RawAutonomyStatusResponse): AutonomyStatus => {
+  const stats = data?.stats ?? {};
+  const pending = Number(stats.pending ?? 0);
+  const running =
+    Number(stats.running ?? 0) +
+    Number(stats.analyzing ?? 0) +
+    Number(stats.planning ?? 0) +
+    Number(stats.ready_to_execute ?? 0) +
+    Number(stats.executing ?? 0);
+  const completed = Number(stats.completed ?? 0);
+  const failed = Number(stats.failed ?? 0);
+  const total = Number(data?.total_tasks ?? 0) || pending + running + completed + failed;
+
+  return {
+    status: total > 0 ? 'active' : 'inactive',
+    timestamp: new Date().toISOString(),
+    statistics: {
+      total_tasks: total,
+      by_status: {
+        pending,
+        running,
+        completed,
+        failed,
+        waiting_for_ho: 0,
+      },
+      by_classification: {
+        auto: total,
+        ho: 0,
+        approval: 0,
+      },
+    },
+    last_run: data?.recent_tasks?.[0]?.updated_at,
+    tasks_executed: completed,
+  };
+};
+
+const getRetryAfterMs = (response: Response, responseBody: unknown): number | undefined => {
+  const retryAfterHeader = response.headers.get('Retry-After');
+  const retryAfterSeconds = retryAfterHeader ? Number.parseInt(retryAfterHeader, 10) : Number.NaN;
+
+  if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
+    return retryAfterSeconds * 1000;
+  }
+
+  if (
+    typeof responseBody === 'object' &&
+    responseBody !== null &&
+    'retry_after' in responseBody &&
+    typeof (responseBody as { retry_after?: unknown }).retry_after === 'number'
+  ) {
+    return (responseBody as { retry_after: number }).retry_after * 1000;
+  }
+
+  return undefined;
+};
+
+const readAutonomyErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return 'Unknown error';
+};
+
 /**
- * Hook for real-time autonomy status updates using WebSocket/SSE with polling fallback
+ * Hook for autonomy status updates using polling.
+ *
+ * The current backend does not expose `/api/autonomy/ws` or `/api/autonomy/sse`,
+ * so this hook intentionally polls the canonical status endpoint instead of
+ * thrashing dead realtime transports.
  */
 export function useAutonomyRealtime(options: UseAutonomyRealtimeOptions = {}): UseAutonomyRealtimeReturn {
   const {
     enabled = true,
     pollingInterval = 5000,
-    maxRetries = 3,
-    reconnectDelay = 2000,
   } = options;
 
   const [status, setStatus] = useState<AutonomyStatus | null>(null);
@@ -49,30 +128,36 @@ export function useAutonomyRealtime(options: UseAutonomyRealtimeOptions = {}): U
     fallbackToPolling: false,
   });
 
-  // Refs for managing connections and timers
-  const wsRef = useRef<WebSocket | null>(null);
-  const eventSourceRef = useRef<EventSource | null>(null);
-  const pollingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollingActiveRef = useRef(false);
 
-  // Fetch status via REST API (for polling fallback)
   const fetchStatus = useCallback(async () => {
     try {
       const baseUrl = getApiBaseUrl();
       const response = await fetch(`${baseUrl}/api/autonomy/status`);
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const responseBody = await response.json().catch(() => ({}));
+        const requestError = new Error(
+          response.status === 429
+            ? 'HTTP 429: Too many requests'
+            : `HTTP ${response.status}: ${response.statusText}`
+        ) as AutonomyRealtimeError;
+
+        requestError.status = response.status;
+        requestError.retryAfterMs = getRetryAfterMs(response, responseBody);
+        throw requestError;
       }
 
-      const data = await response.json();
-      setStatus(data);
+      const data = (await response.json()) as RawAutonomyStatusResponse;
+      setStatus(toAutonomyStatus(data));
       setError(null);
       setConnectionState(prev => ({
         ...prev,
         lastError: null,
       }));
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      const errorMessage = readAutonomyErrorMessage(err);
       setError(errorMessage);
       setConnectionState(prev => ({
         ...prev,
@@ -82,221 +167,52 @@ export function useAutonomyRealtime(options: UseAutonomyRealtimeOptions = {}): U
     }
   }, []);
 
-  // Start polling fallback
-  const startPolling = useCallback(() => {
+  const stopPolling = useCallback(() => {
+    pollingActiveRef.current = false;
+
+    if (pollingTimerRef.current) {
+      clearTimeout(pollingTimerRef.current);
+      pollingTimerRef.current = null;
+    }
+  }, []);
+
+  const startPolling = useCallback((initialDelay = 0) => {
+    stopPolling();
+    pollingActiveRef.current = true;
+
     setConnectionState(prev => ({
       ...prev,
       fallbackToPolling: true,
       isConnected: false,
       isConnecting: false,
+      retryCount: 0,
     }));
 
     const poll = async () => {
+      let nextPollDelay = pollingInterval;
+
       try {
         await fetchStatus();
         setIsLoading(false);
       } catch (err) {
         console.warn('Polling failed:', err);
+        nextPollDelay =
+          (err as AutonomyRealtimeError | undefined)?.retryAfterMs ??
+          pollingInterval * 2;
       }
+
+      if (!enabled || !pollingActiveRef.current) {
+        return;
+      }
+
+      pollingTimerRef.current = setTimeout(poll, nextPollDelay);
     };
 
-    poll(); // Initial fetch
-    pollingTimerRef.current = setInterval(poll, pollingInterval);
-  }, [fetchStatus, pollingInterval]);
+    pollingTimerRef.current = setTimeout(poll, initialDelay);
+  }, [enabled, fetchStatus, pollingInterval, stopPolling]);
 
-  // Stop polling
-  const stopPolling = useCallback(() => {
-    if (pollingTimerRef.current) {
-      clearInterval(pollingTimerRef.current);
-      pollingTimerRef.current = null;
-    }
-  }, []);
-
-  // Try WebSocket connection
-  const connectWebSocket = useCallback(() => {
-    if (!enabled) return;
-
-    setConnectionState(prev => ({
-      ...prev,
-      isConnecting: true,
-      retryCount: prev.retryCount + 1,
-    }));
-
-    try {
-      const wsBaseUrl = getWebSocketBaseUrl();
-      const wsUrl = `${wsBaseUrl}/api/autonomy/ws`;
-
-      const ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
-
-      ws.onopen = () => {
-        console.log('WebSocket connected for autonomy status');
-        setConnectionState(prev => ({
-          ...prev,
-          isConnected: true,
-          isConnecting: false,
-          lastError: null,
-          retryCount: 0,
-          fallbackToPolling: false,
-        }));
-        setError(null);
-        setIsLoading(false);
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          setStatus(data);
-          setError(null);
-        } catch (err) {
-          console.error('Failed to parse WebSocket message:', err);
-        }
-      };
-
-      ws.onclose = (event) => {
-        console.log('WebSocket closed:', event.code, event.reason);
-        wsRef.current = null;
-
-        setConnectionState(prev => ({
-          ...prev,
-          isConnected: false,
-          isConnecting: false,
-        }));
-
-        // Try SSE fallback if WebSocket fails and we haven't exceeded retries
-        if (connectionState.retryCount < maxRetries) {
-          setTimeout(() => connectSSE(), reconnectDelay);
-        } else {
-          console.log('Max retries reached, falling back to polling');
-          startPolling();
-        }
-      };
-
-      ws.onerror = (event) => {
-        console.error('WebSocket error:', event);
-        setConnectionState(prev => ({
-          ...prev,
-          lastError: 'WebSocket connection failed',
-        }));
-      };
-
-    } catch (err) {
-      console.error('Failed to create WebSocket:', err);
-      setConnectionState(prev => ({
-        ...prev,
-        isConnecting: false,
-        lastError: 'WebSocket creation failed',
-      }));
-
-      // Try SSE fallback
-      if (connectionState.retryCount < maxRetries) {
-        setTimeout(() => connectSSE(), reconnectDelay);
-      } else {
-        startPolling();
-      }
-    }
-  }, [enabled, connectionState.retryCount, maxRetries, reconnectDelay, startPolling]);
-
-  // Try Server-Sent Events connection
-  const connectSSE = useCallback(() => {
-    if (!enabled) return;
-
-    setConnectionState(prev => ({
-      ...prev,
-      isConnecting: true,
-      retryCount: prev.retryCount + 1,
-    }));
-
-    try {
-      const baseUrl = getApiBaseUrl();
-      const sseUrl = `${baseUrl}/api/autonomy/sse`;
-
-      const eventSource = new EventSource(sseUrl);
-      eventSourceRef.current = eventSource;
-
-      eventSource.onopen = () => {
-        console.log('SSE connected for autonomy status');
-        setConnectionState(prev => ({
-          ...prev,
-          isConnected: true,
-          isConnecting: false,
-          lastError: null,
-          retryCount: 0,
-          fallbackToPolling: false,
-        }));
-        setError(null);
-        setIsLoading(false);
-      };
-
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          setStatus(data);
-          setError(null);
-        } catch (err) {
-          console.error('Failed to parse SSE message:', err);
-        }
-      };
-
-      eventSource.onerror = (event) => {
-        console.error('SSE error:', event);
-        eventSourceRef.current = null;
-
-        setConnectionState(prev => ({
-          ...prev,
-          isConnected: false,
-          isConnecting: false,
-          lastError: 'SSE connection failed',
-        }));
-
-        // Fall back to polling if SSE fails
-        if (connectionState.retryCount >= maxRetries) {
-          console.log('Max retries reached, falling back to polling');
-          startPolling();
-        } else {
-          // Try WebSocket again after delay
-          setTimeout(() => connectWebSocket(), reconnectDelay);
-        }
-      };
-
-    } catch (err) {
-      console.error('Failed to create SSE:', err);
-      setConnectionState(prev => ({
-        ...prev,
-        isConnecting: false,
-        lastError: 'SSE creation failed',
-      }));
-
-      // Fall back to polling
-      startPolling();
-    }
-  }, [enabled, connectionState.retryCount, maxRetries, reconnectDelay, startPolling, connectWebSocket]);
-
-  // Manual reconnect
-  const reconnect = useCallback(() => {
-    disconnect();
-    setConnectionState(prev => ({
-      ...prev,
-      retryCount: 0,
-      fallbackToPolling: false,
-    }));
-    connectWebSocket();
-  }, [connectWebSocket]);
-
-  // Disconnect all connections
   const disconnect = useCallback(() => {
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
-
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
-    }
-
     stopPolling();
-
     setConnectionState(prev => ({
       ...prev,
       isConnected: false,
@@ -304,22 +220,26 @@ export function useAutonomyRealtime(options: UseAutonomyRealtimeOptions = {}): U
     }));
   }, [stopPolling]);
 
-  // Initialize connection on mount
-  useEffect(() => {
-    if (enabled) {
-      // Initial fetch to get current status
-      fetchStatus().finally(() => setIsLoading(false));
+  const reconnect = useCallback(() => {
+    disconnect();
+    setError(null);
+    setIsLoading(true);
+    startPolling();
+  }, [disconnect, startPolling]);
 
-      // Try WebSocket first, then SSE, then polling
-      connectWebSocket();
+  useEffect(() => {
+    if (!enabled) {
+      return undefined;
     }
+
+    setIsLoading(true);
+    startPolling();
 
     return () => {
       disconnect();
     };
-  }, [enabled, connectWebSocket, fetchStatus, disconnect]);
+  }, [disconnect, enabled, startPolling]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       disconnect();

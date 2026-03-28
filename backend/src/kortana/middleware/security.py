@@ -60,6 +60,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             "/icon-512.png",
             "/assets",
             "/api/health",
+            "/api/autonomy/status",
+            "/api/autonomy/health",
         )
         effective_redis_url = redis_url or "redis://localhost:6379/0"
         self.redis_url = effective_redis_url
