@@ -7,8 +7,8 @@ import os
 from unittest.mock import MagicMock, patch
 
 import pytest
-from src.kortana.config import get_settings
 from fastapi import HTTPException
+from src.kortana.config import get_settings
 from src.kortana.schemas import (
     BillingPlanType,
     CustomerCreate,
