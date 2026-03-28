@@ -4,6 +4,8 @@ import os
 import subprocess
 from typing import Any, Dict
 
+from src.kortana.config import get_settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -47,6 +49,7 @@ class AutonomyLoopBridgeService:
         npx_bin = "npx.cmd" if os.name == "nt" else "npx"
         process = None
         stdout = None
+        timeout_seconds = get_settings().AUTONOMY_LOOP_SHADOW_TIMEOUT_SECONDS
 
         try:
             logger.info(
@@ -62,7 +65,9 @@ class AutonomyLoopBridgeService:
             )
 
             input_str = json.dumps(task_payload)
-            stdout, stderr = process.communicate(input=input_str, timeout=120)
+            stdout, stderr = process.communicate(
+                input=input_str, timeout=timeout_seconds
+            )
 
             if stderr:
                 logger.warning(f"Sandbox Diagnostic Emitted:\n{stderr.strip()}")
@@ -72,11 +77,11 @@ class AutonomyLoopBridgeService:
         except subprocess.TimeoutExpired:
             if process is not None:
                 process.kill()
-            logger.error("Sandbox execution exceeded 120s timeout")
+            logger.error(f"Sandbox execution exceeded {timeout_seconds}s limit")
             return {
                 "ok": False,
                 "status": "failed",
-                "error": "Sandbox execution took longer than 120s",
+                "error": f"Sandbox execution took longer than {timeout_seconds}s timeout",
             }
         except json.JSONDecodeError as e:
             raw_out = stdout if stdout is not None else "None"

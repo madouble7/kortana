@@ -185,6 +185,14 @@ class Settings:
     SESSION_SALT: str | None = _get_env("SESSION_SALT")
     HEARTBEAT_TOKEN: str | None = _get_env("HEARTBEAT_TOKEN")
 
+    # Autonomy Loop Config
+    AUTONOMY_LOOP_SHADOW_ENABLED: bool = (
+        str(_get_env("AUTONOMY_LOOP_SHADOW_ENABLED", "false")).lower() == "true"
+    )
+    AUTONOMY_LOOP_SHADOW_TIMEOUT_SECONDS: int = int(
+        _get_env("AUTONOMY_LOOP_SHADOW_TIMEOUT_SECONDS", "120")
+    )
+
     @property
     def DATABASE_URL(self) -> str:
         """Constructs the async database URL from settings."""

@@ -26,11 +26,12 @@ from src.kortana.config import get_settings
 from src.kortana.database import get_db_manager
 from src.kortana.logger import get_logger
 from src.kortana.models import GitHubTask
+from src.kortana.services.autonomy_loop_bridge_service import AutonomyLoopBridgeService
+from src.kortana.services.local_backlog_service import LocalBacklogService
 from src.kortana.services.operator_directive_service import (
     DirectiveSummary,
     get_active_operator_summary,
 )
-from src.kortana.services.local_backlog_service import LocalBacklogService
 from src.kortana.services.self_awareness import get_self_awareness
 from src.kortana.services.task_approval_service import TaskApprovalService
 from src.kortana.services.workspace_bridge_service import get_workspace_bridge
@@ -598,6 +599,47 @@ class AutonomyDaemon:
             )
 
             try:
+                # Shadow Path Execution (Diagnostic Signal Only)
+                if get_settings().AUTONOMY_LOOP_SHADOW_ENABLED:
+                    try:
+                        # Only run shadow path for queued/pending/analyzed tasks so it pre-empts execution side-effects
+                        if task.status in {"queued", "pending", "analyzed"}:
+                            task_payload = {
+                                "id": str(task.id),
+                                "description": task.title
+                                + "\n"
+                                + (task.description or ""),
+                                "priority": "normal",
+                                "status": "new",
+                                "created_at": str(task.created_at),
+                            }
+                            # Offload to a thread to avoid blocking the daemon's event loop
+                            shadow_result = await asyncio.to_thread(
+                                AutonomyLoopBridgeService.run_dry_run, task_payload
+                            )
+                            # Persist this as a diagnostic artifact
+                            task.sandbox_result = shadow_result
+                            await session.commit()
+
+                            self._emit(
+                                DaemonEvent(
+                                    type="shadow_loop_result",
+                                    data={
+                                        "task_id": str(task.id),
+                                        "status": shadow_result.get("status"),
+                                        "ok": shadow_result.get("ok"),
+                                        "error": shadow_result.get("error"),
+                                    },
+                                )
+                            )
+                            logger.info(
+                                f"[AUDIT] Task {task.id} shadow loop signal captured. Result ok: {shadow_result.get('ok')}"
+                            )
+                    except Exception as e:
+                        logger.warning(
+                            f"Shadow loop execution failed for {task.id}, continuing live loop. Error: {e}"
+                        )
+
                 if task.status in {"queued", "pending"}:
                     await service.analyze_task(task)
                     if task.status != "analyzed":
