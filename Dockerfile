@@ -46,6 +46,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     libpq5 \
     ca-certificates \
     postgresql-client \
+    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user for security
