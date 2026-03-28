@@ -617,9 +617,15 @@ class AutonomyDaemon:
                             shadow_result = await asyncio.to_thread(
                                 AutonomyLoopBridgeService.run_dry_run, task_payload
                             )
+                            # Imbue the result with interpreted advisory logic
+                            try:
+                                if isinstance(shadow_result, dict):
+                                    shadow_result["advisory"] = self._derive_shadow_advisory(shadow_result)
+                            except Exception as e:
+                                logger.warning(f"Failed to derive shadow advisory for {task.id}: {e}")
+
                             # Persist this as a diagnostic artifact
-                            task.sandbox_result = shadow_result
-                            await session.commit()
+                            task.sandbox_result = shadow_result  # type: ignore[assignment]
 
                             self._emit(
                                 DaemonEvent(
@@ -870,6 +876,30 @@ class AutonomyDaemon:
         ):
             return "code_fix"
         return "feature"
+
+    def _derive_shadow_advisory(self, shadow_result: dict[str, Any]) -> dict[str, Any]:
+        """Synthesize a lightweight operational summary from raw diagnostic sandbox output."""
+        advisory = {
+            "shadow_ok": shadow_result.get("ok", False),
+            "shadow_review_approved": None,
+            "shadow_test_exit_code": None,
+            "shadow_risk_assessment": None,
+        }
+        artifacts = shadow_result.get("artifacts", {})
+        if artifacts:
+            review = artifacts.get("review_summary") or {}
+            if "approved" in review:
+                advisory["shadow_review_approved"] = review.get("approved")
+            
+            tests = artifacts.get("test_report") or {}
+            if "exit_code" in tests:
+                advisory["shadow_test_exit_code"] = tests.get("exit_code")
+                
+            plan = artifacts.get("plan") or {}
+            if "risk_assessment" in plan:
+                advisory["shadow_risk_assessment"] = plan.get("risk_assessment")
+                
+        return advisory
 
     def get_status(self) -> dict[str, Any]:
         return {

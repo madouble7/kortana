@@ -92,6 +92,29 @@ class TaskApprovalService:
 
         risk_score = 0
         factors: list[str] = []
+
+        # Phase 2: Digest Shadow Advisory
+        sandbox_result = getattr(task, "sandbox_result", {}) or {}
+        shadow_advisory = sandbox_result.get("advisory", {})
+        if shadow_advisory:
+            if shadow_advisory.get("shadow_ok") is True:
+                confidence = min(1.0, confidence + 0.15)
+                factors.append("shadow:passed")
+            else:
+                risk_score += 3
+                confidence = max(0.0, confidence - 0.20)
+                factors.append("shadow:failed")
+                
+            shadow_tests = shadow_advisory.get("shadow_test_exit_code")
+            if shadow_tests is not None and shadow_tests != 0:
+                risk_score += 2
+                factors.append("shadow:tests_failed")
+                
+            shadow_review = shadow_advisory.get("shadow_review_approved")
+            if shadow_review is False:
+                risk_score += 2
+                factors.append("shadow:review_rejected")
+
         priority = (task.priority or "medium").lower()
         classification = (task.classification or "auto").lower()
         dirty_count = int((workspace_status or {}).get("changed_count") or 0)
