@@ -22,6 +22,8 @@ ENV_KEYS = [
     "GITHUB_TOKEN",
     "DISCORD_BOT_TOKEN",
     "OPENAI_API_KEY",
+    "RATE_LIMIT_PROXY_MODE",
+    "RATE_LIMIT_TRUSTED_PROXIES",
 ]
 
 
@@ -104,3 +106,22 @@ def test_validate_rejects_placeholder_secret_in_production(
 
     with pytest.raises(ValueError, match="SECRET_KEY"):
         config_module.Settings.validate()
+
+
+def test_rate_limit_proxy_settings_parse_from_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Proxy mode and trusted proxies should parse cleanly from env."""
+    config_module = reload_config_module(
+        monkeypatch,
+        RATE_LIMIT_PROXY_MODE="true",
+        RATE_LIMIT_TRUSTED_PROXIES="127.0.0.1,10.0.0.0/8 , 192.168.1.10",
+    )
+
+    settings = config_module.get_settings()
+    assert settings.RATE_LIMIT_PROXY_MODE is True
+    assert settings.RATE_LIMIT_TRUSTED_PROXIES == [
+        "127.0.0.1",
+        "10.0.0.0/8",
+        "192.168.1.10",
+    ]

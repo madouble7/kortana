@@ -226,6 +226,16 @@ class Settings:
     ).lower() == "true"
     RATE_LIMIT_REQUESTS: int = int(_get_env("RATE_LIMIT_REQUESTS", "100") or "100")
     RATE_LIMIT_PERIOD: int = int(_get_env("RATE_LIMIT_PERIOD", "60") or "60")
+    RATE_LIMIT_PROXY_MODE: bool = (
+        _get_env("RATE_LIMIT_PROXY_MODE", "false") or "false"
+    ).lower() == "true"
+    RATE_LIMIT_TRUSTED_PROXIES: list[str] = [
+        entry.strip()
+        for entry in (
+            _get_env("RATE_LIMIT_TRUSTED_PROXIES", "") or ""
+        ).split(",")
+        if entry.strip()
+    ]
 
     # Redis Config
     REDIS_URL: str | None = _get_env("REDIS_URL")

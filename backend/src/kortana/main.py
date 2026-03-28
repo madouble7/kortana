@@ -298,7 +298,10 @@ def create_app() -> FastAPI:
             app.add_middleware(
                 RateLimitMiddleware,
                 requests_per_minute=settings.RATE_LIMIT_REQUESTS,
+                period_seconds=settings.RATE_LIMIT_PERIOD,
                 redis_url=redis_url,
+                proxy_mode=settings.RATE_LIMIT_PROXY_MODE,
+                trusted_proxies=tuple(settings.RATE_LIMIT_TRUSTED_PROXIES),
             )
         elif not settings.RATE_LIMIT_ENABLED:
             print("[*] RateLimitMiddleware disabled by configuration")

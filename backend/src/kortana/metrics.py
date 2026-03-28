@@ -180,6 +180,14 @@ rate_limit_hits_total = Counter(
     registry=registry,
 )
 
+# Detailed rate limit events
+rate_limit_events_total = Counter(
+    "kortana_rate_limit_events_total",
+    "Detailed rate limit events",
+    ["route", "client_ip", "forwarded_ip", "status"],
+    registry=registry,
+)
+
 # ==================== Application Info ====================
 
 app_info = Info(
@@ -252,6 +260,18 @@ def track_auth_failure(reason: str):
 def track_rate_limit_hit(endpoint: str, tier: str):
     """Record a rate limit hit"""
     rate_limit_hits_total.labels(endpoint=endpoint, tier=tier).inc()
+
+
+def track_rate_limit_event(
+    route: str, client_ip: str, forwarded_ip: str | None, status: str
+):
+    """Record a detailed rate limiting event."""
+    rate_limit_events_total.labels(
+        route=route,
+        client_ip=client_ip or "unknown",
+        forwarded_ip=forwarded_ip or "",
+        status=status,
+    ).inc()
 
 
 # ==================== Metrics Endpoint ====================
@@ -331,6 +351,7 @@ __all__ = [
     "track_error",
     "track_auth_failure",
     "track_rate_limit_hit",
+    "track_rate_limit_event",
     "set_app_info",
     "metrics_middleware",
 ]
