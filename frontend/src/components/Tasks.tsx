@@ -12,6 +12,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { api } from '../lib/api';
 import { cn, formatRelativeTime } from '../lib/utils';
 import type { Task } from '../types';
+import SandboxResultView from './SandboxResultView';
 
 export default function Tasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -264,6 +265,9 @@ export default function Tasks() {
                       <p className="text-red-400 text-sm mt-2 bg-red-900/10 rounded px-2 py-1">
                         Error: {task.error}
                       </p>
+                    )}
+                    {task.sandbox_result && (
+                      <SandboxResultView result={task.sandbox_result} />
                     )}
                   </div>
                 </div>
