@@ -1,0 +1,74 @@
+# .github/workflows/deploy-kortana.yml
+name: Deploy kor'tana to AWS
+
+on:
+  push:
+    branches:
+      - "main"
+
+# Grant GITHUB_TOKEN the permissions required by the OIDC token
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  # Replace with your AWS region
+  AWS_REGION: "us-east-1"
+  # Replace with the ECR repository name from your Terraform output
+  ECR_REPOSITORY: "kortana"
+  # These must match your Terraform resource names
+  ECS_CLUSTER_NAME: "kortana-cluster"
+  ECS_SERVICE_NAME: "kortana-svc"
+  # This should match the 'name' in your container definition
+  CONTAINER_NAME: "api"
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials from OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          # Replace with your AWS Account ID
+          role-to-assume: arn:aws:iam::YOUR_AWS_ACCOUNT_ID:role/kortana-github-oidc-deployer
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Download existing task definition
+        run: |
+          aws ecs describe-task-definition --task-definition ${{ env.ECS_SERVICE_NAME }} --query taskDefinition > task-definition.json
+
+      - name: Fill in the new image ID in the Amazon ECS task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ steps.build-image.outputs.image }}
+
+      - name: Deploy Amazon ECS task definition
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE_NAME }}
+          cluster: ${{ env.ECS_CLUSTER_NAME }}
+          wait-for-service-stability: true

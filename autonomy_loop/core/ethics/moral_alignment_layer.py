@@ -1,0 +1,1 @@
+class EthicsValidator: def is_aligned(self, action): objective_function = self.get_divine_alignment_score(action); return objective_function > 0.80
