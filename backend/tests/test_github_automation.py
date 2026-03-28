@@ -6,7 +6,7 @@ import pytest
 from unittest.mock import Mock, patch
 from datetime import datetime
 
-from github_automation import (
+from src.kortana.github_automation import (
     GitHubAutomationEngine,
     GitHubIssue,
     IssueAnalysis,

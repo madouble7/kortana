@@ -5,7 +5,7 @@ Unit tests for Kor'tana backend - LLM Router
 import pytest
 from unittest.mock import patch
 
-from llm_router import LLMRouter, LLMResponse
+from src.kortana.llm_router import LLMRouter, LLMResponse
 
 
 @pytest.fixture

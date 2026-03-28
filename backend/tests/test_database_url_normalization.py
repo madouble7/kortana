@@ -1,5 +1,5 @@
 def _clear_settings_caches() -> None:
-    from config import get_settings as get_root_settings
+    from src.kortana.config import get_settings as get_root_settings
     from src.kortana.config import get_settings as get_src_settings
 
     get_root_settings.cache_clear()
@@ -13,7 +13,7 @@ def test_root_settings_normalize_postgres_url(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", raw_url)
     _clear_settings_caches()
 
-    from config import get_settings
+    from src.kortana.config import get_settings
 
     assert get_settings().DATABASE_URL == expected_url
 
@@ -33,7 +33,7 @@ def test_root_database_config_preserves_neon_query_params(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", raw_url)
     _clear_settings_caches()
 
-    from database import DatabaseConfig
+    from src.kortana.database import DatabaseConfig
 
     config = DatabaseConfig()
 
@@ -67,7 +67,7 @@ def test_database_url_normalization_does_not_touch_sqlite(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", sqlite_url)
     _clear_settings_caches()
 
-    from config import get_settings as get_root_settings
+    from src.kortana.config import get_settings as get_root_settings
     from src.kortana.config import get_settings as get_src_settings
 
     assert get_root_settings().DATABASE_URL == sqlite_url

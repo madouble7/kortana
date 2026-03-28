@@ -11,8 +11,8 @@ from typing import Optional
 from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
 from pydantic import BaseModel
 
-from config import get_settings
-from logger import log_error, log_request
+from src.kortana.config import get_settings
+from src.kortana.logger import log_error, log_request
 
 settings = get_settings()
 
@@ -220,7 +220,7 @@ class HealthChecker:
     async def check_database() -> tuple[bool, str]:
         """Check database connectivity"""
         try:
-            from database import get_db
+            from src.kortana.database import get_db
 
             db = next(get_db())
             db.execute("SELECT 1")

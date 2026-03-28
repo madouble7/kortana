@@ -7,9 +7,9 @@ import os
 from unittest.mock import MagicMock, patch
 
 import pytest
-from config import get_settings
+from src.kortana.config import get_settings
 from fastapi import HTTPException
-from schemas import (
+from src.kortana.schemas import (
     BillingPlanType,
     CustomerCreate,
     PaymentIntentCreate,
@@ -140,7 +140,7 @@ class TestBillingRouter:
 
     def test_billing_routes_registered(self):
         """Test that billing routes are registered"""
-        from routers import billing
+        from src.kortana.routers import billing
 
         routes = [r for r in billing.router.routes if hasattr(r, "path")]
         assert len(routes) >= 5  # At least the main endpoints
@@ -155,7 +155,7 @@ class TestBillingRouter:
 
     def test_logger_configured(self):
         """Test that logger is properly configured"""
-        from routers import billing
+        from src.kortana.routers import billing
 
         assert hasattr(billing, "logger")
         assert billing.logger.name == "kortana.billing"
@@ -163,7 +163,7 @@ class TestBillingRouter:
     @pytest.mark.asyncio
     async def test_verify_stripe_configured_success(self):
         """Test verify_stripe_configured with valid config"""
-        from routers.billing import verify_stripe_configured
+        from src.kortana.routers.billing import verify_stripe_configured
 
         with patch.object(get_settings(), "STRIPE_SECRET_KEY", "sk_test_dummy"):
             # Should not raise exception
@@ -172,7 +172,7 @@ class TestBillingRouter:
     @pytest.mark.asyncio
     async def test_verify_stripe_configured_failure(self):
         """Test verify_stripe_configured with missing config"""
-        from routers.billing import verify_stripe_configured
+        from src.kortana.routers.billing import verify_stripe_configured
 
         with patch.dict(os.environ, {"STRIPE_SECRET_KEY": ""}, clear=False):
             with pytest.raises(HTTPException) as exc_info:
@@ -183,7 +183,7 @@ class TestBillingRouter:
     @pytest.mark.asyncio
     async def test_get_billing_config_success(self):
         """Test get_billing_config with valid config"""
-        from routers.billing import get_billing_config
+        from src.kortana.routers.billing import get_billing_config
 
         with patch.object(
             get_settings(), "STRIPE_SECRET_KEY", "sk_test_dummy"
@@ -199,7 +199,7 @@ class TestBillingRouter:
     @pytest.mark.asyncio
     async def test_get_billing_config_not_configured(self):
         """Test get_billing_config without Stripe config"""
-        from routers.billing import get_billing_config
+        from src.kortana.routers.billing import get_billing_config
 
         with patch.dict(os.environ, {"STRIPE_SECRET_KEY": ""}, clear=False):
             with pytest.raises(HTTPException) as exc_info:
@@ -209,8 +209,8 @@ class TestBillingRouter:
     @pytest.mark.asyncio
     async def test_create_customer_success(self):
         """Test create_customer with mocked Stripe"""
-        from routers.billing import create_customer
-        from schemas import CustomerCreate
+        from src.kortana.routers.billing import create_customer
+        from src.kortana.schemas import CustomerCreate
 
         customer_data = CustomerCreate(email="test@example.com", name="Test User")
 
@@ -231,8 +231,8 @@ class TestBillingRouter:
     @pytest.mark.asyncio
     async def test_create_customer_stripe_error(self):
         """Test create_customer with Stripe error"""
-        from routers.billing import create_customer
-        from schemas import CustomerCreate
+        from src.kortana.routers.billing import create_customer
+        from src.kortana.schemas import CustomerCreate
 
         customer_data = CustomerCreate(email="test@example.com", name="Test User")
 
@@ -247,7 +247,7 @@ class TestBillingRouter:
     @pytest.mark.asyncio
     async def test_get_customer_success(self):
         """Test get_customer with mocked Stripe"""
-        from routers.billing import get_customer
+        from src.kortana.routers.billing import get_customer
 
         with patch("stripe.Customer.retrieve") as mock_retrieve:
             mock_customer = MagicMock()
@@ -265,7 +265,7 @@ class TestBillingRouter:
     @pytest.mark.asyncio
     async def test_get_customer_not_found(self):
         """Test get_customer with non-existent customer"""
-        from routers.billing import get_customer
+        from src.kortana.routers.billing import get_customer
 
         with patch("stripe.error.StripeError", MockStripeError), patch(
             "stripe.Customer.retrieve",
@@ -279,8 +279,8 @@ class TestBillingRouter:
     @pytest.mark.asyncio
     async def test_create_subscription_success(self):
         """Test create_subscription with mocked Stripe"""
-        from routers.billing import create_subscription
-        from schemas import SubscriptionCreate
+        from src.kortana.routers.billing import create_subscription
+        from src.kortana.schemas import SubscriptionCreate
 
         subscription_data = SubscriptionCreate(
             customer_id="cus_test123", price_id="price_test123", trial_period_days=7
@@ -305,8 +305,8 @@ class TestBillingRouter:
     @pytest.mark.asyncio
     async def test_create_subscription_stripe_error(self):
         """Test create_subscription with Stripe error"""
-        from routers.billing import create_subscription
-        from schemas import SubscriptionCreate
+        from src.kortana.routers.billing import create_subscription
+        from src.kortana.schemas import SubscriptionCreate
 
         subscription_data = SubscriptionCreate(
             customer_id="cus_test123", price_id="price_test123"
@@ -322,7 +322,7 @@ class TestBillingRouter:
     @pytest.mark.asyncio
     async def test_get_subscription_success(self):
         """Test get_subscription with mocked Stripe"""
-        from routers.billing import get_subscription
+        from src.kortana.routers.billing import get_subscription
 
         with patch("stripe.Subscription.retrieve") as mock_retrieve:
             mock_subscription = MagicMock()
@@ -342,7 +342,7 @@ class TestBillingRouter:
     @pytest.mark.asyncio
     async def test_cancel_subscription_at_period_end(self):
         """Test cancel_subscription at period end"""
-        from routers.billing import cancel_subscription
+        from src.kortana.routers.billing import cancel_subscription
 
         with patch("stripe.Subscription.modify") as mock_modify:
             mock_subscription = MagicMock()
@@ -358,7 +358,7 @@ class TestBillingRouter:
     @pytest.mark.asyncio
     async def test_cancel_subscription_immediately(self):
         """Test cancel_subscription immediately"""
-        from routers.billing import cancel_subscription
+        from src.kortana.routers.billing import cancel_subscription
 
         with patch("stripe.Subscription.cancel") as mock_cancel:
             mock_subscription = MagicMock()
@@ -374,8 +374,8 @@ class TestBillingRouter:
     @pytest.mark.asyncio
     async def test_create_payment_intent_success(self):
         """Test create_payment_intent with mocked Stripe"""
-        from routers.billing import create_payment_intent
-        from schemas import PaymentIntentCreate
+        from src.kortana.routers.billing import create_payment_intent
+        from src.kortana.schemas import PaymentIntentCreate
 
         payment_data = PaymentIntentCreate(
             amount=1000,
@@ -403,8 +403,8 @@ class TestBillingRouter:
     @pytest.mark.asyncio
     async def test_handle_webhook_success(self):
         """Test handle_webhook with valid signature"""
-        from config import get_settings
-        from routers.billing import handle_webhook
+        from src.kortana.config import get_settings
+        from src.kortana.routers.billing import handle_webhook
 
         payload = b'{"type": "customer.subscription.created", "data": {"object": {"id": "sub_test"}}}'
         signature = "t=1234567890,v1=test_signature"
@@ -434,8 +434,8 @@ class TestBillingRouter:
     @pytest.mark.asyncio
     async def test_handle_webhook_missing_secret(self):
         """Test handle_webhook without webhook secret"""
-        from config import get_settings
-        from routers.billing import handle_webhook
+        from src.kortana.config import get_settings
+        from src.kortana.routers.billing import handle_webhook
 
         payload = b'{"type": "test"}'
         signature = "t=1234567890,v1=test_signature"
@@ -457,7 +457,7 @@ class TestBillingRouter:
     @pytest.mark.asyncio
     async def test_handle_webhook_missing_signature(self):
         """Test handle_webhook without signature header"""
-        from routers.billing import handle_webhook
+        from src.kortana.routers.billing import handle_webhook
 
         payload = b'{"type": "test"}'
 
@@ -476,7 +476,7 @@ class TestBillingRouter:
     @pytest.mark.asyncio
     async def test_get_billing_info_free_plan(self):
         """Test get_billing_info for free plan (no active subscriptions)"""
-        from routers.billing import get_billing_info
+        from src.kortana.routers.billing import get_billing_info
 
         with patch("stripe.Subscription.list") as mock_list:
             mock_list.return_value = MagicMock(data=[])
@@ -488,7 +488,7 @@ class TestBillingRouter:
     @pytest.mark.asyncio
     async def test_get_billing_info_with_subscription(self):
         """Test get_billing_info with active subscription"""
-        from routers.billing import get_billing_info
+        from src.kortana.routers.billing import get_billing_info
 
         with patch("stripe.Subscription.list") as mock_list:
             mock_subscription = MagicMock()
@@ -507,7 +507,7 @@ class TestBillingRouter:
     @pytest.mark.asyncio
     async def test_get_billing_info_invalid_plan_type(self):
         """Test get_billing_info with invalid plan type in metadata"""
-        from routers.billing import get_billing_info
+        from src.kortana.routers.billing import get_billing_info
 
         with patch("stripe.Subscription.list") as mock_list:
             mock_subscription = MagicMock()

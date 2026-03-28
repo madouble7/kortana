@@ -10,7 +10,7 @@ from typing import Any, Callable, Optional, TypeVar
 
 from pydantic import BaseModel
 
-from logger import log_error, log_request
+from src.kortana.logger import log_error, log_request
 
 T = TypeVar("T")
 
