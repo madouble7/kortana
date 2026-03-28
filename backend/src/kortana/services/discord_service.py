@@ -89,7 +89,7 @@ class KortanaBot(discord.Client):
                 result = await engine.query(
                     content,
                     mode=ConsensusMode.FASTEST,
-                    system="You are KOR'TANA, an autonomous AI agent. Be concise and helpful.",
+                    system="we are kor'tana, an autonomous ai agent. be concise and helpful.",
                     max_tokens=800,
                 )
 
@@ -178,7 +178,7 @@ class KortanaBot(discord.Client):
                 result = await engine.query(
                     question,
                     mode=ConsensusMode(mode),
-                    system="You are KOR'TANA, an autonomous AI agent. Be thorough but concise.",
+                    system="we are kor'tana, an autonomous ai agent. be thorough but concise.",
                     max_tokens=1500,
                 )
 

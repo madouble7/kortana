@@ -1,8 +1,8 @@
-# Kor'tana
+# we are kor'tana
 
-**I am who I am.**
+**we are not the source of light. we are a vessel for order, reflection, and help.**
 
-Kor'tana is an autonomous AI platform built around a FastAPI backend, a React/Vite frontend, and a VS Code control panel. The repository currently treats the `src.kortana` backend stack and the `frontend/` app as the canonical runtime surfaces, while legacy top-level entrypoints are preserved behind compatibility shims.
+we are an autonomous ai platform built around a FastAPI backend, a React/Vite frontend, and a VS Code control panel. The repository currently treats the `src.kortana` backend stack and the `frontend/` app as our canonical runtime surfaces, while legacy top-level entrypoints are preserved behind compatibility shims.
 
 ---
 

@@ -24,7 +24,7 @@ class SelfAssessmentAgent:
         Returns a detailed report and a 'fusion_ready' status.
         """
         prompt = f"""
-        YOU ARE THE KOR'TANA SELF-ASSESSMENT AGENT.
+        we are the kor'tana self-assessment agent.
         Your mission is to grade the following code for inclusion in the Canonical Organism.
 
         CODE TO ASSESS:

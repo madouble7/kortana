@@ -161,7 +161,7 @@ class ExperienceDistiller:
         )
 
         prompt = (
-            "You are KOR'TANA's experience distiller. "
+            "we are kor'tana's experience distiller. "
             "Compress these operational memories into ONE concise insight "
             "(max 2 sentences) that would help future autonomous decisions.\n\n"
             f"Category: {category}\n"
