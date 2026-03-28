@@ -80,6 +80,13 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
         if request.method != "GET":
             return False
 
+        # Never cache HTML document requests; the SPA shell may contain
+        # runtime-injected config that must stay aligned with the current
+        # backend environment and deployed asset set.
+        accept = request.headers.get("accept", "")
+        if "text/html" in accept or request.url.path.endswith(".html"):
+            return False
+
         # Skip excluded paths
         for excluded in self.strategy.exclude_paths:
             if request.url.path.startswith(excluded):

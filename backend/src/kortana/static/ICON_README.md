@@ -26,9 +26,9 @@ The `icon-192.svg` and `icon-512.svg` files are **placeholder SVG templates**.
 
 2. Prompt example:
    ```
-   "App icon for an AI constellation system called Kor'tana.
-   Modern, minimalist design with purple gradient background.
-   Letter 'K' in white with small star above it.
+   "App icon for an AI constellation system called Kor'tana. 
+   Modern, minimalist design with purple gradient background. 
+   Letter 'K' in white with small star above it. 
    Rounded square shape. Professional tech aesthetic."
    ```
 

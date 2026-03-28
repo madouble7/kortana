@@ -19,9 +19,10 @@ const getBaseUrl = () => {
   }
 
   // 3. Smart fallback: If we're on the Vite dev port (5173), target the backend on 8000
+  // using the current browser hostname so LAN/mobile dev access works too.
   // Otherwise, use relative paths (unified mode)
   if (typeof window !== 'undefined' && window.location.port === '5173') {
-    return 'http://localhost:8000';
+    return `http://${window.location.hostname}:8000`;
   }
 
   return ''; // Relative paths

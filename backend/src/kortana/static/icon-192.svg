@@ -8,7 +8,7 @@
     </linearGradient>
   </defs>
   <rect width="192" height="192" rx="42" fill="url(#grad)"/>
-  <text x="96" y="130" font-family="Arial, sans-serif" font-size="100" font-weight="bold"
+  <text x="96" y="130" font-family="Arial, sans-serif" font-size="100" font-weight="bold" 
         fill="white" text-anchor="middle">K</text>
   <circle cx="96" cy="60" r="8" fill="#fbbf24"/>
 </svg>
