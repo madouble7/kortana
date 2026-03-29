@@ -266,7 +266,7 @@ Return only a unified diff for the approved files."""
         # Write diff to a temporary file
         temp_patch_path = os.path.join(self.worktree_dir, "healing.patch")
         try:
-            with open(temp_patch_path, "w", encoding="utf-8") as f:
+            with open(temp_patch_path, "w", encoding="utf-8", newline="\n") as f:
                 f.write(diff + "\n")
 
             # Run git apply --check
