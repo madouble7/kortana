@@ -190,6 +190,36 @@ class AutonomyDaemon:
 
             await asyncio.sleep(self.cycle_interval)
 
+
+    async def _heal_vectors(self, session: Any) -> None:
+        """Vector Alpha Branch-Scoped Self Healing"""
+        from sqlalchemy import select
+        from src.kortana.models import IncidentMemory
+        from src.kortana.services.vector_alpha_branch_service import VectorAlphaBranchService
+        from src.kortana.services.github_autonomy_service import GitHubAutonomyService
+
+        try:
+            res = await session.execute(
+                select(IncidentMemory).where(
+                    IncidentMemory.resolved == False, 
+                    IncidentMemory.fix_status.is_(None)
+                )
+            )
+            incidents = res.scalars().all()
+            
+            for inc in incidents:
+                alpha = VectorAlphaBranchService(session)
+                if alpha.evaluate_incident(inc):
+                    logger.info(f"[Vector Alpha] Attempting to heal {inc.incident_type}")
+                    branch = await alpha.create_healing_branch(inc)
+                    if branch:
+                        gh = GitHubAutonomyService(session)
+                        success = await alpha.validate_and_propose(inc, gh)
+                        if success:
+                            logger.info(f"[Vector Alpha] Created PR for {inc.id}")
+        except Exception as e:
+            logger.error(f"Vector Alpha execution failed: {e}")
+
     async def _analyze_architecture(self, session: Any) -> None:
         try:
             from src.kortana.models import ArchitectureMemory
@@ -253,6 +283,7 @@ class AutonomyDaemon:
             app_count = await self._process_pending_approvals(session)
             approvals_processed_count += app_count
             await self._analyze_architecture(session)
+            await self._heal_vectors(session)
 
         try:
             from dataclasses import asdict

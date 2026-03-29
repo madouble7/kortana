@@ -1678,3 +1678,26 @@ class GitHubAutonomyService:
                     self.db.close()
             except Exception as e:
                 logger.debug(f"Error closing database session: {e}")
+
+    async def create_pull_request(self, title: str, body: str, head: str, base: str = "main") -> dict | None:
+        """
+        Create a PR generic endpoint for Vector Alpha.
+        """
+        import asyncio
+        import httpx
+        try:
+            url = f"{self.base_url}/repos/{self.env_repo}/pulls"
+            payload = {
+                "title": title,
+                "body": body,
+                "head": head,
+                "base": base
+            }
+            def _post():
+                return httpx.post(url, headers=self.headers, json=payload, timeout=10.0)
+            res = await asyncio.to_thread(_post)
+            res.raise_for_status()
+            return res.json()
+        except Exception as e:
+            logger.error(f"[GitHub] Failed to create pull request {head} -> {base}: {e}")
+            return None
