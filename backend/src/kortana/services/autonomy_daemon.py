@@ -416,6 +416,51 @@ class AutonomyDaemon:
             logger.error(f"Issue discovery failed: {exc}")
         return discovered
 
+    @staticmethod
+    def _github_comment_id(comment: dict[str, Any]) -> str | None:
+        raw_id = comment.get("id")
+        if raw_id in (None, ""):
+            raw_id = comment.get("node_id")
+        if raw_id in (None, ""):
+            return None
+        return str(raw_id)
+
+    @staticmethod
+    def _github_comment_url(comment: dict[str, Any]) -> str | None:
+        raw_url = comment.get("html_url") or comment.get("url")
+        if raw_url in (None, ""):
+            return None
+        return str(raw_url)
+
+    def _comments_after_high_water_mark(
+        self,
+        comments: list[dict[str, Any]],
+        last_processed_comment_id: str | None,
+    ) -> list[dict[str, Any]]:
+        if not last_processed_comment_id:
+            return comments
+
+        for index, comment in enumerate(comments):
+            if self._github_comment_id(comment) == last_processed_comment_id:
+                return comments[index + 1 :]
+
+        try:
+            last_processed_numeric = int(last_processed_comment_id)
+        except (TypeError, ValueError):
+            return comments
+
+        filtered: list[dict[str, Any]] = []
+        for comment in comments:
+            comment_id = self._github_comment_id(comment)
+            if comment_id is None:
+                continue
+            try:
+                if int(comment_id) > last_processed_numeric:
+                    filtered.append(comment)
+            except (TypeError, ValueError):
+                continue
+        return filtered
+
     async def _process_pending_approvals(self, session: AsyncSession) -> None:
         """Poll GitHub comments for tasks awaiting operator approval."""
         from sqlalchemy import select
@@ -445,32 +490,84 @@ class AutonomyDaemon:
             if not comments:
                 continue
 
+            unseen_comments = self._comments_after_high_water_mark(
+                comments,
+                getattr(approval, "last_processed_github_comment_id", None),
+            )
+            if not unseen_comments:
+                continue
+
+            latest_seen_comment = unseen_comments[-1]
+            latest_seen_comment_id = self._github_comment_id(latest_seen_comment)
+            latest_seen_comment_url = self._github_comment_url(latest_seen_comment)
+            handled_command = False
+
             # Process newest comments first to find the latest explicit command
-            for comment in reversed(comments):
-                body = (comment.get("body") or "").strip().lower()
+            for comment in reversed(unseen_comments):
+                body_raw = (comment.get("body") or "").strip()
+                body = body_raw.lower()
                 user = comment.get("user", {}).get("login", "operator")
+                command_comment_id = self._github_comment_id(comment)
+                command_comment_url = self._github_comment_url(comment)
 
                 # Ignore bot reflections
-                if "bot" in user.lower() or "kortana" in user.lower() or "actions-user" in user.lower():
+                if (
+                    "bot" in user.lower()
+                    or "kortana" in user.lower()
+                    or "actions-user" in user.lower()
+                ):
                     continue
 
                 if body.startswith("/approve") or "/approve" in body.split():
                     logger.info(f"Task {task.id} approved via GitHub comment by {user}")
                     try:
-                        await approval_service.approve_task(str(task.id), approved=True, reviewer=user, notes=body)
-                        await github_service.post_issue_comment(task, f"✅ @{user} Phase 4 explicit approval confirmed. Resuming autonomous execution.")
+                        await approval_service.approve_task(
+                            str(task.id),
+                            approved=True,
+                            reviewer=user,
+                            notes=body_raw,
+                            github_comment_id=command_comment_id,
+                            github_comment_url=command_comment_url,
+                            last_processed_github_comment_id=latest_seen_comment_id,
+                            last_processed_github_comment_url=latest_seen_comment_url,
+                        )
+                        await github_service.post_issue_comment(
+                            task,
+                            f"✅ @{user} Phase 4 explicit approval confirmed. Resuming autonomous execution.",
+                        )
                     except ValueError as exc:
                         logger.debug(f"Task approval skip: {exc}")
+                    handled_command = True
                     break
 
                 elif body.startswith("/reject") or "/reject" in body.split():
                     logger.info(f"Task {task.id} rejected via GitHub comment by {user}")
                     try:
-                        await approval_service.approve_task(str(task.id), approved=False, reviewer=user, notes=body)
-                        await github_service.post_issue_comment(task, f"❌ @{user} Phase 4 explicit rejection confirmed. Halting context map and dropping task.")
+                        await approval_service.approve_task(
+                            str(task.id),
+                            approved=False,
+                            reviewer=user,
+                            notes=body_raw,
+                            github_comment_id=command_comment_id,
+                            github_comment_url=command_comment_url,
+                            last_processed_github_comment_id=latest_seen_comment_id,
+                            last_processed_github_comment_url=latest_seen_comment_url,
+                        )
+                        await github_service.post_issue_comment(
+                            task,
+                            f"❌ @{user} Phase 4 explicit rejection confirmed. Halting context map and dropping task.",
+                        )
                     except ValueError as exc:
                         logger.debug(f"Task rejection skip: {exc}")
+                    handled_command = True
                     break
+
+            if not handled_command and latest_seen_comment_id:
+                await approval_service.mark_comment_seen(
+                    str(task.id),
+                    github_comment_id=latest_seen_comment_id,
+                    github_comment_url=latest_seen_comment_url,
+                )
 
     async def _manifest_self_healing(
         self,
