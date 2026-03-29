@@ -269,7 +269,7 @@ class ApiClient {
 
   // Task Approval endpoints
   async getApprovalQueue(): Promise<any[]> {
-    const data = await this.request('/api/always-on/approval-queue');
+    const data = await this.request<any>('/api/always-on/approval-queue');
     return data.items || [];
   }
 
