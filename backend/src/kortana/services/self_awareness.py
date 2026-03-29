@@ -198,6 +198,27 @@ class SelfAwarenessEngine:
         self, base_cycle_interval: int, base_max_tasks: int
     ) -> dict[str, Any]:
         """Generate a runtime profile that can tune the autonomy daemon."""
+        from src.kortana.models import AutonomyCycleMemory
+        from sqlalchemy import desc
+        
+        # Evidence-based bounding:
+        recent_cycles = []
+        try:
+            async for session in self._db.get_session():
+                res = await session.execute(
+                    select(AutonomyCycleMemory).order_by(desc(AutonomyCycleMemory.end_time)).limit(15)
+                )
+                recent_cycles = list(res.scalars().all())
+        except Exception:
+            pass
+            
+        recent_failures_count = 0
+        if recent_cycles:
+            for c in recent_cycles:
+                metrics: dict[str, Any] = c.metrics or {}  # type: ignore
+                if "errors" in metrics and metrics["errors"]:
+                    recent_failures_count += len(metrics["errors"])
+        
         assessment = await self.assess()
         snapshot = assessment["snapshot"]
         state = SystemState(assessment["state"])
