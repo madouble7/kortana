@@ -261,6 +261,7 @@ class TaskApproval(Base):
     github_comment_url = Column(String(512), nullable=True)
     last_processed_github_comment_id = Column(String(64), nullable=True)
     last_processed_github_comment_url = Column(String(512), nullable=True)
+    last_github_delivery_id = Column(String(128), nullable=True)
     rationale = Column(Text, nullable=True)
     decision_factors = Column(JSON, nullable=True)
     risk_score = Column(Integer, nullable=False, default=0)

@@ -105,12 +105,12 @@ class TaskApprovalService:
                 risk_score += 3
                 confidence = max(0.0, confidence - 0.20)
                 factors.append("shadow:failed")
-                
+
             shadow_tests = shadow_advisory.get("shadow_test_exit_code")
             if shadow_tests is not None and shadow_tests != 0:
                 risk_score += 2
                 factors.append("shadow:tests_failed")
-                
+
             shadow_review = shadow_advisory.get("shadow_review_approved")
             if shadow_review is False:
                 risk_score += 2
@@ -293,6 +293,7 @@ class TaskApprovalService:
         github_comment_url: str | None = None,
         last_processed_github_comment_id: str | None = None,
         last_processed_github_comment_url: str | None = None,
+        last_github_delivery_id: str | None = None,
     ) -> GitHubTask:
         """Resolve a queued approval and transition the task."""
         task = await self._get_task(task_id)
@@ -333,12 +334,71 @@ class TaskApprovalService:
         await self.session.flush()
         return task
 
+    async def process_command_from_comment(
+        self,
+        task_id: str,
+        *,
+        body: str,
+        reviewer: str,
+        github_comment_id: str,
+        github_comment_url: str | None = None,
+        last_github_delivery_id: str | None = None,
+    ) -> str | None:
+        """
+        Process a GitHub comment body for explicit commands (/approve, /reject).
+        Returns "approved" or "rejected" if a command was matched and processed, None otherwise.
+        """
+        body_lower = body.strip().lower()
+        if (
+            "bot" in reviewer.lower()
+            or "kortana" in reviewer.lower()
+            or "actions-user" in reviewer.lower()
+        ):
+            return None
+
+        if body_lower.startswith("/approve") or "/approve" in body_lower.split():
+            try:
+                await self.approve_task(
+                    task_id=task_id,
+                    approved=True,
+                    reviewer=reviewer,
+                    notes=body.strip(),
+                    github_comment_id=github_comment_id,
+                    github_comment_url=github_comment_url,
+                    last_processed_github_comment_id=github_comment_id,
+                    last_processed_github_comment_url=github_comment_url,
+                    last_github_delivery_id=last_github_delivery_id,
+                )
+                return "approved"
+            except ValueError:
+                pass
+
+        elif body_lower.startswith("/reject") or "/reject" in body_lower.split():
+            try:
+                await self.approve_task(
+                    task_id=task_id,
+                    approved=False,
+                    reviewer=reviewer,
+                    notes=body.strip(),
+                    github_comment_id=github_comment_id,
+                    github_comment_url=github_comment_url,
+                    last_processed_github_comment_id=github_comment_id,
+                    last_processed_github_comment_url=github_comment_url,
+                    last_github_delivery_id=last_github_delivery_id,
+                )
+                return "rejected"
+            except ValueError:
+                pass
+
+        return None
+
     async def mark_comment_seen(
         self,
         task_id: str,
         *,
         github_comment_id: str,
         github_comment_url: str | None = None,
+        github_delivery_id: str | None = None,
     ) -> TaskApproval | None:
         """Advance the last processed GitHub comment for an open approval."""
         approval = await self._get_open_approval(task_id)
@@ -347,6 +407,8 @@ class TaskApprovalService:
 
         approval.last_processed_github_comment_id = github_comment_id
         approval.last_processed_github_comment_url = github_comment_url
+        if github_delivery_id:
+            approval.last_github_delivery_id = github_delivery_id
         approval.updated_at = datetime.utcnow()
         await self.session.flush()
         return approval
