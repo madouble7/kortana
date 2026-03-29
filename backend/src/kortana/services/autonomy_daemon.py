@@ -202,7 +202,7 @@ class AutonomyDaemon:
             processed, succeeded, failed, deferred = await self._process_tasks(
                 session, max_tasks=effective_limit, guidance=guidance
             )
-              await self._process_pending_approvals(session)
+            await self._process_pending_approvals(session)
 
         try:
             from dataclasses import asdict
@@ -418,9 +418,10 @@ class AutonomyDaemon:
 
     async def _process_pending_approvals(self, session: AsyncSession) -> None:
         """Poll GitHub comments for tasks awaiting operator approval."""
+        from sqlalchemy import select
+
         from src.kortana.services.github_autonomy_service import GitHubAutonomyService
         from src.kortana.services.task_approval_service import TaskApprovalService
-        from sqlalchemy import select
 
         approval_service = TaskApprovalService(session)
         github_service = GitHubAutonomyService(session)
