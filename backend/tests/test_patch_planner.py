@@ -171,3 +171,66 @@ async def test_validate_diff_locally(planner):
 
     # Missing diff headers
     assert not planner._validate_diff_locally("+ just some python code", ["test.py"])
+
+
+import tempfile
+import os
+import subprocess
+import shutil
+
+
+@pytest.fixture
+def real_git_planner():
+    temp_dir = tempfile.mkdtemp()
+    subprocess.run(["git", "init"], cwd=temp_dir, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "test@example.com"], cwd=temp_dir, check=True
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Test User"], cwd=temp_dir, check=True
+    )
+
+    test_file = os.path.join(temp_dir, "app.py")
+    with open(test_file, "w") as f:
+        f.write("def hello():\n    return False\n")
+
+    subprocess.run(["git", "add", "app.py"], cwd=temp_dir, check=True)
+    subprocess.run(["git", "commit", "-m", "Initial commit"], cwd=temp_dir, check=True)
+
+    with patch("src.kortana.services.patch_planner.GeminiService"):
+        p = PatchPlanner(temp_dir)
+        yield p
+
+    shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+@pytest.mark.asyncio
+async def test_apply_unified_diff_e2e(real_git_planner):
+    # This is a valid diff
+    valid_diff = """--- a/app.py
++++ b/app.py
+@@ -1,2 +1,2 @@
+ def hello():
+-    return False
++    return True
+"""
+
+    success = await real_git_planner._apply_unified_diff(valid_diff)
+    assert success is True
+
+    # Verify file was actually changed
+    with open(os.path.join(real_git_planner.worktree_dir, "app.py"), "r") as f:
+        content = f.read()
+    assert "return True" in content
+
+    # Test bad diff (should fail)
+    bad_diff = """--- a/app.py
++++ b/app.py
+@@ -1,2 +1,2 @@
+ def missing_func():
+-    return False
++    return True
+"""
+    # Use real_git_planner directly
+    success_bad = await real_git_planner._apply_unified_diff(bad_diff)
+    assert success_bad is False

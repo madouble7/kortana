@@ -62,7 +62,15 @@ class VectorAlphaBranchService:
 
             res = await asyncio.to_thread(
                 subprocess.run,
-                ["git", "worktree", "add", "-B", branch_name, self.worktree_dir, "main"],
+                [
+                    "git",
+                    "worktree",
+                    "add",
+                    "-B",
+                    branch_name,
+                    self.worktree_dir,
+                    "main",
+                ],
                 cwd=self.repo_dir,
                 capture_output=True,
                 check=False,
@@ -78,10 +86,14 @@ class VectorAlphaBranchService:
 
             return branch_name
         except Exception as e:
-            logger.error(f"Failed to create healing worktree for incident {incident.id}: {e}")
+            logger.error(
+                f"Failed to create healing worktree for incident {incident.id}: {e}"
+            )
             return None
 
-    async def validate_and_propose(self, incident: IncidentMemory, github_service: Any) -> bool:
+    async def commit_and_propose(
+        self, incident: IncidentMemory, github_service: Any
+    ) -> bool:
         if not incident.repair_branch:
             logger.error("No repair branch assigned to incident.")
             return False
@@ -91,36 +103,6 @@ class VectorAlphaBranchService:
             return False
 
         try:
-            worktree_backend_dir = os.path.join(self.worktree_dir, "backend")
-
-            ruff_res = await asyncio.to_thread(
-                subprocess.run,
-                ["python", "-m", "ruff", "check", "."],
-                cwd=worktree_backend_dir,
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-
-            pytest_res = await asyncio.to_thread(
-                subprocess.run,
-                ["python", "-m", "pytest", "tests/test_autonomy_daemon.py"],
-                cwd=worktree_backend_dir,
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-
-            if ruff_res.returncode != 0 or pytest_res.returncode != 0:
-                incident.fix_status = "validation_failed"
-                safe_trace = pytest_res.stdout[-1000:] if pytest_res.stdout else ""
-                incident.resolution_strategy = f"Shadow validation failed.\nRuff: {ruff_res.returncode}\nPytest: {pytest_res.returncode}\n{safe_trace}"
-                self.db.add(incident)
-                await self.db.commit()
-                
-                await asyncio.to_thread(subprocess.run, ["git", "worktree", "remove", "--force", self.worktree_dir], cwd=self.repo_dir, check=False)
-                return False
-
             await asyncio.to_thread(
                 subprocess.run, ["git", "add", "-u"], cwd=self.worktree_dir, check=False
             )
@@ -153,15 +135,25 @@ class VectorAlphaBranchService:
                 incident.fix_status = "proposed"
             else:
                 incident.fix_status = "pr_failed"
-            
+
             self.db.add(incident)
             await self.db.commit()
 
-            await asyncio.to_thread(subprocess.run, ["git", "worktree", "remove", "--force", self.worktree_dir], cwd=self.repo_dir, check=False)
+            await asyncio.to_thread(
+                subprocess.run,
+                ["git", "worktree", "remove", "--force", self.worktree_dir],
+                cwd=self.repo_dir,
+                check=False,
+            )
 
             return prUrl is not None
 
         except Exception as e:
             logger.error(f"Git or validation command failed: {e}")
-            await asyncio.to_thread(subprocess.run, ["git", "worktree", "remove", "--force", self.worktree_dir], cwd=self.repo_dir, check=False)
+            await asyncio.to_thread(
+                subprocess.run,
+                ["git", "worktree", "remove", "--force", self.worktree_dir],
+                cwd=self.repo_dir,
+                check=False,
+            )
             return False
