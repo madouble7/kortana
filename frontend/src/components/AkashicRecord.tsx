@@ -28,6 +28,9 @@ type IncidentMemory = {
     resolution_strategy: string;
     resolved: boolean;
     created_at: string;
+    repair_branch?: string | null;
+    pr_url?: string | null;
+    fix_status?: string | null;
 };
 
 type AkashicData = {
@@ -176,6 +179,25 @@ export default function AkashicRecord() {
                                     <div className="text-sm text-gray-300 font-mono bg-gray-950 p-2 rounded border border-gray-800 whitespace-pre-wrap overflow-x-auto max-h-32">
                                         {inc.description}
                                     </div>
+                                    {inc.fix_status && (
+                                        <div className="mt-3 text-xs bg-blue-900/10 border border-blue-900/30 p-2 rounded flex flex-col gap-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-blue-400 font-semibold">Vector Alpha Healing Status:</span>
+                                                <span className="px-1.5 py-0.5 bg-blue-900/30 text-blue-300 rounded text-[10px] uppercase font-bold">{inc.fix_status}</span>
+                                            </div>
+                                            {inc.repair_branch && (
+                                                <div className="text-gray-400 font-mono mt-1">Branch: <span className="text-gray-300">{inc.repair_branch}</span></div>
+                                            )}
+                                            {inc.pr_url && (
+                                                <div className="text-gray-400 mt-1">
+                                                    PR: <a href={inc.pr_url} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">{inc.pr_url}</a>
+                                                </div>
+                                            )}
+                                            {inc.resolution_strategy && (
+                                                <div className="text-gray-500 mt-1 line-clamp-2" title={inc.resolution_strategy}>Strategy: {inc.resolution_strategy}</div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
