@@ -12,6 +12,7 @@ from src.kortana.services.gemini import GeminiService
 
 logger = logging.getLogger(__name__)
 
+
 class PatchPlan(BaseModel):
     should_patch: bool
     root_cause: str
@@ -20,10 +21,12 @@ class PatchPlan(BaseModel):
     forbidden_files_hit: List[str]
     validation_commands: List[str]
 
+
 class VerificationResult(BaseModel):
     pass_check: bool
     residual_risk: str
     pr_summary: str
+
 
 class PatchPlanner:
     """
@@ -32,7 +35,7 @@ class PatchPlanner:
     inside the isolated worktree to safely compute and apply LLM diffs.
     """
 
-    FORBIDDEN_PREFIXES = ['auth', 'billing', 'secrets', '.env', 'deploy', 'config']
+    FORBIDDEN_PREFIXES = ["auth", "billing", "secrets", ".env", "deploy", "config"]
     MAX_FILES = 3
     MAX_LINES = 150
 
@@ -43,7 +46,9 @@ class PatchPlanner:
     def _extract_json(self, response_text: str) -> dict:
         """Extract JSON from potential markdown blocks."""
         response_text = response_text.strip()
-        json_match = re.search(r'```(?:json)?\s*(.*?)\s*```', response_text, re.DOTALL | re.IGNORECASE)
+        json_match = re.search(
+            r"```(?:json)?\s*(.*?)\s*```", response_text, re.DOTALL | re.IGNORECASE
+        )
         if json_match:
             response_text = json_match.group(1)
 
@@ -56,7 +61,9 @@ class PatchPlanner:
     def _extract_diff(self, response_text: str) -> str:
         """Extract diff from potential markdown blocks."""
         response_text = response_text.strip()
-        diff_match = re.search(r'```(?:diff)?\s*(.*?)\s*```', response_text, re.DOTALL | re.IGNORECASE)
+        diff_match = re.search(
+            r"```(?:diff)?\s*(.*?)\s*```", response_text, re.DOTALL | re.IGNORECASE
+        )
         if diff_match:
             response_text = diff_match.group(1)
         return response_text.strip()
@@ -66,30 +73,38 @@ class PatchPlanner:
             logger.error("Diff is empty.")
             return False
 
-        if '---' not in diff or '+++' not in diff:
+        if "---" not in diff or "+++" not in diff:
             logger.error("Diff lacks --- or +++ markers.")
             return False
 
         lines = diff.splitlines()
 
         # Check changed line count
-        changed_lines = [line for line in lines if line.startswith('+') or line.startswith('-')]
+        changed_lines = [
+            line for line in lines if line.startswith("+") or line.startswith("-")
+        ]
         # remove file header lines from count
-        changed_lines = [line for line in changed_lines if not (line.startswith('---') or line.startswith('+++'))]
+        changed_lines = [
+            line
+            for line in changed_lines
+            if not (line.startswith("---") or line.startswith("+++"))
+        ]
         if len(changed_lines) > self.MAX_LINES:
-            logger.error(f"Diff changed-line count ({len(changed_lines)}) exceeds {self.MAX_LINES}.")
+            logger.error(
+                f"Diff changed-line count ({len(changed_lines)}) exceeds {self.MAX_LINES}."
+            )
             return False
 
         # Check touched files
         touched_files = set()
         for line in lines:
-            if line.startswith('--- a/') or line.startswith('+++ b/'):
+            if line.startswith("--- a/") or line.startswith("+++ b/"):
                 filepath = line[6:].strip()
                 touched_files.add(filepath)
-            elif line.startswith('--- ') or line.startswith('+++ '):
+            elif line.startswith("--- ") or line.startswith("+++ "):
                 filepath = line[4:].strip()
                 # strip a/ b/ if malformed diff
-                if filepath.startswith('a/') or filepath.startswith('b/'):
+                if filepath.startswith("a/") or filepath.startswith("b/"):
                     filepath = filepath[2:]
                 touched_files.add(filepath)
 
@@ -102,7 +117,9 @@ class PatchPlanner:
             # Check if outside candidate files
             # Sometimes diff includes leading path details. Let's do a loose matching or strict mapping.
             # We'll do strict endswith or exact match to be safer.
-            found_in_candidates = any(filepath == cf or filepath.endswith('/' + cf) for cf in candidate_files)
+            found_in_candidates = any(
+                filepath == cf or filepath.endswith("/" + cf) for cf in candidate_files
+            )
             if not found_in_candidates:
                 logger.error(f"Diff touches file outside candidate_files: {filepath}")
                 return False
@@ -152,14 +169,25 @@ Avoid editing anything if it looks like a major architectural rewrite.
 Respond with JSON only."""
 
         try:
-            response = await self.gemini.analyze_text(prompt, system_instruction=system_instruction)
+            response = await self.gemini.analyze_text(
+                prompt, system_instruction=system_instruction
+            )
             data = self._extract_json(response)
             return PatchPlan(**data)
         except Exception as e:
             logger.error(f"Stage 1 parsing failed: {e}")
-            return PatchPlan(should_patch=False, root_cause="", confidence=0.0, candidate_files=[], forbidden_files_hit=[], validation_commands=[])
+            return PatchPlan(
+                should_patch=False,
+                root_cause="",
+                confidence=0.0,
+                candidate_files=[],
+                forbidden_files_hit=[],
+                validation_commands=[],
+            )
 
-    async def _stage_2_generate_diff(self, incident: IncidentMemory, plan: PatchPlan) -> Optional[str]:
+    async def _stage_2_generate_diff(
+        self, incident: IncidentMemory, plan: PatchPlan
+    ) -> Optional[str]:
         # Local validation before asking LLM
         if len(plan.candidate_files) > self.MAX_FILES:
             logger.warning("Too many candidate files requested.")
@@ -175,7 +203,7 @@ Respond with JSON only."""
         for target in plan.candidate_files:
             target_path = os.path.join(self.worktree_dir, target)
             if os.path.exists(target_path):
-                with open(target_path, 'r', encoding='utf-8') as f:
+                with open(target_path, "r", encoding="utf-8") as f:
                     content = f.read()
                 file_payloads += f"FILE: {target}\n```python\n{content}\n```\n\n"
             else:
@@ -211,7 +239,9 @@ Approved candidate file contents:
 Return only a unified diff for the approved files."""
 
         try:
-            response = await self.gemini.analyze_text(prompt, system_instruction=system_instruction)
+            response = await self.gemini.analyze_text(
+                prompt, system_instruction=system_instruction
+            )
             diff = self._extract_diff(response)
 
             if not diff:
@@ -236,15 +266,18 @@ Return only a unified diff for the approved files."""
         # Write diff to a temporary file
         temp_patch_path = os.path.join(self.worktree_dir, "healing.patch")
         try:
-            with open(temp_patch_path, 'w', encoding='utf-8') as f:
-                f.write(diff + '\n')
+            with open(temp_patch_path, "w", encoding="utf-8") as f:
+                f.write(diff + "\n")
 
             # Run git apply --check
             process = await asyncio.create_subprocess_exec(
-                "git", "apply", "--check", "healing.patch",
+                "git",
+                "apply",
+                "--check",
+                "healing.patch",
                 cwd=self.worktree_dir,
                 stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+                stderr=asyncio.subprocess.PIPE,
             )
             stdout, stderr = await process.communicate()
             if process.returncode != 0:
@@ -253,10 +286,12 @@ Return only a unified diff for the approved files."""
 
             # Run git apply
             process = await asyncio.create_subprocess_exec(
-                "git", "apply", "healing.patch",
+                "git",
+                "apply",
+                "healing.patch",
                 cwd=self.worktree_dir,
                 stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+                stderr=asyncio.subprocess.PIPE,
             )
             stdout, stderr = await process.communicate()
             if process.returncode != 0:
@@ -393,17 +428,30 @@ Return JSON only."""
             )
 
             # Combine any other commands into pytest_output just in case
-            other_outputs = "\n".join(f"[{cmd}]\n{out}" for cmd, out in validation_outputs.items() if 'ruff' not in cmd and 'pytest' not in cmd)
+            other_outputs = "\n".join(
+                f"[{cmd}]\n{out}"
+                for cmd, out in validation_outputs.items()
+                if "ruff" not in cmd and "pytest" not in cmd
+            )
             if other_outputs:
                 pytest_output += f"\n\nOther outputs:\n{other_outputs}"
 
-            verification = await self._stage_3_verify_patch(incident, diff, ruff_output, pytest_output)
+            verification = await self._stage_3_verify_patch(
+                incident, diff, ruff_output, pytest_output
+            )
 
             if not verification.pass_check:
-                logger.warning(f"Verification failed. Residual risk: {verification.residual_risk}")
+                logger.warning(
+                    f"Verification failed. Residual risk: {verification.residual_risk}"
+                )
+                incident.fix_status = "validation_failed"
+                incident.resolution_strategy = f"Auto-heal validation failed in Stage 3.\n\nRisk: {verification.residual_risk}\nRuff Output:\n{ruff_output}\n\nPytest Output:\n{pytest_output}"
                 return False
 
-            logger.info(f"Patch applied successfully. Summary: {verification.pr_summary}")
+            logger.info(
+                f"Patch applied successfully. Summary: {verification.pr_summary}"
+            )
+            incident.resolution_strategy = f"Auto-heal patch verified successfully.\n\nSummary: {verification.pr_summary}\nRuff Output:\n{ruff_output}\n\nPytest Output:\n{pytest_output}"
             return True
 
         except Exception as e:

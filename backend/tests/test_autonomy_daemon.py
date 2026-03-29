@@ -1267,10 +1267,10 @@ async def test_heal_vectors_invokes_vector_alpha():
         mock_alpha_inst.evaluate_incident.return_value = True
         mock_planner.return_value.apply_healing_patch = AsyncMock(return_value=True)
         mock_alpha_inst.create_healing_branch = AsyncMock(return_value="auto-fix/test")
-        mock_alpha_inst.validate_and_propose = AsyncMock(return_value=True)
+        mock_alpha_inst.commit_and_propose = AsyncMock(return_value=True)
 
         await daemon._heal_vectors(mock_session)
 
         mock_alpha_inst.evaluate_incident.assert_called_once_with(incident)
         mock_alpha_inst.create_healing_branch.assert_called_once_with(incident)
-        mock_alpha_inst.validate_and_propose.assert_called_once()
+        mock_alpha_inst.commit_and_propose.assert_called_once()

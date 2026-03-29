@@ -221,13 +221,36 @@ class AutonomyDaemon:
                     branch = await alpha.create_healing_branch(inc)
                     if branch:
                         from src.kortana.services.patch_planner import PatchPlanner
+
                         planner = PatchPlanner(alpha.worktree_dir)
                         patch_success = await planner.apply_healing_patch(inc)
+
+                        # Persist any evidence / resolution_strategy updates from the planner
+                        session.add(inc)
+                        await session.commit()
+
                         if patch_success:
                             gh = GitHubAutonomyService(session)
-                            success = await alpha.validate_and_propose(inc, gh)
+                            success = await alpha.commit_and_propose(inc, gh)
                             if success:
                                 logger.info(f"[Vector Alpha] Created PR for {inc.id}")
+                        else:
+                            # Clean up the worktree correctly if we abort
+                            import subprocess
+                            import asyncio
+
+                            await asyncio.to_thread(
+                                subprocess.run,
+                                [
+                                    "git",
+                                    "worktree",
+                                    "remove",
+                                    "--force",
+                                    alpha.worktree_dir,
+                                ],
+                                cwd=alpha.repo_dir,
+                                check=False,
+                            )
         except Exception as e:
             logger.error(f"Vector Alpha execution failed: {e}")
 
@@ -238,7 +261,9 @@ class AutonomyDaemon:
             from src.kortana.models import ArchitectureMemory
 
             # Run only periodically, like once every 100 cycles, or if none exists
-            count_res = await session.execute(select(func.count()).select_from(ArchitectureMemory))
+            count_res = await session.execute(
+                select(func.count()).select_from(ArchitectureMemory)
+            )
             count = count_res.scalar_one_or_none() or 0
 
             if self.metrics["cycles_completed"] % 100 == 0 or count == 0:
@@ -260,7 +285,7 @@ class AutonomyDaemon:
                     component_name="backend_engine",
                     description=snapshot.get("observation", "Architecture snapshot"),
                     knowledge_factors=snapshot,
-                    confidence_score=0.95
+                    confidence_score=0.95,
                 )
                 session.add(new_arch)
                 await session.commit()
@@ -280,9 +305,9 @@ class AutonomyDaemon:
         workspace_status = await self._poll_workspace_bridge()
         self._cycle_failed_task_ids = []
 
-        new_count = processed = succeeded = failed = deferred = (
-            approvals_processed_count
-        ) = 0
+        new_count = (
+            processed
+        ) = succeeded = failed = deferred = approvals_processed_count = 0
         async for session in self._db_manager.get_session():
             new_count = await self._discover_tasks(
                 session,
@@ -886,9 +911,9 @@ class AutonomyDaemon:
                             # Imbue the result with interpreted advisory logic
                             try:
                                 if isinstance(shadow_result, dict):
-                                    shadow_result["advisory"] = (
-                                        self._derive_shadow_advisory(shadow_result)
-                                    )
+                                    shadow_result[
+                                        "advisory"
+                                    ] = self._derive_shadow_advisory(shadow_result)
                             except Exception as e:
                                 logger.warning(
                                     f"Failed to derive shadow advisory for {task.id}: {e}"
