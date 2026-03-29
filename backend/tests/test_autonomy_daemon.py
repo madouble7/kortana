@@ -817,7 +817,8 @@ class TestAutonomyDaemon:
         mock_approval_service = AsyncMock()
         mock_approval_service.list_pending = AsyncMock(return_value=[mock_approval])
         async def mock_process(task_id, body, reviewer, github_comment_id, github_comment_url, **kwargs):
-            if github_comment_id == "1001": return "approved"
+            if github_comment_id == "1001":
+                return "approved"
             return None
         mock_approval_service.process_command_from_comment = AsyncMock(side_effect=mock_process)
         mock_approval_service.mark_comment_seen = AsyncMock()
@@ -876,7 +877,8 @@ class TestAutonomyDaemon:
         mock_approval_service = AsyncMock()
         mock_approval_service.list_pending = AsyncMock(return_value=[mock_approval])
         async def mock_process(task_id, body, reviewer, github_comment_id, github_comment_url, **kwargs):
-            if github_comment_id == "1002": return "rejected"
+            if github_comment_id == "1002":
+                return "rejected"
             return None
         mock_approval_service.process_command_from_comment = AsyncMock(side_effect=mock_process)
         mock_approval_service.mark_comment_seen = AsyncMock()
@@ -1246,7 +1248,6 @@ async def test_heal_vectors_invokes_vector_alpha():
         fix_status=None
     )
     
-    mock_db = MagicMock()
     daemon = AutonomyDaemon()
 
     mock_session = AsyncMock()
@@ -1255,7 +1256,7 @@ async def test_heal_vectors_invokes_vector_alpha():
     mock_session.execute.return_value = mock_execute
     
     with patch('src.kortana.services.vector_alpha_branch_service.VectorAlphaBranchService') as mock_alpha, \
-         patch('src.kortana.services.github_autonomy_service.GitHubAutonomyService') as mock_gh:
+         patch('src.kortana.services.github_autonomy_service.GitHubAutonomyService'):
         
         mock_alpha_inst = mock_alpha.return_value
         mock_alpha_inst.evaluate_incident.return_value = True

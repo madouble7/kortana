@@ -58,14 +58,19 @@ class VectorAlphaBranchService:
             sanitized_type = incident.incident_type.replace("_", "-")
             branch_name = f"auto-fix/{sanitized_type}-{timestamp}"
 
-            # Create and checkout branch
-            await asyncio.to_thread(
+            # Hard fail if repo is not clean to prevent sweeping unintended changes
+            status_res = await asyncio.to_thread(
                 subprocess.run,
-                ["git", "checkout", "main"],
+                ["git", "status", "--porcelain"],
                 cwd=self.repo_dir,
                 capture_output=True,
                 check=False,
             )
+            if status_res.stdout.strip():
+                logger.error("Repo is not clean. Vector Alpha requires a clean worktree.")
+                return None
+
+            # Create and checkout branch
             res = await asyncio.to_thread(
                 subprocess.run,
                 ["git", "checkout", "-b", branch_name],
@@ -142,8 +147,9 @@ class VectorAlphaBranchService:
                 return False
 
             # If passed, commit the patch
+            # Stage only modified tracked files, protecting against untracked files
             await asyncio.to_thread(
-                subprocess.run, ["git", "add", "."], cwd=self.repo_dir, check=False
+                subprocess.run, ["git", "add", "-u"], cwd=self.repo_dir, check=False
             )
             commit_msg = f"fix(autonomy): resolve incident {incident.incident_type}\n\nIncident ID: {incident.id}"
             res = await asyncio.to_thread(
