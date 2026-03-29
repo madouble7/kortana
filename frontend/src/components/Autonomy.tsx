@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useAutonomyRealtime } from '../hooks/useAutonomyRealtime';
 import { api } from '../lib/api';
 import { formatRelativeTime } from '../lib/utils';
+import { ApprovalQueue } from './ApprovalQueue';
 
 export default function Autonomy() {
   const [running, setRunning] = useState(false);
