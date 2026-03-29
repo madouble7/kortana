@@ -1598,6 +1598,32 @@ class GitHubAutonomyService:
             )
             return False
 
+    async def fetch_issue_comments(self, task: GitHubTask) -> list[dict[str, Any]]:
+        """Fetch comments for a GitHub issue"""
+        if not self._should_fetch_github():
+            return []
+        try:
+            owner, repo = task.github_repo.split("/")
+            headers = {
+                "Authorization": f"token {self.github_token}",
+                "Accept": "application/vnd.github.v3+json",
+            }
+            url = f"https://api.github.com/repos/{owner}/{repo}/issues/{task.github_issue_number}/comments"
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url, headers=headers, timeout=15)
+            if response.status_code != 200:
+                logger.error(
+                    f"Failed to fetch comments from #{task.github_issue_number}: {response.text}"
+                )
+                return []
+            return response.json()
+        except Exception as e:
+            status_code, detail = self._extract_http_error_detail(e)
+            logger.error(
+                f"Error fetching comments for issue #{task.github_issue_number}: {detail or str(e)}"
+            )
+            return []
+
     async def _create_pull_request_for_branch(self, task: GitHubTask) -> int | None:
         """Create a pull request for the branch"""
         if not self._should_publish_to_github(task):
