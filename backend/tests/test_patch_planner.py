@@ -1,10 +1,10 @@
-import pytest
 from unittest.mock import AsyncMock, patch
 
+import pytest
 from src.kortana.models import IncidentMemory
 from src.kortana.services.patch_planner import (
-    PatchPlanner,
     PatchPlan,
+    PatchPlanner,
     VerificationResult,
 )
 
@@ -139,13 +139,14 @@ async def test_apply_healing_patch_rejected_by_analysis(planner, mock_incident):
     success = await planner.apply_healing_patch(mock_incident)
     assert success is False
 
+
 @pytest.mark.asyncio
 async def test_extract_json_triple_fence(planner):
-    payload = "Here is my response:\n```json\n{\"test\": 123}\n```\nEnjoy."
+    payload = 'Here is my response:\n```json\n{"test": 123}\n```\nEnjoy.'
     assert planner._extract_json(payload) == {"test": 123}
-    
+
     assert planner._extract_json('{"test": 456}') == {"test": 456}
-    
+
     with pytest.raises(ValueError):
         planner._extract_json("not json")
 
@@ -155,15 +156,18 @@ async def test_extract_diff_triple_fence(planner):
     payload = "Here is diff:\n```diff\n--- a/file\n+++ b/file\n+content\n```"
     assert planner._extract_diff(payload) == "--- a/file\n+++ b/file\n+content"
 
+
 @pytest.mark.asyncio
 async def test_validate_diff_locally(planner):
     diff = "--- a/test.py\n+++ b/test.py\n@@ -1 +1 @@\n+fix\n"
     assert planner._validate_diff_locally(diff, ["test.py"]) is True
-    
+
     # Empty
     assert not planner._validate_diff_locally("", ["test.py"])
-        
-    assert not planner._validate_diff_locally("--- a/forbidden.txt\n+++ b/forbidden.txt\n@@ -1 +1 @@\n+fix\n", ["test.py"])
-    
+
+    assert not planner._validate_diff_locally(
+        "--- a/forbidden.txt\n+++ b/forbidden.txt\n@@ -1 +1 @@\n+fix\n", ["test.py"]
+    )
+
     # Missing diff headers
     assert not planner._validate_diff_locally("+ just some python code", ["test.py"])
