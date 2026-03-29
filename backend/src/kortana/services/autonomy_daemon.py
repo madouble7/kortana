@@ -505,60 +505,43 @@ class AutonomyDaemon:
             # Process newest comments first to find the latest explicit command
             for comment in reversed(unseen_comments):
                 body_raw = (comment.get("body") or "").strip()
-                body = body_raw.lower()
                 user = comment.get("user", {}).get("login", "operator")
                 command_comment_id = self._github_comment_id(comment)
                 command_comment_url = self._github_comment_url(comment)
 
-                # Ignore bot reflections
-                if (
-                    "bot" in user.lower()
-                    or "kortana" in user.lower()
-                    or "actions-user" in user.lower()
-                ):
-                    continue
+                action = await approval_service.process_command_from_comment(
+                    task_id=str(task.id),
+                    body=body_raw,
+                    reviewer=user,
+                    github_comment_id=command_comment_id,
+                    github_comment_url=command_comment_url,
+                )
 
-                if body.startswith("/approve") or "/approve" in body.split():
+                if action == "approved":
                     logger.info(f"Task {task.id} approved via GitHub comment by {user}")
-                    try:
-                        await approval_service.approve_task(
-                            str(task.id),
-                            approved=True,
-                            reviewer=user,
-                            notes=body_raw,
-                            github_comment_id=command_comment_id,
-                            github_comment_url=command_comment_url,
-                            last_processed_github_comment_id=latest_seen_comment_id,
-                            last_processed_github_comment_url=latest_seen_comment_url,
-                        )
-                        await github_service.post_issue_comment(
-                            task,
-                            f"✅ @{user} Phase 4 explicit approval confirmed. Resuming autonomous execution.",
-                        )
-                    except ValueError as exc:
-                        logger.debug(f"Task approval skip: {exc}")
+                    await github_service.post_issue_comment(
+                        task,
+                        f"✅ @{user} Phase 4 explicit approval confirmed. Resuming autonomous execution.",
+                    )
+                    # Advance high water mark to the latest seen
+                    await approval_service.mark_comment_seen(
+                        str(task.id),
+                        github_comment_id=latest_seen_comment_id,
+                        github_comment_url=latest_seen_comment_url,
+                    )
                     handled_command = True
                     break
-
-                elif body.startswith("/reject") or "/reject" in body.split():
+                elif action == "rejected":
                     logger.info(f"Task {task.id} rejected via GitHub comment by {user}")
-                    try:
-                        await approval_service.approve_task(
-                            str(task.id),
-                            approved=False,
-                            reviewer=user,
-                            notes=body_raw,
-                            github_comment_id=command_comment_id,
-                            github_comment_url=command_comment_url,
-                            last_processed_github_comment_id=latest_seen_comment_id,
-                            last_processed_github_comment_url=latest_seen_comment_url,
-                        )
-                        await github_service.post_issue_comment(
-                            task,
-                            f"❌ @{user} Phase 4 explicit rejection confirmed. Halting context map and dropping task.",
-                        )
-                    except ValueError as exc:
-                        logger.debug(f"Task rejection skip: {exc}")
+                    await github_service.post_issue_comment(
+                        task,
+                        f"❌ @{user} Phase 4 explicit rejection confirmed. Halting context map and dropping task.",
+                    )
+                    await approval_service.mark_comment_seen(
+                        str(task.id),
+                        github_comment_id=latest_seen_comment_id,
+                        github_comment_url=latest_seen_comment_url,
+                    )
                     handled_command = True
                     break
 

@@ -1,3 +1,7 @@
+import hmac
+import hashlib
+from fastapi import Request, BackgroundTasks
+import logging
 import os
 import time
 from datetime import datetime
@@ -256,3 +260,119 @@ Please analyze this and provide ONLY a JSON response (no markdown, no code block
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+
+
+
+
+
+logger = logging.getLogger(__name__)
+
+async def process_webhook_comment(
+    repo_full_name: str,
+    issue_number: int,
+    comment_id: str,
+    comment_url: str,
+    body_text: str,
+    author: str,
+    delivery_id: str
+):
+    from src.kortana.database import SessionLocal
+    from src.kortana.services.task_approval_service import TaskApprovalService
+    from src.kortana.services.github_autonomy_service import GitHubAutonomyService
+    from src.kortana.models import GitHubTask
+    from sqlalchemy import select
+    
+    async with SessionLocal() as session:
+        stmt = select(GitHubTask).where(
+            GitHubTask.github_repo == repo_full_name,
+            GitHubTask.github_issue_number == issue_number
+        ).order_by(GitHubTask.created_at.desc())
+        
+        result = await session.execute(stmt)
+        task = result.scalars().first()
+        
+        if not task:
+            logger.info(f"Webhook ignored: no task for {repo_full_name}#{issue_number}")
+            return
+            
+        if task.status not in ("waiting_for_approval", "waiting_for_ho"):
+            logger.info(f"Webhook ignored: task {task.id} not awaiting approval")
+            return
+
+        approval_service = TaskApprovalService(session)
+        github_service = GitHubAutonomyService(session)
+        
+        try:
+            action = await approval_service.process_command_from_comment(
+                task_id=str(task.id),
+                body=body_text,
+                reviewer=author,
+                github_comment_id=comment_id,
+                github_comment_url=comment_url,
+                last_github_delivery_id=delivery_id
+            )
+        except ValueError as e:
+            logger.debug(f"Webhook process_command skip: {e}")
+            return
+            
+        if action == "approved":
+            logger.info(f"Webhook: Task {task.id} approved by {author}")
+            await github_service.post_issue_comment(task, f"✅ @{author} Phase 4 explicit approval confirmed (Webhook). Resuming execution.")
+            await approval_service.mark_comment_seen(str(task.id), github_comment_id=comment_id, github_comment_url=comment_url, github_delivery_id=delivery_id)
+        elif action == "rejected":
+            logger.info(f"Webhook: Task {task.id} rejected by {author}")
+            await github_service.post_issue_comment(task, f"❌ @{author} Phase 4 explicit rejection confirmed (Webhook). Halting.")
+            await approval_service.mark_comment_seen(str(task.id), github_comment_id=comment_id, github_comment_url=comment_url, github_delivery_id=delivery_id)
+        else:
+            await approval_service.mark_comment_seen(str(task.id), github_comment_id=comment_id, github_comment_url=comment_url, github_delivery_id=delivery_id)
+
+
+@router.post("/webhook")
+async def github_webhook(
+    request: Request,
+    background_tasks: BackgroundTasks
+):
+    signature = request.headers.get("x-hub-signature-256")
+    event_type = request.headers.get("x-github-event")
+    delivery_id = request.headers.get("x-github-delivery")
+    
+    settings = get_settings()
+    webhook_secret = getattr(settings, "GITHUB_WEBHOOK_SECRET", None)
+    
+    body = await request.body()
+    
+    if webhook_secret:
+        if not signature:
+            raise HTTPException(status_code=401, detail="Missing signature")
+            
+        expected_signature = "sha256=" + hmac.new(
+            webhook_secret.encode(), body, hashlib.sha256
+        ).hexdigest()
+        
+        if not hmac.compare_digest(signature, expected_signature):
+            raise HTTPException(status_code=401, detail="Invalid signature")
+
+    if event_type != "issue_comment":
+        return {"status": "ignored", "reason": f"unhandled event type: {event_type}"}
+        
+    payload = await request.json()
+    action = payload.get("action")
+    if action not in ("created", "edited"):
+        return {"status": "ignored", "reason": f"unhandled action: {action}"}
+        
+    comment = payload.get("comment", {})
+    issue = payload.get("issue", {})
+    repository = payload.get("repository", {})
+    
+    background_tasks.add_task(
+        process_webhook_comment,
+        repo_full_name=repository.get("full_name"),
+        issue_number=issue.get("number"),
+        comment_id=str(comment.get("id")),
+        comment_url=comment.get("html_url"),
+        body_text=comment.get("body"),
+        author=comment.get("user", {}).get("login"),
+        delivery_id=delivery_id or ""
+    )
+    
+    return {"status": "accepted"}

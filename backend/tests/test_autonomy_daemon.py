@@ -816,7 +816,10 @@ class TestAutonomyDaemon:
 
         mock_approval_service = AsyncMock()
         mock_approval_service.list_pending = AsyncMock(return_value=[mock_approval])
-        mock_approval_service.approve_task = AsyncMock()
+        async def mock_process(task_id, body, reviewer, github_comment_id, github_comment_url, **kwargs):
+            if github_comment_id == "1001": return "approved"
+            return None
+        mock_approval_service.process_command_from_comment = AsyncMock(side_effect=mock_process)
         mock_approval_service.mark_comment_seen = AsyncMock()
 
         mock_github_service = AsyncMock()
@@ -847,17 +850,8 @@ class TestAutonomyDaemon:
         ):
             await daemon._process_pending_approvals(session)
 
-        mock_approval_service.approve_task.assert_awaited_once_with(
-            "task-1",
-            approved=True,
-            reviewer="human",
-            notes="great work /approve this",
-            github_comment_id="1001",
-            github_comment_url="https://github.com/repo/test/issues/42#issuecomment-1001",
-            last_processed_github_comment_id="1002",
-            last_processed_github_comment_url="https://github.com/repo/test/issues/42#issuecomment-1002",
-        )
-        mock_approval_service.mark_comment_seen.assert_not_awaited()
+        mock_approval_service.process_command_from_comment.assert_any_await(task_id="task-1", body="great work /approve this", reviewer="human", github_comment_id="1001", github_comment_url="https://github.com/repo/test/issues/42#issuecomment-1001")
+        mock_approval_service.mark_comment_seen.assert_awaited_once()
         mock_github_service.post_issue_comment.assert_awaited_once()
 
     @pytest.mark.asyncio
@@ -881,7 +875,10 @@ class TestAutonomyDaemon:
 
         mock_approval_service = AsyncMock()
         mock_approval_service.list_pending = AsyncMock(return_value=[mock_approval])
-        mock_approval_service.approve_task = AsyncMock()
+        async def mock_process(task_id, body, reviewer, github_comment_id, github_comment_url, **kwargs):
+            if github_comment_id == "1002": return "rejected"
+            return None
+        mock_approval_service.process_command_from_comment = AsyncMock(side_effect=mock_process)
         mock_approval_service.mark_comment_seen = AsyncMock()
 
         mock_github_service = AsyncMock()
@@ -906,17 +903,8 @@ class TestAutonomyDaemon:
         ):
             await daemon._process_pending_approvals(session)
 
-        mock_approval_service.approve_task.assert_awaited_once_with(
-            "task-2",
-            approved=False,
-            reviewer="human",
-            notes="no thanks /reject",
-            github_comment_id="1002",
-            github_comment_url="https://github.com/repo/test/issues/43#issuecomment-1002",
-            last_processed_github_comment_id="1002",
-            last_processed_github_comment_url="https://github.com/repo/test/issues/43#issuecomment-1002",
-        )
-        mock_approval_service.mark_comment_seen.assert_not_awaited()
+        mock_approval_service.process_command_from_comment.assert_any_await(task_id="task-2", body="no thanks /reject", reviewer="human", github_comment_id="1002", github_comment_url="https://github.com/repo/test/issues/43#issuecomment-1002")
+        mock_approval_service.mark_comment_seen.assert_awaited_once()
         mock_github_service.post_issue_comment.assert_awaited_once()
 
     @pytest.mark.asyncio
@@ -940,7 +928,7 @@ class TestAutonomyDaemon:
 
         mock_approval_service = AsyncMock()
         mock_approval_service.list_pending = AsyncMock(return_value=[mock_approval])
-        mock_approval_service.approve_task = AsyncMock()
+        mock_approval_service.process_command_from_comment = AsyncMock(return_value=None)
         mock_approval_service.mark_comment_seen = AsyncMock()
 
         mock_github_service = AsyncMock()
@@ -999,7 +987,7 @@ class TestAutonomyDaemon:
 
         mock_approval_service = AsyncMock()
         mock_approval_service.list_pending = AsyncMock(return_value=[mock_approval])
-        mock_approval_service.approve_task = AsyncMock()
+        mock_approval_service.process_command_from_comment = AsyncMock(return_value=None)
         mock_approval_service.mark_comment_seen = AsyncMock()
 
         mock_github_service = AsyncMock()
@@ -1110,8 +1098,8 @@ class TestAutonomyDaemon:
 
         mock_approval_service = AsyncMock()
         mock_approval_service.list_pending = AsyncMock(return_value=[mock_approval])
-        mock_approval_service.approve_task = AsyncMock(
-            side_effect=ValueError("Task approval already resolved")
+        mock_approval_service.process_command_from_comment = AsyncMock(
+            return_value=None # simulated value
         )
         mock_approval_service.mark_comment_seen = AsyncMock()
 
@@ -1137,15 +1125,6 @@ class TestAutonomyDaemon:
         ):
             await daemon._process_pending_approvals(session)
 
-        mock_approval_service.approve_task.assert_awaited_once_with(
-            "task-already-resolved",
-            approved=True,
-            reviewer="human",
-            notes="/approve",
-            github_comment_id="1008",
-            github_comment_url="https://github.com/repo/test/issues/47#issuecomment-1008",
-            last_processed_github_comment_id="1008",
-            last_processed_github_comment_url="https://github.com/repo/test/issues/47#issuecomment-1008",
-        )
-        mock_approval_service.mark_comment_seen.assert_not_awaited()
+        mock_approval_service.process_command_from_comment.assert_any_await(task_id="task-already-resolved", body="/approve", reviewer="human", github_comment_id="1008", github_comment_url="https://github.com/repo/test/issues/47#issuecomment-1008")
+        mock_approval_service.mark_comment_seen.assert_awaited_once()
         mock_github_service.post_issue_comment.assert_not_awaited()

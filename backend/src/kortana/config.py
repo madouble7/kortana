@@ -96,7 +96,7 @@ class Settings:
 
     # Server
     HOST: str = _get_env("HOST", "0.0.0.0") or "0.0.0.0"
-    PORT: int = int(_get_env("PORT", "8000") or "8000")
+    PORT: int = int(str(_get_env("PORT", "8000") or "8000"))
 
     # API Configuration
     API_TITLE: str = "Kor'tana Backend"
@@ -146,6 +146,7 @@ class Settings:
 
     # GitHub Integration
     GITHUB_TOKEN: str | None = _get_env("GITHUB_TOKEN")
+    GITHUB_WEBHOOK_SECRET: str | None = _get_env("GITHUB_WEBHOOK_SECRET")
     GITHUB_OWNER: str = _get_env("GITHUB_OWNER", "madouble7") or "madouble7"
     GITHUB_REPO: str = _get_env("GITHUB_REPO", "kortana") or "kortana"
     KORTANA_GITHUB_MODE: str = (
