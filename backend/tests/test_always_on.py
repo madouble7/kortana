@@ -458,3 +458,39 @@ def test_serialize_task_includes_validation_evidence():
     assert payload["validation_summary"]["failed_validations"] == [
         "protected_path_guard"
     ]
+
+@pytest.mark.asyncio
+async def test_get_memory_endpoint():
+    from src.kortana.models import ArchitectureMemory, AutonomyCycleMemory, IncidentMemory
+    from src.kortana.routers.always_on import get_repository_memory
+    
+    mock_db = AsyncMock()
+    mock_db_manager = AsyncMock()
+    
+    mock_session = AsyncMock()
+    # Mocking get_session async generator
+    async def mock_gen():
+        yield mock_session
+    mock_db_manager.get_session = mock_gen
+    
+    # Mocking sqlalchemy execute
+    mock_arch_res = MagicMock()
+    mock_arch_res.scalars.return_value.all.return_value = [
+        ArchitectureMemory(component_name="test_comp", description="test_desc", knowledge_factors={}, confidence_score=0.9)
+    ]
+    mock_cycle_res = MagicMock()
+    mock_cycle_res.scalars.return_value.all.return_value = []
+    mock_incid_res = MagicMock()
+    mock_incid_res.scalars.return_value.all.return_value = []
+    
+    mock_session.execute = AsyncMock(side_effect=[mock_arch_res, mock_cycle_res, mock_incid_res])
+    
+    with patch("src.kortana.routers.always_on.get_db_manager", return_value=mock_db_manager):
+        response = await get_repository_memory(limit=10)
+        
+        assert "data" in response
+        assert "architecture_memory" in response["data"]
+        assert "recent_cycles" in response["data"]
+        assert "recent_incidents" in response["data"]
+        assert len(response["data"]["architecture_memory"]) == 1
+        assert response["data"]["architecture_memory"][0]["component"] == "test_comp"

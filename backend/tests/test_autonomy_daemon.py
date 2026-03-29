@@ -1128,3 +1128,106 @@ class TestAutonomyDaemon:
         mock_approval_service.process_command_from_comment.assert_any_await(task_id="task-already-resolved", body="/approve", reviewer="human", github_comment_id="1008", github_comment_url="https://github.com/repo/test/issues/47#issuecomment-1008")
         mock_approval_service.mark_comment_seen.assert_awaited_once()
         mock_github_service.post_issue_comment.assert_not_awaited()
+
+@pytest.mark.asyncio
+async def test_daemon_crash_writes_to_incident_memory():
+    daemon = build_daemon()
+    from src.kortana.models import IncidentMemory
+    
+    mock_session = AsyncMock()
+    # Provide a real add method memory list
+    calls = []
+    def mock_add(obj):
+        calls.append(obj)
+    mock_session.add.side_effect = mock_add
+
+    # Create an async generator for get_session
+    async def mock_get_session():
+        yield mock_session
+
+    daemon._db_manager.get_session = mock_get_session
+
+    sleep_call_count = 0
+    async def mock_sleep(*args, **kwargs):
+        nonlocal sleep_call_count
+        sleep_call_count += 1
+        if sleep_call_count >= 2:
+            daemon._running = False
+            
+    with patch("src.kortana.services.autonomy_daemon.asyncio.sleep", side_effect=mock_sleep):
+        # We need a patch on self_regulate that raises Exception
+        async def mock_regulate(*args, **kwargs):
+            raise Exception("Fatal crash in daemon memory")
+            
+        with patch.object(daemon, "_self_regulate", side_effect=mock_regulate):
+            daemon._running = True
+            await daemon._loop()
+            
+    # Check if an IncidentMemory was added
+    mock_session.add.assert_called()
+    incident = mock_session.add.call_args[0][0]
+    assert isinstance(incident, IncidentMemory)
+    assert incident.incident_type == "daemon_crash"
+    assert "Fatal crash in daemon memory" in incident.description
+
+
+@pytest.mark.asyncio
+@patch("src.kortana.services.autonomy_daemon.get_settings")
+async def test_task_failure_writes_to_incident_memory(mock_settings):
+    mock_sett = MagicMock()
+    mock_sett.AUTONOMY_LOOP_SHADOW_ENABLED = False
+    mock_sett.AUTONOMY_CYCLE_INTERVAL = 1
+    mock_sett.AUTONOMY_MAX_TASKS = 1
+    mock_settings.return_value = mock_sett
+
+    daemon = build_daemon()
+    from src.kortana.models import IncidentMemory, GitHubTask
+    
+    mock_session = AsyncMock()
+    
+    mock_task = GitHubTask(id="task_fail_1", title="test", status="planning_complete")
+    
+    class MockResult:
+        def scalars(self):
+            class MockScalars:
+                def all(self):
+                    return [mock_task]
+            return MockScalars()
+
+    mock_session.execute.return_value = MockResult()
+
+    with patch("src.kortana.services.autonomy_daemon.time.monotonic", return_value=100.0):
+        async def mock_execute(*args, **kwargs):
+            raise RuntimeError("Task execution crashed")
+
+        async def mock_plan(t, *args, **kwargs):
+            t.status = "planning_complete"
+        
+        mock_service = AsyncMock()
+        mock_service.plan_task = mock_plan
+        mock_service.execute_task = mock_execute
+        
+        # We patch github_autonomy_service.GitHubAutonomyService which is used inside _process_tasks
+        with patch("src.kortana.services.github_autonomy_service.GitHubAutonomyService", return_value=mock_service):
+            with patch("src.kortana.services.autonomy_daemon.TaskApprovalService") as mock_app_class:
+                mock_app_service = AsyncMock()
+                class MockApp:
+                    approved = True
+                    risk_level = "low"
+                    requires_human = False
+                    reasoning = "ok"
+                    confidence = 1.0
+                mock_app_service.evaluate_task.return_value = MockApp()
+                mock_app_class.return_value = mock_app_service
+
+                processed, succeeded, failed, deferred = await daemon._process_tasks(mock_session, max_tasks=1)
+                
+                assert failed == 1
+                
+                # Check incident was written
+                mock_session.add.assert_called()
+                added_incidents = [call.args[0] for call in mock_session.add.call_args_list if isinstance(call.args[0], IncidentMemory)]
+                assert len(added_incidents) > 0
+                incident = added_incidents[0]
+                assert incident.incident_type == "task_failure"
+                assert "Task execution crashed" in incident.description

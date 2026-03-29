@@ -177,8 +177,10 @@ class AutonomyDaemon:
                     from src.kortana.models import IncidentMemory
                     async for session in self._db_manager.get_session():
                         incident = IncidentMemory(
-                            type="daemon_crash",
-                            incident_data={"error": str(exc), "traceback": "omitted_for_brevity", "metrics": self.metrics},
+                            incident_type="daemon_crash",
+                            description=str(exc),
+                            stack_trace="omitted_for_brevity",
+                            resolution_strategy="auto_restart",
                             resolved=False
                         )
                         session.add(incident)
@@ -208,8 +210,9 @@ class AutonomyDaemon:
                 }
                 
                 new_arch = ArchitectureMemory(
-                    component="backend_engine",
-                    architecture_data=snapshot,
+                    component_name="backend_engine",
+                    description=snapshot.get("observation", "Architecture snapshot"),
+                    knowledge_factors=snapshot,
                     confidence_score=0.95
                 )
                 session.add(new_arch)
@@ -220,6 +223,7 @@ class AutonomyDaemon:
 
     async def _run_cycle(self) -> None:
         cycle_start = time.monotonic()
+        cycle_start_dt = datetime.utcnow()
         self._emit(DaemonEvent(type="cycle_start"))
         logger.info("--- Autonomy cycle starting ---")
 
@@ -229,7 +233,7 @@ class AutonomyDaemon:
         workspace_status = await self._poll_workspace_bridge()
         self._cycle_failed_task_ids = []
 
-        new_count = processed = succeeded = failed = deferred = 0
+        new_count = processed = succeeded = failed = deferred = approvals_processed_count = 0
         async for session in self._db_manager.get_session():
             new_count = await self._discover_tasks(
                 session,
@@ -246,7 +250,8 @@ class AutonomyDaemon:
             processed, succeeded, failed, deferred = await self._process_tasks(
                 session, max_tasks=effective_limit, guidance=guidance
             )
-            await self._process_pending_approvals(session)
+            app_count = await self._process_pending_approvals(session)
+            approvals_processed_count += app_count
             await self._analyze_architecture(session)
 
         try:
@@ -299,10 +304,10 @@ class AutonomyDaemon:
             async for session in self._db_manager.get_session():
                 cycle_mem = AutonomyCycleMemory(
                     cycle_id=f"cycle_{int(time.time()*1000)}",
-                    start_time=datetime.fromisoformat(self.metrics["last_cycle"]["completed_at"]),
+                    start_time=cycle_start_dt,
                     end_time=datetime.utcnow(),
                     tasks_processed=processed,
-                    approvals_processed=0, # approvals could be tracked later
+                    approvals_processed=approvals_processed_count,
                     errors_encountered=failed,
                     metrics=self.metrics["last_cycle"]
                 )
@@ -526,7 +531,7 @@ class AutonomyDaemon:
                 continue
         return filtered
 
-    async def _process_pending_approvals(self, session: AsyncSession) -> None:
+    async def _process_pending_approvals(self, session: AsyncSession) -> int:
         """Poll GitHub comments for tasks awaiting operator approval."""
         from sqlalchemy import select
 
@@ -535,12 +540,13 @@ class AutonomyDaemon:
 
         approval_service = TaskApprovalService(session)
         github_service = GitHubAutonomyService(session)
+        processed_count = 0
 
         # Check a reasonable window of pending approvals
         pending_approvals = await approval_service.list_pending(limit=20)
         task_ids = [str(a.github_task_id) for a in pending_approvals]
         if not task_ids:
-            return
+            return processed_count
 
         stmt = select(GitHubTask).where(GitHubTask.id.in_(task_ids))
         result = await session.execute(stmt)
@@ -595,6 +601,7 @@ class AutonomyDaemon:
                         github_comment_url=latest_seen_comment_url,
                     )
                     handled_command = True
+                    processed_count += 1
                     break
                 elif action == "rejected":
                     logger.info(f"Task {task.id} rejected via GitHub comment by {user}")
@@ -608,6 +615,7 @@ class AutonomyDaemon:
                         github_comment_url=latest_seen_comment_url,
                     )
                     handled_command = True
+                    processed_count += 1
                     break
 
             if not handled_command and latest_seen_comment_id:
@@ -616,6 +624,8 @@ class AutonomyDaemon:
                     github_comment_id=latest_seen_comment_id or "",
                     github_comment_url=latest_seen_comment_url,
                 )
+
+        return processed_count
 
     async def _manifest_self_healing(
         self,
@@ -987,8 +997,10 @@ class AutonomyDaemon:
                 try:
                     from src.kortana.models import IncidentMemory
                     incident = IncidentMemory(
-                        type="task_failure",
-                        incident_data={"task_id": task_id, "error": str(exc), "status": getattr(task, "status", "unknown")},
+                        incident_type="task_failure",
+                        description=f"Task {task_id} failed: {str(exc)}",
+                        stack_trace="omitted_for_brevity",
+                        resolution_strategy="Review required",
                         resolved=False
                     )
                     session.add(incident)
