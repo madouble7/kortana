@@ -30,7 +30,7 @@ export function ApprovalQueue() {
   const handleAction = async (taskId: string, approved: boolean) => {
     setActioningId(taskId);
     try {
-      const notes = prompt(\Any notes for this \? (Optional)\);
+      const notes = prompt(`Any notes for this ${approved ? 'approval' : 'rejection'}? (Optional)`);
       if (notes === null) {
         // Cancelled prompt
         setActioningId(null);
