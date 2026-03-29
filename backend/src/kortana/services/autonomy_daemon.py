@@ -449,7 +449,7 @@ class AutonomyDaemon:
                 body = (comment.get("body") or "").strip().lower()
                 user = comment.get("user", {}).get("login", "operator")
 
-                # Ignore bot reflections 
+                # Ignore bot reflections
                 if "bot" in user.lower() or "kortana" in user.lower() or "actions-user" in user.lower():
                     continue
 
