@@ -225,3 +225,4 @@ key.json
 *.tfstate
 celerybeat-schedule.*
 .kortana/operator_inbox.md
+.vector_alpha_worktree/
