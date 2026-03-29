@@ -729,7 +729,11 @@ async def get_repository_memory(
                     "incident_type": r.incident_type,
                     "description": r.description,
                     "resolved": r.resolved,
-                    "created_at": r.created_at.isoformat() if r.created_at else None
+                    "created_at": r.created_at.isoformat() if r.created_at else None,
+                    "resolution_strategy": r.resolution_strategy,
+                    "repair_branch": r.repair_branch,
+                    "pr_url": r.pr_url,
+                    "fix_status": r.fix_status
                 } for r in incid_records
             ]
         }

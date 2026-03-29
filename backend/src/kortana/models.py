@@ -338,6 +338,11 @@ class IncidentMemory(Base):
     description = Column(Text, nullable=False)
     stack_trace = Column(Text, nullable=True)
     resolution_strategy = Column(Text, nullable=True)
+    repair_branch = Column(String(256), nullable=True)  # Vector Alpha
+    pr_url = Column(String(512), nullable=True)  # Vector Alpha
+    fix_status = Column(
+        String(64), nullable=True
+    )  # e.g., 'drafted', 'testing', 'proposed', 'closed'
     resolved = Column(Boolean, default=False)
     resolved_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
