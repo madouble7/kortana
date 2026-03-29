@@ -220,10 +220,14 @@ class AutonomyDaemon:
                     )
                     branch = await alpha.create_healing_branch(inc)
                     if branch:
-                        gh = GitHubAutonomyService(session)
-                        success = await alpha.validate_and_propose(inc, gh)
-                        if success:
-                            logger.info(f"[Vector Alpha] Created PR for {inc.id}")
+                        from src.kortana.services.patch_planner import PatchPlanner
+                        planner = PatchPlanner(alpha.worktree_dir)
+                        patch_success = await planner.apply_healing_patch(inc)
+                        if patch_success:
+                            gh = GitHubAutonomyService(session)
+                            success = await alpha.validate_and_propose(inc, gh)
+                            if success:
+                                logger.info(f"[Vector Alpha] Created PR for {inc.id}")
         except Exception as e:
             logger.error(f"Vector Alpha execution failed: {e}")
 
