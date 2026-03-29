@@ -12,6 +12,7 @@ import {
 import type { ElementType } from 'react';
 import { useEffect, useState } from 'react';
 import Autonomy from './components/Autonomy';
+import AkashicRecord from './components/AkashicRecord';
 import Chat from './components/Chat';
 import GitHubPanel from './components/GitHub';
 import Memory from './components/Memory';
@@ -20,7 +21,7 @@ import Tasks from './components/Tasks';
 import { api } from './lib/api';
 import { cn } from './lib/utils';
 
-type View = 'chat' | 'tasks' | 'autonomy' | 'memory' | 'github' | 'settings';
+type View = 'chat' | 'tasks' | 'autonomy' | 'memory' | 'github' | 'settings' | 'akashic';
 
 interface NavItem {
   id: View;
@@ -69,6 +70,13 @@ function App() {
       icon: Brain,
       enabled: import.meta.env.VITE_ENABLE_AUTONOMY !== 'false',
     },
+
+    {
+      id: 'akashic',
+      label: 'Akashic',
+      icon: Database,
+      enabled: true,
+    },
     {
       id: 'memory',
       label: 'Memory',
@@ -99,6 +107,9 @@ function App() {
         return <Tasks />;
       case 'autonomy':
         return <Autonomy />;
+
+      case 'akashic':
+        return <AkashicRecord />;
       case 'memory':
         return <Memory />;
       case 'github':
