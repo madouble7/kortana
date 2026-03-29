@@ -1231,3 +1231,39 @@ async def test_task_failure_writes_to_incident_memory(mock_settings):
                 incident = added_incidents[0]
                 assert incident.incident_type == "task_failure"
                 assert "Task execution crashed" in incident.description
+
+
+@pytest.mark.asyncio
+async def test_heal_vectors_invokes_vector_alpha():
+    from unittest.mock import patch, MagicMock, AsyncMock
+    from src.kortana.models import IncidentMemory
+    from src.kortana.services.autonomy_daemon import AutonomyDaemon
+
+    incident = IncidentMemory(
+        incident_type="daemon_crash",
+        description="test failure",
+        resolved=False,
+        fix_status=None
+    )
+    
+    mock_db = MagicMock()
+    daemon = AutonomyDaemon()
+
+    mock_session = AsyncMock()
+    mock_execute = MagicMock()
+    mock_execute.scalars.return_value.all.return_value = [incident]
+    mock_session.execute.return_value = mock_execute
+    
+    with patch('src.kortana.services.vector_alpha_branch_service.VectorAlphaBranchService') as mock_alpha, \
+         patch('src.kortana.services.github_autonomy_service.GitHubAutonomyService') as mock_gh:
+        
+        mock_alpha_inst = mock_alpha.return_value
+        mock_alpha_inst.evaluate_incident.return_value = True
+        mock_alpha_inst.create_healing_branch = AsyncMock(return_value="auto-fix/test")
+        mock_alpha_inst.validate_and_propose = AsyncMock(return_value=True)
+        
+        await daemon._heal_vectors(mock_session)
+        
+        mock_alpha_inst.evaluate_incident.assert_called_once_with(incident)
+        mock_alpha_inst.create_healing_branch.assert_called_once_with(incident)
+        mock_alpha_inst.validate_and_propose.assert_called_once()
