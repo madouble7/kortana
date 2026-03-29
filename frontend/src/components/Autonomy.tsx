@@ -1,8 +1,8 @@
+import { Activity, Brain, Loader2, Play, RefreshCw, TrendingUp, Wifi, WifiOff } from 'lucide-react';
 import { useState } from 'react';
-import { Brain, Play, Activity, TrendingUp, Loader2, Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { useAutonomyRealtime } from '../hooks/useAutonomyRealtime';
 import { api } from '../lib/api';
 import { formatRelativeTime } from '../lib/utils';
-import { useAutonomyRealtime } from '../hooks/useAutonomyRealtime';
 
 export default function Autonomy() {
   const [running, setRunning] = useState(false);
@@ -218,6 +218,10 @@ export default function Autonomy() {
             </div>
           </>
         )}
+
+        <div className="my-8">
+          <ApprovalQueue />
+        </div>
 
         {/* Info */}
         <div className="bg-gray-800/50 rounded-lg p-6 border border-purple-900/30">

@@ -267,6 +267,22 @@ class ApiClient {
     });
   }
 
+  // Task Approval endpoints
+  async getApprovalQueue(): Promise<any[]> {
+    const data = await this.request('/api/always-on/approval-queue');
+    return data.items || [];
+  }
+
+  async resolveApproval(taskId: string, approved: boolean, notes?: string): Promise<any> {
+    const params = new URLSearchParams();
+    params.append('approved', approved.toString());
+    if (notes) params.append('notes', notes);
+
+    return this.request(`/api/always-on/tasks/${taskId}/approve?${params.toString()}`, {
+      method: 'POST',
+    });
+  }
+
   // Autonomy endpoints
   async getAutonomyStatus(): Promise<AutonomyStatus> {
     const data = await this.request<any>('/api/autonomy/status');
