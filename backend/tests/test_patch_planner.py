@@ -1,3 +1,7 @@
+import os
+import shutil
+import subprocess
+import tempfile
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -171,12 +175,6 @@ async def test_validate_diff_locally(planner):
 
     # Missing diff headers
     assert not planner._validate_diff_locally("+ just some python code", ["test.py"])
-
-
-import os
-import shutil
-import subprocess
-import tempfile
 
 
 @pytest.fixture

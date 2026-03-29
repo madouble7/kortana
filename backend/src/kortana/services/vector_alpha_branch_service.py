@@ -17,7 +17,7 @@ class VectorAlphaBranchService:
     Handles branch-scoped self-healing for KOR'TANA via Vector Alpha constraints.
     - Never mutates the main worktree.
     - Creates auto-fix/<incident-type>-<timestamp> branches using an isolated git worktree.
-    - Runs ruff and pytest locally inside the worktree before pushing or creating PR.
+    - Commits, pushes, and proposes validated patches from the isolated worktree.
     """
 
     def __init__(self, db: AsyncSession):
@@ -92,7 +92,7 @@ class VectorAlphaBranchService:
             return None
 
     async def commit_and_propose(
-        self, incident: IncidentMemory, github_service: Any
+        self, incident: IncidentMemory, github_service: Any, *, dry_run: bool = False
     ) -> bool:
         if not incident.repair_branch:
             logger.error("No repair branch assigned to incident.")
@@ -103,6 +103,27 @@ class VectorAlphaBranchService:
             return False
 
         try:
+            if dry_run:
+                note = (
+                    "Vector Alpha dry run completed. "
+                    "Skipped commit, push, and pull request creation."
+                )
+                incident.fix_status = "dry_run_ready"
+                incident.resolution_strategy = (
+                    f"{incident.resolution_strategy}\n\n{note}"
+                    if incident.resolution_strategy
+                    else note
+                )
+                self.db.add(incident)
+                await self.db.commit()
+                await asyncio.to_thread(
+                    subprocess.run,
+                    ["git", "worktree", "remove", "--force", self.worktree_dir],
+                    cwd=self.repo_dir,
+                    check=False,
+                )
+                return True
+
             await asyncio.to_thread(
                 subprocess.run, ["git", "add", "-u"], cwd=self.worktree_dir, check=False
             )

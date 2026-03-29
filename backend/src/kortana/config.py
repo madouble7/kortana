@@ -193,6 +193,9 @@ class Settings:
     AUTONOMY_LOOP_SHADOW_TIMEOUT_SECONDS: int = int(
         _get_env("AUTONOMY_LOOP_SHADOW_TIMEOUT_SECONDS", "120")
     )
+    VECTOR_ALPHA_DRY_RUN: bool = (
+        str(_get_env("VECTOR_ALPHA_DRY_RUN", "true")).lower() == "true"
+    )
 
     @property
     def DATABASE_URL(self) -> str:
