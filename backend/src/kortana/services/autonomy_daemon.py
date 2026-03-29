@@ -230,10 +230,23 @@ class AutonomyDaemon:
                         await session.commit()
 
                         if patch_success:
+                            alpha_dry_run = (
+                                get_settings().VECTOR_ALPHA_DRY_RUN
+                                or not self.live_execution_enabled
+                            )
                             gh = GitHubAutonomyService(session)
-                            success = await alpha.commit_and_propose(inc, gh)
+                            success = await alpha.commit_and_propose(
+                                inc, gh, dry_run=alpha_dry_run
+                            )
                             if success:
-                                logger.info(f"[Vector Alpha] Created PR for {inc.id}")
+                                if alpha_dry_run:
+                                    logger.info(
+                                        f"[Vector Alpha] Dry run completed for {inc.id}"
+                                    )
+                                else:
+                                    logger.info(
+                                        f"[Vector Alpha] Created PR for {inc.id}"
+                                    )
                         else:
                             # Clean up the worktree correctly if we abort
                             import asyncio

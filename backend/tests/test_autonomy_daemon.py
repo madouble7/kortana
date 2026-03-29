@@ -86,7 +86,9 @@ class TestAutonomyDaemon:
         async def plan_task(task_to_plan: GitHubTask) -> None:
             task_to_plan.status = "planning_complete"
 
-        async def execute_task(task_to_execute: GitHubTask, dry_run: bool = False) -> None:
+        async def execute_task(
+            task_to_execute: GitHubTask, dry_run: bool = False
+        ) -> None:
             task_to_execute.status = "executed"
 
         service = AsyncMock()
@@ -794,7 +796,6 @@ class TestAutonomyDaemon:
         mock_client.assert_not_called()
         assert daemon.metrics["self_heals_manifested"] == 0
 
-
     @pytest.mark.asyncio
     async def test_process_pending_approvals_handles_approve_comment(self) -> None:
         daemon = build_daemon()
@@ -816,11 +817,17 @@ class TestAutonomyDaemon:
 
         mock_approval_service = AsyncMock()
         mock_approval_service.list_pending = AsyncMock(return_value=[mock_approval])
-        async def mock_process(task_id, body, reviewer, github_comment_id, github_comment_url, **kwargs):
+
+        async def mock_process(
+            task_id, body, reviewer, github_comment_id, github_comment_url, **kwargs
+        ):
             if github_comment_id == "1001":
                 return "approved"
             return None
-        mock_approval_service.process_command_from_comment = AsyncMock(side_effect=mock_process)
+
+        mock_approval_service.process_command_from_comment = AsyncMock(
+            side_effect=mock_process
+        )
         mock_approval_service.mark_comment_seen = AsyncMock()
 
         mock_github_service = AsyncMock()
@@ -837,7 +844,7 @@ class TestAutonomyDaemon:
                     "html_url": "https://github.com/repo/test/issues/42#issuecomment-1002",
                     "body": "logging my final thought after approval",
                     "user": {"login": "human", "type": "User"},
-                }
+                },
             ]
         )
         mock_github_service.post_issue_comment = AsyncMock()
@@ -851,7 +858,13 @@ class TestAutonomyDaemon:
         ):
             await daemon._process_pending_approvals(session)
 
-        mock_approval_service.process_command_from_comment.assert_any_await(task_id="task-1", body="great work /approve this", reviewer="human", github_comment_id="1001", github_comment_url="https://github.com/repo/test/issues/42#issuecomment-1001")
+        mock_approval_service.process_command_from_comment.assert_any_await(
+            task_id="task-1",
+            body="great work /approve this",
+            reviewer="human",
+            github_comment_id="1001",
+            github_comment_url="https://github.com/repo/test/issues/42#issuecomment-1001",
+        )
         mock_approval_service.mark_comment_seen.assert_awaited_once()
         mock_github_service.post_issue_comment.assert_awaited_once()
 
@@ -876,11 +889,17 @@ class TestAutonomyDaemon:
 
         mock_approval_service = AsyncMock()
         mock_approval_service.list_pending = AsyncMock(return_value=[mock_approval])
-        async def mock_process(task_id, body, reviewer, github_comment_id, github_comment_url, **kwargs):
+
+        async def mock_process(
+            task_id, body, reviewer, github_comment_id, github_comment_url, **kwargs
+        ):
             if github_comment_id == "1002":
                 return "rejected"
             return None
-        mock_approval_service.process_command_from_comment = AsyncMock(side_effect=mock_process)
+
+        mock_approval_service.process_command_from_comment = AsyncMock(
+            side_effect=mock_process
+        )
         mock_approval_service.mark_comment_seen = AsyncMock()
 
         mock_github_service = AsyncMock()
@@ -905,7 +924,13 @@ class TestAutonomyDaemon:
         ):
             await daemon._process_pending_approvals(session)
 
-        mock_approval_service.process_command_from_comment.assert_any_await(task_id="task-2", body="no thanks /reject", reviewer="human", github_comment_id="1002", github_comment_url="https://github.com/repo/test/issues/43#issuecomment-1002")
+        mock_approval_service.process_command_from_comment.assert_any_await(
+            task_id="task-2",
+            body="no thanks /reject",
+            reviewer="human",
+            github_comment_id="1002",
+            github_comment_url="https://github.com/repo/test/issues/43#issuecomment-1002",
+        )
         mock_approval_service.mark_comment_seen.assert_awaited_once()
         mock_github_service.post_issue_comment.assert_awaited_once()
 
@@ -930,7 +955,9 @@ class TestAutonomyDaemon:
 
         mock_approval_service = AsyncMock()
         mock_approval_service.list_pending = AsyncMock(return_value=[mock_approval])
-        mock_approval_service.process_command_from_comment = AsyncMock(return_value=None)
+        mock_approval_service.process_command_from_comment = AsyncMock(
+            return_value=None
+        )
         mock_approval_service.mark_comment_seen = AsyncMock()
 
         mock_github_service = AsyncMock()
@@ -969,7 +996,9 @@ class TestAutonomyDaemon:
         )
 
     @pytest.mark.asyncio
-    async def test_process_pending_approvals_marks_irrelevant_comments_as_seen(self) -> None:
+    async def test_process_pending_approvals_marks_irrelevant_comments_as_seen(
+        self,
+    ) -> None:
         daemon = build_daemon()
         session = AsyncMock()
 
@@ -989,7 +1018,9 @@ class TestAutonomyDaemon:
 
         mock_approval_service = AsyncMock()
         mock_approval_service.list_pending = AsyncMock(return_value=[mock_approval])
-        mock_approval_service.process_command_from_comment = AsyncMock(return_value=None)
+        mock_approval_service.process_command_from_comment = AsyncMock(
+            return_value=None
+        )
         mock_approval_service.mark_comment_seen = AsyncMock()
 
         mock_github_service = AsyncMock()
@@ -1101,7 +1132,7 @@ class TestAutonomyDaemon:
         mock_approval_service = AsyncMock()
         mock_approval_service.list_pending = AsyncMock(return_value=[mock_approval])
         mock_approval_service.process_command_from_comment = AsyncMock(
-            return_value=None # simulated value
+            return_value=None  # simulated value
         )
         mock_approval_service.mark_comment_seen = AsyncMock()
 
@@ -1127,9 +1158,16 @@ class TestAutonomyDaemon:
         ):
             await daemon._process_pending_approvals(session)
 
-        mock_approval_service.process_command_from_comment.assert_any_await(task_id="task-already-resolved", body="/approve", reviewer="human", github_comment_id="1008", github_comment_url="https://github.com/repo/test/issues/47#issuecomment-1008")
+        mock_approval_service.process_command_from_comment.assert_any_await(
+            task_id="task-already-resolved",
+            body="/approve",
+            reviewer="human",
+            github_comment_id="1008",
+            github_comment_url="https://github.com/repo/test/issues/47#issuecomment-1008",
+        )
         mock_approval_service.mark_comment_seen.assert_awaited_once()
         mock_github_service.post_issue_comment.assert_not_awaited()
+
 
 @pytest.mark.asyncio
 async def test_daemon_crash_writes_to_incident_memory():
@@ -1159,7 +1197,9 @@ async def test_daemon_crash_writes_to_incident_memory():
         if sleep_call_count >= 2:
             daemon._running = False
 
-    with patch("src.kortana.services.autonomy_daemon.asyncio.sleep", side_effect=mock_sleep):
+    with patch(
+        "src.kortana.services.autonomy_daemon.asyncio.sleep", side_effect=mock_sleep
+    ):
         # We need a patch on self_regulate that raises Exception
         async def mock_regulate(*args, **kwargs):
             raise Exception("Fatal crash in daemon memory")
@@ -1197,11 +1237,15 @@ async def test_task_failure_writes_to_incident_memory(mock_settings):
             class MockScalars:
                 def all(self):
                     return [mock_task]
+
             return MockScalars()
 
     mock_session.execute.return_value = MockResult()
 
-    with patch("src.kortana.services.autonomy_daemon.time.monotonic", return_value=100.0):
+    with patch(
+        "src.kortana.services.autonomy_daemon.time.monotonic", return_value=100.0
+    ):
+
         async def mock_execute(*args, **kwargs):
             raise RuntimeError("Task execution crashed")
 
@@ -1213,25 +1257,38 @@ async def test_task_failure_writes_to_incident_memory(mock_settings):
         mock_service.execute_task = mock_execute
 
         # We patch github_autonomy_service.GitHubAutonomyService which is used inside _process_tasks
-        with patch("src.kortana.services.github_autonomy_service.GitHubAutonomyService", return_value=mock_service):
-            with patch("src.kortana.services.autonomy_daemon.TaskApprovalService") as mock_app_class:
+        with patch(
+            "src.kortana.services.github_autonomy_service.GitHubAutonomyService",
+            return_value=mock_service,
+        ):
+            with patch(
+                "src.kortana.services.autonomy_daemon.TaskApprovalService"
+            ) as mock_app_class:
                 mock_app_service = AsyncMock()
+
                 class MockApp:
                     approved = True
                     risk_level = "low"
                     requires_human = False
                     reasoning = "ok"
                     confidence = 1.0
+
                 mock_app_service.evaluate_task.return_value = MockApp()
                 mock_app_class.return_value = mock_app_service
 
-                processed, succeeded, failed, deferred = await daemon._process_tasks(mock_session, max_tasks=1)
+                processed, succeeded, failed, deferred = await daemon._process_tasks(
+                    mock_session, max_tasks=1
+                )
 
                 assert failed == 1
 
                 # Check incident was written
                 mock_session.add.assert_called()
-                added_incidents = [call.args[0] for call in mock_session.add.call_args_list if isinstance(call.args[0], IncidentMemory)]
+                added_incidents = [
+                    call.args[0]
+                    for call in mock_session.add.call_args_list
+                    if isinstance(call.args[0], IncidentMemory)
+                ]
                 assert len(added_incidents) > 0
                 incident = added_incidents[0]
                 assert incident.incident_type == "task_failure"
@@ -1249,7 +1306,7 @@ async def test_heal_vectors_invokes_vector_alpha():
         incident_type="daemon_crash",
         description="test failure",
         resolved=False,
-        fix_status=None
+        fix_status=None,
     )
 
     daemon = AutonomyDaemon()
@@ -1259,10 +1316,11 @@ async def test_heal_vectors_invokes_vector_alpha():
     mock_execute.scalars.return_value.all.return_value = [incident]
     mock_session.execute.return_value = mock_execute
 
-    with patch('src.kortana.services.vector_alpha_branch_service.VectorAlphaBranchService') as mock_alpha, \
-         patch('src.kortana.services.github_autonomy_service.GitHubAutonomyService'), \
-         patch('src.kortana.services.patch_planner.PatchPlanner') as mock_planner:
-
+    with patch(
+        "src.kortana.services.vector_alpha_branch_service.VectorAlphaBranchService"
+    ) as mock_alpha, patch(
+        "src.kortana.services.github_autonomy_service.GitHubAutonomyService"
+    ), patch("src.kortana.services.patch_planner.PatchPlanner") as mock_planner:
         mock_alpha_inst = mock_alpha.return_value
         mock_alpha_inst.evaluate_incident.return_value = True
         mock_planner.return_value.apply_healing_patch = AsyncMock(return_value=True)
@@ -1274,3 +1332,4 @@ async def test_heal_vectors_invokes_vector_alpha():
         mock_alpha_inst.evaluate_incident.assert_called_once_with(incident)
         mock_alpha_inst.create_healing_branch.assert_called_once_with(incident)
         mock_alpha_inst.commit_and_propose.assert_called_once()
+        assert mock_alpha_inst.commit_and_propose.call_args.kwargs["dry_run"] is True
