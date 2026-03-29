@@ -683,10 +683,15 @@ async def get_repository_memory(
 ) -> dict[str, Any]:
     """Expose Vector Gamma Self-Model (Akashic Record)"""
     from sqlalchemy import select
-    from src.kortana.models import ArchitectureMemory, AutonomyCycleMemory, IncidentMemory
-    
+
+    from src.kortana.models import (
+        ArchitectureMemory,
+        AutonomyCycleMemory,
+        IncidentMemory,
+    )
+
     db_manager = get_db_manager()
-    
+
     arch_records: list[ArchitectureMemory] = []
     cycle_records: list[AutonomyCycleMemory] = []
     incid_records: list[IncidentMemory] = []

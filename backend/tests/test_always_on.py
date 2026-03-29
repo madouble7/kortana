@@ -461,7 +461,7 @@ def test_serialize_task_includes_validation_evidence():
 
 @pytest.mark.asyncio
 async def test_get_memory_endpoint():
-    from src.kortana.models import ArchitectureMemory, AutonomyCycleMemory, IncidentMemory
+    from src.kortana.models import ArchitectureMemory
     from src.kortana.routers.always_on import get_repository_memory
     
     mock_db = AsyncMock()

@@ -171,46 +171,53 @@ class AutonomyDaemon:
                     {"time": datetime.utcnow().isoformat(), "error": str(exc)}
                 )
                 self.metrics["errors"] = self.metrics["errors"][-20:]
-                
+
                 # Write to IncidentMemory
                 try:
                     from src.kortana.models import IncidentMemory
+
                     async for session in self._db_manager.get_session():
                         incident = IncidentMemory(
                             incident_type="daemon_crash",
                             description=str(exc),
                             stack_trace="omitted_for_brevity",
                             resolution_strategy="auto_restart",
-                            resolved=False
+                            resolved=False,
                         )
                         session.add(incident)
                         await session.commit()
                 except Exception as log_exc:
-                    logger.error(f"Failed to write daemon crash to IncidentMemory: {log_exc}")
+                    logger.error(
+                        f"Failed to write daemon crash to IncidentMemory: {log_exc}"
+                    )
 
             await asyncio.sleep(self.cycle_interval)
-
 
     async def _heal_vectors(self, session: Any) -> None:
         """Vector Alpha Branch-Scoped Self Healing"""
         from sqlalchemy import select
+
         from src.kortana.models import IncidentMemory
-        from src.kortana.services.vector_alpha_branch_service import VectorAlphaBranchService
         from src.kortana.services.github_autonomy_service import GitHubAutonomyService
+        from src.kortana.services.vector_alpha_branch_service import (
+            VectorAlphaBranchService,
+        )
 
         try:
             res = await session.execute(
                 select(IncidentMemory).where(
-                    IncidentMemory.resolved == False, 
-                    IncidentMemory.fix_status.is_(None)
+                    IncidentMemory.resolved.is_(False),
+                    IncidentMemory.fix_status.is_(None),
                 )
             )
             incidents = res.scalars().all()
-            
+
             for inc in incidents:
                 alpha = VectorAlphaBranchService(session)
                 if alpha.evaluate_incident(inc):
-                    logger.info(f"[Vector Alpha] Attempting to heal {inc.incident_type}")
+                    logger.info(
+                        f"[Vector Alpha] Attempting to heal {inc.incident_type}"
+                    )
                     branch = await alpha.create_healing_branch(inc)
                     if branch:
                         gh = GitHubAutonomyService(session)
@@ -222,23 +229,29 @@ class AutonomyDaemon:
 
     async def _analyze_architecture(self, session: Any) -> None:
         try:
-            from src.kortana.models import ArchitectureMemory
             from sqlalchemy import func
-            
+
+            from src.kortana.models import ArchitectureMemory
+
             # Run only periodically, like once every 100 cycles, or if none exists
             count_res = await session.execute(select(func.count()).select_from(ArchitectureMemory))
             count = count_res.scalar_one_or_none() or 0
-            
+
             if self.metrics["cycles_completed"] % 100 == 0 or count == 0:
                 logger.info("Running architectural analysis...")
                 # In the future this calls an LLM summary of the repo structure.
                 # For now, we populate a baseline self-awareness structural model.
                 snapshot = {
-                    "modules": ["autonomy_daemon", "fastapi_routers", "celery_workers", "github_webhook_bridge"],
+                    "modules": [
+                        "autonomy_daemon",
+                        "fastapi_routers",
+                        "celery_workers",
+                        "github_webhook_bridge",
+                    ],
                     "coupling": "moderate",
-                    "observation": "Vector Gamma persistent memory active. Hopkins HOP boundary maintained."
+                    "observation": "Vector Gamma persistent memory active. Hopkins HOP boundary maintained.",
                 }
-                
+
                 new_arch = ArchitectureMemory(
                     component_name="backend_engine",
                     description=snapshot.get("observation", "Architecture snapshot"),
@@ -247,7 +260,7 @@ class AutonomyDaemon:
                 )
                 session.add(new_arch)
                 await session.commit()
-                
+
         except Exception as exc:
             logger.debug(f"Architecture analysis skip: {exc}")
 
@@ -263,7 +276,9 @@ class AutonomyDaemon:
         workspace_status = await self._poll_workspace_bridge()
         self._cycle_failed_task_ids = []
 
-        new_count = processed = succeeded = failed = deferred = approvals_processed_count = 0
+        new_count = processed = succeeded = failed = deferred = (
+            approvals_processed_count
+        ) = 0
         async for session in self._db_manager.get_session():
             new_count = await self._discover_tasks(
                 session,
@@ -328,19 +343,19 @@ class AutonomyDaemon:
             "workspace_bridge": workspace_status,
         }
 
-
         # Record Vector Gamma cycle memory
         try:
             from src.kortana.models import AutonomyCycleMemory
+
             async for session in self._db_manager.get_session():
                 cycle_mem = AutonomyCycleMemory(
-                    cycle_id=f"cycle_{int(time.time()*1000)}",
+                    cycle_id=f"cycle_{int(time.time() * 1000)}",
                     start_time=cycle_start_dt,
                     end_time=datetime.utcnow(),
                     tasks_processed=processed,
                     approvals_processed=approvals_processed_count,
                     errors_encountered=failed,
-                    metrics=self.metrics["last_cycle"]
+                    metrics=self.metrics["last_cycle"],
                 )
                 session.add(cycle_mem)
                 await session.commit()
@@ -781,7 +796,11 @@ class AutonomyDaemon:
         except Exception as exc:
             logger.exception(f"Self-repair manifestation failed: {exc}")
             try:
-                if "local_backlog" in locals() and "latest_failed" in locals() and latest_failed is not None:
+                if (
+                    "local_backlog" in locals()
+                    and "latest_failed" in locals()
+                    and latest_failed is not None
+                ):
                     created = await local_backlog.manifest_self_repair(
                         failed_task=latest_failed,
                         repair_anchor=repair_anchor,
@@ -863,9 +882,13 @@ class AutonomyDaemon:
                             # Imbue the result with interpreted advisory logic
                             try:
                                 if isinstance(shadow_result, dict):
-                                    shadow_result["advisory"] = self._derive_shadow_advisory(shadow_result)
+                                    shadow_result["advisory"] = (
+                                        self._derive_shadow_advisory(shadow_result)
+                                    )
                             except Exception as e:
-                                logger.warning(f"Failed to derive shadow advisory for {task.id}: {e}")
+                                logger.warning(
+                                    f"Failed to derive shadow advisory for {task.id}: {e}"
+                                )
 
                             # Persist this as a diagnostic artifact
                             task.sandbox_result = shadow_result  # type: ignore[assignment]
@@ -917,7 +940,9 @@ class AutonomyDaemon:
                     )
                     if approval_decision is not None:
                         if approval_decision.approved:
-                            await approval_service.record_decision(task, approval_decision)
+                            await approval_service.record_decision(
+                                task, approval_decision
+                            )
                             self.metrics["approvals_auto_granted"] += 1
                             self._emit(
                                 DaemonEvent(
@@ -960,7 +985,9 @@ class AutonomyDaemon:
                                 continue
 
                             # On successful comment, actually persist the workflow state
-                            await approval_service.record_decision(task, approval_decision)
+                            await approval_service.record_decision(
+                                task, approval_decision
+                            )
 
                             deferred += 1
                             self.metrics["approvals_held"] += 1
@@ -1023,21 +1050,24 @@ class AutonomyDaemon:
                     )
                 )
                 logger.exception(f"Task {task.id} failed: {exc}")
-                
+
                 # Write to IncidentMemory
                 try:
                     from src.kortana.models import IncidentMemory
+
                     incident = IncidentMemory(
                         incident_type="task_failure",
                         description=f"Task {task_id} failed: {str(exc)}",
                         stack_trace="omitted_for_brevity",
                         resolution_strategy="Review required",
-                        resolved=False
+                        resolved=False,
                     )
                     session.add(incident)
                     await session.commit()
                 except Exception as log_exc:
-                    logger.error(f"Failed to record IncidentMemory for task {task_id}: {log_exc}")
+                    logger.error(
+                        f"Failed to record IncidentMemory for task {task_id}: {log_exc}"
+                    )
 
         return processed, succeeded, failed, deferred
 

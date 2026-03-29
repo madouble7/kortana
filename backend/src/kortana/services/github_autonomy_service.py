@@ -1679,25 +1679,41 @@ class GitHubAutonomyService:
             except Exception as e:
                 logger.debug(f"Error closing database session: {e}")
 
-    async def create_pull_request(self, title: str, body: str, head: str, base: str = "main") -> dict | None:
+    async def create_pull_request(self, title: str, body: str, head: str, base: str = "main") -> str | None:
         """
         Create a PR generic endpoint for Vector Alpha.
+        Returns the PR URL if successful.
         """
-        import asyncio
-        import httpx
         try:
-            url = f"{self.base_url}/repos/{self.env_repo}/pulls"
-            payload = {
+            owner_repo = getattr(self.settings, "GITHUB_REPOSITORY", "KOR-TANA/kortana")
+            if not owner_repo:
+                owner_repo = "KOR-TANA/kortana"
+            
+            url = f"https://api.github.com/repos/{owner_repo}/pulls"
+            
+            headers = {
+                "Authorization": f"token {self.github_token}",
+                "Accept": "application/vnd.github.v3+json",
+            }
+            
+            pr_data = {
                 "title": title,
                 "body": body,
                 "head": head,
                 "base": base
             }
-            def _post():
-                return httpx.post(url, headers=self.headers, json=payload, timeout=10.0)
-            res = await asyncio.to_thread(_post)
-            res.raise_for_status()
-            return res.json()
+            
+            response = await self.http_client.post(
+                url, api_name="github_api", headers=headers, json=pr_data, timeout=10
+            )
+            
+            if response.status_code == 201:
+                pr = response.json()
+                logger.info(f"[GitHub] Vector Alpha proposed PR: {pr.get('html_url')}")
+                return pr.get("html_url")
+            else:
+                logger.error(f"[GitHub] Failed to create pull request {head} -> {base}: {response.text}")
+                return None
         except Exception as e:
             logger.error(f"[GitHub] Failed to create pull request {head} -> {base}: {e}")
             return None
