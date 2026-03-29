@@ -793,3 +793,161 @@ class TestAutonomyDaemon:
 
         mock_client.assert_not_called()
         assert daemon.metrics["self_heals_manifested"] == 0
+
+
+    @pytest.mark.asyncio
+    async def test_process_pending_approvals_handles_approve_comment(self) -> None:
+        daemon = build_daemon()
+        session = AsyncMock()
+        
+        mock_approval = MagicMock()
+        mock_approval.github_task_id = "task-1"
+        
+        mock_task = GitHubTask(id="task-1", github_repo="repo/test", github_issue_number=42)
+        
+        result = MagicMock()
+        result.scalars.return_value.all.return_value = [mock_task]
+        session.execute = AsyncMock(return_value=result)
+
+        mock_approval_service = AsyncMock()
+        mock_approval_service.list_pending = AsyncMock(return_value=[mock_approval])
+        mock_approval_service.approve_task = AsyncMock()
+
+        mock_github_service = AsyncMock()
+        mock_github_service.fetch_issue_comments = AsyncMock(return_value=[
+            {"body": "great work /approve this", "user": {"login": "human", "type": "User"}}
+        ])
+        mock_github_service.post_issue_comment = AsyncMock()
+
+        with patch("src.kortana.services.task_approval_service.TaskApprovalService", return_value=mock_approval_service),              patch("src.kortana.services.github_autonomy_service.GitHubAutonomyService", return_value=mock_github_service):
+            await daemon._process_pending_approvals(session)
+            
+        mock_approval_service.approve_task.assert_awaited_once_with(
+            "task-1", approved=True, reviewer="human", notes="great work /approve this"
+        )
+        mock_github_service.post_issue_comment.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_process_pending_approvals_handles_reject_comment(self) -> None:
+        daemon = build_daemon()
+        session = AsyncMock()
+        
+        mock_approval = MagicMock()
+        mock_approval.github_task_id = "task-2"
+        
+        mock_task = GitHubTask(id="task-2", github_repo="repo/test", github_issue_number=43)
+        
+        result = MagicMock()
+        result.scalars.return_value.all.return_value = [mock_task]
+        session.execute = AsyncMock(return_value=result)
+
+        mock_approval_service = AsyncMock()
+        mock_approval_service.list_pending = AsyncMock(return_value=[mock_approval])
+        mock_approval_service.approve_task = AsyncMock()
+
+        mock_github_service = AsyncMock()
+        mock_github_service.fetch_issue_comments = AsyncMock(return_value=[
+            {"body": "no thanks /reject", "user": {"login": "human", "type": "User"}}
+        ])
+        mock_github_service.post_issue_comment = AsyncMock()
+
+        with patch("src.kortana.services.task_approval_service.TaskApprovalService", return_value=mock_approval_service),              patch("src.kortana.services.github_autonomy_service.GitHubAutonomyService", return_value=mock_github_service):
+            await daemon._process_pending_approvals(session)
+            
+        mock_approval_service.approve_task.assert_awaited_once_with(
+            "task-2", approved=False, reviewer="human", notes="no thanks /reject"
+        )
+        mock_github_service.post_issue_comment.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_process_pending_approvals_ignores_bot_comments(self) -> None:
+        daemon = build_daemon()
+        session = AsyncMock()
+        
+        mock_approval = MagicMock()
+        mock_approval.github_task_id = "task-3"
+        
+        mock_task = GitHubTask(id="task-3", github_repo="repo/test", github_issue_number=44)
+        
+        result = MagicMock()
+        result.scalars.return_value.all.return_value = [mock_task]
+        session.execute = AsyncMock(return_value=result)
+
+        mock_approval_service = AsyncMock()
+        mock_approval_service.list_pending = AsyncMock(return_value=[mock_approval])
+        mock_approval_service.approve_task = AsyncMock()
+
+        mock_github_service = AsyncMock()
+        mock_github_service.fetch_issue_comments = AsyncMock(return_value=[
+            {"body": "/approve", "user": {"login": "github-actions[bot]", "type": "Bot"}},
+            {"body": "/reject", "user": {"login": "kortana", "type": "Bot"}}
+        ])
+        mock_github_service.post_issue_comment = AsyncMock()
+
+        with patch("src.kortana.services.task_approval_service.TaskApprovalService", return_value=mock_approval_service),              patch("src.kortana.services.github_autonomy_service.GitHubAutonomyService", return_value=mock_github_service):
+            await daemon._process_pending_approvals(session)
+            
+        mock_approval_service.approve_task.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_process_pending_approvals_ignores_irrelevant_comments(self) -> None:
+        daemon = build_daemon()
+        session = AsyncMock()
+        
+        mock_approval = MagicMock()
+        mock_approval.github_task_id = "task-4"
+        
+        mock_task = GitHubTask(id="task-4", github_repo="repo/test", github_issue_number=45)
+        
+        result = MagicMock()
+        result.scalars.return_value.all.return_value = [mock_task]
+        session.execute = AsyncMock(return_value=result)
+
+        mock_approval_service = AsyncMock()
+        mock_approval_service.list_pending = AsyncMock(return_value=[mock_approval])
+        mock_approval_service.approve_task = AsyncMock()
+
+        mock_github_service = AsyncMock()
+        mock_github_service.fetch_issue_comments = AsyncMock(return_value=[
+            {"body": "This looks okay but needs more work", "user": {"login": "human", "type": "User"}}
+        ])
+        mock_github_service.post_issue_comment = AsyncMock()
+
+        with patch("src.kortana.services.task_approval_service.TaskApprovalService", return_value=mock_approval_service),              patch("src.kortana.services.github_autonomy_service.GitHubAutonomyService", return_value=mock_github_service):
+            await daemon._process_pending_approvals(session)
+            
+        mock_approval_service.approve_task.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_process_pending_approvals_skips_when_already_resolved(self) -> None:
+        daemon = build_daemon()
+        session = AsyncMock()
+        
+        mock_approval = MagicMock()
+        mock_approval.github_task_id = "task-already-resolved"
+        
+        mock_task = GitHubTask(id="task-already-resolved", github_repo="repo/test", github_issue_number=46)
+        
+        result = MagicMock()
+        result.scalars.return_value.all.return_value = [mock_task]
+        session.execute = AsyncMock(return_value=result)
+
+        mock_approval_service = AsyncMock()
+        mock_approval_service.list_pending = AsyncMock(return_value=[mock_approval])
+        # Simulate that approve_task raises ValueError because it is already resolved
+        mock_approval_service.approve_task = AsyncMock(side_effect=ValueError("Task approval already resolved"))
+
+        mock_github_service = AsyncMock()
+        mock_github_service.fetch_issue_comments = AsyncMock(return_value=[
+            {"body": "/approve", "user": {"login": "human", "type": "User"}}
+        ])
+        mock_github_service.post_issue_comment = AsyncMock()
+
+        with patch("src.kortana.services.task_approval_service.TaskApprovalService", return_value=mock_approval_service),              patch("src.kortana.services.github_autonomy_service.GitHubAutonomyService", return_value=mock_github_service):
+            await daemon._process_pending_approvals(session)
+            
+        mock_approval_service.approve_task.assert_awaited_once_with(
+            "task-already-resolved", approved=True, reviewer="human", notes="/approve"
+        )
+        # Verify that post_issue_comment is NOT called because of the skip
+        mock_github_service.post_issue_comment.assert_not_called()
