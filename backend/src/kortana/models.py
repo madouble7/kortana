@@ -295,3 +295,52 @@ class AuditLog(Base):
 
     def __repr__(self) -> str:
         return f"<AuditLog {self.action}>"
+
+
+class ArchitectureMemory(Base):
+    """Persistent understanding of repository structure, domains, and rules"""
+    __tablename__ = "architecture_memory"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    component_name = Column(String(128), nullable=False, index=True)
+    description = Column(Text, nullable=False)
+    knowledge_factors = Column(JSON, nullable=True) # e.g. {"dependencies": ["x"], "risks": ["y"]}
+    confidence_score = Column(Float, default=1.0)
+    last_analyzed_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self) -> str:
+        return f"<ArchitectureMemory {self.component_name}>"
+
+
+class AutonomyCycleMemory(Base):
+    """Immutable ledger of each autonomy daemon cycle"""
+    __tablename__ = "autonomy_cycle_memory"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    cycle_id = Column(String(128), nullable=False, index=True) # Usually a timestamp or UUID string
+    start_time = Column(DateTime, nullable=False, index=True)
+    end_time = Column(DateTime, nullable=True)
+    tasks_processed = Column(Integer, default=0)
+    approvals_processed = Column(Integer, default=0)
+    errors_encountered = Column(Integer, default=0)
+    metrics = Column(JSON, nullable=True) # e.g. {"duration_ms": 120, "shadow_accuracy": 0.9}
+
+    def __repr__(self) -> str:
+        return f"<AutonomyCycleMemory {self.cycle_id}>"
+
+
+class IncidentMemory(Base):
+    """Records of system failures, panics, and self-healing attempts"""
+    __tablename__ = "incident_memory"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    incident_type = Column(String(128), nullable=False, index=True)
+    description = Column(Text, nullable=False)
+    stack_trace = Column(Text, nullable=True)
+    resolution_strategy = Column(Text, nullable=True)
+    resolved = Column(Boolean, default=False)
+    resolved_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    def __repr__(self) -> str:
+        return f"<IncidentMemory {self.incident_type}>"

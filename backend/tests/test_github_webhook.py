@@ -1,6 +1,5 @@
-import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import patch, AsyncMock, MagicMock
+from unittest.mock import patch
 from src.kortana.main import app
 import hmac
 import hashlib

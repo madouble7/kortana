@@ -171,8 +171,52 @@ class AutonomyDaemon:
                     {"time": datetime.utcnow().isoformat(), "error": str(exc)}
                 )
                 self.metrics["errors"] = self.metrics["errors"][-20:]
+                
+                # Write to IncidentMemory
+                try:
+                    from src.kortana.models import IncidentMemory
+                    async for session in self._db_manager.get_session():
+                        incident = IncidentMemory(
+                            type="daemon_crash",
+                            incident_data={"error": str(exc), "traceback": "omitted_for_brevity", "metrics": self.metrics},
+                            resolved=False
+                        )
+                        session.add(incident)
+                        await session.commit()
+                except Exception as log_exc:
+                    logger.error(f"Failed to write daemon crash to IncidentMemory: {log_exc}")
 
             await asyncio.sleep(self.cycle_interval)
+
+    async def _analyze_architecture(self, session: Any) -> None:
+        try:
+            from src.kortana.models import ArchitectureMemory
+            from sqlalchemy import func
+            
+            # Run only periodically, like once every 100 cycles, or if none exists
+            count_res = await session.execute(select(func.count()).select_from(ArchitectureMemory))
+            count = count_res.scalar_one_or_none() or 0
+            
+            if self.metrics["cycles_completed"] % 100 == 0 or count == 0:
+                logger.info("Running architectural analysis...")
+                # In the future this calls an LLM summary of the repo structure.
+                # For now, we populate a baseline self-awareness structural model.
+                snapshot = {
+                    "modules": ["autonomy_daemon", "fastapi_routers", "celery_workers", "github_webhook_bridge"],
+                    "coupling": "moderate",
+                    "observation": "Vector Gamma persistent memory active. Hopkins HOP boundary maintained."
+                }
+                
+                new_arch = ArchitectureMemory(
+                    component="backend_engine",
+                    architecture_data=snapshot,
+                    confidence_score=0.95
+                )
+                session.add(new_arch)
+                await session.commit()
+                
+        except Exception as exc:
+            logger.debug(f"Architecture analysis skip: {exc}")
 
     async def _run_cycle(self) -> None:
         cycle_start = time.monotonic()
@@ -203,6 +247,7 @@ class AutonomyDaemon:
                 session, max_tasks=effective_limit, guidance=guidance
             )
             await self._process_pending_approvals(session)
+            await self._analyze_architecture(session)
 
         try:
             from dataclasses import asdict
@@ -247,7 +292,27 @@ class AutonomyDaemon:
             "workspace_bridge": workspace_status,
         }
 
+
+        # Record Vector Gamma cycle memory
+        try:
+            from src.kortana.models import AutonomyCycleMemory
+            async for session in self._db_manager.get_session():
+                cycle_mem = AutonomyCycleMemory(
+                    cycle_id=f"cycle_{int(time.time()*1000)}",
+                    start_time=datetime.fromisoformat(self.metrics["last_cycle"]["completed_at"]),
+                    end_time=datetime.utcnow(),
+                    tasks_processed=processed,
+                    approvals_processed=0, # approvals could be tracked later
+                    errors_encountered=failed,
+                    metrics=self.metrics["last_cycle"]
+                )
+                session.add(cycle_mem)
+                await session.commit()
+        except Exception as e:
+            logger.warning(f"Could not persist cycle memory: {e}")
+
         self._emit(DaemonEvent(type="cycle_end", data=self.metrics["last_cycle"]))
+
         logger.info(
             "--- Autonomy cycle complete "
             f"({elapsed}s, processed={processed}, succeeded={succeeded}, "
@@ -513,7 +578,7 @@ class AutonomyDaemon:
                     task_id=str(task.id),
                     body=body_raw,
                     reviewer=user,
-                    github_comment_id=command_comment_id,
+                    github_comment_id=command_comment_id or "",
                     github_comment_url=command_comment_url,
                 )
 
@@ -526,7 +591,7 @@ class AutonomyDaemon:
                     # Advance high water mark to the latest seen
                     await approval_service.mark_comment_seen(
                         str(task.id),
-                        github_comment_id=latest_seen_comment_id,
+                        github_comment_id=latest_seen_comment_id or "",
                         github_comment_url=latest_seen_comment_url,
                     )
                     handled_command = True
@@ -539,7 +604,7 @@ class AutonomyDaemon:
                     )
                     await approval_service.mark_comment_seen(
                         str(task.id),
-                        github_comment_id=latest_seen_comment_id,
+                        github_comment_id=latest_seen_comment_id or "",
                         github_comment_url=latest_seen_comment_url,
                     )
                     handled_command = True
@@ -548,7 +613,7 @@ class AutonomyDaemon:
             if not handled_command and latest_seen_comment_id:
                 await approval_service.mark_comment_seen(
                     str(task.id),
-                    github_comment_id=latest_seen_comment_id,
+                    github_comment_id=latest_seen_comment_id or "",
                     github_comment_url=latest_seen_comment_url,
                 )
 
@@ -908,16 +973,28 @@ class AutonomyDaemon:
                 await self._record_outcome(
                     task=task,
                     success=False,
-                    latency_seconds=time.monotonic() - task_started,
+                    latency_seconds=round(time.monotonic() - task_started, 2),
                     error=str(exc),
                 )
                 self._emit(
                     DaemonEvent(
-                        type="error",
-                        data={"task_id": str(task.id), "error": str(exc)},
+                        type="task_failed", data={"task_id": task_id, "error": str(exc)}
                     )
                 )
                 logger.exception(f"Task {task.id} failed: {exc}")
+                
+                # Write to IncidentMemory
+                try:
+                    from src.kortana.models import IncidentMemory
+                    incident = IncidentMemory(
+                        type="task_failure",
+                        incident_data={"task_id": task_id, "error": str(exc), "status": getattr(task, "status", "unknown")},
+                        resolved=False
+                    )
+                    session.add(incident)
+                    await session.commit()
+                except Exception as log_exc:
+                    logger.error(f"Failed to record IncidentMemory for task {task_id}: {log_exc}")
 
         return processed, succeeded, failed, deferred
 

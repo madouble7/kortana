@@ -466,9 +466,9 @@ async def retry_task(task_id: str) -> Dict[str, Any]:
                 raise HTTPException(status_code=404, detail="Task not found")
 
             # Reset task status for retry
-            task.status = "pending"
-            task.error_message = None
-            task.updated_at = datetime.utcnow()
+            task.status = "pending"  # type: ignore
+            task.error_message = None  # type: ignore
+            task.updated_at = datetime.utcnow()  # type: ignore
 
             return {
                 "message": f"Task {task_id} reset for retry",
@@ -606,7 +606,7 @@ async def get_approval_queue(limit: int = 20) -> Dict[str, Any]:
 
             items = []
             for approval in approvals:
-                task = tasks_by_id.get(approval.github_task_id)
+                task = tasks_by_id.get(str(approval.github_task_id))
                 task_payload = _serialize_task(task)
                 if task is None:
                     task_payload["id"] = approval.github_task_id
@@ -672,3 +672,65 @@ async def execute_dry_run_sandbox(task_payload: Dict[str, Any]) -> Dict[str, Any
         raise HTTPException(
             status_code=500, detail=f"Failed bridging task to sandbox: {e}"
         )
+
+
+
+
+
+@router.get("/memory", tags=["autonomy"])
+async def get_repository_memory(
+        limit: int = 20
+) -> dict[str, Any]:
+    """Expose Vector Gamma Self-Model (Akashic Record)"""
+    from sqlalchemy import select
+    from src.kortana.models import ArchitectureMemory, AutonomyCycleMemory, IncidentMemory
+    
+    db_manager = get_db_manager()
+    
+    arch_records: list[ArchitectureMemory] = []
+    cycle_records: list[AutonomyCycleMemory] = []
+    incid_records: list[IncidentMemory] = []
+
+    async for session in db_manager.get_session():
+        arch_stmt = select(ArchitectureMemory).order_by(ArchitectureMemory.confidence_score.desc())
+        arch_res = await session.execute(arch_stmt)
+        arch_records = list(arch_res.scalars().all())
+
+        cycle_stmt = select(AutonomyCycleMemory).order_by(AutonomyCycleMemory.start_time.desc()).limit(limit)
+        cycle_res = await session.execute(cycle_stmt)
+        cycle_records = list(cycle_res.scalars().all())
+
+        incid_stmt = select(IncidentMemory).order_by(IncidentMemory.created_at.desc()).limit(limit)
+        incid_res = await session.execute(incid_stmt)
+        incid_records = list(incid_res.scalars().all())
+
+    return {
+        "status": "success",
+        "data": {
+            "architecture_memory": [
+                {
+                    "component": r.component_name,
+                    "description": r.description,
+                    "confidence": r.confidence_score,
+                    "last_analyzed": r.last_analyzed_at.isoformat() if r.last_analyzed_at else None
+                } for r in arch_records
+            ],
+            "recent_cycles": [
+                {
+                    "cycle_id": r.cycle_id,
+                    "start_time": r.start_time.isoformat() if r.start_time else None,
+                    "tasks_processed": r.tasks_processed,
+                    "errors_encountered": r.errors_encountered,
+                    "metrics": r.metrics
+                } for r in cycle_records
+            ],
+            "recent_incidents": [
+                {
+                    "incident_type": r.incident_type,
+                    "description": r.description,
+                    "resolved": r.resolved,
+                    "created_at": r.created_at.isoformat() if r.created_at else None
+                } for r in incid_records
+            ]
+        }
+    }
