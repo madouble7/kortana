@@ -236,8 +236,8 @@ class AutonomyDaemon:
                                 logger.info(f"[Vector Alpha] Created PR for {inc.id}")
                         else:
                             # Clean up the worktree correctly if we abort
-                            import subprocess
                             import asyncio
+                            import subprocess
 
                             await asyncio.to_thread(
                                 subprocess.run,

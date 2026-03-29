@@ -173,10 +173,10 @@ async def test_validate_diff_locally(planner):
     assert not planner._validate_diff_locally("+ just some python code", ["test.py"])
 
 
-import tempfile
 import os
-import subprocess
 import shutil
+import subprocess
+import tempfile
 
 
 @pytest.fixture
