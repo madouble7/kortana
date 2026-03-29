@@ -1,6 +1,5 @@
 """Compatibility entrypoint that forwards to the canonical FastAPI app in ``src.kortana.main``."""
 
-from src.kortana.main import app, create_app
 
 if __name__ == "__main__":
     import uvicorn
