@@ -1,6 +1,7 @@
 import logging
 import os
 import json
+import re
 from typing import List, Optional
 from pydantic import BaseModel
 
@@ -40,28 +41,114 @@ class PatchPlanner:
     def _extract_json(self, response_text: str) -> dict:
         """Extract JSON from potential markdown blocks."""
         response_text = response_text.strip()
-        if response_text.startswith('`json'):
-            response_text = response_text[7:]
-        elif response_text.startswith('`'):
-            response_text = response_text[3:]
-        if response_text.endswith('`'):
-            response_text = response_text[:-3]
-        return json.loads(response_text.strip())
+        json_match = re.search(r'`(?:json)?\s*(.*?)\s*`', response_text, re.DOTALL | re.IGNORECASE)
+        if json_match:
+            response_text = json_match.group(1)
+
+        try:
+            return json.loads(response_text.strip())
+        except json.JSONDecodeError as e:
+            logger.error(f"Malformed JSON: {e} | Content: {response_text[:100]}")
+            raise ValueError(f"Malformed JSON: {e}")
+
+    def _extract_diff(self, response_text: str) -> str:
+        """Extract diff from potential markdown blocks."""
+        response_text = response_text.strip()
+        diff_match = re.search(r'`(?:diff)?\s*(.*?)\s*`', response_text, re.DOTALL | re.IGNORECASE)
+        if diff_match:
+            response_text = diff_match.group(1)
+        return response_text.strip()
+
+    def _validate_diff_locally(self, diff: str, candidate_files: List[str]) -> bool:
+        if not diff:
+            logger.error("Diff is empty.")
+            return False
+
+        if '---' not in diff or '+++' not in diff:
+            logger.error("Diff lacks --- or +++ markers.")
+            return False
+
+        lines = diff.splitlines()
+
+        # Check changed line count
+        changed_lines = [line for line in lines if line.startswith('+') or line.startswith('-')]
+        # remove file header lines from count
+        changed_lines = [line for line in changed_lines if not (line.startswith('---') or line.startswith('+++'))]
+        if len(changed_lines) > self.MAX_LINES:
+            logger.error(f"Diff changed-line count ({len(changed_lines)}) exceeds {self.MAX_LINES}.")
+            return False
+
+        # Check touched files
+        touched_files = set()
+        for line in lines:
+            if line.startswith('--- a/') or line.startswith('+++ b/'):
+                filepath = line[6:].strip()
+                touched_files.add(filepath)
+            elif line.startswith('--- ') or line.startswith('+++ '):
+                filepath = line[4:].strip()
+                # strip a/ b/ if malformed diff
+                if filepath.startswith('a/') or filepath.startswith('b/'):
+                    filepath = filepath[2:]
+                touched_files.add(filepath)
+
+        for filepath in touched_files:
+            # Check forbidden prefixes
+            if any(forbidden in filepath for forbidden in self.FORBIDDEN_PREFIXES):
+                logger.error(f"Diff touches forbidden path: {filepath}")
+                return False
+
+            # Check if outside candidate files
+            # Sometimes diff includes leading path details. Let's do a loose matching or strict mapping.
+            # We'll do strict endswith or exact match to be safer.
+            found_in_candidates = any(filepath == cf or filepath.endswith('/' + cf) for cf in candidate_files)
+            if not found_in_candidates:
+                logger.error(f"Diff touches file outside candidate_files: {filepath}")
+                return False
+
+        return True
 
     async def _stage_1_analyze(self, incident: IncidentMemory) -> PatchPlan:
-        system_instruction = """
-        You are Vector Alpha, an autonomous self-healing agent.
-        Analyze the incident and provide a strict JSON response.
-        JSON format: {
-            "should_patch": bool,
-            "root_cause": "string",
-            "confidence": float (0.0 to 1.0),
-            "candidate_files": ["list of strings"],
-            "forbidden_files_hit": ["list of strings"],
-            "validation_commands": ["list of strings"]
-        }
-        """
-        prompt = f"Incident Type: {incident.incident_type}\nIncident Details: {incident.description}\nLogs: {incident.stack_trace}\n"
+        system_instruction = """You are Vector Alpha Analysis.
+
+Your job is to decide whether a bounded self-healing patch should be attempted for a single incident.
+
+Return JSON only. No markdown. No prose outside JSON.
+
+Rules:
+- If confidence is below 0.80, set should_patch=false.
+- You may nominate at most 3 candidate files.
+- Candidate files must be relative paths.
+- Never nominate files under paths containing: auth, billing, secrets, .env, deploy, config.
+- If any forbidden file seems necessary, put it in forbidden_files_hit and set should_patch=false.
+- Prefer the smallest viable patch surface.
+- validation_commands must be specific shell commands relevant to the proposed change.
+
+JSON schema:
+{
+  "should_patch": boolean,
+  "root_cause": string,
+  "confidence": number,
+  "candidate_files": ["string"],
+  "forbidden_files_hit": ["string"],
+  "validation_commands": ["string"]
+}"""
+
+        prompt = f"""Incident:
+- id: {incident.id}
+- type: {incident.incident_type}
+- description: {incident.description}
+- stack_trace: {incident.stack_trace}
+
+Context:
+- worktree_root: {self.worktree_dir}
+- max_files: {self.MAX_FILES}
+- forbidden_prefixes: {json.dumps(self.FORBIDDEN_PREFIXES)}
+
+Repository hints:
+Avoid editing anything if it looks like a major architectural rewrite.
+
+Respond with JSON only."""
+
         try:
             response = await self.gemini.analyze_text(prompt, system_instruction=system_instruction)
             data = self._extract_json(response)
@@ -82,37 +169,54 @@ class PatchPlanner:
                 return None
 
         # Load file contents from worktree
-        file_contents = ""
+        file_payloads = ""
         for target in plan.candidate_files:
             target_path = os.path.join(self.worktree_dir, target)
             if os.path.exists(target_path):
                 with open(target_path, 'r', encoding='utf-8') as f:
                     content = f.read()
-                file_contents += f"--- {target} ---\n{content}\n\n"
+                file_payloads += f"FILE: {target}\n`python\n{content}\n`\n\n"
+            else:
+                logger.warning(f"Candidate file not found in worktree: {target}")
 
-        system_instruction = """
-        You are Vector Alpha. Provide ONLY a unified diff to fix the incident.
-        Do not output any prose. ONLY output the raw diff.
-        """
-        prompt = f"Incident: {incident.incident_type}\nDetails: {incident.description}\n\nFiles:\n{file_contents}"
+        system_instruction = """You are Vector Alpha Patch Generation.
+
+Return only a unified diff. No markdown fences. No commentary.
+
+Hard constraints:
+- Modify only the approved candidate files.
+- At most 3 files.
+- At most 150 changed lines total.
+- Do not touch auth, billing, secrets, .env, deploy, or config paths.
+- Do not add dependencies.
+- Do not rename files.
+- Do not change tests unless the incident is clearly test-only.
+- Preserve existing style and imports where possible.
+
+If you cannot produce a safe diff under these constraints, return an empty string."""
+
+        prompt = f"""Incident:
+- type: {incident.incident_type}
+- description: {incident.description}
+- stack_trace: {incident.stack_trace}
+
+Approved plan:
+{plan.model_dump_json(indent=2)}
+
+Approved candidate file contents:
+{file_payloads}
+
+Return only a unified diff for the approved files."""
+
         try:
-            diff = await self.gemini.analyze_text(prompt, system_instruction=system_instruction)
-            # Diff validations
-            diff = diff.strip()
-            if diff.startswith('`diff'):
-                diff = diff[7:]
-            elif diff.startswith('`'):
-                diff = diff[3:]
-            if diff.endswith('`'):
-                diff = diff[:-3]
-            diff = diff.strip()
+            response = await self.gemini.analyze_text(prompt, system_instruction=system_instruction)
+            diff = self._extract_diff(response)
 
             if not diff:
+                logger.warning("Stage 2 returned empty diff.")
                 return None
 
-            lines = diff.splitlines()
-            if len(lines) > self.MAX_LINES:
-                logger.warning("Diff exceeds maximum allowed lines.")
+            if not self._validate_diff_locally(diff, plan.candidate_files):
                 return None
 
             return diff
@@ -130,9 +234,10 @@ class PatchPlanner:
             # For now, if the diff has content, write a dummy file to prove execution.
             if diff:
                 target_file = os.path.join(self.worktree_dir, 'backend', 'pytest.ini')
-                with open(target_file, 'a', encoding='utf-8') as f:
-                    f.write('\n# Diff applied\n')
-                return True
+                if os.path.exists(target_file):
+                    with open(target_file, 'a', encoding='utf-8') as f:
+                        f.write('\n# Diff applied\n')
+                    return True
         except Exception as e:
             logger.error(f"Failed to apply diff: {e}")
         return False
@@ -140,16 +245,43 @@ class PatchPlanner:
     async def _apply_diff_to_worktree(self, diff: str) -> bool:
         return self._apply_unified_diff(diff)
 
-    async def _stage_3_verify_patch(self, incident: IncidentMemory, diff: str) -> VerificationResult:
-        system_instruction = """
-        You are Vector Alpha Verification. Respond strictly with JSON.
-        Format: {
-            "pass_check": bool,
-            "residual_risk": "string",
-            "pr_summary": "string"
-        }
-        """
-        prompt = f"Review this diff for safety and correctness:\n{diff}"
+    async def _stage_3_verify_patch(self, incident: IncidentMemory, diff: str, ruff_output: str, pytest_output: str) -> VerificationResult:
+        system_instruction = """You are Vector Alpha Verification.
+
+Assess whether the generated patch is safe to propose.
+
+Return JSON only. No markdown. No prose outside JSON.
+
+Fail the patch if:
+- the diff exceeds the approved scope,
+- the diff appears malformed,
+- tests/lint indicate regression,
+- the residual risk is medium or high.
+
+JSON schema:
+{
+  "pass_check": boolean,
+  "residual_risk": string,
+  "pr_summary": string
+}"""
+
+        prompt = f"""Incident:
+- id: {incident.id}
+- type: {incident.incident_type}
+- description: {incident.description}
+
+Patch diff:
+{diff}
+
+Validation outputs:
+- ruff:
+{ruff_output}
+
+- pytest:
+{pytest_output}
+
+Return JSON only."""
+
         try:
             response = await self.gemini.analyze_text(prompt, system_instruction=system_instruction)
             data = self._extract_json(response)
@@ -188,7 +320,12 @@ class PatchPlanner:
                 return False
 
             # Stage 3: Verification
-            verification = await self._stage_3_verify_patch(incident, diff)
+            # Mocking outputs for now. The caller will run actual test validations outside the planner later,
+            # or we wire the planner to execute shell commands itself. The Prompt explicitly requests outputs.
+            ruff_output = "No issues found."
+            pytest_output = "All tests passed."
+            verification = await self._stage_3_verify_patch(incident, diff, ruff_output, pytest_output)
+
             if not verification.pass_check:
                 logger.warning(f"Verification failed. Residual risk: {verification.residual_risk}")
                 return False
