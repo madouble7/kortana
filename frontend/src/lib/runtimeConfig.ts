@@ -46,7 +46,7 @@ export const getApiBaseUrl = () => {
     return import.meta.env.VITE_API_URL;
   }
 
-  // When running locally under Vite dev proxy, prefer same-origin 
+  // When running locally under Vite dev proxy, prefer same-origin
   // so we avoid CORS. Vite proxies /api -> :8000 automatically.
   if (typeof window !== 'undefined' && window.location.port === '5173') {
     return '';
