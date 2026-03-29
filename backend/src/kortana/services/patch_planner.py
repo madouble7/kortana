@@ -1,9 +1,10 @@
-import logging
-import os
 import asyncio
 import json
+import logging
+import os
 import re
 from typing import List, Optional
+
 from pydantic import BaseModel
 
 from src.kortana.models import IncidentMemory
@@ -261,7 +262,7 @@ Return only a unified diff for the approved files."""
             if process.returncode != 0:
                 logger.error(f"git apply failed: {stderr.decode()}")
                 return False
-                
+
             return True
         except Exception as e:
             logger.error(f"Failed to apply diff: {e}")
@@ -276,7 +277,9 @@ Return only a unified diff for the approved files."""
     async def _apply_diff_to_worktree(self, diff: str) -> bool:
         return await self._apply_unified_diff(diff)
 
-    async def _stage_3_verify_patch(self, incident: IncidentMemory, diff: str, ruff_output: str, pytest_output: str) -> VerificationResult:
+    async def _stage_3_verify_patch(
+        self, incident: IncidentMemory, diff: str, ruff_output: str, pytest_output: str
+    ) -> VerificationResult:
         system_instruction = """You are Vector Alpha Verification.
 
 Assess whether the generated patch is safe to propose.
@@ -314,28 +317,40 @@ Validation outputs:
 Return JSON only."""
 
         try:
-            response = await self.gemini.analyze_text(prompt, system_instruction=system_instruction)
+            response = await self.gemini.analyze_text(
+                prompt, system_instruction=system_instruction
+            )
             data = self._extract_json(response)
             return VerificationResult(**data)
         except Exception as e:
             logger.error(f"Stage 3 parsing failed: {e}")
-            return VerificationResult(pass_check=False, residual_risk=f"Failed to parse verify: {e}", pr_summary="")
+            return VerificationResult(
+                pass_check=False,
+                residual_risk=f"Failed to parse verify: {e}",
+                pr_summary="",
+            )
 
     async def apply_healing_patch(self, incident: IncidentMemory) -> bool:
         """
         Execute the 3-stage chain: Analysis, Patch, Verification.
         """
-        logger.info(f"PatchPlanner: Analyzing incident {incident.id} ({incident.incident_type})")
+        logger.info(
+            f"PatchPlanner: Analyzing incident {incident.id} ({incident.incident_type})"
+        )
 
         try:
             # Stage 1: Analysis
             plan = await self._stage_1_analyze(incident)
             if not plan.should_patch or plan.confidence < 0.8:
-                logger.warning(f"Analysis rejected patch. Confidence: {plan.confidence}")
+                logger.warning(
+                    f"Analysis rejected patch. Confidence: {plan.confidence}"
+                )
                 return False
 
             if plan.forbidden_files_hit:
-                logger.warning(f"Plan rejected: Hit forbidden files: {plan.forbidden_files_hit}")
+                logger.warning(
+                    f"Plan rejected: Hit forbidden files: {plan.forbidden_files_hit}"
+                )
                 return False
 
             # Stage 2: Patch
@@ -358,17 +373,25 @@ Return JSON only."""
                         cmd,
                         cwd=self.worktree_dir,
                         stdout=asyncio.subprocess.PIPE,
-                        stderr=asyncio.subprocess.STDOUT
+                        stderr=asyncio.subprocess.STDOUT,
                     )
                     stdout, _ = await process.communicate()
-                    validation_outputs[cmd] = stdout.decode('utf-8')[:2000]  # Cap length
+                    validation_outputs[cmd] = stdout.decode("utf-8")[
+                        :2000
+                    ]  # Cap length
                 except Exception as e:
                     validation_outputs[cmd] = f"Command failed to execute: {e}"
 
             # We format outputs for the prompt. If specific outputs weren't run, we just note it.
-            ruff_output = next((out for cmd, out in validation_outputs.items() if 'ruff' in cmd), "Ruff not run in plan.")
-            pytest_output = next((out for cmd, out in validation_outputs.items() if 'pytest' in cmd), "Pytest not run in plan.")
-            
+            ruff_output = next(
+                (out for cmd, out in validation_outputs.items() if "ruff" in cmd),
+                "Ruff not run in plan.",
+            )
+            pytest_output = next(
+                (out for cmd, out in validation_outputs.items() if "pytest" in cmd),
+                "Pytest not run in plan.",
+            )
+
             # Combine any other commands into pytest_output just in case
             other_outputs = "\n".join(f"[{cmd}]\n{out}" for cmd, out in validation_outputs.items() if 'ruff' not in cmd and 'pytest' not in cmd)
             if other_outputs:
