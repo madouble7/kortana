@@ -264,10 +264,18 @@ class TaskApprovalService:
             approval.reviewer = (
                 "autonomous" if decision.mode == "auto" else "self-aware"
             )
+            approval.github_comment_id = None
+            approval.github_comment_url = None
+            approval.last_processed_github_comment_id = None
+            approval.last_processed_github_comment_url = None
             approval.resolved_at = datetime.utcnow()
         else:
             approval.status = "pending"
             approval.reviewer = None
+            approval.github_comment_id = None
+            approval.github_comment_url = None
+            approval.last_processed_github_comment_id = None
+            approval.last_processed_github_comment_url = None
             approval.resolved_at = None
             task.status = "waiting_for_approval"
 
@@ -281,6 +289,10 @@ class TaskApprovalService:
         approved: bool,
         reviewer: str,
         notes: str | None = None,
+        github_comment_id: str | None = None,
+        github_comment_url: str | None = None,
+        last_processed_github_comment_id: str | None = None,
+        last_processed_github_comment_url: str | None = None,
     ) -> GitHubTask:
         """Resolve a queued approval and transition the task."""
         task = await self._get_task(task_id)
@@ -302,6 +314,14 @@ class TaskApprovalService:
         approval.status = "approved" if approved else "rejected"
         approval.reviewer = reviewer
         approval.notes = notes
+        approval.github_comment_id = github_comment_id
+        approval.github_comment_url = github_comment_url
+        approval.last_processed_github_comment_id = (
+            last_processed_github_comment_id or github_comment_id
+        )
+        approval.last_processed_github_comment_url = (
+            last_processed_github_comment_url or github_comment_url
+        )
         approval.resolved_at = datetime.utcnow()
         approval.updated_at = datetime.utcnow()
 
@@ -312,6 +332,24 @@ class TaskApprovalService:
             task.status = "cancelled"
         await self.session.flush()
         return task
+
+    async def mark_comment_seen(
+        self,
+        task_id: str,
+        *,
+        github_comment_id: str,
+        github_comment_url: str | None = None,
+    ) -> TaskApproval | None:
+        """Advance the last processed GitHub comment for an open approval."""
+        approval = await self._get_open_approval(task_id)
+        if approval is None:
+            return None
+
+        approval.last_processed_github_comment_id = github_comment_id
+        approval.last_processed_github_comment_url = github_comment_url
+        approval.updated_at = datetime.utcnow()
+        await self.session.flush()
+        return approval
 
     async def list_pending(self, limit: int = 20) -> list[TaskApproval]:
         stmt = (
@@ -333,6 +371,10 @@ class TaskApprovalService:
             "approval_mode": approval.approval_mode,
             "review_required": approval.review_required,
             "reviewer": approval.reviewer,
+            "github_comment_id": approval.github_comment_id,
+            "github_comment_url": approval.github_comment_url,
+            "last_processed_github_comment_id": approval.last_processed_github_comment_id,
+            "last_processed_github_comment_url": approval.last_processed_github_comment_url,
             "rationale": approval.rationale,
             "decision_factors": decision_factors,
             "validation_summary": decision_factors.get("validation_summary") or {},

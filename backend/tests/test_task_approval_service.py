@@ -310,11 +310,87 @@ async def test_approve_task_reactivates_planning_complete():
         approved=True,
         reviewer="operator",
         notes="ship it",
+        github_comment_id="654321",
+        github_comment_url="https://github.com/madouble7/kortana/issues/104#issuecomment-654321",
+        last_processed_github_comment_id="654999",
+        last_processed_github_comment_url="https://github.com/madouble7/kortana/issues/104#issuecomment-654999",
     )
 
     assert result.status == "planning_complete"
     assert result.classification == "auto"
     assert approval_row.status == "approved"
+    assert approval_row.reviewer == "operator"
+    assert approval_row.github_comment_id == "654321"
+    assert (
+        approval_row.github_comment_url
+        == "https://github.com/madouble7/kortana/issues/104#issuecomment-654321"
+    )
+    assert approval_row.last_processed_github_comment_id == "654999"
+    assert (
+        approval_row.last_processed_github_comment_url
+        == "https://github.com/madouble7/kortana/issues/104#issuecomment-654999"
+    )
+
+
+@pytest.mark.asyncio
+async def test_mark_comment_seen_advances_high_water_mark():
+    approval_row = MagicMock(
+        status="pending",
+        last_processed_github_comment_id=None,
+        last_processed_github_comment_url=None,
+    )
+    session = AsyncMock()
+    session.execute = AsyncMock(
+        return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=approval_row))
+    )
+    session.flush = AsyncMock()
+    service = TaskApprovalService(session)
+
+    result = await service.mark_comment_seen(
+        "task-review",
+        github_comment_id="700001",
+        github_comment_url="https://github.com/madouble7/kortana/issues/104#issuecomment-700001",
+    )
+
+    assert result is approval_row
+    assert approval_row.last_processed_github_comment_id == "700001"
+    assert (
+        approval_row.last_processed_github_comment_url
+        == "https://github.com/madouble7/kortana/issues/104#issuecomment-700001"
+    )
+
+
+def test_serialize_includes_comment_provenance():
+    approval = MagicMock(
+        id="approval-1",
+        github_task_id="task-1",
+        status="approved",
+        approval_mode="manual",
+        review_required=True,
+        reviewer="human",
+        github_comment_id="123",
+        github_comment_url="https://github.com/madouble7/kortana/issues/1#issuecomment-123",
+        last_processed_github_comment_id="125",
+        last_processed_github_comment_url="https://github.com/madouble7/kortana/issues/1#issuecomment-125",
+        rationale="Operator approved via GitHub.",
+        decision_factors={"validation_summary": {}, "shadow_summary": {}},
+        risk_score=3,
+        risk_level="medium",
+        confidence=0.82,
+        notes="/approve",
+        created_at=None,
+        updated_at=None,
+        resolved_at=None,
+    )
+
+    payload = TaskApprovalService.serialize(approval)
+
+    assert payload["github_comment_id"] == "123"
+    assert (
+        payload["github_comment_url"]
+        == "https://github.com/madouble7/kortana/issues/1#issuecomment-123"
+    )
+    assert payload["last_processed_github_comment_id"] == "125"
 
 @pytest.mark.asyncio
 async def test_shadow_advisory_success_increases_confidence(monkeypatch: pytest.MonkeyPatch):
