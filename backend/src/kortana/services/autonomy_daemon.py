@@ -202,9 +202,7 @@ class AutonomyDaemon:
             processed, succeeded, failed, deferred = await self._process_tasks(
                 session, max_tasks=effective_limit, guidance=guidance
             )
-            await self._manifest_self_healing(
-                session, candidate_task_ids=self._cycle_failed_task_ids
-            )
+              await self._process_pending_approvals(session)
 
         try:
             from dataclasses import asdict
@@ -417,6 +415,61 @@ class AutonomyDaemon:
         except Exception as exc:
             logger.error(f"Issue discovery failed: {exc}")
         return discovered
+
+    async def _process_pending_approvals(self, session: AsyncSession) -> None:
+        """Poll GitHub comments for tasks awaiting operator approval."""
+        from src.kortana.services.github_autonomy_service import GitHubAutonomyService
+        from src.kortana.services.task_approval_service import TaskApprovalService
+        from sqlalchemy import select
+
+        approval_service = TaskApprovalService(session)
+        github_service = GitHubAutonomyService(session)
+
+        # Check a reasonable window of pending approvals
+        pending_approvals = await approval_service.list_pending(limit=20)
+        task_ids = [str(a.github_task_id) for a in pending_approvals]
+        if not task_ids:
+            return
+
+        stmt = select(GitHubTask).where(GitHubTask.id.in_(task_ids))
+        result = await session.execute(stmt)
+        tasks = {str(t.id): t for t in result.scalars().all()}
+
+        for approval in pending_approvals:
+            task = tasks.get(str(approval.github_task_id))
+            if not task or not task.github_repo or task.github_issue_number < 1:
+                continue
+
+            comments = await github_service.fetch_issue_comments(task)
+            if not comments:
+                continue
+
+            # Process newest comments first to find the latest explicit command
+            for comment in reversed(comments):
+                body = (comment.get("body") or "").strip().lower()
+                user = comment.get("user", {}).get("login", "operator")
+
+                # Ignore bot reflections 
+                if "bot" in user.lower() or "kortana" in user.lower() or "actions-user" in user.lower():
+                    continue
+
+                if body.startswith("/approve") or "/approve" in body.split():
+                    logger.info(f"Task {task.id} approved via GitHub comment by {user}")
+                    try:
+                        await approval_service.approve_task(str(task.id), approved=True, reviewer=user, notes=body)
+                        await github_service.post_issue_comment(task, f"✅ @{user} Phase 4 explicit approval confirmed. Resuming autonomous execution.")
+                    except ValueError as exc:
+                        logger.debug(f"Task approval skip: {exc}")
+                    break
+
+                elif body.startswith("/reject") or "/reject" in body.split():
+                    logger.info(f"Task {task.id} rejected via GitHub comment by {user}")
+                    try:
+                        await approval_service.approve_task(str(task.id), approved=False, reviewer=user, notes=body)
+                        await github_service.post_issue_comment(task, f"❌ @{user} Phase 4 explicit rejection confirmed. Halting context map and dropping task.")
+                    except ValueError as exc:
+                        logger.debug(f"Task rejection skip: {exc}")
+                    break
 
     async def _manifest_self_healing(
         self,
