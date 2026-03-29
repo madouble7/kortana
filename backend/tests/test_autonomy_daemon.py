@@ -1135,12 +1135,14 @@ class TestAutonomyDaemon:
 async def test_daemon_crash_writes_to_incident_memory():
     daemon = build_daemon()
     from src.kortana.models import IncidentMemory
-    
+
     mock_session = AsyncMock()
     # Provide a real add method memory list
     calls = []
+
     def mock_add(obj):
         calls.append(obj)
+
     mock_session.add.side_effect = mock_add
 
     # Create an async generator for get_session
@@ -1150,21 +1152,22 @@ async def test_daemon_crash_writes_to_incident_memory():
     daemon._db_manager.get_session = mock_get_session
 
     sleep_call_count = 0
+
     async def mock_sleep(*args, **kwargs):
         nonlocal sleep_call_count
         sleep_call_count += 1
         if sleep_call_count >= 2:
             daemon._running = False
-            
+
     with patch("src.kortana.services.autonomy_daemon.asyncio.sleep", side_effect=mock_sleep):
         # We need a patch on self_regulate that raises Exception
         async def mock_regulate(*args, **kwargs):
             raise Exception("Fatal crash in daemon memory")
-            
+
         with patch.object(daemon, "_self_regulate", side_effect=mock_regulate):
             daemon._running = True
             await daemon._loop()
-            
+
     # Check if an IncidentMemory was added
     mock_session.add.assert_called()
     incident = mock_session.add.call_args[0][0]
@@ -1183,12 +1186,12 @@ async def test_task_failure_writes_to_incident_memory(mock_settings):
     mock_settings.return_value = mock_sett
 
     daemon = build_daemon()
-    from src.kortana.models import IncidentMemory, GitHubTask
-    
+    from src.kortana.models import GitHubTask, IncidentMemory
+
     mock_session = AsyncMock()
-    
+
     mock_task = GitHubTask(id="task_fail_1", title="test", status="planning_complete")
-    
+
     class MockResult:
         def scalars(self):
             class MockScalars:
@@ -1204,11 +1207,11 @@ async def test_task_failure_writes_to_incident_memory(mock_settings):
 
         async def mock_plan(t, *args, **kwargs):
             t.status = "planning_complete"
-        
+
         mock_service = AsyncMock()
         mock_service.plan_task = mock_plan
         mock_service.execute_task = mock_execute
-        
+
         # We patch github_autonomy_service.GitHubAutonomyService which is used inside _process_tasks
         with patch("src.kortana.services.github_autonomy_service.GitHubAutonomyService", return_value=mock_service):
             with patch("src.kortana.services.autonomy_daemon.TaskApprovalService") as mock_app_class:
@@ -1223,9 +1226,9 @@ async def test_task_failure_writes_to_incident_memory(mock_settings):
                 mock_app_class.return_value = mock_app_service
 
                 processed, succeeded, failed, deferred = await daemon._process_tasks(mock_session, max_tasks=1)
-                
+
                 assert failed == 1
-                
+
                 # Check incident was written
                 mock_session.add.assert_called()
                 added_incidents = [call.args[0] for call in mock_session.add.call_args_list if isinstance(call.args[0], IncidentMemory)]
@@ -1237,7 +1240,8 @@ async def test_task_failure_writes_to_incident_memory(mock_settings):
 
 @pytest.mark.asyncio
 async def test_heal_vectors_invokes_vector_alpha():
-    from unittest.mock import patch, MagicMock, AsyncMock
+    from unittest.mock import AsyncMock, MagicMock, patch
+
     from src.kortana.models import IncidentMemory
     from src.kortana.services.autonomy_daemon import AutonomyDaemon
 
@@ -1247,14 +1251,14 @@ async def test_heal_vectors_invokes_vector_alpha():
         resolved=False,
         fix_status=None
     )
-    
+
     daemon = AutonomyDaemon()
 
     mock_session = AsyncMock()
     mock_execute = MagicMock()
     mock_execute.scalars.return_value.all.return_value = [incident]
     mock_session.execute.return_value = mock_execute
-    
+
     with patch('src.kortana.services.vector_alpha_branch_service.VectorAlphaBranchService') as mock_alpha, \
          patch('src.kortana.services.github_autonomy_service.GitHubAutonomyService'), \
          patch('src.kortana.services.patch_planner.PatchPlanner') as mock_planner:
@@ -1264,9 +1268,9 @@ async def test_heal_vectors_invokes_vector_alpha():
         mock_planner.return_value.apply_healing_patch = AsyncMock(return_value=True)
         mock_alpha_inst.create_healing_branch = AsyncMock(return_value="auto-fix/test")
         mock_alpha_inst.validate_and_propose = AsyncMock(return_value=True)
-        
+
         await daemon._heal_vectors(mock_session)
-        
+
         mock_alpha_inst.evaluate_incident.assert_called_once_with(incident)
         mock_alpha_inst.create_healing_branch.assert_called_once_with(incident)
         mock_alpha_inst.validate_and_propose.assert_called_once()
