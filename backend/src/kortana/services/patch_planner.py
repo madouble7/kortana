@@ -1,5 +1,6 @@
 import logging
 import os
+import asyncio
 import json
 import re
 from typing import List, Optional
@@ -41,7 +42,7 @@ class PatchPlanner:
     def _extract_json(self, response_text: str) -> dict:
         """Extract JSON from potential markdown blocks."""
         response_text = response_text.strip()
-        json_match = re.search(r'`(?:json)?\s*(.*?)\s*`', response_text, re.DOTALL | re.IGNORECASE)
+        json_match = re.search(r'```(?:json)?\s*(.*?)\s*```', response_text, re.DOTALL | re.IGNORECASE)
         if json_match:
             response_text = json_match.group(1)
 
@@ -54,7 +55,7 @@ class PatchPlanner:
     def _extract_diff(self, response_text: str) -> str:
         """Extract diff from potential markdown blocks."""
         response_text = response_text.strip()
-        diff_match = re.search(r'`(?:diff)?\s*(.*?)\s*`', response_text, re.DOTALL | re.IGNORECASE)
+        diff_match = re.search(r'```(?:diff)?\s*(.*?)\s*```', response_text, re.DOTALL | re.IGNORECASE)
         if diff_match:
             response_text = diff_match.group(1)
         return response_text.strip()
@@ -175,7 +176,7 @@ Respond with JSON only."""
             if os.path.exists(target_path):
                 with open(target_path, 'r', encoding='utf-8') as f:
                     content = f.read()
-                file_payloads += f"FILE: {target}\n`python\n{content}\n`\n\n"
+                file_payloads += f"FILE: {target}\n```python\n{content}\n```\n\n"
             else:
                 logger.warning(f"Candidate file not found in worktree: {target}")
 
@@ -224,26 +225,56 @@ Return only a unified diff for the approved files."""
             logger.error(f"Stage 2 diff generation failed: {e}")
             return None
 
-    def _apply_unified_diff(self, diff: str) -> bool:
+    async def _apply_unified_diff(self, diff: str) -> bool:
         """
-        Applies a unified diff inside the worktree safely.
-        Implementation stub for now. Real implementation needs parsing diff and patching.
+        Applies a unified diff inside the worktree using git apply --check and git apply.
         """
+        if not diff:
+            return False
+
+        # Write diff to a temporary file
+        temp_patch_path = os.path.join(self.worktree_dir, "healing.patch")
         try:
-            # We'll use a local library or git apply wrapper in the future.
-            # For now, if the diff has content, write a dummy file to prove execution.
-            if diff:
-                target_file = os.path.join(self.worktree_dir, 'backend', 'pytest.ini')
-                if os.path.exists(target_file):
-                    with open(target_file, 'a', encoding='utf-8') as f:
-                        f.write('\n# Diff applied\n')
-                    return True
+            with open(temp_patch_path, 'w', encoding='utf-8') as f:
+                f.write(diff + '\n')
+
+            # Run git apply --check
+            process = await asyncio.create_subprocess_exec(
+                "git", "apply", "--check", "healing.patch",
+                cwd=self.worktree_dir,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await process.communicate()
+            if process.returncode != 0:
+                logger.error(f"git apply --check failed: {stderr.decode()}")
+                return False
+
+            # Run git apply
+            process = await asyncio.create_subprocess_exec(
+                "git", "apply", "healing.patch",
+                cwd=self.worktree_dir,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await process.communicate()
+            if process.returncode != 0:
+                logger.error(f"git apply failed: {stderr.decode()}")
+                return False
+                
+            return True
         except Exception as e:
             logger.error(f"Failed to apply diff: {e}")
-        return False
+            return False
+        finally:
+            if os.path.exists(temp_patch_path):
+                try:
+                    os.remove(temp_patch_path)
+                except Exception:
+                    pass
 
     async def _apply_diff_to_worktree(self, diff: str) -> bool:
-        return self._apply_unified_diff(diff)
+        return await self._apply_unified_diff(diff)
 
     async def _stage_3_verify_patch(self, incident: IncidentMemory, diff: str, ruff_output: str, pytest_output: str) -> VerificationResult:
         system_instruction = """You are Vector Alpha Verification.
@@ -319,11 +350,30 @@ Return JSON only."""
                 logger.error("Failed to apply patch diff to isolated worktree.")
                 return False
 
-            # Stage 3: Verification
-            # Mocking outputs for now. The caller will run actual test validations outside the planner later,
-            # or we wire the planner to execute shell commands itself. The Prompt explicitly requests outputs.
-            ruff_output = "No issues found."
-            pytest_output = "All tests passed."
+            # Stage 3: Verification - Execute validations
+            validation_outputs = {}
+            for cmd in plan.validation_commands:
+                try:
+                    process = await asyncio.create_subprocess_shell(
+                        cmd,
+                        cwd=self.worktree_dir,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.STDOUT
+                    )
+                    stdout, _ = await process.communicate()
+                    validation_outputs[cmd] = stdout.decode('utf-8')[:2000]  # Cap length
+                except Exception as e:
+                    validation_outputs[cmd] = f"Command failed to execute: {e}"
+
+            # We format outputs for the prompt. If specific outputs weren't run, we just note it.
+            ruff_output = next((out for cmd, out in validation_outputs.items() if 'ruff' in cmd), "Ruff not run in plan.")
+            pytest_output = next((out for cmd, out in validation_outputs.items() if 'pytest' in cmd), "Pytest not run in plan.")
+            
+            # Combine any other commands into pytest_output just in case
+            other_outputs = "\n".join(f"[{cmd}]\n{out}" for cmd, out in validation_outputs.items() if 'ruff' not in cmd and 'pytest' not in cmd)
+            if other_outputs:
+                pytest_output += f"\n\nOther outputs:\n{other_outputs}"
+
             verification = await self._stage_3_verify_patch(incident, diff, ruff_output, pytest_output)
 
             if not verification.pass_check:
