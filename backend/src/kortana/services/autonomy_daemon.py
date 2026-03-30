@@ -30,8 +30,8 @@ from src.kortana.database import get_db_manager
 from src.kortana.logger import get_logger
 from src.kortana.models import GitHubTask
 from src.kortana.services.autonomy_controller import get_autonomy_controller
-from src.kortana.services.capability_budget import ActionClass, get_capability_budget
 from src.kortana.services.autonomy_loop_bridge_service import AutonomyLoopBridgeService
+from src.kortana.services.capability_budget import ActionClass, get_capability_budget
 from src.kortana.services.local_backlog_service import LocalBacklogService
 from src.kortana.services.operator_directive_service import (
     DirectiveSummary,
@@ -229,9 +229,7 @@ class AutonomyDaemon:
                 if not alpha.evaluate_incident(inc):
                     continue
 
-                logger.info(
-                    f"[Vector Alpha] Attempting to heal {inc.incident_type}"
-                )
+                logger.info(f"[Vector Alpha] Attempting to heal {inc.incident_type}")
 
                 # --- PATCH gate ---
                 if not budget.is_permitted(
@@ -305,9 +303,7 @@ class AutonomyDaemon:
                                     f"[Vector Alpha] Dry run completed for {inc.id}"
                                 )
                             else:
-                                logger.info(
-                                    f"[Vector Alpha] Created PR for {inc.id}"
-                                )
+                                logger.info(f"[Vector Alpha] Created PR for {inc.id}")
                     else:
                         # Clean up the worktree correctly if we abort
                         import asyncio
