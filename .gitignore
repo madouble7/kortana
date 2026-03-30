@@ -123,6 +123,12 @@ celerybeat.pid
 test_output.txt
 test_results/
 
+# Nested reference repo (not part of main working tree)
+KOR-TANA/
+
+# Scratch files
+out.txt
+
 # SageMath parsed files
 *.sage.py
 

@@ -30,6 +30,7 @@ from src.kortana.database import get_db_manager
 from src.kortana.logger import get_logger
 from src.kortana.models import GitHubTask
 from src.kortana.services.autonomy_controller import get_autonomy_controller
+from src.kortana.services.capability_budget import ActionClass, get_capability_budget
 from src.kortana.services.autonomy_loop_bridge_service import AutonomyLoopBridgeService
 from src.kortana.services.local_backlog_service import LocalBacklogService
 from src.kortana.services.operator_directive_service import (
@@ -199,11 +200,17 @@ class AutonomyDaemon:
         """Vector Alpha Branch-Scoped Self Healing"""
         from sqlalchemy import select
 
-        from src.kortana.models import IncidentMemory
+        from src.kortana.models import AutonomyBenchmark, IncidentMemory
         from src.kortana.services.github_autonomy_service import GitHubAutonomyService
         from src.kortana.services.vector_alpha_branch_service import (
             VectorAlphaBranchService,
         )
+
+        budget = get_capability_budget()
+        autonomy_index: int = int(
+            (self.metrics.get("controller_reflection") or {}).get("autonomy_index") or 0
+        )
+        system_state: str = str(self.metrics.get("system_state", "nominal"))
 
         try:
             res = await session.execute(
@@ -215,57 +222,123 @@ class AutonomyDaemon:
             incidents = res.scalars().all()
 
             for inc in incidents:
+                heal_start = time.monotonic()
+                patch_success = False
+
                 alpha = VectorAlphaBranchService(session)
-                if alpha.evaluate_incident(inc):
-                    logger.info(
-                        f"[Vector Alpha] Attempting to heal {inc.incident_type}"
+                if not alpha.evaluate_incident(inc):
+                    continue
+
+                logger.info(
+                    f"[Vector Alpha] Attempting to heal {inc.incident_type}"
+                )
+
+                # --- PATCH gate ---
+                if not budget.is_permitted(
+                    ActionClass.PATCH,
+                    autonomy_index=autonomy_index,
+                    system_state=system_state,
+                    control_mode=self.control_mode,
+                    live_execution_enabled=self.live_execution_enabled,
+                ):
+                    logger.warning(
+                        "[Vector Alpha] PATCH denied by CapabilityBudget for %s "
+                        "(autonomy_index=%d, mode=%s, state=%s)",
+                        inc.incident_type,
+                        autonomy_index,
+                        self.control_mode,
+                        system_state,
                     )
-                    branch = await alpha.create_healing_branch(inc)
-                    if branch:
-                        from src.kortana.services.patch_planner import PatchPlanner
+                    benchmark = AutonomyBenchmark(
+                        suite_name="live_vector_alpha",
+                        incident_type=str(inc.incident_type),
+                        detected=True,
+                        patch_succeeded=False,
+                        validation_succeeded=False,
+                        time_to_recovery_seconds=time.monotonic() - heal_start,
+                        autonomy_index_at_run=autonomy_index,
+                        notes="PATCH denied by CapabilityBudget",
+                    )
+                    session.add(benchmark)
+                    await session.commit()
+                    continue
 
-                        planner = PatchPlanner(alpha.worktree_dir, db_session=session)
-                        patch_success = await planner.apply_healing_patch(inc)
+                branch = await alpha.create_healing_branch(inc)
+                if branch:
+                    from src.kortana.services.patch_planner import PatchPlanner
 
-                        # Persist any evidence / resolution_strategy updates from the planner
-                        session.add(inc)
-                        await session.commit()
+                    planner = PatchPlanner(alpha.worktree_dir, db_session=session)
+                    patch_success = await planner.apply_healing_patch(inc)
 
-                        if patch_success:
-                            alpha_dry_run = (
-                                get_settings().VECTOR_ALPHA_DRY_RUN
-                                or not self.live_execution_enabled
+                    # Persist any evidence / resolution_strategy updates from the planner
+                    session.add(inc)
+                    await session.commit()
+
+                    if patch_success:
+                        alpha_dry_run = (
+                            get_settings().VECTOR_ALPHA_DRY_RUN
+                            or not self.live_execution_enabled
+                        )
+
+                        # --- PROPOSE_PR gate (only matters when we would go live) ---
+                        if not alpha_dry_run and not budget.is_permitted(
+                            ActionClass.PROPOSE_PR,
+                            autonomy_index=autonomy_index,
+                            system_state=system_state,
+                            control_mode=self.control_mode,
+                            live_execution_enabled=self.live_execution_enabled,
+                        ):
+                            logger.warning(
+                                "[Vector Alpha] PROPOSE_PR denied by CapabilityBudget for %s; "
+                                "falling back to dry_run",
+                                inc.incident_type,
                             )
-                            gh = GitHubAutonomyService(session)
-                            success = await alpha.commit_and_propose(
-                                inc, gh, dry_run=alpha_dry_run
-                            )
-                            if success:
-                                if alpha_dry_run:
-                                    logger.info(
-                                        f"[Vector Alpha] Dry run completed for {inc.id}"
-                                    )
-                                else:
-                                    logger.info(
-                                        f"[Vector Alpha] Created PR for {inc.id}"
-                                    )
-                        else:
-                            # Clean up the worktree correctly if we abort
-                            import asyncio
-                            import subprocess
+                            alpha_dry_run = True
 
-                            await asyncio.to_thread(
-                                subprocess.run,
-                                [
-                                    "git",
-                                    "worktree",
-                                    "remove",
-                                    "--force",
-                                    alpha.worktree_dir,
-                                ],
-                                cwd=alpha.repo_dir,
-                                check=False,
-                            )
+                        gh = GitHubAutonomyService(session)
+                        success = await alpha.commit_and_propose(
+                            inc, gh, dry_run=alpha_dry_run
+                        )
+                        if success:
+                            if alpha_dry_run:
+                                logger.info(
+                                    f"[Vector Alpha] Dry run completed for {inc.id}"
+                                )
+                            else:
+                                logger.info(
+                                    f"[Vector Alpha] Created PR for {inc.id}"
+                                )
+                    else:
+                        # Clean up the worktree correctly if we abort
+                        import asyncio
+                        import subprocess
+
+                        await asyncio.to_thread(
+                            subprocess.run,
+                            [
+                                "git",
+                                "worktree",
+                                "remove",
+                                "--force",
+                                alpha.worktree_dir,
+                            ],
+                            cwd=alpha.repo_dir,
+                            check=False,
+                        )
+
+                # Persist benchmark regardless of outcome
+                benchmark = AutonomyBenchmark(
+                    suite_name="live_vector_alpha",
+                    incident_type=str(inc.incident_type),
+                    detected=True,
+                    patch_succeeded=patch_success,
+                    validation_succeeded=patch_success,
+                    time_to_recovery_seconds=time.monotonic() - heal_start,
+                    autonomy_index_at_run=autonomy_index,
+                )
+                session.add(benchmark)
+                await session.commit()
+
         except Exception as e:
             logger.error(f"Vector Alpha execution failed: {e}")
 
