@@ -29,6 +29,7 @@ from src.kortana.config import get_settings
 from src.kortana.database import get_db_manager
 from src.kortana.logger import get_logger
 from src.kortana.models import GitHubTask
+from src.kortana.services.autonomy_controller import get_autonomy_controller
 from src.kortana.services.autonomy_loop_bridge_service import AutonomyLoopBridgeService
 from src.kortana.services.local_backlog_service import LocalBacklogService
 from src.kortana.services.operator_directive_service import (
@@ -106,6 +107,7 @@ class AutonomyDaemon:
             "last_cycle": None,
             "last_assessment": None,
             "last_self_regulation": None,
+            "controller_reflection": None,
             "operator_guidance": None,
             "workspace_bridge": None,
             "uptime_start": None,
@@ -222,7 +224,7 @@ class AutonomyDaemon:
                     if branch:
                         from src.kortana.services.patch_planner import PatchPlanner
 
-                        planner = PatchPlanner(alpha.worktree_dir)
+                        planner = PatchPlanner(alpha.worktree_dir, db_session=session)
                         patch_success = await planner.apply_healing_patch(inc)
 
                         # Persist any evidence / resolution_strategy updates from the planner
@@ -315,12 +317,14 @@ class AutonomyDaemon:
         await self._self_regulate()
         guidance = await self._load_operator_guidance()
         self._apply_operator_guidance(guidance)
+        reflection = await self._reflect_with_controller()
+        self._apply_controller_reflection(reflection)
         workspace_status = await self._poll_workspace_bridge()
         self._cycle_failed_task_ids = []
 
-        new_count = (
-            processed
-        ) = succeeded = failed = deferred = approvals_processed_count = 0
+        new_count = processed = succeeded = failed = deferred = (
+            approvals_processed_count
+        ) = 0
         async for session in self._db_manager.get_session():
             new_count = await self._discover_tasks(
                 session,
@@ -381,6 +385,9 @@ class AutonomyDaemon:
             "safe_mode": self.safe_mode,
             "live_execution_enabled": self.live_execution_enabled,
             "control_mode": self.control_mode,
+            "autonomy_index": (self.metrics.get("controller_reflection") or {}).get(
+                "autonomy_index"
+            ),
             "operator_guidance": self.metrics["operator_guidance"],
             "workspace_bridge": workspace_status,
         }
@@ -388,6 +395,11 @@ class AutonomyDaemon:
         # Record Vector Gamma cycle memory
         try:
             from src.kortana.models import AutonomyCycleMemory
+
+            cycle_metrics = dict(self.metrics["last_cycle"])
+            cycle_metrics["controller_reflection"] = self.metrics.get(
+                "controller_reflection"
+            )
 
             async for session in self._db_manager.get_session():
                 cycle_mem = AutonomyCycleMemory(
@@ -397,7 +409,7 @@ class AutonomyDaemon:
                     tasks_processed=processed,
                     approvals_processed=approvals_processed_count,
                     errors_encountered=failed,
-                    metrics=self.metrics["last_cycle"],
+                    metrics=cycle_metrics,
                 )
                 session.add(cycle_mem)
                 await session.commit()
@@ -459,6 +471,66 @@ class AutonomyDaemon:
             self._adaptation_history.append(event)
             self._adaptation_history = self._adaptation_history[-25:]
             self._emit(DaemonEvent(type="self_regulation", data=event))
+
+    async def _reflect_with_controller(self) -> dict[str, Any]:
+        """Ask the AutonomyController to synthesise a full self-model and return it."""
+        try:
+            current_controls = {
+                "max_tasks_per_cycle": self.max_tasks,
+                "dry_run_mode": not self.live_execution_enabled,
+            }
+            reflection = await get_autonomy_controller().reflect(
+                current_controls=current_controls
+            )
+            self.metrics["controller_reflection"] = {
+                "autonomy_index": reflection.get("autonomy_index"),
+                "current_focus": reflection.get("current_focus"),
+                "constraints": reflection.get("constraints"),
+                "recommended_controls": reflection.get("recommended_controls"),
+                "generated_at": reflection.get("generated_at"),
+            }
+            return reflection
+        except Exception as exc:
+            logger.warning(f"Controller reflection unavailable: {exc}")
+            return {}
+
+    def _apply_controller_reflection(self, reflection: dict[str, Any]) -> None:
+        """Apply the controller's recommended_controls if the operator has not hard-locked."""
+        if not reflection:
+            return
+
+        locked_modes = {
+            "operator_override_halt",
+            "paused_by_operator",
+            "observe_only",
+            "approval_required",
+        }
+        if self.control_mode in locked_modes:
+            return
+
+        controls = reflection.get("recommended_controls") or {}
+        if not controls:
+            return
+
+        if "max_tasks_per_cycle" in controls:
+            new_max = int(controls["max_tasks_per_cycle"])
+            if new_max != self.max_tasks:
+                logger.info(
+                    "Controller adjusting max_tasks: %d → %d (focus=%s)",
+                    self.max_tasks,
+                    new_max,
+                    controls.get("focus_mode"),
+                )
+                self.max_tasks = new_max
+
+        if controls.get("dry_run_mode") and self.live_execution_enabled:
+            logger.info(
+                "Controller recommending dry_run_mode=True (state=%s)",
+                (reflection.get("assessment") or {}).get("state"),
+            )
+            self.live_execution_enabled = False
+            if "safe" not in self.control_mode:
+                self.control_mode = "controller_dry_run"
 
     async def _load_operator_guidance(self) -> DirectiveSummary:
         try:
@@ -924,9 +996,9 @@ class AutonomyDaemon:
                             # Imbue the result with interpreted advisory logic
                             try:
                                 if isinstance(shadow_result, dict):
-                                    shadow_result[
-                                        "advisory"
-                                    ] = self._derive_shadow_advisory(shadow_result)
+                                    shadow_result["advisory"] = (
+                                        self._derive_shadow_advisory(shadow_result)
+                                    )
                             except Exception as e:
                                 logger.warning(
                                     f"Failed to derive shadow advisory for {task.id}: {e}"
