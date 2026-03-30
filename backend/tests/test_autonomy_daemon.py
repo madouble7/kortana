@@ -100,15 +100,19 @@ class TestAutonomyDaemon:
         mock_settings = MagicMock()
         mock_settings.AUTONOMY_LOOP_SHADOW_ENABLED = True
 
-        with patch(
-            "src.kortana.services.autonomy_daemon.get_settings",
-            return_value=mock_settings,
-        ), patch(
-            "src.kortana.services.autonomy_daemon.AutonomyLoopBridgeService.run_dry_run",
-            side_effect=Exception("Simulated catastrophic sandbox failure"),
-        ), patch(
-            "src.kortana.services.github_autonomy_service.GitHubAutonomyService",
-            return_value=service,
+        with (
+            patch(
+                "src.kortana.services.autonomy_daemon.get_settings",
+                return_value=mock_settings,
+            ),
+            patch(
+                "src.kortana.services.autonomy_daemon.AutonomyLoopBridgeService.run_dry_run",
+                side_effect=Exception("Simulated catastrophic sandbox failure"),
+            ),
+            patch(
+                "src.kortana.services.github_autonomy_service.GitHubAutonomyService",
+                return_value=service,
+            ),
         ):
             processed, succeeded, failed, deferred = await daemon._process_tasks(
                 session
@@ -849,12 +853,15 @@ class TestAutonomyDaemon:
         )
         mock_github_service.post_issue_comment = AsyncMock()
 
-        with patch(
-            "src.kortana.services.task_approval_service.TaskApprovalService",
-            return_value=mock_approval_service,
-        ), patch(
-            "src.kortana.services.github_autonomy_service.GitHubAutonomyService",
-            return_value=mock_github_service,
+        with (
+            patch(
+                "src.kortana.services.task_approval_service.TaskApprovalService",
+                return_value=mock_approval_service,
+            ),
+            patch(
+                "src.kortana.services.github_autonomy_service.GitHubAutonomyService",
+                return_value=mock_github_service,
+            ),
         ):
             await daemon._process_pending_approvals(session)
 
@@ -915,12 +922,15 @@ class TestAutonomyDaemon:
         )
         mock_github_service.post_issue_comment = AsyncMock()
 
-        with patch(
-            "src.kortana.services.task_approval_service.TaskApprovalService",
-            return_value=mock_approval_service,
-        ), patch(
-            "src.kortana.services.github_autonomy_service.GitHubAutonomyService",
-            return_value=mock_github_service,
+        with (
+            patch(
+                "src.kortana.services.task_approval_service.TaskApprovalService",
+                return_value=mock_approval_service,
+            ),
+            patch(
+                "src.kortana.services.github_autonomy_service.GitHubAutonomyService",
+                return_value=mock_github_service,
+            ),
         ):
             await daemon._process_pending_approvals(session)
 
@@ -979,12 +989,15 @@ class TestAutonomyDaemon:
         )
         mock_github_service.post_issue_comment = AsyncMock()
 
-        with patch(
-            "src.kortana.services.task_approval_service.TaskApprovalService",
-            return_value=mock_approval_service,
-        ), patch(
-            "src.kortana.services.github_autonomy_service.GitHubAutonomyService",
-            return_value=mock_github_service,
+        with (
+            patch(
+                "src.kortana.services.task_approval_service.TaskApprovalService",
+                return_value=mock_approval_service,
+            ),
+            patch(
+                "src.kortana.services.github_autonomy_service.GitHubAutonomyService",
+                return_value=mock_github_service,
+            ),
         ):
             await daemon._process_pending_approvals(session)
 
@@ -1036,12 +1049,15 @@ class TestAutonomyDaemon:
         )
         mock_github_service.post_issue_comment = AsyncMock()
 
-        with patch(
-            "src.kortana.services.task_approval_service.TaskApprovalService",
-            return_value=mock_approval_service,
-        ), patch(
-            "src.kortana.services.github_autonomy_service.GitHubAutonomyService",
-            return_value=mock_github_service,
+        with (
+            patch(
+                "src.kortana.services.task_approval_service.TaskApprovalService",
+                return_value=mock_approval_service,
+            ),
+            patch(
+                "src.kortana.services.github_autonomy_service.GitHubAutonomyService",
+                return_value=mock_github_service,
+            ),
         ):
             await daemon._process_pending_approvals(session)
 
@@ -1097,12 +1113,15 @@ class TestAutonomyDaemon:
         )
         mock_github_service.post_issue_comment = AsyncMock()
 
-        with patch(
-            "src.kortana.services.task_approval_service.TaskApprovalService",
-            return_value=mock_approval_service,
-        ), patch(
-            "src.kortana.services.github_autonomy_service.GitHubAutonomyService",
-            return_value=mock_github_service,
+        with (
+            patch(
+                "src.kortana.services.task_approval_service.TaskApprovalService",
+                return_value=mock_approval_service,
+            ),
+            patch(
+                "src.kortana.services.github_autonomy_service.GitHubAutonomyService",
+                return_value=mock_github_service,
+            ),
         ):
             await daemon._process_pending_approvals(session)
 
@@ -1149,12 +1168,15 @@ class TestAutonomyDaemon:
         )
         mock_github_service.post_issue_comment = AsyncMock()
 
-        with patch(
-            "src.kortana.services.task_approval_service.TaskApprovalService",
-            return_value=mock_approval_service,
-        ), patch(
-            "src.kortana.services.github_autonomy_service.GitHubAutonomyService",
-            return_value=mock_github_service,
+        with (
+            patch(
+                "src.kortana.services.task_approval_service.TaskApprovalService",
+                return_value=mock_approval_service,
+            ),
+            patch(
+                "src.kortana.services.github_autonomy_service.GitHubAutonomyService",
+                return_value=mock_github_service,
+            ),
         ):
             await daemon._process_pending_approvals(session)
 
@@ -1316,13 +1338,16 @@ async def test_heal_vectors_invokes_vector_alpha():
     mock_execute.scalars.return_value.all.return_value = [incident]
     mock_session.execute.return_value = mock_execute
 
-    with patch(
-        "src.kortana.services.vector_alpha_branch_service.VectorAlphaBranchService"
-    ) as mock_alpha, patch(
-        "src.kortana.services.github_autonomy_service.GitHubAutonomyService"
-    ), patch("src.kortana.services.patch_planner.PatchPlanner") as mock_planner, patch(
-        "src.kortana.services.autonomy_daemon.get_capability_budget"
-    ) as mock_budget:
+    with (
+        patch(
+            "src.kortana.services.vector_alpha_branch_service.VectorAlphaBranchService"
+        ) as mock_alpha,
+        patch("src.kortana.services.github_autonomy_service.GitHubAutonomyService"),
+        patch("src.kortana.services.patch_planner.PatchPlanner") as mock_planner,
+        patch(
+            "src.kortana.services.autonomy_daemon.get_capability_budget"
+        ) as mock_budget,
+    ):
         mock_budget.return_value.is_permitted.return_value = True
         mock_alpha_inst = mock_alpha.return_value
         mock_alpha_inst.evaluate_incident.return_value = True
