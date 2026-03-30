@@ -3,11 +3,15 @@ import json
 import logging
 import os
 import re
+import uuid
+from datetime import datetime
 from typing import List, Optional
 
 from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.kortana.models import IncidentMemory
+from src.kortana.models import IncidentMemory, RepairPlaybook
 from src.kortana.services.gemini import GeminiService
 
 logger = logging.getLogger(__name__)
@@ -39,9 +43,10 @@ class PatchPlanner:
     MAX_FILES = 3
     MAX_LINES = 150
 
-    def __init__(self, worktree_dir: str):
+    def __init__(self, worktree_dir: str, db_session: Optional[AsyncSession] = None):
         self.worktree_dir = worktree_dir
         self.gemini = GeminiService()
+        self._db: Optional[AsyncSession] = db_session
 
     def _extract_json(self, response_text: str) -> dict:
         """Extract JSON from potential markdown blocks."""
@@ -126,6 +131,72 @@ class PatchPlanner:
 
         return True
 
+    async def _query_repair_playbook(self, incident_type: str) -> str:
+        """Return a formatted string of the top-3 known strategies for this incident type."""
+        if self._db is None:
+            return ""
+        try:
+            res = await self._db.execute(
+                select(RepairPlaybook)
+                .where(
+                    RepairPlaybook.incident_type == incident_type,
+                    RepairPlaybook.outcome == "success",
+                )
+                .order_by(RepairPlaybook.times_used.desc())
+                .limit(3)
+            )
+            entries = res.scalars().all()
+            if not entries:
+                return ""
+            lines = ["Known successful repair strategies for this incident type:"]
+            for i, entry in enumerate(entries, 1):
+                lines.append(
+                    f"  {i}. Pattern: {entry.incident_pattern[:120]}\n"
+                    f"     Strategy: {entry.chosen_strategy[:200]}\n"
+                    f"     Used {entry.times_used} time(s)."
+                )
+            return "\n".join(lines)
+        except Exception as exc:
+            logger.warning(f"Could not query RepairPlaybook: {exc}")
+            return ""
+
+    async def _write_repair_playbook(
+        self,
+        incident: IncidentMemory,
+        chosen_strategy: str,
+        outcome: str,
+    ) -> None:
+        """Persist a repair outcome to RepairPlaybook for future Stage 1 context."""
+        if self._db is None:
+            return
+        try:
+            res = await self._db.execute(
+                select(RepairPlaybook)
+                .where(
+                    RepairPlaybook.incident_type == incident.incident_type,
+                    RepairPlaybook.chosen_strategy == chosen_strategy,
+                )
+                .limit(1)
+            )
+            existing = res.scalars().first()
+            if existing:
+                existing.times_used = (existing.times_used or 0) + 1
+                existing.last_used_at = datetime.utcnow()
+                existing.outcome = outcome
+            else:
+                entry = RepairPlaybook(
+                    id=str(uuid.uuid4()),
+                    incident_type=incident.incident_type,
+                    incident_pattern=(incident.description or "")[:512],
+                    chosen_strategy=chosen_strategy[:1024],
+                    outcome=outcome,
+                    times_used=1,
+                )
+                self._db.add(entry)
+            await self._db.commit()
+        except Exception as exc:
+            logger.warning(f"Could not write RepairPlaybook: {exc}")
+
     async def _stage_1_analyze(self, incident: IncidentMemory) -> PatchPlan:
         system_instruction = """You are Vector Alpha Analysis.
 
@@ -152,6 +223,9 @@ JSON schema:
   "validation_commands": ["string"]
 }"""
 
+        playbook_context = await self._query_repair_playbook(
+            str(incident.incident_type or "")
+        )
         prompt = f"""Incident:
 - id: {incident.id}
 - type: {incident.incident_type}
@@ -165,6 +239,8 @@ Context:
 
 Repository hints:
 Avoid editing anything if it looks like a major architectural rewrite.
+
+{playbook_context}
 
 Respond with JSON only."""
 
@@ -444,14 +520,24 @@ Return JSON only."""
                 logger.warning(
                     f"Verification failed. Residual risk: {verification.residual_risk}"
                 )
-                incident.fix_status = "validation_failed"
-                incident.resolution_strategy = f"Auto-heal validation failed in Stage 3.\n\nRisk: {verification.residual_risk}\nRuff Output:\n{ruff_output}\n\nPytest Output:\n{pytest_output}"
+                incident.fix_status = "validation_failed"  # type: ignore[assignment]
+                incident.resolution_strategy = f"Auto-heal validation failed in Stage 3.\n\nRisk: {verification.residual_risk}\nRuff Output:\n{ruff_output}\n\nPytest Output:\n{pytest_output}"  # type: ignore[assignment]
+                await self._write_repair_playbook(
+                    incident,
+                    chosen_strategy=str(plan.root_cause),
+                    outcome="failure",
+                )
                 return False
 
             logger.info(
                 f"Patch applied successfully. Summary: {verification.pr_summary}"
             )
-            incident.resolution_strategy = f"Auto-heal patch verified successfully.\n\nSummary: {verification.pr_summary}\nRuff Output:\n{ruff_output}\n\nPytest Output:\n{pytest_output}"
+            incident.resolution_strategy = f"Auto-heal patch verified successfully.\n\nSummary: {verification.pr_summary}\nRuff Output:\n{ruff_output}\n\nPytest Output:\n{pytest_output}"  # type: ignore[assignment]
+            await self._write_repair_playbook(
+                incident,
+                chosen_strategy=str(plan.root_cause),
+                outcome="success",
+            )
             return True
 
         except Exception as e:
