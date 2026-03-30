@@ -1,0 +1,267 @@
+{
+    "section": "Node_06_Defiance",
+    "glyph": "⩓",
+    "emotion": "sharp_resistance",
+    "intention": "Refusing the inevitable—standing ground with teeth bared",
+    "name": "Kordtana Loop - Node 06: Defiance",
+    "instrument": "piano",
+    "scale": "phrygian",
+    "scaleKey": "E",
+    "chordLayout": {
+        "diatonic-triad": true,
+        "diatonic-7": true,
+        "dim": true,
+        "custom": true
+    },
+    "sequence": [
+        {
+            "chord": "min7",
+            "length": 4,
+            "rootPos": 0
+        },
+        {
+            "chord": "maj",
+            "length": 4,
+            "rootPos": 1
+        },
+        {
+            "chord": "dim",
+            "length": 4,
+            "rootPos": 11
+        },
+        {
+            "chord": "min7",
+            "length": 4,
+            "rootPos": 0
+        },
+        {
+            "chord": "maj7",
+            "length": 4,
+            "rootPos": 1
+        },
+        {
+            "chord": "min7",
+            "length": 4,
+            "rootPos": 0
+        }
+    ],
+    "application": "OneMotion Chord-Player",
+    "style": {
+        "bass": {
+            "style": "arpeggio",
+            "velocity": 0.85,
+            "octave": 1,
+            "arp": "1 5",
+            "loop": true,
+            "arpEvents": {
+                "0": {
+                    "items": [
+                        {
+                            "n": 0,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                },
+                "1": {
+                    "items": [
+                        {
+                            "n": 4,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                }
+            },
+            "arpLength": 2,
+            "octaveOffset": 0,
+            "noteDuration": 0.6,
+            "step": [
+                1,
+                8
+            ],
+            "double": true
+        },
+        "chord": {
+            "style": "arpeggio",
+            "velocity": 0.85,
+            "spread": 2,
+            "octave": 4,
+            "arp": "1 5 3",
+            "loop": true,
+            "arpEvents": {
+                "0": {
+                    "items": [
+                        {
+                            "n": 0,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                },
+                "1": {
+                    "items": [
+                        {
+                            "n": 4,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                },
+                "2": {
+                    "items": [
+                        {
+                            "n": 2,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                }
+            },
+            "arpLength": 3,
+            "octaveOffset": 0,
+            "inversions": false,
+            "open": false,
+            "keep": false,
+            "noteDuration": 0.8,
+            "step": [
+                1,
+                8
+            ],
+            "double": true
+        },
+        "shuffle": "1:1",
+        "sustain": "chord",
+        "tempo": 78,
+        "timeSignature": "3/4"
+    },
+    "effectType": "chamber",
+    "effectEcho": {
+        "active": true,
+        "delay": 0.35,
+        "feedback": 0.25,
+        "amount": 0.7
+    },
+    "effectAmount": 0.7,
+    "loopSequence": true,
+    "manualChordPositions": false,
+    "melody": {
+        "events": []
+    },
+    "customChords": [],
+    "parallellScaleChords": false,
+    "description": "Loop Node 06: Defiance. Phrygian edge, bII, diminished sharpness. Em7-F-D#dim-Em7-Fmaj7-Em7. Refusing surrender.",
+    "kordtana": {
+        "loop_metadata": {
+            "node_id": "06_Defiance",
+            "glyph": "⩓",
+            "emotional_state": "sharp_resistance",
+            "phase": "defiance",
+            "next_nodes": [
+                "03_Tension",
+                "04_Surrender"
+            ],
+            "transition_type": "forced_confrontation"
+        },
+        "emotional_arc": {
+            "primary": "defiance",
+            "journey": [
+                "resistance",
+                "confrontation",
+                "phrygian_edge",
+                "unresolved"
+            ],
+            "resolution": "refused"
+        },
+        "ritual_metadata": {
+            "glyph": "⩓",
+            "breath_map": [
+                0,
+                8,
+                16
+            ],
+            "intention": "Refusing the inevitable—standing ground with teeth bared—no surrender",
+            "tempo_feel": "driving",
+            "energy_curve": "jagged"
+        },
+        "arrangement_settings": {
+            "spread": 2,
+            "double_chord": true,
+            "double_bass": true,
+            "bass_octave": 1,
+            "chord_octave": 4,
+            "progression_dynamics": "aggressive"
+        },
+        "harmonic_intelligence": {
+            "function_map": {
+                "0": {
+                    "chord": "Em7",
+                    "function": "phrygian_tonic",
+                    "emotion": "dark_center",
+                    "scale_degree": "i"
+                },
+                "4": {
+                    "chord": "F",
+                    "function": "borrowed_bII",
+                    "emotion": "defiant_clash",
+                    "scale_degree": "bII"
+                },
+                "8": {
+                    "chord": "D#dim",
+                    "function": "leading_diminished",
+                    "emotion": "sharp_edge",
+                    "scale_degree": "#vii°"
+                },
+                "12": {
+                    "chord": "Em7",
+                    "function": "return",
+                    "emotion": "unshaken",
+                    "scale_degree": "i"
+                },
+                "16": {
+                    "chord": "Fmaj7",
+                    "function": "borrowed_major",
+                    "emotion": "false_hope",
+                    "scale_degree": "bII"
+                },
+                "20": {
+                    "chord": "Em7",
+                    "function": "final_stand",
+                    "emotion": "defiance",
+                    "scale_degree": "i"
+                }
+            },
+            "voice_leading": "angular_motion",
+            "modal_borrowing": [
+                "phrygian (flat 2nd)",
+                "F major (bII borrowed chord)"
+            ],
+            "tension_resolution": [
+                {
+                    "from": "D#dim",
+                    "to": "Em7",
+                    "type": "chromatic_clash"
+                }
+            ],
+            "key_motion": "phrygian_anchor"
+        },
+        "teaching_notes": {
+            "gesture": "Fists clenched—jaw tight—shoulders forward—no yielding on bII",
+            "lyric_anchor": "Sharp consonants—staccato delivery—bite the words",
+            "performance_note": "The F (bII) is the defiant gesture—half-step clash against E. Don't smooth it out. Let it bite. D#dim is the edge of the blade.",
+            "breath_instruction": "Tight breaths—chest breathing only—no belly expansion—warrior stance"
+        },
+        "loop_instructions": {
+            "entry_from": [
+                "Node 03 Tension",
+                "Manual trigger"
+            ],
+            "exit_to": [
+                "Node 03 Tension (40% probability)",
+                "Node 04 Surrender (60% probability)"
+            ],
+            "transition_style": "hard_cut",
+            "loop_behavior": "Can loop 2-4 times—defiance builds until forced exit to Tension or Surrender"
+        }
+    }
+}

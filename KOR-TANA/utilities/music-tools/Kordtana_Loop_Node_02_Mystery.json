@@ -1,0 +1,246 @@
+{
+    "section": "Node_02_Mystery",
+    "glyph": "⟁↯",
+    "emotion": "ambiguous_tension",
+    "intention": "Stepping into the unknown with controlled unease",
+    "name": "Kordtana Loop - Node 02: Mystery",
+    "instrument": "piano",
+    "scale": "dorian",
+    "scaleKey": "A",
+    "chordLayout": {
+        "diatonic-triad": true,
+        "diatonic-7": true,
+        "diatonic-9": true,
+        "dim": true
+    },
+    "sequence": [
+        {
+            "chord": "min7",
+            "length": 6,
+            "rootPos": 0
+        },
+        {
+            "chord": "dim",
+            "length": 6,
+            "rootPos": 8
+        },
+        {
+            "chord": "dom7",
+            "length": 6,
+            "rootPos": 7
+        },
+        {
+            "chord": "min7",
+            "length": 6,
+            "rootPos": 0
+        }
+    ],
+    "application": "OneMotion Chord-Player",
+    "style": {
+        "bass": {
+            "style": "arpeggio",
+            "velocity": 0.77,
+            "octave": 2,
+            "arp": "once",
+            "loop": true,
+            "arpEvents": {
+                "0": {
+                    "items": [
+                        {
+                            "n": 0,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                }
+            },
+            "arpLength": 1,
+            "octaveOffset": 0,
+            "noteDuration": 1.4,
+            "step": [
+                1,
+                8
+            ],
+            "double": false
+        },
+        "chord": {
+            "style": "arpeggio",
+            "velocity": 0.77,
+            "spread": 1,
+            "octave": 4,
+            "arp": "1 5 3 7",
+            "loop": true,
+            "arpEvents": {
+                "0": {
+                    "items": [
+                        {
+                            "n": 0,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                },
+                "1": {
+                    "items": [
+                        {
+                            "n": 4,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                },
+                "2": {
+                    "items": [
+                        {
+                            "n": 2,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                },
+                "3": {
+                    "items": [
+                        {
+                            "n": 6,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                }
+            },
+            "arpLength": 4,
+            "octaveOffset": 0,
+            "inversions": true,
+            "open": false,
+            "keep": false,
+            "noteDuration": 1,
+            "step": [
+                1,
+                8
+            ],
+            "double": false
+        },
+        "shuffle": "1:1",
+        "sustain": "chord",
+        "tempo": 66,
+        "timeSignature": "3/4"
+    },
+    "effectType": "cathedral",
+    "effectEcho": {
+        "active": true,
+        "delay": 0.7,
+        "feedback": 0.2,
+        "amount": 0.8
+    },
+    "effectAmount": 0.8,
+    "loopSequence": true,
+    "manualChordPositions": false,
+    "melody": {
+        "events": []
+    },
+    "customChords": [],
+    "parallellScaleChords": false,
+    "description": "Loop Node 02: Mystery. Modal ambiguity, diminished tension. Am7-F#dim-G7-Am7. Stepping into the unknown.",
+    "kordtana": {
+        "loop_metadata": {
+            "node_id": "02_Mystery",
+            "glyph": "⟁↯",
+            "emotional_state": "ambiguous_tension",
+            "phase": "mystery",
+            "next_nodes": [
+                "03_Tension",
+                "05_Clarity"
+            ],
+            "transition_type": "modal_shift"
+        },
+        "emotional_arc": {
+            "primary": "mystery",
+            "journey": [
+                "introspection",
+                "disorientation",
+                "tension",
+                "return"
+            ],
+            "resolution": "cyclical"
+        },
+        "ritual_metadata": {
+            "glyph": "⟁↯",
+            "breath_map": [
+                0,
+                6,
+                12,
+                18
+            ],
+            "intention": "Stepping into the unknown with controlled unease",
+            "tempo_feel": "patient",
+            "energy_curve": "plateau_with_spikes"
+        },
+        "arrangement_settings": {
+            "spread": 1,
+            "double_chord": false,
+            "double_bass": false,
+            "bass_octave": 2,
+            "chord_octave": 4,
+            "progression_dynamics": "restrained"
+        },
+        "harmonic_intelligence": {
+            "function_map": {
+                "0": {
+                    "chord": "Am7",
+                    "function": "tonic_minor",
+                    "emotion": "introspection",
+                    "scale_degree": "i"
+                },
+                "6": {
+                    "chord": "F#dim",
+                    "function": "diminished_passing",
+                    "emotion": "disorientation",
+                    "scale_degree": "vi°"
+                },
+                "12": {
+                    "chord": "G7",
+                    "function": "dominant",
+                    "emotion": "tension",
+                    "scale_degree": "VII"
+                },
+                "18": {
+                    "chord": "Am7",
+                    "function": "tonic_return",
+                    "emotion": "unresolved",
+                    "scale_degree": "i"
+                }
+            },
+            "voice_leading": "chromatic_motion",
+            "modal_borrowing": [
+                "dorian (natural 6th)",
+                "phrygian (flat 2nd)"
+            ],
+            "tension_resolution": [
+                {
+                    "from": "F#dim",
+                    "to": "G7",
+                    "type": "diminished_resolution"
+                }
+            ],
+            "key_motion": "ambiguous_center"
+        },
+        "teaching_notes": {
+            "gesture": "Hands close inward on Am7, tremble on F#dim, pulse on G7, return still on Am7",
+            "lyric_anchor": "Whispered words on Am7, silence on F#dim, crescendo on G7",
+            "performance_note": "F#dim is the portal—let it hang uncomfortably. G7 doesn't resolve, just circles back.",
+            "breath_instruction": "Shallow breaths—hold through F#dim, exhale slowly on G7"
+        },
+        "loop_instructions": {
+            "entry_from": [
+                "Node 01 Awakening",
+                "Node 05 Clarity"
+            ],
+            "exit_to": [
+                "Node 03 Tension (70% probability)",
+                "Node 05 Clarity (30% probability)"
+            ],
+            "transition_style": "crossfade",
+            "loop_behavior": "Can loop indefinitely—mystery has no time limit"
+        }
+    }
+}

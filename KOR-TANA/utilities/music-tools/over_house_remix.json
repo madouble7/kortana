@@ -1,0 +1,188 @@
+{
+    "name": "over_house_remix",
+    "instrument": "electric-piano",
+    "scale": "ionian",
+    "scaleKey": "C",
+    "chordLayout": {
+        "diatonic-sus2": false,
+        "diatonic-triad": true,
+        "diatonic-sus4": false,
+        "diatonic-7": true
+    },
+    "sequence": [
+        {
+            "chord": "maj7",
+            "length": 2,
+            "rootPos": 8
+        },
+        {
+            "chord": "min7",
+            "length": 2,
+            "rootPos": 9
+        },
+        {
+            "chord": "min7",
+            "length": 2,
+            "rootPos": 0
+        },
+        {
+            "chord": "maj7",
+            "length": 2,
+            "rootPos": 5
+        },
+        {
+            "chord": "maj7",
+            "length": 2,
+            "rootPos": 8
+        },
+        {
+            "chord": "min7",
+            "length": 2,
+            "rootPos": 9
+        },
+        {
+            "chord": "min7",
+            "length": 2,
+            "rootPos": 0
+        },
+        {
+            "chord": "maj7",
+            "length": 2,
+            "rootPos": 5
+        }
+    ],
+    "application": "OneMotion Chord-Player",
+    "style": {
+        "bass": {
+            "arp": "xs",
+            "loop": true,
+            "step": [
+                1,
+                4
+            ],
+            "style": "arpeggio",
+            "double": false,
+            "mirror": false,
+            "octave": 2,
+            "velocity": 0.8,
+            "arpEvents": {
+                "0": {
+                    "items": [
+                        {
+                            "n": 0,
+                            "keep": false,
+                            "sustain": false
+                        }
+                    ]
+                },
+                "1": {
+                    "items": [
+                        {
+                            "n": 0,
+                            "keep": false,
+                            "fifth": true
+                        }
+                    ]
+                },
+                "2": {
+                    "items": [
+                        {
+                            "n": 0,
+                            "keep": false,
+                            "sustain": false
+                        }
+                    ]
+                },
+                "3": {
+                    "items": [
+                        {
+                            "n": 0,
+                            "keep": false,
+                            "fifth": true
+                        }
+                    ]
+                }
+            },
+            "arpLength": 4,
+            "cropLength": 0,
+            "noteDuration": 0.9,
+            "octaveOffset": 0
+        },
+        "chord": {
+            "arp": ". x . x",
+            "keep": false,
+            "loop": true,
+            "open": false,
+            "step": [
+                1,
+                4
+            ],
+            "style": "offbeat",
+            "double": false,
+            "mirror": false,
+            "octave": 4,
+            "spread": 0,
+            "numNotes": 0,
+            "velocity": 0.7,
+            "arpEvents": {
+                "1": {
+                    "items": [
+                        {
+                            "n": 0,
+                            "keep": false
+                        },
+                        {
+                            "n": 1,
+                            "keep": false
+                        },
+                        {
+                            "n": 2,
+                            "keep": false
+                        }
+                    ]
+                },
+                "3": {
+                    "items": [
+                        {
+                            "n": 0,
+                            "keep": false
+                        },
+                        {
+                            "n": 1,
+                            "keep": false
+                        },
+                        {
+                            "n": 2,
+                            "keep": false
+                        }
+                    ]
+                }
+            },
+            "arpLength": 4,
+            "cropLength": 0,
+            "inversions": true,
+            "noteDuration": 0.8,
+            "octaveOffset": 1
+        },
+        "tempo": 124,
+        "shuffle": "1:1",
+        "sustain": "",
+        "timeSignature": "4/4"
+    },
+    "effectType": "chamber",
+    "effectEcho": {
+        "active": true,
+        "delay": 0.25,
+        "feedback": 0.15,
+        "amount": 0.35
+    },
+    "effectAmount": 0.6,
+    "loopSequence": true,
+    "manualChordPositions": false,
+    "melody": {
+        "events": []
+    },
+    "customChords": [],
+    "parallellScaleChords": true,
+    "description": "House remix of Over - major key, 124 BPM, offbeat chords, 4/4 bassline"
+}

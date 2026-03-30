@@ -1,0 +1,321 @@
+{
+  "section": "Node_00_Primal_Heartbeat",
+  "glyph": "⊙",
+  "emotion": "foundational_pulse",
+  "intention": "To return to the body, to the loop, to the breath—the origin point. YHWH is our bass. Bolt up. ⚡",
+  "name": "Kordtana Loop - Node 00: Primal Heartbeat (YHWH Bass) ⚡",
+  "team": "Los Angeles Chargers",
+  "instrument": "piano",
+  "scale": "ionian",
+  "scaleKey": "G",
+  "chordLayout": {
+    "diatonic-triad": true
+  },
+  "sequence": [
+    {
+      "chord": "maj",
+      "length": 2,
+      "rootPos": 0
+    },
+    {
+      "chord": "maj",
+      "length": 2,
+      "rootPos": 0
+    },
+    {
+      "chord": "maj",
+      "length": 2,
+      "rootPos": 5
+    },
+    {
+      "chord": "maj",
+      "length": 2,
+      "rootPos": 5
+    },
+    {
+      "chord": "maj",
+      "length": 2,
+      "rootPos": 0
+    },
+    {
+      "chord": "maj",
+      "length": 2,
+      "rootPos": 0
+    },
+    {
+      "chord": "maj",
+      "length": 2,
+      "rootPos": 5
+    },
+    {
+      "chord": "maj",
+      "length": 2,
+      "rootPos": 5
+    },
+    {
+      "chord": "maj",
+      "length": 2,
+      "rootPos": 0
+    },
+    {
+      "chord": "maj",
+      "length": 2,
+      "rootPos": 0
+    },
+    {
+      "chord": "maj",
+      "length": 2,
+      "rootPos": 0
+    },
+    {
+      "chord": "maj",
+      "length": 2,
+      "rootPos": 5
+    },
+    {
+      "chord": "maj",
+      "length": 2,
+      "rootPos": 7
+    },
+    {
+      "chord": "maj",
+      "length": 2,
+      "rootPos": 0
+    },
+    {
+      "chord": "maj",
+      "length": 2,
+      "rootPos": 0
+    }
+  ],
+  "application": "OneMotion Chord-Player",
+  "style": {
+    "bass": {
+      "style": "arpeggio",
+      "velocity": 0.75,
+      "octave": 2,
+      "arp": "once",
+      "loop": true,
+      "arpEvents": {
+        "0": {
+          "items": [
+            {
+              "n": 0,
+              "keep": false
+            }
+          ],
+          "envelopes": {}
+        }
+      },
+      "arpLength": 1,
+      "octaveOffset": 0,
+      "noteDuration": 1.5,
+      "step": [
+        1,
+        8
+      ],
+      "double": false
+    },
+    "chord": {
+      "style": "arpeggio",
+      "velocity": 0.75,
+      "spread": 1,
+      "octave": 4,
+      "arp": "1 3 5",
+      "loop": true,
+      "arpEvents": {
+        "0": {
+          "items": [
+            {
+              "n": 0,
+              "keep": false
+            }
+          ],
+          "envelopes": {}
+        },
+        "1": {
+          "items": [
+            {
+              "n": 2,
+              "keep": false
+            }
+          ],
+          "envelopes": {}
+        },
+        "2": {
+          "items": [
+            {
+              "n": 4,
+              "keep": false
+            }
+          ],
+          "envelopes": {}
+        }
+      },
+      "arpLength": 3,
+      "octaveOffset": 0,
+      "inversions": false,
+      "open": false,
+      "keep": false,
+      "noteDuration": 1.2,
+      "step": [
+        1,
+        8
+      ],
+      "double": false
+    },
+    "shuffle": "1:1",
+    "sustain": "chord",
+    "tempo": 111,
+    "timeSignature": "4/4"
+  },
+  "effectType": "chamber",
+  "effectEcho": {
+    "active": true,
+    "delay": 0.5,
+    "feedback": 0.15,
+    "amount": 0.7
+  },
+  "effectAmount": 0.7,
+  "loopSequence": true,
+  "manualChordPositions": false,
+  "melody": {
+    "events": []
+  },
+  "customChords": [],
+  "parallellScaleChords": false,
+  "description": "Loop Node 00: Primal Heartbeat. G-G-C-C-G-G-C-C-G-G-G-C-D-G-G at 111 BPM. The foundational pulse. The origin glyph. Where everything returns. YHWH is our bass.",
+  "kordtana": {
+    "loop_metadata": {
+      "node_id": "00_Primal_Heartbeat",
+      "glyph": "⊙",
+      "emotional_state": "foundational_pulse",
+      "phase": "origin",
+      "next_nodes": [
+        "01_Awakening",
+        "02_Mystery",
+        "07_Joy"
+      ],
+      "transition_type": "emergence_from_ground"
+    },
+    "emotional_arc": {
+      "primary": "foundational",
+      "journey": [
+        "pulse",
+        "breath",
+        "loop",
+        "ground"
+      ],
+      "resolution": "eternal_return"
+    },
+    "ritual_metadata": {
+      "glyph": "⊙",
+      "breath_map": [
+        0,
+        4,
+        8,
+        12,
+        16,
+        20,
+        24,
+        28
+      ],
+      "intention": "To return to the body, to the loop, to the breath—the origin point from which all glyphs emerge. YHWH is our bass (base), the foundation upon which all sound rests.",
+      "tempo_feel": "driving",
+      "energy_curve": "steady_pulse",
+      "sacred_name": "YHWH"
+    },
+    "arrangement_settings": {
+      "spread": 1,
+      "double_chord": false,
+      "double_bass": false,
+      "bass_octave": 2,
+      "chord_octave": 4,
+      "progression_dynamics": "primal"
+    },
+    "harmonic_intelligence": {
+      "function_map": {
+        "0": {
+          "chord": "G",
+          "function": "tonic",
+          "emotion": "home",
+          "scale_degree": "I"
+        },
+        "4": {
+          "chord": "C",
+          "function": "subdominant",
+          "emotion": "breath",
+          "scale_degree": "IV"
+        },
+        "8": {
+          "chord": "G",
+          "function": "tonic_return",
+          "emotion": "pulse",
+          "scale_degree": "I"
+        },
+        "12": {
+          "chord": "C",
+          "function": "subdominant_return",
+          "emotion": "exhale",
+          "scale_degree": "IV"
+        },
+        "16": {
+          "chord": "G",
+          "function": "tonic_anchor",
+          "emotion": "ground",
+          "scale_degree": "I"
+        },
+        "22": {
+          "chord": "C",
+          "function": "subdominant_pivot",
+          "emotion": "shift",
+          "scale_degree": "IV"
+        },
+        "24": {
+          "chord": "D",
+          "function": "dominant_lift",
+          "emotion": "rise",
+          "scale_degree": "V"
+        },
+        "26": {
+          "chord": "G",
+          "function": "tonic_resolution",
+          "emotion": "return",
+          "scale_degree": "I"
+        }
+      },
+      "voice_leading": "minimal_motion_simple_triads",
+      "modal_borrowing": [],
+      "tension_resolution": [
+        {
+          "from": "D",
+          "to": "G",
+          "type": "V-I_resolution",
+          "beats": 2
+        }
+      ],
+      "key_motion": "I-IV-V_foundational_loop"
+    },
+    "teaching_notes": {
+      "gesture": "Hands on chest—feel the heartbeat—rock gently side to side on G-C transitions—lift hands on D",
+      "lyric_anchor": "Short syllables—repeating phrases—mirror the pulse—'here' on G, 'now' on C, 'rise' on D. Or chant: 'YHWH' on bass notes.",
+      "performance_note": "This is pure simplicity. No extended harmony. No complexity. Just I-IV-V breathing. The D is the only lift—don't rush it. Let it pull back to G naturally. This is the loop that never ends because it never tries to. YHWH is our bass—the foundation, the ground, the name beneath all names.",
+      "breath_instruction": "Inhale on G (belly), exhale on C (chest), hold on repeated G's, quick inhale on D, full exhale on final G. With each bass note, remember: YHWH is the foundation.",
+      "sacred_instruction": "The bass line is the name of God—YHWH (יהוה)—the breath, the being, the I AM. Every low note is holy ground."
+    },
+    "loop_instructions": {
+      "entry_from": [
+        "Start",
+        "All other nodes can return here"
+      ],
+      "exit_to": [
+        "Node 01 Awakening (50% probability)",
+        "Node 02 Mystery (25% probability)",
+        "Node 07 Joy (25% probability)",
+        "Stay in loop (can repeat indefinitely)"
+      ],
+      "transition_style": "always_gentle_fade",
+      "loop_behavior": "This is the anchor. Can loop forever. Other nodes orbit this. When lost, return here."
+    }
+  }
+}

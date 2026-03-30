@@ -1,0 +1,119 @@
+{
+    "name": "over_trap_remix",
+    "instrument": "piano",
+    "scale": "aeolian",
+    "scaleKey": "E",
+    "chordLayout": {
+        "diatonic-sus2": true,
+        "diatonic-triad": true,
+        "diatonic-sus4": true,
+        "diatonic-7": true
+    },
+    "sequence": [
+        {
+            "chord": "maj",
+            "length": 4,
+            "rootPos": 8
+        },
+        {
+            "chord": "min7",
+            "length": 2,
+            "rootPos": 7
+        },
+        {
+            "chord": "min",
+            "length": 2,
+            "rootPos": 0
+        },
+        {
+            "chord": "min7",
+            "length": 4,
+            "rootPos": 5
+        },
+        {
+            "chord": "min7",
+            "length": 2,
+            "rootPos": 7
+        },
+        {
+            "chord": "min",
+            "length": 2,
+            "rootPos": 0
+        }
+    ],
+    "application": "OneMotion Chord-Player",
+    "style": {
+        "bass": {
+            "arp": "xs",
+            "loop": false,
+            "step": [
+                1,
+                2
+            ],
+            "style": "once",
+            "double": false,
+            "mirror": false,
+            "octave": 2,
+            "velocity": 0.85,
+            "arpEvents": {
+                "0": {
+                    "items": [
+                        {
+                            "n": 0,
+                            "keep": false,
+                            "sustain": true,
+                            "remaining": true
+                        }
+                    ]
+                }
+            },
+            "arpLength": 1,
+            "cropLength": 0,
+            "noteDuration": 2,
+            "octaveOffset": 0
+        },
+        "chord": {
+            "arp": "off",
+            "keep": false,
+            "loop": true,
+            "open": false,
+            "step": [
+                1,
+                8
+            ],
+            "style": "block",
+            "double": false,
+            "mirror": false,
+            "octave": 4,
+            "spread": 0,
+            "numNotes": 0,
+            "velocity": 0.75,
+            "arpEvents": {},
+            "arpLength": 1,
+            "cropLength": 0,
+            "inversions": false,
+            "noteDuration": 1,
+            "octaveOffset": 0
+        },
+        "tempo": 65,
+        "shuffle": "1:1",
+        "sustain": "chord",
+        "timeSignature": "4/4"
+    },
+    "effectType": "chamber",
+    "effectEcho": {
+        "active": false,
+        "delay": 1,
+        "feedback": 0.5,
+        "amount": 0.5
+    },
+    "effectAmount": 0.3,
+    "loopSequence": true,
+    "manualChordPositions": false,
+    "melody": {
+        "events": []
+    },
+    "customChords": [],
+    "parallellScaleChords": false,
+    "description": "Trap-style remix of Over - slower tempo, block chords, minimal arp"
+}

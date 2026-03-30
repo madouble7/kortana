@@ -1,0 +1,276 @@
+{
+    "section": "Node_01_Awakening",
+    "glyph": "⩘✶",
+    "emotion": "emergence",
+    "intention": "Rising from darkness into radiant clarity",
+    "name": "Kordtana Loop - Node 01: Awakening",
+    "instrument": "piano",
+    "scale": "ionian",
+    "scaleKey": "C",
+    "chordLayout": {
+        "diatonic-triad": true,
+        "diatonic-7": true,
+        "diatonic-9": true,
+        "diatonic-6": true
+    },
+    "sequence": [
+        {
+            "chord": "maj7",
+            "length": 6,
+            "rootPos": 0
+        },
+        {
+            "chord": "69",
+            "length": 6,
+            "rootPos": 2
+        },
+        {
+            "chord": "7sus4",
+            "length": 3,
+            "rootPos": 4
+        },
+        {
+            "chord": "dom7",
+            "length": 3,
+            "rootPos": 4
+        },
+        {
+            "chord": "maj7",
+            "length": 6,
+            "rootPos": 5
+        }
+    ],
+    "application": "OneMotion Chord-Player",
+    "style": {
+        "bass": {
+            "style": "arpeggio",
+            "velocity": 0.77,
+            "octave": 2,
+            "arp": "1 5 1",
+            "loop": true,
+            "arpEvents": {
+                "0": {
+                    "items": [
+                        {
+                            "n": 0,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                },
+                "1": {
+                    "items": [
+                        {
+                            "n": 0,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                },
+                "2": {
+                    "items": [
+                        {
+                            "n": 4,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                }
+            },
+            "arpLength": 3,
+            "octaveOffset": 0,
+            "noteDuration": 0.9,
+            "step": [
+                1,
+                8
+            ],
+            "double": false
+        },
+        "chord": {
+            "style": "arpeggio",
+            "velocity": 0.77,
+            "spread": 2,
+            "octave": 4,
+            "arp": "1 3 5 9",
+            "loop": true,
+            "arpEvents": {
+                "0": {
+                    "items": [
+                        {
+                            "n": 0,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                },
+                "1": {
+                    "items": [
+                        {
+                            "n": 2,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                },
+                "2": {
+                    "items": [
+                        {
+                            "n": 4,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                },
+                "3": {
+                    "items": [
+                        {
+                            "n": 8,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                }
+            },
+            "arpLength": 4,
+            "octaveOffset": 0,
+            "inversions": true,
+            "open": false,
+            "keep": false,
+            "noteDuration": 1.1,
+            "step": [
+                1,
+                8
+            ],
+            "double": true
+        },
+        "shuffle": "1:1",
+        "sustain": "chord",
+        "tempo": 66,
+        "timeSignature": "3/4"
+    },
+    "effectType": "chamber",
+    "effectEcho": {
+        "active": true,
+        "delay": 0.5,
+        "feedback": 0.17,
+        "amount": 0.77
+    },
+    "effectAmount": 0.77,
+    "loopSequence": true,
+    "manualChordPositions": false,
+    "melody": {
+        "events": []
+    },
+    "customChords": [],
+    "parallellScaleChords": false,
+    "description": "Loop Node 01: Awakening. Rising fourths, modal pivot. Cmaj7-D6/9-E7sus4-E7-Fmaj7. Emergence into light.",
+    "kordtana": {
+        "loop_metadata": {
+            "node_id": "01_Awakening",
+            "glyph": "⩘✶",
+            "emotional_state": "emergence",
+            "phase": "awakening",
+            "next_nodes": [
+                "02_Mystery",
+                "04_Joy"
+            ],
+            "transition_type": "rising_energy"
+        },
+        "emotional_arc": {
+            "primary": "awakening",
+            "journey": [
+                "clarity",
+                "transcendence",
+                "tension",
+                "resolution",
+                "joy"
+            ],
+            "resolution": "open_to_next"
+        },
+        "ritual_metadata": {
+            "glyph": "⩘✶",
+            "breath_map": [
+                0,
+                6,
+                12,
+                18,
+                24
+            ],
+            "intention": "Rising from darkness into radiant clarity",
+            "tempo_feel": "patient",
+            "energy_curve": "rising"
+        },
+        "arrangement_settings": {
+            "spread": 2,
+            "double_chord": true,
+            "double_bass": false,
+            "bass_octave": 2,
+            "chord_octave": 4,
+            "progression_dynamics": "building"
+        },
+        "harmonic_intelligence": {
+            "function_map": {
+                "0": {
+                    "chord": "Cmaj7",
+                    "function": "tonic",
+                    "emotion": "clarity",
+                    "scale_degree": "I"
+                },
+                "6": {
+                    "chord": "D6/9",
+                    "function": "supertonic_extended",
+                    "emotion": "transcendence",
+                    "scale_degree": "II"
+                },
+                "12": {
+                    "chord": "E7sus4",
+                    "function": "mediant_suspension",
+                    "emotion": "tension",
+                    "scale_degree": "III"
+                },
+                "15": {
+                    "chord": "E7",
+                    "function": "mediant_dominant",
+                    "emotion": "resolution",
+                    "scale_degree": "III"
+                },
+                "18": {
+                    "chord": "Fmaj7",
+                    "function": "subdominant",
+                    "emotion": "joy",
+                    "scale_degree": "IV"
+                }
+            },
+            "voice_leading": "ascending_by_steps",
+            "modal_borrowing": [],
+            "tension_resolution": [
+                {
+                    "from": "E7sus4",
+                    "to": "E7",
+                    "type": "sus4_resolution",
+                    "beats": 3
+                }
+            ],
+            "key_motion": "rising_fourths"
+        },
+        "teaching_notes": {
+            "gesture": "Hands rise from low to high - awakening gesture, palms open on Fmaj7",
+            "lyric_anchor": "Place opening words on Cmaj7, hold on D6/9, release on E7, rest on Fmaj7",
+            "performance_note": "The E7sus4→E7 is the moment of awakening - let it breathe before moving to F",
+            "breath_instruction": "Slow inhale on C, hold through D, sharp inhale on E7sus4, exhale on E7, rest on F"
+        },
+        "loop_instructions": {
+            "entry_from": [
+                "Node 04 Joy",
+                "Node 03 Surrender",
+                "Start"
+            ],
+            "exit_to": [
+                "Node 02 Mystery (60% probability)",
+                "Node 04 Joy (40% probability)"
+            ],
+            "transition_style": "fade_overlap",
+            "loop_behavior": "Can repeat 1-3 times before forcing transition"
+        }
+    }
+}

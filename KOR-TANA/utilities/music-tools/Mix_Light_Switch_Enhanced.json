@@ -1,0 +1,352 @@
+{
+  "name": "Light Switch Enhanced - Varied Harmonic Journey",
+  "instrument": "piano",
+  "scale": "ionian",
+  "scaleKey": "F#",
+  "chordLayout": {
+    "diatonic-power": true,
+    "diatonic-sus2": true,
+    "diatonic-triad": true,
+    "diatonic-7": true,
+    "diatonic-sus4": true
+  },
+  "sequence": [
+    {
+      "chord": "min",
+      "length": 4,
+      "rootPos": 9
+    },
+    {
+      "chord": "maj",
+      "length": 4,
+      "rootPos": 0
+    },
+    {
+      "chord": "maj7",
+      "length": 4,
+      "rootPos": 7
+    },
+    {
+      "chord": "min7",
+      "length": 4,
+      "rootPos": 2
+    },
+    {
+      "chord": "sus2",
+      "length": 2,
+      "rootPos": 0
+    },
+    {
+      "chord": "maj",
+      "length": 2,
+      "rootPos": 0
+    },
+    {
+      "chord": "min",
+      "length": 4,
+      "rootPos": 4
+    },
+    {
+      "chord": "maj",
+      "length": 4,
+      "rootPos": 5
+    },
+    {
+      "chord": "min",
+      "length": 4,
+      "rootPos": 9
+    },
+    {
+      "chord": "maj7",
+      "length": 4,
+      "rootPos": 0
+    },
+    {
+      "chord": "sus4",
+      "length": 2,
+      "rootPos": 7
+    },
+    {
+      "chord": "maj",
+      "length": 2,
+      "rootPos": 7
+    },
+    {
+      "chord": "min",
+      "length": 4,
+      "rootPos": 2
+    },
+    {
+      "chord": "dim",
+      "length": 4,
+      "rootPos": 11
+    },
+    {
+      "chord": "min7",
+      "length": 4,
+      "rootPos": 9
+    },
+    {
+      "chord": "maj7",
+      "length": 4,
+      "rootPos": 0
+    },
+    {
+      "chord": "min",
+      "length": 4,
+      "rootPos": 4
+    },
+    {
+      "chord": "maj",
+      "length": 4,
+      "rootPos": 5
+    },
+    {
+      "chord": "sus2",
+      "length": 2,
+      "rootPos": 2
+    },
+    {
+      "chord": "min",
+      "length": 2,
+      "rootPos": 2
+    },
+    {
+      "chord": "maj",
+      "length": 4,
+      "rootPos": 7
+    },
+    {
+      "chord": "min7",
+      "length": 4,
+      "rootPos": 9
+    },
+    {
+      "chord": "maj7",
+      "length": 8,
+      "rootPos": 0
+    }
+  ],
+  "application": "OneMotion Chord-Player",
+  "style": {
+    "bass": {
+      "style": "once",
+      "velocity": 0.77,
+      "double": true,
+      "octave": 2,
+      "arp": "1s",
+      "loop": false,
+      "arpEvents": {
+        "0": {
+          "items": [
+            {
+              "n": 0,
+              "sustain": true,
+              "keep": false
+            }
+          ],
+          "envelopes": {}
+        }
+      },
+      "arpLength": 1,
+      "octaveOffset": 3,
+      "cropLength": 0,
+      "noteDuration": 1,
+      "step": [
+        1,
+        1
+      ],
+      "mirror": false
+    },
+    "chord": {
+      "style": "zig-zag-run-1",
+      "velocity": 0.77,
+      "spread": 0,
+      "numNotes": 0,
+      "double": true,
+      "octave": 4,
+      "arp": "1 3 2 4 3 5 4 6 5 7 4 6 3 5 2 4",
+      "loop": true,
+      "arpEvents": {
+        "0": {
+          "items": [
+            {
+              "n": 0,
+              "keep": false
+            }
+          ],
+          "envelopes": {}
+        },
+        "1": {
+          "items": [
+            {
+              "n": 2,
+              "keep": false
+            }
+          ],
+          "envelopes": {}
+        },
+        "2": {
+          "items": [
+            {
+              "n": 1,
+              "keep": false
+            }
+          ],
+          "envelopes": {}
+        },
+        "3": {
+          "items": [
+            {
+              "n": 3,
+              "keep": false
+            }
+          ],
+          "envelopes": {}
+        },
+        "4": {
+          "items": [
+            {
+              "n": 2,
+              "keep": false
+            }
+          ],
+          "envelopes": {}
+        },
+        "5": {
+          "items": [
+            {
+              "n": 4,
+              "keep": false
+            }
+          ],
+          "envelopes": {}
+        },
+        "6": {
+          "items": [
+            {
+              "n": 3,
+              "keep": false
+            }
+          ],
+          "envelopes": {}
+        },
+        "7": {
+          "items": [
+            {
+              "n": 5,
+              "keep": false
+            }
+          ],
+          "envelopes": {}
+        },
+        "8": {
+          "items": [
+            {
+              "n": 4,
+              "keep": false
+            }
+          ],
+          "envelopes": {}
+        },
+        "9": {
+          "items": [
+            {
+              "n": 6,
+              "keep": false
+            }
+          ],
+          "envelopes": {}
+        },
+        "10": {
+          "items": [
+            {
+              "n": 3,
+              "keep": false
+            }
+          ],
+          "envelopes": {}
+        },
+        "11": {
+          "items": [
+            {
+              "n": 5,
+              "keep": false
+            }
+          ],
+          "envelopes": {}
+        },
+        "12": {
+          "items": [
+            {
+              "n": 2,
+              "keep": false
+            }
+          ],
+          "envelopes": {}
+        },
+        "13": {
+          "items": [
+            {
+              "n": 4,
+              "keep": false
+            }
+          ],
+          "envelopes": {}
+        },
+        "14": {
+          "items": [
+            {
+              "n": 1,
+              "keep": false
+            }
+          ],
+          "envelopes": {}
+        },
+        "15": {
+          "items": [
+            {
+              "n": 3,
+              "keep": false
+            }
+          ],
+          "envelopes": {}
+        }
+      },
+      "arpLength": 16,
+      "octaveOffset": -9,
+      "inversions": true,
+      "open": true,
+      "keep": false,
+      "cropLength": 1,
+      "noteDuration": 1,
+      "mirror": false,
+      "step": [
+        1,
+        16
+      ]
+    },
+    "shuffle": "1:1",
+    "sustain": "chord",
+    "tempo": 32,
+    "timeSignature": "4/4"
+  },
+  "effectType": "studio",
+  "effectEcho": {
+    "active": true,
+    "delay": 1,
+    "feedback": 0.07,
+    "amount": 0.77
+  },
+  "effectAmount": 0.77,
+  "loopSequence": true,
+  "manualChordPositions": false,
+  "melody": {
+    "events": []
+  },
+  "customChords": [],
+  "parallellScaleChords": false,
+  "description": "Enhanced version of Light Switch with varied chord progressions\n\nChanges:\n- Added maj7, min7 for richer harmony\n- Included sus2, sus4 for smooth transitions\n- Added dim chord for tension\n- Varied chord lengths (2-8 bars)\n- 23 chord segments over 86 bars\n- Kept original beautiful zig-zag arpeggio\n- Same tempo and feel\n- Final maj7 held for 8 bars\n",
+  "public": true,
+  "free": true
+}

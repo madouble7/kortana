@@ -1,0 +1,209 @@
+{
+    "artifactType": "kordtana.card",
+    "version": "1.0",
+    "identity": {
+        "name": "ground",
+        "application": "OneMotion Chord-Player",
+        "instrument": "upright-piano",
+        "scale": "phrygian",
+        "scaleKey": "C",
+        "tempo": 58,
+        "timeSignature": "4/4"
+    },
+    "layout": {
+        "diatonicTriad": true,
+        "diatonic7": true
+    },
+    "sequence": [
+        {
+            "length": 4,
+            "rootPos": 0,
+            "chord": "min"
+        },
+        {
+            "length": 4,
+            "rootPos": 1,
+            "chord": "maj"
+        },
+        {
+            "length": 2,
+            "rootPos": 7,
+            "chord": "min"
+        },
+        {
+            "length": 2,
+            "rootPos": 3,
+            "chord": "maj"
+        },
+        {
+            "length": 4,
+            "rootPos": 0,
+            "chord": "min7"
+        }
+    ],
+    "style": {
+        "bass": {
+            "style": "once",
+            "velocity": 0.62,
+            "octave": 3,
+            "arp": "xs",
+            "arpLength": 1,
+            "octaveOffset": -3,
+            "noteDuration": 1,
+            "step": [
+                1,
+                1
+            ]
+        },
+        "chord": {
+            "style": "split-23-1",
+            "velocity": 0.68,
+            "octave": 4,
+            "arp": "23 1",
+            "loop": true,
+            "arpLength": 2,
+            "octaveOffset": -1,
+            "inversions": true,
+            "cropLength": 1,
+            "noteDuration": 1,
+            "step": [
+                1,
+                8
+            ]
+        },
+        "shuffle": "1:1",
+        "sustain": "chord"
+    },
+    "effects": {
+        "type": "chamber",
+        "echo": {
+            "active": true,
+            "delay": 1,
+            "feedback": 0.09,
+            "amount": 0.78
+        }
+    },
+    "behaviors": {
+        "loopSequence": true,
+        "manualChordPositions": false,
+        "parallelScaleChords": true
+    },
+    "generation": {
+        "stance": [
+            "mystery",
+            "gravity",
+            "ritual"
+        ],
+        "initPhrase": "lean into the b2; walk slowly",
+        "variationPolicy": {
+            "melodic": "phrygian color tones (b2, b6)",
+            "harmonic": "borrow bII maj briefly",
+            "rhythmic": "slow pulse; end phrases on the tonic"
+        },
+        "lyrics": {
+            "verse1": [
+                "bare feet on cold stone",
+                "a whisper climbs the wall",
+                "we turn around the circle",
+                "no need to speak at all"
+            ],
+            "prechorus": [
+                "the silence says enough",
+                "we echo, then dissolve"
+            ],
+            "chorus": [
+                "walk the spiral still",
+                "every step a thrill",
+                "we begin, again, again",
+                "walk the spiral still"
+            ],
+            "bridge": [
+                "the rhythm sleeps beneath us",
+                "the ground becomes the will"
+            ]
+        },
+        "melody": [
+            {
+                "section": "verse1",
+                "pattern": [
+                    {
+                        "bar": 1,
+                        "beat": 1,
+                        "degree": 2,
+                        "octave": 4,
+                        "duration": 4
+                    }
+                ]
+            },
+            {
+                "section": "chorus",
+                "pattern": [
+                    {
+                        "bar": 7,
+                        "beat": 1,
+                        "degree": 1,
+                        "octave": 4,
+                        "duration": 4
+                    }
+                ]
+            }
+        ],
+        "drums": {
+            "gridResolution": 16,
+            "kick": [
+                1,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "snare": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "hihat": [
+                1,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0
+            ]
+        }
+    }
+}
