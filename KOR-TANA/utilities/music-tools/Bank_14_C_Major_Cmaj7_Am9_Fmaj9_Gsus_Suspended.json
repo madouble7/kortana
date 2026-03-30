@@ -1,0 +1,144 @@
+{
+  "name": "C Major - Cmaj7 Am9 Fmaj9 Gsus4-G7 (Suspended)",
+  "instrument": "piano",
+  "scale": "ionian",
+  "scaleKey": "C",
+  "chordLayout": {
+    "diatonic-triad": true,
+    "diatonic-7": true,
+    "diatonic-9": true,
+    "sus2": true,
+    "sus4": true
+  },
+  "sequence": [
+    {
+      "chord": "maj7",
+      "length": 6,
+      "rootPos": 0
+    },
+    {
+      "chord": "min9",
+      "length": 6,
+      "rootPos": 9
+    },
+    {
+      "chord": "maj9",
+      "length": 3,
+      "rootPos": 5
+    },
+    {
+      "chord": "sus4",
+      "length": 3,
+      "rootPos": 7
+    },
+    {
+      "chord": "dom7",
+      "length": 6,
+      "rootPos": 7
+    }
+  ],
+  "application": "OneMotion Chord-Player",
+  "style": {
+    "bass": {
+      "style": "arpeggio",
+      "velocity": 0.77,
+      "octave": 2,
+      "arp": "once",
+      "loop": true,
+      "arpEvents": {
+        "0": {
+          "items": [
+            {
+              "n": 0,
+              "keep": false
+            }
+          ],
+          "envelopes": {}
+        }
+      },
+      "arpLength": 1,
+      "octaveOffset": 0,
+      "noteDuration": 1.2,
+      "step": [
+        1,
+        8
+      ]
+    },
+    "chord": {
+      "style": "arpeggio",
+      "velocity": 0.77,
+      "spread": 0,
+      "octave": 4,
+      "arp": "1 2 5 3",
+      "loop": true,
+      "arpEvents": {
+        "0": {
+          "items": [
+            {
+              "n": 0,
+              "keep": false
+            }
+          ],
+          "envelopes": {}
+        },
+        "1": {
+          "items": [
+            {
+              "n": 2,
+              "keep": false
+            }
+          ],
+          "envelopes": {}
+        },
+        "2": {
+          "items": [
+            {
+              "n": 4,
+              "keep": false
+            }
+          ],
+          "envelopes": {}
+        },
+        "3": {
+          "items": [
+            {
+              "n": 2,
+              "keep": false
+            }
+          ],
+          "envelopes": {}
+        }
+      },
+      "arpLength": 4,
+      "octaveOffset": 0,
+      "inversions": true,
+      "open": false,
+      "keep": false,
+      "noteDuration": 1,
+      "step": [
+        1,
+        8
+      ]
+    },
+    "shuffle": "1:1",
+    "sustain": "chord",
+    "tempo": 66,
+    "timeSignature": "3/4"
+  },
+  "effectType": "chamber",
+  "effectEcho": {
+    "active": true,
+    "delay": 0.5,
+    "amount": 0.77,
+    "feedback": 0.17
+  },
+  "effectAmount": 0.77,
+  "loopSequence": true,
+  "manualChordPositions": false,
+  "melody": {
+    "events": []
+  },
+  "customChords": [],
+  "parallellScaleChords": false,
+  "description": "32-beat with sus4 resolution. Gsus4→G7 creates tension/release. Bass: once. Chord: 1-2-5-3 pattern. Emotional depth."
+}

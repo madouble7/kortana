@@ -1,0 +1,111 @@
+{
+  "name": "root",
+  "instrument": "upright-piano",
+  "scale": "aeolian",
+  "scaleKey": "C",
+  "application": "OneMotion Chord-Player",
+  "chordLayout": {
+    "diatonic-triad": true,
+    "diatonic-7": false,
+    "diatonic-sus2": false,
+    "diatonic-sus4": false
+  },
+  "sequence": [
+    {
+      "length": 4,
+      "rootPos": 0,
+      "chord": "min"
+    },
+    {
+      "length": 4,
+      "rootPos": 5,
+      "chord": "min"
+    },
+    {
+      "length": 4,
+      "rootPos": 3,
+      "chord": "maj"
+    },
+    {
+      "length": 4,
+      "rootPos": 2,
+      "chord": "dim"
+    }
+  ],
+  "style": {
+    "bass": {
+      "arp": "off",
+      "loop": false,
+      "step": [
+        1,
+        1
+      ],
+      "style": "once",
+      "double": false,
+      "mirror": false,
+      "octave": 3,
+      "velocity": 0.6,
+      "arpEvents": {
+        "0": {
+          "items": [
+            {
+              "n": 0,
+              "keep": false,
+              "sustain": true,
+              "remaining": true
+            }
+          ]
+        }
+      },
+      "arpLength": 1,
+      "cropLength": 0,
+      "noteDuration": 1,
+      "octaveOffset": -2
+    },
+    "chord": {
+      "arp": "off",
+      "keep": false,
+      "loop": true,
+      "open": false,
+      "step": [
+        1,
+        4
+      ],
+      "style": "block",
+      "double": false,
+      "mirror": false,
+      "octave": 4,
+      "spread": 0,
+      "numNotes": 0,
+      "velocity": 0.7,
+      "arpEvents": {},
+      "arpLength": 1,
+      "cropLength": 0,
+      "inversions": false,
+      "noteDuration": 1,
+      "octaveOffset": 0
+    },
+    "tempo": 64,
+    "timeSignature": "4/4",
+    "shuffle": "1:1",
+    "sustain": "chord"
+  },
+  "effectType": "chamber",
+  "effectEcho": {
+    "active": true,
+    "delay": 0.5,
+    "feedback": 0.04,
+    "amount": 0.4
+  },
+  "effectAmount": 0.4,
+  "loopSequence": true,
+  "manualChordPositions": false,
+  "parallellScaleChords": true,
+  "melody": {
+    "events": []
+  },
+  "customChords": [],
+  "description": "",
+  "public": false,
+  "free": true
+}

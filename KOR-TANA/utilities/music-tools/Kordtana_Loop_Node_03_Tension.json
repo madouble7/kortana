@@ -1,0 +1,278 @@
+{
+    "section": "Node_03_Tension",
+    "glyph": "↯⧖",
+    "emotion": "held_tension",
+    "intention": "The moment before the breaking point",
+    "name": "Kordtana Loop - Node 03: Tension",
+    "instrument": "piano",
+    "scale": "mixolydian",
+    "scaleKey": "D",
+    "chordLayout": {
+        "diatonic-triad": true,
+        "diatonic-7": true,
+        "diatonic-9": true,
+        "sus4": true
+    },
+    "sequence": [
+        {
+            "chord": "dom7",
+            "length": 4,
+            "rootPos": 0
+        },
+        {
+            "chord": "dom9",
+            "length": 4,
+            "rootPos": 0
+        },
+        {
+            "chord": "7sus4",
+            "length": 4,
+            "rootPos": 0
+        },
+        {
+            "chord": "min7",
+            "length": 4,
+            "rootPos": 10
+        },
+        {
+            "chord": "dom7",
+            "length": 4,
+            "rootPos": 0
+        },
+        {
+            "chord": "7sus4",
+            "length": 4,
+            "rootPos": 0
+        }
+    ],
+    "application": "OneMotion Chord-Player",
+    "style": {
+        "bass": {
+            "style": "arpeggio",
+            "velocity": 0.8,
+            "octave": 2,
+            "arp": "1 5",
+            "loop": true,
+            "arpEvents": {
+                "0": {
+                    "items": [
+                        {
+                            "n": 0,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                },
+                "1": {
+                    "items": [
+                        {
+                            "n": 4,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                }
+            },
+            "arpLength": 2,
+            "octaveOffset": 0,
+            "noteDuration": 0.7,
+            "step": [
+                1,
+                8
+            ],
+            "double": true
+        },
+        "chord": {
+            "style": "arpeggio",
+            "velocity": 0.8,
+            "spread": 3,
+            "octave": 4,
+            "arp": "1 7 9 5",
+            "loop": true,
+            "arpEvents": {
+                "0": {
+                    "items": [
+                        {
+                            "n": 0,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                },
+                "1": {
+                    "items": [
+                        {
+                            "n": 6,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                },
+                "2": {
+                    "items": [
+                        {
+                            "n": 8,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                },
+                "3": {
+                    "items": [
+                        {
+                            "n": 4,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                }
+            },
+            "arpLength": 4,
+            "octaveOffset": 0,
+            "inversions": true,
+            "open": false,
+            "keep": false,
+            "noteDuration": 0.9,
+            "step": [
+                1,
+                8
+            ],
+            "double": true
+        },
+        "shuffle": "1:1",
+        "sustain": "chord",
+        "tempo": 72,
+        "timeSignature": "3/4"
+    },
+    "effectType": "chamber",
+    "effectEcho": {
+        "active": true,
+        "delay": 0.45,
+        "feedback": 0.2,
+        "amount": 0.77
+    },
+    "effectAmount": 0.77,
+    "loopSequence": true,
+    "manualChordPositions": false,
+    "melody": {
+        "events": []
+    },
+    "customChords": [],
+    "parallellScaleChords": false,
+    "description": "Loop Node 03: Tension. Dominant cycling, suspended animation. D7-D9-D7sus4-Cm7-D7-D7sus4. The breaking point.",
+    "kordtana": {
+        "loop_metadata": {
+            "node_id": "03_Tension",
+            "glyph": "↯⧖",
+            "emotional_state": "held_tension",
+            "phase": "tension",
+            "next_nodes": [
+                "04_Surrender",
+                "06_Defiance"
+            ],
+            "transition_type": "sudden_release_or_escalation"
+        },
+        "emotional_arc": {
+            "primary": "tension",
+            "journey": [
+                "anticipation",
+                "extended_tension",
+                "suspension",
+                "crisis",
+                "hold"
+            ],
+            "resolution": "deferred"
+        },
+        "ritual_metadata": {
+            "glyph": "↯⧖",
+            "breath_map": [
+                0,
+                8,
+                16,
+                20
+            ],
+            "intention": "The moment before the breaking point—holding impossible weight",
+            "tempo_feel": "breathing",
+            "energy_curve": "building_plateau"
+        },
+        "arrangement_settings": {
+            "spread": 3,
+            "double_chord": true,
+            "double_bass": true,
+            "bass_octave": 2,
+            "chord_octave": 4,
+            "progression_dynamics": "intensifying"
+        },
+        "harmonic_intelligence": {
+            "function_map": {
+                "0": {
+                    "chord": "D7",
+                    "function": "dominant",
+                    "emotion": "tension",
+                    "scale_degree": "I7"
+                },
+                "4": {
+                    "chord": "D9",
+                    "function": "dominant_extended",
+                    "emotion": "heightened_tension",
+                    "scale_degree": "I9"
+                },
+                "8": {
+                    "chord": "D7sus4",
+                    "function": "suspended_dominant",
+                    "emotion": "held",
+                    "scale_degree": "I7sus4"
+                },
+                "12": {
+                    "chord": "Cm7",
+                    "function": "borrowed_minor",
+                    "emotion": "darkening",
+                    "scale_degree": "bVII"
+                },
+                "16": {
+                    "chord": "D7",
+                    "function": "dominant_return",
+                    "emotion": "crisis",
+                    "scale_degree": "I7"
+                },
+                "20": {
+                    "chord": "D7sus4",
+                    "function": "suspended_unresolved",
+                    "emotion": "freeze",
+                    "scale_degree": "I7sus4"
+                }
+            },
+            "voice_leading": "static_pedal_tone",
+            "modal_borrowing": [
+                "mixolydian",
+                "dorian (Cm7 borrowed)"
+            ],
+            "tension_resolution": [
+                {
+                    "from": "D7sus4",
+                    "to": "D7",
+                    "type": "sus4_false_resolution"
+                }
+            ],
+            "key_motion": "circling_dominant"
+        },
+        "teaching_notes": {
+            "gesture": "Fists clench on D7, tremble on D9, freeze on sus4, tighten on Cm7, hold impossibly on final sus4",
+            "lyric_anchor": "Short urgent phrases—no full breaths—clipped words on dominant chords",
+            "performance_note": "Never resolve the sus4. Let it hang. This is the edge of the cliff—don't jump yet.",
+            "breath_instruction": "Rapid shallow breaths—hyperventilation feel—hold final breath on last sus4"
+        },
+        "loop_instructions": {
+            "entry_from": [
+                "Node 02 Mystery",
+                "Node 06 Defiance"
+            ],
+            "exit_to": [
+                "Node 04 Surrender (80% probability)",
+                "Node 06 Defiance (20% probability)"
+            ],
+            "transition_style": "hard_cut_or_slow_dissolve",
+            "loop_behavior": "Can loop 2-5 times—building unbearable tension before forcing exit"
+        }
+    }
+}

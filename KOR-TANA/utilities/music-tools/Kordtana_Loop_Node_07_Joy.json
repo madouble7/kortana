@@ -1,0 +1,264 @@
+{
+    "section": "Node_07_Joy",
+    "glyph": "✶",
+    "emotion": "radiant_brightness",
+    "intention": "Unburdened lightness—dancing in open sky",
+    "name": "Kordtana Loop - Node 07: Joy",
+    "instrument": "piano",
+    "scale": "lydian",
+    "scaleKey": "G",
+    "chordLayout": {
+        "diatonic-triad": true,
+        "diatonic-6": true,
+        "diatonic-9": true,
+        "sus2": true
+    },
+    "sequence": [
+        {
+            "chord": "69",
+            "length": 6,
+            "rootPos": 0
+        },
+        {
+            "chord": "69",
+            "length": 6,
+            "rootPos": 2
+        },
+        {
+            "chord": "maj9",
+            "length": 6,
+            "rootPos": 4
+        },
+        {
+            "chord": "6",
+            "length": 6,
+            "rootPos": 0
+        }
+    ],
+    "application": "OneMotion Chord-Player",
+    "style": {
+        "bass": {
+            "style": "arpeggio",
+            "velocity": 0.75,
+            "octave": 3,
+            "arp": "1 5 1",
+            "loop": true,
+            "arpEvents": {
+                "0": {
+                    "items": [
+                        {
+                            "n": 0,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                },
+                "1": {
+                    "items": [
+                        {
+                            "n": 4,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                },
+                "2": {
+                    "items": [
+                        {
+                            "n": 0,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                }
+            },
+            "arpLength": 3,
+            "octaveOffset": 0,
+            "noteDuration": 0.8,
+            "step": [
+                1,
+                8
+            ],
+            "double": false
+        },
+        "chord": {
+            "style": "arpeggio",
+            "velocity": 0.75,
+            "spread": 2,
+            "octave": 5,
+            "arp": "1 6 9 3",
+            "loop": true,
+            "arpEvents": {
+                "0": {
+                    "items": [
+                        {
+                            "n": 0,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                },
+                "1": {
+                    "items": [
+                        {
+                            "n": 5,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                },
+                "2": {
+                    "items": [
+                        {
+                            "n": 8,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                },
+                "3": {
+                    "items": [
+                        {
+                            "n": 2,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                }
+            },
+            "arpLength": 4,
+            "octaveOffset": 0,
+            "inversions": true,
+            "open": true,
+            "keep": false,
+            "noteDuration": 1.2,
+            "step": [
+                1,
+                8
+            ],
+            "double": false
+        },
+        "shuffle": "1:1",
+        "sustain": "chord",
+        "tempo": 69,
+        "timeSignature": "3/4"
+    },
+    "effectType": "hall",
+    "effectEcho": {
+        "active": true,
+        "delay": 0.6,
+        "feedback": 0.18,
+        "amount": 0.8
+    },
+    "effectAmount": 0.8,
+    "loopSequence": true,
+    "manualChordPositions": false,
+    "melody": {
+        "events": []
+    },
+    "customChords": [],
+    "parallellScaleChords": false,
+    "description": "Loop Node 07: Joy. Lydian 6/9 brightness. G6/9-A6/9-B9-G6. Dancing in open sky.",
+    "kordtana": {
+        "loop_metadata": {
+            "node_id": "07_Joy",
+            "glyph": "✶",
+            "emotional_state": "radiant_brightness",
+            "phase": "joy",
+            "next_nodes": [
+                "01_Awakening",
+                "05_Clarity"
+            ],
+            "transition_type": "expansive_lightness"
+        },
+        "emotional_arc": {
+            "primary": "joy",
+            "journey": [
+                "lightness",
+                "playfulness",
+                "transcendence",
+                "celebration"
+            ],
+            "resolution": "open_ended"
+        },
+        "ritual_metadata": {
+            "glyph": "✶",
+            "breath_map": [
+                0,
+                6,
+                12,
+                18
+            ],
+            "intention": "Unburdened lightness—dancing in open sky—no weight, only wings",
+            "tempo_feel": "floating",
+            "energy_curve": "rising"
+        },
+        "arrangement_settings": {
+            "spread": 2,
+            "double_chord": false,
+            "double_bass": false,
+            "bass_octave": 3,
+            "chord_octave": 5,
+            "progression_dynamics": "airy"
+        },
+        "harmonic_intelligence": {
+            "function_map": {
+                "0": {
+                    "chord": "G6/9",
+                    "function": "lydian_tonic",
+                    "emotion": "bright_home",
+                    "scale_degree": "I"
+                },
+                "6": {
+                    "chord": "A6/9",
+                    "function": "supertonic_extended",
+                    "emotion": "lift",
+                    "scale_degree": "II"
+                },
+                "12": {
+                    "chord": "B9",
+                    "function": "mediant_ninth",
+                    "emotion": "transcendence",
+                    "scale_degree": "III"
+                },
+                "18": {
+                    "chord": "G6",
+                    "function": "return",
+                    "emotion": "grounded_joy",
+                    "scale_degree": "I"
+                }
+            },
+            "voice_leading": "stepwise_ascending",
+            "modal_borrowing": [
+                "lydian (raised 4th for brightness)"
+            ],
+            "tension_resolution": [
+                {
+                    "from": "B9",
+                    "to": "G6",
+                    "type": "descending_release"
+                }
+            ],
+            "key_motion": "rising_then_returning"
+        },
+        "teaching_notes": {
+            "gesture": "Arms spread wide—reaching up—spinning slowly—light on feet",
+            "lyric_anchor": "Soaring vowels—no hard consonants—everything legato and flowing",
+            "performance_note": "The 6/9 chords are pure lydian magic—raised 4th (C#) gives that floating quality. B9 is the peak moment before descending back home. Play octave higher for extra brightness.",
+            "breath_instruction": "Full expansive breaths—top of lungs—chest open—laughing exhales"
+        },
+        "loop_instructions": {
+            "entry_from": [
+                "Node 01 Awakening",
+                "Node 05 Clarity",
+                "Manual trigger"
+            ],
+            "exit_to": [
+                "Node 01 Awakening (70% probability)",
+                "Node 05 Clarity (30% probability)"
+            ],
+            "transition_style": "dissolve_to_light",
+            "loop_behavior": "Can loop 1-2 times—joy doesn't overstay, it dances and moves on"
+        }
+    }
+}

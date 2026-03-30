@@ -1,0 +1,284 @@
+{
+    "name": "Kordtana 01 - Threshold Crossing (F Ionian)",
+    "instrument": "piano",
+    "scale": "ionian",
+    "scaleKey": "F",
+    "chordLayout": {
+        "diatonic-triad": true,
+        "diatonic-7": true,
+        "diatonic-9": true,
+        "sus2": true,
+        "sus4": true
+    },
+    "sequence": [
+        {
+            "chord": "maj7",
+            "length": 6,
+            "rootPos": 0
+        },
+        {
+            "chord": "min9",
+            "length": 6,
+            "rootPos": 8
+        },
+        {
+            "chord": "min7",
+            "length": 6,
+            "rootPos": 9
+        },
+        {
+            "chord": "sus2",
+            "length": 6,
+            "rootPos": 3
+        }
+    ],
+    "application": "OneMotion Chord-Player",
+    "style": {
+        "bass": {
+            "style": "arpeggio",
+            "velocity": 0.77,
+            "octave": 2,
+            "arp": "once",
+            "loop": true,
+            "arpEvents": {
+                "0": {
+                    "items": [
+                        {
+                            "n": 0,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                }
+            },
+            "arpLength": 1,
+            "octaveOffset": 0,
+            "noteDuration": 1.2,
+            "step": [
+                1,
+                8
+            ]
+        },
+        "chord": {
+            "style": "arpeggio",
+            "velocity": 0.77,
+            "spread": 0,
+            "octave": 4,
+            "arp": "1 3 5 7",
+            "loop": true,
+            "arpEvents": {
+                "0": {
+                    "items": [
+                        {
+                            "n": 0,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                },
+                "1": {
+                    "items": [
+                        {
+                            "n": 2,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                },
+                "2": {
+                    "items": [
+                        {
+                            "n": 4,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                },
+                "3": {
+                    "items": [
+                        {
+                            "n": 6,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                }
+            },
+            "arpLength": 4,
+            "octaveOffset": 0,
+            "inversions": true,
+            "open": false,
+            "keep": false,
+            "noteDuration": 1,
+            "step": [
+                1,
+                8
+            ]
+        },
+        "shuffle": "1:1",
+        "sustain": "chord",
+        "tempo": 66,
+        "timeSignature": "3/4"
+    },
+    "effectType": "chamber",
+    "effectEcho": {
+        "active": true,
+        "delay": 0.5,
+        "feedback": 0.17,
+        "amount": 0.77
+    },
+    "effectAmount": 0.77,
+    "loopSequence": true,
+    "manualChordPositions": false,
+    "melody": {
+        "events": []
+    },
+    "customChords": [],
+    "parallellScaleChords": false,
+    "description": "Kordtana ritual composition. F Ionian with Cm9 borrowed from F minor. 24 beats (8 bars at 3/4). Emotional arc: clarity → yearning → movement → suspension. Voice leading: minimal motion through extended voicings.",
+    "kordtana": {
+        "emotional_arc": {
+            "primary": "longing",
+            "journey": [
+                "clarity",
+                "yearning",
+                "movement",
+                "suspension"
+            ],
+            "resolution": "incomplete"
+        },
+        "ritual_metadata": {
+            "glyph": "⟡◈⟠⧖",
+            "breath_map": [
+                0,
+                6,
+                12,
+                18
+            ],
+            "intention": "threshold crossing - standing at the edge of transformation",
+            "tempo_feel": "patient",
+            "energy_curve": "plateau"
+        },
+        "harmonic_intelligence": {
+            "function_map": {
+                "0": {
+                    "chord": "Fmaj7",
+                    "function": "tonic",
+                    "emotion": "clarity",
+                    "notes": [
+                        "F",
+                        "A",
+                        "C",
+                        "E"
+                    ],
+                    "voicing": "1-3-5-7"
+                },
+                "6": {
+                    "chord": "Cm9",
+                    "function": "borrowed_iv",
+                    "emotion": "yearning",
+                    "notes": [
+                        "C",
+                        "Eb",
+                        "G",
+                        "Bb",
+                        "D"
+                    ],
+                    "voicing": "1-b3-5-b7-9",
+                    "modal_source": "F minor (parallel)"
+                },
+                "12": {
+                    "chord": "Gm7",
+                    "function": "supertonic",
+                    "emotion": "movement",
+                    "notes": [
+                        "G",
+                        "Bb",
+                        "D",
+                        "F"
+                    ],
+                    "voicing": "1-b3-5-b7"
+                },
+                "18": {
+                    "chord": "Bbsus2",
+                    "function": "subdominant",
+                    "emotion": "suspension",
+                    "notes": [
+                        "Bb",
+                        "C",
+                        "F"
+                    ],
+                    "voicing": "1-2-5",
+                    "note": "Hangs without resolution - invitation to cross threshold"
+                }
+            },
+            "voice_leading": "minimal_motion",
+            "modal_borrowing": [
+                "aeolian (F minor) for Cm9"
+            ],
+            "tension_resolution": [
+                {
+                    "from": "Fmaj7",
+                    "to": "Cm9",
+                    "type": "modal_shift",
+                    "effect": "Introduces darkness within light"
+                },
+                {
+                    "from": "Gm7",
+                    "to": "Bbsus2",
+                    "type": "subdominant_suspension",
+                    "effect": "Opens rather than closes - question rather than answer"
+                }
+            ],
+            "common_tones": [
+                {
+                    "between": [
+                        "Fmaj7",
+                        "Cm9"
+                    ],
+                    "notes": [
+                        "C"
+                    ]
+                },
+                {
+                    "between": [
+                        "Cm9",
+                        "Gm7"
+                    ],
+                    "notes": [
+                        "G",
+                        "Bb",
+                        "D"
+                    ]
+                },
+                {
+                    "between": [
+                        "Gm7",
+                        "Bbsus2"
+                    ],
+                    "notes": [
+                        "Bb",
+                        "F"
+                    ]
+                }
+            ]
+        },
+        "teaching_notes": {
+            "gesture": "Hands open on Fmaj7 (clarity), close on Cm9 (yearning), circle on Gm7 (movement), pause hovering on Bbsus2 (suspension)",
+            "lyric_anchor": "Place breath words on beats 0, 6, 12, 18. Let Bbsus2 hang before loop return.",
+            "performance_note": "The Cm9 borrowed from F minor is the emotional pivot - lean into the Eb note. Let Bbsus2 breathe before returning to Fmaj7.",
+            "mnemonic": "Clear → Dark → Move → Hang",
+            "breath_instruction": "Inhale on Fmaj7, hold through Cm9, exhale on Gm7, pause on Bbsus2"
+        },
+        "compositional_notes": {
+            "modal_theory": "Fmaj7 and Gm7 are diatonic to F Ionian. Cm9 is borrowed from parallel F Aeolian (F minor), creating modal interchange. Bbsus2 replaces Bb major with suspended 2nd, removing the D (which would be the 3rd) and adding C (the 9th/2nd), creating ambiguity.",
+            "voice_leading_analysis": "F→C shared between Fmaj7 and Cm9. G-Bb-D shared between Cm9 and Gm7. Bb-F shared between Gm7 and Bbsus2. Maximum common tone retention.",
+            "extended_variations": [
+                "Replace Cm9 with Cm7 for lighter yearning",
+                "Replace Bbsus2 with Bb6/9 for richer suspension",
+                "Add Dm7 between Gm7 and Bbsus2 for ii-V-I resolution attempt",
+                "Replace Fmaj7 with Fmaj9 for ethereal opening"
+            ]
+        }
+    }
+}

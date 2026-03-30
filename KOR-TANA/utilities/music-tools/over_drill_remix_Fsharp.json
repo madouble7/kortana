@@ -1,0 +1,118 @@
+{
+  "name": "over_drill_remix",
+  "instrument": "piano",
+  "scale": "aeolian",
+  "scaleKey": "F#",
+  "chordLayout": {
+    "diatonic-sus2": true,
+    "diatonic-triad": true,
+    "diatonic-sus4": true,
+    "diatonic-7": true
+  },
+  "sequence": [
+    {
+      "chord": "maj",
+      "length": 4,
+      "rootPos": 8
+    },
+    {
+      "chord": "min",
+      "length": 2,
+      "rootPos": 7
+    },
+    {
+      "chord": "min",
+      "length": 2,
+      "rootPos": 0
+    },
+    {
+      "chord": "min",
+      "length": 4,
+      "rootPos": 5
+    },
+    {
+      "chord": "min",
+      "length": 2,
+      "rootPos": 7
+    },
+    {
+      "chord": "min",
+      "length": 2,
+      "rootPos": 0
+    }
+  ],
+  "application": "OneMotion Chord-Player",
+  "effectType": "chamber",
+  "effectAmount": 0.5,
+  "loopSequence": true,
+  "manualChordPositions": false,
+  "melody": {
+    "events": []
+  },
+  "customChords": [],
+  "parallellScaleChords": false,
+  "description": "Drill remix of Over - F# aeolian @ 95 BPM",
+  "style": {
+    "bass": {
+      "arp": "xs",
+      "loop": true,
+      "step": [
+        1,
+        8
+      ],
+      "style": "arpeggio",
+      "double": false,
+      "mirror": false,
+      "octave": 1,
+      "velocity": 0.9,
+      "arpLength": 1,
+      "cropLength": 0,
+      "noteDuration": 0.5,
+      "octaveOffset": -3,
+      "arpEvents": {
+        "0": {
+          "items": [
+            {
+              "n": 0,
+              "keep": false,
+              "sustain": false
+            }
+          ]
+        }
+      }
+    },
+    "chord": {
+      "arp": "off",
+      "keep": false,
+      "loop": true,
+      "open": false,
+      "style": "stab",
+      "double": false,
+      "mirror": false,
+      "octave": 4,
+      "spread": 0,
+      "numNotes": 0,
+      "velocity": 0.8,
+      "arpLength": 1,
+      "cropLength": 0,
+      "inversions": false,
+      "noteDuration": 1,
+      "octaveOffset": 0,
+      "step": [
+        1,
+        16
+      ],
+      "arpEvents": {}
+    },
+    "tempo": 95,
+    "shuffle": "1:1",
+    "sustain": "chord",
+    "timeSignature": "4/4"
+  },
+  "effectEcho": {
+    "active": false,
+    "delay": 0.5,
+    "feedback": 0.3,
+    "amount": 0.2
+  }
+}

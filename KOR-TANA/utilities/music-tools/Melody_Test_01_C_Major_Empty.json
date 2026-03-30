@@ -1,0 +1,112 @@
+{
+    "name": "Melody Test 01 - Simple C Major",
+    "instrument": "piano",
+    "scale": "ionian",
+    "scaleKey": "C",
+    "chordLayout": {
+        "diatonic-triad": true,
+        "diatonic-7": false
+    },
+    "sequence": [
+        {
+            "chord": "maj",
+            "length": 8,
+            "rootPos": 0
+        }
+    ],
+    "application": "OneMotion Chord-Player",
+    "style": {
+        "bass": {
+            "style": "arpeggio",
+            "velocity": 0.77,
+            "octave": 2,
+            "arp": "once",
+            "loop": true,
+            "arpEvents": {
+                "0": {
+                    "items": [
+                        {
+                            "n": 0,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                }
+            },
+            "arpLength": 1,
+            "octaveOffset": 0,
+            "noteDuration": 1,
+            "step": [
+                1,
+                8
+            ]
+        },
+        "chord": {
+            "style": "arpeggio",
+            "velocity": 0.5,
+            "spread": 0,
+            "octave": 4,
+            "arp": "1 3 5",
+            "loop": true,
+            "arpEvents": {
+                "0": {
+                    "items": [
+                        {
+                            "n": 0,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                },
+                "1": {
+                    "items": [
+                        {
+                            "n": 2,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                },
+                "2": {
+                    "items": [
+                        {
+                            "n": 4,
+                            "keep": false
+                        }
+                    ],
+                    "envelopes": {}
+                }
+            },
+            "arpLength": 3,
+            "octaveOffset": 0,
+            "inversions": true,
+            "open": false,
+            "keep": false,
+            "noteDuration": 1,
+            "step": [
+                1,
+                8
+            ]
+        },
+        "shuffle": "1:1",
+        "sustain": "chord",
+        "tempo": 66,
+        "timeSignature": "3/4"
+    },
+    "effectType": "chamber",
+    "effectEcho": {
+        "active": true,
+        "delay": 0.5,
+        "feedback": 0.17,
+        "amount": 0.77
+    },
+    "effectAmount": 0.77,
+    "loopSequence": true,
+    "manualChordPositions": false,
+    "melody": {
+        "events": []
+    },
+    "customChords": [],
+    "parallellScaleChords": false,
+    "description": "Simple C Major test bed for melody experimentation. Single chord (8 beats) with quiet chords (0.5 velocity) so melody can be heard clearly."
+}
