@@ -243,9 +243,7 @@ class Settings:
     ).lower() == "true"
     RATE_LIMIT_TRUSTED_PROXIES: list[str] = [
         entry.strip()
-        for entry in (
-            _get_env("RATE_LIMIT_TRUSTED_PROXIES", "") or ""
-        ).split(",")
+        for entry in (_get_env("RATE_LIMIT_TRUSTED_PROXIES", "") or "").split(",")
         if entry.strip()
     ]
 
@@ -270,6 +268,9 @@ class Settings:
     TASK_MAX_RETRIES: int = int(_get_env("TASK_MAX_RETRIES", "3") or "3")
     TASK_RETRY_DELAY: int = int(_get_env("TASK_RETRY_DELAY", "300") or "300")
     REPO_ROOT: str = _get_env("REPO_ROOT", ".") or "."
+    REFERENCE_REPO_ROOT: str | None = _get_env(
+        "KORTANA_REFERENCE_REPO_ROOT", "KOR-TANA/kortana"
+    )
     KORTANA_BACKEND_URL: str = (
         _get_env("KORTANA_BACKEND_URL", "http://localhost:8000")
         or "http://localhost:8000"

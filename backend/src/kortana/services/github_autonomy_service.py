@@ -25,6 +25,7 @@ from src.kortana.logger import get_logger
 from src.kortana.models import GitHubTask
 from src.kortana.services.gemini import gemini_service
 from src.kortana.services.operator_directive_service import OperatorDirectiveService
+from src.kortana.services.repository_boundary_service import RepositoryBoundaryService
 from src.kortana.services.workspace_bridge_service import get_workspace_bridge
 
 from .code_generator import CodeGenerator
@@ -179,11 +180,7 @@ class GitHubAutonomyService:
         return repo.startswith("local/") or classification in {"local", "self_repair"}
 
     def _resolve_repo_root(self) -> Path:
-        configured = os.getenv("KORTANA_WORKSPACE_ROOT") or self.settings.REPO_ROOT
-        candidate = Path(configured).resolve()
-        if self._looks_like_repo_root(candidate):
-            return candidate
-        return Path(__file__).resolve().parents[4]
+        return RepositoryBoundaryService().canonical_repo_root
 
     @staticmethod
     def _looks_like_repo_root(candidate: Path) -> bool:
@@ -1679,7 +1676,9 @@ class GitHubAutonomyService:
             except Exception as e:
                 logger.debug(f"Error closing database session: {e}")
 
-    async def create_pull_request(self, title: str, body: str, head: str, base: str = "main") -> str | None:
+    async def create_pull_request(
+        self, title: str, body: str, head: str, base: str = "main"
+    ) -> str | None:
         """
         Create a PR generic endpoint for Vector Alpha.
         Returns the PR URL if successful.
@@ -1688,32 +1687,31 @@ class GitHubAutonomyService:
             owner_repo = getattr(self.settings, "GITHUB_REPOSITORY", "KOR-TANA/kortana")
             if not owner_repo:
                 owner_repo = "KOR-TANA/kortana"
-            
+
             url = f"https://api.github.com/repos/{owner_repo}/pulls"
-            
+
             headers = {
                 "Authorization": f"token {self.github_token}",
                 "Accept": "application/vnd.github.v3+json",
             }
-            
-            pr_data = {
-                "title": title,
-                "body": body,
-                "head": head,
-                "base": base
-            }
-            
+
+            pr_data = {"title": title, "body": body, "head": head, "base": base}
+
             response = await self.http_client.post(
                 url, api_name="github_api", headers=headers, json=pr_data, timeout=10
             )
-            
+
             if response.status_code == 201:
                 pr = response.json()
                 logger.info(f"[GitHub] Vector Alpha proposed PR: {pr.get('html_url')}")
                 return pr.get("html_url")
             else:
-                logger.error(f"[GitHub] Failed to create pull request {head} -> {base}: {response.text}")
+                logger.error(
+                    f"[GitHub] Failed to create pull request {head} -> {base}: {response.text}"
+                )
                 return None
         except Exception as e:
-            logger.error(f"[GitHub] Failed to create pull request {head} -> {base}: {e}")
+            logger.error(
+                f"[GitHub] Failed to create pull request {head} -> {base}: {e}"
+            )
             return None
