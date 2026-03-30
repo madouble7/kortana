@@ -1320,7 +1320,10 @@ async def test_heal_vectors_invokes_vector_alpha():
         "src.kortana.services.vector_alpha_branch_service.VectorAlphaBranchService"
     ) as mock_alpha, patch(
         "src.kortana.services.github_autonomy_service.GitHubAutonomyService"
-    ), patch("src.kortana.services.patch_planner.PatchPlanner") as mock_planner:
+    ), patch("src.kortana.services.patch_planner.PatchPlanner") as mock_planner, patch(
+        "src.kortana.services.autonomy_daemon.get_capability_budget"
+    ) as mock_budget:
+        mock_budget.return_value.is_permitted.return_value = True
         mock_alpha_inst = mock_alpha.return_value
         mock_alpha_inst.evaluate_incident.return_value = True
         mock_planner.return_value.apply_healing_patch = AsyncMock(return_value=True)
