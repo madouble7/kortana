@@ -15,9 +15,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from src.kortana.config import get_settings
 from src.kortana.logger import get_logger
 from src.kortana.services.operator_directive_service import OperatorDirectiveService
+from src.kortana.services.repository_boundary_service import RepositoryBoundaryService
 
 logger = get_logger(__name__)
 
@@ -29,6 +29,8 @@ class WorkspaceSnapshot:
     root_source: str = "configured"
     canonical_match: bool = True
     canonical_warning: str | None = None
+    reference_repo_root: str | None = None
+    reference_repo_available: bool = False
     branch: str = "unknown"
     dirty: bool = False
     changed_files: list[str] = field(default_factory=list)
@@ -44,22 +46,11 @@ class WorkspaceBridgeService:
     """Bridge local workspace signals into the always-on autonomy loop."""
 
     def __init__(self) -> None:
-        settings = get_settings()
-        configured_root = Path(
-            os.getenv("KORTANA_WORKSPACE_ROOT", settings.REPO_ROOT)
-        ).expanduser()
-        fallback_root = Path(__file__).resolve().parents[4]
-        self.configured_root = configured_root.resolve()
-        self.repo_root = (
-            self.configured_root
-            if self._looks_like_repo_root(self.configured_root)
-            else fallback_root.resolve()
-        )
-        self.root_source = (
-            "configured"
-            if self._looks_like_repo_root(self.configured_root)
-            else "fallback"
-        )
+        boundary = RepositoryBoundaryService()
+        self.configured_root = boundary.configured_canonical_root
+        self.repo_root = boundary.canonical_repo_root
+        self.root_source = boundary.canonical_root_source
+        self.reference_repo_root = boundary.reference_repo_root
         inbox_default = self.repo_root / ".kortana" / "operator_inbox.md"
         self.inbox_path = Path(
             os.getenv("KORTANA_OPERATOR_INBOX", str(inbox_default))
@@ -80,6 +71,10 @@ class WorkspaceBridgeService:
             root_source=self.root_source,
             canonical_match=self.root_source == "configured",
             canonical_warning=self._canonical_warning(),
+            reference_repo_root=(
+                str(self.reference_repo_root) if self.reference_repo_root else None
+            ),
+            reference_repo_available=self.reference_repo_root is not None,
             branch=branch,
             dirty=bool(status_lines),
             changed_files=self._extract_changed_files(status_lines),
@@ -101,6 +96,10 @@ class WorkspaceBridgeService:
                 "root_source": self.root_source,
                 "canonical_match": self.root_source == "configured",
                 "canonical_warning": self._canonical_warning(),
+                "reference_repo_root": (
+                    str(self.reference_repo_root) if self.reference_repo_root else None
+                ),
+                "reference_repo_available": self.reference_repo_root is not None,
                 "branch": "unknown",
                 "dirty": False,
                 "changed_files": [],
@@ -117,6 +116,8 @@ class WorkspaceBridgeService:
             "root_source": self._last_snapshot.root_source,
             "canonical_match": self._last_snapshot.canonical_match,
             "canonical_warning": self._last_snapshot.canonical_warning,
+            "reference_repo_root": self._last_snapshot.reference_repo_root,
+            "reference_repo_available": self._last_snapshot.reference_repo_available,
             "branch": self._last_snapshot.branch,
             "dirty": self._last_snapshot.dirty,
             "changed_files": self._last_snapshot.changed_files,
@@ -258,20 +259,7 @@ class WorkspaceBridgeService:
 
     @staticmethod
     def _looks_like_repo_root(candidate: Path) -> bool:
-        if not candidate.exists():
-            return False
-
-        markers = [
-            ".git",
-            "backend",
-            "frontend",
-            "app",
-            "src",
-            "package.json",
-            "pyproject.toml",
-            "README.md",
-        ]
-        return any((candidate / marker).exists() for marker in markers)
+        return RepositoryBoundaryService._looks_like_repo_root(candidate)
 
     def _canonical_warning(self) -> str | None:
         if self.root_source == "configured":

@@ -3,11 +3,13 @@ import logging
 import os
 import subprocess
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.kortana.models import IncidentMemory
+from src.kortana.services.repository_boundary_service import RepositoryBoundaryService
 
 logger = logging.getLogger(__name__)
 
@@ -22,10 +24,13 @@ class VectorAlphaBranchService:
 
     def __init__(self, db: AsyncSession):
         self.db = db
-        self.repo_dir = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), "../../../../")
+        self.boundary = RepositoryBoundaryService()
+        self.repo_dir = str(self.boundary.canonical_repo_root)
+        self.worktree_dir = str(
+            self.boundary.resolve_canonical_path(
+                Path(self.boundary.canonical_repo_root) / ".vector_alpha_worktree"
+            )
         )
-        self.worktree_dir = os.path.join(self.repo_dir, ".vector_alpha_worktree")
 
     def evaluate_incident(self, incident: IncidentMemory) -> bool:
         if incident.resolved:
