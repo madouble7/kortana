@@ -79,6 +79,7 @@ try:
         pr_creation,
         prayer,
         rclone,
+        songwriting,
         singularity_bridge,
         system,
         task_queue,
@@ -388,6 +389,7 @@ def create_app() -> FastAPI:
             task_queue.router, prefix="/api/task-queue", tags=["task-queue"]
         )
         app.include_router(rclone.router, prefix="/api/rclone", tags=["rclone"])
+        app.include_router(songwriting.router)
         app.include_router(system.router, prefix="/api/system", tags=["system"])
         app.include_router(
             always_on.router, prefix="/api/always-on", tags=["always-on"]

@@ -16,6 +16,7 @@ __all__ = [
     "pr_creation",
     "prayer",
     "rclone",
+    "songwriting",
     "system",
     "task_queue",
     "test_orchestrator",
