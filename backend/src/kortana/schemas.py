@@ -309,3 +309,63 @@ class SongwritingAnalyzeResponse(BaseModel):
     structure: dict
     chord_progressions: List[SongwritingProgression]
     alignment_score: dict
+
+
+# -- Chord analysis ----------------------------------------------------------
+
+class ChordDetailSchema(BaseModel):
+    degree: int
+    roman: str
+    root: str
+    quality: str
+    name: str
+    notes: List[str]
+
+
+class ChordAnalysisRequest(BaseModel):
+    key: str
+    progression: Optional[str] = None
+    degrees: Optional[List[int]] = None
+
+
+class ChordAnalysisResponse(BaseModel):
+    key: str
+    scale: List[str]
+    diatonic_chords: List[ChordDetailSchema]
+    progression: Optional[dict] = None
+
+
+# -- Syllable endpoint -------------------------------------------------------
+
+class SyllableRequest(BaseModel):
+    line: str
+
+
+class SyllableResponse(BaseModel):
+    line: str
+    syllable_count: int
+    word_counts: List[dict]
+
+
+# -- Generate endpoint -------------------------------------------------------
+
+class SongGenerateRequest(BaseModel):
+    topic: str
+    genre: str = "pop"
+    mood: str = "uplifting"
+    key: str = "C"
+    progression: str = "I-V-vi-IV"
+    structure: str = "standard"
+
+
+class SongGenerateResponse(BaseModel):
+    topic: str
+    genre: str
+    mood: str
+    key: str
+    progression: dict
+    structure: List[str]
+    scale: List[str]
+    lyrics: Optional[str] = None
+    analysis: Optional[dict] = None
+    note: Optional[str] = None
