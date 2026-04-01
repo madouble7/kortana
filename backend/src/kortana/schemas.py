@@ -275,3 +275,37 @@ class AnalysisResponse(BaseModel):
     analysis: str
     suggested_actions: List[str]
     estimated_effort: str
+
+
+class SongwritingAnalyzeRequest(BaseModel):
+    lyrics: str
+    key: str = "C"
+    mood: str = "neutral"
+    genre: str = "pop"
+
+
+class SongwritingLineAnalysis(BaseModel):
+    line: str
+    syllables: int
+    rhyme_key: str
+    rhyme_label: str
+
+
+class SongwritingRhymePair(BaseModel):
+    label: str
+    lines: List[int]
+
+
+class SongwritingProgression(BaseModel):
+    name: str
+    numeral_progression: List[str]
+    chords: List[str]
+
+
+class SongwritingAnalyzeResponse(BaseModel):
+    rhyme_scheme: str
+    lines: List[SongwritingLineAnalysis]
+    rhyme_pairs: List[SongwritingRhymePair]
+    structure: dict
+    chord_progressions: List[SongwritingProgression]
+    alignment_score: dict
