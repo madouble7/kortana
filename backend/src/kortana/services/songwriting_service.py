@@ -250,3 +250,212 @@ def _minor_scale(root: str) -> list[str]:
     root = root or "A"
     root_index = chroma.index(root) if root in chroma else 0
     return [chroma[(root_index + step) % 12] for step in steps]
+
+
+# ---------------------------------------------------------------------------
+# Extended music theory: key-based chord analysis & named progressions
+# ---------------------------------------------------------------------------
+
+_CHROMATIC = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+
+_ENHARMONIC: dict[str, str] = {
+    "Db": "C#", "Eb": "D#", "Gb": "F#", "Ab": "G#", "Bb": "A#",
+}
+
+_MAJOR_INTERVALS = [0, 2, 4, 5, 7, 9, 11]
+
+_DEGREE_QUALITY: dict[int, str] = {
+    1: "major", 2: "minor", 3: "minor", 4: "major",
+    5: "major", 6: "minor", 7: "diminished",
+}
+
+_ROMAN: dict[int, str] = {
+    1: "I", 2: "ii", 3: "iii", 4: "IV", 5: "V", 6: "vi", 7: "vii°",
+}
+
+# Named progressions (degrees reference major key scale degrees 1-7)
+COMMON_PROGRESSIONS: dict[str, dict] = {
+    "I-V-vi-IV": {
+        "degrees": [1, 5, 6, 4],
+        "name": "Pop Progression",
+        "genres": ["pop", "rock", "ballad"],
+        "feel": "uplifting, anthemic",
+    },
+    "I-IV-V": {
+        "degrees": [1, 4, 5],
+        "name": "Blues / Rock",
+        "genres": ["blues", "rock", "country", "gospel"],
+        "feel": "driving, classic",
+    },
+    "I-IV-vi-V": {
+        "degrees": [1, 4, 6, 5],
+        "name": "Contemporary Pop",
+        "genres": ["pop", "r&b"],
+        "feel": "smooth, contemporary",
+    },
+    "vi-IV-I-V": {
+        "degrees": [6, 4, 1, 5],
+        "name": "Axis Progression",
+        "genres": ["pop", "indie", "worship"],
+        "feel": "emotional, cinematic",
+    },
+    "I-vi-IV-V": {
+        "degrees": [1, 6, 4, 5],
+        "name": "50s Doo-Wop",
+        "genres": ["doo-wop", "pop", "oldies"],
+        "feel": "nostalgic, romantic",
+    },
+    "ii-V-I": {
+        "degrees": [2, 5, 1],
+        "name": "Jazz Turnaround",
+        "genres": ["jazz", "soul", "neo-soul"],
+        "feel": "sophisticated, resolved",
+    },
+    "I-iii-IV-V": {
+        "degrees": [1, 3, 4, 5],
+        "name": "Classic Build",
+        "genres": ["pop", "rock", "folk"],
+        "feel": "building, energetic",
+    },
+    "I-IV-I-V": {
+        "degrees": [1, 4, 1, 5],
+        "name": "Gospel Progression",
+        "genres": ["gospel", "r&b", "soul"],
+        "feel": "soulful, declarative",
+    },
+    "I-V-vi-iii-IV": {
+        "degrees": [1, 5, 6, 3, 4],
+        "name": "Canon Progression",
+        "genres": ["classical", "pop", "wedding"],
+        "feel": "timeless, elegant",
+    },
+    "I-bVII-IV": {
+        "degrees": [1, 7, 4],
+        "name": "Mixolydian Rock",
+        "genres": ["rock", "alternative"],
+        "feel": "edgy, modal",
+    },
+    "I-IV-V-IV": {
+        "degrees": [1, 4, 5, 4],
+        "name": "Shuffle / Boogie",
+        "genres": ["blues", "boogie", "rock-n-roll"],
+        "feel": "groovy, danceable",
+    },
+}
+
+SONG_STRUCTURE_TEMPLATES: dict[str, list[str]] = {
+    "standard": ["verse", "chorus", "verse", "chorus", "bridge", "chorus"],
+    "simple": ["verse", "chorus", "verse", "chorus"],
+    "verse_heavy": ["verse", "verse", "chorus", "verse", "chorus"],
+    "extended": [
+        "intro", "verse", "pre-chorus", "chorus",
+        "verse", "pre-chorus", "chorus",
+        "bridge", "chorus", "outro",
+    ],
+    "aba": ["verse", "bridge", "verse"],
+    "aaba": ["verse", "verse", "bridge", "verse"],
+}
+
+
+@dataclass(frozen=True)
+class ChordDetail:
+    degree: int
+    roman: str
+    root: str
+    quality: str
+    name: str
+    notes: tuple[str, ...]
+
+
+def _normalize_key(key: str) -> str:
+    root = key[0].upper() + key[1:] if len(key) > 1 else key.upper()
+    return _ENHARMONIC.get(root, root)
+
+
+def get_chords_in_key(key: str) -> list[ChordDetail]:
+    """Return all 7 diatonic triads for the given major key."""
+    normalized = _normalize_key(key)
+    if normalized not in _CHROMATIC:
+        raise ValueError(f"Unknown key: '{key}'. Use letter names like C, D#, F#.")
+    root_idx = _CHROMATIC.index(normalized)
+    scale = [_CHROMATIC[(root_idx + i) % 12] for i in _MAJOR_INTERVALS]
+
+    chords: list[ChordDetail] = []
+    for i, note in enumerate(scale):
+        degree = i + 1
+        quality = _DEGREE_QUALITY[degree]
+        ni = _CHROMATIC.index(note)
+        if quality == "major":
+            third = _CHROMATIC[(ni + 4) % 12]
+            fifth = _CHROMATIC[(ni + 7) % 12]
+        elif quality == "minor":
+            third = _CHROMATIC[(ni + 3) % 12]
+            fifth = _CHROMATIC[(ni + 7) % 12]
+        else:  # diminished
+            third = _CHROMATIC[(ni + 3) % 12]
+            fifth = _CHROMATIC[(ni + 6) % 12]
+        suffix = {"major": "", "minor": "m", "diminished": "dim"}[quality]
+        chords.append(ChordDetail(
+            degree=degree,
+            roman=_ROMAN[degree],
+            root=note,
+            quality=quality,
+            name=note + suffix,
+            notes=(note, third, fifth),
+        ))
+    return chords
+
+
+def resolve_progression_chords(key: str, degrees: list[int]) -> list[str]:
+    """Translate scale degrees to chord names in key (e.g. [1,5,6,4] in C -> C,G,Am,F)."""
+    chord_map = {c.degree: c for c in get_chords_in_key(key)}
+    return [
+        chord_map[((d - 1) % 7) + 1].name
+        for d in degrees
+        if ((d - 1) % 7) + 1 in chord_map
+    ]
+
+
+def annotate_syllables(text: str) -> list[dict]:
+    """Return per-line syllable counts for multi-line text."""
+    return [
+        {"line": ln, "syllables": count_syllables_line(ln), "index": i}
+        for i, ln in enumerate(text.strip().splitlines())
+        if ln.strip()
+    ]
+
+
+def build_song_prompt(
+    topic: str,
+    genre: str,
+    mood: str,
+    key: str,
+    progression_key: str,
+    structure: str,
+) -> str:
+    """Build a detailed LLM prompt for full AI song generation."""
+    chords = get_chords_in_key(key)
+    prog_info = COMMON_PROGRESSIONS.get(progression_key, {})
+    chord_names = resolve_progression_chords(key, prog_info.get("degrees", [1, 5, 6, 4]))
+    sections = SONG_STRUCTURE_TEMPLATES.get(structure, SONG_STRUCTURE_TEMPLATES["standard"])
+
+    chord_str = " → ".join(chord_names) or progression_key
+    scale_str = ", ".join(c.root for c in chords)
+    sections_str = " / ".join(s.upper() for s in sections)
+
+    return (
+        f"You are an expert songwriter. Write a complete, singable song with these specs:\n\n"
+        f"Topic: {topic}\n"
+        f"Genre: {genre}\n"
+        f"Mood: {mood}\n"
+        f"Key: {key} major  (scale notes: {scale_str})\n"
+        f"Chord Progression: {chord_str}  ({prog_info.get('name', progression_key)})\n"
+        f"Structure: {sections_str}\n\n"
+        f"Requirements:\n"
+        f"- Label each section clearly (Verse 1:, Chorus:, Bridge:, etc.)\n"
+        f"- Maintain a consistent rhyme scheme suited to {genre}\n"
+        f"- Keep lines singable with natural syllabic phrasing\n"
+        f"- Chorus must be memorable and repeat-worthy\n"
+        f"- Bridge should provide harmonic or lyrical contrast\n\n"
+        f"Write the full song now:"
+    )
