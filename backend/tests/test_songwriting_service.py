@@ -1,5 +1,4 @@
 import pytest
-
 from src.kortana.services.songwriting_service import (
     COMMON_PROGRESSIONS,
     SONG_STRUCTURE_TEMPLATES,
@@ -11,14 +10,13 @@ from src.kortana.services.songwriting_service import (
     generate_structure,
     get_chords_in_key,
     resolve_progression_chords,
-    score_alignment,
     suggest_chord_progressions,
 )
-
 
 # ---------------------------------------------------------------------------
 # Existing tests (unchanged)
 # ---------------------------------------------------------------------------
+
 
 def test_syllable_count_simple() -> None:
     assert count_syllables_line("hello world") == 3
@@ -34,17 +32,13 @@ def test_rhyme_scheme_detection() -> None:
 
 def test_chord_progressions_major_pop() -> None:
     suggestions = suggest_chord_progressions("C", mood="neutral", genre="pop")
-    chords = next(
-        item.chords for item in suggestions if item.name == "I-V-vi-IV"
-    )
+    chords = next(item.chords for item in suggestions if item.name == "I-V-vi-IV")
     assert chords == ["C", "G", "Am", "F"]
 
 
 def test_chord_progressions_minor_sad() -> None:
     suggestions = suggest_chord_progressions("A minor", mood="sad", genre="pop")
-    chords = next(
-        item.chords for item in suggestions if item.name == "i-VI-III-VII"
-    )
+    chords = next(item.chords for item in suggestions if item.name == "i-VI-III-VII")
     assert chords == ["Am", "F", "C", "G"]
 
 
@@ -59,17 +53,21 @@ def test_structure_defaults() -> None:
 # Extended: syllable counting
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("word,expected", [
-    ("hello", 2),
-    ("world", 1),
-    ("beautiful", 3),  # algorithm: vowel groups beau/ti/u = 3
-    ("fire", 1),       # silent -e subtracted
-    ("table", 3),      # -le rule adds 1 to 2 vowel groups
-    ("talked", 2),     # -ed ending doesn't reduce (consonant cluster)
-    ("running", 2),
-    ("I", 1),
-    ("a", 1),
-])
+
+@pytest.mark.parametrize(
+    "word,expected",
+    [
+        ("hello", 2),
+        ("world", 1),
+        ("beautiful", 3),  # algorithm: vowel groups beau/ti/u = 3
+        ("fire", 1),  # silent -e subtracted
+        ("table", 3),  # -le rule adds 1 to 2 vowel groups
+        ("talked", 2),  # -ed ending doesn't reduce (consonant cluster)
+        ("running", 2),
+        ("I", 1),
+        ("a", 1),
+    ],
+)
 def test_count_syllables_word(word: str, expected: int) -> None:
     assert count_syllables_word(word) == expected
 
@@ -84,12 +82,15 @@ def test_annotate_syllables_multiline() -> None:
     result = annotate_syllables(text)
     assert len(result) == 3
     assert result[0]["syllables"] == 4
-    assert result[2]["syllables"] == 4  # we(1)+walk(1)+away(2)=4 by vowel-group algorithm
+    assert (
+        result[2]["syllables"] == 4
+    )  # we(1)+walk(1)+away(2)=4 by vowel-group algorithm
 
 
 # ---------------------------------------------------------------------------
 # Extended: key-based chord theory
 # ---------------------------------------------------------------------------
+
 
 def test_get_chords_in_key_c_major() -> None:
     chords = get_chords_in_key("C")
@@ -136,6 +137,7 @@ def test_resolve_progression_chords_g_major() -> None:
 # Extended: COMMON_PROGRESSIONS and SONG_STRUCTURE_TEMPLATES
 # ---------------------------------------------------------------------------
 
+
 def test_common_progressions_contains_pop() -> None:
     assert "I-V-vi-IV" in COMMON_PROGRESSIONS
     prog = COMMON_PROGRESSIONS["I-V-vi-IV"]
@@ -164,6 +166,7 @@ def test_song_structure_templates_extended() -> None:
 # ---------------------------------------------------------------------------
 # Extended: build_song_prompt
 # ---------------------------------------------------------------------------
+
 
 def test_build_song_prompt_contains_key_info() -> None:
     prompt = build_song_prompt(
@@ -194,4 +197,3 @@ def test_build_song_prompt_unknown_progression_falls_back() -> None:
     )
     assert "test" in prompt
     assert "G" in prompt
-

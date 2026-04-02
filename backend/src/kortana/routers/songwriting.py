@@ -34,7 +34,9 @@ router = APIRouter(prefix="/api/songwriting", tags=["songwriting"])
 
 
 @router.post("/analyze", response_model=SongwritingAnalyzeResponse)
-async def analyze_songwriting(payload: SongwritingAnalyzeRequest) -> SongwritingAnalyzeResponse:
+async def analyze_songwriting(
+    payload: SongwritingAnalyzeRequest,
+) -> SongwritingAnalyzeResponse:
     if not payload.lyrics.strip():
         raise HTTPException(status_code=400, detail="Lyrics cannot be empty.")
 
@@ -141,10 +143,13 @@ async def chord_analysis(req: ChordAnalysisRequest) -> ChordAnalysisResponse:
 async def count_syllables_endpoint(req: SyllableRequest) -> SyllableResponse:
     """Count syllables in a single line, with per-word breakdown."""
     import re
+
     words = re.sub(r"[^\w\s'-]", "", req.line).split()
     word_counts = [{"word": w, "syllables": count_syllables_word(w)} for w in words]
     total = sum(wc["syllables"] for wc in word_counts)
-    return SyllableResponse(line=req.line, syllable_count=total, word_counts=word_counts)
+    return SyllableResponse(
+        line=req.line, syllable_count=total, word_counts=word_counts
+    )
 
 
 @router.post("/generate", response_model=SongGenerateResponse)
@@ -186,6 +191,7 @@ async def generate_song(req: SongGenerateRequest) -> SongGenerateResponse:
             lyrics = await ai_service.analyze_text(prompt)
     except Exception as exc:
         from src.kortana.logger import get_logger
+
         get_logger(__name__).warning("AI song generation failed: %s", exc)
 
     prog_info = COMMON_PROGRESSIONS[req.progression]
@@ -202,9 +208,7 @@ async def generate_song(req: SongGenerateRequest) -> SongGenerateResponse:
         analysis = {
             "rhyme_scheme": "".join(a.rhyme_label for a in lyric_analyses),
             "syllables_per_line": line_data,
-            "rhyme_pairs": [
-                {"label": p.label, "lines": p.lines} for p in lyric_pairs
-            ],
+            "rhyme_pairs": [{"label": p.label, "lines": p.lines} for p in lyric_pairs],
         }
 
     return SongGenerateResponse(
@@ -221,5 +225,7 @@ async def generate_song(req: SongGenerateRequest) -> SongGenerateResponse:
         scale=[c.root for c in chords],
         lyrics=lyrics,
         analysis=analysis,
-        note=None if lyrics else "AI service unavailable; chord and structure data returned.",
+        note=None
+        if lyrics
+        else "AI service unavailable; chord and structure data returned.",
     )

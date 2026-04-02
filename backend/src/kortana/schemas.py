@@ -313,6 +313,7 @@ class SongwritingAnalyzeResponse(BaseModel):
 
 # -- Chord analysis ----------------------------------------------------------
 
+
 class ChordDetailSchema(BaseModel):
     degree: int
     roman: str
@@ -337,6 +338,7 @@ class ChordAnalysisResponse(BaseModel):
 
 # -- Syllable endpoint -------------------------------------------------------
 
+
 class SyllableRequest(BaseModel):
     line: str
 
@@ -348,6 +350,7 @@ class SyllableResponse(BaseModel):
 
 
 # -- Generate endpoint -------------------------------------------------------
+
 
 class SongGenerateRequest(BaseModel):
     topic: str

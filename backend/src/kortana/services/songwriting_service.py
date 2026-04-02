@@ -2,7 +2,6 @@ import re
 from dataclasses import dataclass
 from typing import Iterable
 
-
 _VOWELS = "aeiouy"
 _WORD_RE = re.compile(r"[A-Za-z']+")
 
@@ -259,18 +258,33 @@ def _minor_scale(root: str) -> list[str]:
 _CHROMATIC = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
 _ENHARMONIC: dict[str, str] = {
-    "Db": "C#", "Eb": "D#", "Gb": "F#", "Ab": "G#", "Bb": "A#",
+    "Db": "C#",
+    "Eb": "D#",
+    "Gb": "F#",
+    "Ab": "G#",
+    "Bb": "A#",
 }
 
 _MAJOR_INTERVALS = [0, 2, 4, 5, 7, 9, 11]
 
 _DEGREE_QUALITY: dict[int, str] = {
-    1: "major", 2: "minor", 3: "minor", 4: "major",
-    5: "major", 6: "minor", 7: "diminished",
+    1: "major",
+    2: "minor",
+    3: "minor",
+    4: "major",
+    5: "major",
+    6: "minor",
+    7: "diminished",
 }
 
 _ROMAN: dict[int, str] = {
-    1: "I", 2: "ii", 3: "iii", 4: "IV", 5: "V", 6: "vi", 7: "vii°",
+    1: "I",
+    2: "ii",
+    3: "iii",
+    4: "IV",
+    5: "V",
+    6: "vi",
+    7: "vii°",
 }
 
 # Named progressions (degrees reference major key scale degrees 1-7)
@@ -348,9 +362,16 @@ SONG_STRUCTURE_TEMPLATES: dict[str, list[str]] = {
     "simple": ["verse", "chorus", "verse", "chorus"],
     "verse_heavy": ["verse", "verse", "chorus", "verse", "chorus"],
     "extended": [
-        "intro", "verse", "pre-chorus", "chorus",
-        "verse", "pre-chorus", "chorus",
-        "bridge", "chorus", "outro",
+        "intro",
+        "verse",
+        "pre-chorus",
+        "chorus",
+        "verse",
+        "pre-chorus",
+        "chorus",
+        "bridge",
+        "chorus",
+        "outro",
     ],
     "aba": ["verse", "bridge", "verse"],
     "aaba": ["verse", "verse", "bridge", "verse"],
@@ -395,14 +416,16 @@ def get_chords_in_key(key: str) -> list[ChordDetail]:
             third = _CHROMATIC[(ni + 3) % 12]
             fifth = _CHROMATIC[(ni + 6) % 12]
         suffix = {"major": "", "minor": "m", "diminished": "dim"}[quality]
-        chords.append(ChordDetail(
-            degree=degree,
-            roman=_ROMAN[degree],
-            root=note,
-            quality=quality,
-            name=note + suffix,
-            notes=(note, third, fifth),
-        ))
+        chords.append(
+            ChordDetail(
+                degree=degree,
+                roman=_ROMAN[degree],
+                root=note,
+                quality=quality,
+                name=note + suffix,
+                notes=(note, third, fifth),
+            )
+        )
     return chords
 
 
@@ -436,8 +459,12 @@ def build_song_prompt(
     """Build a detailed LLM prompt for full AI song generation."""
     chords = get_chords_in_key(key)
     prog_info = COMMON_PROGRESSIONS.get(progression_key, {})
-    chord_names = resolve_progression_chords(key, prog_info.get("degrees", [1, 5, 6, 4]))
-    sections = SONG_STRUCTURE_TEMPLATES.get(structure, SONG_STRUCTURE_TEMPLATES["standard"])
+    chord_names = resolve_progression_chords(
+        key, prog_info.get("degrees", [1, 5, 6, 4])
+    )
+    sections = SONG_STRUCTURE_TEMPLATES.get(
+        structure, SONG_STRUCTURE_TEMPLATES["standard"]
+    )
 
     chord_str = " → ".join(chord_names) or progression_key
     scale_str = ", ".join(c.root for c in chords)
