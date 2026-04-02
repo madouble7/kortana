@@ -75,7 +75,8 @@ USER kortana
 # Configure git identity for autonomous commits
 RUN git config --global user.email "kortana@kor-tana.ai" && \
     git config --global user.name "Kor'tana" && \
-    git config --global init.defaultBranch main
+    git config --global init.defaultBranch main && \
+    git config --global --add safe.directory '*'
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
