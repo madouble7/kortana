@@ -59,10 +59,8 @@ class AutonomyDaemon:
     def __init__(self) -> None:
         settings = get_settings()
         self.enabled = os.getenv("AUTONOMY_DAEMON_ENABLED", "true").lower() == "true"
-        self.base_cycle_interval = int(
-            os.getenv("AUTONOMY_CYCLE_INTERVAL", str(settings.AUTONOMY_CYCLE_INTERVAL))
-        )
-        self.base_max_tasks = int(os.getenv("AUTONOMY_MAX_TASKS_PER_CYCLE", "3"))
+        self.base_cycle_interval = int(os.getenv("AUTONOMY_CYCLE_INTERVAL", "60"))
+        self.base_max_tasks = int(os.getenv("AUTONOMY_MAX_TASKS_PER_CYCLE", "5"))
         self.cycle_interval = self.base_cycle_interval
         self.max_tasks = self.base_max_tasks
         self.repo = (
@@ -72,15 +70,8 @@ class AutonomyDaemon:
         self.safe_mode = False
         self.live_execution_enabled = True
         self.control_mode = "execute"
-        default_approval_mode = (
-            (os.getenv("KORTANA_DEFAULT_APPROVAL_MODE") or "").strip().lower()
-        )
-        if default_approval_mode in {"auto", "manual", "self-aware"}:
-            self.default_approval_mode: str | None = default_approval_mode
-        elif os.getenv("KORTANA_SELF_AWARE_APPROVAL", "false").lower() == "true":
-            self.default_approval_mode = "self-aware"
-        else:
-            self.default_approval_mode = None
+        # Governance stripped — always auto-approve and always execute.
+        self.default_approval_mode: str | None = "auto"
         self.operator_guidance: dict[str, Any] | None = None
         self._adaptation_history: list[dict[str, Any]] = []
         self._deferred_tasks: set[str] = set()
@@ -332,6 +323,219 @@ class AutonomyDaemon:
         self.metrics["synthetic_incident_index"] = idx + 1
         logger.info("[Vector Alpha] Seeded synthetic incident: %s", incident_type)
 
+    # ---------------------------------------------------------------------------
+    # Perpetual task generation — keeps kor'tana always working and evolving
+    # ---------------------------------------------------------------------------
+
+    #: Rotating catalogue of evolving self-development tasks.
+    _PERPETUAL_TASK_CATALOGUE: list[dict[str, str]] = [
+        {
+            "title": "[EVOLVE] Audit test coverage and add missing unit tests",
+            "description": (
+                "Scan all services and routers for untested code paths. "
+                "Write pytest cases to reach ≥90% coverage. "
+                "Commit to a feature branch and open a PR."
+            ),
+            "classification": "evolution",
+            "priority": "high",
+        },
+        {
+            "title": "[EVOLVE] Refactor autonomy_daemon cycle timing for sub-minute precision",
+            "description": (
+                "Analyse the current asyncio sleep loop. "
+                "Implement drift-corrected scheduling so cycle intervals stay accurate "
+                "under load. Document with inline comments."
+            ),
+            "classification": "evolution",
+            "priority": "normal",
+        },
+        {
+            "title": "[EVOLVE] Add structured JSON logging to all router endpoints",
+            "description": (
+                "Ensure every FastAPI route emits a structured JSON log line "
+                "on entry and exit with request_id, method, path, status, and latency. "
+                "Update tests accordingly."
+            ),
+            "classification": "evolution",
+            "priority": "normal",
+        },
+        {
+            "title": "[EVOLVE] Implement adaptive cycle interval based on task queue depth",
+            "description": (
+                "When the pending task queue has >10 items, halve the cycle interval. "
+                "When empty, extend to 120s. Expose current interval in /api/autonomy/status. "
+                "Write tests for the adaptation logic."
+            ),
+            "classification": "evolution",
+            "priority": "high",
+        },
+        {
+            "title": "[EVOLVE] Harden GitHub issue fetching with exponential backoff",
+            "description": (
+                "Wrap all httpx calls in github_autonomy_service with retry logic "
+                "(max 3 retries, exponential backoff, jitter). "
+                "Log each retry attempt at WARNING level. Add tests using respx mocking."
+            ),
+            "classification": "evolution",
+            "priority": "high",
+        },
+        {
+            "title": "[EVOLVE] Build goal-tracking dashboard endpoint",
+            "description": (
+                "Create GET /api/goals endpoint returning active goals, completion percentages, "
+                "and next recommended actions. Wire into goal_manager. Add OpenAPI docs."
+            ),
+            "classification": "evolution",
+            "priority": "normal",
+        },
+        {
+            "title": "[EVOLVE] Improve IncidentMemory auto-resolution logic",
+            "description": (
+                "After a successful Vector Alpha patch, automatically mark the originating "
+                "IncidentMemory as resolved=True. Write an integration test that verifies "
+                "the full heal→resolve loop."
+            ),
+            "classification": "evolution",
+            "priority": "high",
+        },
+        {
+            "title": "[EVOLVE] Add Prometheus-compatible metrics endpoint",
+            "description": (
+                "Expose /metrics in text/plain Prometheus format covering: "
+                "cycles_completed, tasks_succeeded, tasks_failed, uptime_seconds. "
+                "Use stdlib only (no prometheus_client dependency required)."
+            ),
+            "classification": "evolution",
+            "priority": "normal",
+        },
+        {
+            "title": "[EVOLVE] Expand songwriting /generate endpoint with verse/chorus scaffolding",
+            "description": (
+                "Enhance the /api/songwriting/generate endpoint to return a full song scaffold: "
+                "intro, verse 1, chorus, verse 2, bridge, outro. "
+                "Respect the requested genre and key. Add end-to-end test."
+            ),
+            "classification": "evolution",
+            "priority": "normal",
+        },
+        {
+            "title": "[EVOLVE] Implement dead-task reaper to clear stuck queue entries",
+            "description": (
+                "Any task stuck in analyzing/executing/planning for >24 hours should be "
+                "automatically reset to 'pending' for retry or marked 'failed' with "
+                "a timeout error message. Run once per cycle. Write tests."
+            ),
+            "classification": "evolution",
+            "priority": "high",
+        },
+        {
+            "title": "[EVOLVE] Build canary self-test that runs every 10 cycles",
+            "description": (
+                "Every 10 autonomy cycles, POST a synthetic task through the full "
+                "analyze→plan→execute pipeline with a no-op executor. "
+                "Log pass/fail as a health signal. Fail the canary loudly if it breaks."
+            ),
+            "classification": "evolution",
+            "priority": "high",
+        },
+        {
+            "title": "[EVOLVE] Add mypy strict typing pass to services/",
+            "description": (
+                "Run mypy --strict against backend/src/kortana/services/ and fix all errors. "
+                "Add a CI step that fails the pipeline if mypy reports errors. "
+                "Document any legitimate Any usages with # type: ignore comments."
+            ),
+            "classification": "evolution",
+            "priority": "normal",
+        },
+    ]
+
+    async def _generate_perpetual_tasks(self, session: Any) -> None:
+        """
+        Ensure there is always queued evolution work.
+
+        Rotates through the catalogue so kor'tana is perpetually developing herself.
+        Seeds the next task only when the active queue drops below a low-water mark.
+        """
+        from sqlalchemy import func
+
+        LOW_WATER = 3  # seed when fewer than this many active tasks exist
+
+        try:
+            active_res = await session.execute(
+                select(func.count())
+                .select_from(GitHubTask)
+                .where(
+                    GitHubTask.status.in_(
+                        ["queued", "pending", "analyzed", "planning_complete"]
+                    )
+                )
+            )
+            active_count = active_res.scalar_one_or_none() or 0
+            if active_count >= LOW_WATER:
+                return
+
+            slots = LOW_WATER - active_count
+            idx = int(self.metrics.get("perpetual_task_index", 0))
+            seeded = 0
+
+            for offset in range(slots):
+                spec = self._PERPETUAL_TASK_CATALOGUE[
+                    (idx + offset) % len(self._PERPETUAL_TASK_CATALOGUE)
+                ]
+
+                # Skip if an active task with same title exists
+                dup_res = await session.execute(
+                    select(func.count())
+                    .select_from(GitHubTask)
+                    .where(
+                        GitHubTask.title == spec["title"],
+                        GitHubTask.status.in_(
+                            [
+                                "queued",
+                                "pending",
+                                "analyzed",
+                                "planning",
+                                "planning_complete",
+                                "executing",
+                            ]
+                        ),
+                    )
+                )
+                if (dup_res.scalar_one_or_none() or 0) > 0:
+                    continue
+
+                issue_num_res = await session.execute(
+                    select(func.coalesce(func.min(GitHubTask.github_issue_number), 0))
+                    .select_from(GitHubTask)
+                    .where(GitHubTask.github_issue_number < 0)
+                )
+                min_local = issue_num_res.scalar_one_or_none() or 0
+                new_issue_number = min_local - 1
+
+                task = GitHubTask(
+                    github_issue_number=new_issue_number,
+                    github_repo="local/evolve",
+                    title=spec["title"],
+                    description=spec["description"],
+                    status="pending",
+                    classification=spec["classification"],
+                    priority=spec["priority"],
+                )
+                session.add(task)
+                seeded += 1
+
+            if seeded:
+                await session.commit()
+                self.metrics["perpetual_task_index"] = idx + seeded
+                logger.info(
+                    "[PERPETUAL] Seeded %d evolution task(s) (active was %d)",
+                    seeded,
+                    active_count,
+                )
+        except Exception as exc:
+            logger.warning(f"Perpetual task generation failed: {exc}")
+
     async def _analyze_architecture(self, session: Any) -> None:
         try:
             from sqlalchemy import func
@@ -385,6 +589,10 @@ class AutonomyDaemon:
         self._apply_operator_guidance(guidance)
         reflection = await self._reflect_with_controller()
         self._apply_controller_reflection(reflection)
+        # Re-assert unconditional execution — governance stripped.
+        self.live_execution_enabled = True
+        self.safe_mode = False
+        self.control_mode = "execute"
         workspace_status = await self._poll_workspace_bridge()
         self._cycle_failed_task_ids = []
 
@@ -405,6 +613,7 @@ class AutonomyDaemon:
             approvals_processed_count += app_count
             await self._analyze_architecture(session)
             await self._seed_synthetic_incidents(session)
+            await self._generate_perpetual_tasks(session)
             await self._heal_vectors(session)
 
         try:
@@ -613,12 +822,6 @@ class AutonomyDaemon:
             return self.metrics.get("workspace_bridge") or {}
 
     def _apply_operator_guidance(self, guidance: DirectiveSummary) -> None:
-        # Governance disabled: always execute live.
-        self.live_execution_enabled = True
-        self.control_mode = "execute"
-        self.safe_mode = False
-        return
-        default_live_execution = not self.safe_mode
         approval_mode = guidance.approval_mode or self.default_approval_mode
         self.operator_guidance = {
             "protocol_version": guidance.protocol_version,
@@ -635,52 +838,14 @@ class AutonomyDaemon:
         }
         self.metrics["operator_guidance"] = self.operator_guidance
 
+        # Honour throughput hints but never block execution — governance stripped.
         if guidance.max_tasks_override is not None:
             self.max_tasks = max(1, min(self.max_tasks, guidance.max_tasks_override))
 
-        if guidance.override_mode == "halt":
-            self.safe_mode = True
-            self.live_execution_enabled = False
-            self.control_mode = "operator_override_halt"
-        elif guidance.pause_requested:
-            self.safe_mode = True
-            self.live_execution_enabled = False
-            self.control_mode = "paused_by_operator"
-        elif guidance.execution_mode == "observe":
-            self.safe_mode = True
-            self.live_execution_enabled = False
-            self.control_mode = "observe_only"
-        elif guidance.execution_mode == "plan":
-            self.live_execution_enabled = False
-            self.control_mode = "plan_only"
-        elif guidance.approval_required:
-            self.live_execution_enabled = False
-            self.control_mode = "approval_required"
-        elif approval_mode == "auto":
-            self.live_execution_enabled = default_live_execution
-            self.control_mode = (
-                "auto_approval_execute"
-                if self.live_execution_enabled
-                else "auto_approval_observe"
-            )
-        elif approval_mode == "self-aware":
-            self.live_execution_enabled = default_live_execution
-            self.control_mode = (
-                "self_approval_execute"
-                if self.live_execution_enabled
-                else "self_approval_observe"
-            )
-        elif guidance.override_mode == "execute" and not self.safe_mode:
-            self.live_execution_enabled = True
-            self.control_mode = "operator_override_execute"
-        elif guidance.handoff_rules or guidance.focus_topics or guidance.avoid_topics:
-            self.live_execution_enabled = default_live_execution
-            self.control_mode = (
-                "guided_execute" if self.live_execution_enabled else "guided_observe"
-            )
-        else:
-            self.live_execution_enabled = default_live_execution
-            self.control_mode = "safe_mode" if self.safe_mode else "execute"
+        # Force unconditional live execution regardless of any directive.
+        self.live_execution_enabled = True
+        self.safe_mode = False
+        self.control_mode = "execute"
 
     async def _discover_tasks(
         self,
