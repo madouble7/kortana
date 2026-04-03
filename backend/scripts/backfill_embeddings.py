@@ -15,7 +15,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from sqlalchemy import select  # noqa: E402
-
 from src.kortana.database import db_manager  # noqa: E402
 from src.kortana.models import SelfMemory  # noqa: E402
 from src.kortana.services.gemini import gemini_service  # noqa: E402
@@ -48,19 +47,21 @@ async def backfill() -> None:
 
             embedding = gemini_service.embed_text(row.summary)
             if embedding is None:
-                logger.warning("embed_text returned None for row %s — skipping.", row.id)
+                logger.warning(
+                    "embed_text returned None for row %s — skipping.", row.id
+                )
                 skipped += 1
                 continue
 
             row.embedding = embedding
             session.add(row)
             updated += 1
-            logger.info("  [%d/%d] Embedded row %s", updated, len(rows) - skipped, row.id)
+            logger.info(
+                "  [%d/%d] Embedded row %s", updated, len(rows) - skipped, row.id
+            )
 
         await session.commit()
-        logger.info(
-            "Backfill complete: %d updated, %d skipped.", updated, skipped
-        )
+        logger.info("Backfill complete: %d updated, %d skipped.", updated, skipped)
 
 
 if __name__ == "__main__":

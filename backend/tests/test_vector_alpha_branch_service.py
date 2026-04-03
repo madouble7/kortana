@@ -11,9 +11,7 @@ Verifies:
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from src.kortana.services.vector_alpha_branch_service import VectorAlphaBranchService
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -62,8 +60,13 @@ async def test_unlock_and_prune_called_when_dir_missing():
         return r
 
     with (
-        patch("src.kortana.services.vector_alpha_branch_service.asyncio.to_thread") as mock_to_thread,
-        patch("src.kortana.services.vector_alpha_branch_service.os.path.exists", return_value=False),
+        patch(
+            "src.kortana.services.vector_alpha_branch_service.asyncio.to_thread"
+        ) as mock_to_thread,
+        patch(
+            "src.kortana.services.vector_alpha_branch_service.os.path.exists",
+            return_value=False,
+        ),
     ):
         # asyncio.to_thread(subprocess.run, [...], ...) — capture args[1] (the cmd list)
         async def fake_to_thread(fn, *args, **kwargs):
@@ -100,13 +103,16 @@ async def test_remove_called_when_dir_exists():
     subprocess_calls: list = []
 
     with (
-        patch("src.kortana.services.vector_alpha_branch_service.asyncio.to_thread") as mock_to_thread,
+        patch(
+            "src.kortana.services.vector_alpha_branch_service.asyncio.to_thread"
+        ) as mock_to_thread,
         patch(
             "src.kortana.services.vector_alpha_branch_service.os.path.exists",
             return_value=True,  # directory exists
         ),
         patch("src.kortana.services.vector_alpha_branch_service.shutil.rmtree"),
     ):
+
         async def fake_to_thread(fn, *args, **kwargs):
             if hasattr(fn, "__name__") and fn.__name__ == "run":
                 subprocess_calls.append(args[0])
@@ -124,7 +130,9 @@ async def test_remove_called_when_dir_exists():
     cmd_strs = [" ".join(c) for c in subprocess_calls if isinstance(c, list)]
     unlock_idx = next((i for i, c in enumerate(cmd_strs) if "unlock" in c), -1)
     prune_idx = next((i for i, c in enumerate(cmd_strs) if "prune" in c), -1)
-    remove_idx = next((i for i, c in enumerate(cmd_strs) if "remove" in c and "--force" in c), -1)
+    remove_idx = next(
+        (i for i, c in enumerate(cmd_strs) if "remove" in c and "--force" in c), -1
+    )
 
     assert unlock_idx != -1, "'git worktree unlock' not found in subprocess calls"
     assert prune_idx != -1, "'git worktree prune' not found"
@@ -141,8 +149,13 @@ async def test_returns_none_when_worktree_add_fails():
     incident = _make_incident()
 
     with (
-        patch("src.kortana.services.vector_alpha_branch_service.asyncio.to_thread") as mock_to_thread,
-        patch("src.kortana.services.vector_alpha_branch_service.os.path.exists", return_value=False),
+        patch(
+            "src.kortana.services.vector_alpha_branch_service.asyncio.to_thread"
+        ) as mock_to_thread,
+        patch(
+            "src.kortana.services.vector_alpha_branch_service.os.path.exists",
+            return_value=False,
+        ),
     ):
         call_count = 0
 
