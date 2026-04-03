@@ -23,6 +23,7 @@ from src.kortana.services.autonomy_daemon import get_autonomy_daemon
 from src.kortana.services.autonomy_loop_bridge_service import AutonomyLoopBridgeService
 from src.kortana.services.operator_directive_service import OperatorDirectiveService
 from src.kortana.services.task_approval_service import TaskApprovalService
+from src.kortana.services.task_executability_service import assess_task_executability
 from src.kortana.services.workspace_bridge_service import get_workspace_bridge
 
 router = APIRouter()
@@ -656,9 +657,7 @@ async def get_issue_queue(limit: int = 30) -> Dict[str, Any]:
         db_manager = get_db_manager()
         async with db_manager.session_scope() as db:
             result = await db.execute(
-                select(GitHubTask)
-                .order_by(GitHubTask.updated_at.desc())
-                .limit(limit)
+                select(GitHubTask).order_by(GitHubTask.updated_at.desc()).limit(limit)
             )
             tasks = result.scalars().all()
 
@@ -698,6 +697,47 @@ async def get_issue_queue(limit: int = 30) -> Dict[str, Any]:
         logger.error(f"Failed to get issue queue: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@router.post("/issue-queue/bulk-block-abstract")
+async def bulk_block_abstract_tasks() -> Dict[str, Any]:
+    """One-shot: scan all pending/queued tasks and block those that fail the
+    executability filter.  Returns counts of blocked vs. skipped tasks."""
+    try:
+        db_manager = get_db_manager()
+        blocked_ids: list[str] = []
+        skipped = 0
+        async with db_manager.session_scope() as db:
+            result = await db.execute(
+                select(GitHubTask)
+                .where(GitHubTask.status.in_(["pending", "queued", "analyzed"]))
+                .order_by(GitHubTask.updated_at.asc())
+            )
+            tasks = result.scalars().all()
+            for task in tasks:
+                assessment = assess_task_executability(task)
+                if not assessment.executable:
+                    task.status = "blocked"
+                    task.error_message = (
+                        f"Bulk-blocked by executability filter: {assessment.reason}"
+                    )
+                    blocked_ids.append(str(task.id))
+                else:
+                    skipped += 1
+            await db.commit()
+        logger.info(
+            "bulk-block-abstract: blocked=%d skipped=%d", len(blocked_ids), skipped
+        )
+        return {
+            "blocked": len(blocked_ids),
+            "skipped": skipped,
+            "blocked_ids": blocked_ids,
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+    except Exception as e:
+        logger.error(f"Failed to bulk-block abstract tasks: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/sandbox/dry-run")
 async def execute_dry_run_sandbox(task_payload: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -724,13 +764,8 @@ async def execute_dry_run_sandbox(task_payload: Dict[str, Any]) -> Dict[str, Any
         )
 
 
-
-
-
 @router.get("/memory", tags=["autonomy"])
-async def get_repository_memory(
-        limit: int = 20
-) -> dict[str, Any]:
+async def get_repository_memory(limit: int = 20) -> dict[str, Any]:
     """Expose Vector Gamma Self-Model (Akashic Record)"""
     from sqlalchemy import select
 
@@ -747,15 +782,25 @@ async def get_repository_memory(
     incid_records: list[IncidentMemory] = []
 
     async for session in db_manager.get_session():
-        arch_stmt = select(ArchitectureMemory).order_by(ArchitectureMemory.confidence_score.desc())
+        arch_stmt = select(ArchitectureMemory).order_by(
+            ArchitectureMemory.confidence_score.desc()
+        )
         arch_res = await session.execute(arch_stmt)
         arch_records = list(arch_res.scalars().all())
 
-        cycle_stmt = select(AutonomyCycleMemory).order_by(AutonomyCycleMemory.start_time.desc()).limit(limit)
+        cycle_stmt = (
+            select(AutonomyCycleMemory)
+            .order_by(AutonomyCycleMemory.start_time.desc())
+            .limit(limit)
+        )
         cycle_res = await session.execute(cycle_stmt)
         cycle_records = list(cycle_res.scalars().all())
 
-        incid_stmt = select(IncidentMemory).order_by(IncidentMemory.created_at.desc()).limit(limit)
+        incid_stmt = (
+            select(IncidentMemory)
+            .order_by(IncidentMemory.created_at.desc())
+            .limit(limit)
+        )
         incid_res = await session.execute(incid_stmt)
         incid_records = list(incid_res.scalars().all())
 
@@ -767,8 +812,11 @@ async def get_repository_memory(
                     "component": r.component_name,
                     "description": r.description,
                     "confidence": r.confidence_score,
-                    "last_analyzed": r.last_analyzed_at.isoformat() if r.last_analyzed_at else None
-                } for r in arch_records
+                    "last_analyzed": r.last_analyzed_at.isoformat()
+                    if r.last_analyzed_at
+                    else None,
+                }
+                for r in arch_records
             ],
             "recent_cycles": [
                 {
@@ -776,8 +824,9 @@ async def get_repository_memory(
                     "start_time": r.start_time.isoformat() if r.start_time else None,
                     "tasks_processed": r.tasks_processed,
                     "errors_encountered": r.errors_encountered,
-                    "metrics": r.metrics
-                } for r in cycle_records
+                    "metrics": r.metrics,
+                }
+                for r in cycle_records
             ],
             "recent_incidents": [
                 {
@@ -788,8 +837,9 @@ async def get_repository_memory(
                     "resolution_strategy": r.resolution_strategy,
                     "repair_branch": r.repair_branch,
                     "pr_url": r.pr_url,
-                    "fix_status": r.fix_status
-                } for r in incid_records
-            ]
-        }
+                    "fix_status": r.fix_status,
+                }
+                for r in incid_records
+            ],
+        },
     }

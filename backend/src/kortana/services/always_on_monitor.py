@@ -18,6 +18,7 @@ from src.kortana.models import GitHubTask
 from src.kortana.services.autonomy_daemon import get_autonomy_daemon
 from src.kortana.services.local_backlog_service import LocalBacklogService
 from src.kortana.services.operator_directive_service import get_active_operator_summary
+from src.kortana.services.task_executability_service import assess_task_executability
 from src.kortana.services.workspace_bridge_service import get_workspace_bridge
 
 logger = get_logger(__name__)
@@ -216,6 +217,19 @@ class AlwaysOnMonitor:
     async def _process_single_task(self, task: GitHubTask, session: Any) -> None:
         if GitHubAutonomyService is None:
             return
+
+        assessment = assess_task_executability(task)
+        if not assessment.executable:
+            task.status = "blocked"
+            task.error_message = (
+                f"Task blocked by executability filter: {assessment.reason}"
+            )
+            await session.commit()
+            logger.warning(
+                "Blocked non-executable task %s (%s)", task.id, assessment.reason
+            )
+            return
+
         service = GitHubAutonomyService(session)
         self.github_service = service
 

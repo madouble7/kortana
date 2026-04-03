@@ -174,7 +174,10 @@ class GoalManager:
             # Boost goals that match learner insights
             if insights:
                 for insight in insights:
-                    if insight.get("category") == "quality" and goal.tier == GoalTier.TACTICAL:
+                    if (
+                        insight.get("category") == "quality"
+                        and goal.tier == GoalTier.TACTICAL
+                    ):
                         modifier += 5
                     if insight.get("category") == "provider_preference":
                         modifier += 2
@@ -196,7 +199,9 @@ class GoalManager:
             elif goal.status == GoalStatus.BLOCKED and self._dependencies_met(goal):
                 goal.status = GoalStatus.ACTIVE
 
-        logger.info(f"Reprioritised {len(self.active())} active goals (state={system_state})")
+        logger.info(
+            f"Reprioritised {len(self.active())} active goals (state={system_state})"
+        )
 
     # ----- task linking -----
 
@@ -302,7 +307,9 @@ class GoalManager:
                 )
                 task_row = result2.fetchone()
                 total_tasks = task_row[0] or 0
-                success_rate = (task_row[1] or 0) / total_tasks if total_tasks > 0 else 0.0
+                success_rate = (
+                    (task_row[1] or 0) / total_tasks if total_tasks > 0 else 0.0
+                )
 
             # Update goal progress
             CONSECUTIVE_TARGET = 30
@@ -340,7 +347,9 @@ class GoalManager:
             "total_goals": len(self._goals),
             "active": len(self.active()),
             "blocked": len(self.blocked()),
-            "completed": len([g for g in self._goals.values() if g.status == GoalStatus.COMPLETED]),
+            "completed": len(
+                [g for g in self._goals.values() if g.status == GoalStatus.COMPLETED]
+            ),
             "by_tier": {tier.value: len(self.by_tier(tier)) for tier in GoalTier},
             "top_3": [
                 {
