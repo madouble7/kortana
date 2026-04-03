@@ -939,7 +939,9 @@ class GitHubAutonomyService:
         for provider, until in cls._provider_backoff_until.items():
             if until > now:
                 remaining_s = int((until - now).total_seconds())
-                health[provider] = f"backoff_until:{until.isoformat()} ({remaining_s}s remaining)"
+                health[provider] = (
+                    f"backoff_until:{until.isoformat()} ({remaining_s}s remaining)"
+                )
             else:
                 health[provider] = "ok"
         # Always include gemini entry for visibility

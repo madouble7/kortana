@@ -60,11 +60,16 @@ class PatchPlanner:
         If Gemini is in backoff, goes directly to the consensus engine.
         If Gemini returns a quota response, records backoff and falls back.
         """
-        from src.kortana.services.ai_consensus import ConsensusMode, get_consensus_engine
+        from src.kortana.services.ai_consensus import (
+            ConsensusMode,
+            get_consensus_engine,
+        )
         from src.kortana.services.github_autonomy_service import GitHubAutonomyService
 
         now = datetime.utcnow()
-        gemini_backoff_until = GitHubAutonomyService._provider_backoff_until.get("gemini")
+        gemini_backoff_until = GitHubAutonomyService._provider_backoff_until.get(
+            "gemini"
+        )
         gemini_available = not (gemini_backoff_until and gemini_backoff_until > now)
 
         if gemini_available:
@@ -75,7 +80,9 @@ class PatchPlanner:
                 if GitHubAutonomyService._is_gemini_quota_response(response):
                     GitHubAutonomyService._provider_backoff_until["gemini"] = (
                         datetime.utcnow()
-                        + timedelta(seconds=GitHubAutonomyService._provider_backoff_seconds())
+                        + timedelta(
+                            seconds=GitHubAutonomyService._provider_backoff_seconds()
+                        )
                     )
                     logger.warning(
                         "[PatchPlanner] Gemini quota hit — entering backoff, falling back to consensus"
@@ -83,10 +90,19 @@ class PatchPlanner:
                 else:
                     return response
             except Exception as exc:
-                logger.warning("[PatchPlanner] Gemini error (%s) — falling back to consensus", exc)
+                logger.warning(
+                    "[PatchPlanner] Gemini error (%s) — falling back to consensus", exc
+                )
         else:
-            remaining = int((gemini_backoff_until - now).total_seconds()) if gemini_backoff_until else 0
-            logger.info("[PatchPlanner] Gemini in backoff (%ds remaining) — using consensus", remaining)
+            remaining = (
+                int((gemini_backoff_until - now).total_seconds())
+                if gemini_backoff_until
+                else 0
+            )
+            logger.info(
+                "[PatchPlanner] Gemini in backoff (%ds remaining) — using consensus",
+                remaining,
+            )
 
         consensus_mode = ConsensusMode.BEST if mode == "best" else ConsensusMode.FASTEST
         engine = get_consensus_engine()

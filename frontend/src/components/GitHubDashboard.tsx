@@ -129,8 +129,8 @@ export default function GitHubDashboard() {
                   key={s}
                   onClick={() => setFilter(f => f === s ? 'all' : s)}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${filter === s
-                      ? `${style.bg} border-current ${style.text}`
-                      : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600'
+                    ? `${style.bg} border-current ${style.text}`
+                    : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600'
                     }`}
                 >
                   <span className={filter === s ? style.text : 'text-gray-500'}>{style.label}</span>
@@ -163,17 +163,15 @@ export default function GitHubDashboard() {
                 return (
                   <div
                     key={provider}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium ${
-                      isOk
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium ${isOk
                         ? 'bg-green-900/20 border-green-700/50 text-green-400'
                         : isUnknown
-                        ? 'bg-gray-800 border-gray-700 text-gray-500'
-                        : 'bg-red-900/20 border-red-700/50 text-red-400'
-                    }`}
+                          ? 'bg-gray-800 border-gray-700 text-gray-500'
+                          : 'bg-red-900/20 border-red-700/50 text-red-400'
+                      }`}
                   >
-                    <span className={`w-1.5 h-1.5 rounded-full ${
-                      isOk ? 'bg-green-500' : isUnknown ? 'bg-gray-500' : 'bg-red-500'
-                    }`}></span>
+                    <span className={`w-1.5 h-1.5 rounded-full ${isOk ? 'bg-green-500' : isUnknown ? 'bg-gray-500' : 'bg-red-500'
+                      }`}></span>
                     <span className="capitalize">{provider}</span>
                     {!isOk && !isUnknown && (
                       <span className="text-[9px] text-red-400 font-mono">backoff</span>
@@ -220,9 +218,9 @@ export default function GitHubDashboard() {
                 <div
                   key={task.id}
                   className={`bg-gray-800/80 border rounded-lg p-3 flex flex-col gap-1.5 ${task.status === 'failed' ? 'border-red-900/50' :
-                      task.status === 'executing' ? 'border-orange-900/50' :
-                        ['executed', 'completed'].includes(task.status) ? 'border-green-900/30' :
-                          'border-gray-700'
+                    task.status === 'executing' ? 'border-orange-900/50' :
+                      ['executed', 'completed'].includes(task.status) ? 'border-green-900/30' :
+                        'border-gray-700'
                     }`}
                 >
                   <div className="flex items-start justify-between gap-3">

@@ -694,15 +694,17 @@ class AutonomyDaemon:
 
         # Provider health snapshot for reflection context
         try:
-            from src.kortana.services.github_autonomy_service import GitHubAutonomyService
+            from src.kortana.services.github_autonomy_service import (
+                GitHubAutonomyService,
+            )
 
             provider_health = GitHubAutonomyService.get_provider_health()
         except Exception:
             provider_health = {}
 
-        provider_lines = ", ".join(
-            f"{p}:{s}" for p, s in provider_health.items()
-        ) or "unknown"
+        provider_lines = (
+            ", ".join(f"{p}:{s}" for p, s in provider_health.items()) or "unknown"
+        )
 
         prompt = (
             f"you are kor'tana. you just completed daemon cycle #{cycle_num}.\n"
@@ -750,7 +752,9 @@ class AutonomyDaemon:
     def _get_provider_health_snapshot(self) -> dict[str, str]:
         """Return current AI provider backoff state for cycle telemetry."""
         try:
-            from src.kortana.services.github_autonomy_service import GitHubAutonomyService
+            from src.kortana.services.github_autonomy_service import (
+                GitHubAutonomyService,
+            )
 
             return GitHubAutonomyService.get_provider_health()
         except Exception:
