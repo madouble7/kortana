@@ -926,6 +926,27 @@ class GitHubAutonomyService:
         lowered = response_text.lower()
         return any(signal in lowered for signal in quota_signals)
 
+    @classmethod
+    def get_provider_health(cls) -> dict[str, Any]:
+        """Return current provider backoff state for telemetry.
+
+        Returns a dict mapping provider name → status string:
+        - "ok" if no active backoff
+        - "backoff_until:<iso>" if currently in quota backoff
+        """
+        now = datetime.utcnow()
+        health: dict[str, Any] = {}
+        for provider, until in cls._provider_backoff_until.items():
+            if until > now:
+                remaining_s = int((until - now).total_seconds())
+                health[provider] = f"backoff_until:{until.isoformat()} ({remaining_s}s remaining)"
+            else:
+                health[provider] = "ok"
+        # Always include gemini entry for visibility
+        if "gemini" not in health:
+            health["gemini"] = "ok"
+        return health
+
     @staticmethod
     def _extract_http_error_detail(exc: Exception) -> tuple[int | None, str]:
         """Extract status code and body from HTTP errors when available."""
