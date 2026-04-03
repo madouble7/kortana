@@ -12,6 +12,7 @@ Phase 2 long-term memory:
 Architecture: self_memory entries are injected into identity_preamble() so
 every reflection and self-directed task has access to recent continuity of self.
 """
+
 import json
 from datetime import datetime
 from typing import Sequence, Union
@@ -52,7 +53,9 @@ def upgrade() -> None:
             sa.Column("cycle_number", sa.Integer(), nullable=False),
             sa.Column("summary", sa.Text(), nullable=False),
             sa.Column("tags", sa.JSON(), nullable=True),
-            sa.Column("source", sa.String(64), nullable=False, server_default="reflection"),
+            sa.Column(
+                "source", sa.String(64), nullable=False, server_default="reflection"
+            ),
             sa.Column("created_at", sa.DateTime(), nullable=False),
             sa.PrimaryKeyConstraint("id"),
         )
