@@ -236,8 +236,11 @@ def test_pipeline_returns_patchplan_and_verification_models(planner):
     hints_3 = inspect.get_annotations(
         PatchPlanner._stage_3_verify_patch, eval_str=False
     )
-    # Just verify the methods exist and are callable (annotation introspection is
-    # environment-dependent); the async guard above is the primary protection.
+    # Annotation introspection is environment-dependent; just make sure it succeeds
+    # and returns the expected mapping type while the async guard above enforces
+    # the more important contract.
+    assert isinstance(hints_1, dict)
+    assert isinstance(hints_3, dict)
     assert callable(PatchPlanner._stage_1_analyze)
     assert callable(PatchPlanner._stage_3_verify_patch)
 
