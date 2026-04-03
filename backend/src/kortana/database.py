@@ -213,6 +213,14 @@ async def get_db():  # type: ignore[no-untyped-def]
 SessionLocal = get_db
 
 
+@asynccontextmanager
+async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
+    """Get an async database session as a context manager."""
+    db_manager = get_db_manager()
+    async with db_manager.session_scope() as session:
+        yield session
+
+
 class QueryOptimizer:
     """Helper for optimizing database queries"""
 

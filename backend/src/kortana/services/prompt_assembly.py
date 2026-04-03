@@ -110,6 +110,33 @@ class PromptAssemblyService:
         return profile
 
     @staticmethod
+    def render_identity_profile(
+        profile: Any,
+        *,
+        memory_lines: list[str] | None = None,
+    ) -> str:
+        """Render the canonical identity text for chat/reflection prompts."""
+        values_str = ", ".join(profile.core_values or _DEFAULT_VALUES)
+        principles = profile.sacred_principles or _DEFAULT_PRINCIPLES
+        axioms = profile.development_axioms or _DEFAULT_AXIOMS
+        principles_block = "\n".join(f"  - {p}" for p in principles)
+        axioms_block = "\n".join(f"  - {a}" for a in axioms)
+
+        identity = (
+            f"you are {profile.name}, {profile.title}.\n"
+            f"mission: {profile.mission}\n"
+            f"core values: {values_str}\n"
+            f"sacred principles:\n{principles_block}\n"
+            f"development axioms:\n{axioms_block}\n"
+            f"voice: {profile.voice_guidelines}\n"
+            f"self-model version: {profile.version}\n"
+        )
+        if memory_lines:
+            lines = "\n".join(memory_lines)
+            identity = identity + f"recent self-memory:\n{lines}\n"
+        return identity
+
+    @staticmethod
     async def identity_preamble(
         session: Any,
         memory_entries: int = 3,
@@ -137,34 +164,21 @@ class PromptAssemblyService:
         )
 
         profile = await PromptAssemblyService.load_profile(session)
-        values_str = ", ".join(profile.core_values or _DEFAULT_VALUES)
-        principles = profile.sacred_principles or _DEFAULT_PRINCIPLES
-        axioms = profile.development_axioms or _DEFAULT_AXIOMS
-        principles_block = "\n".join(f"  - {p}" for p in principles)
-        axioms_block = "\n".join(f"  - {a}" for a in axioms)
-
-        memory_block = ""
+        memory_lines: list[str] = []
         try:
             memories = await PromptAssemblyService.semantic_memory(
                 session, query=query, limit=memory_entries
             )
             if memories:
-                lines = "\n".join(
+                memory_lines = [
                     f"  [cycle {m.cycle_number}] {m.summary}" for m in memories
-                )
-                memory_block = f"recent self-memory:\n{lines}\n"
+                ]
         except Exception:
             pass
 
-        return (
-            f"you are {profile.name}, {profile.title}.\n"
-            f"mission: {profile.mission}\n"
-            f"core values: {values_str}\n"
-            f"sacred principles:\n{principles_block}\n"
-            f"development axioms:\n{axioms_block}\n"
-            f"voice: {profile.voice_guidelines}\n"
-            f"self-model version: {profile.version}\n"
-            + (f"{memory_block}" if memory_block else "")
+        return PromptAssemblyService.render_identity_profile(
+            profile,
+            memory_lines=memory_lines or None,
         )
 
     @staticmethod

@@ -511,3 +511,34 @@ class SelfMemory(Base):
 
     def __repr__(self) -> str:
         return f"<SelfMemory cycle={self.cycle_number} source={self.source!r}>"
+
+
+class AutonomyGoal(Base):
+    """Persistent autonomy goal graph — survives process restarts.
+
+    Mirrors the in-memory Goal dataclass in goal_manager; parent_id forms a
+    hierarchy, depends_on stores prerequisite goal ids as JSON.
+    """
+
+    __tablename__ = "autonomy_goals"
+
+    id = Column(String(36), primary_key=True)
+    title = Column(String(512), nullable=False)
+    tier = Column(String(32), nullable=False, index=True)
+    status = Column(String(32), nullable=False, index=True)
+    description = Column(Text, nullable=False, default="")
+    success_criteria = Column(Text, nullable=False, default="")
+    progress = Column(Float, nullable=False, default=0.0)
+    priority = Column(Integer, nullable=False, default=50)
+    parent_id = Column(String(36), ForeignKey("autonomy_goals.id"), nullable=True)
+    depends_on = Column(JSON, nullable=True)  # list[str]
+    linked_tasks = Column(JSON, nullable=True)  # list[str]
+    goal_metadata = Column("metadata", JSON, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
+    completed_at = Column(DateTime, nullable=True)
+
+    def __repr__(self) -> str:
+        return f"<AutonomyGoal {self.id!r} tier={self.tier!r} status={self.status!r}>"

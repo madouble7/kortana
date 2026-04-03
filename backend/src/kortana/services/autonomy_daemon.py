@@ -967,6 +967,7 @@ class AutonomyDaemon:
                 insights=insights,
                 identity_values=goal_manager.IDENTITY_VALUES,
             )
+            await goal_manager.persist_all_goals()
             self.metrics["goal_status"] = goal_manager.get_status()
         except Exception as exc:
             logger.debug(f"Goal reprioritisation unavailable: {exc}")
