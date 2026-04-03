@@ -654,14 +654,38 @@ async def get_monitoring_dashboard() -> Dict[str, Any]:
 
 
 @router.get("/issue-queue")
-async def get_issue_queue(limit: int = 30) -> Dict[str, Any]:
-    """Return the live GitHub issue execution pipeline — all stages."""
+async def get_issue_queue(
+    limit: int = 50,
+    hide_local: bool = False,
+    active_only: bool = False,
+) -> Dict[str, Any]:
+    """Return the live GitHub issue execution pipeline.
+
+    Parameters
+    ----------
+    limit:       max rows returned (default 50)
+    hide_local:  if True, exclude tasks whose repo starts with 'local/'
+    active_only: if True, only include non-terminal statuses
+                 (pending/queued/analyzing/analyzed/planning/planning_complete/executing)
+    """
+    _ACTIVE_STATUSES = (
+        "pending",
+        "queued",
+        "analyzing",
+        "analyzed",
+        "planning",
+        "planning_complete",
+        "executing",
+    )
     try:
         db_manager = get_db_manager()
         async with db_manager.session_scope() as db:
-            result = await db.execute(
-                select(GitHubTask).order_by(GitHubTask.updated_at.desc()).limit(limit)
-            )
+            query = select(GitHubTask).order_by(GitHubTask.updated_at.desc())
+            if hide_local:
+                query = query.where(~GitHubTask.github_repo.startswith("local/"))
+            if active_only:
+                query = query.where(GitHubTask.status.in_(_ACTIVE_STATUSES))
+            result = await db.execute(query.limit(limit))
             tasks = result.scalars().all()
 
         status_counts: Dict[str, int] = {}

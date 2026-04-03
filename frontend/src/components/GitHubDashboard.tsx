@@ -55,10 +55,12 @@ export default function GitHubDashboard() {
   const [filter, setFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [providerHealth, setProviderHealth] = useState<ProviderHealth>({});
+  const [hideLocal, setHideLocal] = useState(true);
 
   const fetchQueue = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/always-on/issue-queue?limit=50');
+      const params = new URLSearchParams({ limit: '100', hide_local: String(hideLocal) });
+      const res = await fetch(`http://localhost:8000/api/always-on/issue-queue?${params}`);
       if (!res.ok) return;
       const json: QueueData = await res.json();
       setData(json);
@@ -85,7 +87,7 @@ export default function GitHubDashboard() {
     fetchMetrics();
     const id = setInterval(() => { fetchQueue(); fetchMetrics(); }, 8000);
     return () => clearInterval(id);
-  }, []);
+  }, [hideLocal]);
 
   const tasks = data?.tasks ?? [];
   const visible = filter === 'all' ? tasks : tasks.filter(t => t.status === filter);
@@ -106,6 +108,17 @@ export default function GitHubDashboard() {
         <div className="flex items-center gap-4 text-xs text-gray-500">
           <span className="text-green-400 font-bold">{realIssues.length}</span> real issues
           <span className="text-orange-400 font-bold">{inFlight.length}</span> in-flight
+          <button
+            onClick={() => setHideLocal(h => !h)}
+            className={`flex items-center gap-1.5 px-2 py-1 rounded-md border transition-colors ${
+              hideLocal
+                ? 'border-gray-700 text-gray-500 hover:text-gray-300'
+                : 'border-purple-700/50 bg-purple-900/20 text-purple-400'
+            }`}
+            title={hideLocal ? 'Local tasks hidden — click to show' : 'Showing local tasks — click to hide'}
+          >
+            {hideLocal ? 'local: hidden' : 'local: visible'}
+          </button>
           <div className="flex items-center gap-1">
             <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div> Live
           </div>
