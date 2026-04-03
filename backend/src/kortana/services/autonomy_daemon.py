@@ -320,6 +320,7 @@ class AutonomyDaemon:
                 await session.commit()
 
         except Exception as e:
+            await session.rollback()
             logger.error(f"Vector Alpha execution failed: {e}")
 
     async def _seed_kortana_investigations(self, session: Any) -> None:
@@ -368,6 +369,7 @@ class AutonomyDaemon:
             for inv in investigations:
                 await backlog.queue_autonomous_investigation(**inv)
         except Exception as e:
+            await session.rollback()
             logger.warning("Failed to seed kor'tana investigations: %s", e)
 
     async def _seed_synthetic_incidents(self, session: Any) -> None:
@@ -409,8 +411,13 @@ class AutonomyDaemon:
             fix_status=None,
             resolved=False,
         )
-        session.add(incident)
-        await session.commit()
+        try:
+            session.add(incident)
+            await session.commit()
+        except Exception as e:
+            await session.rollback()
+            logger.warning("[Vector Alpha] Failed to seed synthetic incident: %s", e)
+            return
 
         self.metrics["synthetic_incident_last_seed"] = now
         self.metrics["synthetic_incident_index"] = idx + 1
@@ -630,6 +637,7 @@ class AutonomyDaemon:
                     active_count,
                 )
         except Exception as exc:
+            await session.rollback()
             logger.warning(f"Perpetual task generation failed: {exc}")
 
     async def _process_self_directed_tasks(self, session: Any) -> None:
@@ -712,6 +720,7 @@ class AutonomyDaemon:
                 )
                 await session.commit()
             except Exception as db_exc:
+                await session.rollback()
                 logger.debug(f"[self-directed] DB completion update skipped: {db_exc}")
 
             logger.info(f"[self-directed] task '{name}' completed")
@@ -897,6 +906,7 @@ class AutonomyDaemon:
                 await session.commit()
 
         except Exception as exc:
+            await session.rollback()
             logger.debug(f"Architecture analysis skip: {exc}")
 
     async def _run_cycle(self) -> None:
@@ -1753,8 +1763,10 @@ class AutonomyDaemon:
                 )
                 logger.exception(f"Task {task.id} failed: {exc}")
 
-                # Write to IncidentMemory
+                # Write to IncidentMemory — roll back any aborted transaction
+                # first so the INSERT can proceed on a clean session.
                 try:
+                    await session.rollback()
                     from src.kortana.models import IncidentMemory
 
                     incident = IncidentMemory(
