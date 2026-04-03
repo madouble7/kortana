@@ -333,7 +333,7 @@ class AutonomyDaemon:
         try:
             from src.kortana.services.local_backlog_service import LocalBacklogService
 
-            backlog = LocalBacklogService(db=session)
+            backlog = LocalBacklogService(session)
             investigations = [
                 {
                     "title": "Investigate analysis_rejected_patch: why PatchPlanner Stage 1 returns should_patch=false",

@@ -1389,3 +1389,28 @@ async def test_heal_vectors_invokes_vector_alpha():
         mock_alpha_inst.evaluate_incident.assert_called_once_with(incident)
         mock_alpha_inst.create_healing_branch.assert_called_once_with(incident)
         mock_alpha_inst.commit_and_propose.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_seed_kortana_investigations_queues_three_tasks():
+    daemon = build_daemon()
+    daemon._running = True
+    session = AsyncMock()
+    backlog = AsyncMock()
+
+    with patch(
+        "src.kortana.services.local_backlog_service.LocalBacklogService",
+        return_value=backlog,
+    ) as mock_backlog_cls:
+        await daemon._seed_kortana_investigations(session)
+
+    mock_backlog_cls.assert_called_once_with(session)
+    assert backlog.queue_autonomous_investigation.await_count == 3
+
+    queued_titles = [
+        call.kwargs["title"]
+        for call in backlog.queue_autonomous_investigation.await_args_list
+    ]
+    assert any("analysis_rejected_patch" in title for title in queued_titles)
+    assert any("semantic memory" in title.lower() for title in queued_titles)
+    assert any("self-reflection" in title.lower() for title in queued_titles)
