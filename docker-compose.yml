@@ -104,7 +104,7 @@ services:
         - type=gha
     container_name: kortana-frontend
     ports:
-      - "${FRONTEND_PORT:-3000}:3000"
+      - "${FRONTEND_PORT:-3000}:5173"
     depends_on:
       - backend
     volumes:

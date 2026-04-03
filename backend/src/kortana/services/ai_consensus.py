@@ -117,6 +117,7 @@ class AIConsensusEngine:
             return
         try:
             from google.genai import Client
+
             from src.kortana.services.gemini_config import get_model_name
 
             client = Client(api_key=key)
@@ -168,7 +169,7 @@ class AIConsensusEngine:
             client = groq.AsyncGroq(api_key=key)
             self._providers["groq"] = {
                 "client": client,
-                "model": "mixtral-8x7b-32768",
+                "model": "llama-3.3-70b-versatile",
             }
             self._stats["groq"] = ProviderStats()
         except Exception as e:
@@ -295,35 +296,45 @@ class AIConsensusEngine:
     async def _query_fastest(
         self, prompt: str, system: str | None, max_tokens: int, timeout: float
     ) -> ConsensusResult:
-        """Return the first successful response."""
+        """Return the first successful response, skipping fast failures."""
         ranked = self._ranked_providers()
         t0 = time.monotonic()
+        deadline = t0 + timeout
 
-        tasks = {
-            asyncio.create_task(self._call_provider(name, prompt, system, max_tokens)): name
+        pending: set[asyncio.Task[ProviderResponse]] = {
+            asyncio.create_task(self._call_provider(name, prompt, system, max_tokens))
             for name in ranked
         }
 
         try:
-            done, pending = await asyncio.wait(
-                tasks, timeout=timeout, return_when=asyncio.FIRST_COMPLETED
-            )
-        finally:
-            for t in tasks:
-                if not t.done():
-                    t.cancel()
-
-        for t in done:
-            resp: ProviderResponse = t.result()
-            if resp.success:
-                return ConsensusResult(
-                    mode="fastest",
-                    answer=resp.text,
-                    provider_used=resp.provider,
-                    latency=time.monotonic() - t0,
-                    providers_queried=len(ranked),
-                    providers_succeeded=1,
+            while pending:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                done, pending = await asyncio.wait(
+                    pending,
+                    timeout=remaining,
+                    return_when=asyncio.FIRST_COMPLETED,
                 )
+                if not done:
+                    break  # timed out
+                for t in done:
+                    resp: ProviderResponse = t.result()
+                    if resp.success:
+                        # Cancel remaining and return winner
+                        for p in pending:
+                            p.cancel()
+                        return ConsensusResult(
+                            mode="fastest",
+                            answer=resp.text,
+                            provider_used=resp.provider,
+                            latency=time.monotonic() - t0,
+                            providers_queried=len(ranked),
+                            providers_succeeded=1,
+                        )
+        finally:
+            for t in pending:
+                t.cancel()
 
         return ConsensusResult(
             mode="fastest",
@@ -425,7 +436,9 @@ class AIConsensusEngine:
         self, prompt: str, system: str | None, max_tokens: int, timeout: float
     ) -> list[ProviderResponse]:
         ranked = self._ranked_providers()
-        coros = [self._call_provider(name, prompt, system, max_tokens) for name in ranked]
+        coros = [
+            self._call_provider(name, prompt, system, max_tokens) for name in ranked
+        ]
         results = await asyncio.gather(*coros, return_exceptions=True)
         out: list[ProviderResponse] = []
         for i, r in enumerate(results):
@@ -444,7 +457,9 @@ class AIConsensusEngine:
         return out
 
     @staticmethod
-    def _build_synthesis_prompt(original: str, responses: list[ProviderResponse]) -> str:
+    def _build_synthesis_prompt(
+        original: str, responses: list[ProviderResponse]
+    ) -> str:
         parts = [
             "we are a synthesis engine. Multiple AI providers answered the same question.",
             "Combine the best elements of each response into one authoritative answer.",
