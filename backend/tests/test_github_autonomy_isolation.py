@@ -2,7 +2,6 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from src.kortana.models import GitHubTask
 from src.kortana.services.github_autonomy_service import GitHubAutonomyService
 
@@ -421,3 +420,214 @@ async def test_fetch_and_queue_issues_skips_when_github_mode_deferred(
 
     assert tasks == []
     service.http_client.get.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# PatchValidator gateway tests
+# ---------------------------------------------------------------------------
+
+
+def _make_service(monkeypatch):
+    monkeypatch.setenv("GITHUB_TOKEN", "test-token")
+    monkeypatch.setenv("KORTANA_GITHUB_MODE", "deferred")
+    service = GitHubAutonomyService(db_session=MagicMock())
+    service._db_commit = AsyncMock()
+    service._db_rollback = AsyncMock()
+    return service
+
+
+def _base_task(plan: str | None = None) -> MagicMock:
+    task = MagicMock(spec=GitHubTask)
+    task.github_issue_number = 100
+    task.github_repo = "local/kortana"
+    task.title = "Gateway test"
+    task.branch_name = "auto/local/100-gateway-test"
+    task.plan = (
+        plan
+        or '{"FILE_CHANGES":[{"file":"backend/src/kortana/demo.py","action":"create","content":"pass\\n"}]}'
+    )
+    task.status = "planning_complete"
+    task.error_count = 0
+    task.commit_sha = None
+    task.github_pr_number = None
+    task.validation_report = None
+    return task
+
+
+@pytest.mark.asyncio
+async def test_gateway_allows_safe_additive_patch(tmp_path, monkeypatch):
+    """A small additive diff must pass the validator and reach _commit_workspace_changes."""
+    from unittest.mock import patch as mock_patch
+
+    service = _make_service(monkeypatch)
+    task = _base_task()
+
+    workspace = tmp_path / "wt"
+    generated = workspace / "backend" / "src" / "kortana" / "demo.py"
+    generated.parent.mkdir(parents=True)
+    generated.write_text("pass\n", encoding="utf-8")
+
+    service._prepare_execution_workspace = AsyncMock(return_value=workspace)
+    service._commit_workspace_changes = AsyncMock(return_value="safe123")
+    service._cleanup_execution_workspace = AsyncMock()
+    service.code_gen.generate_from_gemini_plan = MagicMock(
+        return_value={
+            "created": [str(generated)],
+            "modified": [],
+            "deleted": [],
+            "errors": [],
+        }
+    )
+
+    # Simulate _get_pending_diff returning a small additive diff
+    small_diff = (
+        "--- /dev/null\n+++ b/backend/src/kortana/demo.py\n@@ -0,0 +1 @@\n+pass\n"
+    )
+    with mock_patch.object(service, "_get_pending_diff", return_value=small_diff):
+        result = await service.execute_task(task)
+
+    assert result is task
+    assert task.status == "executed"
+    service._commit_workspace_changes.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_gateway_blocks_destructive_rewrite(tmp_path, monkeypatch):
+    """A diff with LDR > 0.40 must be blocked: status stays pending, commit not called."""
+    from unittest.mock import patch as mock_patch
+
+    service = _make_service(monkeypatch)
+    task = _base_task()
+
+    workspace = tmp_path / "wt"
+    # Large target file so LDR calculation has real content to compare against
+    target = workspace / "backend" / "src" / "kortana" / "autonomy_daemon.py"
+    target.parent.mkdir(parents=True)
+    original_lines = 600
+    target.write_text(
+        "".join(f"line {i}\n" for i in range(original_lines)), encoding="utf-8"
+    )
+
+    generated = workspace / "backend" / "src" / "kortana" / "demo.py"
+    generated.parent.mkdir(parents=True, exist_ok=True)
+    generated.write_text("pass\n", encoding="utf-8")
+
+    service._prepare_execution_workspace = AsyncMock(return_value=workspace)
+    service._commit_workspace_changes = AsyncMock()
+    service._cleanup_execution_workspace = AsyncMock()
+    service.code_gen.generate_from_gemini_plan = MagicMock(
+        return_value={
+            "created": [str(generated)],
+            "modified": [],
+            "deleted": [],
+            "errors": [],
+        }
+    )
+
+    # Build a destructive diff: 560 deletions out of 600 lines → LDR ≈ 0.93
+    deletions = "\n".join(f"-line {i}" for i in range(560))
+    destructive_diff = (
+        f"--- a/backend/src/kortana/autonomy_daemon.py\n"
+        f"+++ b/backend/src/kortana/autonomy_daemon.py\n"
+        f"@@ -1,600 +1,40 @@\n"
+        f"{deletions}\n"
+    )
+
+    with mock_patch.object(service, "_get_pending_diff", return_value=destructive_diff):
+        result = await service.execute_task(task)
+
+    assert result is task
+    assert task.status == "pending"
+    assert task.error_message is not None
+    assert (
+        "guardrail" in task.error_message.lower() or "ldr" in task.error_message.lower()
+    )
+    service._commit_workspace_changes.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_gateway_skips_validation_when_no_diff(tmp_path, monkeypatch):
+    """If _get_pending_diff returns empty string, validation is skipped and commit proceeds."""
+    from unittest.mock import patch as mock_patch
+
+    service = _make_service(monkeypatch)
+    task = _base_task()
+
+    workspace = tmp_path / "wt"
+    generated = workspace / "backend" / "src" / "kortana" / "demo.py"
+    generated.parent.mkdir(parents=True)
+    generated.write_text("pass\n", encoding="utf-8")
+
+    service._prepare_execution_workspace = AsyncMock(return_value=workspace)
+    service._commit_workspace_changes = AsyncMock(return_value="empty123")
+    service._cleanup_execution_workspace = AsyncMock()
+    service.code_gen.generate_from_gemini_plan = MagicMock(
+        return_value={
+            "created": [str(generated)],
+            "modified": [],
+            "deleted": [],
+            "errors": [],
+        }
+    )
+
+    with mock_patch.object(service, "_get_pending_diff", return_value=""):
+        result = await service.execute_task(task)
+
+    assert result is task
+    assert task.status == "executed"
+    service._commit_workspace_changes.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_gateway_resets_git_index_on_block(tmp_path, monkeypatch):
+    """When the validator blocks, git reset HEAD must be called to undo staged state."""
+    from unittest.mock import patch as mock_patch
+
+    service = _make_service(monkeypatch)
+    task = _base_task()
+
+    workspace = tmp_path / "wt"
+    generated = workspace / "backend" / "src" / "kortana" / "demo.py"
+    generated.parent.mkdir(parents=True)
+    generated.write_text("pass\n", encoding="utf-8")
+
+    service._prepare_execution_workspace = AsyncMock(return_value=workspace)
+    service._commit_workspace_changes = AsyncMock()
+    service._cleanup_execution_workspace = AsyncMock()
+    service.code_gen.generate_from_gemini_plan = MagicMock(
+        return_value={
+            "created": [str(generated)],
+            "modified": [],
+            "deleted": [],
+            "errors": [],
+        }
+    )
+
+    deletions = "\n".join(f"-line {i}" for i in range(560))
+    destructive_diff = (
+        f"--- a/backend/src/kortana/autonomy_daemon.py\n"
+        f"+++ b/backend/src/kortana/autonomy_daemon.py\n"
+        f"@@ -1,600 +1,40 @@\n"
+        f"{deletions}\n"
+    )
+
+    reset_calls: list = []
+
+    def fake_run_git(cmd, **kwargs):
+        if cmd == ["git", "reset", "HEAD"]:
+            reset_calls.append(kwargs.get("cwd"))
+        return MagicMock(stdout="")
+
+    with mock_patch.object(service, "_get_pending_diff", return_value=destructive_diff):
+        with mock_patch.object(service, "_run_git", side_effect=fake_run_git):
+            # PatchValidator itself does not call _run_git; the reset is called by
+            # the gateway block branch inside execute_task.
+            # We patch _get_pending_diff to bypass the internal git add/diff calls.
+            result = await service.execute_task(task)
+
+    assert task.status == "pending"
+    # git reset HEAD should have been called with the workspace as cwd
+    assert any(str(workspace) in str(p) for p in reset_calls), (
+        f"Expected git reset HEAD call with cwd={workspace}, got: {reset_calls}"
+    )
+    service._commit_workspace_changes.assert_not_awaited()
