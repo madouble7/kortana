@@ -37,6 +37,9 @@ from src.kortana.services.operator_directive_service import (
     get_active_operator_summary,
 )
 from src.kortana.services.self_awareness import get_self_awareness
+from src.kortana.services.task_executability_service import (
+    assess_task_executability,
+)
 from src.kortana.services.task_approval_service import TaskApprovalService
 from src.kortana.services.workspace_bridge_service import get_workspace_bridge
 
@@ -663,7 +666,10 @@ class AutonomyDaemon:
         from sqlalchemy import text as _text
 
         from src.kortana.models import Reflection
-        from src.kortana.services.ai_consensus import ConsensusMode, get_consensus_engine
+        from src.kortana.services.ai_consensus import (
+            ConsensusMode,
+            get_consensus_engine,
+        )
 
         cycle_num = self.metrics.get("cycles_completed", 0)
 
@@ -700,9 +706,13 @@ class AutonomyDaemon:
                 max_tokens=180,
                 timeout=15.0,
             )
-            content = result.answer if result.providers_succeeded > 0 else (
-                f"cycle {cycle_num} complete. {tasks_ok} tasks succeeded, "
-                f"{tasks_fail} failed, {sd_done} self-directed tasks closed."
+            content = (
+                result.answer
+                if result.providers_succeeded > 0
+                else (
+                    f"cycle {cycle_num} complete. {tasks_ok} tasks succeeded, "
+                    f"{tasks_fail} failed, {sd_done} self-directed tasks closed."
+                )
             )
         except Exception as exc:
             content = f"cycle {cycle_num} complete — reflection unavailable ({exc})"
@@ -1396,6 +1406,32 @@ class AutonomyDaemon:
             )
 
             try:
+                assessment = assess_task_executability(task)
+                if not assessment.executable:
+                    task.status = "blocked"
+                    task.error_message = (
+                        "Task blocked by executability filter: "
+                        f"{assessment.reason}"
+                    )
+                    await session.commit()
+                    deferred += 1
+                    self._emit(
+                        DaemonEvent(
+                            type="task_blocked",
+                            data={
+                                "task_id": str(task.id),
+                                "title": task.title,
+                                "reason": assessment.reason,
+                            },
+                        )
+                    )
+                    logger.warning(
+                        "Blocked non-executable task %s (%s)",
+                        task.id,
+                        assessment.reason,
+                    )
+                    continue
+
                 # Shadow Path Execution (Diagnostic Signal Only)
                 if get_settings().AUTONOMY_LOOP_SHADOW_ENABLED:
                     try:

@@ -1194,7 +1194,9 @@ class GitHubAutonomyService:
                     f"Task #{task.github_issue_number} has no valid plan — deferring"
                 )
                 task.status = "pending"
-                task.error_message = "No valid plan — deferred for retry when quota resets"
+                task.error_message = (
+                    "No valid plan — deferred for retry when quota resets"
+                )
                 await self._db_commit()
                 return task
 
@@ -1269,7 +1271,9 @@ class GitHubAutonomyService:
                         f"Task #{task.github_issue_number} produced no code changes — deferring"
                     )
                     task.status = "pending"
-                    task.error_message = "Plan produced no file changes — deferred for retry"
+                    task.error_message = (
+                        "Plan produced no file changes — deferred for retry"
+                    )
                     await self._db_commit()
                     return task
 

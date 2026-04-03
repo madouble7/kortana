@@ -407,6 +407,42 @@ class TestAutonomyDaemon:
         assert (processed, succeeded, failed, deferred) == (1, 0, 1, 0)
         assert daemon._cycle_failed_task_ids == ["task-failed"]
 
+    @pytest.mark.asyncio
+    async def test_process_tasks_blocks_abstract_non_executable_tasks(self) -> None:
+        daemon = build_daemon()
+        task = GitHubTask(
+            id="task-abstract",
+            github_issue_number=188,
+            github_repo="madouble7/kortana",
+            title="Quantum Linkage Integration Framework",
+            description="Establish a recursive synthesis layer for system resonance.",
+            status="pending",
+        )
+
+        result = MagicMock()
+        result.scalars.return_value.all.return_value = [task]
+        session = AsyncMock()
+        session.execute = AsyncMock(return_value=result)
+
+        service = AsyncMock()
+        events: list[Any] = []
+        daemon.on_event(events.append)
+
+        with patch(
+            "src.kortana.services.github_autonomy_service.GitHubAutonomyService",
+            return_value=service,
+        ):
+            processed, succeeded, failed, deferred = await daemon._process_tasks(
+                session
+            )
+
+        assert (processed, succeeded, failed, deferred) == (1, 0, 0, 1)
+        assert task.status == "blocked"
+        assert "executability filter" in (task.error_message or "")
+        service.analyze_task.assert_not_awaited()
+        blocked_event = next(event for event in events if event.type == "task_blocked")
+        assert blocked_event.data["task_id"] == "task-abstract"
+
     def test_prioritize_tasks_prefers_focus_topics_and_filters_avoid(self) -> None:
         daemon = build_daemon()
         tasks = [
