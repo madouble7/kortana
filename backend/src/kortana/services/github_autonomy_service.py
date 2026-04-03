@@ -174,6 +174,18 @@ class GitHubAutonomyService:
         return self._github_mode() == "full" and not self._is_local_task(task)
 
     @staticmethod
+    def _is_quota_exhausted_plan(plan: str) -> bool:
+        """Return True when the plan text is a Gemini quota-error fallback, not real JSON."""
+        signals = (
+            "quota limits",
+            "RESOURCE_EXHAUSTED",
+            "generative model is temporarily unavailable",
+            "The system continues without Gemini",
+            "Error during analysis:",
+        )
+        return any(s in plan for s in signals)
+
+    @staticmethod
     def _is_local_task(task: GitHubTask) -> bool:
         repo = (task.github_repo or "").lower()
         classification = (task.classification or "").lower()
@@ -846,10 +858,7 @@ class GitHubAutonomyService:
             )
             row = result.fetchone()
             if row:
-                return (
-                    f"## my most recent self-reflection (cycle {row[1]})\n"
-                    f"{row[0]}\n"
-                )
+                return f"## my most recent self-reflection (cycle {row[1]})\n{row[0]}\n"
         except Exception:
             pass
         return ""
@@ -1062,6 +1071,17 @@ class GitHubAutonomyService:
                 )
             )
             analysis = await self._maybe_await(gemini_service.analyze_text(prompt))
+
+            # Detect quota-exhaustion fallback — defer instead of storing garbage analysis.
+            if self._is_quota_exhausted_plan(analysis):
+                logger.warning(
+                    f"Gemini quota exhausted during analysis of task #{task.github_issue_number} — deferring"
+                )
+                task.status = "pending"
+                task.error_message = "Gemini quota exhausted — deferred for retry"
+                await self._db_commit()
+                return task
+
             task.analysis = analysis
             task.status = "analyzed"
             task.analyzed_at = datetime.utcnow()
@@ -1115,6 +1135,17 @@ class GitHubAutonomyService:
                 f"Title: {task.title}\nAnalysis: {task.analysis}"
             )
             raw_plan = await self._maybe_await(gemini_service.analyze_text(prompt))
+
+            # Detect quota-exhaustion fallback — defer instead of storing garbage plans.
+            if self._is_quota_exhausted_plan(raw_plan):
+                logger.warning(
+                    f"Gemini quota exhausted for task #{task.github_issue_number} — deferring"
+                )
+                task.status = "pending"
+                task.error_message = "Gemini quota exhausted — deferred for retry"
+                await self._db_commit()
+                return task
+
             plan = self._sanitize_plan_for_repo(raw_plan)
             task.plan = plan
             self._record_validation_report(
@@ -1156,6 +1187,16 @@ class GitHubAutonomyService:
         validation_result: dict[str, Any] | None = None
         try:
             logger.info(f"Executing task #{task.github_issue_number}")
+
+            # Pre-flight: refuse to execute if the plan is a quota-error fallback.
+            if not task.plan or self._is_quota_exhausted_plan(task.plan):
+                logger.warning(
+                    f"Task #{task.github_issue_number} has no valid plan — deferring"
+                )
+                task.status = "pending"
+                task.error_message = "No valid plan — deferred for retry when quota resets"
+                await self._db_commit()
+                return task
 
             # 1. Create GitHub branch
             if publish_to_github:
@@ -1221,6 +1262,16 @@ class GitHubAutonomyService:
                             task.id,
                             task.branch_name,
                         )
+                elif publish_to_github and not self._is_local_task(task):
+                    # Code generator produced no file changes — plan was abstract.
+                    # Defer the task so it can be retried or handled differently.
+                    logger.warning(
+                        f"Task #{task.github_issue_number} produced no code changes — deferring"
+                    )
+                    task.status = "pending"
+                    task.error_message = "Plan produced no file changes — deferred for retry"
+                    await self._db_commit()
+                    return task
 
             self._record_validation_report(
                 task,
