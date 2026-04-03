@@ -266,6 +266,73 @@ class GoalManager:
         )
         logger.info("Goal manager bootstrapped with default strategic/tactical goals")
 
+    async def bootstrap_from_db(self) -> None:
+        """Read persistent cycle/task stats from DB and update goal progress.
+
+        Called once at daemon startup so progress survives container restarts.
+        Goals that meet their criteria are automatically marked COMPLETED.
+        """
+        try:
+            from sqlalchemy import text
+
+            from src.kortana.database import get_db_manager
+
+            db = get_db_manager()
+
+            async with db.session_scope() as session:
+                # --- 1. Consecutive clean cycles (autonomy_cycle_memory) ---
+                result = await session.execute(
+                    text(
+                        "SELECT COUNT(*) as total, "
+                        "SUM(CASE WHEN errors_encountered = 0 OR errors_encountered IS NULL THEN 1 ELSE 0 END) as clean "
+                        "FROM autonomy_cycle_memory"
+                    )
+                )
+                row = result.fetchone()
+                total_cycles = row[0] or 0
+                clean_cycles = row[1] or 0
+
+                # --- 2. Task success rate (github_tasks) ---
+                result2 = await session.execute(
+                    text(
+                        "SELECT COUNT(*) as total, "
+                        "SUM(CASE WHEN status IN ('executed', 'completed') THEN 1 ELSE 0 END) as succeeded "
+                        "FROM github_tasks"
+                    )
+                )
+                task_row = result2.fetchone()
+                total_tasks = task_row[0] or 0
+                success_rate = (task_row[1] or 0) / total_tasks if total_tasks > 0 else 0.0
+
+            # Update goal progress
+            CONSECUTIVE_TARGET = 30
+            for goal in self._goals.values():
+                if "autonomous operation" in goal.title.lower():
+                    progress = min(1.0, clean_cycles / CONSECUTIVE_TARGET)
+                    goal.progress = round(progress, 3)
+                    goal.metadata["clean_cycles"] = clean_cycles
+                    goal.metadata["total_cycles"] = total_cycles
+                    if clean_cycles >= CONSECUTIVE_TARGET:
+                        self.complete(goal.id)
+                    logger.info(
+                        f"[goals] autonomous_operation: {clean_cycles}/{CONSECUTIVE_TARGET} "
+                        f"clean cycles → progress={goal.progress}"
+                    )
+
+                elif "95%" in goal.title or "success rate" in goal.title.lower():
+                    goal.progress = round(success_rate, 3)
+                    goal.metadata["success_rate"] = success_rate
+                    goal.metadata["total_tasks"] = total_tasks
+                    if success_rate >= 0.95 and total_tasks >= 100:
+                        self.complete(goal.id)
+                    logger.info(
+                        f"[goals] success_rate: {success_rate:.1%} over {total_tasks} tasks "
+                        f"→ progress={goal.progress}"
+                    )
+
+        except Exception as exc:
+            logger.warning(f"Goal DB bootstrap failed (non-fatal): {exc}")
+
     # ----- status -----
 
     def get_status(self) -> dict[str, Any]:

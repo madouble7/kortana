@@ -155,6 +155,13 @@ class AutonomyDaemon:
 
     async def _loop(self) -> None:
         await asyncio.sleep(5)
+        # Bootstrap goal progress from DB so stats survive restarts
+        try:
+            from src.kortana.services.goal_manager import get_goal_manager
+            gm = get_goal_manager()
+            await gm.bootstrap_from_db()
+        except Exception as _boot_exc:
+            logger.debug(f"Goal bootstrap skipped: {_boot_exc}")
         while self._running:
             try:
                 await self._run_cycle()
