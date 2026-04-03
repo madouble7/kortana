@@ -86,6 +86,25 @@ async def _build_live_context() -> str:
     except Exception:
         pass
 
+    # 4. Self-directed tasks (completed and pending)
+    try:
+        from sqlalchemy import text as _sd_text
+        db = get_db_manager()
+        async with db.session_scope() as session:
+            rows = await session.execute(
+                _sd_text(
+                    "SELECT name, status, created_at FROM autonomous_tasks "
+                    "ORDER BY created_at DESC LIMIT 5"
+                )
+            )
+            sd_tasks = rows.fetchall()
+            if sd_tasks:
+                lines.append("\n## my self-directed tasks")
+                for r in sd_tasks:
+                    lines.append(f"- [{r[1]}] {r[0]}")
+    except Exception:
+        pass
+
     return "\n".join(lines)
 
 
@@ -226,7 +245,14 @@ async def _extract_and_queue_tasks(raw: str) -> tuple[str, list[dict[str, Any]]]
             }
             _tasks_db[short_id] = task
             created.append({"id": short_id, "name": name, "branch": branch})
-            to_persist.append({"id": task_id, "name": name, "description": description, "branch": branch})
+            to_persist.append(
+                {
+                    "id": task_id,
+                    "name": name,
+                    "description": description,
+                    "branch": branch,
+                }
+            )
         except Exception:
             pass
         return ""  # strip marker from visible text
@@ -237,7 +263,9 @@ async def _extract_and_queue_tasks(raw: str) -> tuple[str, list[dict[str, Any]]]
     if to_persist:
         try:
             from sqlalchemy import text as _text
+
             from src.kortana.database import get_db_manager
+
             db = get_db_manager()
             async with db.session_scope() as s:
                 for t in to_persist:
@@ -246,7 +274,12 @@ async def _extract_and_queue_tasks(raw: str) -> tuple[str, list[dict[str, Any]]]
                             "INSERT INTO autonomous_tasks (id, name, description, branch, status, source, created_at) "
                             "VALUES (:id, :name, :desc, :branch, 'pending', 'self_directed', NOW())"
                         ),
-                        {"id": t["id"], "name": t["name"], "desc": t["description"], "branch": t["branch"]},
+                        {
+                            "id": t["id"],
+                            "name": t["name"],
+                            "desc": t["description"],
+                            "branch": t["branch"],
+                        },
                     )
         except Exception:
             pass  # best-effort, never break chat
