@@ -26,6 +26,7 @@ from src.kortana.models import GitHubTask
 from src.kortana.services.ai_consensus import ConsensusMode, get_consensus_engine
 from src.kortana.services.gemini import gemini_service
 from src.kortana.services.operator_directive_service import OperatorDirectiveService
+from src.kortana.services.patch_validator import PatchValidator, ValidationFailure
 from src.kortana.services.repository_boundary_service import RepositoryBoundaryService
 from src.kortana.services.workspace_bridge_service import get_workspace_bridge
 
@@ -1372,6 +1373,33 @@ class GitHubAutonomyService:
                 task.plan or "", workspace
             )
 
+            # Pre-commit guardrail: run PatchValidator against the pending diff
+            # before any bytes hit the worktree commit.  This mirrors the same
+            # enforcement already present in PatchPlanner.apply_healing_patch().
+            if not dry_run and normalized_files:
+                diff_text = self._get_pending_diff(workspace)
+                if diff_text:
+                    pv = PatchValidator(str(workspace))
+                    pv_result = pv.validate(diff_text)
+                    if isinstance(pv_result, ValidationFailure):
+                        logger.warning(
+                            "PatchValidator blocked commit for task %s: %s",
+                            task.id,
+                            pv_result.summary(),
+                        )
+                        # Reset the index so the staged-all from _get_pending_diff
+                        # doesn't leave a dirty git state in the worktree.
+                        try:
+                            self._run_git(["git", "reset", "HEAD"], cwd=workspace)
+                        except Exception:
+                            pass
+                        task.status = "pending"
+                        task.error_message = (
+                            f"Pre-commit guardrail rejected diff: {pv_result.summary()}"
+                        )
+                        await self._db_commit()
+                        return task
+
             # 3. Commit changes to the branch (if not dry-run)
             if not dry_run:
                 if normalized_files:
@@ -1583,6 +1611,27 @@ class GitHubAutonomyService:
             if value and value not in normalized:
                 normalized.append(value)
         return normalized
+
+    def _get_pending_diff(self, workspace: Path) -> str:
+        """Return a unified diff of all staged + unstaged changes in the workspace.
+
+        Used by the pre-commit PatchValidator gateway to inspect the full scope
+        of changes before any commit is written.  Returns an empty string on any
+        git error (the validator will treat an empty diff as zero risk).
+        """
+        try:
+            # Stage everything so `git diff --cached` catches code-generator writes
+            self._run_git(["git", "add", "--all"], cwd=workspace)
+            result = self._run_git(
+                ["git", "diff", "--cached", "--unified=3"],
+                cwd=workspace,
+            )
+            return result.stdout
+        except Exception as exc:
+            logger.debug(
+                "_get_pending_diff: failed to read diff from %s: %s", workspace, exc
+            )
+            return ""
 
     async def _commit_workspace_changes(
         self,
