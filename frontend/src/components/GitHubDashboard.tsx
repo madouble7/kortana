@@ -25,16 +25,18 @@ type QueueData = {
   timestamp: string;
 };
 
+type ProviderHealth = Record<string, string>;
+
 const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> = {
-  pending:          { bg: 'bg-gray-700',        text: 'text-gray-300',   label: 'Pending' },
-  analyzing:        { bg: 'bg-yellow-900/50',   text: 'text-yellow-300', label: 'Analyzing' },
-  analyzed:         { bg: 'bg-blue-900/50',     text: 'text-blue-300',   label: 'Analyzed' },
-  planning:         { bg: 'bg-indigo-900/50',   text: 'text-indigo-300', label: 'Planning' },
-  planning_complete:{ bg: 'bg-purple-900/50',   text: 'text-purple-300', label: 'Planned' },
-  executing:        { bg: 'bg-orange-900/50',   text: 'text-orange-300', label: 'Executing' },
-  executed:         { bg: 'bg-green-900/50',    text: 'text-green-300',  label: 'Executed' },
-  completed:        { bg: 'bg-green-900/60',    text: 'text-green-400',  label: 'Done' },
-  failed:           { bg: 'bg-red-900/50',      text: 'text-red-400',    label: 'Failed' },
+  pending: { bg: 'bg-gray-700', text: 'text-gray-300', label: 'Pending' },
+  analyzing: { bg: 'bg-yellow-900/50', text: 'text-yellow-300', label: 'Analyzing' },
+  analyzed: { bg: 'bg-blue-900/50', text: 'text-blue-300', label: 'Analyzed' },
+  planning: { bg: 'bg-indigo-900/50', text: 'text-indigo-300', label: 'Planning' },
+  planning_complete: { bg: 'bg-purple-900/50', text: 'text-purple-300', label: 'Planned' },
+  executing: { bg: 'bg-orange-900/50', text: 'text-orange-300', label: 'Executing' },
+  executed: { bg: 'bg-green-900/50', text: 'text-green-300', label: 'Executed' },
+  completed: { bg: 'bg-green-900/60', text: 'text-green-400', label: 'Done' },
+  failed: { bg: 'bg-red-900/50', text: 'text-red-400', label: 'Failed' },
 };
 
 function StatusChip({ status }: { status: string }) {
@@ -46,12 +48,13 @@ function StatusChip({ status }: { status: string }) {
   );
 }
 
-const PIPELINE_ORDER = ['pending','analyzing','analyzed','planning','planning_complete','executing','executed','completed','failed'];
+const PIPELINE_ORDER = ['pending', 'analyzing', 'analyzed', 'planning', 'planning_complete', 'executing', 'executed', 'completed', 'failed'];
 
 export default function GitHubDashboard() {
   const [data, setData] = useState<QueueData | null>(null);
   const [filter, setFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
+  const [providerHealth, setProviderHealth] = useState<ProviderHealth>({});
 
   const fetchQueue = async () => {
     try {
@@ -66,16 +69,28 @@ export default function GitHubDashboard() {
     }
   };
 
+  const fetchMetrics = async () => {
+    try {
+      const res = await fetch('http://localhost:8000/api/always-on/metrics');
+      if (!res.ok) return;
+      const json = await res.json();
+      if (json.provider_health) setProviderHealth(json.provider_health);
+    } catch {
+      // best-effort
+    }
+  };
+
   useEffect(() => {
     fetchQueue();
-    const id = setInterval(fetchQueue, 8000);
+    fetchMetrics();
+    const id = setInterval(() => { fetchQueue(); fetchMetrics(); }, 8000);
     return () => clearInterval(id);
   }, []);
 
   const tasks = data?.tasks ?? [];
   const visible = filter === 'all' ? tasks : tasks.filter(t => t.status === filter);
   const realIssues = tasks.filter(t => !t.is_local);
-  const inFlight = tasks.filter(t => ['analyzing','analyzed','planning','planning_complete','executing'].includes(t.status));
+  const inFlight = tasks.filter(t => ['analyzing', 'analyzed', 'planning', 'planning_complete', 'executing'].includes(t.status));
 
   return (
     <div className="flex flex-col h-full bg-gray-900 overflow-y-auto">
@@ -113,11 +128,10 @@ export default function GitHubDashboard() {
                 <button
                   key={s}
                   onClick={() => setFilter(f => f === s ? 'all' : s)}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
-                    filter === s
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${filter === s
                       ? `${style.bg} border-current ${style.text}`
                       : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600'
-                  }`}
+                    }`}
                 >
                   <span className={filter === s ? style.text : 'text-gray-500'}>{style.label}</span>
                   <span className={`font-bold ${filter === s ? style.text : 'text-gray-300'}`}>{count}</span>
@@ -134,6 +148,42 @@ export default function GitHubDashboard() {
             )}
           </div>
         </section>
+
+        {/* Provider health strip */}
+        {Object.keys(providerHealth).length > 0 && (
+          <section>
+            <div className="flex items-center gap-2 mb-3 border-b border-gray-800 pb-2">
+              <span className="w-1.5 h-4 bg-purple-500 rounded"></span>
+              <h3 className="text-sm font-semibold text-gray-200 tracking-wide uppercase">AI Providers</h3>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(providerHealth).map(([provider, status]) => {
+                const isOk = status === 'ok';
+                const isUnknown = status === 'unknown';
+                return (
+                  <div
+                    key={provider}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium ${
+                      isOk
+                        ? 'bg-green-900/20 border-green-700/50 text-green-400'
+                        : isUnknown
+                        ? 'bg-gray-800 border-gray-700 text-gray-500'
+                        : 'bg-red-900/20 border-red-700/50 text-red-400'
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${
+                      isOk ? 'bg-green-500' : isUnknown ? 'bg-gray-500' : 'bg-red-500'
+                    }`}></span>
+                    <span className="capitalize">{provider}</span>
+                    {!isOk && !isUnknown && (
+                      <span className="text-[9px] text-red-400 font-mono">backoff</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* Token warning if we have no real issues */}
         {!loading && realIssues.length === 0 && (
@@ -169,12 +219,11 @@ export default function GitHubDashboard() {
               {visible.map(task => (
                 <div
                   key={task.id}
-                  className={`bg-gray-800/80 border rounded-lg p-3 flex flex-col gap-1.5 ${
-                    task.status === 'failed' ? 'border-red-900/50' :
-                    task.status === 'executing' ? 'border-orange-900/50' :
-                    ['executed','completed'].includes(task.status) ? 'border-green-900/30' :
-                    'border-gray-700'
-                  }`}
+                  className={`bg-gray-800/80 border rounded-lg p-3 flex flex-col gap-1.5 ${task.status === 'failed' ? 'border-red-900/50' :
+                      task.status === 'executing' ? 'border-orange-900/50' :
+                        ['executed', 'completed'].includes(task.status) ? 'border-green-900/30' :
+                          'border-gray-700'
+                    }`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
