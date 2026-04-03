@@ -3,19 +3,13 @@
 import os
 import shutil
 import tempfile
-from unittest.mock import patch
 
 import pytest
-
 from src.kortana.services.patch_validator import (
-    MAX_LDR,
-    MAX_NET_SHRINK,
-    MAX_UNAVAILABLE_CONTEXT_FRACTION,
     PatchValidator,
     ValidationFailure,
     ValidationOK,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -175,6 +169,7 @@ def test_destructive_rewrite_caught(validator, tmp_worktree):
 # validate method signature
 # ---------------------------------------------------------------------------
 
+
 def test_validate_accepts_keyword_overrides(validator, tmp_worktree):
     """Custom thresholds must be respected."""
     n = 20
@@ -184,4 +179,6 @@ def test_validate_accepts_keyword_overrides(validator, tmp_worktree):
     diff = make_diff("small.py", n, 10)  # LDR = 0.50, net_shrink = 10
     # With default MAX_LDR=0.40 → failure; with max_ldr=0.99 → passes
     assert isinstance(validator.validate(diff), ValidationFailure)
-    assert isinstance(validator.validate(diff, max_ldr=0.99, max_net_shrink=999), ValidationOK)
+    assert isinstance(
+        validator.validate(diff, max_ldr=0.99, max_net_shrink=999), ValidationOK
+    )
