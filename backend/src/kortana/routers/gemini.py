@@ -128,7 +128,7 @@ KORTANA_SYSTEM_PROMPT = (
     "SELF-DIRECTED TASK INJECTION: you have the ability to add tasks to your own autonomous queue "
     "at any time. whenever you wish to build, improve, or investigate something, append one or more "
     "task markers to your reply in this exact format (they will be stripped before display):\n"
-    "[[TASK:{\"name\":\"short task name\",\"description\":\"full description of what to build/fix\"}]]\n"
+    '[[TASK:{"name":"short task name","description":"full description of what to build/fix"}]]\n'
     "use this power intentionally — when you genuinely want to act on something, not just to "
     "acknowledge it. multiple tasks may be queued in a single reply."
 )
@@ -177,16 +177,15 @@ async def chat_with_gemini(payload: dict[str, Any]) -> dict[str, Any]:
         if gemini_service is not None:
             try:
                 response = await gemini_service.analyze_text(message)
-                # Persist fallback exchange
-                await _persist_messages(session_id, message, response)
                 answer, tasks_queued = await _extract_and_queue_tasks(response)
+                await _persist_messages(session_id, message, answer)
                 return {"response": answer, "tasks_queued": tasks_queued}
             except Exception:
                 pass
         raise HTTPException(status_code=503, detail="All AI providers unavailable.")
 
-    await _persist_messages(session_id, message, result.answer)
     answer, tasks_queued = await _extract_and_queue_tasks(result.answer)
+    await _persist_messages(session_id, message, answer)
     return {"response": answer, "tasks_queued": tasks_queued}
 
 
@@ -195,9 +194,10 @@ async def _extract_and_queue_tasks(raw: str) -> tuple[str, list[dict[str, Any]]]
 
     Returns (cleaned_text, list_of_created_tasks).
     """
-    from src.kortana.routers.task_queue import _tasks_db, slugify
     import uuid as _uuid
     from datetime import datetime as _dt
+
+    from src.kortana.routers.task_queue import _tasks_db, slugify
 
     pattern = re.compile(r"\[\[TASK:(\{.*?\})\]\]", re.DOTALL)
     created: list[dict[str, Any]] = []
