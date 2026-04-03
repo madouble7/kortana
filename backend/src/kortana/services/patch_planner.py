@@ -422,7 +422,9 @@ Avoid editing anything if it looks like a major architectural rewrite.
 Respond with JSON only."""
 
         try:
-            response = await self._query_ai(prompt, system_instruction, mode="best", json_mode=True)
+            response = await self._query_ai(
+                prompt, system_instruction, mode="best", json_mode=True
+            )
             data = self._extract_json(response)
             return PatchPlan(**data)
         except Exception as e:
@@ -601,7 +603,9 @@ Validation outputs:
 Return JSON only."""
 
         try:
-            response = await self._query_ai(prompt, system_instruction, mode="fastest", json_mode=True)
+            response = await self._query_ai(
+                prompt, system_instruction, mode="fastest", json_mode=True
+            )
             data = self._extract_json(response)
             return VerificationResult(**data)
         except Exception as e:
