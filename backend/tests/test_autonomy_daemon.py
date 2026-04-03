@@ -1414,3 +1414,234 @@ async def test_seed_kortana_investigations_queues_three_tasks():
     assert any("analysis_rejected_patch" in title for title in queued_titles)
     assert any("semantic memory" in title.lower() for title in queued_titles)
     assert any("self-reflection" in title.lower() for title in queued_titles)
+
+
+# ---------------------------------------------------------------------------
+# Transaction hygiene tests
+# Verify that every sub-operation that touches the DB calls session.rollback()
+# when the operation fails, preventing InFailedSQLTransactionError cascades.
+# ---------------------------------------------------------------------------
+
+
+class TestTransactionHygiene:
+    """session.rollback() must be called on DB errors in every upstream handler."""
+
+    @pytest.mark.asyncio
+    async def test_generate_perpetual_tasks_rolls_back_on_db_error(self) -> None:
+        """If perpetual-task commit fails, session must be rolled back."""
+        daemon = build_daemon()
+        session = AsyncMock()
+        session.commit.side_effect = Exception("Simulated DB flush failure")
+
+        mock_backlog = AsyncMock()
+        mock_backlog.queue_autonomous_investigation = AsyncMock(return_value=None)
+
+        with patch(
+            "src.kortana.services.autonomy_daemon.LocalBacklogService",
+            return_value=mock_backlog,
+        ):
+            await daemon._generate_perpetual_tasks(session)
+
+        session.rollback.assert_awaited()
+
+    @pytest.mark.asyncio
+    async def test_seed_kortana_investigations_rolls_back_on_db_error(self) -> None:
+        """If investigation seeding raises, session must be rolled back."""
+        daemon = build_daemon()
+        daemon._running = True
+        session = AsyncMock()
+
+        mock_backlog = AsyncMock()
+        mock_backlog.queue_autonomous_investigation.side_effect = Exception(
+            "Constraint violation"
+        )
+
+        with patch(
+            "src.kortana.services.local_backlog_service.LocalBacklogService",
+            return_value=mock_backlog,
+        ):
+            await daemon._seed_kortana_investigations(session)
+
+        session.rollback.assert_awaited()
+
+    @pytest.mark.asyncio
+    async def test_seed_synthetic_incidents_rolls_back_on_commit_error(self) -> None:
+        """If synthetic incident commit fails, session must be rolled back."""
+        daemon = build_daemon()
+        session = AsyncMock()
+        session.commit.side_effect = Exception("DB write failed")
+        session.add = MagicMock()
+
+        # Force seeding to be due (last seed in the past)
+        daemon.metrics["synthetic_incident_last_seed"] = 0
+
+        # open_count query — scalar_one_or_none() must return 0 so code proceeds to add
+        mock_count_result = MagicMock()
+        mock_count_result.scalar_one_or_none.return_value = 0
+        session.execute = AsyncMock(return_value=mock_count_result)
+
+        await daemon._seed_synthetic_incidents(session)
+
+        session.rollback.assert_awaited()
+
+    @pytest.mark.asyncio
+    async def test_process_self_directed_tasks_rolls_back_on_completion_error(
+        self,
+    ) -> None:
+        """If self-directed task DB completion update fails, session is rolled back."""
+        from src.kortana.routers.task_queue import _tasks_db
+
+        daemon = build_daemon()
+        session = AsyncMock()
+        # execute succeeds, commit fails to trigger the inner except
+        session.execute = AsyncMock(return_value=MagicMock())
+        session.commit.side_effect = Exception("Completion flush failed")
+
+        test_task_id = "hygiene-selfdir-1"
+        _tasks_db[test_task_id] = {
+            "id": test_task_id,
+            "name": "hygiene-selfdir-task",
+            "description": "rollback hygiene test",
+            "source": "self_directed",
+            "status": "pending",
+        }
+        try:
+            with patch(
+                "src.kortana.services.ai_consensus.get_consensus_engine",
+                return_value=MagicMock(
+                    query=AsyncMock(
+                        return_value=MagicMock(
+                            answer="ok", providers_succeeded=1
+                        )
+                    )
+                ),
+            ):
+                await daemon._process_self_directed_tasks(session)
+        finally:
+            _tasks_db.pop(test_task_id, None)
+
+        session.rollback.assert_awaited()
+
+    @pytest.mark.asyncio
+    async def test_analyze_architecture_rolls_back_on_db_error(self) -> None:
+        """If architecture analysis commit fails, session is rolled back."""
+        daemon = build_daemon()
+        # Force the periodic condition to be true
+        daemon.metrics["cycles_completed"] = 0
+        session = AsyncMock()
+        # First execute (count query) returns 0 to trigger the write path
+        count_result = MagicMock()
+        count_result.scalar_one_or_none.return_value = 0
+        session.execute = AsyncMock(return_value=count_result)
+        session.add = MagicMock()
+        session.commit.side_effect = Exception("Architecture write failed")
+
+        await daemon._analyze_architecture(session)
+
+        session.rollback.assert_awaited()
+
+    @pytest.mark.asyncio
+    async def test_process_tasks_rolls_back_before_incident_memory_on_task_failure(
+        self,
+    ) -> None:
+        """When execute_task raises, session.rollback() must be called before
+        the IncidentMemory INSERT so the write lands on a clean session."""
+        daemon = build_daemon()
+
+        task = GitHubTask(
+            id="task-hygiene",
+            github_issue_number=999,
+            github_repo="madouble7/kortana",
+            title="Hygiene rollback test",
+            description="desc",
+            status="planning_complete",
+        )
+
+        result = MagicMock()
+        result.scalars.return_value.all.return_value = [task]
+        session = AsyncMock()
+        session.execute = AsyncMock(return_value=result)
+
+        call_order: list[str] = []
+
+        async def track_rollback() -> None:
+            call_order.append("rollback")
+
+        def track_add(obj: object) -> None:
+            call_order.append("add")
+
+        session.rollback.side_effect = track_rollback
+        session.add.side_effect = track_add
+
+        async def crash_execute(t: GitHubTask, dry_run: bool = False) -> None:
+            raise RuntimeError("Execution blew up")
+
+        service = AsyncMock()
+        service.execute_task = AsyncMock(side_effect=crash_execute)
+
+        with patch(
+            "src.kortana.services.github_autonomy_service.GitHubAutonomyService",
+            return_value=service,
+        ):
+            _, _, failed, _ = await daemon._process_tasks(session, max_tasks=1)
+
+        assert failed == 1
+        assert "rollback" in call_order
+        rb_idx = call_order.index("rollback")
+        add_idx = next(
+            (i for i, v in enumerate(call_order) if v == "add"), len(call_order)
+        )
+        assert rb_idx < add_idx, (
+            "rollback() must precede session.add() to clear aborted-transaction state"
+        )
+
+    @pytest.mark.asyncio
+    async def test_write_reflection_rolls_back_before_insert(self) -> None:
+        """_write_reflection must call rollback() before session.add() to clear
+        any aborted-transaction state inherited from earlier cycle sub-ops."""
+        daemon = build_daemon()
+        session = AsyncMock()
+
+        call_order: list[str] = []
+
+        async def track_rollback() -> None:
+            call_order.append("rollback")
+
+        def track_add(obj: object) -> None:
+            call_order.append("add")
+
+        session.rollback.side_effect = track_rollback
+        session.add.side_effect = track_add
+        # Stub out autonomous_tasks count query
+        session.execute = AsyncMock(
+            return_value=MagicMock(scalar_one=MagicMock(return_value=0))
+        )
+
+        with (
+            patch(
+                "src.kortana.services.ai_consensus.get_consensus_engine",
+                return_value=MagicMock(
+                    query=AsyncMock(
+                        return_value=MagicMock(
+                            answer="test reflection", providers_succeeded=1
+                        )
+                    )
+                ),
+            ),
+            patch(
+                "src.kortana.services.prompt_assembly.PromptAssemblyService",
+                new=MagicMock(
+                    identity_preamble=AsyncMock(return_value="you are kor'tana.")
+                ),
+            ),
+        ):
+            await daemon._write_reflection(session)
+
+        assert "rollback" in call_order
+        rb_idx = call_order.index("rollback")
+        add_idx = next(
+            (i for i, v in enumerate(call_order) if v == "add"), len(call_order)
+        )
+        assert rb_idx < add_idx, (
+            "rollback() must precede session.add() to clear aborted-transaction state"
+        )
