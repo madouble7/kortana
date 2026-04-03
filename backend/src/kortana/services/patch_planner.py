@@ -121,30 +121,54 @@ class PatchPlanner:
         """Extract JSON from potential markdown blocks or prose-wrapped responses.
 
         Attempts in order:
-        1. Strip markdown fences, then json.loads.
+        1. Raw json.loads on the (fence-stripped) text.
         2. Find first ``{`` … last ``}`` substring (handles prose before/after JSON).
-        3. Raise ValueError so callers can return a safe fallback.
+        3. Strip trailing commas before ``}`` / ``]`` (common LLM mistake), retry 1+2.
+        4. Raise ValueError so callers can return a safe fallback.
         """
-        response_text = response_text.strip()
-        json_match = re.search(
-            r"```(?:json)?\s*(.*?)\s*```", response_text, re.DOTALL | re.IGNORECASE
-        )
-        if json_match:
-            response_text = json_match.group(1)
 
-        try:
-            return json.loads(response_text.strip())
-        except json.JSONDecodeError:
-            pass
+        def _strip_trailing_commas(s: str) -> str:
+            return re.sub(r",\s*([}\]])", r"\1", s)
 
-        # Fallback: extract the outermost JSON object from the response
-        start = response_text.find("{")
-        end = response_text.rfind("}")
-        if start != -1 and end != -1 and end > start:
+        def _try_loads(s: str) -> dict | None:
             try:
-                return json.loads(response_text[start : end + 1])
+                return json.loads(s)
             except json.JSONDecodeError:
-                pass
+                return None
+
+        def _try_outermost(s: str) -> dict | None:
+            start = s.find("{")
+            end = s.rfind("}")
+            if start != -1 and end != -1 and end > start:
+                return _try_loads(s[start : end + 1])
+            return None
+
+        text = response_text.strip()
+
+        # Step 1: strip markdown fences
+        json_match = re.search(
+            r"```(?:json)?\s*(.*?)\s*```", text, re.DOTALL | re.IGNORECASE
+        )
+        candidate = json_match.group(1).strip() if json_match else text
+
+        # Strategy 1: direct parse
+        result = _try_loads(candidate)
+        if result is not None:
+            return result
+
+        # Strategy 2: outermost { … }
+        result = _try_outermost(candidate)
+        if result is not None:
+            return result
+
+        # Strategy 3: strip trailing commas, then retry strategies 1+2
+        cleaned = _strip_trailing_commas(candidate)
+        result = _try_loads(cleaned)
+        if result is not None:
+            return result
+        result = _try_outermost(cleaned)
+        if result is not None:
+            return result
 
         logger.debug(
             "JSON extraction failed after all strategies. Content: %.120s",
