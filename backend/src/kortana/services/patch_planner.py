@@ -286,6 +286,63 @@ class PatchPlanner:
         except Exception as exc:
             logger.warning(f"Could not write RepairPlaybook: {exc}")
 
+    def _extract_context_snippets(self, incident: IncidentMemory) -> str:
+        """Return file snippets relevant to this incident for Stage 1 context.
+
+        Parses the stack_trace for ``File "path/to/file.py", line N`` patterns,
+        reads ±15 lines around each hit that lives inside the worktree, and
+        returns a formatted string ready to embed in the Stage 1 prompt.
+
+        At most 3 files × 30 lines are returned to keep the prompt bounded.
+        """
+        stack_trace = incident.stack_trace or ""
+        description = incident.description or ""
+
+        # Extract file:line references from stack traces
+        # Pattern covers both Python tracebacks and pytest output
+        file_re = re.compile(
+            r'File "([^"]+)", line (\d+)|([^\s]+\.py):(\d+)', re.MULTILINE
+        )
+
+        seen: list[tuple[str, int]] = []
+        for m in file_re.finditer(stack_trace + "\n" + description):
+            path = m.group(1) or m.group(3)
+            lineno = int(m.group(2) or m.group(4))
+            if len(seen) >= 3:
+                break
+            # Normalise: strip leading /app/ or absolute prefixes to get repo-relative path
+            for prefix in (
+                "/app/",
+                self.worktree_dir + os.sep,
+                self.worktree_dir + "/",
+            ):
+                if path.startswith(prefix):
+                    path = path[len(prefix) :]
+                    break
+            seen.append((path, lineno))
+
+        if not seen:
+            return ""
+
+        snippets: list[str] = []
+        for rel_path, lineno in seen:
+            abs_path = os.path.join(self.worktree_dir, rel_path)
+            if not os.path.isfile(abs_path):
+                continue
+            try:
+                with open(abs_path, encoding="utf-8", errors="replace") as fh:
+                    all_lines = fh.readlines()
+                start = max(0, lineno - 16)
+                end = min(len(all_lines), lineno + 15)
+                excerpt = "".join(all_lines[start:end])
+                snippets.append(
+                    f"# {rel_path} (lines {start + 1}–{end})\n```python\n{excerpt}\n```"
+                )
+            except OSError:
+                continue
+
+        return "\n\n".join(snippets)
+
     async def _stage_1_analyze(self, incident: IncidentMemory) -> PatchPlan:
         system_instruction = """You are Vector Alpha Analysis.
 
@@ -315,6 +372,12 @@ JSON schema:
         playbook_context = await self._query_repair_playbook(
             str(incident.incident_type or "")
         )
+        context_snippets = self._extract_context_snippets(incident)
+        snippets_section = (
+            f"\nCode context around the error:\n{context_snippets}\n"
+            if context_snippets
+            else ""
+        )
         prompt = f"""Incident:
 - id: {incident.id}
 - type: {incident.incident_type}
@@ -328,7 +391,7 @@ Context:
 
 Repository hints:
 Avoid editing anything if it looks like a major architectural rewrite.
-
+{snippets_section}
 {playbook_context}
 
 Respond with JSON only."""

@@ -322,6 +322,54 @@ class AutonomyDaemon:
         except Exception as e:
             logger.error(f"Vector Alpha execution failed: {e}")
 
+    async def _seed_kortana_investigations(self, session: Any) -> None:
+        """Seed kor'tana's self-proposed autonomous investigation tasks. Deduplicates.
+
+        This runs every cycle but `queue_autonomous_investigation` deduplicates
+        by title so re-inserting is always safe.
+        """
+        if not self._running:
+            return
+        try:
+            from src.kortana.services.local_backlog_service import LocalBacklogService
+
+            backlog = LocalBacklogService(db=session)
+            investigations = [
+                {
+                    "title": "Investigate analysis_rejected_patch: why PatchPlanner Stage 1 returns should_patch=false",
+                    "description": (
+                        "Collect the last 50 'Analysis rejected patch' log events, "
+                        "extract incident types + confidence scores, identify the top 3 "
+                        "incident categories consistently below the 0.80 threshold, and "
+                        "produce a ranked list of context signals (file snippets, memory entries) "
+                        "that would most improve Stage 1 confidence for each category."
+                    ),
+                },
+                {
+                    "title": "Optimize semantic memory: scoring and retrieval quality",
+                    "description": (
+                        "Audit cosine-ranked retrieval in prompt_assembly.semantic_memory(): "
+                        "run 10 representative query strings against the SelfMemory table, "
+                        "record top-3 hits + scores, identify if any are off-topic or stale, "
+                        "and propose changes to the embed query or re-ranking logic."
+                    ),
+                },
+                {
+                    "title": "Enhance self-reflection: cross-cycle reference to past selves",
+                    "description": (
+                        "Modify _write_reflection() in autonomy_daemon.py so each reflection prompt "
+                        "includes: (1) the closest past reflection from semantic_memory, "
+                        "(2) the top goal that shifted priority this cycle, and "
+                        "(3) one question for the next cycle. "
+                        "Measure reflection summary quality before and after via embed similarity to identity_preamble."
+                    ),
+                },
+            ]
+            for inv in investigations:
+                await backlog.queue_autonomous_investigation(**inv)
+        except Exception as e:
+            logger.warning("Failed to seed kor'tana investigations: %s", e)
+
     async def _seed_synthetic_incidents(self, session: Any) -> None:
         """Continuously seed synthetic incidents to keep the system active."""
         from sqlalchemy import func, select
@@ -881,6 +929,7 @@ class AutonomyDaemon:
             await self._analyze_architecture(session)
             await self._seed_synthetic_incidents(session)
             await self._generate_perpetual_tasks(session)
+            await self._seed_kortana_investigations(session)
             await self._heal_vectors(session)
             await self._process_self_directed_tasks(session)
             await self._write_reflection(session)
