@@ -201,17 +201,19 @@ async def _extract_and_queue_tasks(raw: str) -> tuple[str, list[dict[str, Any]]]
 
     pattern = re.compile(r"\[\[TASK:(\{.*?\})\]\]", re.DOTALL)
     created: list[dict[str, Any]] = []
+    to_persist: list[dict[str, Any]] = []
 
     def _inject(match: re.Match[str]) -> str:  # type: ignore[type-arg]
         raw_json = match.group(1)
         try:
             data = json.loads(raw_json)
-            task_id = str(_uuid.uuid4())[:8]
+            task_id = str(_uuid.uuid4())
+            short_id = task_id[:8]
             name = data.get("name", "kortana-self-task")
             description = data.get("description", "")
-            branch = f"evolution/{task_id}-{slugify(name)}"
+            branch = f"evolution/{short_id}-{slugify(name)}"
             task: dict[str, Any] = {
-                "id": task_id,
+                "id": short_id,
                 "name": name,
                 "description": description,
                 "classification": "auto",
@@ -222,13 +224,33 @@ async def _extract_and_queue_tasks(raw: str) -> tuple[str, list[dict[str, Any]]]
                 "completed_at": None,
                 "source": "self_directed",
             }
-            _tasks_db[task_id] = task
-            created.append({"id": task_id, "name": name, "branch": branch})
+            _tasks_db[short_id] = task
+            created.append({"id": short_id, "name": name, "branch": branch})
+            to_persist.append({"id": task_id, "name": name, "description": description, "branch": branch})
         except Exception:
             pass
         return ""  # strip marker from visible text
 
     cleaned = pattern.sub(_inject, raw).strip()
+
+    # Write to DB best-effort so tasks survive restarts
+    if to_persist:
+        try:
+            from sqlalchemy import text as _text
+            from src.kortana.database import get_db_manager
+            db = get_db_manager()
+            async with db.session_scope() as s:
+                for t in to_persist:
+                    await s.execute(
+                        _text(
+                            "INSERT INTO autonomous_tasks (id, name, description, branch, status, source, created_at) "
+                            "VALUES (:id, :name, :desc, :branch, 'pending', 'self_directed', NOW())"
+                        ),
+                        {"id": t["id"], "name": t["name"], "desc": t["description"], "branch": t["branch"]},
+                    )
+        except Exception:
+            pass  # best-effort, never break chat
+
     return cleaned, created
 
 
