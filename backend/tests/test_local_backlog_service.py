@@ -18,7 +18,13 @@ async def test_discover_workspace_tasks_creates_local_task(monkeypatch) -> None:
     existing_result.scalar_one_or_none.return_value = None
     next_issue_result = MagicMock()
     next_issue_result.scalar_one_or_none.return_value = None
-    session.execute.side_effect = [active_result, existing_result, next_issue_result]
+    # Extra result for PromptAssemblyService.load_profile identity query
+    profile_result = MagicMock()
+    mock_profile = MagicMock()
+    mock_profile.name = "kor'tana"
+    mock_profile.mission = "test mission"
+    profile_result.scalars.return_value.first.return_value = mock_profile
+    session.execute.side_effect = [active_result, existing_result, profile_result, next_issue_result]
 
     service = LocalBacklogService(session)
     tasks = await service.discover_workspace_tasks(
@@ -55,7 +61,13 @@ async def test_manifest_self_repair_creates_local_backlog_task(monkeypatch) -> N
     existing_result.scalar_one_or_none.return_value = None
     next_issue_result = MagicMock()
     next_issue_result.scalar_one_or_none.return_value = -4
-    session.execute.side_effect = [existing_result, next_issue_result]
+    # Extra result for PromptAssemblyService.load_profile identity query
+    profile_result = MagicMock()
+    mock_profile = MagicMock()
+    mock_profile.name = "kor'tana"
+    mock_profile.mission = "test mission"
+    profile_result.scalars.return_value.first.return_value = mock_profile
+    session.execute.side_effect = [existing_result, profile_result, next_issue_result]
 
     failed_task = GitHubTask(
         id="task-fail",

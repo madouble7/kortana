@@ -125,6 +125,29 @@ class GeminiService:
         prompt = f"Generate clean, production-ready code for: {description}"
         return await self.analyze_text(prompt, **kwargs)
 
+    def embed_text(self, text: str) -> list[float] | None:
+        """Return a float embedding vector for *text*, or None on any failure.
+
+        Uses Google's text-embedding-004 model (768 dimensions).
+        Falls back silently so callers can skip embedding on quota / config errors.
+        """
+        self._ensure_initialized()
+        if self.client is None:
+            return None
+        try:
+            response = self.client.models.embed_content(
+                model="models/text-embedding-004",
+                contents=text,
+            )
+            # SDK returns ContentEmbedding list; take first item
+            embedding = response.embeddings[0] if response.embeddings else None
+            if embedding is None:
+                return None
+            values = getattr(embedding, "values", None)
+            return list(values) if values is not None else None
+        except Exception:
+            return None
+
     def _emergency_response(self, text: str) -> str:
         """Fallback response when Gemini quota is exhausted.
 

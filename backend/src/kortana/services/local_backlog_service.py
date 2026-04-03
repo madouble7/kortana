@@ -52,10 +52,22 @@ class LocalBacklogService:
         if existing is not None:
             return []
 
+        # Load identity for voice-line header
+        voice_line = ""
+        try:
+            from src.kortana.services.prompt_assembly import PromptAssemblyService
+
+            profile = await PromptAssemblyService.load_profile(self.db)
+            voice_line = f"{profile.name} | {profile.mission}"
+        except Exception:
+            pass
+
         issue_number = await self._next_local_issue_number()
         title = self._workspace_title(snapshot, guidance)
         branch_name = self._branch_name(issue_number, title, prefix="auto/local")
-        description = self._workspace_description(anchor, snapshot, guidance)
+        description = self._workspace_description(
+            anchor, snapshot, guidance, voice_line=voice_line
+        )
         priority = self._workspace_priority(snapshot, guidance)
 
         task = GitHubTask(
@@ -89,10 +101,21 @@ class LocalBacklogService:
         if active is not None:
             return None
 
+        # Load identity for voice-line header
+        voice_line = ""
+        try:
+            from src.kortana.services.prompt_assembly import PromptAssemblyService
+
+            profile = await PromptAssemblyService.load_profile(self.db)
+            voice_line = f"{profile.name} | {profile.mission}"
+        except Exception:
+            pass
+
         issue_number = await self._next_local_issue_number()
         branch_name = self._branch_name(issue_number, title, prefix="auto/self-repair")
+        protocol_header = f"**{voice_line}**" if voice_line else "**KOR'TANA**"
         description = (
-            "**KOR'TANA LOCAL SELF-REPAIR PROTOCOL ACTIVATED.**\n\n"
+            f"{protocol_header} — LOCAL SELF-REPAIR PROTOCOL ACTIVATED.\n\n"
             "GitHub publication is deferred or unavailable, so this repair task is "
             "being manifested directly into the local backlog.\n\n"
             f"{repair_anchor}\n\n"
@@ -245,6 +268,7 @@ class LocalBacklogService:
         anchor: str,
         snapshot: dict[str, Any],
         guidance: DirectiveSummary,
+        voice_line: str = "",
     ) -> str:
         changed_files = snapshot.get("changed_files") or []
         changed_block = (
@@ -255,8 +279,13 @@ class LocalBacklogService:
         focus = ", ".join(guidance.focus_topics[:4]) or "(none)"
         avoid = ", ".join(guidance.avoid_topics[:4]) or "(none)"
         notes = " | ".join(guidance.notes[:3]) or "(none)"
+        header = (
+            f"**{voice_line}** — Local-first autonomy task."
+            if voice_line
+            else "**Local-first autonomy task.**"
+        )
         return (
-            "**Local-first autonomy task.**\n\n"
+            f"{header}\n\n"
             "GitHub has been demoted from the control plane. Treat this repository "
             "state and operator guidance as the source of truth.\n\n"
             f"{anchor}\n\n"

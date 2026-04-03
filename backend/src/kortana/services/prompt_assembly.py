@@ -19,6 +19,7 @@ execution loops.
 
 from __future__ import annotations
 
+import math
 from typing import Any, List
 
 # ---------------------------------------------------------------------------
@@ -109,11 +110,19 @@ class PromptAssemblyService:
         return profile
 
     @staticmethod
-    async def identity_preamble(session: Any, memory_entries: int = 3) -> str:
+    async def identity_preamble(
+        session: Any,
+        memory_entries: int = 3,
+        query: str | None = None,
+    ) -> str:
         """Return the full 'who I am' block for identity-channel prompts.
 
         Includes name, mission, core values, sacred principles, voice, development
-        axioms, and the N most recent SelfMemory entries for continuity of self.
+        axioms, and the N most relevant SelfMemory entries for continuity of self.
+
+        When *query* is provided, memory entries are ranked by semantic similarity
+        (cosine distance on stored embeddings).  Falls back to recency-only when
+        embeddings are unavailable.
 
         Callers should prepend this to any prompt that is part of:
           - daemon reflections
@@ -123,9 +132,9 @@ class PromptAssemblyService:
 
         Do NOT use in patch_planner, verification, or diff stages.
         """
-        from sqlalchemy import select
-
-        from src.kortana.models import SelfMemory
+        from src.kortana.models import (
+            SelfMemory,  # noqa: F401 — kept for import side-effect
+        )
 
         profile = await PromptAssemblyService.load_profile(session)
         values_str = ", ".join(profile.core_values or _DEFAULT_VALUES)
@@ -134,15 +143,11 @@ class PromptAssemblyService:
         principles_block = "\n".join(f"  - {p}" for p in principles)
         axioms_block = "\n".join(f"  - {a}" for a in axioms)
 
-        # Pull recent self-memory for continuity
         memory_block = ""
         try:
-            mem_result = await session.execute(
-                select(SelfMemory)
-                .order_by(SelfMemory.created_at.desc())
-                .limit(memory_entries)
+            memories = await PromptAssemblyService.semantic_memory(
+                session, query=query, limit=memory_entries
             )
-            memories = list(reversed(mem_result.scalars().all()))
             if memories:
                 lines = "\n".join(
                     f"  [cycle {m.cycle_number}] {m.summary}" for m in memories
@@ -161,6 +166,75 @@ class PromptAssemblyService:
             f"self-model version: {profile.version}\n"
             + (f"{memory_block}" if memory_block else "")
         )
+
+    @staticmethod
+    async def semantic_memory(
+        session: Any,
+        query: str | None = None,
+        limit: int = 5,
+    ) -> list:
+        """Return the most relevant SelfMemory rows for *query*.
+
+        Ranking strategy:
+          1. If *query* is provided and embedded entries exist, rank by cosine
+             similarity between the query embedding and stored embeddings.
+          2. If no embeddings are available (cold start / quota exhausted), fall
+             back to the most recent *limit* rows (recency ordering).
+          3. If *query* is None, always use recency ordering.
+
+        This method never raises — callers receive an empty list on total failure.
+        """
+        from sqlalchemy import select
+
+        from src.kortana.models import SelfMemory
+
+        try:
+            if query is not None:
+                # Attempt semantic ranking
+                query_vec = PromptAssemblyService._embed(query)
+                if query_vec is not None:
+                    stmt = select(SelfMemory).where(SelfMemory.embedding.isnot(None))
+                    result = await session.execute(stmt)
+                    candidates = result.scalars().all()
+                    if candidates:
+                        scored = [
+                            (m, PromptAssemblyService._cosine(query_vec, m.embedding))
+                            for m in candidates
+                            if m.embedding
+                        ]
+                        scored.sort(key=lambda x: x[1], reverse=True)
+                        return [m for m, _ in scored[:limit]]
+
+            # Recency fallback
+            stmt = (
+                select(SelfMemory).order_by(SelfMemory.created_at.desc()).limit(limit)
+            )
+            result = await session.execute(stmt)
+            return list(reversed(result.scalars().all()))
+        except Exception:
+            return []
+
+    @staticmethod
+    def _embed(text: str) -> list[float] | None:
+        """Synchronous embedding call via the shared GeminiService instance."""
+        try:
+            from src.kortana.services.gemini import gemini_service
+
+            return gemini_service.embed_text(text)
+        except Exception:
+            return None
+
+    @staticmethod
+    def _cosine(a: list[float], b: list[float]) -> float:
+        """Cosine similarity in [0, 1].  Returns 0.0 on empty/mismatched vectors."""
+        if not a or not b or len(a) != len(b):
+            return 0.0
+        dot = sum(x * y for x, y in zip(a, b))
+        mag_a = math.sqrt(sum(x * x for x in a))
+        mag_b = math.sqrt(sum(x * x for x in b))
+        if mag_a == 0.0 or mag_b == 0.0:
+            return 0.0
+        return dot / (mag_a * mag_b)
 
     # ------------------------------------------------------------------
     # OPERATIONAL CORE — for patch_planner, verify, diff, protected paths

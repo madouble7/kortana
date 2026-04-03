@@ -504,6 +504,9 @@ class SelfMemory(Base):
     source = Column(
         String(64), nullable=False, default="reflection"
     )  # reflection | manual
+    # Embedding vector stored as JSON float list (fallback when pgvector is unavailable).
+    # Cosine similarity computed in Python.  Null = not yet embedded.
+    embedding = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
     def __repr__(self) -> str:
