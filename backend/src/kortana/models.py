@@ -408,9 +408,27 @@ class ConversationMessage(Base):
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     session_id = Column(String(64), nullable=False, index=True)
-    role = Column(String(16), nullable=False)   # "user" | "assistant"
+    role = Column(String(16), nullable=False)  # "user" | "assistant"
     content = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
     def __repr__(self) -> str:
         return f"<ConversationMessage {self.role}:{self.created_at}>"
+
+
+class AutonomousTask(Base):
+    """Self-directed tasks kor'tana queues for herself via [[TASK:{...}]] markers."""
+
+    __tablename__ = "autonomous_tasks"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String(256), nullable=False)
+    description = Column(Text, nullable=True)
+    branch = Column(String(256), nullable=True)
+    status = Column(String(32), nullable=False, default="pending", index=True)
+    source = Column(String(32), nullable=False, default="self_directed", index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    completed_at = Column(DateTime, nullable=True)
+
+    def __repr__(self) -> str:
+        return f"<AutonomousTask {self.name}:{self.status}>"

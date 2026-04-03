@@ -158,10 +158,42 @@ class AutonomyDaemon:
         # Bootstrap goal progress from DB so stats survive restarts
         try:
             from src.kortana.services.goal_manager import get_goal_manager
+
             gm = get_goal_manager()
             await gm.bootstrap_from_db()
         except Exception as _boot_exc:
             logger.debug(f"Goal bootstrap skipped: {_boot_exc}")
+
+        # Bootstrap self-directed autonomous tasks from DB into in-memory queue
+        try:
+            from sqlalchemy import text as _text
+            from src.kortana.routers.task_queue import _tasks_db
+
+            async with self._db_manager.session_scope() as _session:
+                _rows = await _session.execute(
+                    _text(
+                        "SELECT id, name, description, branch, status, created_at "
+                        "FROM autonomous_tasks WHERE status='pending' ORDER BY created_at ASC"
+                    )
+                )
+                for _row in _rows.fetchall():
+                    _short = _row[0][:8]
+                    if _short not in _tasks_db:
+                        _tasks_db[_short] = {
+                            "id": _short,
+                            "name": _row[1],
+                            "description": _row[2],
+                            "classification": "auto",
+                            "status": _row[4],
+                            "command": None,
+                            "branch": _row[3],
+                            "created_at": _row[5],
+                            "completed_at": None,
+                            "source": "self_directed",
+                        }
+            logger.info(f"[bootstrap] loaded {len(_tasks_db)} self-directed tasks from DB")
+        except Exception as _task_exc:
+            logger.debug(f"Autonomous task bootstrap skipped: {_task_exc}")
         while self._running:
             try:
                 await self._run_cycle()
