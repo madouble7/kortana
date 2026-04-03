@@ -202,6 +202,7 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         sa = get_self_awareness()
         learner = await get_adaptive_learner()
         gm = get_goal_manager()
+        await gm.load_from_db()
         print(
             f"[*] Intelligence online — SA:{sa._state.value}  Goals:{gm.get_status()['total_goals']}  Learner:{learner.get_status()['outcomes_recorded']} outcomes"
         )

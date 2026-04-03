@@ -128,7 +128,9 @@ async def create_goal(body: dict[str, Any]) -> dict[str, Any]:
     """Create a new goal."""
     from dataclasses import asdict
 
-    goal = get_goal_manager().create(**body)
+    mgr = get_goal_manager()
+    goal = mgr.create(**body)
+    await mgr.persist_goal(goal)
     return {"created": asdict(goal)}
 
 
@@ -137,7 +139,10 @@ async def complete_goal(goal_id: str) -> dict[str, Any]:
     """Mark a goal completed."""
     from dataclasses import asdict
 
-    goal = get_goal_manager().complete(goal_id)
+    mgr = get_goal_manager()
+    goal = mgr.complete(goal_id)
     if not goal:
         return {"error": "Goal not found"}
+    # complete() may cascade to parent goals — persist the full graph
+    await mgr.persist_all_goals()
     return {"completed": asdict(goal)}
