@@ -110,11 +110,10 @@ export default function GitHubDashboard() {
           <span className="text-orange-400 font-bold">{inFlight.length}</span> in-flight
           <button
             onClick={() => setHideLocal(h => !h)}
-            className={`flex items-center gap-1.5 px-2 py-1 rounded-md border transition-colors ${
-              hideLocal
+            className={`flex items-center gap-1.5 px-2 py-1 rounded-md border transition-colors ${hideLocal
                 ? 'border-gray-700 text-gray-500 hover:text-gray-300'
                 : 'border-purple-700/50 bg-purple-900/20 text-purple-400'
-            }`}
+              }`}
             title={hideLocal ? 'Local tasks hidden — click to show' : 'Showing local tasks — click to hide'}
           >
             {hideLocal ? 'local: hidden' : 'local: visible'}
@@ -177,10 +176,10 @@ export default function GitHubDashboard() {
                   <div
                     key={provider}
                     className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium ${isOk
-                        ? 'bg-green-900/20 border-green-700/50 text-green-400'
-                        : isUnknown
-                          ? 'bg-gray-800 border-gray-700 text-gray-500'
-                          : 'bg-red-900/20 border-red-700/50 text-red-400'
+                      ? 'bg-green-900/20 border-green-700/50 text-green-400'
+                      : isUnknown
+                        ? 'bg-gray-800 border-gray-700 text-gray-500'
+                        : 'bg-red-900/20 border-red-700/50 text-red-400'
                       }`}
                   >
                     <span className={`w-1.5 h-1.5 rounded-full ${isOk ? 'bg-green-500' : isUnknown ? 'bg-gray-500' : 'bg-red-500'
