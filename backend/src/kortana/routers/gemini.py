@@ -137,6 +137,7 @@ async def chat_with_gemini(payload: dict[str, Any]) -> dict[str, Any]:
 
     # History: list of {role: "user"|"assistant", content: str}
     history: list[dict[str, str]] = payload.get("history") or []
+    session_id: str = payload.get("session_id") or "default"
 
     live_context = await _build_live_context()
     system = KORTANA_SYSTEM_PROMPT
@@ -168,12 +169,73 @@ async def chat_with_gemini(payload: dict[str, Any]) -> dict[str, Any]:
         if gemini_service is not None:
             try:
                 response = await gemini_service.analyze_text(message)
+                # Persist fallback exchange
+                await _persist_messages(session_id, message, response)
                 return {"response": response}
             except Exception:
                 pass
         raise HTTPException(status_code=503, detail="All AI providers unavailable.")
 
+    await _persist_messages(session_id, message, result.answer)
     return {"response": result.answer}
+
+
+async def _persist_messages(session_id: str, user_msg: str, assistant_msg: str) -> None:
+    """Write a user+assistant exchange to conversation_messages."""
+    try:
+        import uuid as _uuid
+
+        from sqlalchemy import text as _text
+
+        from src.kortana.database import get_db_manager
+
+        db = get_db_manager()
+        async with db.session_scope() as session:
+            await session.execute(
+                _text(
+                    "INSERT INTO conversation_messages (id, session_id, role, content, created_at) "
+                    "VALUES (:id1, :sid, 'user', :user_msg, NOW()), "
+                    "       (:id2, :sid, 'assistant', :asst_msg, NOW())"
+                ),
+                {
+                    "id1": str(_uuid.uuid4()),
+                    "id2": str(_uuid.uuid4()),
+                    "sid": session_id,
+                    "user_msg": user_msg,
+                    "asst_msg": assistant_msg,
+                },
+            )
+    except Exception as _e:
+        pass  # persistence is best-effort, never break chat
+
+
+@router.get("/chat/history")
+async def get_chat_history(session_id: str = "default", limit: int = 40) -> dict[str, Any]:
+    """Return the last N messages for a session (oldest first)."""
+    try:
+        from sqlalchemy import text as _text
+
+        from src.kortana.database import get_db_manager
+
+        db = get_db_manager()
+        async with db.session_scope() as session:
+            result = await session.execute(
+                _text(
+                    "SELECT role, content, created_at FROM ("
+                    "  SELECT role, content, created_at FROM conversation_messages "
+                    "  WHERE session_id = :sid ORDER BY created_at DESC LIMIT :lim"
+                    ") sub ORDER BY created_at ASC"
+                ),
+                {"sid": session_id, "lim": limit},
+            )
+            rows = result.fetchall()
+        messages = [
+            {"role": r[0], "content": r[1], "created_at": r[2].isoformat()}
+            for r in rows
+        ]
+        return {"messages": messages}
+    except Exception as e:
+        return {"messages": [], "error": str(e)}
 
 
 @router.post("/analyze/image")

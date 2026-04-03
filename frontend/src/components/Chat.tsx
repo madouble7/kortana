@@ -1,19 +1,48 @@
-import { useState, useEffect, useRef, type FormEvent } from 'react';
-import { Send, Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Send, Sparkles } from 'lucide-react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { api } from '../lib/api';
 import { cn, formatRelativeTime } from '../lib/utils';
 import type { Message } from '../types';
+
+// Stable session ID persisted in localStorage so history survives page refreshes.
+function getSessionId(): string {
+  const key = 'kortana_session_id';
+  let id = localStorage.getItem(key);
+  if (!id) {
+    id = `sess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    localStorage.setItem(key, id);
+  }
+  return id;
+}
 
 export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const sessionId = getSessionId();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  // Load persisted history from DB on mount
+  useEffect(() => {
+    api.getChatHistory(sessionId, 40)
+      .then((data: any) => {
+        if (data?.messages?.length) {
+          const loaded: Message[] = data.messages.map((m: any, i: number) => ({
+            id: `hist_${i}`,
+            role: m.role === 'user' ? 'user' : 'assistant',
+            content: m.content,
+            timestamp: m.created_at,
+          }));
+          setMessages(loaded);
+        }
+      })
+      .catch(() => { /* history fetch is best-effort */ });
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
@@ -40,7 +69,7 @@ export default function Chat() {
         role: m.role === 'user' ? 'user' : 'assistant',
         content: m.content,
       }));
-      const response = await api.sendChatMessage(input, history, conversationId || undefined);
+      const response = await api.sendChatMessage(input, history, conversationId || undefined, sessionId);
 
       if (response.conversation_id && !conversationId) {
         setConversationId(response.conversation_id);
@@ -110,8 +139,8 @@ export default function Chat() {
                   message.role === 'user'
                     ? 'bg-indigo-600 text-white'
                     : message.role === 'assistant'
-                    ? 'bg-gray-800 text-gray-100'
-                    : 'bg-red-900/20 text-red-400 border border-red-900'
+                      ? 'bg-gray-800 text-gray-100'
+                      : 'bg-red-900/20 text-red-400 border border-red-900'
                 )}
               >
                 <div className="flex items-start gap-2">
@@ -123,8 +152,8 @@ export default function Chat() {
                         message.role === 'user'
                           ? 'text-indigo-200'
                           : message.role === 'assistant'
-                          ? 'text-gray-500'
-                          : 'text-red-400/70'
+                            ? 'text-gray-500'
+                            : 'text-red-400/70'
                       )}
                     >
                       {formatRelativeTime(message.timestamp)}

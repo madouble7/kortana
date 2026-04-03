@@ -197,12 +197,22 @@ class ApiClient {
   async sendChatMessage(
     message: string,
     history?: Array<{ role: string; content: string }>,
-    conversationId?: string
+    conversationId?: string,
+    sessionId?: string
   ): Promise<any> {
     return this.request<any>('/api/gemini/chat', {
       method: 'POST',
-      body: JSON.stringify({ message, history: history || [], conversation_id: conversationId }),
+      body: JSON.stringify({
+        message,
+        history: history || [],
+        conversation_id: conversationId,
+        session_id: sessionId || 'default',
+      }),
     });
+  }
+
+  async getChatHistory(sessionId: string = 'default', limit: number = 40): Promise<any> {
+    return this.request<any>(`/api/gemini/chat/history?session_id=${encodeURIComponent(sessionId)}&limit=${limit}`);
   }
 
   async getConversations() {
