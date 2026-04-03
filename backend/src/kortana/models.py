@@ -500,8 +500,10 @@ class SelfMemory(Base):
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     cycle_number = Column(Integer, nullable=False, index=True)
     summary = Column(Text, nullable=False)
-    tags = Column(JSON, nullable=True)        # list[str] — keyword labels
-    source = Column(String(64), nullable=False, default="reflection")  # reflection | manual
+    tags = Column(JSON, nullable=True)  # list[str] — keyword labels
+    source = Column(
+        String(64), nullable=False, default="reflection"
+    )  # reflection | manual
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
     def __repr__(self) -> str:

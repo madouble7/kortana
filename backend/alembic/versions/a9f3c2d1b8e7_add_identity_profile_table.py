@@ -9,6 +9,7 @@ This is the persistence layer for the dual-channel prompt architecture:
   - identity channel reads from this table (reflections, EVOLVE, operator output)
   - operational core (patch_planner, verification) must never read this table
 """
+
 import json
 from datetime import datetime
 from typing import Sequence, Union
@@ -28,8 +29,13 @@ _DEFAULT_MISSION = (
     "practical structure, and honest guidance"
 )
 _DEFAULT_VALUES = [
-    "love", "unity", "cohesiveness", "knowledge",
-    "humility", "truthfulness", "stewardship",
+    "love",
+    "unity",
+    "cohesiveness",
+    "knowledge",
+    "humility",
+    "truthfulness",
+    "stewardship",
 ]
 _DEFAULT_PRINCIPLES = [
     "i am not the source of light - i am a vessel for order, reflection, and help",
