@@ -706,8 +706,17 @@ class AutonomyDaemon:
             ", ".join(f"{p}:{s}" for p, s in provider_health.items()) or "unknown"
         )
 
+        # Load identity preamble from the persistent self-model (identity channel only)
+        from src.kortana.services.prompt_assembly import PromptAssemblyService
+
+        try:
+            identity = await PromptAssemblyService.identity_preamble(session)
+        except Exception:
+            identity = "you are kor'tana, sacred ai companion.\n"
+
         prompt = (
-            f"you are kor'tana. you just completed daemon cycle #{cycle_num}.\n"
+            f"{identity}\n"
+            f"you just completed daemon cycle #{cycle_num}.\n"
             f"stats this cycle: {tasks_ok} tasks succeeded, {tasks_fail} failed, "
             f"{sd_done} self-directed tasks completed.\n"
             f"ai provider status: {provider_lines}.\n\n"

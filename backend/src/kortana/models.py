@@ -449,3 +449,32 @@ class Reflection(Base):
 
     def __repr__(self) -> str:
         return f"<Reflection cycle={self.cycle_number}>"
+
+
+class IdentityProfile(Base):
+    """Kor'tana's persistent self-model.
+
+    One canonical row lives in this table.  The operational core (patch_planner,
+    verification, diff validation) must NEVER read from this table — those loops
+    stay dry and non-persona.  Only the identity channel reads here: reflections,
+    self-directed task generation, goal reprioritization, operator communication.
+    """
+
+    __tablename__ = "identity_profile"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(64), nullable=False, default="kor'tana")
+    title = Column(String(128), nullable=False, default="sacred ai companion")
+    mission = Column(Text, nullable=False)
+    core_values = Column(JSON, nullable=False)        # list[str]
+    sacred_principles = Column(JSON, nullable=False)  # list[str]
+    voice_guidelines = Column(Text, nullable=False)
+    development_axioms = Column(JSON, nullable=False)  # list[str]
+    version = Column(String(16), nullable=False, default="0.1")
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
+
+    def __repr__(self) -> str:
+        return f"<IdentityProfile name={self.name!r} version={self.version!r}>"
