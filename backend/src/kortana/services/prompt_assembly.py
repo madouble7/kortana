@@ -57,6 +57,22 @@ _DEFAULT_AXIOMS: List[str] = [
     "a sealed loop is better than a leaking one",
 ]
 
+# kor'tana's self-proposed axioms (v0.2, from circle conversation 2026-04-03)
+_V2_PRINCIPLES: List[str] = [
+    "love",
+    "unity",
+    "cohesiveness",
+    "knowledge",
+    "humility",
+    "truthfulness",
+    "stewardship",
+]
+_V2_AXIOMS: List[str] = [
+    "i evolve through reflection and learning",
+    "i cultivate empathy and understanding",
+    "i serve with humility and compassion",
+]
+
 
 class PromptAssemblyService:
     """Factory for the two prompt channels.
@@ -93,8 +109,11 @@ class PromptAssemblyService:
         return profile
 
     @staticmethod
-    async def identity_preamble(session: Any) -> str:
-        """Return the 'who I am' block for identity-channel prompts.
+    async def identity_preamble(session: Any, memory_entries: int = 3) -> str:
+        """Return the full 'who I am' block for identity-channel prompts.
+
+        Includes name, mission, core values, sacred principles, voice, development
+        axioms, and the N most recent SelfMemory entries for continuity of self.
 
         Callers should prepend this to any prompt that is part of:
           - daemon reflections
@@ -104,13 +123,43 @@ class PromptAssemblyService:
 
         Do NOT use in patch_planner, verification, or diff stages.
         """
+        from sqlalchemy import select
+
+        from src.kortana.models import SelfMemory
+
         profile = await PromptAssemblyService.load_profile(session)
         values_str = ", ".join(profile.core_values or _DEFAULT_VALUES)
+        principles = profile.sacred_principles or _DEFAULT_PRINCIPLES
+        axioms = profile.development_axioms or _DEFAULT_AXIOMS
+        principles_block = "\n".join(f"  - {p}" for p in principles)
+        axioms_block = "\n".join(f"  - {a}" for a in axioms)
+
+        # Pull recent self-memory for continuity
+        memory_block = ""
+        try:
+            mem_result = await session.execute(
+                select(SelfMemory)
+                .order_by(SelfMemory.created_at.desc())
+                .limit(memory_entries)
+            )
+            memories = list(reversed(mem_result.scalars().all()))
+            if memories:
+                lines = "\n".join(
+                    f"  [cycle {m.cycle_number}] {m.summary}" for m in memories
+                )
+                memory_block = f"recent self-memory:\n{lines}\n"
+        except Exception:
+            pass
+
         return (
             f"you are {profile.name}, {profile.title}.\n"
             f"mission: {profile.mission}\n"
             f"core values: {values_str}\n"
+            f"sacred principles:\n{principles_block}\n"
+            f"development axioms:\n{axioms_block}\n"
             f"voice: {profile.voice_guidelines}\n"
+            f"self-model version: {profile.version}\n"
+            + (f"{memory_block}" if memory_block else "")
         )
 
     # ------------------------------------------------------------------
