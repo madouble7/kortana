@@ -648,6 +648,56 @@ async def get_monitoring_dashboard() -> Dict[str, Any]:
             status_code=500, detail=f"Failed to get dashboard: {str(e)}"
         )
 
+
+@router.get("/issue-queue")
+async def get_issue_queue(limit: int = 30) -> Dict[str, Any]:
+    """Return the live GitHub issue execution pipeline — all stages."""
+    try:
+        db_manager = get_db_manager()
+        async with db_manager.session_scope() as db:
+            result = await db.execute(
+                select(GitHubTask)
+                .order_by(GitHubTask.updated_at.desc())
+                .limit(limit)
+            )
+            tasks = result.scalars().all()
+
+        status_counts: Dict[str, int] = {}
+        serialized = []
+        for t in tasks:
+            s = str(t.status or "unknown")
+            status_counts[s] = status_counts.get(s, 0) + 1
+            is_local = (t.github_repo or "").startswith("local/")
+            serialized.append(
+                {
+                    "id": str(t.id),
+                    "issue_number": t.github_issue_number,
+                    "repo": t.github_repo,
+                    "title": t.title,
+                    "status": s,
+                    "priority": t.priority,
+                    "classification": t.classification,
+                    "is_local": is_local,
+                    "branch": t.branch_name,
+                    "pr_number": t.github_pr_number,
+                    "error": t.error_message,
+                    "error_count": t.error_count,
+                    "created_at": t.created_at.isoformat() if t.created_at else None,
+                    "updated_at": t.updated_at.isoformat() if t.updated_at else None,
+                    "executed_at": t.executed_at.isoformat() if t.executed_at else None,
+                }
+            )
+
+        return {
+            "tasks": serialized,
+            "total": len(serialized),
+            "status_counts": status_counts,
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+    except Exception as e:
+        logger.error(f"Failed to get issue queue: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.post("/sandbox/dry-run")
 async def execute_dry_run_sandbox(task_payload: Dict[str, Any]) -> Dict[str, Any]:
     """

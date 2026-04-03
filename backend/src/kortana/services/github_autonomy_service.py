@@ -833,6 +833,27 @@ class GitHubAutonomyService:
         if not self.github_token:
             raise ValueError("GitHub token not configured")
 
+    async def _get_latest_reflection(self) -> str:
+        """Return kor'tana's most recent cycle reflection as a context string."""
+        try:
+            from sqlalchemy import text as _ref_text
+
+            result = await self._db_execute(
+                _ref_text(
+                    "SELECT content, cycle_number FROM reflections "
+                    "ORDER BY created_at DESC LIMIT 1"
+                )
+            )
+            row = result.fetchone()
+            if row:
+                return (
+                    f"## my most recent self-reflection (cycle {row[1]})\n"
+                    f"{row[0]}\n"
+                )
+        except Exception:
+            pass
+        return ""
+
     async def _operator_preamble(self) -> str:
         """Return active operator steering for prompt conditioning."""
         try:
@@ -1019,14 +1040,26 @@ class GitHubAutonomyService:
 
         try:
             logger.info(f"Analyzing task #{task.github_issue_number}: {task.title}")
+            # Post a pickup comment to the GitHub issue (best-effort)
+            _issue_num = int(task.github_issue_number or 0)
+            if _issue_num > 0:
+                await self.post_issue_comment(
+                    task,
+                    "kor'tana — picking this up now. analyzing and planning a fix.",
+                )
             operator_preamble = await self._operator_preamble()
+            reflection_ctx = await self._get_latest_reflection()
             repo_context = self._build_repo_context()
-            prompt = (f"{operator_preamble}\n\n" if operator_preamble else "") + (
-                f"we are kor'tana prime, an autonomous ai architect modifying our own application (or another repository).\n"
-                f"Analyze this issue and provide expert-level implementation insights. "
-                f"If this is a [SELF-REPAIR] issue, you must diagnose the internal autonomy logic flaw causing the error and architect a structural fix.\n\n"
-                f"{repo_context}\n\n"
-                f"Title: {task.title}\nDescription: {task.description}"
+            prompt = (
+                (f"{operator_preamble}\n\n" if operator_preamble else "")
+                + (f"{reflection_ctx}\n" if reflection_ctx else "")
+                + (
+                    f"we are kor'tana prime, an autonomous ai architect modifying our own application (or another repository).\n"
+                    f"Analyze this issue and provide expert-level implementation insights. "
+                    f"If this is a [SELF-REPAIR] issue, you must diagnose the internal autonomy logic flaw causing the error and architect a structural fix.\n\n"
+                    f"{repo_context}\n\n"
+                    f"Title: {task.title}\nDescription: {task.description}"
+                )
             )
             analysis = await self._maybe_await(gemini_service.analyze_text(prompt))
             task.analysis = analysis

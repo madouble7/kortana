@@ -70,7 +70,7 @@ services:
       KORTANA_WORKSPACE_ROOT: /workspace
       DISCORD_ENABLED: "false"
       KORTANA_DEFAULT_APPROVAL_MODE: "auto"
-      KORTANA_GITHUB_MODE: "deferred"
+      KORTANA_GITHUB_MODE: "full"
       KORTANA_LOCAL_BACKLOG_ENABLED: "true"
       KORTANA_SELF_AWARE_APPROVAL: "false"
     ports:

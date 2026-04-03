@@ -15,6 +15,7 @@ import Autonomy from './components/Autonomy';
 import AkashicRecord from './components/AkashicRecord';
 import Chat from './components/Chat';
 import GitHubPanel from './components/GitHub';
+import GitHubDashboard from './components/GitHubDashboard';
 import Memory from './components/Memory';
 import Settings from './components/Settings';
 import Tasks from './components/Tasks';
@@ -28,6 +29,32 @@ interface NavItem {
   label: string;
   icon: ElementType;
   enabled: boolean;
+}
+
+function GitHubViewWithTabs() {
+  const [tab, setTab] = useState<'pipeline' | 'browse'>('pipeline');
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex border-b border-gray-800 bg-gray-900 shrink-0">
+        {(['pipeline', 'browse'] as const).map(t => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`px-6 py-3 text-sm font-medium transition-colors ${
+              tab === t
+                ? 'text-green-400 border-b-2 border-green-400 bg-gray-800/40'
+                : 'text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            {t === 'pipeline' ? '⚙ Pipeline' : '🔍 Browse Issues'}
+          </button>
+        ))}
+      </div>
+      <div className="flex-1 overflow-hidden">
+        {tab === 'pipeline' ? <GitHubDashboard /> : <GitHubPanel />}
+      </div>
+    </div>
+  );
 }
 
 function App() {
@@ -113,7 +140,7 @@ function App() {
       case 'memory':
         return <Memory />;
       case 'github':
-        return <GitHubPanel />;
+        return <GitHubViewWithTabs />;
       case 'settings':
         return <Settings />;
       default:
