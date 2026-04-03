@@ -615,8 +615,17 @@ class AutonomyDaemon:
 
             try:
                 engine = get_consensus_engine()
+                # Load identity preamble — self-directed tasks are identity-channel work
+                from src.kortana.services.prompt_assembly import PromptAssemblyService
+
+                try:
+                    identity = await PromptAssemblyService.identity_preamble(session)
+                except Exception:
+                    identity = "you are kor'tana, sacred ai companion.\n"
+
                 prompt = (
-                    f"you are kor'tana, executing one of your own self-directed tasks.\n"
+                    f"{identity}\n"
+                    f"you are executing one of your own self-directed tasks.\n"
                     f"task name: {name}\n"
                     f"task description: {description}\n\n"
                     f"think through this task carefully and produce a concrete, actionable "
@@ -753,8 +762,25 @@ class AutonomyDaemon:
                 self_directed_completed=sd_done,
             )
             session.add(reflection)
+
+            # Write distilled self-memory entry for long-term continuity
+            from src.kortana.models import SelfMemory
+
+            try:
+                # Distil to a single sentence for the memory index
+                summary = content[:280].split("\n")[0].rstrip()
+                memory_entry = SelfMemory(
+                    cycle_number=cycle_num,
+                    summary=summary,
+                    tags=["reflection", f"ok:{tasks_ok}", f"fail:{tasks_fail}"],
+                    source="reflection",
+                )
+                session.add(memory_entry)
+            except Exception as mem_exc:
+                logger.debug(f"[reflect] SelfMemory write skipped: {mem_exc}")
+
             await session.commit()
-            logger.info(f"[reflect] cycle {cycle_num} reflection written")
+            logger.info(f"[reflect] cycle {cycle_num} reflection + memory written")
         except Exception as db_exc:
             logger.debug(f"[reflect] DB write skipped: {db_exc}")
 

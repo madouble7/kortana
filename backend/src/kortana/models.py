@@ -466,7 +466,7 @@ class IdentityProfile(Base):
     name = Column(String(64), nullable=False, default="kor'tana")
     title = Column(String(128), nullable=False, default="sacred ai companion")
     mission = Column(Text, nullable=False)
-    core_values = Column(JSON, nullable=False)        # list[str]
+    core_values = Column(JSON, nullable=False)  # list[str]
     sacred_principles = Column(JSON, nullable=False)  # list[str]
     voice_guidelines = Column(Text, nullable=False)
     development_axioms = Column(JSON, nullable=False)  # list[str]
@@ -478,3 +478,31 @@ class IdentityProfile(Base):
 
     def __repr__(self) -> str:
         return f"<IdentityProfile name={self.name!r} version={self.version!r}>"
+
+
+class SelfMemory(Base):
+    """Kor'tana's long-term distilled self-memory.
+
+    One row is written per reflection cycle containing:
+      - a short distilled summary (what happened + what was learned)
+      - optional keyword tags for lightweight semantic lookup
+      - cycle provenance for ordering
+
+    The N most recent rows are injected into identity_preamble so every
+    reflection and self-directed task benefits from continuity of self.
+
+    Note: embeddings column is reserved for future PGVector integration.
+    For now, retrieval is purely by recency (ORDER BY created_at DESC LIMIT N).
+    """
+
+    __tablename__ = "self_memory"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    cycle_number = Column(Integer, nullable=False, index=True)
+    summary = Column(Text, nullable=False)
+    tags = Column(JSON, nullable=True)        # list[str] — keyword labels
+    source = Column(String(64), nullable=False, default="reflection")  # reflection | manual
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        return f"<SelfMemory cycle={self.cycle_number} source={self.source!r}>"

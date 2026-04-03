@@ -3,9 +3,7 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from src.kortana.services.prompt_assembly import (
-    PromptAssemblyService,
     _DEFAULT_AXIOMS,
     _DEFAULT_MISSION,
     _DEFAULT_NAME,
@@ -13,8 +11,8 @@ from src.kortana.services.prompt_assembly import (
     _DEFAULT_TITLE,
     _DEFAULT_VALUES,
     _DEFAULT_VOICE,
+    PromptAssemblyService,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -29,6 +27,9 @@ def _make_profile(**kwargs):
     p.mission = kwargs.get("mission", _DEFAULT_MISSION)
     p.core_values = kwargs.get("core_values", _DEFAULT_VALUES)
     p.voice_guidelines = kwargs.get("voice_guidelines", _DEFAULT_VOICE)
+    p.sacred_principles = kwargs.get("sacred_principles", _DEFAULT_PRINCIPLES)
+    p.development_axioms = kwargs.get("development_axioms", _DEFAULT_AXIOMS)
+    p.version = kwargs.get("version", "0.1")
     return p
 
 
@@ -74,7 +75,7 @@ async def test_load_profile_returns_existing_row():
 async def test_load_profile_seeds_defaults_on_cold_start():
     session = await _session_no_profile()
 
-    result = await PromptAssemblyService.load_profile(session)
+    await PromptAssemblyService.load_profile(session)
 
     session.add.assert_called_once()
     session.flush.assert_called_once()
@@ -91,7 +92,12 @@ async def test_load_profile_seeds_defaults_on_cold_start():
 
 @pytest.mark.asyncio
 async def test_identity_preamble_contains_name_and_mission():
-    profile = _make_profile(name="kor'tana", mission="serve with clarity")
+    profile = _make_profile(
+        name="kor'tana",
+        mission="serve with clarity",
+        sacred_principles=["serve first"],
+        development_axioms=["grow through reflection"],
+    )
     session = await _session_with_profile(profile)
 
     preamble = await PromptAssemblyService.identity_preamble(session)
