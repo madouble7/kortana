@@ -108,7 +108,9 @@ class PatchValidator:
                 f"LDR {ldr:.0%} exceeds threshold {max_ldr:.0%} — destructive rewrite suspected"
             )
             logger.warning(
-                "PatchValidator: LDR=%.2f exceeds max=%.2f — patch blocked", ldr, max_ldr
+                "PatchValidator: LDR=%.2f exceeds max=%.2f — patch blocked",
+                ldr,
+                max_ldr,
             )
 
         # Check 2: Net-Shrink Guard
@@ -148,7 +150,9 @@ class PatchValidator:
             net_shrink,
             unavailable_fraction,
         )
-        return ValidationOK(ldr=ldr, net_shrink=net_shrink, unavailable_fraction=unavailable_fraction)
+        return ValidationOK(
+            ldr=ldr, net_shrink=net_shrink, unavailable_fraction=unavailable_fraction
+        )
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -180,10 +184,14 @@ class PatchValidator:
                 file_additions.setdefault(current_file, 0)
             elif line.startswith("-") and not line.startswith("---"):
                 if current_file:
-                    file_deletions[current_file] = file_deletions.get(current_file, 0) + 1
+                    file_deletions[current_file] = (
+                        file_deletions.get(current_file, 0) + 1
+                    )
             elif line.startswith("+") and not line.startswith("+++"):
                 if current_file:
-                    file_additions[current_file] = file_additions.get(current_file, 0) + 1
+                    file_additions[current_file] = (
+                        file_additions.get(current_file, 0) + 1
+                    )
 
         total_deletions = sum(file_deletions.values())
         total_additions = sum(file_additions.values())
