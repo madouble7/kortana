@@ -9,122 +9,82 @@ on:
 permissions:
   contents: read
 
-env:
-  PYTHON_VERSION: "3.11"
-  DOCKER_BUILDKIT: 1
-
 jobs:
-  test:
-    name: Run Tests
+  test-backend:
+    name: Backend Tests (Ruff, MyPy, Pytest)
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
-
-      - name: Install dependencies
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install backend dependencies
         run: |
-          python -m pip install --upgrade pip
           cd backend
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
-
-      - name: Run linter
+      - name: Run Ruff
         run: |
           cd backend
           ruff check .
-
-      - name: Run type checker
+      - name: Run MyPy
         run: |
           cd backend
-          mypy main.py auth.py schemas.py config.py
-
-      - name: Run tests
+          mypy src/kortana/main.py src/kortana/auth.py src/kortana/schemas.py src/kortana/config.py
+      - name: Run Pytest
         run: |
           cd backend
-          pytest --cov=. --cov-report=xml --cov-report=term-missing
+          pytest
 
-      - name: Upload coverage
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./backend/coverage.xml
-          fail_ci_if_error: false
-
-  docker:
-    name: Build Docker Image
+  test-frontend:
+    name: Frontend Tests (Lint, Type-check, Build)
     runs-on: ubuntu-latest
-    needs: test
-    permissions:
-      contents: read
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Build and push
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend
-          push: true
-          tags: kortana/backend:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  security:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Run security scan
-        uses: snyk/actions/python@master
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-
-  deploy-staging:
-    name: Deploy to Staging
-    runs-on: ubuntu-latest
-    needs: [test, docker, security]
-    permissions: {}
-    if: github.ref == 'refs/heads/develop'
-
-    steps:
-      - name: Deploy to staging
-        run: |
-          echo "Deploying to staging environment..."
-          # Add deployment commands here
+          node-version: "20"
+      - name: Install frontend dependencies
+        run: npm ci || npm install
+        working-directory: ./frontend
+      - name: Run Lint
+        run: npm run lint
+        working-directory: ./frontend
+      - name: Run Type-check
+        run: npm run type-check
+        working-directory: ./frontend
+      - name: Build Frontend
+        run: npm run build
+        working-directory: ./frontend
 
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: [test, docker, security]
-    permissions: {}
+    needs: [test-backend, test-frontend]
     if: github.ref == 'refs/heads/main'
-    environment: production
-
     steps:
-      - name: Deploy to production
+      - uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Deploy Backend to Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
-          echo "Deploying to production environment..."
-          # Add production deployment commands here
+          npx @railway/cli up -s ${{ secrets.RAILWAY_SERVICE_ID }} -e production
+        working-directory: ./backend
+
+      - name: Deploy Frontend to Vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          npx vercel build --prod --token $VERCEL_TOKEN
+          npx vercel deploy --prebuilt --prod --token $VERCEL_TOKEN
+        working-directory: ./frontend

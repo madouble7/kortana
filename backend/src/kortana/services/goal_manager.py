@@ -20,9 +20,20 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
+from sqlalchemy import select
+
 from src.kortana.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+def _parse_iso_datetime(s: str | None) -> datetime | None:
+    if not s:
+        return None
+    try:
+        return datetime.fromisoformat(s.replace("Z", "+00:00"))
+    except ValueError:
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -85,9 +96,130 @@ class GoalManager:
     def __init__(self) -> None:
         self._goals: dict[str, Goal] = {}
 
+    # ----- persistence (async) -----
+
+    @staticmethod
+    def _normalize_goal_kwargs(kwargs: dict[str, Any]) -> dict[str, Any]:
+        out = dict(kwargs)
+        if "tier" in out and isinstance(out["tier"], str):
+            out["tier"] = GoalTier(out["tier"])
+        if "status" in out and isinstance(out["status"], str):
+            out["status"] = GoalStatus(out["status"])
+        return out
+
+    def _goal_from_row(self, row: Any) -> Goal:
+        """Hydrate a Goal dataclass from an AutonomyGoal ORM row."""
+        r = row
+        ca = r.created_at.isoformat() if r.created_at else datetime.utcnow().isoformat()
+        ua = r.updated_at.isoformat() if r.updated_at else datetime.utcnow().isoformat()
+        comp = r.completed_at.isoformat() if r.completed_at else None
+        return Goal(
+            id=str(r.id),
+            title=str(r.title),
+            tier=GoalTier(str(r.tier)),
+            status=GoalStatus(str(r.status)),
+            description=str(r.description or ""),
+            success_criteria=str(r.success_criteria or ""),
+            progress=float(r.progress or 0.0),
+            priority=int(r.priority),
+            parent_id=r.parent_id,
+            depends_on=list(r.depends_on or []),
+            linked_tasks=list(r.linked_tasks or []),
+            created_at=ca,
+            updated_at=ua,
+            completed_at=comp,
+            metadata=dict(getattr(r, "goal_metadata", None) or {}),
+        )
+
+    def _goals_in_persist_order(self) -> list[Goal]:
+        """Parents before children so FK inserts succeed."""
+        goals = list(self._goals.values())
+        ids = {g.id for g in goals}
+        remaining: dict[str, Goal] = {g.id: g for g in goals}
+        ordered: list[Goal] = []
+        while remaining:
+            ready = [
+                g
+                for g in remaining.values()
+                if g.parent_id is None
+                or g.parent_id not in ids
+                or g.parent_id not in remaining
+            ]
+            if not ready:
+                ready = list(remaining.values())
+            for g in sorted(ready, key=lambda x: x.id):
+                ordered.append(g)
+                del remaining[g.id]
+        return ordered
+
+    async def persist_goal(self, goal: Goal) -> None:
+        """Upsert one goal row."""
+        from src.kortana.database import get_db_manager
+        from src.kortana.models import AutonomyGoal as AG
+
+        db = get_db_manager()
+        async with db.session_scope() as session:
+            result = await session.execute(select(AG).where(AG.id == goal.id))
+            existing = result.scalar_one_or_none()
+            is_new = existing is None
+            ag: Any
+            if is_new:
+                ag = AG(id=goal.id)
+                session.add(ag)
+            else:
+                ag = existing
+            ag.title = goal.title
+            ag.tier = goal.tier.value
+            ag.status = goal.status.value
+            ag.description = goal.description
+            ag.success_criteria = goal.success_criteria
+            ag.progress = goal.progress
+            ag.priority = goal.priority
+            ag.parent_id = goal.parent_id
+            ag.depends_on = goal.depends_on
+            ag.linked_tasks = goal.linked_tasks
+            ag.goal_metadata = goal.metadata
+            ag.completed_at = _parse_iso_datetime(goal.completed_at)
+            ag.updated_at = datetime.utcnow()
+            if is_new:
+                ag.created_at = _parse_iso_datetime(goal.created_at) or datetime.utcnow()
+
+    async def persist_all_goals(self) -> None:
+        """Persist every in-memory goal (e.g. after reprioritise or bootstrap)."""
+        for g in self._goals_in_persist_order():
+            await self.persist_goal(g)
+
+    async def load_from_db(self) -> None:
+        """Load goals from DB or seed defaults and persist."""
+        from src.kortana.database import get_db_manager
+        from src.kortana.models import AutonomyGoal as AG
+
+        db = get_db_manager()
+        try:
+            async with db.session_scope() as session:
+                result = await session.execute(select(AG))
+                rows = list(result.scalars().all())
+        except Exception as exc:
+            logger.warning(f"Goal load_from_db failed: {exc}")
+            return
+
+        if not rows:
+            self._goals.clear()
+            self.bootstrap_defaults()
+            await self.persist_all_goals()
+            logger.info("Goals: empty DB — bootstrapped defaults and persisted")
+            return
+
+        self._goals.clear()
+        for row in rows:
+            g = self._goal_from_row(row)
+            self._goals[g.id] = g
+        logger.info(f"Goals: loaded {len(self._goals)} rows from database")
+
     # ----- CRUD -----
 
     def create(self, **kwargs: Any) -> Goal:
+        kwargs = self._normalize_goal_kwargs(kwargs)
         goal = Goal(**kwargs)
         self._goals[goal.id] = goal
         logger.info(f"Goal created: [{goal.tier.value}] {goal.title} (id={goal.id})")
@@ -322,8 +454,8 @@ class GoalManager:
                     )
                 )
                 row = result.fetchone()
-                total_cycles = row[0] or 0
-                clean_cycles = row[1] or 0
+                total_cycles = int(row[0] or 0) if row else 0
+                clean_cycles = int(row[1] or 0) if row else 0
 
                 # --- 2. Task success rate (github_tasks) ---
                 result2 = await session.execute(
@@ -334,9 +466,11 @@ class GoalManager:
                     )
                 )
                 task_row = result2.fetchone()
-                total_tasks = task_row[0] or 0
+                total_tasks = int(task_row[0] or 0) if task_row else 0
                 success_rate = (
-                    (task_row[1] or 0) / total_tasks if total_tasks > 0 else 0.0
+                    (int(task_row[1] or 0) if task_row else 0) / total_tasks
+                    if total_tasks > 0
+                    else 0.0
                 )
 
             # Update goal progress
@@ -364,6 +498,8 @@ class GoalManager:
                         f"[goals] success_rate: {success_rate:.1%} over {total_tasks} tasks "
                         f"→ progress={goal.progress}"
                     )
+
+            await self.persist_all_goals()
 
         except Exception as exc:
             logger.warning(f"Goal DB bootstrap failed (non-fatal): {exc}")
@@ -401,5 +537,10 @@ def get_goal_manager() -> GoalManager:
     global _manager
     if _manager is None:
         _manager = GoalManager()
-        _manager.bootstrap_defaults()
     return _manager
+
+
+def reset_goal_manager_for_testing() -> None:
+    """Clear singleton so tests receive a fresh GoalManager instance."""
+    global _manager
+    _manager = None
