@@ -194,10 +194,14 @@ class ApiClient {
   }
 
   // Chat endpoints
-  async sendChatMessage(message: string, conversationId?: string): Promise<any> {
+  async sendChatMessage(
+    message: string,
+    history?: Array<{ role: string; content: string }>,
+    conversationId?: string
+  ): Promise<any> {
     return this.request<any>('/api/gemini/chat', {
       method: 'POST',
-      body: JSON.stringify({ message, conversation_id: conversationId }),
+      body: JSON.stringify({ message, history: history || [], conversation_id: conversationId }),
     });
   }
 

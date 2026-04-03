@@ -35,7 +35,12 @@ export default function Chat() {
     setLoading(true);
 
     try {
-      const response = await api.sendChatMessage(input, conversationId || undefined);
+      // Build history from current messages (last 10 turns)
+      const history = messages.slice(-10).map((m) => ({
+        role: m.role === 'user' ? 'user' : 'assistant',
+        content: m.content,
+      }));
+      const response = await api.sendChatMessage(input, history, conversationId || undefined);
 
       if (response.conversation_id && !conversationId) {
         setConversationId(response.conversation_id);

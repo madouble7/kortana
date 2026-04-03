@@ -135,14 +135,28 @@ async def chat_with_gemini(payload: dict[str, Any]) -> dict[str, Any]:
             status_code=400, detail="Missing 'message' field in payload"
         )
 
+    # History: list of {role: "user"|"assistant", content: str}
+    history: list[dict[str, str]] = payload.get("history") or []
+
     live_context = await _build_live_context()
     system = KORTANA_SYSTEM_PROMPT
     if live_context:
         system = system + "\n\n" + live_context
 
+    # Prepend conversation history to the prompt so the model has context
+    if history:
+        history_lines = []
+        for msg in history[-10:]:  # cap at last 10 turns
+            label = "matt" if msg.get("role") == "user" else "kor'tana"
+            history_lines.append(f"{label}: {msg.get('content', '')}")
+        history_block = "\n".join(history_lines)
+        prompt = f"{history_block}\nmatt: {message}"
+    else:
+        prompt = message
+
     engine = get_consensus_engine()
     result = await engine.query(
-        prompt=message,
+        prompt=prompt,
         mode=ConsensusMode.FASTEST,
         system=system,
         max_tokens=512,
