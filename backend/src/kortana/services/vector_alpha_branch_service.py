@@ -57,6 +57,24 @@ class VectorAlphaBranchService:
             sanitized_type = incident.incident_type.replace("_", "-")
             branch_name = f"auto-fix/{sanitized_type}-{timestamp}"
 
+            # Always unlock and prune — the worktree may be missing-but-locked
+            # (registry entry exists, directory does not).  All these are no-ops
+            # when the worktree is already clean.
+            await asyncio.to_thread(
+                subprocess.run,
+                ["git", "worktree", "unlock", self.worktree_dir],
+                cwd=self.repo_dir,
+                capture_output=True,
+                check=False,
+            )
+            await asyncio.to_thread(
+                subprocess.run,
+                ["git", "worktree", "prune"],
+                cwd=self.repo_dir,
+                capture_output=True,
+                check=False,
+            )
+
             if os.path.exists(self.worktree_dir):
                 await asyncio.to_thread(
                     subprocess.run,
@@ -65,18 +83,9 @@ class VectorAlphaBranchService:
                     capture_output=True,
                     check=False,
                 )
-                # If the directory persists (detached / unregistered), force-remove it
+                # Final safety net: if the directory persists, rmtree it
                 if os.path.exists(self.worktree_dir):
                     await asyncio.to_thread(shutil.rmtree, self.worktree_dir, True)
-
-            # Prune stale worktree entries from git's registry before re-adding
-            await asyncio.to_thread(
-                subprocess.run,
-                ["git", "worktree", "prune"],
-                cwd=self.repo_dir,
-                capture_output=True,
-                check=False,
-            )
 
             res = await asyncio.to_thread(
                 subprocess.run,
