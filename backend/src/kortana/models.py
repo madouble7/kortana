@@ -399,3 +399,18 @@ class AutonomyBenchmark(Base):
 
     def __repr__(self) -> str:
         return f"<AutonomyBenchmark {self.suite_name}:{self.incident_type}>"
+
+
+class ConversationMessage(Base):
+    """Persistent cross-session chat memory for Kor'tana."""
+
+    __tablename__ = "conversation_messages"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    session_id = Column(String(64), nullable=False, index=True)
+    role = Column(String(16), nullable=False)   # "user" | "assistant"
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        return f"<ConversationMessage {self.role}:{self.created_at}>"
