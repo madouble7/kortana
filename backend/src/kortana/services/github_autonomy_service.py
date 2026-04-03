@@ -23,6 +23,7 @@ from src.kortana.config import get_settings
 from src.kortana.http_client import get_http_client
 from src.kortana.logger import get_logger
 from src.kortana.models import GitHubTask
+from src.kortana.services.ai_consensus import ConsensusMode, get_consensus_engine
 from src.kortana.services.gemini import gemini_service
 from src.kortana.services.operator_directive_service import OperatorDirectiveService
 from src.kortana.services.repository_boundary_service import RepositoryBoundaryService
@@ -823,6 +824,65 @@ class GitHubAutonomyService:
             return
         await self._maybe_await(self.db.rollback())
 
+    async def _analyze_text_with_fallback(
+        self,
+        prompt: str,
+        *,
+        stage: str,
+        task: GitHubTask,
+        system_instruction: str | None = None,
+        max_tokens: int = 2048,
+    ) -> str:
+        """Use Gemini first, then fall back to the multi-provider consensus engine."""
+        gemini_response: str | None = None
+        try:
+            gemini_response = await self._maybe_await(
+                gemini_service.analyze_text(
+                    prompt,
+                    **(
+                        {"system_instruction": system_instruction}
+                        if system_instruction
+                        else {}
+                    ),
+                )
+            )
+        except Exception as exc:
+            gemini_response = f"Error during analysis: {exc}"
+
+        if gemini_response and not self._is_quota_exhausted_plan(gemini_response):
+            return gemini_response
+
+        logger.warning(
+            "Gemini unavailable during %s for task #%s; attempting provider fallback",
+            stage,
+            task.github_issue_number,
+        )
+
+        fallback = await self._maybe_await(
+            get_consensus_engine().query(
+                prompt,
+                mode=ConsensusMode.BEST,
+                system=system_instruction,
+                max_tokens=max_tokens,
+                timeout=45.0,
+            )
+        )
+        if fallback.answer and not fallback.answer.startswith("[ERROR]"):
+            logger.info(
+                "Fallback provider %s handled %s for task #%s",
+                fallback.provider_used,
+                stage,
+                task.github_issue_number,
+            )
+            return fallback.answer
+
+        logger.warning(
+            "All fallback providers failed during %s for task #%s",
+            stage,
+            task.github_issue_number,
+        )
+        return gemini_response or "[ERROR] All providers failed"
+
     @staticmethod
     def _extract_http_error_detail(exc: Exception) -> tuple[int | None, str]:
         """Extract status code and body from HTTP errors when available."""
@@ -1070,7 +1130,12 @@ class GitHubAutonomyService:
                     f"Title: {task.title}\nDescription: {task.description}"
                 )
             )
-            analysis = await self._maybe_await(gemini_service.analyze_text(prompt))
+            analysis = await self._analyze_text_with_fallback(
+                prompt,
+                stage="analysis",
+                task=task,
+                max_tokens=1800,
+            )
 
             # Detect quota-exhaustion fallback — defer instead of storing garbage analysis.
             if self._is_quota_exhausted_plan(analysis):
@@ -1134,7 +1199,12 @@ class GitHubAutonomyService:
                 f"{repo_context}\n\n"
                 f"Title: {task.title}\nAnalysis: {task.analysis}"
             )
-            raw_plan = await self._maybe_await(gemini_service.analyze_text(prompt))
+            raw_plan = await self._analyze_text_with_fallback(
+                prompt,
+                stage="planning",
+                task=task,
+                max_tokens=3200,
+            )
 
             # Detect quota-exhaustion fallback — defer instead of storing garbage plans.
             if self._is_quota_exhausted_plan(raw_plan):
