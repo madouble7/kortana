@@ -317,6 +317,46 @@ class LocalBacklogService:
         slug = slug[:48] or "autonomy-task"
         return f"{prefix}/{abs(issue_number)}-{slug}"
 
+    async def queue_autonomous_investigation(
+        self,
+        *,
+        title: str,
+        description: str,
+        classification: str = "self_directed",
+        priority: str = "medium",
+    ) -> GitHubTask | None:
+        """Queue a self-directed investigation task into the local backlog.
+
+        Deduplicates by title — returns None if an identical title already exists
+        (any status, including completed, to avoid re-running finished work).
+        """
+        existing = await self._db_execute(
+            select(GitHubTask).where(
+                GitHubTask.title == title,
+                GitHubTask.github_repo == LOCAL_SELF_HEAL_REPO,
+            )
+        )
+        if existing.scalar_one_or_none() is not None:
+            logger.debug("Autonomous task already exists: %s", title)
+            return None
+
+        issue_number = await self._next_local_issue_number()
+        branch_name = self._branch_name(issue_number, title, prefix="auto/investigate")
+        task = GitHubTask(
+            github_issue_number=issue_number,
+            github_repo=LOCAL_SELF_HEAL_REPO,
+            title=title,
+            description=description,
+            status="pending",
+            classification=classification,
+            priority=priority,
+            branch_name=branch_name,
+        )
+        self.db.add(task)
+        await self._db_commit()
+        logger.info("Queued autonomous investigation: %s", title)
+        return task
+
     def _local_backlog_enabled(self) -> bool:
         raw = os.getenv("KORTANA_LOCAL_BACKLOG_ENABLED")
         if raw is not None:

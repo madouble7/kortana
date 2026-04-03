@@ -15,7 +15,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from sqlalchemy import select  # noqa: E402
-from src.kortana.database import db_manager  # noqa: E402
+from src.kortana.database import get_db_manager  # noqa: E402
 from src.kortana.models import SelfMemory  # noqa: E402
 from src.kortana.services.gemini import gemini_service  # noqa: E402
 
@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 async def backfill() -> None:
+    db_manager = get_db_manager()
     await db_manager.initialize()
 
     async for session in db_manager.get_session():

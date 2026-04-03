@@ -136,7 +136,7 @@ class GeminiService:
             return None
         try:
             response = self.client.models.embed_content(
-                model="models/text-embedding-004",
+                model="text-embedding-004",
                 contents=text,
             )
             # SDK returns ContentEmbedding list; take first item
