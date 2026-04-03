@@ -765,15 +765,23 @@ class AutonomyDaemon:
 
             # Write distilled self-memory entry for long-term continuity
             from src.kortana.models import SelfMemory
+            from src.kortana.services.gemini import gemini_service
 
             try:
                 # Distil to a single sentence for the memory index
                 summary = content[:280].split("\n")[0].rstrip()
+                # Attempt to embed for future semantic retrieval
+                embedding: list[float] | None = None
+                try:
+                    embedding = gemini_service.embed_text(summary)
+                except Exception:
+                    pass
                 memory_entry = SelfMemory(
                     cycle_number=cycle_num,
                     summary=summary,
                     tags=["reflection", f"ok:{tasks_ok}", f"fail:{tasks_fail}"],
                     source="reflection",
+                    embedding=embedding,
                 )
                 session.add(memory_entry)
             except Exception as mem_exc:
