@@ -1,4 +1,4 @@
-import { Loader2, Send, Sparkles } from 'lucide-react';
+import { ClipboardList, Loader2, Send, Sparkles } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { api } from '../lib/api';
 import { cn, formatRelativeTime } from '../lib/utils';
@@ -80,6 +80,7 @@ export default function Chat() {
         role: 'assistant',
         content: response.response || response.message,
         timestamp: new Date().toISOString(),
+        tasks_queued: response.tasks_queued?.length ? response.tasks_queued : undefined,
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
@@ -158,6 +159,20 @@ export default function Chat() {
                     >
                       {formatRelativeTime(message.timestamp)}
                     </p>
+                    {message.tasks_queued?.length ? (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {message.tasks_queued.map((t) => (
+                          <span
+                            key={t.id}
+                            title={`branch: ${t.branch}`}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-900/60 border border-indigo-700/50 text-indigo-300 text-[10px] font-medium"
+                          >
+                            <ClipboardList className="w-3 h-3" />
+                            queued: {t.name}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               </div>

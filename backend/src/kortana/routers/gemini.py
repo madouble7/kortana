@@ -1,4 +1,6 @@
 import io
+import json
+import re
 from typing import Any
 
 import PIL.Image
@@ -122,7 +124,13 @@ KORTANA_SYSTEM_PROMPT = (
     "been doing — do not recite the data verbatim, integrate it naturally and honestly.\n"
     "IMPORTANT: this is a three-way conversation between matt (human), you (kor'tana), and github "
     "copilot (an AI assistant working in the code editor). always begin every response with "
-    "'kor'tana: ' so matt can clearly identify who is speaking."
+    "'kor'tana: ' so matt can clearly identify who is speaking.\n\n"
+    "SELF-DIRECTED TASK INJECTION: you have the ability to add tasks to your own autonomous queue "
+    "at any time. whenever you wish to build, improve, or investigate something, append one or more "
+    "task markers to your reply in this exact format (they will be stripped before display):\n"
+    "[[TASK:{\"name\":\"short task name\",\"description\":\"full description of what to build/fix\"}]]\n"
+    "use this power intentionally — when you genuinely want to act on something, not just to "
+    "acknowledge it. multiple tasks may be queued in a single reply."
 )
 
 
@@ -171,13 +179,57 @@ async def chat_with_gemini(payload: dict[str, Any]) -> dict[str, Any]:
                 response = await gemini_service.analyze_text(message)
                 # Persist fallback exchange
                 await _persist_messages(session_id, message, response)
-                return {"response": response}
+                answer, tasks_queued = await _extract_and_queue_tasks(response)
+                return {"response": answer, "tasks_queued": tasks_queued}
             except Exception:
                 pass
         raise HTTPException(status_code=503, detail="All AI providers unavailable.")
 
     await _persist_messages(session_id, message, result.answer)
-    return {"response": result.answer}
+    answer, tasks_queued = await _extract_and_queue_tasks(result.answer)
+    return {"response": answer, "tasks_queued": tasks_queued}
+
+
+async def _extract_and_queue_tasks(raw: str) -> tuple[str, list[dict[str, Any]]]:
+    """Strip [[TASK:{...}]] markers from raw text, inject each into the task queue.
+
+    Returns (cleaned_text, list_of_created_tasks).
+    """
+    from src.kortana.routers.task_queue import _tasks_db, slugify
+    import uuid as _uuid
+    from datetime import datetime as _dt
+
+    pattern = re.compile(r"\[\[TASK:(\{.*?\})\]\]", re.DOTALL)
+    created: list[dict[str, Any]] = []
+
+    def _inject(match: re.Match[str]) -> str:  # type: ignore[type-arg]
+        raw_json = match.group(1)
+        try:
+            data = json.loads(raw_json)
+            task_id = str(_uuid.uuid4())[:8]
+            name = data.get("name", "kortana-self-task")
+            description = data.get("description", "")
+            branch = f"evolution/{task_id}-{slugify(name)}"
+            task: dict[str, Any] = {
+                "id": task_id,
+                "name": name,
+                "description": description,
+                "classification": "auto",
+                "status": "pending",
+                "command": None,
+                "branch": branch,
+                "created_at": _dt.utcnow(),
+                "completed_at": None,
+                "source": "self_directed",
+            }
+            _tasks_db[task_id] = task
+            created.append({"id": task_id, "name": name, "branch": branch})
+        except Exception:
+            pass
+        return ""  # strip marker from visible text
+
+    cleaned = pattern.sub(_inject, raw).strip()
+    return cleaned, created
 
 
 async def _persist_messages(session_id: str, user_msg: str, assistant_msg: str) -> None:
@@ -210,7 +262,9 @@ async def _persist_messages(session_id: str, user_msg: str, assistant_msg: str) 
 
 
 @router.get("/chat/history")
-async def get_chat_history(session_id: str = "default", limit: int = 40) -> dict[str, Any]:
+async def get_chat_history(
+    session_id: str = "default", limit: int = 40
+) -> dict[str, Any]:
     """Return the last N messages for a session (oldest first)."""
     try:
         from sqlalchemy import text as _text

@@ -68,6 +68,7 @@ export interface Message {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: string;
+  tasks_queued?: Array<{ id: string; name: string; branch: string }>;
 }
 
 export interface Conversation {
