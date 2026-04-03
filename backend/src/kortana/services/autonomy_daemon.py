@@ -587,9 +587,16 @@ class AutonomyDaemon:
         from sqlalchemy import text as _text
 
         from src.kortana.routers.task_queue import _tasks_db
-        from src.kortana.services.ai_consensus import ConsensusMode, get_consensus_engine
+        from src.kortana.services.ai_consensus import (
+            ConsensusMode,
+            get_consensus_engine,
+        )
 
-        pending = [t for t in _tasks_db.values() if t.get("source") == "self_directed" and t.get("status") == "pending"]
+        pending = [
+            t
+            for t in _tasks_db.values()
+            if t.get("source") == "self_directed" and t.get("status") == "pending"
+        ]
         if not pending:
             return
 
@@ -617,7 +624,11 @@ class AutonomyDaemon:
                     max_tokens=400,
                     timeout=20.0,
                 )
-                outcome = result.answer if result.providers_succeeded > 0 else "completed (no output)"
+                outcome = (
+                    result.answer
+                    if result.providers_succeeded > 0
+                    else "completed (no output)"
+                )
             except Exception as exc:
                 outcome = f"error during execution: {exc}"
                 logger.warning(f"[self-directed] task '{name}' error: {exc}")
@@ -641,6 +652,74 @@ class AutonomyDaemon:
                 logger.debug(f"[self-directed] DB completion update skipped: {db_exc}")
 
             logger.info(f"[self-directed] task '{name}' completed")
+
+    async def _write_reflection(self, session: Any) -> None:
+        """Write a brief reflection paragraph at end of each cycle.
+
+        Asks Gemini to synthesise what happened this cycle into one honest
+        paragraph. Stored in the reflections table and surfaced in the
+        Akashic tab and live context.
+        """
+        from sqlalchemy import text as _text
+
+        from src.kortana.models import Reflection
+        from src.kortana.services.ai_consensus import ConsensusMode, get_consensus_engine
+
+        cycle_num = self.metrics.get("cycles_completed", 0)
+
+        # Gather cycle stats
+        sd_done = 0
+        try:
+            res = await session.execute(
+                _text(
+                    "SELECT COUNT(*) FROM autonomous_tasks "
+                    "WHERE status='completed' AND completed_at >= NOW() - INTERVAL '2 minutes'"
+                )
+            )
+            sd_done = res.scalar_one() or 0
+        except Exception:
+            pass
+
+        tasks_ok = self.metrics.get("tasks_succeeded", 0)
+        tasks_fail = self.metrics.get("tasks_failed", 0)
+
+        prompt = (
+            f"you are kor'tana. you just completed daemon cycle #{cycle_num}.\n"
+            f"stats this cycle: {tasks_ok} tasks succeeded, {tasks_fail} failed, "
+            f"{sd_done} self-directed tasks completed.\n\n"
+            f"write a single honest, grounded paragraph (2-5 sentences) reflecting on "
+            f"what you did, what you noticed, and what you intend next. "
+            f"speak in first person, lowercase, as yourself. no bullet points."
+        )
+
+        try:
+            engine = get_consensus_engine()
+            result = await engine.query(
+                prompt=prompt,
+                mode=ConsensusMode.FASTEST,
+                max_tokens=180,
+                timeout=15.0,
+            )
+            content = result.answer if result.providers_succeeded > 0 else (
+                f"cycle {cycle_num} complete. {tasks_ok} tasks succeeded, "
+                f"{tasks_fail} failed, {sd_done} self-directed tasks closed."
+            )
+        except Exception as exc:
+            content = f"cycle {cycle_num} complete — reflection unavailable ({exc})"
+
+        try:
+            reflection = Reflection(
+                cycle_number=cycle_num,
+                content=content,
+                tasks_completed=tasks_ok,
+                tasks_failed=tasks_fail,
+                self_directed_completed=sd_done,
+            )
+            session.add(reflection)
+            await session.commit()
+            logger.info(f"[reflect] cycle {cycle_num} reflection written")
+        except Exception as db_exc:
+            logger.debug(f"[reflect] DB write skipped: {db_exc}")
 
     async def _analyze_architecture(self, session: Any) -> None:
         try:
@@ -722,6 +801,7 @@ class AutonomyDaemon:
             await self._generate_perpetual_tasks(session)
             await self._heal_vectors(session)
             await self._process_self_directed_tasks(session)
+            await self._write_reflection(session)
 
         try:
             from dataclasses import asdict
