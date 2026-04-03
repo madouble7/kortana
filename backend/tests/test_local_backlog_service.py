@@ -1,7 +1,6 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from src.kortana.models import GitHubTask
 from src.kortana.services.local_backlog_service import LocalBacklogService
 from src.kortana.services.operator_directive_service import DirectiveSummary
@@ -82,3 +81,106 @@ async def test_manifest_self_repair_creates_local_backlog_task(monkeypatch) -> N
     assert "planner crashed" in task.description
     session.add.assert_called_once_with(task)
     session.commit.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_discover_workspace_tasks_no_reseed_after_execution(monkeypatch) -> None:
+    """Regression: same anchor must not re-seed after a task reaches executed/failed."""
+    monkeypatch.setenv("KORTANA_LOCAL_BACKLOG_ENABLED", "true")
+
+    session = AsyncMock()
+    session.add = MagicMock()
+
+    # Simulate: no active task in-flight (active query returns None)
+    active_result = MagicMock()
+    active_result.scalar_one_or_none.return_value = None
+
+    # Simulate: a previously executed task that carries the same anchor is found
+    executed_task = GitHubTask(
+        id="task-executed",
+        github_issue_number=-10,
+        github_repo="local/workspace",
+        title="Reconcile local workspace changes",
+        description="[LOCAL-TASK-ANCHOR] workspace:abc123def456",
+        status="executed",
+    )
+    existing_result = MagicMock()
+    existing_result.scalar_one_or_none.return_value = executed_task
+
+    session.execute.side_effect = [active_result, existing_result]
+
+    service = LocalBacklogService(session)
+
+    # Monkeypatch the anchor method to return a known value matching the executed task
+    monkeypatch.setattr(
+        LocalBacklogService,
+        "_workspace_anchor",
+        staticmethod(
+            lambda *_args, **_kwargs: "[LOCAL-TASK-ANCHOR] workspace:abc123def456"
+        ),
+    )
+
+    tasks = await service.discover_workspace_tasks(
+        workspace_status={
+            "branch": "main",
+            "dirty": True,
+            "changed_count": 2,
+            "changed_files": ["backend/src/kortana/services/autonomy_daemon.py"],
+        },
+        guidance=DirectiveSummary(),
+    )
+
+    assert tasks == [], (
+        "Should not re-seed when the same anchor was previously executed"
+    )
+    session.add.assert_not_called()
+    session.commit.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_discover_workspace_tasks_no_reseed_after_failure(monkeypatch) -> None:
+    """Regression: same anchor must not re-seed after a task reaches failed state."""
+    monkeypatch.setenv("KORTANA_LOCAL_BACKLOG_ENABLED", "true")
+
+    session = AsyncMock()
+    session.add = MagicMock()
+
+    active_result = MagicMock()
+    active_result.scalar_one_or_none.return_value = None
+
+    failed_task = GitHubTask(
+        id="task-failed",
+        github_issue_number=-11,
+        github_repo="local/workspace",
+        title="Reconcile local workspace changes",
+        description="[LOCAL-TASK-ANCHOR] workspace:deadbeef1234",
+        status="failed",
+    )
+    existing_result = MagicMock()
+    existing_result.scalar_one_or_none.return_value = failed_task
+
+    session.execute.side_effect = [active_result, existing_result]
+
+    service = LocalBacklogService(session)
+
+    monkeypatch.setattr(
+        LocalBacklogService,
+        "_workspace_anchor",
+        staticmethod(
+            lambda *_args, **_kwargs: "[LOCAL-TASK-ANCHOR] workspace:deadbeef1234"
+        ),
+    )
+
+    tasks = await service.discover_workspace_tasks(
+        workspace_status={
+            "branch": "main",
+            "dirty": True,
+            "changed_count": 1,
+            "changed_files": ["backend/src/kortana/services/autonomy_daemon.py"],
+        },
+        guidance=DirectiveSummary(),
+    )
+
+    assert tasks == [], "Should not re-seed when the same anchor previously failed"
+    session.add.assert_not_called()
+    session.commit.assert_not_awaited()

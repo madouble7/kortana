@@ -120,11 +120,13 @@ class LocalBacklogService:
         anchor: str,
         repo: str,
     ) -> GitHubTask | None:
+        # include_completed=True so that executed/blocked/failed tasks block re-seeding
+        # of the same anchor, preventing infinite loops on the same workspace state.
         return await self._find_by_title_or_anchor(
             title=None,
             anchor=anchor,
             repo=repo,
-            include_completed=False,
+            include_completed=True,
         )
 
     async def _find_active_local_task(self, repo: str) -> GitHubTask | None:
