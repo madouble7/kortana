@@ -118,7 +118,13 @@ class PatchPlanner:
         return result.answer
 
     def _extract_json(self, response_text: str) -> dict:
-        """Extract JSON from potential markdown blocks."""
+        """Extract JSON from potential markdown blocks or prose-wrapped responses.
+
+        Attempts in order:
+        1. Strip markdown fences, then json.loads.
+        2. Find first ``{`` … last ``}`` substring (handles prose before/after JSON).
+        3. Raise ValueError so callers can return a safe fallback.
+        """
         response_text = response_text.strip()
         json_match = re.search(
             r"```(?:json)?\s*(.*?)\s*```", response_text, re.DOTALL | re.IGNORECASE
@@ -128,9 +134,23 @@ class PatchPlanner:
 
         try:
             return json.loads(response_text.strip())
-        except json.JSONDecodeError as e:
-            logger.error(f"Malformed JSON: {e} | Content: {response_text[:100]}")
-            raise ValueError(f"Malformed JSON: {e}")
+        except json.JSONDecodeError:
+            pass
+
+        # Fallback: extract the outermost JSON object from the response
+        start = response_text.find("{")
+        end = response_text.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            try:
+                return json.loads(response_text[start : end + 1])
+            except json.JSONDecodeError:
+                pass
+
+        logger.debug(
+            "JSON extraction failed after all strategies. Content: %.120s",
+            response_text,
+        )
+        raise ValueError(f"Malformed JSON in response (length={len(response_text)})")
 
     def _extract_diff(self, response_text: str) -> str:
         """Extract diff from potential markdown blocks."""

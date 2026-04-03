@@ -15,6 +15,16 @@ backend/.env
 backend/.env.*
 !backend/.env.example
 
+# Scratch / one-time repair scripts (never commit these)
+backend/check_pgvector.py
+backend/repair_schema.py
+backend/unlock_worktree.py
+goals.txt
+tables.txt
+task_by_status.txt
+task_stats.txt
+0
+
 # Logs
 *.log
 # Byte-compiled / optimized / DLL files
