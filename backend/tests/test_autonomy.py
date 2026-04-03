@@ -12,6 +12,7 @@ import pytest
 
 # Import the app and models
 from src.kortana.models import GitHubTask
+from src.kortana.services.ai_consensus import ConsensusMode
 
 
 @pytest.fixture
@@ -488,6 +489,7 @@ class TestGitHubAutonomyService:
                 provider_used="openrouter",
             )
         )
+        service._provider_backoff_until.clear()
 
         with patch(
             "src.kortana.services.github_autonomy_service.gemini_service.analyze_text"
@@ -506,6 +508,8 @@ class TestGitHubAutonomyService:
             assert result.status == "analyzed"
             assert result.analysis == "Fallback analysis"
             fallback_engine.query.assert_awaited_once()
+            assert fallback_engine.query.await_args.kwargs["mode"] == ConsensusMode.FASTEST
+        service._provider_backoff_until.clear()
 
     @pytest.mark.asyncio
     async def test_analyze_task_by_id(self, service, mock_db):
@@ -586,6 +590,7 @@ class TestGitHubAutonomyService:
                 provider_used="openai",
             )
         )
+        service._provider_backoff_until.clear()
 
         with patch(
             "src.kortana.services.github_autonomy_service.gemini_service.analyze_text"
@@ -604,6 +609,56 @@ class TestGitHubAutonomyService:
             assert result.status == "planning_complete"
             assert "backend/src/kortana/services/fallback_task.py" in result.plan
             fallback_engine.query.assert_awaited_once()
+            assert fallback_engine.query.await_args.kwargs["mode"] == ConsensusMode.BEST
+        service._provider_backoff_until.clear()
+
+    @pytest.mark.asyncio
+    async def test_analyze_task_skips_gemini_during_quota_backoff(self, service, mock_db):
+        """After a quota fallback, subsequent analysis should skip Gemini temporarily."""
+        first_task = GitHubTask(
+            github_issue_number=1,
+            github_repo="test/repo",
+            title="First Task",
+            description="Test description",
+            status="pending",
+        )
+        second_task = GitHubTask(
+            github_issue_number=2,
+            github_repo="test/repo",
+            title="Second Task",
+            description="Test description",
+            status="pending",
+        )
+
+        fallback_engine = MagicMock()
+        fallback_engine.query = AsyncMock(
+            return_value=MagicMock(
+                answer="Fallback analysis",
+                provider_used="openrouter",
+            )
+        )
+        service._provider_backoff_until.clear()
+
+        with patch(
+            "src.kortana.services.github_autonomy_service.gemini_service.analyze_text"
+        ) as mock_analyze, patch(
+            "src.kortana.services.github_autonomy_service.get_consensus_engine",
+            return_value=fallback_engine,
+        ):
+            mock_analyze.return_value = (
+                "The generative model is temporarily unavailable. "
+                "The system continues without Gemini."
+            )
+            mock_db.commit = MagicMock()
+
+            first_result = await service.analyze_task(first_task)
+            second_result = await service.analyze_task(second_task)
+
+            assert first_result.status == "analyzed"
+            assert second_result.status == "analyzed"
+            assert mock_analyze.call_count == 1
+            assert fallback_engine.query.await_count == 2
+        service._provider_backoff_until.clear()
 
     def test_sanitize_plan_for_repo_removes_hallucinated_paths(self, service, tmp_path):
         """Repo-grounded planning should drop file changes outside the observed repo shape."""

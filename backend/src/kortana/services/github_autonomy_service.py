@@ -11,7 +11,7 @@ import shutil
 import subprocess
 import tempfile
 from base64 import b64encode
-from datetime import datetime
+from datetime import datetime, timedelta
 from fnmatch import fnmatch
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -125,6 +125,8 @@ class TaskValidationFailure(RuntimeError):
 
 class GitHubAutonomyService:
     """Service for autonomous GitHub-driven development"""
+
+    _provider_backoff_until: dict[str, datetime] = {}
 
     def __init__(self, db_session=None):
         self.db = db_session
@@ -835,22 +837,41 @@ class GitHubAutonomyService:
     ) -> str:
         """Use Gemini first, then fall back to the multi-provider consensus engine."""
         gemini_response: str | None = None
-        try:
-            gemini_response = await self._maybe_await(
-                gemini_service.analyze_text(
-                    prompt,
-                    **(
-                        {"system_instruction": system_instruction}
-                        if system_instruction
-                        else {}
-                    ),
-                )
+        gemini_backoff_until = self._provider_backoff_until.get("gemini")
+        now = datetime.utcnow()
+        if gemini_backoff_until and gemini_backoff_until > now:
+            logger.warning(
+                "Skipping Gemini during %s for task #%s; backoff active until %s",
+                stage,
+                task.github_issue_number,
+                gemini_backoff_until.isoformat(),
             )
-        except Exception as exc:
-            gemini_response = f"Error during analysis: {exc}"
+        else:
+            try:
+                gemini_response = await self._maybe_await(
+                    gemini_service.analyze_text(
+                        prompt,
+                        **(
+                            {"system_instruction": system_instruction}
+                            if system_instruction
+                            else {}
+                        ),
+                    )
+                )
+            except Exception as exc:
+                gemini_response = f"Error during analysis: {exc}"
 
         if gemini_response and not self._is_quota_exhausted_plan(gemini_response):
             return gemini_response
+
+        if gemini_response and self._is_gemini_quota_response(gemini_response):
+            self._provider_backoff_until["gemini"] = datetime.utcnow() + timedelta(
+                seconds=self._provider_backoff_seconds()
+            )
+            logger.warning(
+                "Gemini quota backoff engaged until %s",
+                self._provider_backoff_until["gemini"].isoformat(),
+            )
 
         logger.warning(
             "Gemini unavailable during %s for task #%s; attempting provider fallback",
@@ -858,10 +879,13 @@ class GitHubAutonomyService:
             task.github_issue_number,
         )
 
+        fallback_mode = (
+            ConsensusMode.FASTEST if stage == "analysis" else ConsensusMode.BEST
+        )
         fallback = await self._maybe_await(
             get_consensus_engine().query(
                 prompt,
-                mode=ConsensusMode.BEST,
+                mode=fallback_mode,
                 system=system_instruction,
                 max_tokens=max_tokens,
                 timeout=45.0,
@@ -882,6 +906,25 @@ class GitHubAutonomyService:
             task.github_issue_number,
         )
         return gemini_response or "[ERROR] All providers failed"
+
+    @staticmethod
+    def _provider_backoff_seconds() -> int:
+        raw = os.getenv("KORTANA_PROVIDER_BACKOFF_SECONDS", "600")
+        try:
+            return max(60, int(raw))
+        except (TypeError, ValueError):
+            return 600
+
+    @staticmethod
+    def _is_gemini_quota_response(response_text: str) -> bool:
+        quota_signals = (
+            "quota limits",
+            "resource_exhausted",
+            "generative model is temporarily unavailable",
+            "the system continues without gemini",
+        )
+        lowered = response_text.lower()
+        return any(signal in lowered for signal in quota_signals)
 
     @staticmethod
     def _extract_http_error_detail(exc: Exception) -> tuple[int | None, str]:
