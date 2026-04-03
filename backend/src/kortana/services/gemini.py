@@ -2,6 +2,8 @@
 Gemini AI Service for Kor'tana - Minimal Working Version
 """
 
+import os
+
 from google.genai import Client
 
 from src.kortana.config import get_settings
@@ -33,6 +35,10 @@ class GeminiService:
             raise RuntimeError(self._init_error)
 
         try:
+            # Ensure GOOGLE_API_KEY doesn't shadow GEMINI_API_KEY in the SDK.
+            # The google-genai SDK prefers GOOGLE_API_KEY when both env vars are
+            # present, which can cause stale/revoked keys to take precedence.
+            os.environ.pop("GOOGLE_API_KEY", None)
             self.client = Client(api_key=self.api_key)
             self._initialized = True
             print(f"[OK] Gemini Service initialized with model: {self.model_name}")
@@ -129,22 +135,28 @@ class GeminiService:
         """Return a float embedding vector for *text*, or None on any failure.
 
         Uses Google's text-embedding-004 model (768 dimensions).
-        Falls back silently so callers can skip embedding on quota / config errors.
+        Calls the REST embedContent endpoint directly because the google-genai
+        SDK v1.x routes client.models.embed_content() to batchEmbedContents,
+        which is not supported by text-embedding-004.
         """
-        self._ensure_initialized()
-        if self.client is None:
+        if not self.api_key:
             return None
         try:
-            response = self.client.models.embed_content(
-                model="text-embedding-004",
-                contents=text,
+            import requests
+
+            url = (
+                "https://generativelanguage.googleapis.com/v1beta"
+                f"/models/text-embedding-004:embedContent?key={self.api_key}"
             )
-            # SDK returns ContentEmbedding list; take first item
-            embedding = response.embeddings[0] if response.embeddings else None
-            if embedding is None:
-                return None
-            values = getattr(embedding, "values", None)
-            return list(values) if values is not None else None
+            body = {
+                "model": "models/text-embedding-004",
+                "content": {"parts": [{"text": text}]},
+                "taskType": "RETRIEVAL_DOCUMENT",
+            }
+            resp = requests.post(url, json=body, timeout=30)
+            resp.raise_for_status()
+            values = resp.json().get("embedding", {}).get("values")
+            return list(values) if values else None
         except Exception:
             return None
 

@@ -79,6 +79,7 @@ class GoalManager:
         "humility",
         "truthfulness",
         "stewardship",
+        "interconnectedness",
     ]
 
     def __init__(self) -> None:
