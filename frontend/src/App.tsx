@@ -11,8 +11,8 @@ import {
 } from 'lucide-react';
 import type { ElementType } from 'react';
 import { useEffect, useState } from 'react';
-import Autonomy from './components/Autonomy';
 import AkashicRecord from './components/AkashicRecord';
+import Autonomy from './components/Autonomy';
 import Chat from './components/Chat';
 import GitHubPanel from './components/GitHub';
 import GitHubDashboard from './components/GitHubDashboard';
@@ -40,11 +40,10 @@ function GitHubViewWithTabs() {
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`px-6 py-3 text-sm font-medium transition-colors ${
-              tab === t
+            className={`px-6 py-3 text-sm font-medium transition-colors ${tab === t
                 ? 'text-green-400 border-b-2 border-green-400 bg-gray-800/40'
                 : 'text-gray-400 hover:text-gray-200'
-            }`}
+              }`}
           >
             {t === 'pipeline' ? '⚙ Pipeline' : '🔍 Browse Issues'}
           </button>
