@@ -41,14 +41,9 @@ export const getApiBaseUrl = () => {
     return runtimeConfig.VITE_API_URL;
   }
 
-  // Build-time API URLs are only respected during local Vite development.
-  if (import.meta.env.DEV && import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
-  }
-
-  // When running locally under Vite dev proxy, prefer same-origin
-  // so we avoid CORS. Vite proxies /api -> :8000 automatically.
-  if (typeof window !== 'undefined' && window.location.port === '5173') {
+  // In DEV mode, always use same-origin — Vite proxy forwards /api -> backend.
+  // Never pass Docker-internal hostnames (e.g. http://backend:8000) to the browser.
+  if (import.meta.env.DEV) {
     return '';
   }
 
