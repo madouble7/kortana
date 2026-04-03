@@ -53,6 +53,10 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 # Create non-root user for security
 RUN groupadd -r kortana && useradd -r -g kortana -u 1000 -m kortana
 
+# System-level git safe.directory so bind-mounted volumes (e.g. /workspace)
+# owned by a different uid are trusted regardless of which user runs git.
+RUN git config --system --add safe.directory '*'
+
 # Copy Python dependencies from builder stage
 COPY --from=backend-builder --chown=kortana:kortana /root/.local /home/kortana/.local
 
