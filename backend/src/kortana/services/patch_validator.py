@@ -52,9 +52,9 @@ NEAR_MISS_RATIO: float = 0.80
 
 
 class RejectionReason(str, enum.Enum):
-    DESTRUCTIVE_REWRITE = "DESTRUCTIVE_REWRITE"   # LDR exceeded
-    EXCESSIVE_SHRINK = "EXCESSIVE_SHRINK"          # Net-shrink exceeded
-    INSUFFICIENT_CONTEXT = "INSUFFICIENT_CONTEXT" # Context-unavailable exceeded
+    DESTRUCTIVE_REWRITE = "DESTRUCTIVE_REWRITE"  # LDR exceeded
+    EXCESSIVE_SHRINK = "EXCESSIVE_SHRINK"  # Net-shrink exceeded
+    INSUFFICIENT_CONTEXT = "INSUFFICIENT_CONTEXT"  # Context-unavailable exceeded
 
 
 # ---------------------------------------------------------------------------
@@ -162,10 +162,20 @@ class PatchValidator:
             )
         else:
             result = ValidationOK(
-                ldr=ldr, net_shrink=net_shrink, unavailable_fraction=unavailable_fraction
+                ldr=ldr,
+                net_shrink=net_shrink,
+                unavailable_fraction=unavailable_fraction,
             )
 
-        self._emit_telemetry(result, ldr, net_shrink, unavailable_fraction, max_ldr, max_net_shrink, max_unavailable)
+        self._emit_telemetry(
+            result,
+            ldr,
+            net_shrink,
+            unavailable_fraction,
+            max_ldr,
+            max_net_shrink,
+            max_unavailable,
+        )
         return result
 
     # ------------------------------------------------------------------
@@ -216,13 +226,10 @@ class PatchValidator:
             if unavailable_fraction > max_unavailable:
                 rejection_reasons.append(RejectionReason.INSUFFICIENT_CONTEXT)
 
-        near_miss = (
-            not is_failure
-            and (
-                ldr >= max_ldr * NEAR_MISS_RATIO
-                or net_shrink >= max_net_shrink * NEAR_MISS_RATIO
-                or unavailable_fraction >= max_unavailable * NEAR_MISS_RATIO
-            )
+        near_miss = not is_failure and (
+            ldr >= max_ldr * NEAR_MISS_RATIO
+            or net_shrink >= max_net_shrink * NEAR_MISS_RATIO
+            or unavailable_fraction >= max_unavailable * NEAR_MISS_RATIO
         )
 
         payload = {
