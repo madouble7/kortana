@@ -70,6 +70,17 @@ class Goal:
 class GoalManager:
     """Hierarchical goal tracking and autonomous prioritisation."""
 
+    # Kor'tana's canonical sacred values — used to align goal prioritisation with identity
+    IDENTITY_VALUES: list[str] = [
+        "love",
+        "unity",
+        "cohesiveness",
+        "knowledge",
+        "humility",
+        "truthfulness",
+        "stewardship",
+    ]
+
     def __init__(self) -> None:
         self._goals: dict[str, Goal] = {}
 
@@ -156,13 +167,23 @@ class GoalManager:
         self,
         system_state: str = "nominal",
         insights: list[dict[str, Any]] | None = None,
+        identity_values: list[str] | None = None,
     ) -> None:
-        """Re-score all active goals based on system state and learner insights.
+        """Re-score all active goals based on system state, learner insights, and identity.
 
         Called each autonomy cycle to keep priorities fresh.
+
+        *identity_values* — kor'tana's core_values list (e.g. ``["love", "unity",
+        "stewardship"]``).  Goals whose title or description contain any value word
+        receive a small +2 alignment boost, reinforcing identity-consistent work.
         """
         state_boost = {"nominal": 0, "degraded": -10, "critical": -20, "recovering": -5}
         boost = state_boost.get(system_state, 0)
+
+        # Normalise identity values once for this cycle
+        _identity_words: set[str] = {
+            v.lower().strip() for v in (identity_values or []) if v.strip()
+        }
 
         for goal in self._goals.values():
             if goal.status != GoalStatus.ACTIVE:
@@ -181,6 +202,12 @@ class GoalManager:
                         modifier += 5
                     if insight.get("category") == "provider_preference":
                         modifier += 2
+
+            # Identity alignment boost — small nudge toward values-consistent goals
+            if _identity_words:
+                goal_text = f"{goal.title} {getattr(goal, 'description', '')}".lower()
+                if any(word in goal_text for word in _identity_words):
+                    modifier += 2
 
             # Immediate goals under critical system get deprioritised
             if system_state == "critical" and goal.tier == GoalTier.IMMEDIATE:

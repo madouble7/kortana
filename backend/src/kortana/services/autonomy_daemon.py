@@ -897,6 +897,7 @@ class AutonomyDaemon:
             goal_manager.reprioritise(
                 system_state=str(self.metrics["system_state"]),
                 insights=insights,
+                identity_values=goal_manager.IDENTITY_VALUES,
             )
             self.metrics["goal_status"] = goal_manager.get_status()
         except Exception as exc:
