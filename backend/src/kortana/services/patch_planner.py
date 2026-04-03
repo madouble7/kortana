@@ -4,7 +4,7 @@ import logging
 import os
 import re
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional
 
 from pydantic import BaseModel
@@ -47,6 +47,59 @@ class PatchPlanner:
         self.worktree_dir = worktree_dir
         self.gemini = GeminiService()
         self._db: Optional[AsyncSession] = db_session
+
+    async def _query_ai(
+        self,
+        prompt: str,
+        system_instruction: str,
+        mode: str = "best",
+    ) -> str:
+        """Query AI with Gemini-first routing and shared backoff+fallback.
+
+        Checks the shared provider backoff dict from GitHubAutonomyService.
+        If Gemini is in backoff, goes directly to the consensus engine.
+        If Gemini returns a quota response, records backoff and falls back.
+        """
+        from src.kortana.services.ai_consensus import ConsensusMode, get_consensus_engine
+        from src.kortana.services.github_autonomy_service import GitHubAutonomyService
+
+        now = datetime.utcnow()
+        gemini_backoff_until = GitHubAutonomyService._provider_backoff_until.get("gemini")
+        gemini_available = not (gemini_backoff_until and gemini_backoff_until > now)
+
+        if gemini_available:
+            try:
+                response = await self.gemini.analyze_text(
+                    prompt, system_instruction=system_instruction
+                )
+                if GitHubAutonomyService._is_gemini_quota_response(response):
+                    GitHubAutonomyService._provider_backoff_until["gemini"] = (
+                        datetime.utcnow()
+                        + timedelta(seconds=GitHubAutonomyService._provider_backoff_seconds())
+                    )
+                    logger.warning(
+                        "[PatchPlanner] Gemini quota hit — entering backoff, falling back to consensus"
+                    )
+                else:
+                    return response
+            except Exception as exc:
+                logger.warning("[PatchPlanner] Gemini error (%s) — falling back to consensus", exc)
+        else:
+            remaining = int((gemini_backoff_until - now).total_seconds()) if gemini_backoff_until else 0
+            logger.info("[PatchPlanner] Gemini in backoff (%ds remaining) — using consensus", remaining)
+
+        consensus_mode = ConsensusMode.BEST if mode == "best" else ConsensusMode.FASTEST
+        engine = get_consensus_engine()
+        result = await engine.query(
+            prompt=prompt,
+            system=system_instruction,
+            mode=consensus_mode,
+            max_tokens=2048,
+            timeout=30.0,
+        )
+        if result.providers_succeeded == 0:
+            raise RuntimeError("All AI providers failed for patch planner query")
+        return result.answer
 
     def _extract_json(self, response_text: str) -> dict:
         """Extract JSON from potential markdown blocks."""
@@ -245,9 +298,7 @@ Avoid editing anything if it looks like a major architectural rewrite.
 Respond with JSON only."""
 
         try:
-            response = await self.gemini.analyze_text(
-                prompt, system_instruction=system_instruction
-            )
+            response = await self._query_ai(prompt, system_instruction, mode="best")
             data = self._extract_json(response)
             return PatchPlan(**data)
         except Exception as e:
@@ -315,9 +366,7 @@ Approved candidate file contents:
 Return only a unified diff for the approved files."""
 
         try:
-            response = await self.gemini.analyze_text(
-                prompt, system_instruction=system_instruction
-            )
+            response = await self._query_ai(prompt, system_instruction, mode="best")
             diff = self._extract_diff(response)
 
             if not diff:
@@ -428,9 +477,7 @@ Validation outputs:
 Return JSON only."""
 
         try:
-            response = await self.gemini.analyze_text(
-                prompt, system_instruction=system_instruction
-            )
+            response = await self._query_ai(prompt, system_instruction, mode="fastest")
             data = self._extract_json(response)
             return VerificationResult(**data)
         except Exception as e:

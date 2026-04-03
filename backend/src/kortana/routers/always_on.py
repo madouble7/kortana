@@ -537,6 +537,8 @@ async def get_monitoring_metrics() -> Dict[str, Any]:
         monitor = get_always_on_monitor()
         status = monitor.get_status()
 
+        from src.kortana.services.github_autonomy_service import GitHubAutonomyService
+
         return {
             "monitoring": {
                 "enabled": status["monitoring_enabled"],
@@ -545,6 +547,7 @@ async def get_monitoring_metrics() -> Dict[str, Any]:
                 "max_concurrent_tasks": status["max_concurrent_tasks"],
             },
             "tasks": status["statistics"],
+            "provider_health": GitHubAutonomyService.get_provider_health(),
             "timestamp": datetime.utcnow().isoformat(),
         }
     except Exception as e:
