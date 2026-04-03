@@ -126,6 +126,8 @@ def test_failure_when_context_mostly_unavailable(validator):
     # Use a clean diff that passes LDR/shrink to isolate context check
     diff = "--- a/stub.py\n+++ b/stub.py\n@@ -1 +1 @@\n+pass\n"
     result = validator.validate(diff=diff, context_snippets=snippets)
+    assert isinstance(result, ValidationFailure)
+    assert result.unavailable_fraction > 0.50
 
 
 def test_ok_when_context_availability_sufficient(validator):
