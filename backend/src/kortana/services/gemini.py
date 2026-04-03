@@ -61,13 +61,17 @@ class GeminiService:
 
         # Check for system instruction in kwargs or defaults
         system_instruction = kwargs.get("system_instruction")
+        json_mode = kwargs.get("json_mode", False)
 
-        # For general content generation:
-        config = None
+        from google.genai import types
+
+        config_kwargs: dict = {}
         if system_instruction:
-            from google.genai import types
+            config_kwargs["system_instruction"] = system_instruction
+        if json_mode:
+            config_kwargs["response_mime_type"] = "application/json"
 
-            config = types.GenerateContentConfig(system_instruction=system_instruction)
+        config = types.GenerateContentConfig(**config_kwargs) if config_kwargs else None
 
         response = self.client.models.generate_content(
             model=self._get_model_name(), contents=text, config=config
