@@ -14,6 +14,8 @@ Each failing check returns a :class:`ValidationFailure` with a reason string.
 All checks pass → :class:`ValidationOK`.
 """
 
+import enum
+import json
 import logging
 import os
 import re
@@ -38,6 +40,21 @@ MAX_NET_SHRINK: int = 120
 # Maximum fraction of context snippet slots that may carry an
 # [Context Unavailable] sentinel.  Above this → "High Risk – Partial Context".
 MAX_UNAVAILABLE_CONTEXT_FRACTION: float = 0.50
+
+
+# Near-miss fraction: log a WARNING when metrics reach this fraction of a threshold.
+NEAR_MISS_RATIO: float = 0.80
+
+
+# ---------------------------------------------------------------------------
+# Rejection reason enum (structured for log slicing / future metrics table)
+# ---------------------------------------------------------------------------
+
+
+class RejectionReason(str, enum.Enum):
+    DESTRUCTIVE_REWRITE = "DESTRUCTIVE_REWRITE"   # LDR exceeded
+    EXCESSIVE_SHRINK = "EXCESSIVE_SHRINK"          # Net-shrink exceeded
+    INSUFFICIENT_CONTEXT = "INSUFFICIENT_CONTEXT" # Context-unavailable exceeded
 
 
 # ---------------------------------------------------------------------------
@@ -137,22 +154,107 @@ class PatchValidator:
             )
 
         if failures:
-            return ValidationFailure(
+            result: ValidationOK | ValidationFailure = ValidationFailure(
                 reasons=failures,
                 ldr=ldr,
                 net_shrink=net_shrink,
                 unavailable_fraction=unavailable_fraction,
             )
+        else:
+            result = ValidationOK(
+                ldr=ldr, net_shrink=net_shrink, unavailable_fraction=unavailable_fraction
+            )
 
-        logger.debug(
-            "PatchValidator: OK (ldr=%.2f, net_shrink=%d, unavailable=%.2f)",
-            ldr,
-            net_shrink,
-            unavailable_fraction,
+        self._emit_telemetry(result, ldr, net_shrink, unavailable_fraction, max_ldr, max_net_shrink, max_unavailable)
+        return result
+
+    # ------------------------------------------------------------------
+    # Telemetry
+    # ------------------------------------------------------------------
+
+    def _emit_telemetry(
+        self,
+        result: "ValidationOK | ValidationFailure",
+        ldr: float,
+        net_shrink: int,
+        unavailable_fraction: float,
+        max_ldr: float,
+        max_net_shrink: int,
+        max_unavailable: float,
+    ) -> None:
+        """Emit a structured telemetry log entry.  Near-misses get WARNING level.
+
+        Fields are chosen so they can be forwarded to SelfMemory or a metrics
+        table without schema changes:
+
+        ``diff_size_delta``        net shrink (deletions − additions)
+        ``max_file_ldr``           highest per-file deletion ratio in the diff
+        ``context_sentinel_count`` raw count of [Context Unavailable] snippet blocks
+        ``context_ratio``          unavailable_fraction (0.0–1.0)
+        ``status``                 "PASSED" | "REJECTED"
+        ``rejection_reasons``      list of :class:`RejectionReason` enum names
+        ``near_miss``              true when any metric is within NEAR_MISS_RATIO of its threshold
+        """
+        is_failure = isinstance(result, ValidationFailure)
+
+        # Derive sentinel count from fraction × implied block count (best effort)
+        sentinel_count: int
+        if unavailable_fraction == 0.0:
+            sentinel_count = 0
+        else:
+            # We don't have the raw block count here; use a sentinel of -1 to indicate
+            # "at least one" — the fraction is the actionable metric.
+            sentinel_count = -1
+
+        rejection_reasons: list[str] = []
+        if is_failure:
+            assert isinstance(result, ValidationFailure)
+            if ldr > max_ldr:
+                rejection_reasons.append(RejectionReason.DESTRUCTIVE_REWRITE)
+            if net_shrink > max_net_shrink:
+                rejection_reasons.append(RejectionReason.EXCESSIVE_SHRINK)
+            if unavailable_fraction > max_unavailable:
+                rejection_reasons.append(RejectionReason.INSUFFICIENT_CONTEXT)
+
+        near_miss = (
+            not is_failure
+            and (
+                ldr >= max_ldr * NEAR_MISS_RATIO
+                or net_shrink >= max_net_shrink * NEAR_MISS_RATIO
+                or unavailable_fraction >= max_unavailable * NEAR_MISS_RATIO
+            )
         )
-        return ValidationOK(
-            ldr=ldr, net_shrink=net_shrink, unavailable_fraction=unavailable_fraction
-        )
+
+        payload = {
+            "diff_size_delta": net_shrink,
+            "max_file_ldr": round(ldr, 4),
+            "context_sentinel_count": sentinel_count,
+            "context_ratio": round(unavailable_fraction, 4),
+            "status": "REJECTED" if is_failure else "PASSED",
+            "rejection_reasons": rejection_reasons,
+            "near_miss": near_miss,
+            "thresholds": {
+                "max_ldr": max_ldr,
+                "max_net_shrink": max_net_shrink,
+                "max_unavailable": max_unavailable,
+            },
+        }
+
+        if is_failure:
+            logger.warning(
+                "[PatchValidator] REJECTED | %s",
+                json.dumps(payload),
+            )
+        elif near_miss:
+            logger.warning(
+                "[PatchValidator] NEAR-MISS | %s",
+                json.dumps(payload),
+            )
+        else:
+            logger.debug(
+                "[PatchValidator] PASSED | %s",
+                json.dumps(payload),
+            )
 
     # ------------------------------------------------------------------
     # Internal helpers
