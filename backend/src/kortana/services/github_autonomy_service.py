@@ -1393,7 +1393,7 @@ class GitHubAutonomyService:
                             self._run_git(["git", "reset", "HEAD"], cwd=workspace)
                         except Exception:
                             pass
-                        task.status = "pending"
+                        task.status = "failed"
                         task.error_message = (
                             f"Pre-commit guardrail rejected diff: {pv_result.summary()}"
                         )

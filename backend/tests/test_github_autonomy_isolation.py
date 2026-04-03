@@ -537,7 +537,7 @@ async def test_gateway_blocks_destructive_rewrite(tmp_path, monkeypatch):
         result = await service.execute_task(task)
 
     assert result is task
-    assert task.status == "pending"
+    assert task.status == "failed"
     assert task.error_message is not None
     assert (
         "guardrail" in task.error_message.lower() or "ldr" in task.error_message.lower()
@@ -625,7 +625,7 @@ async def test_gateway_resets_git_index_on_block(tmp_path, monkeypatch):
             # We patch _get_pending_diff to bypass the internal git add/diff calls.
             result = await service.execute_task(task)
 
-    assert task.status == "pending"
+    assert task.status == "failed"
     # git reset HEAD should have been called with the workspace as cwd
     assert any(str(workspace) in str(p) for p in reset_calls), (
         f"Expected git reset HEAD call with cwd={workspace}, got: {reset_calls}"
