@@ -33,6 +33,15 @@ type IncidentMemory = {
     fix_status?: string | null;
 };
 
+type Reflection = {
+    content: string;
+    cycle_number: number;
+    tasks_completed: number;
+    tasks_failed: number;
+    self_directed_completed: number;
+    created_at: string;
+};
+
 type AkashicData = {
     architecture_memory: ArchitectureMemory[];
     recent_cycles: AutonomyCycle[];
@@ -41,6 +50,7 @@ type AkashicData = {
 
 export default function AkashicRecord() {
     const [data, setData] = useState<AkashicData | null>(null);
+    const [reflections, setReflections] = useState<Reflection[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -59,9 +69,24 @@ export default function AkashicRecord() {
         }
     };
 
+    const fetchReflections = async () => {
+        try {
+            const res = await fetch("http://localhost:8000/api/gemini/reflections?limit=10");
+            if (!res.ok) return;
+            const json = await res.json();
+            if (json.reflections) setReflections(json.reflections);
+        } catch {
+            // best-effort
+        }
+    };
+
     useEffect(() => {
         fetchMemory();
-        const interval = setInterval(fetchMemory, 5000);
+        fetchReflections();
+        const interval = setInterval(() => {
+            fetchMemory();
+            fetchReflections();
+        }, 5000);
         return () => clearInterval(interval);
     }, []);
 
@@ -112,6 +137,36 @@ export default function AkashicRecord() {
             </div>
 
             <div className="p-6 space-y-8 max-w-7xl mx-auto w-full">
+                {/* Reflections */}
+                <section>
+                    <div className="flex items-center gap-2 mb-4 border-b border-gray-800 pb-2">
+                        <span className="w-1.5 h-4 bg-indigo-500 rounded"></span>
+                        <h3 className="text-sm font-semibold text-gray-200 tracking-wide uppercase">Cycle Reflections</h3>
+                    </div>
+                    {!reflections.length ? (
+                        <div className="bg-gray-800/50 p-4 rounded-lg text-center text-gray-500 text-sm">
+                            No reflections yet. First cycle reflection will appear here after the next daemon cycle.
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {reflections.map((r, i) => (
+                                <div key={i} className="bg-gradient-to-br from-indigo-950/40 to-gray-900 border border-indigo-900/40 p-4 rounded-xl">
+                                    <div className="flex justify-between items-center mb-2 text-xs text-gray-500">
+                                        <span className="font-mono text-indigo-400">cycle #{r.cycle_number}</span>
+                                        <span className="font-mono">{new Date(r.created_at).toLocaleString()}</span>
+                                    </div>
+                                    <p className="text-sm text-gray-300 leading-relaxed italic">{r.content}</p>
+                                    <div className="mt-3 flex gap-3 text-[10px] text-gray-500">
+                                        <span className="text-green-400">{r.tasks_completed} tasks done</span>
+                                        {r.tasks_failed > 0 && <span className="text-red-400">{r.tasks_failed} failed</span>}
+                                        {r.self_directed_completed > 0 && <span className="text-purple-400">{r.self_directed_completed} self-directed</span>}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </section>
+
                 {/* Cycles */}
                 <section>
                     <div className="flex items-center gap-2 mb-4 border-b border-gray-800 pb-2">

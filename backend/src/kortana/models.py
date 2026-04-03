@@ -432,3 +432,20 @@ class AutonomousTask(Base):
 
     def __repr__(self) -> str:
         return f"<AutonomousTask {self.name}:{self.status}>"
+
+
+class Reflection(Base):
+    """Kor'tana's written reflections — one per daemon cycle, stored permanently."""
+
+    __tablename__ = "reflections"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    cycle_number = Column(Integer, nullable=False, index=True)
+    content = Column(Text, nullable=False)
+    tasks_completed = Column(Integer, nullable=False, default=0)
+    tasks_failed = Column(Integer, nullable=False, default=0)
+    self_directed_completed = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        return f"<Reflection cycle={self.cycle_number}>"

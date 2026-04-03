@@ -89,6 +89,7 @@ async def _build_live_context() -> str:
     # 4. Self-directed tasks (completed and pending)
     try:
         from sqlalchemy import text as _sd_text
+
         db = get_db_manager()
         async with db.session_scope() as session:
             rows = await session.execute(
@@ -102,6 +103,25 @@ async def _build_live_context() -> str:
                 lines.append("\n## my self-directed tasks")
                 for r in sd_tasks:
                     lines.append(f"- [{r[1]}] {r[0]}")
+    except Exception:
+        pass
+
+    # 5. Latest reflection — my most recent self-assessment
+    try:
+        from sqlalchemy import text as _ref_text
+
+        db = get_db_manager()
+        async with db.session_scope() as session:
+            row = await session.execute(
+                _ref_text(
+                    "SELECT content, cycle_number, created_at "
+                    "FROM reflections ORDER BY created_at DESC LIMIT 1"
+                )
+            )
+            r = row.fetchone()
+            if r:
+                lines.append(f"\n## my most recent reflection (cycle {r[1]})")
+                lines.append(r[0])
     except Exception:
         pass
 
@@ -345,6 +365,42 @@ async def get_chat_history(
         return {"messages": messages}
     except Exception as e:
         return {"messages": [], "error": str(e)}
+
+
+@router.get("/reflections")
+async def get_reflections(limit: int = 20) -> dict[str, Any]:
+    """Return the last N kor'tana cycle reflections (newest first)."""
+    try:
+        from sqlalchemy import text as _text
+
+        from src.kortana.database import get_db_manager
+
+        db = get_db_manager()
+        async with db.session_scope() as session:
+            result = await session.execute(
+                _text(
+                    "SELECT content, cycle_number, tasks_completed, tasks_failed, "
+                    "self_directed_completed, created_at "
+                    "FROM reflections ORDER BY created_at DESC LIMIT :lim"
+                ),
+                {"lim": limit},
+            )
+            rows = result.fetchall()
+        return {
+            "reflections": [
+                {
+                    "content": r[0],
+                    "cycle_number": r[1],
+                    "tasks_completed": r[2],
+                    "tasks_failed": r[3],
+                    "self_directed_completed": r[4],
+                    "created_at": r[5].isoformat(),
+                }
+                for r in rows
+            ]
+        }
+    except Exception as e:
+        return {"reflections": [], "error": str(e)}
 
 
 @router.post("/analyze/image")
