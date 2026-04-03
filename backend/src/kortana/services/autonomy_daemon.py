@@ -802,6 +802,11 @@ class AutonomyDaemon:
             content = f"cycle {cycle_num} complete — reflection unavailable ({exc})"
 
         try:
+            # Roll back any aborted-transaction state inherited from earlier
+            # cycle operations that caught their exceptions without rolling back.
+            # This is safe: all prior sub-methods commit their own work; any
+            # leftover state here is already lost and blocking new writes.
+            await session.rollback()
             reflection = Reflection(
                 cycle_number=cycle_num,
                 content=content,
@@ -839,6 +844,10 @@ class AutonomyDaemon:
             logger.info(f"[reflect] cycle {cycle_num} reflection + memory written")
         except Exception as db_exc:
             logger.debug(f"[reflect] DB write skipped: {db_exc}")
+            try:
+                await session.rollback()
+            except Exception:
+                pass
 
     def _get_provider_health_snapshot(self) -> dict[str, str]:
         """Return current AI provider backoff state for cycle telemetry."""
