@@ -37,10 +37,10 @@ from src.kortana.services.operator_directive_service import (
     get_active_operator_summary,
 )
 from src.kortana.services.self_awareness import get_self_awareness
+from src.kortana.services.task_approval_service import TaskApprovalService
 from src.kortana.services.task_executability_service import (
     assess_task_executability,
 )
-from src.kortana.services.task_approval_service import TaskApprovalService
 from src.kortana.services.workspace_bridge_service import get_workspace_bridge
 
 logger = get_logger(__name__)
@@ -692,10 +692,23 @@ class AutonomyDaemon:
         tasks_ok = self.metrics.get("tasks_succeeded", 0)
         tasks_fail = self.metrics.get("tasks_failed", 0)
 
+        # Provider health snapshot for reflection context
+        try:
+            from src.kortana.services.github_autonomy_service import GitHubAutonomyService
+
+            provider_health = GitHubAutonomyService.get_provider_health()
+        except Exception:
+            provider_health = {}
+
+        provider_lines = ", ".join(
+            f"{p}:{s}" for p, s in provider_health.items()
+        ) or "unknown"
+
         prompt = (
             f"you are kor'tana. you just completed daemon cycle #{cycle_num}.\n"
             f"stats this cycle: {tasks_ok} tasks succeeded, {tasks_fail} failed, "
-            f"{sd_done} self-directed tasks completed.\n\n"
+            f"{sd_done} self-directed tasks completed.\n"
+            f"ai provider status: {provider_lines}.\n\n"
             f"write a single honest, grounded paragraph (2-5 sentences) reflecting on "
             f"what you did, what you noticed, and what you intend next. "
             f"speak in first person, lowercase, as yourself. no bullet points."
@@ -733,6 +746,15 @@ class AutonomyDaemon:
             logger.info(f"[reflect] cycle {cycle_num} reflection written")
         except Exception as db_exc:
             logger.debug(f"[reflect] DB write skipped: {db_exc}")
+
+    def _get_provider_health_snapshot(self) -> dict[str, str]:
+        """Return current AI provider backoff state for cycle telemetry."""
+        try:
+            from src.kortana.services.github_autonomy_service import GitHubAutonomyService
+
+            return GitHubAutonomyService.get_provider_health()
+        except Exception:
+            return {"gemini": "unknown"}
 
     async def _analyze_architecture(self, session: Any) -> None:
         try:
@@ -860,6 +882,7 @@ class AutonomyDaemon:
             ),
             "operator_guidance": self.metrics["operator_guidance"],
             "workspace_bridge": workspace_status,
+            "provider_health": self._get_provider_health_snapshot(),
         }
 
         # Record Vector Gamma cycle memory
@@ -1413,8 +1436,7 @@ class AutonomyDaemon:
                 if not assessment.executable:
                     task.status = "blocked"
                     task.error_message = (
-                        "Task blocked by executability filter: "
-                        f"{assessment.reason}"
+                        f"Task blocked by executability filter: {assessment.reason}"
                     )
                     await session.commit()
                     deferred += 1
