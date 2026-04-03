@@ -132,31 +132,38 @@ class GeminiService:
         return await self.analyze_text(prompt, **kwargs)
 
     def embed_text(self, text: str) -> list[float] | None:
-        """Return a float embedding vector for *text*, or None on any failure.
+        """Return a float embedding vector for *text*, or None on failure.
 
-        Uses Google's text-embedding-004 model (768 dimensions).
-        Calls the REST embedContent endpoint directly because the google-genai
-        SDK v1.x routes client.models.embed_content() to batchEmbedContents,
-        which is not supported by text-embedding-004.
+        The live Gemini account does not expose `text-embedding-004`, so use the
+        REST `embedContent` endpoint against the account-visible embedding models
+        and fall through until one succeeds.
         """
         if not self.api_key:
             return None
+
+        candidates = [
+            ("v1beta", "models/gemini-embedding-001"),
+            ("v1beta", "models/gemini-embedding-2-preview"),
+        ]
+
         try:
             import requests
 
-            url = (
-                "https://generativelanguage.googleapis.com/v1beta"
-                f"/models/text-embedding-004:embedContent?key={self.api_key}"
-            )
-            body = {
-                "model": "models/text-embedding-004",
-                "content": {"parts": [{"text": text}]},
-                "taskType": "RETRIEVAL_DOCUMENT",
-            }
-            resp = requests.post(url, json=body, timeout=30)
-            resp.raise_for_status()
-            values = resp.json().get("embedding", {}).get("values")
-            return list(values) if values else None
+            for api_version, model_name in candidates:
+                url = (
+                    f"https://generativelanguage.googleapis.com/{api_version}/"
+                    f"{model_name}:embedContent?key={self.api_key}"
+                )
+                body = {
+                    "model": model_name,
+                    "content": {"parts": [{"text": text}]},
+                    "taskType": "RETRIEVAL_DOCUMENT",
+                }
+                resp = requests.post(url, json=body, timeout=30)
+                if resp.ok:
+                    values = resp.json().get("embedding", {}).get("values")
+                    return list(values) if values else None
+            return None
         except Exception:
             return None
 
