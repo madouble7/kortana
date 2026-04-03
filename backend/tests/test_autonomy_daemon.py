@@ -1510,9 +1510,7 @@ class TestTransactionHygiene:
                 "src.kortana.services.ai_consensus.get_consensus_engine",
                 return_value=MagicMock(
                     query=AsyncMock(
-                        return_value=MagicMock(
-                            answer="ok", providers_succeeded=1
-                        )
+                        return_value=MagicMock(answer="ok", providers_succeeded=1)
                     )
                 ),
             ):
