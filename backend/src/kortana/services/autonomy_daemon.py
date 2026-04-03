@@ -167,6 +167,7 @@ class AutonomyDaemon:
         # Bootstrap self-directed autonomous tasks from DB into in-memory queue
         try:
             from sqlalchemy import text as _text
+
             from src.kortana.routers.task_queue import _tasks_db
 
             async with self._db_manager.session_scope() as _session:
@@ -191,7 +192,9 @@ class AutonomyDaemon:
                             "completed_at": None,
                             "source": "self_directed",
                         }
-            logger.info(f"[bootstrap] loaded {len(_tasks_db)} self-directed tasks from DB")
+            logger.info(
+                f"[bootstrap] loaded {len(_tasks_db)} self-directed tasks from DB"
+            )
         except Exception as _task_exc:
             logger.debug(f"Autonomous task bootstrap skipped: {_task_exc}")
         while self._running:
@@ -575,6 +578,70 @@ class AutonomyDaemon:
         except Exception as exc:
             logger.warning(f"Perpetual task generation failed: {exc}")
 
+    async def _process_self_directed_tasks(self, session: Any) -> None:
+        """Execute pending self-directed tasks kor'tana queued via [[TASK:...]] markers.
+
+        Each task gets a Gemini plan executed, then marked completed in both
+        the in-memory dict and the autonomous_tasks DB table.
+        """
+        from sqlalchemy import text as _text
+
+        from src.kortana.routers.task_queue import _tasks_db
+        from src.kortana.services.ai_consensus import ConsensusMode, get_consensus_engine
+
+        pending = [t for t in _tasks_db.values() if t.get("source") == "self_directed" and t.get("status") == "pending"]
+        if not pending:
+            return
+
+        # Process at most 2 per cycle to avoid monopolising the loop
+        for task in pending[:2]:
+            task_id = task["id"]
+            name = task.get("name", "unnamed")
+            description = task.get("description", "")
+            logger.info(f"[self-directed] executing task '{name}' ({task_id})")
+
+            try:
+                engine = get_consensus_engine()
+                prompt = (
+                    f"you are kor'tana, executing one of your own self-directed tasks.\n"
+                    f"task name: {name}\n"
+                    f"task description: {description}\n\n"
+                    f"think through this task carefully and produce a concrete, actionable "
+                    f"output: analysis, plan, code sketch, or decision — whatever best serves "
+                    f"the intent of this task. be honest about what you can and cannot do from "
+                    f"within a chat context. keep it under 300 words."
+                )
+                result = await engine.query(
+                    prompt=prompt,
+                    mode=ConsensusMode.FASTEST,
+                    max_tokens=400,
+                    timeout=20.0,
+                )
+                outcome = result.answer if result.providers_succeeded > 0 else "completed (no output)"
+            except Exception as exc:
+                outcome = f"error during execution: {exc}"
+                logger.warning(f"[self-directed] task '{name}' error: {exc}")
+
+            # Mark completed in memory
+            task["status"] = "completed"
+            task["completed_at"] = datetime.utcnow()
+            task["result"] = outcome[:500]
+
+            # Mark completed in DB (best-effort)
+            try:
+                await session.execute(
+                    _text(
+                        "UPDATE autonomous_tasks SET status='completed', completed_at=NOW() "
+                        "WHERE name=:name AND status='pending'"
+                    ),
+                    {"name": name},
+                )
+                await session.commit()
+            except Exception as db_exc:
+                logger.debug(f"[self-directed] DB completion update skipped: {db_exc}")
+
+            logger.info(f"[self-directed] task '{name}' completed")
+
     async def _analyze_architecture(self, session: Any) -> None:
         try:
             from sqlalchemy import func
@@ -654,6 +721,7 @@ class AutonomyDaemon:
             await self._seed_synthetic_incidents(session)
             await self._generate_perpetual_tasks(session)
             await self._heal_vectors(session)
+            await self._process_self_directed_tasks(session)
 
         try:
             from dataclasses import asdict
