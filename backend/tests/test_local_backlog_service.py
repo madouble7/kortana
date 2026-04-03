@@ -24,7 +24,12 @@ async def test_discover_workspace_tasks_creates_local_task(monkeypatch) -> None:
     mock_profile.name = "kor'tana"
     mock_profile.mission = "test mission"
     profile_result.scalars.return_value.first.return_value = mock_profile
-    session.execute.side_effect = [active_result, existing_result, profile_result, next_issue_result]
+    session.execute.side_effect = [
+        active_result,
+        existing_result,
+        profile_result,
+        next_issue_result,
+    ]
 
     service = LocalBacklogService(session)
     tasks = await service.discover_workspace_tasks(
