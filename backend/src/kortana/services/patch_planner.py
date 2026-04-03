@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.kortana.models import IncidentMemory, RepairPlaybook
 from src.kortana.services.gemini import GeminiService
+from src.kortana.services.patch_validator import PatchValidator, ValidationFailure
 
 logger = logging.getLogger(__name__)
 
@@ -353,6 +354,15 @@ class PatchPlanner:
         for rel_path, lineno in seen:
             abs_path = os.path.join(self.worktree_dir, rel_path)
             if not os.path.isfile(abs_path):
+                logger.debug(
+                    "_extract_context_snippets: path not found in worktree: %s — "
+                    "injecting unavailable sentinel",
+                    abs_path,
+                )
+                snippets.append(
+                    f"# {rel_path}\n"
+                    "// [Context Unavailable: worktree path could not be resolved.]\n"
+                )
                 continue
             try:
                 with open(abs_path, encoding="utf-8", errors="replace") as fh:
@@ -363,8 +373,18 @@ class PatchPlanner:
                 snippets.append(
                     f"# {rel_path} (lines {start + 1}–{end})\n```python\n{excerpt}\n```"
                 )
-            except OSError:
-                continue
+            except OSError as exc:
+                logger.debug(
+                    "_extract_context_snippets: could not read %s (%s) — "
+                    "injecting unavailable sentinel",
+                    abs_path,
+                    exc,
+                )
+                snippets.append(
+                    f"# {rel_path}\n"
+                    "// [Context Unavailable: OSError reading worktree path — "
+                    f"{exc}]\n"
+                )
 
         return "\n\n".join(snippets)
 
@@ -643,6 +663,18 @@ Return JSON only."""
             diff = await self._stage_2_generate_diff(incident, plan)
             if not diff:
                 logger.error("Stage 2 failed to generate or validate diff.")
+                return False
+
+            # Guardrail: validate diff before touching the worktree
+            context_snippets = self._extract_context_snippets(incident)
+            validator = PatchValidator(self.worktree_dir)
+            validation = validator.validate(diff, context_snippets)
+            if isinstance(validation, ValidationFailure):
+                logger.warning(
+                    "PatchValidator rejected diff for incident %s: %s",
+                    incident.id,
+                    validation.summary(),
+                )
                 return False
 
             # Apply Patch strictly to worktree
