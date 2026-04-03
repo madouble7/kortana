@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import shutil
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -64,6 +65,18 @@ class VectorAlphaBranchService:
                     capture_output=True,
                     check=False,
                 )
+                # If the directory persists (detached / unregistered), force-remove it
+                if os.path.exists(self.worktree_dir):
+                    await asyncio.to_thread(shutil.rmtree, self.worktree_dir, True)
+
+            # Prune stale worktree entries from git's registry before re-adding
+            await asyncio.to_thread(
+                subprocess.run,
+                ["git", "worktree", "prune"],
+                cwd=self.repo_dir,
+                capture_output=True,
+                check=False,
+            )
 
             res = await asyncio.to_thread(
                 subprocess.run,
