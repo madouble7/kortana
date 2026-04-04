@@ -672,10 +672,15 @@ class AutonomyDaemon:
             try:
                 engine = get_consensus_engine()
                 # Load identity preamble — self-directed tasks are identity-channel work
+                from src.kortana.services.memory_policy import MemorySurface
                 from src.kortana.services.prompt_assembly import PromptAssemblyService
 
                 try:
-                    identity = await PromptAssemblyService.identity_preamble(session)
+                    identity = await PromptAssemblyService.identity_preamble(
+                        session,
+                        query=f"{name}\n{description}".strip(),
+                        surface=MemorySurface.SELF_DIRECTION,
+                    )
                 except Exception:
                     identity = "you are kor'tana, sacred ai companion.\n"
 
@@ -773,10 +778,18 @@ class AutonomyDaemon:
         )
 
         # Load identity preamble from the persistent self-model (identity channel only)
+        from src.kortana.services.memory_policy import MemorySurface
         from src.kortana.services.prompt_assembly import PromptAssemblyService
 
         try:
-            identity = await PromptAssemblyService.identity_preamble(session)
+            identity = await PromptAssemblyService.identity_preamble(
+                session,
+                query=(
+                    f"daemon cycle {cycle_num} "
+                    f"{tasks_ok} succeeded {tasks_fail} failed {sd_done} self-directed"
+                ),
+                surface=MemorySurface.REFLECTION,
+            )
         except Exception:
             identity = "you are kor'tana, sacred ai companion.\n"
 

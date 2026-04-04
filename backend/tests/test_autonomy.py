@@ -62,7 +62,9 @@ class TestGitHubRouter:
             mock_get.side_effect = mock_awaitable
 
             with patch.dict("os.environ", {"GITHUB_TOKEN": "test-token"}):
-                response = client.get("/api/github/repos/test/repo/issues?page=1&per_page=10")
+                response = client.get(
+                    "/api/github/repos/test/repo/issues?page=1&per_page=10"
+                )
                 assert response.status_code == 200
                 assert "pagination" in response.json()
 
@@ -170,15 +172,24 @@ class TestAutonomyRouter:
                     assert "count" in data
                     assert "tasks" in data
 
-    def test_get_task_queue_status(self, client):
+    def test_get_task_queue_status(self, client, app_fixture):
         """Test getting task queue status"""
-        with patch("src.kortana.database.SessionLocal"):
-            response = client.get("/api/autonomy/status")
-            assert response.status_code == 200
-            data = response.json()
-            assert "total_tasks" in data
-            assert "stats" in data
-            assert "completion_rate" in data
+        from src.kortana.database import get_db
+
+        mock_db = AsyncMock()
+        mock_result_1 = MagicMock()
+        mock_result_1.all.return_value = []
+        mock_result_2 = MagicMock()
+        mock_result_2.scalars.return_value.all.return_value = []
+        mock_db.execute.side_effect = [mock_result_1, mock_result_2]
+        app_fixture.dependency_overrides[get_db] = lambda: mock_db
+
+        response = client.get("/api/autonomy/status")
+        assert response.status_code == 200
+        data = response.json()
+        assert "total_tasks" in data
+        assert "stats" in data
+        assert "completion_rate" in data
 
     def test_health_check(self, client):
         """Test autonomy health check"""
@@ -312,7 +323,9 @@ GITHUB_TOKEN=test
         from src.kortana.services.code_generator import CodeGenerator
 
         gen = CodeGenerator()
-        valid_plan = {"files": [{"path": "test.py", "action": "create", "content": "test"}]}
+        valid_plan = {
+            "files": [{"path": "test.py", "action": "create", "content": "test"}]
+        }
         assert gen.validate_plan(valid_plan)
 
     def test_validate_plan_invalid_action(self):
@@ -320,7 +333,9 @@ GITHUB_TOKEN=test
         from src.kortana.services.code_generator import CodeGenerator
 
         gen = CodeGenerator()
-        invalid_plan = {"files": [{"path": "test.py", "action": "invalid", "content": "test"}]}
+        invalid_plan = {
+            "files": [{"path": "test.py", "action": "invalid", "content": "test"}]
+        }
         assert not gen.validate_plan(invalid_plan)
 
     def test_path_traversal_protection(self):
@@ -332,7 +347,9 @@ GITHUB_TOKEN=test
 
         gen = CodeGenerator()
         malicious_plan = {
-            "files": [{"path": "../../../etc/passwd", "action": "create", "content": "test"}]
+            "files": [
+                {"path": "../../../etc/passwd", "action": "create", "content": "test"}
+            ]
         }
         with pytest.raises(CodeGenerationError):
             gen.validate_plan(malicious_plan)
@@ -367,9 +384,12 @@ class TestGitHubAutonomyService:
     @pytest.mark.asyncio
     async def test_validate_token_failure(self, service):
         """Test token validation with missing token"""
-        with patch("os.getenv", return_value=None), patch(
-            "src.kortana.services.github_autonomy_service.get_settings"
-        ) as mock_settings:
+        with (
+            patch("os.getenv", return_value=None),
+            patch(
+                "src.kortana.services.github_autonomy_service.get_settings"
+            ) as mock_settings,
+        ):
             mock_settings.return_value.GITHUB_TOKEN = None
             with pytest.raises(ValueError, match="GitHub token not configured"):
                 service._validate_token()
@@ -409,8 +429,9 @@ class TestGitHubAutonomyService:
         ]
         mock_response.raise_for_status = MagicMock()
 
-        with patch("httpx.AsyncClient.get") as mock_get, patch(
-            "os.getenv", return_value="test_token"
+        with (
+            patch("httpx.AsyncClient.get") as mock_get,
+            patch("os.getenv", return_value="test_token"),
         ):
             mock_get.return_value = mock_response
 
@@ -491,11 +512,14 @@ class TestGitHubAutonomyService:
         )
         service._provider_backoff_until.clear()
 
-        with patch(
-            "src.kortana.services.github_autonomy_service.gemini_service.analyze_text"
-        ) as mock_analyze, patch(
-            "src.kortana.services.github_autonomy_service.get_consensus_engine",
-            return_value=fallback_engine,
+        with (
+            patch(
+                "src.kortana.services.github_autonomy_service.gemini_service.analyze_text"
+            ) as mock_analyze,
+            patch(
+                "src.kortana.services.github_autonomy_service.get_consensus_engine",
+                return_value=fallback_engine,
+            ),
         ):
             mock_analyze.return_value = (
                 "The generative model is temporarily unavailable. "
@@ -508,7 +532,9 @@ class TestGitHubAutonomyService:
             assert result.status == "analyzed"
             assert result.analysis == "Fallback analysis"
             fallback_engine.query.assert_awaited_once()
-            assert fallback_engine.query.await_args.kwargs["mode"] == ConsensusMode.FASTEST
+            assert (
+                fallback_engine.query.await_args.kwargs["mode"] == ConsensusMode.FASTEST
+            )
         service._provider_backoff_until.clear()
 
     @pytest.mark.asyncio
@@ -592,11 +618,14 @@ class TestGitHubAutonomyService:
         )
         service._provider_backoff_until.clear()
 
-        with patch(
-            "src.kortana.services.github_autonomy_service.gemini_service.analyze_text"
-        ) as mock_analyze, patch(
-            "src.kortana.services.github_autonomy_service.get_consensus_engine",
-            return_value=fallback_engine,
+        with (
+            patch(
+                "src.kortana.services.github_autonomy_service.gemini_service.analyze_text"
+            ) as mock_analyze,
+            patch(
+                "src.kortana.services.github_autonomy_service.get_consensus_engine",
+                return_value=fallback_engine,
+            ),
         ):
             mock_analyze.return_value = (
                 "The generative model is temporarily unavailable. "
@@ -613,7 +642,9 @@ class TestGitHubAutonomyService:
         service._provider_backoff_until.clear()
 
     @pytest.mark.asyncio
-    async def test_analyze_task_skips_gemini_during_quota_backoff(self, service, mock_db):
+    async def test_analyze_task_skips_gemini_during_quota_backoff(
+        self, service, mock_db
+    ):
         """After a quota fallback, subsequent analysis should skip Gemini temporarily."""
         first_task = GitHubTask(
             github_issue_number=1,
@@ -639,11 +670,14 @@ class TestGitHubAutonomyService:
         )
         service._provider_backoff_until.clear()
 
-        with patch(
-            "src.kortana.services.github_autonomy_service.gemini_service.analyze_text"
-        ) as mock_analyze, patch(
-            "src.kortana.services.github_autonomy_service.get_consensus_engine",
-            return_value=fallback_engine,
+        with (
+            patch(
+                "src.kortana.services.github_autonomy_service.gemini_service.analyze_text"
+            ) as mock_analyze,
+            patch(
+                "src.kortana.services.github_autonomy_service.get_consensus_engine",
+                return_value=fallback_engine,
+            ),
         ):
             mock_analyze.return_value = (
                 "The generative model is temporarily unavailable. "
@@ -743,17 +777,28 @@ class TestGitHubAutonomyService:
             "modified": [],
             "deleted": [],
         }
-        service.repo_root = Path("C:/repo-root")
+        fake_workspace = Path("/tmp/fake-workspace")
 
-        with patch.object(service, "_create_branch", return_value=True), patch.object(
-            service, "code_gen", mock_codegen
-        ), patch.object(
-            service, "_commit_branch_changes", AsyncMock(return_value="abc123")
-        ) as mock_commit, patch.object(
-            service, "_push_branch", AsyncMock(return_value=True)
-        ) as mock_push, patch.object(
-            service, "_create_pull_request_for_branch", AsyncMock(return_value=42)
-        ) as mock_pr:
+        with (
+            patch.object(service, "_create_branch", return_value=True),
+            patch.object(service, "code_gen", mock_codegen),
+            patch.object(
+                service,
+                "_prepare_execution_workspace",
+                AsyncMock(return_value=fake_workspace),
+            ),
+            patch.object(service, "_cleanup_execution_workspace", AsyncMock()),
+            patch.object(service, "_normalize_changed_files", return_value=["test.py"]),
+            patch.object(
+                service, "_commit_workspace_changes", AsyncMock(return_value="abc123")
+            ) as mock_commit,
+            patch.object(
+                service, "_push_workspace_branch", AsyncMock(return_value=True)
+            ) as mock_push,
+            patch.object(
+                service, "_create_pull_request_for_branch", AsyncMock(return_value=42)
+            ) as mock_pr,
+        ):
             mock_db.commit = MagicMock()
 
             result = await service.execute_task(task)
@@ -762,12 +807,12 @@ class TestGitHubAutonomyService:
             assert result.code_changes == ["test.py"]
             assert result.commit_sha == "abc123"
             assert result.github_pr_number == 42
-            mock_commit.assert_awaited_once_with(task, ["test.py"])
-            mock_push.assert_awaited_once_with(task)
+            mock_commit.assert_awaited_once_with(task, ["test.py"], fake_workspace)
+            mock_push.assert_awaited_once_with(task, fake_workspace)
             mock_pr.assert_awaited_once_with(task)
-            assert mock_codegen.generate_from_gemini_plan.call_args.kwargs["repo_path"] == str(
-                service.repo_root
-            )
+            assert mock_codegen.generate_from_gemini_plan.call_args.kwargs[
+                "repo_path"
+            ] == str(fake_workspace)
 
     @pytest.mark.asyncio
     async def test_execute_task_branch_creation_failure(self, service, mock_db):
@@ -831,7 +876,9 @@ class TestGitHubAutonomyService:
 
         # Mock http_client: first get (main) raises exception, second get (master) succeeds
         service.http_client = AsyncMock()
-        service.http_client.get = AsyncMock(side_effect=[Exception("Not found"), master_response])
+        service.http_client.get = AsyncMock(
+            side_effect=[Exception("Not found"), master_response]
+        )
         service.http_client.post = AsyncMock(return_value=create_response)
 
         with patch("os.getenv", return_value="test_token"):
@@ -869,7 +916,9 @@ class TestGitHubAutonomyService:
         mock_ref_response.status_code = 200
         mock_ref_response.json.return_value = {"object": {"sha": "abc123"}}
 
-        request = httpx.Request("POST", "https://api.github.com/repos/owner/repo/git/refs")
+        request = httpx.Request(
+            "POST", "https://api.github.com/repos/owner/repo/git/refs"
+        )
         response = httpx.Response(
             403,
             request=request,
@@ -884,7 +933,9 @@ class TestGitHubAutonomyService:
             )
         )
 
-        with patch("src.kortana.services.github_autonomy_service.logger") as mock_logger:
+        with patch(
+            "src.kortana.services.github_autonomy_service.logger"
+        ) as mock_logger:
             result = await service._create_branch(task)
 
         assert result is False
@@ -894,7 +945,7 @@ class TestGitHubAutonomyService:
 
     @pytest.mark.asyncio
     async def test_commit_branch_changes_isolated(self, service):
-        """Test that commits are isolated to the task branch (checkout first)"""
+        """Test that _commit_branch_changes delegates to the workspace-based implementation"""
         task = GitHubTask(
             github_issue_number=123, branch_name="autonomy/test-123", title="Test Task"
         )
@@ -902,12 +953,8 @@ class TestGitHubAutonomyService:
         service.repo_root = Path("C:/repo-root")
 
         with patch("subprocess.run") as mock_run:
-            # First call: checkout - return success
-            # Second-fifth: git add - return success
-            # Sixth: git commit - return success
-            # Seventh: git rev-parse HEAD - return commit SHA
+            # git add test.py, git add test2.py, git commit, git rev-parse HEAD
             mock_results = [
-                MagicMock(returncode=0, stdout=""),  # checkout
                 MagicMock(returncode=0, stdout=""),  # add 1
                 MagicMock(returncode=0, stdout=""),  # add 2
                 MagicMock(returncode=0, stdout=""),  # commit
@@ -917,14 +964,14 @@ class TestGitHubAutonomyService:
 
             commit_sha = await service._commit_branch_changes(task, files_changed)
 
-            # Verify checkout was called first
-            assert mock_run.call_count >= 5
-            checkout_call = mock_run.call_args_list[0]
-            assert "git" in str(checkout_call)
-            assert "checkout" in str(checkout_call)
-            assert "autonomy/test-123" in str(checkout_call)
-            assert checkout_call.kwargs["cwd"] == service.repo_root
-            commit_call = mock_run.call_args_list[3]
+            assert mock_run.call_count >= 4
+            # First call is git add test.py
+            add_call = mock_run.call_args_list[0]
+            assert "add" in str(add_call)
+            assert "test.py" in str(add_call)
+            assert add_call.kwargs["cwd"] == service.repo_root
+            # Third call is git commit --no-verify
+            commit_call = mock_run.call_args_list[2]
             assert "--no-verify" in str(commit_call)
             assert commit_call.kwargs["cwd"] == service.repo_root
 
@@ -932,42 +979,30 @@ class TestGitHubAutonomyService:
 
     @pytest.mark.asyncio
     async def test_commit_branch_changes_bootstraps_local_branch(self, service):
-        """Test commit flow bootstraps a missing local branch from remote state."""
+        """Test that _commit_branch_changes returns None if git add fails."""
         task = GitHubTask(
             github_issue_number=123, branch_name="autonomy/test-123", title="Test Task"
         )
         files_changed = ["test.py"]
 
-        checkout_error = subprocess.CalledProcessError(
-            1, ["git", "checkout", task.branch_name], stderr="pathspec not found"
+        add_error = subprocess.CalledProcessError(
+            1, ["git", "add", "test.py"], stderr="pathspec not found"
         )
 
         with patch("subprocess.run") as mock_run:
-            mock_run.side_effect = [
-                checkout_error,
-                MagicMock(returncode=0, stdout=""),  # fetch origin branch
-                MagicMock(returncode=0, stdout=""),  # checkout -B FETCH_HEAD
-                MagicMock(returncode=0, stdout=""),  # add
-                MagicMock(returncode=0, stdout=""),  # commit
-                MagicMock(returncode=0, stdout="abc123def456\n"),  # rev-parse
-            ]
+            mock_run.side_effect = [add_error]
 
             commit_sha = await service._commit_branch_changes(task, files_changed)
 
-            assert commit_sha == "abc123def456"
-            assert any(
-                "fetch', 'origin', 'autonomy/test-123" in str(call)
-                or 'fetch", "origin", "autonomy/test-123' in str(call)
-                for call in mock_run.call_args_list
-            )
-            assert any(
-                "-B" in str(call) and "FETCH_HEAD" in str(call) for call in mock_run.call_args_list
-            )
-            assert any("--no-verify" in str(call) for call in mock_run.call_args_list)
+            assert commit_sha is None
+            assert mock_run.call_count >= 1
+            add_call = mock_run.call_args_list[0]
+            assert "add" in str(add_call)
+            assert "test.py" in str(add_call)
 
     @pytest.mark.asyncio
     async def test_push_branch_isolated_with_recovery(self, service):
-        """Test that push uses explicit branch ref and recovers if on wrong branch"""
+        """Test that _push_branch delegates to _push_workspace_branch"""
         task = GitHubTask(
             github_issue_number=123,
             branch_name="autonomy/test-123",
@@ -975,13 +1010,8 @@ class TestGitHubAutonomyService:
         )
 
         with patch("subprocess.run") as mock_run:
-            # First call: branch check (returns different branch)
-            # Second: checkout recovery
-            # Third: git push
             mock_results = [
-                MagicMock(returncode=0, stdout="main\n"),  # Current branch is main
-                MagicMock(returncode=0, stdout=""),  # Checkout recovery
-                MagicMock(returncode=0, stdout=""),  # Push success
+                MagicMock(returncode=0, stdout=""),  # git push
             ]
             mock_run.side_effect = mock_results
 
@@ -989,15 +1019,10 @@ class TestGitHubAutonomyService:
                 result = await service._push_branch(task)
 
             assert result is True
-            assert mock_run.call_count >= 3
+            assert mock_run.call_count >= 1
 
-            # Verify recovery checkout was called
-            recovery_checkout_call = mock_run.call_args_list[1]
-            assert "checkout" in str(recovery_checkout_call)
-            assert "autonomy/test-123" in str(recovery_checkout_call)
-
-            # Verify final push uses explicit branch:branch ref (isolated)
-            push_call = mock_run.call_args_list[2]
+            # Verify push uses explicit branch:branch ref
+            push_call = mock_run.call_args_list[0]
             assert "push" in str(push_call)
             assert "autonomy/test-123:autonomy/test-123" in str(push_call)
 
@@ -1053,7 +1078,9 @@ class TestHOPAutonomyService:
             assert mock_task.classification == "auto"
 
     @pytest.mark.asyncio
-    async def test_classify_hop_task_invalid_response(self, service, mock_task, mock_db):
+    async def test_classify_hop_task_invalid_response(
+        self, service, mock_task, mock_db
+    ):
         """Test task classification with invalid response defaults to ho"""
         with patch(
             "src.kortana.services.hop_autonomy_service.gemini_service.analyze_text"
@@ -1094,7 +1121,9 @@ class TestHOPAutonomyService:
     @pytest.mark.asyncio
     async def test_should_require_human_not_classified(self, service, mock_task):
         """Test human requirement check for unclassified task"""
-        with patch.object(service, "classify_hop_task", return_value="ho") as mock_classify:
+        with patch.object(
+            service, "classify_hop_task", return_value="ho"
+        ) as mock_classify:
             result = await service.should_require_human(mock_task)
             assert result is True
             mock_classify.assert_called_once_with(mock_task)

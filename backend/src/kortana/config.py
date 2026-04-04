@@ -191,7 +191,7 @@ class Settings:
         str(_get_env("AUTONOMY_LOOP_SHADOW_ENABLED", "false")).lower() == "true"
     )
     AUTONOMY_LOOP_SHADOW_TIMEOUT_SECONDS: int = int(
-        _get_env("AUTONOMY_LOOP_SHADOW_TIMEOUT_SECONDS", "120")
+        _get_env("AUTONOMY_LOOP_SHADOW_TIMEOUT_SECONDS", "120") or "120"
     )
     VECTOR_ALPHA_DRY_RUN: bool = (
         str(_get_env("VECTOR_ALPHA_DRY_RUN", "true")).lower() == "true"

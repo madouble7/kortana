@@ -20,8 +20,8 @@ RUN npm run build
 FROM python:3.11-slim AS backend-builder
 WORKDIR /build
 
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+RUN --mount=type=cache,id=apt-cache-backend,target=/var/cache/apt \
+    --mount=type=cache,id=apt-lib-backend,target=/var/lib/apt \
     apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
@@ -29,7 +29,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 
 COPY backend/requirements.txt ./
 
-RUN --mount=type=cache,target=/root/.cache/pip \
+RUN --mount=type=cache,id=pip-cache,target=/root/.cache/pip \
     pip install --user --no-cache-dir --compile -r requirements.txt
 
 
@@ -38,8 +38,8 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Install runtime dependencies only
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+RUN --mount=type=cache,id=apt-cache-runtime,target=/var/cache/apt \
+    --mount=type=cache,id=apt-lib-runtime,target=/var/lib/apt \
     apt-get update && apt-get install -y --no-install-recommends \
     curl \
     git \

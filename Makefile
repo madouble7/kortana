@@ -14,6 +14,7 @@ help:
 	@echo "  make docker-up        - Start Docker services"
 	@echo "  make docker-down      - Stop Docker services"
 	@echo "  make backend          - Run backend only"
+	@echo "  make daemon           - Run daemon worker only"
 	@echo "  make frontend         - Run frontend only"
 	@echo ""
 	@echo "Database:"
@@ -47,7 +48,8 @@ install-dev: install
 
 env:
 	@echo "Creating .env files..."
-	cp backend/.env.example backend/.env || true
+	cp .env.example .env || true
+	cp .env.prod.example .env.prod || true
 	@echo "✅ Environment files configured (update with your values)"
 
 # Development
@@ -65,6 +67,9 @@ docker-down:
 
 backend:
 	cd backend && uvicorn src.kortana.main:app --reload --host 0.0.0.0 --port 8000
+
+daemon:
+	cd backend && python -m src.kortana.daemon_worker
 
 frontend:
 	cd frontend && npm start

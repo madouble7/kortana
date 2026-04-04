@@ -168,7 +168,11 @@ async def test_full_pipeline_success_path(
             ),
             patch.object(planner, "_write_repair_playbook", AsyncMock()) as mock_write,
             patch("asyncio.create_subprocess_shell") as mock_shell,
+            patch(
+                "src.kortana.services.patch_planner.PatchValidator"
+            ) as mock_validator_cls,
         ):
+            mock_validator_cls.return_value.validate.return_value = MagicMock()
             mock_proc = AsyncMock()
             mock_proc.communicate = AsyncMock(return_value=(b"passed", b""))
             mock_proc.returncode = 0
@@ -241,7 +245,11 @@ async def test_full_pipeline_verification_failure(
         ),
         patch.object(planner, "_write_repair_playbook", AsyncMock()) as mock_write,
         patch("asyncio.create_subprocess_shell") as mock_shell,
+        patch(
+            "src.kortana.services.patch_planner.PatchValidator"
+        ) as mock_validator_cls,
     ):
+        mock_validator_cls.return_value.validate.return_value = MagicMock()
         mock_proc = AsyncMock()
         mock_proc.communicate = AsyncMock(return_value=(b"", b""))
         mock_proc.returncode = 0

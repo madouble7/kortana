@@ -164,6 +164,46 @@ class TestGenerateCode:
 
 
 class TestChatWithGemini:
+    def test_chat_system_prompt_includes_memory_policy_context(self, client):
+        """Chat should include doctrine-driven memory context in the system prompt."""
+        engine = _make_consensus_engine("kor'tana: memory-aware reply")
+
+        with patch(
+            "src.kortana.routers.gemini._build_live_context",
+            AsyncMock(return_value=""),
+        ):
+            with patch(
+                "src.kortana.routers.gemini._load_chat_identity_preamble",
+                AsyncMock(return_value="you are kor'tana."),
+            ):
+                with patch(
+                    "src.kortana.routers.gemini._load_chat_memory_context",
+                    AsyncMock(
+                        return_value="## continuity of self\n- [cycle 8] prefer faithful memory"
+                    ),
+                ) as mock_memory_context:
+                    with patch(
+                        "src.kortana.routers.gemini._persist_messages", AsyncMock()
+                    ):
+                        with patch(
+                            "src.kortana.routers.gemini.get_consensus_engine",
+                            return_value=engine,
+                        ):
+                            response = client.post(
+                                "/api/gemini/chat",
+                                json={"message": "hello there"},
+                            )
+
+        assert response.status_code == 200
+        system = engine.query.await_args.kwargs["system"]
+        assert "## continuity of self" in system
+        assert "prefer faithful memory" in system
+        mock_memory_context.assert_awaited_once_with(
+            session_id="default",
+            query="hello there",
+            include_conversation_memory=True,
+        )
+
     def test_chat_system_prompt_caches_identity_profile(self, client):
         """The DB-backed identity layer should be cached across chat turns."""
         engine = _make_consensus_engine("kor'tana: cached reply")

@@ -1,9 +1,10 @@
 import os
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.kortana.config import get_settings
@@ -65,11 +66,22 @@ async def get_task_queue_status(db: AsyncSession = Depends(get_db)) -> dict[str,
         "failed": 0,
     }
 
-    # Optimized query: Use GROUP BY to count statuses in single query
-    result = await db.execute(
-        select(GitHubTask.status, func.count()).group_by(GitHubTask.status)
-    )
-    status_counts = result.all()
+    try:
+        # Optimized query: Use GROUP BY to count statuses in single query
+        result = await db.execute(
+            select(GitHubTask.status, func.count()).group_by(GitHubTask.status)
+        )
+        status_counts = result.all()
+
+        # Fetch recent tasks in a single query
+        recent_tasks_result = await db.execute(
+            select(GitHubTask).order_by(GitHubTask.updated_at.desc()).limit(10)
+        )
+        recent_tasks = recent_tasks_result.scalars().all()
+    except SQLAlchemyError as exc:
+        logger.warning("Autonomy status unavailable from database: %s", exc)
+        status_counts = []
+        recent_tasks = []
 
     # Update status counts from query results
     total = 0
@@ -82,12 +94,6 @@ async def get_task_queue_status(db: AsyncSession = Depends(get_db)) -> dict[str,
     # Calculate completion rate
     completed = statuses["completed"]
     completion_rate = (completed / total * 100) if total > 0 else 0
-
-    # Fetch recent tasks in a single query
-    recent_tasks_result = await db.execute(
-        select(GitHubTask).order_by(GitHubTask.updated_at.desc()).limit(10)
-    )
-    recent_tasks = recent_tasks_result.scalars().all()
 
     return {
         "total_tasks": total,
@@ -210,9 +216,10 @@ async def retry_failed_task(
             detail=f"Task has exceeded max retries ({task.max_retries})",
         )
 
-    task.status = "pending"
-    task.error_message = None
-    task.updated_at = datetime.utcnow()
+    task_record = cast(Any, task)
+    task_record.status = "pending"
+    task_record.error_message = None
+    task_record.updated_at = datetime.utcnow()
 
     try:
         await db.commit()
@@ -221,7 +228,7 @@ async def retry_failed_task(
         logger.error(f"Retry failed for task {task_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to retry task")
 
-    return {"message": "Task reset for retry", "task_id": task.id}
+    return {"message": "Task reset for retry", "task_id": task_record.id}
 
 
 @router.get("/health")

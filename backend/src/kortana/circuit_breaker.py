@@ -8,9 +8,10 @@ import json
 import time
 from dataclasses import asdict, dataclass
 from enum import Enum
-from typing import Any, Optional
+from typing import Any, Awaitable, Callable, Optional
 
 from redis import Redis
+
 from src.kortana.logger import get_logger
 
 logger = get_logger(__name__)
@@ -81,21 +82,29 @@ class AutonomyCircuitBreaker:
     def _get_metrics(self, task_name: str) -> CircuitMetrics:
         """Retrieve metrics from Redis"""
         key = self._get_metrics_key(task_name)
-        data = self.redis.get(key)
-        if data:
-            try:
+        try:
+            data = self.redis.get(key)
+            if isinstance(data, (bytes, bytearray, str)):
                 metrics_dict = json.loads(data)
                 return CircuitMetrics.from_dict(metrics_dict)
-            except (json.JSONDecodeError, TypeError):
-                logger.warning(f"Failed to parse metrics for {task_name}")
+        except Exception:
+            logger.warning(
+                "Redis unavailable for circuit breaker '%s'; failing open.", task_name
+            )
         return CircuitMetrics(task_name=task_name)
 
     def _save_metrics(self, metrics: CircuitMetrics) -> None:
         """Save metrics to Redis with TTL"""
         key = self._get_metrics_key(metrics.task_name)
         data = json.dumps(metrics.to_dict())
-        # Keep metrics for 24 hours
-        self.redis.setex(key, 86400, data)
+        try:
+            # Keep metrics for 24 hours
+            self.redis.setex(key, 86400, data)
+        except Exception:
+            logger.warning(
+                "Redis unavailable; could not persist circuit breaker metrics for '%s'.",
+                metrics.task_name,
+            )
 
     def can_execute(self, task_name: str) -> tuple[bool, Optional[str]]:
         """
@@ -185,9 +194,32 @@ class AutonomyCircuitBreaker:
         elif CircuitState(metrics.state) == CircuitState.HALF_OPEN:
             metrics.state = CircuitState.OPEN.value
             metrics.opened_at = time.time()
-            logger.warning(f"Circuit breaker for {task_name}: recovery failed, reopening")
+            logger.warning(
+                f"Circuit breaker for {task_name}: recovery failed, reopening"
+            )
 
         self._save_metrics(metrics)
+
+    async def call_async(
+        self,
+        task_name: str,
+        coro_factory: Callable[[], Awaitable[Any]],
+    ) -> Any:
+        """Execute an async callable under circuit-breaker protection.
+
+        Raises RuntimeError if the circuit is open; propagates any exception
+        from the coroutine after recording it as a failure.
+        """
+        can_exec, reason = self.can_execute(task_name)
+        if not can_exec:
+            raise RuntimeError(f"Circuit breaker open for '{task_name}': {reason}")
+        try:
+            result = await coro_factory()
+            self.record_success(task_name)
+            return result
+        except Exception as exc:
+            self.record_failure(task_name, str(exc))
+            raise
 
     def get_status(self, task_name: str) -> dict[str, Any]:
         """Get current status of circuit breaker"""
@@ -228,5 +260,7 @@ def create_circuit_breaker(redis_url: str) -> AutonomyCircuitBreaker:
 
     from redis import Redis
 
-    redis_client = Redis.from_url(redis_url or os.getenv("REDIS_URL", "redis://localhost:6379/0"))
+    redis_client = Redis.from_url(
+        redis_url or os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    )
     return AutonomyCircuitBreaker(redis_client)

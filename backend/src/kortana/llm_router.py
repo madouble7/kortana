@@ -45,7 +45,7 @@ class LLMResponse(BaseModel):
     model: str
     provider: str
     tokens_used: Optional[int] = None
-    latency_ms: int
+    latency_ms: int = 0
     temperature: float
 
 
@@ -194,9 +194,7 @@ class LLMRouter:
                 continue
 
         # All models failed
-        raise RuntimeError(
-            f"All LLM models exhausted. Last error: {str(last_error)}"
-        )
+        raise RuntimeError(f"All LLM models exhausted. Last error: {str(last_error)}")
 
     async def _call_model(
         self,
@@ -266,10 +264,12 @@ class LLMRouter:
             )
 
             return LLMResponse(
-                content=response.choices[0].message.content,
+                content=response.choices[0].message.content or "",
                 model=config.model_name,
                 provider=config.provider.value,
-                tokens_used=response.usage.total_tokens,
+                tokens_used=response.usage.total_tokens
+                if response.usage is not None
+                else None,
                 temperature=temperature,
             )
         except Exception as e:
@@ -293,10 +293,12 @@ class LLMRouter:
             )
 
             return LLMResponse(
-                content=response.choices[0].message.content,
+                content=response.choices[0].message.content or "",
                 model=config.model_name,
                 provider=config.provider.value,
-                tokens_used=response.usage.total_tokens,
+                tokens_used=response.usage.total_tokens
+                if response.usage is not None
+                else None,
                 temperature=temperature,
             )
         except Exception as e:
@@ -319,10 +321,16 @@ class LLMRouter:
             )
 
             return LLMResponse(
-                content=response.content[0].text,
+                content=getattr(response.content[0], "text", "")
+                if response.content
+                else "",
                 model=config.model_name,
                 provider=config.provider.value,
-                tokens_used=response.usage.input_tokens + response.usage.output_tokens,
+                tokens_used=(
+                    response.usage.input_tokens + response.usage.output_tokens
+                    if response.usage is not None
+                    else None
+                ),
                 temperature=temperature,
             )
         except Exception as e:
