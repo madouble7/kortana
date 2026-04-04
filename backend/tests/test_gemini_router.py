@@ -1,9 +1,11 @@
 """Tests for src/kortana/routers/gemini.py - Gemini AI router endpoints"""
 import io
+import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from PIL import Image
+from src.kortana.openai_responses import OpenAITextGenerationResult
 from tests.conftest import SyncTestClient
 
 
@@ -48,6 +50,23 @@ def _make_identity_profile(
     profile.development_axioms = ["grow through reflection"]
     profile.version = "0.1"
     return profile
+
+
+def _parse_sse_events(body: str) -> list[tuple[str, dict[str, object]]]:
+    events: list[tuple[str, dict[str, object]]] = []
+    for chunk in body.strip().split("\n\n"):
+        if not chunk.strip():
+            continue
+        event_name = "message"
+        data_lines: list[str] = []
+        for line in chunk.splitlines():
+            if line.startswith("event:"):
+                event_name = line.split(":", 1)[1].strip()
+            elif line.startswith("data:"):
+                data_lines.append(line.split(":", 1)[1].strip())
+        payload = json.loads("\n".join(data_lines)) if data_lines else {}
+        events.append((event_name, payload))
+    return events
 
 
 class _FakeSessionScope:
@@ -495,8 +514,8 @@ class TestChatWithGemini:
         assert response.json()["stateful"] is False
         engine.query.assert_awaited_once()
 
-    def test_chat_stream_emits_stateful_openai_events(self, client):
-        """Streaming chat should emit delta and final SSE events for GPT-5 turns."""
+    def test_chat_stream_returns_stateful_openai_response_text(self, client):
+        """Streaming chat should include GPT-5 start/delta/final output text."""
         from src.kortana.openai_responses import OpenAITextGenerationResult
 
         async def _fake_stream(**_kwargs):
@@ -665,6 +684,150 @@ class TestChatWithGemini:
                 "phase": None,
             }
         ]
+
+    def test_chat_stream_emits_full_sse_sequence(self, client):
+        """Streaming chat should emit start, phase, delta, and final events."""
+
+        async def _fake_stream():
+            yield {"type": "delta", "delta": "hello "}
+            yield {"type": "delta", "delta": "world"}
+            yield {
+                "type": "completed",
+                "result": OpenAITextGenerationResult(
+                    text="hello world",
+                    phase="final_answer",
+                    response_id="resp_stream",
+                    used_previous_response_id=True,
+                ),
+            }
+
+        with patch(
+            "src.kortana.routers.gemini._build_live_context",
+            AsyncMock(return_value=""),
+        ):
+            with patch(
+                "src.kortana.routers.gemini._assemble_chat_system_prompt",
+                AsyncMock(return_value="you are kor'tana."),
+            ):
+                with patch(
+                    "src.kortana.routers.gemini._persist_messages",
+                    AsyncMock(),
+                ):
+                    with patch(
+                        "src.kortana.routers.gemini._stateful_openai_chat_enabled",
+                        return_value=True,
+                    ):
+                        with patch(
+                            "src.kortana.routers.gemini._stream_stateful_openai",
+                            return_value=_fake_stream(),
+                        ):
+                            response = client.post(
+                                "/api/gemini/chat/stream",
+                                json={
+                                    "message": "hello there",
+                                    "session_id": "sess_live",
+                                    "history": [{"role": "user", "content": "hi"}],
+                                },
+                            )
+
+        assert response.status_code == 200
+        assert response.headers["cache-control"] == "no-cache"
+        assert response.headers["x-accel-buffering"] == "no"
+        events = _parse_sse_events(response.text)
+        assert [event for event, _ in events] == ["start", "phase", "delta", "delta", "final"]
+        assert events[0][1]["provider"] == "openai"
+        assert events[1][1]["phase"] == "commentary"
+        assert events[2][1]["delta"] == "hello "
+        assert events[4][1]["response"] == "hello world"
+        assert events[4][1]["response_id"] == "resp_stream"
+
+    def test_chat_stream_emits_error_event_on_runtime_failure(self, client):
+        """Streaming chat should convert generator failures into SSE error events."""
+        with patch(
+            "src.kortana.routers.gemini._build_live_context",
+            AsyncMock(side_effect=RuntimeError("boom")),
+        ):
+            response = client.post(
+                "/api/gemini/chat/stream",
+                json={"message": "hello there", "session_id": "sess_live", "history": []},
+            )
+
+        assert response.status_code == 200
+        events = _parse_sse_events(response.text)
+        assert events == [("error", {"message": "Chat stream failed."})]
+
+    @pytest.mark.asyncio
+    async def test_persist_messages_uses_bound_timestamp_not_now(self):
+        """Message persistence should not rely on DB-specific NOW() functions."""
+        from src.kortana.routers.gemini import _persist_messages
+
+        captured: list[tuple[str, dict[str, object] | None]] = []
+
+        class FakeSession:
+            async def execute(self, stmt, params=None):
+                captured.append((str(stmt), params))
+                return None
+
+            def add(self, _obj):
+                return None
+
+        class FakeDbManager:
+            def session_scope(self):
+                return _FakeSessionScope(FakeSession())
+
+        with patch(
+            "src.kortana.database.get_db_manager",
+            return_value=FakeDbManager(),
+        ):
+            await _persist_messages(
+                "sess_sqlite",
+                "hello",
+                "kor'tana: hi",
+                assistant_phase="final_answer",
+                assistant_metadata={"provider": "openai"},
+            )
+
+        assert captured
+        stmt, params = captured[0]
+        assert "NOW()" not in stmt
+        assert ":created_at" in stmt
+        assert params is not None
+        assert "created_at" in params
+        assert params["created_at"] is not None
+
+    @pytest.mark.asyncio
+    async def test_extract_and_queue_tasks_uses_bound_timestamp_not_now(self):
+        """Task persistence should use bound timestamps for SQLite compatibility."""
+        from src.kortana.routers.gemini import _extract_and_queue_tasks
+
+        captured: list[tuple[str, dict[str, object] | None]] = []
+
+        class FakeSession:
+            async def execute(self, stmt, params=None):
+                captured.append((str(stmt), params))
+                return None
+
+        class FakeDbManager:
+            def session_scope(self):
+                return _FakeSessionScope(FakeSession())
+
+        with patch(
+            "src.kortana.database.get_db_manager",
+            return_value=FakeDbManager(),
+        ):
+            cleaned, created = await _extract_and_queue_tasks(
+                'hello [[TASK:{"name":"test task","description":"do the thing"}]]'
+            )
+
+        assert cleaned == "hello"
+        assert len(created) == 1
+        assert captured
+        stmt, params = captured[0]
+        assert "NOW()" not in stmt
+        assert ":created_at" in stmt
+        assert params is not None
+        assert "created_at" in params
+        assert params["created_at"] is not None
 
     def test_chat_fallback_to_gemini(self, client):
         """Test chat fallback to Gemini when the consensus engine has no provider."""
