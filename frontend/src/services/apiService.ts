@@ -37,7 +37,7 @@ export interface TaskInfo {
   created_at: string;
   started_at?: string;
   completed_at?: string;
-  result?: any;
+  result?: unknown;
 }
 
 export interface PrayerStatusResponse {
@@ -98,7 +98,7 @@ class ApiService {
     return this.request<PrayerStatusResponse>('/api/prayer/status');
   }
 
-  async requestPrayer(person: string = 'both', request: string = ''): Promise<any> {
+  async requestPrayer(person: string = 'both', request: string = ''): Promise<unknown> {
     const params = new URLSearchParams({ person, request });
     return this.request(`/api/prayer/request?${params}`);
   }
@@ -108,11 +108,11 @@ class ApiService {
     return this.request<GitHubIssue[]>(`/api/github/repos/${owner}/${repo}/issues?state=${state}`);
   }
 
-  async getGitHubPullRequests(owner: string, repo: string, state: string = 'open'): Promise<any[]> {
+  async getGitHubPullRequests(owner: string, repo: string, state: string = 'open'): Promise<unknown[]> {
     return this.request(`/api/github/repos/${owner}/${repo}/pulls?state=${state}`);
   }
 
-  async analyzeGitHubContent(content: string, type: string = 'issue'): Promise<any> {
+  async analyzeGitHubContent(content: string, type: string = 'issue'): Promise<unknown> {
     return this.request('/api/github/analyze', {
       method: 'POST',
       body: JSON.stringify({ content, type }),
@@ -125,7 +125,7 @@ class ApiService {
     return response.documents;
   }
 
-  async searchMemories(query: string, tags?: string[]): Promise<any> {
+  async searchMemories(query: string, tags?: string[]): Promise<unknown> {
     const params = new URLSearchParams({ query });
     if (tags && tags.length > 0) {
       params.append('tags', tags.join(','));
@@ -133,7 +133,7 @@ class ApiService {
     return this.request(`/api/memory/search?${params}`);
   }
 
-  async addMemory(title: string, content: string): Promise<any> {
+  async addMemory(title: string, content: string): Promise<unknown> {
     return this.request('/api/memory/add_document', {
       method: 'POST',
       body: JSON.stringify({ title, content }),
@@ -141,34 +141,34 @@ class ApiService {
   }
 
   // System & Management
-  async getSystemInfo(): Promise<any> { return this.request('/api/system/info'); }
-  async getLogs(lines: number = 100): Promise<any> { return this.request(`/api/system/logs?lines=${lines}`); }
-  async getSettings(): Promise<any> { return this.request('/api/system/settings'); }
+  async getSystemInfo(): Promise<unknown> { return this.request('/api/system/info'); }
+  async getLogs(lines: number = 100): Promise<unknown> { return this.request(`/api/system/logs?lines=${lines}`); }
+  async getSettings(): Promise<unknown> { return this.request('/api/system/settings'); }
 
   // Rclone Cloud Storage
-  async getRcloneRemotes(): Promise<any> { return this.request('/api/rclone/list'); }
-  async getRcloneFiles(remote: string, path: string = ""): Promise<any> { return this.request(`/api/rclone/files/${remote}?path=${path}`); }
+  async getRcloneRemotes(): Promise<unknown> { return this.request('/api/rclone/list'); }
+  async getRcloneFiles(remote: string, path: string = ""): Promise<unknown> { return this.request(`/api/rclone/files/${remote}?path=${path}`); }
 
   // Human Only Protocol (HOP)
-  async getProtocolStatus(): Promise<any> { return this.request('/api/protocol/status'); }
-  async runAutonomousCycle(): Promise<any> { return this.request('/api/protocol/auto/cycle', { method: 'POST' }); }
-  async getNextHoTask(): Promise<any> { return this.request('/api/protocol/ho/next'); }
-  async completeHoTask(taskId: string): Promise<any> { return this.request(`/api/protocol/ho/complete/${taskId}`, { method: 'POST' }); }
+  async getProtocolStatus(): Promise<unknown> { return this.request('/api/protocol/status'); }
+  async runAutonomousCycle(): Promise<unknown> { return this.request('/api/protocol/auto/cycle', { method: 'POST' }); }
+  async getNextHoTask(): Promise<unknown> { return this.request('/api/protocol/ho/next'); }
+  async completeHoTask(taskId: string): Promise<unknown> { return this.request(`/api/protocol/ho/complete/${taskId}`, { method: 'POST' }); }
 
   // Agent Operations
-  async listAgents(): Promise<any[]> {
-    const response = await this.request<{ agents: any[] }>('/api/agents/list');
+  async listAgents(): Promise<AgentInfo[]> {
+    const response = await this.request<{ agents: AgentInfo[] }>('/api/agents/list');
     return response.agents;
   }
 
-  async createAgent(name: string, description: string, capabilities: string[]): Promise<any> {
+  async createAgent(name: string, description: string, capabilities: string[]): Promise<unknown> {
     return this.request('/api/agents/create', {
       method: 'POST',
       body: JSON.stringify({ name, description, capabilities }),
     });
   }
 
-  async executeAgent(agentId: number, task: string): Promise<any> {
+  async executeAgent(agentId: number, task: string): Promise<unknown> {
     return this.request(`/api/agents/execute/${agentId}`, {
       method: 'POST',
       body: JSON.stringify({ task }),
@@ -176,19 +176,19 @@ class ApiService {
   }
 
   // Task Operations
-  async getTasks(): Promise<any[]> {
-    const response = await this.request<{ tasks: any[] }>('/api/task-queue');
+  async getTasks(): Promise<TaskInfo[]> {
+    const response = await this.request<{ tasks: TaskInfo[] }>('/api/task-queue');
     return response.tasks || [];
   }
 
-  async createTask(name: string, description: string, priority: number = 5): Promise<any> {
+  async createTask(name: string, description: string, priority: number = 5): Promise<unknown> {
     return this.request('/api/task-queue', {
       method: 'POST',
       body: JSON.stringify({ name, description, priority }),
     });
   }
 
-  async cancelTask(taskId: number): Promise<any> {
+  async cancelTask(taskId: number): Promise<unknown> {
     return this.request(`/api/task-queue/${taskId}`, {
       method: 'DELETE',
     });
@@ -199,7 +199,7 @@ class ApiService {
     return this.request<SystemMetrics>('/api/system/health/metrics');
   }
 
-  async getDetailedHealth(): Promise<any> {
+  async getDetailedHealth(): Promise<unknown> {
     return this.request('/api/system/health/detailed');
   }
 }

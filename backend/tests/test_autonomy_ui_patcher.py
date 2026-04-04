@@ -4,8 +4,8 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from src.kortana.services.autonomy_code_patcher import (
-    AutonomyCodePatcher,
+from src.kortana.services.autonomy_ui_patcher import (
+    AutonomyUIPatcher,
     VerificationCommandResult,
     submit_approval_task,
 )
@@ -20,14 +20,14 @@ def _resolve_inside_repo(repo_root: Path, raw_path: str | Path) -> Path:
     return candidate
 
 
-def _make_patcher(tmp_path: Path) -> AutonomyCodePatcher:
-    patcher = AutonomyCodePatcher.__new__(AutonomyCodePatcher)
+def _make_patcher(tmp_path: Path) -> AutonomyUIPatcher:
+    patcher = AutonomyUIPatcher.__new__(AutonomyUIPatcher)
     patcher.db = AsyncMock()
     patcher.diagnostic = MagicMock()
     patcher.diagnostic.analyze_error_string = AsyncMock()
     patcher.boundary = MagicMock()
     patcher.repo_root = tmp_path
-    patcher.worktree_dir = tmp_path / ".autonomy_code_patcher_worktree"
+    patcher.worktree_dir = tmp_path / ".autonomy_ui_patcher_worktree"
     patcher.boundary.resolve_canonical_path.side_effect = lambda raw_path: (
         _resolve_inside_repo(tmp_path, raw_path)
     )
@@ -36,10 +36,10 @@ def _make_patcher(tmp_path: Path) -> AutonomyCodePatcher:
 
 @pytest.fixture
 def repo_target(tmp_path: Path) -> Path:
-    target = tmp_path / "backend" / "src" / "kortana" / "services" / "sample.py"
+    target = tmp_path / "frontend" / "src" / "components" / "sample.tsx"
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(
-        "def current_value() -> str:\n    return 'old'\n",
+        "export function Sample(): JSX.Element {\n  return <div>old</div>;\n}\n",
         encoding="utf-8",
     )
     return target
@@ -53,37 +53,23 @@ async def test_submit_approval_task_stores_metadata() -> None:
         db,
         title="approve",
         description="desc",
-        context={"branch": "auto-repair/demo"},
+        context={"branch": "auto-repair-ui/demo"},
     )
 
     task = db.add.call_args.args[0]
-    assert task.metadata_json == {"branch": "auto-repair/demo"}
-    assert task.result == "{'branch': 'auto-repair/demo'}"
+    assert task.metadata_json == {"branch": "auto-repair-ui/demo"}
+    assert task.result == "{'branch': 'auto-repair-ui/demo'}"
     db.commit.assert_awaited_once()
 
 
-def test_extract_python_content_handles_fenced_and_raw_text(tmp_path: Path) -> None:
+def test_extract_code_content_handles_fenced_and_raw_text(tmp_path: Path) -> None:
     patcher = _make_patcher(tmp_path)
 
-    fenced = patcher._extract_python_content("```python\nprint('ok')\n```")
-    raw = patcher._extract_python_content("print('raw')")
+    fenced = patcher._extract_code_content("```tsx\n<div>ok</div>\n```")
+    raw = patcher._extract_code_content("export const raw = true;")
 
-    assert fenced == "print('ok')\n"
-    assert raw == "print('raw')\n"
-
-
-def test_validate_content_delta_rejects_large_rewrite(tmp_path: Path) -> None:
-    patcher = _make_patcher(tmp_path)
-    original = "\n".join(f"line_{index}" for index in range(250)) + "\n"
-    new = "print('tiny replacement')\n"
-
-    is_valid = patcher._validate_content_delta(
-        original,
-        new,
-        Path("backend/src/kortana/services/sample.py"),
-    )
-
-    assert is_valid is False
+    assert fenced == "<div>ok</div>\n"
+    assert raw == "export const raw = true;\n"
 
 
 @pytest.mark.asyncio
@@ -99,7 +85,7 @@ async def test_attempt_auto_fix_rejects_low_confidence_even_if_auto_fixable(
     )
 
     with patch(
-        "src.kortana.services.autonomy_code_patcher._call_gemini_analysis",
+        "src.kortana.services.autonomy_ui_patcher._call_gemini_analysis",
         new=AsyncMock(),
     ) as mock_gemini:
         result = await patcher.attempt_auto_fix(
@@ -120,34 +106,40 @@ async def test_attempt_auto_fix_runs_in_worktree_and_merges_directly(
     patcher.diagnostic.analyze_error_string.return_value = SimpleNamespace(
         auto_fixable=True,
         confidence=0.95,
-        root_cause="wrong return literal",
-        suggested_fix="return the updated string",
+        root_cause="wrong UI literal",
+        suggested_fix="render the updated text",
     )
 
     async def fake_prepare_worktree(branch_name: str) -> bool:
         patcher.worktree_dir.mkdir(parents=True, exist_ok=True)
-        return branch_name.startswith("auto-repair/")
+        return branch_name.startswith("auto-repair-ui/")
 
     patcher._prepare_worktree = AsyncMock(side_effect=fake_prepare_worktree)
     patcher._run_verification_suite = AsyncMock(
         return_value=[
             VerificationCommandResult(
-                label="ruff",
-                argv=("python", "-m", "ruff", "check", "src", "tests"),
+                label="install",
+                argv=("npm", "install"),
                 returncode=0,
-                output="ruff ok",
+                output="install ok",
             ),
             VerificationCommandResult(
-                label="mypy",
-                argv=("python", "-m", "mypy", "src"),
+                label="lint",
+                argv=("npm", "run", "lint"),
                 returncode=0,
-                output="mypy ok",
+                output="lint ok",
             ),
             VerificationCommandResult(
-                label="pytest",
-                argv=("python", "-m", "pytest", "tests", "-q"),
+                label="type-check",
+                argv=("npm", "run", "type-check"),
                 returncode=0,
-                output="pytest ok",
+                output="type-check ok",
+            ),
+            VerificationCommandResult(
+                label="build",
+                argv=("npm", "run", "build"),
+                returncode=0,
+                output="build ok",
             ),
         ]
     )
@@ -156,10 +148,14 @@ async def test_attempt_auto_fix_runs_in_worktree_and_merges_directly(
 
     with (
         patch(
-            "src.kortana.services.autonomy_code_patcher._call_gemini_analysis",
+            "src.kortana.services.autonomy_ui_patcher._call_gemini_analysis",
             new=AsyncMock(
                 return_value=(
-                    "```python\ndef current_value() -> str:\n    return 'new'\n```"
+                    "```tsx\n"
+                    "export function Sample(): JSX.Element {\n"
+                    "  return <div>new</div>;\n"
+                    "}\n"
+                    "```"
                 )
             ),
         ),
@@ -183,15 +179,15 @@ async def test_attempt_auto_fix_runs_in_worktree_and_merges_directly(
 
     assert result is True
     assert repo_target.read_text(encoding="utf-8") == (
-        "def current_value() -> str:\n    return 'old'\n"
+        "export function Sample(): JSX.Element {\n  return <div>old</div>;\n}\n"
     )
     assert worktree_target.read_text(encoding="utf-8") == (
-        "def current_value() -> str:\n    return 'new'\n"
+        "export function Sample(): JSX.Element {\n  return <div>new</div>;\n}\n"
     )
     patcher._commit_worktree_change.assert_awaited_once_with(
         repo_target.relative_to(tmp_path),
         error_type="AssertionError",
-        root_cause="wrong return literal",
+        root_cause="wrong UI literal",
     )
     patcher._cleanup_worktree.assert_awaited_once()
 
@@ -202,7 +198,7 @@ async def test_attempt_auto_fix_runs_in_worktree_and_merges_directly(
     assert calls[1].args[0] == ("git", "checkout", "main")
     assert calls[2].args[0] == ("git", "rev-parse", "HEAD")
     assert calls[3].args[0][0:2] == ("git", "merge")
-    assert calls[3].args[0][5].startswith("auto-repair/")
+    assert calls[3].args[0][5].startswith("auto-repair-ui/")
     assert calls[4].args[0] == ("git", "push", "origin", "main")
     assert calls[5].args[0][0:2] == ("git", "checkout")
 
@@ -215,22 +211,22 @@ async def test_attempt_auto_fix_reverts_local_merge_when_push_fails(
     patcher.diagnostic.analyze_error_string.return_value = SimpleNamespace(
         auto_fixable=True,
         confidence=0.95,
-        root_cause="wrong return literal",
-        suggested_fix="return the updated string",
+        root_cause="wrong UI literal",
+        suggested_fix="render the updated text",
     )
 
     async def fake_prepare_worktree(branch_name: str) -> bool:
         patcher.worktree_dir.mkdir(parents=True, exist_ok=True)
-        return branch_name.startswith("auto-repair/")
+        return branch_name.startswith("auto-repair-ui/")
 
     patcher._prepare_worktree = AsyncMock(side_effect=fake_prepare_worktree)
     patcher._run_verification_suite = AsyncMock(
         return_value=[
             VerificationCommandResult(
-                label="ruff",
-                argv=("python", "-m", "ruff", "check", "src", "tests"),
+                label="build",
+                argv=("npm", "run", "build"),
                 returncode=0,
-                output="ruff ok",
+                output="build ok",
             )
         ]
     )
@@ -284,10 +280,14 @@ async def test_attempt_auto_fix_reverts_local_merge_when_push_fails(
 
     with (
         patch(
-            "src.kortana.services.autonomy_code_patcher._call_gemini_analysis",
+            "src.kortana.services.autonomy_ui_patcher._call_gemini_analysis",
             new=AsyncMock(
                 return_value=(
-                    "```python\ndef current_value() -> str:\n    return 'new'\n```"
+                    "```tsx\n"
+                    "export function Sample(): JSX.Element {\n"
+                    "  return <div>new</div>;\n"
+                    "}\n"
+                    "```"
                 )
             ),
         ),
@@ -316,6 +316,7 @@ async def test_attempt_auto_fix_reverts_local_merge_when_push_fails(
     assert calls[6].args[0] == ("git", "checkout", "feature/demo")
 
 
+@pytest.mark.asyncio
 async def test_attempt_auto_fix_stops_after_failed_verification(
     tmp_path: Path, repo_target: Path
 ) -> None:
@@ -324,19 +325,19 @@ async def test_attempt_auto_fix_stops_after_failed_verification(
         auto_fixable=True,
         confidence=0.90,
         root_cause="bad edit",
-        suggested_fix="return a different value",
+        suggested_fix="render a different value",
     )
 
     async def fake_prepare_worktree(branch_name: str) -> bool:
         patcher.worktree_dir.mkdir(parents=True, exist_ok=True)
-        return branch_name.startswith("auto-repair/")
+        return branch_name.startswith("auto-repair-ui/")
 
     patcher._prepare_worktree = AsyncMock(side_effect=fake_prepare_worktree)
     patcher._run_verification_suite = AsyncMock(
         return_value=[
             VerificationCommandResult(
-                label="ruff",
-                argv=("python", "-m", "ruff", "check", "src", "tests"),
+                label="lint",
+                argv=("npm", "run", "lint"),
                 returncode=1,
                 output="lint failed",
             )
@@ -345,26 +346,16 @@ async def test_attempt_auto_fix_stops_after_failed_verification(
     patcher._commit_worktree_change = AsyncMock()
     patcher._cleanup_worktree = AsyncMock()
 
-    with (
-        patch(
-            "src.kortana.services.autonomy_code_patcher._call_gemini_analysis",
-            new=AsyncMock(
-                return_value=(
-                    "```python\n"
-                    "def current_value() -> str:\n"
-                    "    return 'candidate'\n"
-                    "```"
-                )
-            ),
-        ),
-        patch.object(
-            patcher,
-            "_run_process",
-            new=AsyncMock(
-                return_value=subprocess.CompletedProcess(
-                    args=[], returncode=0, stdout="ok", stderr=""
-                )
-            ),
+    with patch(
+        "src.kortana.services.autonomy_ui_patcher._call_gemini_analysis",
+        new=AsyncMock(
+            return_value=(
+                "```tsx\n"
+                "export function Sample(): JSX.Element {\n"
+                "  return <div>candidate</div>;\n"
+                "}\n"
+                "```"
+            )
         ),
     ):
         result = await patcher.attempt_auto_fix(
@@ -386,34 +377,22 @@ async def test_attempt_auto_fix_returns_false_when_restore_checkout_fails(
     patcher.diagnostic.analyze_error_string.return_value = SimpleNamespace(
         auto_fixable=True,
         confidence=0.95,
-        root_cause="wrong return literal",
-        suggested_fix="return the updated string",
+        root_cause="wrong UI literal",
+        suggested_fix="render the updated text",
     )
 
     async def fake_prepare_worktree(branch_name: str) -> bool:
         patcher.worktree_dir.mkdir(parents=True, exist_ok=True)
-        return branch_name.startswith("auto-repair/")
+        return branch_name.startswith("auto-repair-ui/")
 
     patcher._prepare_worktree = AsyncMock(side_effect=fake_prepare_worktree)
     patcher._run_verification_suite = AsyncMock(
         return_value=[
             VerificationCommandResult(
-                label="ruff",
-                argv=("python", "-m", "ruff", "check", "src", "tests"),
+                label="build",
+                argv=("npm", "run", "build"),
                 returncode=0,
-                output="ruff ok",
-            ),
-            VerificationCommandResult(
-                label="mypy",
-                argv=("python", "-m", "mypy", "src"),
-                returncode=0,
-                output="mypy ok",
-            ),
-            VerificationCommandResult(
-                label="pytest",
-                argv=("python", "-m", "pytest", "tests", "-q"),
-                returncode=0,
-                output="pytest ok",
+                output="build ok",
             ),
         ]
     )
@@ -461,10 +440,14 @@ async def test_attempt_auto_fix_returns_false_when_restore_checkout_fails(
 
     with (
         patch(
-            "src.kortana.services.autonomy_code_patcher._call_gemini_analysis",
+            "src.kortana.services.autonomy_ui_patcher._call_gemini_analysis",
             new=AsyncMock(
                 return_value=(
-                    "```python\ndef current_value() -> str:\n    return 'new'\n```"
+                    "```tsx\n"
+                    "export function Sample(): JSX.Element {\n"
+                    "  return <div>new</div>;\n"
+                    "}\n"
+                    "```"
                 )
             ),
         ),

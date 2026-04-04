@@ -9,6 +9,7 @@ import uuid
 
 from redis import Redis
 from redis.exceptions import RedisError
+
 from src.kortana.logger import get_logger
 
 logger = get_logger(__name__)
@@ -92,8 +93,12 @@ class DistributedLock:
                 time.sleep(0.1)
 
             except RedisError as e:
-                logger.error(f"Redis error during lock acquire: {e}")
-                return False
+                logger.warning(
+                    "Redis unavailable for lock '%s'; proceeding without lock: %s",
+                    self.lock_name,
+                    e,
+                )
+                return True
 
     def release(self) -> bool:
         """
@@ -116,7 +121,9 @@ class DistributedLock:
                 logger.debug(f"Lock released: {self.lock_name}")
                 return True
 
-            logger.warning(f"Lock already released or taken by another: {self.lock_name}")
+            logger.warning(
+                f"Lock already released or taken by another: {self.lock_name}"
+            )
             return False
 
         except RedisError as e:
@@ -239,7 +246,9 @@ class TaskLockManager:
                     "held_by": lock_holder.decode() if lock_holder else None,
                     "held_locally": (
                         lock_holder.decode()
-                        == self.locks.get(task_name, DistributedLock(self.redis, task_name)).lock_id
+                        == self.locks.get(
+                            task_name, DistributedLock(self.redis, task_name)
+                        ).lock_id
                         if task_name in self.locks
                         else False
                     ),
@@ -259,5 +268,7 @@ def create_task_lock_manager(redis_url: str) -> TaskLockManager:
     """Factory function"""
     import os
 
-    redis_client = Redis.from_url(redis_url or os.getenv("REDIS_URL", "redis://localhost:6379/0"))
+    redis_client = Redis.from_url(
+        redis_url or os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    )
     return TaskLockManager(redis_client)

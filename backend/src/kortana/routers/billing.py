@@ -6,9 +6,11 @@ Synchronized with Transcendent Schema & Optimization Suite
 
 import logging
 import os
+from typing import Any
 
 import stripe
 from fastapi import APIRouter, Header, HTTPException, Request
+from stripe._error import SignatureVerificationError, StripeError
 
 from src.kortana.circuit_breaker import create_circuit_breaker
 from src.kortana.config import get_settings
@@ -31,9 +33,8 @@ logger = logging.getLogger("kortana.billing")
 settings = get_settings()
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
-# Optimization Suite Integration
-_billing_breaker = create_circuit_breaker(settings.INTERNAL_REDIS_URL)
-_billing_lock = create_task_lock_manager(settings.INTERNAL_REDIS_URL)
+_billing_breaker: Any | None = None
+_billing_lock: Any | None = None
 
 
 def _stripe_secret_key() -> str | None:
@@ -60,6 +61,41 @@ def _stripe_webhook_secret() -> str | None:
     return get_settings().STRIPE_WEBHOOK_SECRET
 
 
+def _get_billing_breaker() -> Any:
+    """Lazily construct the billing circuit breaker for easier test injection."""
+    global _billing_breaker
+    if _billing_breaker is None:
+        _billing_breaker = create_circuit_breaker(get_settings().INTERNAL_REDIS_URL)
+    return _billing_breaker
+
+
+def _get_billing_lock() -> Any:
+    """Lazily construct the billing lock manager for easier test injection."""
+    global _billing_lock
+    if _billing_lock is None:
+        _billing_lock = create_task_lock_manager(get_settings().INTERNAL_REDIS_URL)
+    return _billing_lock
+
+
+def _required_str(value: Any) -> str:
+    """Convert Stripe fields to a non-null string for response models."""
+    return "" if value is None else str(value)
+
+
+def _optional_str(value: Any) -> str | None:
+    """Convert Stripe fields to an optional string for response models."""
+    if value is None:
+        return None
+    return str(value)
+
+
+def _stripe_ref_id(value: Any) -> str | None:
+    """Extract the ID from a Stripe resource or plain string reference."""
+    if value is None:
+        return None
+    return _optional_str(getattr(value, "id", value))
+
+
 def verify_stripe_configured():
     """Verify Stripe is properly configured"""
     secret_key = _stripe_secret_key()
@@ -74,12 +110,11 @@ def verify_stripe_configured():
 @router.get("/health")
 async def billing_health():
     """Check billing system health and optimization status"""
+    breaker = _get_billing_breaker()
     return {
         "status": "healthy",
         "stripe_configured": bool(_stripe_secret_key()),
-        "circuit_breaker": _billing_breaker.get_status("stripe_api")
-        if _billing_breaker
-        else "disabled",
+        "circuit_breaker": breaker.get_status("stripe_api") if breaker else "disabled",
     }
 
 
@@ -143,16 +178,16 @@ async def create_customer(customer_data: CustomerCreate):
         )
 
     try:
-        customer = await _billing_breaker.call_async("stripe_api", _call_stripe)
+        customer = await _get_billing_breaker().call_async("stripe_api", _call_stripe)
 
         return Customer(
             id=customer.id,
-            email=customer.email,
-            name=customer.name,
+            email=_required_str(customer.email),
+            name=_required_str(customer.name),
             created=customer.created,
             metadata=customer.metadata,
         )
-    except stripe.error.StripeError as e:
+    except StripeError as e:
         logger.error(f"Failed to create customer: {str(e)}")
         raise HTTPException(status_code=400, detail="Failed to create customer")
     except Exception as e:
@@ -172,12 +207,12 @@ async def get_customer(customer_id: str):
 
         return Customer(
             id=customer.id,
-            email=customer.email,
-            name=customer.name,
+            email=_required_str(customer.email),
+            name=_required_str(customer.name),
             created=customer.created,
             metadata=customer.metadata,
         )
-    except stripe.error.StripeError as e:
+    except StripeError as e:
         logger.error(f"Failed to retrieve customer {customer_id}: {str(e)}")
         raise HTTPException(status_code=404, detail="Customer not found")
 
@@ -189,8 +224,10 @@ async def create_subscription(subscription_data: SubscriptionCreate):
 
     lock_key = f"billing:sub:{subscription_data.customer_id}"
 
+    billing_lock = _get_billing_lock()
+
     # Use distributed lock to prevent duplicate subscriptions
-    if not _billing_lock.acquire(lock_key, wait_seconds=10):
+    if not billing_lock.acquire_for_task(lock_key, blocking=True, wait_time=10):
         raise HTTPException(
             status_code=409,
             detail="Subscription processing already in progress for this customer",
@@ -206,18 +243,18 @@ async def create_subscription(subscription_data: SubscriptionCreate):
 
         return Subscription(
             id=subscription.id,
-            customer_id=subscription.customer,
+            customer_id=_required_str(_stripe_ref_id(subscription.customer)),
             status=subscription.status,
             current_period_start=subscription.current_period_start,
             current_period_end=subscription.current_period_end,
             cancel_at_period_end=subscription.cancel_at_period_end,
             metadata=subscription.metadata,
         )
-    except stripe.error.StripeError as e:
+    except StripeError as e:
         logger.error(f"Failed to create subscription: {str(e)}")
         raise HTTPException(status_code=400, detail="Failed to create subscription")
     finally:
-        _billing_lock.release(lock_key)
+        billing_lock.release_for_task(lock_key)
 
 
 @router.get("/subscriptions/{subscription_id}", response_model=Subscription)
@@ -230,14 +267,14 @@ async def get_subscription(subscription_id: str):
 
         return Subscription(
             id=subscription.id,
-            customer_id=subscription.customer,
+            customer_id=_required_str(_stripe_ref_id(subscription.customer)),
             status=subscription.status,
             current_period_start=subscription.current_period_start,
             current_period_end=subscription.current_period_end,
             cancel_at_period_end=subscription.cancel_at_period_end,
             metadata=subscription.metadata,
         )
-    except stripe.error.StripeError as e:
+    except StripeError as e:
         logger.error(f"Failed to retrieve subscription {subscription_id}: {str(e)}")
         raise HTTPException(status_code=404, detail="Subscription not found")
 
@@ -260,7 +297,7 @@ async def cancel_subscription(subscription_id: str, at_period_end: bool = True):
             "status": subscription.status,
             "cancel_at_period_end": subscription.cancel_at_period_end,
         }
-    except stripe.error.StripeError as e:
+    except StripeError as e:
         logger.error(f"Failed to cancel subscription {subscription_id}: {str(e)}")
         raise HTTPException(status_code=400, detail="Failed to cancel subscription")
 
@@ -284,11 +321,11 @@ async def create_payment_intent(payment_data: PaymentIntentCreate):
             amount=payment_intent.amount,
             currency=payment_intent.currency,
             status=payment_intent.status,
-            client_secret=payment_intent.client_secret,
-            customer_id=payment_intent.customer,
+            client_secret=_required_str(payment_intent.client_secret),
+            customer_id=_stripe_ref_id(payment_intent.customer),
             description=payment_intent.description,
         )
-    except stripe.error.StripeError as e:
+    except StripeError as e:
         logger.error(f"Failed to create payment intent: {str(e)}")
         raise HTTPException(status_code=400, detail="Failed to create payment intent")
 
@@ -315,7 +352,7 @@ async def handle_webhook(
         )
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid payload")
-    except stripe.error.SignatureVerificationError:
+    except SignatureVerificationError:
         raise HTTPException(status_code=400, detail="Invalid signature")
 
     # Handle the event
@@ -380,6 +417,6 @@ async def get_billing_info(customer_id: str):
             current_period_end=current_period_end,
             cancel_at_period_end=cancel_at_period_end,
         )
-    except stripe.error.StripeError as e:
+    except StripeError as e:
         logger.error(f"Failed to retrieve billing info for {customer_id}: {str(e)}")
         raise HTTPException(status_code=404, detail="Billing information not found")

@@ -4,9 +4,10 @@ Tests Stripe integration and billing endpoints
 """
 
 import os
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+import stripe
 from fastapi import HTTPException
 from src.kortana.config import get_settings
 from src.kortana.schemas import (
@@ -17,9 +18,29 @@ from src.kortana.schemas import (
 )
 
 
-# Mock stripe error for testing
-class MockStripeError(Exception):
-    pass
+# Mock stripe error for testing — must inherit stripe.StripeError so billing.py's
+# `except StripeError` clause catches it without needing to patch the class name.
+class MockStripeError(stripe.error.StripeError):
+    def __init__(self, message: str = "") -> None:
+        super().__init__(message)
+
+
+def _passthrough_breaker() -> MagicMock:
+    breaker = MagicMock()
+
+    async def _call_async(_task_name: str, coro_factory):
+        return await coro_factory()
+
+    breaker.call_async = AsyncMock(side_effect=_call_async)
+    breaker.get_status.return_value = {"task_name": "stripe_api", "state": "closed"}
+    return breaker
+
+
+def _lock_stub(acquired: bool = True) -> MagicMock:
+    lock = MagicMock()
+    lock.acquire_for_task.return_value = acquired
+    lock.release_for_task.return_value = True
+    return lock
 
 
 @pytest.mark.unit
@@ -72,16 +93,11 @@ class TestBillingEndpoints:
             {"STRIPE_SECRET_KEY": "", "STRIPE_PUBLISHABLE_KEY": ""},
             clear=True,
         ):
-            # Patch BOTH potential import paths to be absolutely certain
             with patch(
                 "src.kortana.routers.billing._stripe_secret_key", return_value=None
             ):
-                with patch(
-                    "routers.billing._stripe_secret_key", return_value=None, create=True
-                ):
-                    response = client.get("/api/billing/config")
-                    # Should return 503 when not configured
-                    assert response.status_code == 503
+                response = client.get("/api/billing/config")
+                assert response.status_code == 503
 
     def test_billing_config_endpoint(self, client):
         """Test billing config endpoint"""
@@ -94,11 +110,18 @@ class TestBillingEndpoints:
             },
         ):
             response = client.get("/api/billing/config")
+            assert response.status_code == 200
 
     def test_create_customer_endpoint_structure(self, client):
         """Test customer creation endpoint structure"""
         # Mock Stripe customer creation
-        with patch("stripe.Customer.create") as mock_create:
+        with (
+            patch(
+                "src.kortana.routers.billing._get_billing_breaker",
+                return_value=_passthrough_breaker(),
+            ),
+            patch("stripe.Customer.create") as mock_create,
+        ):
             mock_customer = MagicMock()
             mock_customer.id = "cus_test123"
             mock_customer.email = "test@example.com"
@@ -185,9 +208,10 @@ class TestBillingRouter:
         """Test get_billing_config with valid config"""
         from src.kortana.routers.billing import get_billing_config
 
-        with patch.object(
-            get_settings(), "STRIPE_SECRET_KEY", "sk_test_dummy"
-        ), patch.object(get_settings(), "STRIPE_PUBLISHABLE_KEY", "pk_test_dummy"):
+        with (
+            patch.object(get_settings(), "STRIPE_SECRET_KEY", "sk_test_dummy"),
+            patch.object(get_settings(), "STRIPE_PUBLISHABLE_KEY", "pk_test_dummy"),
+        ):
             result = await get_billing_config()
             assert "publishable_key" in result
             assert "plans" in result
@@ -236,8 +260,13 @@ class TestBillingRouter:
 
         customer_data = CustomerCreate(email="test@example.com", name="Test User")
 
-        with patch("stripe.error.StripeError", MockStripeError), patch(
-            "stripe.Customer.create", side_effect=MockStripeError("Test error")
+        with (
+            patch(
+                "src.kortana.routers.billing._get_billing_breaker",
+                return_value=_passthrough_breaker(),
+            ),
+            patch("src.kortana.routers.billing.StripeError", MockStripeError),
+            patch("stripe.Customer.create", side_effect=MockStripeError("Test error")),
         ):
             with pytest.raises(HTTPException) as exc_info:
                 await create_customer(customer_data)
@@ -267,9 +296,12 @@ class TestBillingRouter:
         """Test get_customer with non-existent customer"""
         from src.kortana.routers.billing import get_customer
 
-        with patch("stripe.error.StripeError", MockStripeError), patch(
-            "stripe.Customer.retrieve",
-            side_effect=MockStripeError("Customer not found"),
+        with (
+            patch("src.kortana.routers.billing.StripeError", MockStripeError),
+            patch(
+                "stripe.Customer.retrieve",
+                side_effect=MockStripeError("Customer not found"),
+            ),
         ):
             with pytest.raises(HTTPException) as exc_info:
                 await get_customer("cus_invalid")
@@ -286,7 +318,13 @@ class TestBillingRouter:
             customer_id="cus_test123", price_id="price_test123", trial_period_days=7
         )
 
-        with patch("stripe.Subscription.create") as mock_create:
+        with (
+            patch(
+                "src.kortana.routers.billing._get_billing_lock",
+                return_value=_lock_stub(),
+            ),
+            patch("stripe.Subscription.create") as mock_create,
+        ):
             mock_subscription = MagicMock()
             mock_subscription.id = "sub_test123"
             mock_subscription.customer = "cus_test123"
@@ -312,8 +350,15 @@ class TestBillingRouter:
             customer_id="cus_test123", price_id="price_test123"
         )
 
-        with patch("stripe.error.StripeError", MockStripeError), patch(
-            "stripe.Subscription.create", side_effect=MockStripeError("Test error")
+        with (
+            patch(
+                "src.kortana.routers.billing._get_billing_lock",
+                return_value=_lock_stub(),
+            ),
+            patch("src.kortana.routers.billing.StripeError", MockStripeError),
+            patch(
+                "stripe.Subscription.create", side_effect=MockStripeError("Test error")
+            ),
         ):
             with pytest.raises(HTTPException) as exc_info:
                 await create_subscription(subscription_data)
@@ -417,9 +462,10 @@ class TestBillingRouter:
 
         mock_request.body = mock_body
 
-        with patch.object(get_settings(), "STRIPE_WEBHOOK_SECRET", "whsec_test"), patch(
-            "stripe.Webhook.construct_event"
-        ) as mock_construct:
+        with (
+            patch.object(get_settings(), "STRIPE_WEBHOOK_SECRET", "whsec_test"),
+            patch("stripe.Webhook.construct_event") as mock_construct,
+        ):
             mock_event = {
                 "type": "customer.subscription.created",
                 "data": {"object": {"id": "sub_test"}},
@@ -447,8 +493,9 @@ class TestBillingRouter:
 
         mock_request.body = mock_body
 
-        with patch.object(get_settings(), "STRIPE_WEBHOOK_SECRET", ""), patch.dict(
-            os.environ, {"STRIPE_WEBHOOK_SECRET": ""}, clear=False
+        with (
+            patch.object(get_settings(), "STRIPE_WEBHOOK_SECRET", ""),
+            patch.dict(os.environ, {"STRIPE_WEBHOOK_SECRET": ""}, clear=False),
         ):
             with pytest.raises(HTTPException) as exc_info:
                 await handle_webhook(mock_request, signature)

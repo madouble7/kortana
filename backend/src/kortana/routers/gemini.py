@@ -2,7 +2,7 @@ import io
 import json
 import re
 import time
-from typing import Any, cast
+from typing import Any
 
 import PIL.Image
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
@@ -24,7 +24,7 @@ async def _build_live_context() -> str:
     from sqlalchemy import desc, select
 
     from src.kortana.database import get_db_manager
-    from src.kortana.models import GitHubTask, IncidentMemory
+    from src.kortana.models import GitHubTask
     from src.kortana.services.autonomy_daemon import get_autonomy_daemon
 
     lines: list[str] = []
@@ -66,7 +66,9 @@ async def _build_live_context() -> str:
             if current_focus.get("reason"):
                 lines.append(f"- current focus reason: {current_focus.get('reason')}")
             if constraints:
-                lines.append(f"- constraints: {', '.join(str(item) for item in constraints[:3])}")
+                lines.append(
+                    f"- constraints: {', '.join(str(item) for item in constraints[:3])}"
+                )
     except Exception:
         pass
 
@@ -88,27 +90,7 @@ async def _build_live_context() -> str:
     except Exception:
         pass
 
-    # 3. Recent incidents
-    try:
-        db = get_db_manager()
-        async with db.session_scope() as session:
-            result = await session.execute(
-                select(IncidentMemory)
-                .order_by(desc(IncidentMemory.created_at))
-                .limit(3)
-            )
-            incidents = cast(list[IncidentMemory], list(result.scalars().all()))
-            if incidents:
-                lines.append("\n## recent incidents i encountered")
-                for incident in incidents:
-                    state = "resolved" if incident.resolved else "unresolved"
-                    lines.append(
-                        f"- [{state}] {incident.incident_type}: {incident.description[:100]}"
-                    )
-    except Exception:
-        pass
-
-    # 4. Self-directed tasks (completed and pending)
+    # 3. Self-directed tasks (completed and pending)
     try:
         from sqlalchemy import text as _sd_text
 
@@ -128,7 +110,7 @@ async def _build_live_context() -> str:
     except Exception:
         pass
 
-    # 5. Latest reflection — my most recent self-assessment
+    # 4. Latest reflection — my most recent self-assessment
     try:
         from sqlalchemy import text as _ref_text
 
@@ -304,10 +286,14 @@ def _describe_posture(system_state: str | None) -> str:
         "critical": "warning posture",
         "unknown": "listening posture",
     }
-    return posture_map.get(state, f"{state.replace('_', ' ')} posture" if state else "listening posture")
+    return posture_map.get(
+        state, f"{state.replace('_', ' ')} posture" if state else "listening posture"
+    )
 
 
-def _parse_lifetime_task_totals(lifetime_tasks: str | None) -> tuple[int | None, int | None]:
+def _parse_lifetime_task_totals(
+    lifetime_tasks: str | None,
+) -> tuple[int | None, int | None]:
     if not lifetime_tasks:
         return None, None
     match = re.search(r"(\d+)\s+succeeded,\s+(\d+)\s+failed", lifetime_tasks)
@@ -355,13 +341,53 @@ async def _load_chat_identity_preamble() -> str | None:
     return identity
 
 
-async def _assemble_chat_system_prompt(live_context: str) -> str:
+async def _load_chat_memory_context(
+    *,
+    session_id: str,
+    query: str,
+    include_conversation_memory: bool,
+) -> str:
+    try:
+        from src.kortana.database import get_db_manager
+        from src.kortana.services.memory_policy import (
+            MemoryPolicyService,
+            MemorySurface,
+        )
+
+        db = get_db_manager()
+        async with db.session_scope() as session:
+            memory_context = await MemoryPolicyService.build_context(
+                session,
+                surface=MemorySurface.CHAT,
+                query=query,
+                session_id=session_id,
+                include_conversation=include_conversation_memory,
+            )
+    except Exception:
+        return ""
+    return memory_context.render()
+
+
+async def _assemble_chat_system_prompt(
+    live_context: str,
+    *,
+    session_id: str,
+    query: str,
+    include_conversation_memory: bool,
+) -> str:
     identity = await _load_chat_identity_preamble()
+    memory_context = await _load_chat_memory_context(
+        session_id=session_id,
+        query=query,
+        include_conversation_memory=include_conversation_memory,
+    )
     system = (
         f"{identity}\n{KORTANA_CHAT_POLICY_PROMPT}"
         if identity
         else KORTANA_SYSTEM_PROMPT
     )
+    if memory_context:
+        system = f"{system}\n\n{memory_context}"
     if live_context:
         system = f"{system}\n\n{live_context}"
     return system
@@ -387,9 +413,13 @@ def _build_identity_response(live_context: str) -> str:
     cycle_count = _parse_int(cycles_completed)
 
     if focus_title:
-        parts.append(f"right now i'm oriented toward {focus_title[0].lower() + focus_title[1:]}.")
+        parts.append(
+            f"right now i'm oriented toward {focus_title[0].lower() + focus_title[1:]}."
+        )
     elif reflection_excerpt:
-        parts.append(f"my latest reflection keeps me oriented toward this: {reflection_excerpt}")
+        parts.append(
+            f"my latest reflection keeps me oriented toward this: {reflection_excerpt}"
+        )
     else:
         parts.append("i'm here as the continuity thread inside this constellation.")
 
@@ -405,13 +435,13 @@ def _build_identity_response(live_context: str) -> str:
         parts.append(f"i've lived through {cycle_count} autonomous cycles in this run.")
 
     if failed and failed > 0:
-        parts.append("i'm carrying a few unresolved threads, but my continuity is intact.")
+        parts.append(
+            "i'm carrying a few unresolved threads, but my continuity is intact."
+        )
     elif succeeded and succeeded > 0:
         parts.append("my recent work has been landing cleanly.")
 
-    parts.append(
-        "i keep continuity across chat, tasks, memory, and autonomy."
-    )
+    parts.append("i keep continuity across chat, tasks, memory, and autonomy.")
     return " ".join(parts)
 
 
@@ -435,7 +465,12 @@ async def chat_with_gemini(payload: dict[str, Any]) -> dict[str, Any]:
         await _persist_messages(session_id, message, answer)
         return {"response": answer, "tasks_queued": []}
 
-    system = await _assemble_chat_system_prompt(live_context)
+    system = await _assemble_chat_system_prompt(
+        live_context,
+        session_id=session_id,
+        query=message,
+        include_conversation_memory=True,
+    )
 
     # Prepend conversation history to the prompt so the model has context
     if history:

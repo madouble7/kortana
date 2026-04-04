@@ -1,0 +1,88 @@
+============================= test session starts =============================
+platform win32 -- Python 3.11.9, pytest-8.4.0, pluggy-1.6.0 -- C:\Program Files\Python311\python.exe
+codspeed: 3.2.0 (disabled, mode: walltime, timer_resolution: 100.0ns)
+cachedir: .pytest_cache
+benchmark: 5.1.0 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: C:\kortana\backend
+configfile: pytest.ini
+plugins: anyio-4.9.0, langsmith-0.4.39, asyncio-0.24.0, benchmark-5.1.0, codspeed-3.2.0, cov-4.1.0, recording-0.13.4, socket-0.7.0, syrupy-4.9.1
+asyncio: mode=Mode.AUTO, default_loop_scope=None
+collecting ... collected 31 items
+
+tests/test_billing.py::TestBillingSchemas::test_customer_create_schema PASSED [  3%]
+tests/test_billing.py::TestBillingSchemas::test_billing_plan_type_enum PASSED [  6%]
+tests/test_billing.py::TestBillingSchemas::test_payment_intent_currency_validation PASSED [  9%]
+tests/test_billing.py::TestBillingSchemas::test_subscription_create_schema PASSED [ 12%]
+tests/test_billing.py::TestBillingEndpoints::test_billing_config_not_configured PASSED [ 16%]
+tests/test_billing.py::TestBillingEndpoints::test_billing_config_endpoint PASSED [ 19%]
+tests/test_billing.py::TestBillingEndpoints::test_create_customer_endpoint_structure PASSED [ 22%]
+tests/test_billing.py::TestBillingEndpoints::test_webhook_missing_signature PASSED [ 25%]
+tests/test_billing.py::TestBillingRouter::test_billing_routes_registered PASSED [ 29%]
+tests/test_billing.py::TestBillingRouter::test_logger_configured PASSED  [ 32%]
+tests/test_billing.py::TestBillingRouter::test_verify_stripe_configured_success PASSED [ 35%]
+tests/test_billing.py::TestBillingRouter::test_verify_stripe_configured_failure PASSED [ 38%]
+tests/test_billing.py::TestBillingRouter::test_get_billing_config_success PASSED [ 41%]
+tests/test_billing.py::TestBillingRouter::test_get_billing_config_not_configured PASSED [ 45%]
+tests/test_billing.py::TestBillingRouter::test_create_customer_success PASSED [ 48%]
+tests/test_billing.py::TestBillingRouter::test_create_customer_stripe_error FAILED [ 51%]
+tests/test_billing.py::TestBillingRouter::test_get_customer_success PASSED [ 54%]
+tests/test_billing.py::TestBillingRouter::test_get_customer_not_found FAILED [ 58%]
+tests/test_billing.py::TestBillingRouter::test_create_subscription_success PASSED [ 61%]
+tests/test_billing.py::TestBillingRouter::test_create_subscription_stripe_error FAILED [ 64%]
+tests/test_billing.py::TestBillingRouter::test_get_subscription_success PASSED [ 67%]
+tests/test_billing.py::TestBillingRouter::test_cancel_subscription_at_period_end PASSED [ 70%]
+tests/test_billing.py::TestBillingRouter::test_cancel_subscription_immediately PASSED [ 74%]
+tests/test_billing.py::TestBillingRouter::test_create_payment_intent_success PASSED [ 77%]
+tests/test_billing.py::TestBillingRouter::test_handle_webhook_success PASSED [ 80%]
+tests/test_billing.py::TestBillingRouter::test_handle_webhook_missing_secret PASSED [ 83%]
+tests/test_billing.py::TestBillingRouter::test_handle_webhook_missing_signature PASSED [ 87%]
+tests/test_billing.py::TestBillingRouter::test_get_billing_info_free_plan PASSED [ 90%]
+tests/test_billing.py::TestBillingRouter::test_get_billing_info_with_subscription PASSED [ 93%]
+tests/test_billing.py::TestBillingRouter::test_get_billing_info_invalid_plan_type PASSED [ 96%]
+tests/test_autonomy.py::TestAutonomyRouter::test_get_task_queue_status PASSED [100%]
+
+================================== FAILURES ===================================
+_____________ TestBillingRouter.test_create_customer_stripe_error _____________
+tests\test_billing.py:264: in test_create_customer_stripe_error
+    assert exc_info.value.status_code == 400
+E   AssertionError: assert 503 == 400
+E    +  where 503 = HTTPException(status_code=503, detail='Billing service temporarily unavailable').status_code
+E    +    where HTTPException(status_code=503, detail='Billing service temporarily unavailable') = <ExceptionInfo HTTPException(status_code=503, detail='Billing service temporarily unavailable') tblen=2>.value
+---------------------------- Captured stdout call -----------------------------
+{"timestamp": "2026-04-04T02:03:36.200617", "level": "ERROR", "logger": "kortana.billing", "message": "Billing system error: Test error", "request_id": "N/A", "module": "billing", "function": "create_customer", "line": 194}
+------------------------------ Captured log call ------------------------------
+ERROR    kortana.billing:billing.py:194 Billing system error: Test error
+________________ TestBillingRouter.test_get_customer_not_found ________________
+tests\test_billing.py:295: in test_get_customer_not_found
+    await get_customer("cus_invalid")
+src\kortana\routers\billing.py:206: in get_customer
+    customer = stripe.Customer.retrieve(customer_id)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Program Files\Python311\Lib\unittest\mock.py:1124: in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Program Files\Python311\Lib\unittest\mock.py:1128: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Program Files\Python311\Lib\unittest\mock.py:1183: in _execute_mock_call
+    raise effect
+E   tests.test_billing.MockStripeError: Customer not found
+___________ TestBillingRouter.test_create_subscription_stripe_error ___________
+tests\test_billing.py:345: in test_create_subscription_stripe_error
+    await create_subscription(subscription_data)
+src\kortana\routers\billing.py:237: in create_subscription
+    subscription = stripe.Subscription.create(
+C:\Program Files\Python311\Lib\unittest\mock.py:1124: in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Program Files\Python311\Lib\unittest\mock.py:1128: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Program Files\Python311\Lib\unittest\mock.py:1183: in _execute_mock_call
+    raise effect
+E   tests.test_billing.MockStripeError: Test error
+=========================== short test summary info ===========================
+FAILED tests/test_billing.py::TestBillingRouter::test_create_customer_stripe_error
+FAILED tests/test_billing.py::TestBillingRouter::test_get_customer_not_found
+FAILED tests/test_billing.py::TestBillingRouter::test_create_subscription_stripe_error
+================= 3 failed, 28 passed, 17 warnings in 15.93s ==================

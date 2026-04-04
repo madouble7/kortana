@@ -5,7 +5,7 @@
     "buildCommand": "pip install -r requirements.txt"
   },
   "deploy": {
-    "startCommand": "uvicorn src.kortana.main:app --host 0.0.0.0 --port $PORT",
+    "startCommand": "sh -c 'alembic upgrade head && uvicorn src.kortana.main:app --host 0.0.0.0 --port $PORT --log-level info'",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3,
     "healthcheckPath": "/api/health",
@@ -14,6 +14,9 @@
   "env": {
     "ENVIRONMENT": "production",
     "PORT": "8000",
-    "LOG_LEVEL": "info"
+    "LOG_LEVEL": "info",
+    "KORTANA_DAEMON_IN_PROCESS": "false",
+    "KORTANA_AUTONOMOUS_MODE": "true",
+    "AUTONOMY_CYCLE_INTERVAL": "120"
   }
 }

@@ -216,6 +216,12 @@ class GoalManager:
             self._goals[g.id] = g
         logger.info(f"Goals: loaded {len(self._goals)} rows from database")
 
+    async def ensure_loaded(self) -> None:
+        """Guarantee the in-memory graph is hydrated before async reads/writes."""
+        if self._goals:
+            return
+        await self.load_from_db()
+
     # ----- CRUD -----
 
     def create(self, **kwargs: Any) -> Goal:
@@ -442,6 +448,7 @@ class GoalManager:
 
             from src.kortana.database import get_db_manager
 
+            await self.ensure_loaded()
             db = get_db_manager()
 
             async with db.session_scope() as session:
