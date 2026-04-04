@@ -79,19 +79,23 @@ def _normalize_database_url(url: str) -> str:
 
 
 def _find_env_file(start_path: Path | None = None) -> Path | None:
-    """Locate the nearest backend or repo-root .env file."""
+    """Locate the preferred .env file, favouring the repo root over backend/.env."""
     current = (start_path or Path(__file__).resolve().parent).resolve()
     for directory in (current, *current.parents):
+        if directory.name == "backend":
+            for filename in _ENV_FILENAMES:
+                repo_candidate = directory.parent / filename
+                if repo_candidate.is_file():
+                    return repo_candidate
+            for filename in _ENV_FILENAMES:
+                backend_candidate = directory / filename
+                if backend_candidate.is_file():
+                    return backend_candidate
+            break
         for filename in _ENV_FILENAMES:
             candidate = directory / filename
             if candidate.is_file():
                 return candidate
-        if directory.name == "backend":
-            for filename in _ENV_FILENAMES:
-                candidate = directory.parent / filename
-                if candidate.is_file():
-                    return candidate
-            break
     return None
 
 
