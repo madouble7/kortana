@@ -1,0 +1,112 @@
+============================= test session starts =============================
+platform win32 -- Python 3.11.9, pytest-8.4.0, pluggy-1.6.0
+codspeed: 3.2.0 (disabled, mode: walltime, timer_resolution: 100.0ns)
+benchmark: 5.1.0 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: C:\kortana\backend
+configfile: pytest.ini
+plugins: anyio-4.9.0, langsmith-0.4.39, asyncio-0.24.0, benchmark-5.1.0, codspeed-3.2.0, cov-4.1.0, recording-0.13.4, socket-0.7.0, syrupy-4.9.1
+asyncio: mode=Mode.AUTO, default_loop_scope=None
+collected 1057 items
+
+tests\integration\test_autonomous_systems.py .............               [  1%]
+tests\integration\test_full_system.py ....                               [  1%]
+tests\test_ai_orchestrator.py ....                                       [  1%]
+tests\test_always_on.py ..........................................       [  5%]
+tests\test_always_on_monitor.py .....................                    [  7%]
+tests\test_always_on_monitor_dedup.py ..                                 [  8%]
+tests\test_auth.py .............                                         [  9%]
+tests\test_auth_extended.py ..............                               [ 10%]
+tests\test_auth_router.py ........................                       [ 12%]
+tests\test_autonomous_monitor.py ....                                    [ 13%]
+tests\test_autonomy.py ................................................. [ 17%]
+.......                                                                  [ 18%]
+tests\test_autonomy_benchmark.py ...........s................            [ 21%]
+tests\test_autonomy_code_patcher.py ........                             [ 22%]
+tests\test_autonomy_daemon.py ......................................     [ 25%]
+tests\test_autonomy_ui_patcher.py .......                                [ 26%]
+tests\test_billing.py ..............................                     [ 29%]
+tests\test_cache.py ................................................     [ 33%]
+tests\test_code_reviewer.py ..........................                   [ 36%]
+tests\test_config_security.py .......                                    [ 36%]
+tests\test_consciousness.py ..................................           [ 40%]
+tests\test_cost_optimized_model_router.py F.F..                          [ 40%]
+tests\test_daemon_router.py ....                                         [ 40%]
+tests\test_database_url_normalization.py ....                            [ 41%]
+tests\test_exceptions.py .......................                         [ 43%]
+tests\test_gemini_router.py ..............................               [ 46%]
+tests\test_github_automation.py ....                                     [ 46%]
+tests\test_github_autonomy_isolation.py .............                    [ 47%]
+tests\test_github_task_migration_schema.py .                             [ 47%]
+tests\test_github_webhook.py ....                                        [ 48%]
+tests\test_goal_manager.py ......                                        [ 48%]
+tests\test_health.py ........                                            [ 49%]
+tests\test_health_checker.py ..............................              [ 52%]
+tests\test_hop_engine.py ..................                              [ 54%]
+tests\test_init_db.py ...                                                [ 54%]
+tests\test_knowledge.py ..................................               [ 57%]
+tests\test_live_exerciser.py ....                                        [ 58%]
+tests\test_llm_router.py F..FF.F.F                                       [ 58%]
+tests\test_local_backlog_service.py ....                                 [ 59%]
+tests\test_main.py .............                                         [ 60%]
+tests\test_memory_policy.py ....                                         [ 60%]
+tests\test_metrics.py ...........................                        [ 63%]
+tests\test_model_lane_policy.py ....                                     [ 63%]
+tests\test_model_usage_telemetry.py .                                    [ 63%]
+tests\test_multi_model_ai.py ..............................              [ 66%]
+tests\test_operator_directives.py ........                               [ 67%]
+tests\test_optimization_modules.py .................                     [ 69%]
+tests\test_orchestrator.py ................................              [ 72%]
+tests\test_patch_planner.py .................                            [ 73%]
+tests\test_patch_validator.py ..........                                 [ 74%]
+tests\test_pr_creation.py .....................                          [ 76%]
+tests\test_prompt_assembly.py ..........                                 [ 77%]
+tests\test_provider_model_defaults.py .....                              [ 78%]
+tests\test_quick_routers.py ..................                           [ 79%]
+tests\test_rate_limit.py ........................................        [ 83%]
+tests\test_rclone_router.py .................                            [ 85%]
+tests\test_repository_boundary_service.py .....                          [ 85%]
+tests\test_route_prefix_regression.py .                                  [ 85%]
+tests\test_runtime_clients.py ......                                     [ 86%]
+tests\test_schemas.py .................                                  [ 87%]
+tests\test_secrets_validator.py ...F.FFF..F.....F.........               [ 90%]
+tests\test_security_integration.py ....                                  [ 90%]
+tests\test_security_middleware.py .......................                [ 92%]
+tests\test_self_awareness_runtime.py ..                                  [ 93%]
+tests\test_setup_migrations.py ...                                       [ 93%]
+tests\test_songwriting_service.py .............................          [ 96%]
+tests\test_task_approval_service.py ............                         [ 97%]
+tests\test_task_executability_service.py ..                              [ 97%]
+tests\test_tasks.py ................                                     [ 99%]
+tests\test_vector_alpha_branch_service.py ...                            [ 99%]
+tests\test_workspace_bridge.py .......                                   [100%]
+
+================================== FAILURES ===================================
+C:\kortana\backend\tests\test_cost_optimized_model_router.py:32: AssertionError: assert 'experimental' == 'core'
+C:\kortana\backend\tests\test_cost_optimized_model_router.py:56: AssertionError: assert 'experimental' == 'core'
+C:\kortana\backend\tests\test_llm_router.py:32: assert None is not None
+C:\kortana\backend\src\kortana\llm_router.py:183: ValueError: No LLM models available
+C:\kortana\backend\src\kortana\llm_router.py:183: ValueError: No LLM models available
+C:\kortana\backend\tests\test_llm_router.py:102: AssertionError: assert 'gemini-2.0-flash' in {'claude-3-5-sonnet-20241022': ModelConfig(provider=<ModelProvider.ANTHROPIC: 'anthropic'>, model_name='claude-3-5-son...ey='test_groq_key', base_url=None, timeout=15, max_tokens=2048, temperature=0.7, top_p=0.9, enabled=True, lane='core')}
+C:\kortana\backend\src\kortana\llm_router.py:183: ValueError: No LLM models available
+C:\kortana\backend\tests\test_secrets_validator.py:52: AssertionError: assert ('failed' in 'gemini_api_key not configured' or 'invalid' in 'gemini_api_key not configured')
+C:\kortana\backend\tests\test_secrets_validator.py:71: assert False is True
+C:\kortana\backend\tests\test_secrets_validator.py:80: AssertionError: assert '401' in 'GITHUB_TOKEN not configured'
+C:\kortana\backend\tests\test_secrets_validator.py:86: AssertionError: assert 'failed' in 'github_token not configured'
+C:\kortana\backend\tests\test_secrets_validator.py:127: AssertionError: assert 'failed' in 'openai_api_key not configured'
+C:\kortana\backend\tests\test_secrets_validator.py:178: assert False is True
+=========================== short test summary info ===========================
+SKIPPED [1] tests\test_autonomy_benchmark.py:213: Only relevant for patchable scenarios
+FAILED tests/test_cost_optimized_model_router.py::test_cost_router_skips_quarantined_openai_model
+FAILED tests/test_cost_optimized_model_router.py::test_cost_report_includes_model_metadata
+FAILED tests/test_llm_router.py::test_llm_router_initialization - assert None...
+FAILED tests/test_llm_router.py::test_generate_with_fallback - ValueError: No...
+FAILED tests/test_llm_router.py::test_generate_all_models_fail - ValueError: ...
+FAILED tests/test_llm_router.py::test_quarantined_models_are_filtered_from_core_lane
+FAILED tests/test_llm_router.py::test_generate_records_runtime_usage - ValueE...
+FAILED tests/test_secrets_validator.py::TestSecretsValidatorGemini::test_validate_gemini_api_error
+FAILED tests/test_secrets_validator.py::TestSecretsValidatorGitHub::test_validate_github_success
+FAILED tests/test_secrets_validator.py::TestSecretsValidatorGitHub::test_validate_github_invalid_token
+FAILED tests/test_secrets_validator.py::TestSecretsValidatorGitHub::test_validate_github_network_error
+FAILED tests/test_secrets_validator.py::TestSecretsValidatorOpenAI::test_validate_openai_api_error
+FAILED tests/test_secrets_validator.py::TestSecretsValidatorDiscord::test_validate_discord_success
+==== 13 failed, 1043 passed, 1 skipped, 121 warnings in 402.26s (0:06:42) =====
