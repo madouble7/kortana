@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.pool import AsyncAdaptedQueuePool, StaticPool
 
-from src.kortana.config import get_settings
+from src.kortana import config as config_module
 from src.kortana.logger import get_logger
 
 logger = get_logger(__name__)
@@ -27,8 +27,9 @@ class DatabaseConfig:
     """Database configuration"""
 
     def __init__(self):  # type: ignore[no-untyped-def]
-        settings = get_settings()
-        self._base_url = settings.DATABASE_URL
+        settings = config_module.get_settings()
+        self.environment = settings.ENVIRONMENT
+        self._base_url: str = str(settings.DATABASE_URL)
         self.is_sqlite = "sqlite" in self._base_url.lower()
         self.host = settings.DB_HOST
         self.port = settings.DB_PORT
@@ -42,7 +43,7 @@ class DatabaseConfig:
 
     def get_url(self) -> str:
         """Get async database URL from centralized settings"""
-        url = get_settings().DATABASE_URL
+        url = str(self._base_url)
         if self.is_sqlite:
             if "aiosqlite" in url:
                 return url
@@ -51,10 +52,29 @@ class DatabaseConfig:
 
     def get_sync_url(self) -> str:
         """Get sync database URL (for migrations)"""
-        url = get_settings().DATABASE_URL
+        url = str(self._base_url)
         if "sqlite" in url:
             return url.replace("aiosqlite", "sqlite").replace("sqlite+sqlite", "sqlite")
         return url.replace("+asyncpg", "")
+
+    def get_sqlite_fallback_url(self) -> str:
+        """Get a writable SQLite URL for local/degraded development mode."""
+        if os.path.isdir("/app/tmp"):
+            return "sqlite+aiosqlite:////app/tmp/kortana.db"
+        return "sqlite+aiosqlite:///./kortana.db"
+
+    def can_fallback_to_sqlite(self) -> bool:
+        """Only allow automatic fallback outside production."""
+        if self.is_sqlite:
+            return False
+        if self.environment == "production":
+            return False
+        return os.getenv("KORTANA_DEV_DB_FALLBACK", "true").lower() == "true"
+
+    def activate_sqlite_fallback(self) -> None:
+        """Switch the active configuration to SQLite fallback."""
+        self._base_url = self.get_sqlite_fallback_url()
+        self.is_sqlite = True
 
 
 class DatabaseManager:
@@ -66,97 +86,97 @@ class DatabaseManager:
         self.session_factory: async_sessionmaker | None = None
         self._connected = False
 
+    def _create_engine(self) -> AsyncEngine:
+        """Create an engine for the current config."""
+        if self.config.is_sqlite:
+            return create_async_engine(
+                self.config.get_url(),
+                echo=self.config.echo,
+                poolclass=StaticPool,
+                connect_args={"check_same_thread": False},
+                future=True,
+            )
+        return create_async_engine(
+            self.config.get_url(),
+            echo=self.config.echo,
+            poolclass=AsyncAdaptedQueuePool,
+            pool_size=self.config.pool_size,
+            max_overflow=self.config.max_overflow,
+            pool_timeout=self.config.pool_timeout,
+            pool_pre_ping=True,
+            future=True,
+        )
+
+    def _create_session_factory(self) -> async_sessionmaker:
+        """Create a session factory for the current engine."""
+        if self.engine is None:
+            raise RuntimeError("Database engine is not initialized")
+        return async_sessionmaker(
+            self.engine,
+            class_=AsyncSession,
+            expire_on_commit=False,
+            autoflush=False,
+        )
+
+    async def _verify_schema_and_connection(self) -> None:
+        """Create tables and verify a working connection."""
+        if self.engine is None:
+            raise RuntimeError("Database engine is not initialized")
+
+        from src.kortana.models import Base
+
+        async with self.engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+        async with self.engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+            await conn.commit()
+
+    async def _reset_engine_state(self) -> None:
+        """Dispose any partially initialized state."""
+        if self.engine is not None:
+            await self.engine.dispose()
+        self.engine = None
+        self.session_factory = None
+        self._connected = False
+
+    async def _initialize_current_config(self) -> None:
+        """Initialize engine/session objects for the current config."""
+        self.engine = self._create_engine()
+        self.session_factory = self._create_session_factory()
+        await self._verify_schema_and_connection()
+        self._connected = True
+        if self.config.is_sqlite:
+            logger.info("Database connected: SQLite (async, StaticPool)")
+        else:
+            logger.info(
+                f"Database connected: {self.config.host}:{self.config.port}/{self.config.name} "
+                f"(pool: {self.config.pool_size})"
+            )
+
     async def initialize(self):  # type: ignore[no-untyped-def]
         """Initialize database engine and session factory"""
         if self.engine:
             return
 
         try:
-            # Create async engine with appropriate pooling
-            if self.config.is_sqlite:
-                self.engine = create_async_engine(
-                    self.config.get_url(),
-                    echo=self.config.echo,
-                    poolclass=StaticPool,
-                    connect_args={"check_same_thread": False},
-                    future=True,
-                )
-            else:
-                self.engine = create_async_engine(
-                    self.config.get_url(),
-                    echo=self.config.echo,
-                    poolclass=AsyncAdaptedQueuePool,
-                    pool_size=self.config.pool_size,
-                    max_overflow=self.config.max_overflow,
-                    pool_timeout=self.config.pool_timeout,
-                    pool_pre_ping=True,
-                    future=True,
-                )
-
-            # Create session factory
-            self.session_factory = async_sessionmaker(
-                self.engine,
-                class_=AsyncSession,
-                expire_on_commit=False,
-                autoflush=False,
-            )
-
-            # Auto-create tables (checkfirst=True is the default, safe for all DBs)
-            from src.kortana.models import Base
-
-            async with self.engine.begin() as conn:
-                await conn.run_sync(Base.metadata.create_all)
-
-            # Test connection
-            async with self.engine.connect() as conn:
-                await conn.execute(text("SELECT 1"))
-                await conn.commit()
-
-            self._connected = True
-            if self.config.is_sqlite:
-                logger.info("Database connected: SQLite (async, StaticPool)")
-            else:
-                logger.info(
-                    f"Database connected: {self.config.host}:{self.config.port}/{self.config.name} "
-                    f"(pool: {self.config.pool_size})"
-                )
-
+            await self._initialize_current_config()
         except Exception as e:
-            logger.error(f"Database initialization failed: {e}")
-            settings = get_settings()
-            if not self.config.is_sqlite and settings.ENVIRONMENT != "production":
+            if self.config.can_fallback_to_sqlite():
+                primary_url = self.config.get_url()
                 logger.warning(
-                    "Postgres unreachable in development — falling back to SQLite"
+                    "Primary database unavailable; falling back to SQLite for %s: %s",
+                    primary_url,
+                    e,
                 )
-                if self.engine is not None:
-                    await self.engine.dispose()
-                sqlite_url = "sqlite+aiosqlite:///./kortana.db"
-                self.engine = create_async_engine(
-                    sqlite_url,
-                    echo=self.config.echo,
-                    poolclass=StaticPool,
-                    connect_args={"check_same_thread": False},
-                    future=True,
-                )
-                self.config._base_url = sqlite_url
-                self.config.is_sqlite = True
-                self.session_factory = async_sessionmaker(
-                    self.engine,
-                    class_=AsyncSession,
-                    expire_on_commit=False,
-                    autoflush=False,
-                )
-                from src.kortana.models import Base
+                await self._reset_engine_state()
+                self.config.activate_sqlite_fallback()
+                await self._initialize_current_config()
+                return
 
-                async with self.engine.begin() as conn:
-                    await conn.run_sync(Base.metadata.create_all)
-                async with self.engine.connect() as conn:
-                    await conn.execute(text("SELECT 1"))
-                    await conn.commit()
-                self._connected = True
-                logger.info("Database connected: SQLite fallback (async, StaticPool)")
-            else:
-                raise
+            logger.error(f"Database initialization failed: {e}")
+            await self._reset_engine_state()
+            raise
 
     async def get_session(self) -> AsyncGenerator[AsyncSession, None]:
         """Get async database session"""

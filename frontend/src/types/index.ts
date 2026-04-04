@@ -159,4 +159,7 @@ export interface ApiError {
   message: string;
   status: number;
   details?: unknown;
+  retryAfterSeconds?: number;
+  isRateLimited?: boolean;
+  isOffline?: boolean;
 }
