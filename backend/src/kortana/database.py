@@ -123,7 +123,19 @@ class DatabaseManager:
 
         except Exception as e:
             logger.error(f"Database initialization failed: {e}")
-            raise
+            settings = get_settings()
+            if not self.config.is_sqlite and settings.ENVIRONMENT != "production":
+                logger.warning(
+                    "Postgres unreachable in development — falling back to SQLite"
+                )
+                self.engine = None
+                self.session_factory = None
+                self._connected = False
+                self.config._base_url = "sqlite+aiosqlite:///./kortana.db"
+                self.config.is_sqlite = True
+                await self.initialize()
+            else:
+                raise
 
     async def get_session(self) -> AsyncGenerator[AsyncSession, None]:
         """Get async database session"""
