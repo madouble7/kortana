@@ -10,7 +10,16 @@ from pathlib import Path
 from secrets import token_urlsafe
 from typing import Any
 
-from dotenv import load_dotenv
+try:
+    from dotenv import dotenv_values, load_dotenv
+except ModuleNotFoundError:  # pragma: no cover - exercised in packaging/runtime smoke tests
+    def load_dotenv(*_args: object, **_kwargs: object) -> bool:
+        """No-op fallback when python-dotenv is unavailable at runtime."""
+        return False
+
+    def dotenv_values(*_args: object, **_kwargs: object) -> dict[str, str | None]:
+        """Return no .env values when python-dotenv is unavailable."""
+        return {}
 
 _ENV_FILENAMES = (".env",)
 _PLACEHOLDER_VALUES = {
@@ -40,12 +49,31 @@ def _normalize_env_value(value: str | None) -> str | None:
 def _is_placeholder(value: str | None) -> bool:
     """Return True when a value is blank or matches a known placeholder."""
     normalized = _normalize_env_value(value)
-    return normalized is None or normalized in _PLACEHOLDER_VALUES
+    return (
+        normalized is None
+        or normalized in _PLACEHOLDER_VALUES
+        or (
+            normalized.startswith("<")
+            and normalized.endswith(">")
+            and "your-" in normalized.lower()
+        )
+    )
 
 
 def _get_env(name: str, default: str | None = None) -> str | None:
-    """Read an environment variable, treating blank strings as unset."""
-    return _normalize_env_value(os.getenv(name)) or default
+    """Read an environment variable with placeholder-aware .env fallback."""
+    env_value = _normalize_env_value(os.getenv(name))
+    dotenv_value = _normalize_env_value(_DOTENV_VALUES.get(name))
+
+    if env_value and not _is_placeholder(env_value):
+        return env_value
+    if dotenv_value and not _is_placeholder(dotenv_value):
+        return dotenv_value
+    if env_value is not None:
+        return env_value
+    if dotenv_value is not None:
+        return dotenv_value
+    return default
 
 
 def _split_csv_env(name: str, default: str = "") -> list[str]:
@@ -100,9 +128,14 @@ def _find_env_file(start_path: Path | None = None) -> Path | None:
 
 
 _LOADED_ENV_FILE: Path | None = None
+_DOTENV_VALUES: dict[str, str | None] = {}
 if (_get_env("KORTANA_SKIP_DOTENV") or "false").lower() != "true":
     _LOADED_ENV_FILE = _find_env_file()
     if _LOADED_ENV_FILE is not None:
+        _DOTENV_VALUES = {
+            key: _normalize_env_value(value)
+            for key, value in dotenv_values(_LOADED_ENV_FILE).items()
+        }
         load_dotenv(_LOADED_ENV_FILE, override=False)
 
 
@@ -369,8 +402,8 @@ class Settings:
             # Check if any of the fallback keys are available
             value = None
             for fb_key in fallbacks:
-                value = os.getenv(fb_key)
-                if value and value.strip() != "":
+                value = _get_env(fb_key)
+                if value and value.strip() != "" and not _is_placeholder(value):
                     break
 
             if not value:
