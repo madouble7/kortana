@@ -29,6 +29,7 @@ from src.kortana.model_lane_policy import (
     model_allowed,
 )
 from src.kortana.model_usage_telemetry import get_model_usage_telemetry
+from src.kortana.openai_responses import async_generate_text
 from src.kortana.provider_model_defaults import AI_CONSENSUS_DEFAULTS
 
 logger = get_logger(__name__)
@@ -280,8 +281,19 @@ class AIConsensusEngine:
             )
             return resp.text or ""
 
+        if name == "openai":
+            text_out, _, _ = await async_generate_text(
+                prov["client"],
+                model_name=str(prov["model"]),
+                prompt=prompt,
+                system=system,
+                max_output_tokens=max_tokens,
+                timeout=30.0,
+            )
+            return text_out
+
         # OpenAI-compatible (openai / groq / openrouter)
-        if name in ("openai", "groq", "openrouter"):
+        if name in ("groq", "openrouter"):
             messages: list[dict[str, str]] = []
             if system:
                 messages.append({"role": "system", "content": system})

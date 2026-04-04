@@ -266,10 +266,9 @@ class TestMultiModelAIServiceAnalyzeText:
         }
         mock_openai_client = MagicMock()
         mock_response = MagicMock()
-        mock_response.choices = [
-            MagicMock(message=MagicMock(content="OpenAI response"))
-        ]
-        mock_openai_client.chat.completions.create.return_value = mock_response
+        mock_response.output_text = "OpenAI response"
+        mock_response.usage = MagicMock(input_tokens=5, output_tokens=3)
+        mock_openai_client.responses.create.return_value = mock_response
         service.providers["openai"] = {
             "client": mock_openai_client,
             "model": MULTI_MODEL_DEFAULTS.openai,
@@ -361,10 +360,9 @@ class TestMultiModelAICallProvider:
 
         mock_client = MagicMock()
         mock_response = MagicMock()
-        mock_response.choices = [
-            MagicMock(message=MagicMock(content="OpenAI response"))
-        ]
-        mock_client.chat.completions.create.return_value = mock_response
+        mock_response.output_text = "OpenAI response"
+        mock_response.usage = MagicMock(input_tokens=4, output_tokens=2)
+        mock_client.responses.create.return_value = mock_response
 
         service.providers["openai"] = {
             "client": mock_client,

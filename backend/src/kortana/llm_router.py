@@ -18,6 +18,7 @@ from src.kortana.model_lane_policy import (
     model_allowed,
 )
 from src.kortana.model_usage_telemetry import get_model_usage_telemetry
+from src.kortana.openai_responses import async_generate_text
 from src.kortana.provider_model_defaults import (
     LLM_ROUTER_DEFAULTS,
     LLM_ROUTER_FALLBACK_ORDER,
@@ -316,22 +317,27 @@ class LLMRouter:
             from openai import AsyncOpenAI
 
             client = AsyncOpenAI(api_key=config.api_key)
-
-            response = await client.chat.completions.create(
-                model=config.model_name,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=temperature,
-                max_tokens=max_tokens,
-                timeout=config.timeout,
-            )
+            try:
+                content, input_tokens, output_tokens = await async_generate_text(
+                    client,
+                    model_name=config.model_name,
+                    prompt=prompt,
+                    max_output_tokens=max_tokens,
+                    temperature=temperature,
+                    timeout=float(config.timeout),
+                )
+            finally:
+                await client.close()
 
             return LLMResponse(
-                content=response.choices[0].message.content or "",
+                content=content,
                 model=config.model_name,
                 provider=config.provider.value,
-                tokens_used=response.usage.total_tokens
-                if response.usage is not None
-                else None,
+                tokens_used=(
+                    input_tokens + output_tokens
+                    if input_tokens is not None and output_tokens is not None
+                    else None
+                ),
                 temperature=temperature,
             )
         except Exception as e:
