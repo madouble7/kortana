@@ -23,6 +23,11 @@ from src.kortana.provider_model_defaults import (
 class TestAIConsensusRuntime:
     def test_openai_init_uses_explicit_httpx_client(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        monkeypatch.setenv("KORTANA_MODEL_USAGE_LANE", "core")
+        monkeypatch.setenv("KORTANA_CORE_MODELS", AI_CONSENSUS_DEFAULTS.openai)
+        monkeypatch.delenv("KORTANA_EXPERIMENTAL_MODELS", raising=False)
+        monkeypatch.delenv("KORTANA_QUARANTINE_MODELS", raising=False)
+        get_settings.cache_clear()
 
         mock_openai = MagicMock()
         with patch.dict("sys.modules", {"openai": mock_openai}):

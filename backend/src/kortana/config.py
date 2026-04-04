@@ -137,9 +137,7 @@ class Settings:
     KORTANA_EXPERIMENTAL_MODELS: list[str] = _split_csv_env(
         "KORTANA_EXPERIMENTAL_MODELS"
     )
-    KORTANA_QUARANTINE_MODELS: list[str] = _split_csv_env(
-        "KORTANA_QUARANTINE_MODELS"
-    )
+    KORTANA_QUARANTINE_MODELS: list[str] = _split_csv_env("KORTANA_QUARANTINE_MODELS")
 
     # Vector Database
     PINECONE_API_KEY: str | None = _get_env("PINECONE_API_KEY")
@@ -235,6 +233,7 @@ class Settings:
         # Use /app/tmp so the kortana non-root user can always write the file.
         # Falls back to relative path on local dev where the cwd is writable.
         import os as _os
+
         if _os.path.isdir("/app/tmp"):
             return "sqlite+aiosqlite:////app/tmp/kortana.db"
         return "sqlite+aiosqlite:///./kortana.db"

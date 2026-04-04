@@ -13,7 +13,7 @@ Strategy:
 2. OpenRouter for fallback/load balancing (cost-aware routing)
 3. Gemini for quota-dependent tasks (budget tracking)
 4. Claude for decision verification (critical path only)
-5. OpenAI as last resort (most expensive)
+5. OpenAI fast lane for low-stakes summaries and lightweight analysis
 """
 
 from __future__ import annotations
@@ -113,7 +113,7 @@ class CostOptimizedModelRouter:
     - FALLBACK 1: OpenRouter (cost-efficient)
     - FALLBACK 2: Gemini (free tier, quota-limited)
     - FALLBACK 3: Claude (critical decisions only)
-    - FALLBACK 4: OpenAI (expensive, use sparingly)
+    - FALLBACK 4: OpenAI fast lane (paid, low-latency worker path)
     """
 
     def __init__(self) -> None:
@@ -212,22 +212,22 @@ class CostOptimizedModelRouter:
             )
             logger.info("✅ Claude provider initialized (premium, use sparingly)")
 
-        # OpenAI: Expensive, fallback only
+        # OpenAI: Fast paid worker lane for lightweight tasks
         if openai_key := os.getenv("OPENAI_API_KEY"):
             self._register_provider(
                 ModelConfig(
                     provider=ModelProvider.OPENAI,
                     api_key=openai_key,
-                    model_name=COST_ROUTER_DEFAULTS.openai,  # Fast, cheaper than full GPT-4
-                    cost_per_1k_input=0.00015,
-                    cost_per_1k_output=0.0006,
+                    model_name=COST_ROUTER_DEFAULTS.openai,
+                    cost_per_1k_input=0.0002,
+                    cost_per_1k_output=0.00125,
                     quota_limit=None,
                     max_tokens=4096,
-                    priority=5,  # Lowest priority (most expensive)
+                    priority=4,
                     is_free_tier=False,
                 )
             )
-            logger.info("✅ OpenAI provider initialized (expensive, last resort)")
+            logger.info("✅ OpenAI provider initialized (fast paid worker lane)")
 
     def select_for_task(
         self, task_type: TaskType, budget_limit: float = 0.01
@@ -251,6 +251,7 @@ class CostOptimizedModelRouter:
             ],
             TaskType.ANALYSIS: [
                 ModelProvider.GROQ,
+                ModelProvider.OPENAI,
                 ModelProvider.GEMINI,
                 ModelProvider.OPENROUTER,
             ],
@@ -270,10 +271,12 @@ class CostOptimizedModelRouter:
             ],
             TaskType.SUMMARY: [
                 ModelProvider.GROQ,
+                ModelProvider.OPENAI,
                 ModelProvider.GEMINI,
             ],
             TaskType.RETRIEVAL: [
                 ModelProvider.GROQ,
+                ModelProvider.OPENAI,
                 ModelProvider.GEMINI,
             ],
             TaskType.CORRECTION: [
