@@ -41,6 +41,12 @@ interface ChatNotice {
 
 function toChatNotice(error: unknown, fallback: string): ChatNotice {
   const apiError = error as Partial<ApiError> | undefined;
+  if (apiError?.isAborted) {
+    return {
+      tone: 'info',
+      message: 'Generation stopped.',
+    };
+  }
   if (apiError?.isRateLimited) {
     return {
       tone: 'warning',
@@ -69,6 +75,11 @@ export default function Chat() {
   const [sessionId] = useState(() => getSessionId());
   const [notice, setNotice] = useState<ChatNotice | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const deltaBufferRef = useRef('');
+  const deltaTargetRef = useRef<string | null>(null);
+  const deltaFrameRef = useRef<number | null>(null);
+  const retryPromptRef = useRef<string | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -78,6 +89,38 @@ export default function Chat() {
     setMessages((prev) => prev.map((message) => (
       message.id === id ? updater(message) : message
     )));
+  };
+
+  const flushDeltaBuffer = () => {
+    const targetId = deltaTargetRef.current;
+    const buffered = deltaBufferRef.current;
+    if (!targetId || !buffered) {
+      deltaFrameRef.current = null;
+      return;
+    }
+
+    deltaBufferRef.current = '';
+    deltaFrameRef.current = null;
+    updateMessage(targetId, (message) => ({
+      ...message,
+      content: message.content + buffered,
+    }));
+  };
+
+  const queueDelta = (messageId: string, delta: string) => {
+    deltaTargetRef.current = messageId;
+    deltaBufferRef.current += delta;
+    if (deltaFrameRef.current !== null) {
+      return;
+    }
+    deltaFrameRef.current = window.requestAnimationFrame(flushDeltaBuffer);
+  };
+
+  const flushDeltaIfNeeded = () => {
+    if (deltaFrameRef.current !== null) {
+      window.cancelAnimationFrame(deltaFrameRef.current);
+    }
+    flushDeltaBuffer();
   };
 
   // Load persisted history from DB on mount
@@ -111,15 +154,24 @@ export default function Chat() {
     scrollToBottom();
   }, [messages]);
 
-  const sendMessage = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || loading) return;
+  useEffect(() => {
+    return () => {
+      if (deltaFrameRef.current !== null) {
+        window.cancelAnimationFrame(deltaFrameRef.current);
+      }
+      abortControllerRef.current?.abort();
+    };
+  }, []);
+
+  const sendPrompt = async (promptText: string) => {
+    if (!promptText.trim() || loading) return;
     setNotice(null);
+    retryPromptRef.current = null;
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: input,
+      content: promptText,
       timestamp: new Date().toISOString(),
     };
 
@@ -141,8 +193,10 @@ export default function Chat() {
 
     try {
       const history = buildChatHistory(messages);
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
       await api.sendChatMessageStream(
-        input,
+        promptText,
         history,
         conversationId || undefined,
         sessionId,
@@ -164,12 +218,10 @@ export default function Chat() {
             }));
           },
           onDelta: (delta) => {
-            updateMessage(assistantMessageId, (message) => ({
-              ...message,
-              content: message.content + delta,
-            }));
+            queueDelta(assistantMessageId, delta);
           },
           onFinal: (response) => {
+            flushDeltaIfNeeded();
             if (response.conversation_id && !conversationId) {
               setConversationId(response.conversation_id);
             }
@@ -189,6 +241,8 @@ export default function Chat() {
             }));
           },
           onError: (streamError) => {
+            flushDeltaIfNeeded();
+            retryPromptRef.current = promptText;
             setNotice({ tone: 'error', message: streamError });
             updateMessage(assistantMessageId, (message) => ({
               ...message,
@@ -200,20 +254,54 @@ export default function Chat() {
               phase: undefined,
             }));
           },
-        }
+        },
+        { signal: abortController.signal }
       );
     } catch (error: unknown) {
+      flushDeltaIfNeeded();
+      const apiError = error as Partial<ApiError> | undefined;
+      retryPromptRef.current = promptText;
       setNotice(toChatNotice(error, 'Failed to send chat message.'));
-      updateMessage(assistantMessageId, (message) => ({
-        ...message,
-        role: 'system',
-        content: `Error: ${error instanceof Error ? error.message : 'Failed to send message'}`,
-        streaming: false,
-        phase: undefined,
-      }));
+      updateMessage(assistantMessageId, (message) => {
+        if (apiError?.isAborted) {
+          return {
+            ...message,
+            content: message.content || 'Generation stopped.',
+            streaming: false,
+          };
+        }
+        return {
+          ...message,
+          role: 'system',
+          content: `Error: ${error instanceof Error ? error.message : 'Failed to send message'}`,
+          streaming: false,
+          phase: undefined,
+        };
+      });
     } finally {
+      abortControllerRef.current = null;
       setLoading(false);
     }
+  };
+
+  const sendMessage = async (e: FormEvent) => {
+    e.preventDefault();
+    const promptText = input.trim();
+    if (!promptText || loading) return;
+    setInput('');
+    await sendPrompt(promptText);
+  };
+
+  const stopStreaming = () => {
+    abortControllerRef.current?.abort();
+  };
+
+  const retryLastPrompt = async () => {
+    const promptText = retryPromptRef.current;
+    if (!promptText || loading) {
+      return;
+    }
+    await sendPrompt(promptText);
   };
 
   return (
@@ -253,6 +341,17 @@ export default function Chat() {
           </button>
         </div>
       )}
+      {retryPromptRef.current && !loading ? (
+        <div className="mx-6 mt-3 flex justify-end">
+          <button
+            type="button"
+            onClick={retryLastPrompt}
+            className="text-xs font-medium text-indigo-300 hover:text-indigo-200 transition-colors"
+          >
+            Retry Last Prompt
+          </button>
+        </div>
+      ) : null}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
@@ -361,17 +460,23 @@ export default function Chat() {
             className="flex-1 bg-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             disabled={loading}
           />
-          <button
-            type="submit"
-            disabled={!input.trim() || loading}
-            className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-lg px-6 py-3 transition-colors"
-          >
-            {loading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
+          {loading ? (
+            <button
+              type="button"
+              onClick={stopStreaming}
+              className="bg-red-600 hover:bg-red-700 text-white rounded-lg px-6 py-3 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={!input.trim()}
+              className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-lg px-6 py-3 transition-colors"
+            >
               <Send className="w-5 h-5" />
-            )}
-          </button>
+            </button>
+          )}
         </div>
       </form>
     </div>
