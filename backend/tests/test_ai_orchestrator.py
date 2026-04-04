@@ -23,6 +23,8 @@ def test_orchestrator_status(client):
     assert "status" in data
     assert "logic_available" in data
     assert "prompts_available" in data
+    assert "active_model_lane" in data
+    assert "model_usage_lane" in data
 
 
 def test_handshake_standard(client):

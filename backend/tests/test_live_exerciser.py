@@ -67,6 +67,8 @@ class TestLiveExerciserRouter:
         data = resp.json()
         assert "checks" in data
         assert "status" in data
+        assert "model_usage_lane" in data
+        assert "models" in data
         # Should have all key checks
         checks = data["checks"]
         assert "postgresql" in checks
@@ -93,3 +95,4 @@ class TestLiveExerciserRouter:
         assert "services_ok" in summary
         assert "services_total" in summary
         assert "total_ms" in summary
+        assert "model_usage_lane" in summary

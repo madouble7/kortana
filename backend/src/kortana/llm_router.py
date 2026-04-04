@@ -12,6 +12,16 @@ from pydantic import BaseModel
 
 from src.kortana.config import get_settings
 from src.kortana.logger import log_error, log_request
+from src.kortana.model_lane_policy import (
+    describe_model_lane,
+    get_active_model_lane,
+    model_allowed,
+)
+from src.kortana.model_usage_telemetry import get_model_usage_telemetry
+from src.kortana.provider_model_defaults import (
+    LLM_ROUTER_DEFAULTS,
+    LLM_ROUTER_FALLBACK_ORDER,
+)
 
 
 class ModelProvider(str, Enum):
@@ -36,6 +46,7 @@ class ModelConfig(BaseModel):
     temperature: float = 0.7
     top_p: float = 0.9
     enabled: bool = True
+    lane: str = "core"
 
 
 class LLMResponse(BaseModel):
@@ -52,73 +63,99 @@ class LLMResponse(BaseModel):
 class LLMRouter:
     """Intelligent routing across multiple LLM providers with fallbacks"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.settings = get_settings()
-        self.models = self._initialize_models()
-        self.primary_model = self._get_primary_model()
-        self.fallback_models = self._get_fallback_models()
+        self.model_usage_lane = get_active_model_lane(self.settings)
+        self.models: dict[str, ModelConfig] = self._initialize_models()
+        self.primary_model: Optional[ModelConfig] = self._get_primary_model()
+        self.fallback_models: list[ModelConfig] = self._get_fallback_models()
 
     def _initialize_models(self) -> dict[str, ModelConfig]:
         """Initialize available models from settings"""
-        models = {}
+        models: dict[str, ModelConfig] = {}
 
         # Gemini (primary)
         if self.settings.GEMINI_API_KEY:
-            models["gemini-2.0-flash"] = ModelConfig(
-                provider=ModelProvider.GEMINI,
-                model_name="gemini-2.0-flash",
-                api_key=self.settings.GEMINI_API_KEY,
-                max_tokens=8000,
-                temperature=0.7,
+            self._register_model(
+                models,
+                LLM_ROUTER_DEFAULTS.gemini,
+                ModelConfig(
+                    provider=ModelProvider.GEMINI,
+                    model_name=LLM_ROUTER_DEFAULTS.gemini,
+                    api_key=self.settings.GEMINI_API_KEY,
+                    max_tokens=8000,
+                    temperature=0.7,
+                ),
             )
 
         # OpenAI
         if self.settings.OPENAI_API_KEY:
-            models["gpt-4o"] = ModelConfig(
-                provider=ModelProvider.OPENAI,
-                model_name="gpt-4o",
-                api_key=self.settings.OPENAI_API_KEY,
-                max_tokens=4096,
-                temperature=0.7,
+            self._register_model(
+                models,
+                LLM_ROUTER_DEFAULTS.openai,
+                ModelConfig(
+                    provider=ModelProvider.OPENAI,
+                    model_name=LLM_ROUTER_DEFAULTS.openai,
+                    api_key=self.settings.OPENAI_API_KEY,
+                    max_tokens=4096,
+                    temperature=0.7,
+                ),
             )
 
         # Groq (fast, low-cost)
         if self.settings.GROQ_API_KEY:
-            models["mixtral-8x7b-32768"] = ModelConfig(
-                provider=ModelProvider.GROQ,
-                model_name="mixtral-8x7b-32768",
-                api_key=self.settings.GROQ_API_KEY,
-                timeout=15,
-                max_tokens=2048,
-                temperature=0.7,
+            self._register_model(
+                models,
+                LLM_ROUTER_DEFAULTS.groq,
+                ModelConfig(
+                    provider=ModelProvider.GROQ,
+                    model_name=LLM_ROUTER_DEFAULTS.groq,
+                    api_key=self.settings.GROQ_API_KEY,
+                    timeout=15,
+                    max_tokens=2048,
+                    temperature=0.7,
+                ),
             )
 
         # Anthropic
         if self.settings.ANTHROPIC_API_KEY:
-            models["claude-3-5-sonnet-20241022"] = ModelConfig(
-                provider=ModelProvider.ANTHROPIC,
-                model_name="claude-3-5-sonnet-20241022",
-                api_key=self.settings.ANTHROPIC_API_KEY,
-                max_tokens=4096,
-                temperature=0.7,
+            self._register_model(
+                models,
+                LLM_ROUTER_DEFAULTS.anthropic,
+                ModelConfig(
+                    provider=ModelProvider.ANTHROPIC,
+                    model_name=LLM_ROUTER_DEFAULTS.anthropic,
+                    api_key=self.settings.ANTHROPIC_API_KEY,
+                    max_tokens=4096,
+                    temperature=0.7,
+                ),
             )
 
         return models
 
+    def _register_model(
+        self, models: dict[str, ModelConfig], model_name: str, config: ModelConfig
+    ) -> None:
+        """Register a model when it is allowed in the active lane."""
+        if not model_allowed(
+            model_name,
+            active_lane=self.model_usage_lane,
+            settings=self.settings,
+        ):
+            return
+
+        config.lane = describe_model_lane(model_name, self.settings)
+        models[model_name] = config
+
     def _get_primary_model(self) -> Optional[ModelConfig]:
         """Get primary model (Gemini preferred)"""
-        return self.models.get("gemini-2.0-flash")
+        return self.models.get(LLM_ROUTER_DEFAULTS.gemini)
 
     def _get_fallback_models(self) -> list[ModelConfig]:
         """Get fallback models in order"""
-        fallback_order = [
-            "gpt-4o",
-            "claude-3-5-sonnet-20241022",
-            "mixtral-8x7b-32768",
-        ]
         return [
             self.models[name]
-            for name in fallback_order
+            for name in LLM_ROUTER_FALLBACK_ORDER
             if name in self.models and self.models[name].enabled
         ]
 
@@ -133,7 +170,12 @@ class LLMRouter:
 
         # Use specified model or primary model
         config = None
-        if model and model in self.models:
+        if model:
+            if model not in self.models:
+                raise ValueError(
+                    f"Requested model '{model}' is unavailable under the "
+                    f"'{self.model_usage_lane.value}' model lane"
+                )
             config = self.models[model]
         elif self.primary_model:
             config = self.primary_model
@@ -158,6 +200,17 @@ class LLMRouter:
                 details={"latency_ms": latency_ms, "model": config.model_name},
             )
             response.latency_ms = latency_ms
+            get_model_usage_telemetry().record_generation(
+                subsystem="llm_router",
+                provider=config.provider.value,
+                model=config.model_name,
+                catalog="llm_router_defaults"
+                if model is None
+                else "requested_model",
+                selection="primary_default" if model is None else "requested_model",
+                runtime_lane=self.model_usage_lane.value,
+                tokens_used=response.tokens_used,
+            )
             return response
         except Exception as e:
             last_error = e
@@ -184,6 +237,15 @@ class LLMRouter:
                 )
                 latency_ms = int((time.time() - start_time) * 1000)
                 response.latency_ms = latency_ms
+                get_model_usage_telemetry().record_generation(
+                    subsystem="llm_router",
+                    provider=fallback_config.provider.value,
+                    model=fallback_config.model_name,
+                    catalog="llm_router_defaults",
+                    selection="fallback_default",
+                    runtime_lane=self.model_usage_lane.value,
+                    tokens_used=response.tokens_used,
+                )
                 return response
             except Exception as e:
                 log_error(
@@ -348,8 +410,14 @@ class LLMRouter:
         """Get information about available models"""
         return {
             "primary": self.primary_model.model_name if self.primary_model else None,
+            "model_usage_lane": self.model_usage_lane.value,
             "available_models": self.available_models(),
             "fallback_order": [m.model_name for m in self.fallback_models],
+            "model_lanes": {
+                name: config.lane
+                for name, config in self.models.items()
+                if config.enabled and config.api_key
+            },
         }
 
 

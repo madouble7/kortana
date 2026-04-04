@@ -8,6 +8,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 
 from src.kortana.logger import log_error
+from src.kortana.model_lane_policy import describe_model_lane, get_active_model_lane
 from src.kortana.services.gemini import gemini_service
 
 router = APIRouter()
@@ -18,7 +19,7 @@ PROMPTS_PATH = Path("backend/src/kortana/agents/prompts")
 
 
 @router.get("/status")
-async def get_orchestrator_status():
+async def get_orchestrator_status() -> dict[str, Any]:
     """Check status of unified AI logic and prompt availability."""
     logic_files = list(LOGIC_PATH.glob("*.py")) if LOGIC_PATH.exists() else []
     prompt_files = list(PROMPTS_PATH.glob("*.md")) if PROMPTS_PATH.exists() else []
@@ -28,12 +29,18 @@ async def get_orchestrator_status():
         "logic_available": len(logic_files) > 0,
         "prompts_available": len(prompt_files) > 0,
         "active_model": gemini_service.model_name if gemini_service else "None",
+        "active_model_lane": (
+            describe_model_lane(gemini_service.model_name)
+            if gemini_service
+            else "unknown"
+        ),
+        "model_usage_lane": get_active_model_lane().value,
         "sync_mode": "unified_orchestrator",
     }
 
 
 @router.post("/execute")
-async def execute_unified_logic(payload: dict[str, Any]):
+async def execute_unified_logic(payload: dict[str, Any]) -> dict[str, Any]:
     """Execute AI logic that might be sourced from local or exported Studio files."""
     task = payload.get("task")
     prompt_name = payload.get("prompt_name")
@@ -64,7 +71,7 @@ async def execute_unified_logic(payload: dict[str, Any]):
 
 
 @router.post("/handshake")
-async def elevation_handshake(payload: dict[str, Any]):
+async def elevation_handshake(payload: dict[str, Any]) -> dict[str, str]:
     """Special endpoint for 'WE ARE' elevation protocol."""
     message = payload.get("message", "")
     if "WE ARE" in message or "we are" in message.lower():

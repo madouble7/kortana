@@ -48,6 +48,12 @@ def _get_env(name: str, default: str | None = None) -> str | None:
     return _normalize_env_value(os.getenv(name)) or default
 
 
+def _split_csv_env(name: str, default: str = "") -> list[str]:
+    """Parse a comma-separated environment variable into a trimmed string list."""
+    raw_value = _get_env(name, default) or ""
+    return [entry.strip() for entry in raw_value.split(",") if entry.strip()]
+
+
 def _normalize_database_url(url: str) -> str:
     """Normalize PostgreSQL URLs to the asyncpg dialect while preserving params."""
     normalized = url.strip()
@@ -124,6 +130,16 @@ class Settings:
     GROQ_API_KEY: str | None = _get_env("GROQ_API_KEY")
     # Gemini uses GEMINI_API_KEY or falls back to GOOGLE_API_KEY
     GEMINI_API_KEY: str = _get_env("GEMINI_API_KEY") or _get_env("GOOGLE_API_KEY") or ""
+    KORTANA_MODEL_USAGE_LANE: str = (
+        _get_env("KORTANA_MODEL_USAGE_LANE", "core") or "core"
+    ).lower()
+    KORTANA_CORE_MODELS: list[str] = _split_csv_env("KORTANA_CORE_MODELS")
+    KORTANA_EXPERIMENTAL_MODELS: list[str] = _split_csv_env(
+        "KORTANA_EXPERIMENTAL_MODELS"
+    )
+    KORTANA_QUARANTINE_MODELS: list[str] = _split_csv_env(
+        "KORTANA_QUARANTINE_MODELS"
+    )
 
     # Vector Database
     PINECONE_API_KEY: str | None = _get_env("PINECONE_API_KEY")

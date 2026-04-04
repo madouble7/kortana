@@ -109,7 +109,13 @@ class TestGitHubRouter:
 
     def test_analyze_github_issue_success(self, client):
         """Test analyzing a GitHub issue with Gemini"""
-        with patch("google.generativeai.GenerativeModel") as mock_model:
+        with (
+            patch("google.generativeai.GenerativeModel") as mock_model,
+            patch(
+                "src.kortana.routers.github.get_preferred_model_name",
+                return_value="gemini-2.0-flash",
+            ),
+        ):
             mock_response = Mock()
             mock_response.text = '{"summary": "Test", "priority": "high", "analysis": "Analysis", "suggested_actions": ["Act1"], "estimated_effort": "1 day"}'
             mock_instance = Mock()
@@ -131,6 +137,7 @@ class TestGitHubRouter:
                 data = response.json()
                 assert data["issue_number"] == 1
                 assert data["priority"] in ["high", "medium", "low"]
+                mock_model.assert_called_once_with("gemini-2.0-flash")
 
     def test_analyze_github_issue_no_api_key(self, client):
         """Test analyzing without Gemini API key"""

@@ -24,6 +24,10 @@ ENV_KEYS = [
     "OPENAI_API_KEY",
     "RATE_LIMIT_PROXY_MODE",
     "RATE_LIMIT_TRUSTED_PROXIES",
+    "KORTANA_MODEL_USAGE_LANE",
+    "KORTANA_CORE_MODELS",
+    "KORTANA_EXPERIMENTAL_MODELS",
+    "KORTANA_QUARANTINE_MODELS",
 ]
 
 
@@ -124,4 +128,25 @@ def test_rate_limit_proxy_settings_parse_from_environment(
         "127.0.0.1",
         "10.0.0.0/8",
         "192.168.1.10",
+    ]
+
+
+def test_model_lane_settings_parse_from_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Model lane controls should parse cleanly from env."""
+    config_module = reload_config_module(
+        monkeypatch,
+        KORTANA_MODEL_USAGE_LANE="experimental",
+        KORTANA_CORE_MODELS="gpt-4o, gemini-2.0-flash",
+        KORTANA_EXPERIMENTAL_MODELS="gpt-5-future-preview",
+        KORTANA_QUARANTINE_MODELS="ft:gpt-4o-mini-2024-07-18:personal::rogue",
+    )
+
+    settings = config_module.get_settings()
+    assert settings.KORTANA_MODEL_USAGE_LANE == "experimental"
+    assert settings.KORTANA_CORE_MODELS == ["gpt-4o", "gemini-2.0-flash"]
+    assert settings.KORTANA_EXPERIMENTAL_MODELS == ["gpt-5-future-preview"]
+    assert settings.KORTANA_QUARANTINE_MODELS == [
+        "ft:gpt-4o-mini-2024-07-18:personal::rogue"
     ]

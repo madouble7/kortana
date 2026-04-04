@@ -11,9 +11,15 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.kortana.database import get_db
-from src.kortana.services.experience_distiller import ExperienceDistiller
+from src.kortana.services.experience_distiller import (
+    ExperienceDistiller,
+    get_distillation_model_info,
+)
 from src.kortana.services.memory_engine import MemoryEngine
-from src.kortana.services.self_diagnostic import SelfDiagnostic
+from src.kortana.services.self_diagnostic import (
+    SelfDiagnostic,
+    get_analysis_model_info,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +92,7 @@ async def search_memory(
         "results": [
             MemorySearchResponse(
                 id=str(m.id),
-                content=m.content[:500],
+                content=str(m.content)[:500],
                 memory_type=str(m.memory_type),
                 similarity=round(score, 4),
             ).model_dump()
@@ -222,8 +228,10 @@ async def consciousness_status(
     engine = MemoryEngine(db)
     mem_stats = await engine.stats()
 
+    diagnostic_model = get_analysis_model_info()
     distiller = ExperienceDistiller(db)
     cost = distiller.get_cost_stats()
+    distillation_model = get_distillation_model_info()
 
     return {
         "phase": 8,
@@ -236,9 +244,15 @@ async def consciousness_status(
             },
             "self_diagnostic": {
                 "status": "active",
+                "model": diagnostic_model["model"],
+                "preferred_model": diagnostic_model["preferred_model"],
+                "model_lane": diagnostic_model["model_lane"],
             },
             "experience_distiller": {
                 "status": "active",
+                "model": distillation_model["model"],
+                "preferred_model": distillation_model["preferred_model"],
+                "model_lane": distillation_model["model_lane"],
                 "capsules_created": cost["capsules_created"],
                 "token_budget_pct_used": cost["budget_pct_used"],
             },

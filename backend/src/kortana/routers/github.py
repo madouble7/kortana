@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 from src.kortana.config import get_settings
 from src.kortana.cache import cache_result_async
+from src.kortana.services.gemini_config import get_preferred_model_name
 
 router = APIRouter()
 
@@ -220,7 +221,7 @@ Please analyze this and provide ONLY a JSON response (no markdown, no code block
         import google.generativeai as genai
 
         genai.configure(api_key=gemini_api_key)
-        model = genai.GenerativeModel("gemini-pro")
+        model = genai.GenerativeModel(get_preferred_model_name("gemini-pro"))
 
         response = model.generate_content(analysis_prompt, timeout=30)
         response_text = response.text
