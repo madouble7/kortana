@@ -56,14 +56,14 @@ async def test_generate_with_fallback(llm_router):
     with patch.object(llm_router, '_call_gemini', side_effect=Exception("API Error")):
         with patch.object(llm_router, '_call_openai', return_value=LLMResponse(
             content="Test response",
-            model="gpt-4o",
+            model=LLM_ROUTER_DEFAULTS.openai,
             provider="openai",
             tokens_used=10,
             temperature=0.7,
         )):
             response = await llm_router.generate("Test prompt")
             assert response.content == "Test response"
-            assert response.model == "gpt-4o"
+            assert response.model == LLM_ROUTER_DEFAULTS.openai
 
 
 @pytest.mark.asyncio
@@ -92,13 +92,13 @@ async def test_model_info(llm_router):
 
 def test_quarantined_models_are_filtered_from_core_lane(llm_router):
     """Core lane should exclude explicitly quarantined models."""
-    llm_router.settings.KORTANA_QUARANTINE_MODELS = ["gpt-4o"]
+    llm_router.settings.KORTANA_QUARANTINE_MODELS = [LLM_ROUTER_DEFAULTS.openai]
     llm_router.settings.KORTANA_MODEL_USAGE_LANE = "core"
     llm_router.model_usage_lane = get_active_model_lane(llm_router.settings)
 
     models = llm_router._initialize_models()
 
-    assert "gpt-4o" not in models
+    assert LLM_ROUTER_DEFAULTS.openai not in models
     assert LLM_ROUTER_DEFAULTS.gemini in models
 
 

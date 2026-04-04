@@ -22,7 +22,7 @@ def test_cost_router_skips_quarantined_openai_model(monkeypatch) -> None:
 
     with patch(
         "src.kortana.cost_optimized_model_router.model_allowed",
-        side_effect=lambda model_name, active_lane=None: model_name != "gpt-4o-mini",
+        side_effect=lambda model_name, active_lane=None: model_name != "gpt-5.4-nano",
     ):
         router = CostOptimizedModelRouter()
 
@@ -41,7 +41,7 @@ def test_unified_api_client_uses_router_configured_models(monkeypatch) -> None:
 
     client = UnifiedAPIClient()
 
-    assert client.clients[ModelProvider.OPENAI].model == "gpt-4o-mini"
+    assert client.clients[ModelProvider.OPENAI].model == "gpt-5.4-nano"
     assert client.clients[ModelProvider.GROQ].model == "mixtral-8x7b-32768"
 
 
@@ -54,8 +54,29 @@ def test_cost_report_includes_model_metadata(monkeypatch) -> None:
     report = router.get_cost_report()
 
     assert report["model_usage_lane"] == "core"
-    assert report["providers"]["openai"]["model"] == "gpt-4o-mini"
+    assert report["providers"]["openai"]["model"] == "gpt-5.4-nano"
     assert report["providers"]["openai"]["lane"] == "core"
+
+
+def test_summary_tasks_enable_openai_fast_lane(monkeypatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    monkeypatch.setenv("GROQ_API_KEY", "groq-test")
+    monkeypatch.setenv("GEMINI_API_KEY", "gm-test")
+    monkeypatch.setenv("KORTANA_MODEL_USAGE_LANE", "core")
+    get_settings.cache_clear()
+
+    with patch(
+        "src.kortana.cost_optimized_model_router.get_model_name",
+        return_value="gemini-2.0-flash",
+    ):
+        router = CostOptimizedModelRouter()
+
+    providers = router.select_for_task(TaskType.SUMMARY)
+    assert providers[:3] == [
+        ModelProvider.GROQ,
+        ModelProvider.OPENAI,
+        ModelProvider.GEMINI,
+    ]
 
 
 def test_cost_router_uses_gemini_service_model_selection(monkeypatch) -> None:

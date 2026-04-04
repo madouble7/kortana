@@ -13,27 +13,31 @@ from src.kortana.provider_model_defaults import (
     LLM_ROUTER_FALLBACK_ORDER,
     MEMORY_ENGINE_EMBEDDING_MODEL,
     MULTI_MODEL_DEFAULTS,
+    OPENAI_FAST_MODEL,
+    OPENAI_GPT_54_MINI_MODEL,
+    OPENAI_GPT_54_MODEL,
+    OPENAI_GPT_54_NANO_MODEL,
 )
 
 
 def test_llm_router_defaults_match_expected_primary_and_fallbacks() -> None:
     assert LLM_ROUTER_DEFAULTS.gemini == "gemini-2.0-flash"
     assert LLM_ROUTER_FALLBACK_ORDER == (
-        "gpt-4o",
+        OPENAI_GPT_54_MINI_MODEL,
         ANTHROPIC_SONNET_MODEL,
         "mixtral-8x7b-32768",
     )
 
 
 def test_ai_consensus_defaults_match_expected_provider_models() -> None:
-    assert AI_CONSENSUS_DEFAULTS.openai == "gpt-4o-mini"
+    assert AI_CONSENSUS_DEFAULTS.openai == OPENAI_GPT_54_MINI_MODEL
     assert AI_CONSENSUS_DEFAULTS.anthropic == ANTHROPIC_SONNET_MODEL
     assert AI_CONSENSUS_DEFAULTS.groq == "llama-3.3-70b-versatile"
     assert AI_CONSENSUS_DEFAULTS.openrouter == "meta-llama/llama-3-70b-instruct"
 
 
 def test_multi_model_defaults_match_expected_provider_models() -> None:
-    assert MULTI_MODEL_DEFAULTS.openai == "gpt-3.5-turbo"
+    assert MULTI_MODEL_DEFAULTS.openai == OPENAI_FAST_MODEL
     assert MULTI_MODEL_DEFAULTS.anthropic == ANTHROPIC_SONNET_MODEL
     assert MULTI_MODEL_DEFAULTS.groq == "mixtral-8x7b-32768"
     assert MULTI_MODEL_DEFAULTS.openrouter == "meta-llama/llama-2-70b-chat"
@@ -42,6 +46,12 @@ def test_multi_model_defaults_match_expected_provider_models() -> None:
 def test_gemini_discovery_fallbacks_are_all_core_catalog_models() -> None:
     assert GEMINI_DEFAULT_MODEL == "gemini-3.1-flash-lite-preview"
     assert set(GEMINI_DISCOVERY_FALLBACK_MODELS).issubset(DEFAULT_CORE_MODEL_CATALOG)
+
+
+def test_openai_gpt54_family_is_in_core_catalog() -> None:
+    assert OPENAI_GPT_54_MODEL in DEFAULT_CORE_MODEL_CATALOG
+    assert OPENAI_GPT_54_MINI_MODEL in DEFAULT_CORE_MODEL_CATALOG
+    assert OPENAI_GPT_54_NANO_MODEL in DEFAULT_CORE_MODEL_CATALOG
 
 
 def test_embedding_model_constants_are_consistent() -> None:
