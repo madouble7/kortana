@@ -99,7 +99,14 @@ async def get_model_lane_summary() -> dict[str, Any]:
     llm_router = get_llm_router()
     consensus_status = get_consensus_engine().get_status()
     cost_router = CostOptimizedModelRouter()
-    runtime_usage = get_model_usage_telemetry().get_summary()
+    telemetry = get_model_usage_telemetry()
+    memory_runtime_usage = telemetry.get_summary()
+    persisted_runtime_usage = await telemetry.get_persisted_summary()
+    runtime_usage = {
+        **memory_runtime_usage,
+        "memory": memory_runtime_usage,
+        "persisted": persisted_runtime_usage,
+    }
     active_lane = get_active_model_lane().value
     catalogs = {
         "chat_models": {

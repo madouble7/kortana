@@ -92,6 +92,7 @@ async def test_unified_api_client_records_runtime_usage(mock_router_cls) -> None
     client.clients = {ModelProvider.GROQ: mock_client}
 
     content, provider, cost = await client.generate("hello", TaskType.SUMMARY)
+    await telemetry.flush_persistence()
 
     assert content == "ok"
     assert provider == ModelProvider.GROQ

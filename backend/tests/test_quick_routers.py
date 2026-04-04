@@ -111,6 +111,8 @@ class TestSystemRouter:
         assert "subsystem_defaults" in data["catalogs"]["chat_models"]
         assert "memory_engine" in data["catalogs"]["embedding_models"]
         assert "total_generations" in data["runtime_usage"]
+        assert "memory" in data["runtime_usage"]
+        assert "persisted" in data["runtime_usage"]
 
     def test_system_logs_no_file(self, client):
         # Log file probably doesn't exist in test environment
