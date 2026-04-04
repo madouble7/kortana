@@ -49,7 +49,7 @@ def reload_config_module(monkeypatch: pytest.MonkeyPatch, **overrides: str):
 def test_find_env_file_searches_parent_directories(
     tmp_path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The config loader should discover backend/.env from nested package paths."""
+    """The config loader should discover backend/.env when repo-root .env is absent."""
     config_module = reload_config_module(monkeypatch)
     package_dir = tmp_path / "backend" / "src" / "kortana"
     package_dir.mkdir(parents=True)
@@ -62,7 +62,7 @@ def test_find_env_file_searches_parent_directories(
 def test_find_env_file_falls_back_to_repo_root_env(
     tmp_path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The config loader should discover a repo-root .env when backend/.env is absent."""
+    """The config loader should discover a repo-root .env when present."""
     config_module = reload_config_module(monkeypatch)
     package_dir = tmp_path / "backend" / "src" / "kortana"
     package_dir.mkdir(parents=True)
@@ -70,6 +70,21 @@ def test_find_env_file_falls_back_to_repo_root_env(
     env_file.write_text("SECRET_KEY=test\n", encoding="utf-8")
 
     assert config_module._find_env_file(package_dir) == env_file
+
+
+def test_find_env_file_prefers_repo_root_over_backend_env(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Local dev should not let backend/.env shadow the repo-root environment."""
+    config_module = reload_config_module(monkeypatch)
+    package_dir = tmp_path / "backend" / "src" / "kortana"
+    package_dir.mkdir(parents=True)
+    backend_env = tmp_path / "backend" / ".env"
+    backend_env.write_text("OPENAI_API_KEY=placeholder\n", encoding="utf-8")
+    root_env = tmp_path / ".env"
+    root_env.write_text("GEMINI_API_KEY=realish\n", encoding="utf-8")
+
+    assert config_module._find_env_file(package_dir) == root_env
 
 
 def test_secret_key_is_generated_for_development(
