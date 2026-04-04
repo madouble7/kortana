@@ -8,8 +8,7 @@ WORKDIR /app/frontend
 
 COPY frontend/package*.json ./
 
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci --prefer-offline --no-audit --no-fund
+RUN npm ci --prefer-offline --no-audit --no-fund
 
 COPY frontend/ ./
 
@@ -20,17 +19,14 @@ RUN npm run build
 FROM python:3.11-slim AS backend-builder
 WORKDIR /build
 
-RUN --mount=type=cache,id=apt-cache-backend,target=/var/cache/apt \
-    --mount=type=cache,id=apt-lib-backend,target=/var/lib/apt \
-    apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 COPY backend/requirements.txt ./
 
-RUN --mount=type=cache,id=pip-cache,target=/root/.cache/pip \
-    pip install --user --no-cache-dir --compile -r requirements.txt
+RUN pip install --user --no-cache-dir --compile -r requirements.txt
 
 
 # --- Stage 3: Runtime Base ---
@@ -38,9 +34,7 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Install runtime dependencies only
-RUN --mount=type=cache,id=apt-cache-runtime,target=/var/cache/apt \
-    --mount=type=cache,id=apt-lib-runtime,target=/var/lib/apt \
-    apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     git \
     libpq5 \

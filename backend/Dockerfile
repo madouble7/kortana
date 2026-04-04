@@ -8,10 +8,8 @@ FROM python:3.11.7-slim AS builder
 
 WORKDIR /build
 
-# Install build dependencies with cache mounts
-RUN --mount=type=cache,id=apt-cache,target=/var/cache/apt \
-    --mount=type=cache,id=apt-lib,target=/var/lib/apt \
-    apt-get update && apt-get install -y --no-install-recommends \
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
     libpq-dev && \
@@ -21,9 +19,8 @@ RUN --mount=type=cache,id=apt-cache,target=/var/cache/apt \
 # Copy requirements first for better caching
 COPY requirements.txt .
 
-# Install dependencies with aggressive caching and optimization
-RUN --mount=type=cache,id=pip-cache,target=/root/.cache/pip \
-    pip install --user \
+# Install dependencies
+RUN pip install --user \
     --no-warn-script-location \
     --no-cache-dir \
     --compile \
@@ -45,10 +42,8 @@ RUN groupadd -r kortana && useradd -r -g kortana -u 1000 -m kortana
 
 WORKDIR /app
 
-# Install runtime dependencies with cache mounts and cleanup
-RUN --mount=type=cache,id=apt-cache,target=/var/cache/apt \
-    --mount=type=cache,id=apt-lib,target=/var/lib/apt \
-    apt-get update && apt-get install -y --no-install-recommends \
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     git \
     libpq5 \
