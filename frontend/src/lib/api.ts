@@ -3,7 +3,16 @@
  * Centralized HTTP client for backend communication
  */
 
-import type { AutonomyStatus, GitHubIssue, HealthStatus, Memory, Task } from '../types';
+import type {
+  AutonomyStatus,
+  ChatHistoryEntry,
+  ChatPhase,
+  GitHubIssue,
+  HealthStatus,
+  Memory,
+  QueuedTaskSummary,
+  Task,
+} from '../types';
 import { getApiBaseUrl } from './runtimeConfig';
 
 const API_URL = getApiBaseUrl();
@@ -12,11 +21,37 @@ interface ChatSendResponse {
   conversation_id?: string;
   response?: string;
   message?: string;
-  tasks_queued?: Array<{ id: string; name: string; branch: string }>;
+  phase?: ChatPhase;
+  provider?: string;
+  model?: string;
+  lane?: string;
+  response_id?: string;
+  stateful?: boolean;
+  used_previous_response_id?: boolean;
+  tasks_queued?: QueuedTaskSummary[];
+}
+
+interface ChatStreamHandlers {
+  onStart?: (payload: Partial<ChatSendResponse>) => void;
+  onPhase?: (phase: ChatPhase) => void;
+  onDelta?: (delta: string) => void;
+  onFinal?: (payload: ChatSendResponse) => void;
+  onError?: (message: string) => void;
 }
 
 interface ChatHistoryResponse {
-  messages?: Array<{ role: string; content: string; created_at?: string }>;
+  messages?: Array<{
+    role: ChatHistoryEntry['role'];
+    content: string;
+    created_at?: string;
+    phase?: ChatPhase;
+    provider?: string;
+    model?: string;
+    lane?: string;
+    response_id?: string;
+    stateful?: boolean;
+    used_previous_response_id?: boolean;
+  }>;
 }
 
 interface ApiError {
@@ -26,6 +61,93 @@ interface ApiError {
 }
 
 const toIsoTimestamp = (value?: string) => value || new Date().toISOString();
+const CHAT_PHASES: ChatPhase[] = ['analysis', 'commentary', 'final_answer'];
+
+const normalizeString = (value: unknown): string | undefined => {
+  return typeof value === 'string' && value.trim() ? value : undefined;
+};
+
+const normalizeBoolean = (value: unknown): boolean | undefined => {
+  return typeof value === 'boolean' ? value : undefined;
+};
+
+const normalizeChatPhase = (value: unknown): ChatPhase | undefined => {
+  return typeof value === 'string' && CHAT_PHASES.includes(value as ChatPhase)
+    ? (value as ChatPhase)
+    : undefined;
+};
+
+const normalizeQueuedTasks = (value: unknown): QueuedTaskSummary[] | undefined => {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const normalized = value
+    .map((task) => {
+      const t = task as Record<string, unknown>;
+      const id = normalizeString(t.id);
+      const name = normalizeString(t.name);
+      const branch = normalizeString(t.branch);
+      if (!id || !name || !branch) {
+        return null;
+      }
+      return { id, name, branch };
+    })
+    .filter((task): task is QueuedTaskSummary => task !== null);
+
+  return normalized.length ? normalized : undefined;
+};
+
+const normalizeChatSendResponse = (value: unknown): ChatSendResponse => {
+  const data = value as Record<string, unknown>;
+  return {
+    conversation_id: normalizeString(data.conversation_id),
+    response: normalizeString(data.response),
+    message: normalizeString(data.message),
+    phase: normalizeChatPhase(data.phase),
+    provider: normalizeString(data.provider),
+    model: normalizeString(data.model),
+    lane: normalizeString(data.lane),
+    response_id: normalizeString(data.response_id),
+    stateful: normalizeBoolean(data.stateful),
+    used_previous_response_id: normalizeBoolean(data.used_previous_response_id),
+    tasks_queued: normalizeQueuedTasks(data.tasks_queued),
+  };
+};
+
+const normalizeChatHistoryResponse = (value: unknown): ChatHistoryResponse => {
+  const data = value as Record<string, unknown>;
+  const messages = Array.isArray(data.messages)
+    ? data.messages.reduce<NonNullable<ChatHistoryResponse['messages']>>(
+      (acc, message) => {
+        const m = message as Record<string, unknown>;
+        const role: ChatHistoryEntry['role'] | null =
+          m.role === 'user' ? 'user' : m.role === 'assistant' ? 'assistant' : null;
+        const content = normalizeString(m.content);
+        if (!role || !content) {
+          return acc;
+        }
+
+        acc.push({
+          role,
+          content,
+          created_at: normalizeString(m.created_at),
+          phase: normalizeChatPhase(m.phase),
+          provider: normalizeString(m.provider),
+          model: normalizeString(m.model),
+          lane: normalizeString(m.lane),
+          response_id: normalizeString(m.response_id),
+          stateful: normalizeBoolean(m.stateful),
+          used_previous_response_id: normalizeBoolean(m.used_previous_response_id),
+        });
+        return acc;
+      },
+      []
+    )
+    : undefined;
+
+  return { messages };
+};
 
 const normalizeTaskStatus = (status?: string): Task['status'] => {
   switch (status) {
@@ -210,11 +332,11 @@ class ApiClient {
   // Chat endpoints
   async sendChatMessage(
     message: string,
-    history?: Array<{ role: string; content: string }>,
+    history?: ChatHistoryEntry[],
     conversationId?: string,
     sessionId?: string
   ): Promise<ChatSendResponse> {
-    return this.request<ChatSendResponse>('/api/gemini/chat', {
+    const data = await this.request<unknown>('/api/gemini/chat', {
       method: 'POST',
       body: JSON.stringify({
         message,
@@ -223,10 +345,127 @@ class ApiClient {
         session_id: sessionId || 'default',
       }),
     });
+    return normalizeChatSendResponse(data);
+  }
+
+  async sendChatMessageStream(
+    message: string,
+    history: ChatHistoryEntry[] | undefined,
+    conversationId: string | undefined,
+    sessionId: string | undefined,
+    handlers: ChatStreamHandlers
+  ): Promise<void> {
+    const response = await fetch(`${this.baseURL}/api/gemini/chat/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message,
+        history: history || [],
+        conversation_id: conversationId,
+        session_id: sessionId || 'default',
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const err = new Error(errorData.message || errorData.detail || 'Request failed') as Error & ApiError;
+      err.status = response.status;
+      err.details = errorData;
+      throw err;
+    }
+
+    if (!response.body) {
+      throw new Error('Streaming response body unavailable');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    const dispatchEvent = (rawEvent: string) => {
+      const lines = rawEvent.split('\n');
+      let eventName = 'message';
+      const dataLines: string[] = [];
+
+      for (const line of lines) {
+        if (line.startsWith('event:')) {
+          eventName = line.slice(6).trim();
+        } else if (line.startsWith('data:')) {
+          dataLines.push(line.slice(5).trimStart());
+        }
+      }
+
+      if (!dataLines.length) {
+        return;
+      }
+
+      let payload: unknown = {};
+      try {
+        payload = JSON.parse(dataLines.join('\n'));
+      } catch {
+        return;
+      }
+
+      const data = payload as Record<string, unknown>;
+      switch (eventName) {
+        case 'start':
+          handlers.onStart?.(normalizeChatSendResponse(data));
+          break;
+        case 'phase':
+          if (normalizeChatPhase(data.phase)) {
+            handlers.onPhase?.(normalizeChatPhase(data.phase)!);
+          }
+          break;
+        case 'delta':
+          if (typeof data.delta === 'string') {
+            handlers.onDelta?.(data.delta);
+          }
+          break;
+        case 'final':
+          handlers.onFinal?.(normalizeChatSendResponse(data));
+          break;
+        case 'error':
+          handlers.onError?.(
+            typeof data.message === 'string' ? data.message : 'Streaming failed'
+          );
+          break;
+        default:
+          break;
+      }
+    };
+
+    let done = false;
+    while (!done) {
+      const { done: readDone, value } = await reader.read();
+      done = readDone;
+      if (done) {
+        break;
+      }
+
+      buffer += decoder.decode(value, { stream: true });
+      const events = buffer.split('\n\n');
+      buffer = events.pop() || '';
+      for (const eventChunk of events) {
+        const trimmed = eventChunk.trim();
+        if (trimmed) {
+          dispatchEvent(trimmed);
+        }
+      }
+    }
+
+    const trailing = buffer.trim();
+    if (trailing) {
+      dispatchEvent(trailing);
+    }
   }
 
   async getChatHistory(sessionId: string = 'default', limit: number = 40): Promise<ChatHistoryResponse> {
-    return this.request<ChatHistoryResponse>(`/api/gemini/chat/history?session_id=${encodeURIComponent(sessionId)}&limit=${limit}`);
+    const data = await this.request<unknown>(
+      `/api/gemini/chat/history?session_id=${encodeURIComponent(sessionId)}&limit=${limit}`
+    );
+    return normalizeChatHistoryResponse(data);
   }
 
   async getConversations() {

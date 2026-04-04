@@ -2,15 +2,39 @@ import io
 import json
 import re
 import time
-from typing import Any
+from typing import Any, AsyncGenerator
 
 import PIL.Image
+import httpx
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi.responses import StreamingResponse
 
+from src.kortana.config import get_settings
+from src.kortana.logger import get_logger
+from src.kortana.model_lane_policy import (
+    describe_model_lane,
+    get_active_model_lane,
+    model_allowed,
+)
+from src.kortana.models import AuditLog
+from src.kortana.openai_conversation_state import (
+    clear_response_id,
+    get_previous_response_id,
+    store_response_id,
+)
+from src.kortana.openai_responses import (
+    OpenAITextGenerationResult,
+    async_generate_turn,
+    async_stream_turn,
+)
+from src.kortana.provider_model_defaults import AI_CONSENSUS_DEFAULTS
 from src.kortana.services.ai_consensus import ConsensusMode, get_consensus_engine
 from src.kortana.services.gemini import gemini_service
 
 router = APIRouter()
+logger = get_logger(__name__)
+_CONVERSATION_MESSAGE_META_ACTION = "conversation_message_meta"
+_LEGACY_CONVERSATION_MESSAGE_PHASE_ACTION = "conversation_message_phase"
 
 _IDENTITY_PROMPT_CACHE_TTL_SECONDS = 30
 _identity_prompt_cache: dict[str, Any] = {
@@ -393,6 +417,202 @@ async def _assemble_chat_system_prompt(
     return system
 
 
+def _build_chat_prompt(message: str, history: list[dict[str, str]]) -> str:
+    """Render the legacy textual conversation history block."""
+    if not history:
+        return message
+
+    history_lines = []
+    for msg in history[-10:]:
+        label = "matt" if msg.get("role") == "user" else "kor'tana"
+        history_lines.append(f"{label}: {msg.get('content', '')}")
+    history_block = "\n".join(history_lines)
+    return f"{history_block}\nmatt: {message}"
+
+
+def _normalize_chat_phase(phase: str | None) -> str:
+    normalized = (phase or "final_answer").strip().lower()
+    return normalized or "final_answer"
+
+
+def _build_assistant_turn_metadata(
+    *,
+    provider: str,
+    model: str | None = None,
+    lane: str | None = None,
+    response_id: str | None = None,
+    stateful: bool = False,
+    used_previous_response_id: bool = False,
+) -> dict[str, Any]:
+    metadata: dict[str, Any] = {
+        "provider": provider,
+        "stateful": stateful,
+        "used_previous_response_id": used_previous_response_id,
+    }
+    if model:
+        metadata["model"] = model
+    if lane:
+        metadata["lane"] = lane
+    if response_id:
+        metadata["response_id"] = response_id
+    return metadata
+
+
+def _stateful_openai_chat_enabled(payload: dict[str, Any]) -> bool:
+    """Only enable the stateful OpenAI path for explicit session-backed chat calls."""
+    if "session_id" not in payload:
+        return False
+    if "history" not in payload:
+        return False
+    session_id = payload.get("session_id")
+    history = payload.get("history")
+    if not isinstance(session_id, str) or not session_id.strip():
+        return False
+    if not isinstance(history, list):
+        return False
+
+    settings = get_settings()
+    if not settings.KORTANA_OPENAI_STATEFUL_CHAT_ENABLED:
+        return False
+    if not settings.OPENAI_API_KEY:
+        return False
+
+    active_lane = get_active_model_lane(settings)
+    return model_allowed(
+        AI_CONSENSUS_DEFAULTS.openai,
+        active_lane=active_lane,
+        settings=settings,
+    )
+
+
+async def _reset_openai_chat_state(session_id: str, *, reason: str) -> None:
+    """Best-effort reset when a non-OpenAI assistant turn breaks continuity."""
+    try:
+        await clear_response_id(
+            session_id,
+            route="api_gemini_chat",
+            reason=reason,
+        )
+    except Exception:
+        logger.debug("Failed to clear OpenAI chat state for %s", session_id)
+
+
+async def _chat_with_stateful_openai(
+    *,
+    session_id: str,
+    message: str,
+    history: list[dict[str, str]],
+    system: str,
+    max_tokens: int,
+    timeout: float,
+) -> OpenAITextGenerationResult:
+    """Use GPT-5 Responses API continuity for a session-backed chat turn."""
+    from openai import AsyncOpenAI
+
+    settings = get_settings()
+    model_name = AI_CONSENSUS_DEFAULTS.openai
+    previous_response_id = await get_previous_response_id(session_id)
+    prompt = (
+        message
+        if previous_response_id
+        else _build_chat_prompt(message, history)
+    )
+
+    http_client = httpx.AsyncClient(timeout=timeout)
+    client = AsyncOpenAI(
+        api_key=settings.OPENAI_API_KEY,
+        http_client=http_client,
+    )
+    try:
+        result = await async_generate_turn(
+            client,
+            model_name=model_name,
+            prompt=prompt,
+            system=system,
+            max_output_tokens=max_tokens,
+            timeout=timeout,
+            previous_response_id=previous_response_id,
+            history=history,
+        )
+    finally:
+        await client.close()
+        if not http_client.is_closed:
+            await http_client.aclose()
+
+    if result.response_id:
+        await store_response_id(
+            session_id,
+            result.response_id,
+            model_name=model_name,
+            route="api_gemini_chat",
+        )
+
+    logger.info(
+        "Stateful OpenAI chat turn completed for %s using %s (%s lane)%s",
+        session_id,
+        model_name,
+        get_active_model_lane(settings).value,
+        " with previous_response_id" if previous_response_id else "",
+    )
+    return result
+
+
+async def _stream_stateful_openai(
+    *,
+    session_id: str,
+    message: str,
+    history: list[dict[str, str]],
+    system: str,
+    max_tokens: int,
+    timeout: float,
+) -> AsyncGenerator[dict[str, Any], None]:
+    """Stream a GPT-5 Responses turn while preserving threaded response continuity."""
+    from openai import AsyncOpenAI
+
+    settings = get_settings()
+    model_name = AI_CONSENSUS_DEFAULTS.openai
+    previous_response_id = await get_previous_response_id(session_id)
+    prompt = message if previous_response_id else _build_chat_prompt(message, history)
+
+    http_client = httpx.AsyncClient(timeout=timeout)
+    client = AsyncOpenAI(
+        api_key=settings.OPENAI_API_KEY,
+        http_client=http_client,
+    )
+    try:
+        async for event in async_stream_turn(
+            client,
+            model_name=model_name,
+            prompt=prompt,
+            system=system,
+            max_output_tokens=max_tokens,
+            timeout=timeout,
+            previous_response_id=previous_response_id,
+            history=history,
+        ):
+            if event.get("type") != "completed":
+                yield event
+                continue
+
+            result = event.get("result")
+            if isinstance(result, OpenAITextGenerationResult) and result.response_id:
+                await store_response_id(
+                    session_id,
+                    result.response_id,
+                    model_name=model_name,
+                    route="api_gemini_chat_stream",
+                )
+            yield event
+    finally:
+        await client.close()
+        if not http_client.is_closed:
+            await http_client.aclose()
+
+
+def _sse_event(event: str, payload: dict[str, Any]) -> str:
+    return f"event: {event}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
+
 def _build_identity_response(live_context: str) -> str:
     parts = [
         "kor'tana: i am kor'tana, the intelligence native to this system — not microsoft's cortana."
@@ -462,8 +682,22 @@ async def chat_with_gemini(payload: dict[str, Any]) -> dict[str, Any]:
 
     if _is_kortana_identity_query(message):
         answer = _build_identity_response(live_context)
-        await _persist_messages(session_id, message, answer)
-        return {"response": answer, "tasks_queued": []}
+        await _reset_openai_chat_state(session_id, reason="identity_short_circuit")
+        await _persist_messages(
+            session_id,
+            message,
+            answer,
+            assistant_phase="final_answer",
+            assistant_metadata=_build_assistant_turn_metadata(provider="identity"),
+        )
+        return {
+            "response": answer,
+            "tasks_queued": [],
+            "phase": "final_answer",
+            "provider": "identity",
+            "stateful": False,
+            "used_previous_response_id": False,
+        }
 
     system = await _assemble_chat_system_prompt(
         live_context,
@@ -472,16 +706,51 @@ async def chat_with_gemini(payload: dict[str, Any]) -> dict[str, Any]:
         include_conversation_memory=True,
     )
 
-    # Prepend conversation history to the prompt so the model has context
-    if history:
-        history_lines = []
-        for msg in history[-10:]:  # cap at last 10 turns
-            label = "matt" if msg.get("role") == "user" else "kor'tana"
-            history_lines.append(f"{label}: {msg.get('content', '')}")
-        history_block = "\n".join(history_lines)
-        prompt = f"{history_block}\nmatt: {message}"
-    else:
-        prompt = message
+    prompt = _build_chat_prompt(message, history)
+
+    if _stateful_openai_chat_enabled(payload):
+        try:
+            openai_result = await _chat_with_stateful_openai(
+                session_id=session_id,
+                message=message,
+                history=history,
+                system=system,
+                max_tokens=512,
+                timeout=25.0,
+            )
+            answer, tasks_queued = await _extract_and_queue_tasks(openai_result.text)
+            assistant_phase = _normalize_chat_phase(openai_result.phase)
+            assistant_metadata = _build_assistant_turn_metadata(
+                provider="openai",
+                model=AI_CONSENSUS_DEFAULTS.openai,
+                lane=describe_model_lane(AI_CONSENSUS_DEFAULTS.openai, get_settings()),
+                response_id=openai_result.response_id,
+                stateful=True,
+                used_previous_response_id=openai_result.used_previous_response_id,
+            )
+            await _persist_messages(
+                session_id,
+                message,
+                answer,
+                assistant_phase=assistant_phase,
+                assistant_metadata=assistant_metadata,
+            )
+            return {
+                "response": answer,
+                "tasks_queued": tasks_queued,
+                "phase": assistant_phase,
+                **assistant_metadata,
+            }
+        except Exception as exc:
+            logger.warning(
+                "Stateful OpenAI chat failed for %s; falling back to consensus: %s",
+                session_id,
+                exc,
+            )
+            await _reset_openai_chat_state(
+                session_id,
+                reason="stateful_openai_failure",
+            )
 
     engine = get_consensus_engine()
     result = await engine.query(
@@ -498,15 +767,260 @@ async def chat_with_gemini(payload: dict[str, Any]) -> dict[str, Any]:
             try:
                 response = await gemini_service.analyze_text(message)
                 answer, tasks_queued = await _extract_and_queue_tasks(response)
-                await _persist_messages(session_id, message, answer)
-                return {"response": answer, "tasks_queued": tasks_queued}
+                await _reset_openai_chat_state(
+                    session_id,
+                    reason="gemini_fallback_response",
+                )
+                assistant_metadata = _build_assistant_turn_metadata(
+                    provider="gemini",
+                    model=getattr(gemini_service, "model_name", None),
+                    lane=describe_model_lane(
+                        str(getattr(gemini_service, "model_name", "")),
+                        get_settings(),
+                    ),
+                )
+                await _persist_messages(
+                    session_id,
+                    message,
+                    answer,
+                    assistant_phase="final_answer",
+                    assistant_metadata=assistant_metadata,
+                )
+                return {
+                    "response": answer,
+                    "tasks_queued": tasks_queued,
+                    "phase": "final_answer",
+                    **assistant_metadata,
+                }
             except Exception:
                 pass
         raise HTTPException(status_code=503, detail="All AI providers unavailable.")
 
     answer, tasks_queued = await _extract_and_queue_tasks(result.answer)
-    await _persist_messages(session_id, message, answer)
-    return {"response": answer, "tasks_queued": tasks_queued}
+    await _reset_openai_chat_state(session_id, reason="consensus_response")
+    provider_used = (
+        result.provider_used if isinstance(result.provider_used, str) else "consensus"
+    )
+    provider_status = engine.get_status().get("providers", {}).get(provider_used, {})
+    assistant_metadata = _build_assistant_turn_metadata(
+        provider=provider_used,
+        model=str(provider_status.get("model")) if provider_status.get("model") else None,
+        lane=str(provider_status.get("lane")) if provider_status.get("lane") else None,
+    )
+    await _persist_messages(
+        session_id,
+        message,
+        answer,
+        assistant_phase="final_answer",
+        assistant_metadata=assistant_metadata,
+    )
+    return {
+        "response": answer,
+        "tasks_queued": tasks_queued,
+        "phase": "final_answer",
+        **assistant_metadata,
+    }
+
+
+@router.post("/chat/stream", response_model=None)
+async def stream_chat_with_gemini(payload: dict[str, Any]) -> StreamingResponse:
+    """Stream Kor'tana chat over SSE, using GPT-5 deltas when available."""
+    message = payload.get("message")
+    if not message:
+        raise HTTPException(
+            status_code=400, detail="Missing 'message' field in payload"
+        )
+
+    history: list[dict[str, str]] = payload.get("history") or []
+    session_id: str = payload.get("session_id") or "default"
+
+    async def generate() -> AsyncGenerator[str, None]:
+        live_context = await _build_live_context()
+
+        if _is_kortana_identity_query(message):
+            answer = _build_identity_response(live_context)
+            await _reset_openai_chat_state(session_id, reason="identity_short_circuit")
+            assistant_metadata = _build_assistant_turn_metadata(provider="identity")
+            await _persist_messages(
+                session_id,
+                message,
+                answer,
+                assistant_phase="final_answer",
+                assistant_metadata=assistant_metadata,
+            )
+            yield _sse_event("start", assistant_metadata)
+            yield _sse_event(
+                "final",
+                {
+                    "response": answer,
+                    "tasks_queued": [],
+                    "phase": "final_answer",
+                    **assistant_metadata,
+                },
+            )
+            return
+
+        system = await _assemble_chat_system_prompt(
+            live_context,
+            session_id=session_id,
+            query=message,
+            include_conversation_memory=True,
+        )
+        prompt = _build_chat_prompt(message, history)
+
+        if _stateful_openai_chat_enabled(payload):
+            base_metadata = _build_assistant_turn_metadata(
+                provider="openai",
+                model=AI_CONSENSUS_DEFAULTS.openai,
+                lane=describe_model_lane(AI_CONSENSUS_DEFAULTS.openai, get_settings()),
+                stateful=True,
+            )
+            yield _sse_event("start", base_metadata)
+            yield _sse_event("phase", {"phase": "commentary"})
+
+            try:
+                openai_result: OpenAITextGenerationResult | None = None
+                async for event in _stream_stateful_openai(
+                    session_id=session_id,
+                    message=message,
+                    history=history,
+                    system=system,
+                    max_tokens=512,
+                    timeout=25.0,
+                ):
+                    event_type = str(event.get("type", ""))
+                    if event_type == "delta":
+                        delta = str(event.get("delta", "") or "")
+                        if delta:
+                            yield _sse_event("delta", {"delta": delta})
+                    elif event_type == "completed":
+                        result = event.get("result")
+                        if isinstance(result, OpenAITextGenerationResult):
+                            openai_result = result
+
+                if openai_result is not None:
+                    answer, tasks_queued = await _extract_and_queue_tasks(
+                        openai_result.text
+                    )
+                    assistant_phase = _normalize_chat_phase(openai_result.phase)
+                    assistant_metadata = _build_assistant_turn_metadata(
+                        provider="openai",
+                        model=AI_CONSENSUS_DEFAULTS.openai,
+                        lane=describe_model_lane(
+                            AI_CONSENSUS_DEFAULTS.openai, get_settings()
+                        ),
+                        response_id=openai_result.response_id,
+                        stateful=True,
+                        used_previous_response_id=openai_result.used_previous_response_id,
+                    )
+                    await _persist_messages(
+                        session_id,
+                        message,
+                        answer,
+                        assistant_phase=assistant_phase,
+                        assistant_metadata=assistant_metadata,
+                    )
+                    yield _sse_event(
+                        "final",
+                        {
+                            "response": answer,
+                            "tasks_queued": tasks_queued,
+                            "phase": assistant_phase,
+                            **assistant_metadata,
+                        },
+                    )
+                    return
+            except Exception as exc:
+                logger.warning(
+                    "Stateful OpenAI chat stream failed for %s; falling back: %s",
+                    session_id,
+                    exc,
+                )
+                await _reset_openai_chat_state(
+                    session_id,
+                    reason="stateful_openai_stream_failure",
+                )
+
+        engine = get_consensus_engine()
+        result = await engine.query(
+            prompt=prompt,
+            mode=ConsensusMode.FASTEST,
+            system=system,
+            max_tokens=512,
+            timeout=25.0,
+        )
+
+        if result.providers_succeeded == 0:
+            if gemini_service is not None:
+                try:
+                    response = await gemini_service.analyze_text(message)
+                    answer, tasks_queued = await _extract_and_queue_tasks(response)
+                    await _reset_openai_chat_state(
+                        session_id,
+                        reason="gemini_fallback_response",
+                    )
+                    assistant_metadata = _build_assistant_turn_metadata(
+                        provider="gemini",
+                        model=getattr(gemini_service, "model_name", None),
+                        lane=describe_model_lane(
+                            str(getattr(gemini_service, "model_name", "")),
+                            get_settings(),
+                        ),
+                    )
+                    await _persist_messages(
+                        session_id,
+                        message,
+                        answer,
+                        assistant_phase="final_answer",
+                        assistant_metadata=assistant_metadata,
+                    )
+                    yield _sse_event("start", assistant_metadata)
+                    yield _sse_event(
+                        "final",
+                        {
+                            "response": answer,
+                            "tasks_queued": tasks_queued,
+                            "phase": "final_answer",
+                            **assistant_metadata,
+                        },
+                    )
+                    return
+                except Exception:
+                    pass
+
+            yield _sse_event("error", {"message": "All AI providers unavailable."})
+            return
+
+        answer, tasks_queued = await _extract_and_queue_tasks(result.answer)
+        await _reset_openai_chat_state(session_id, reason="consensus_response")
+        provider_used = (
+            result.provider_used if isinstance(result.provider_used, str) else "consensus"
+        )
+        provider_status = engine.get_status().get("providers", {}).get(provider_used, {})
+        assistant_metadata = _build_assistant_turn_metadata(
+            provider=provider_used,
+            model=str(provider_status.get("model")) if provider_status.get("model") else None,
+            lane=str(provider_status.get("lane")) if provider_status.get("lane") else None,
+        )
+        await _persist_messages(
+            session_id,
+            message,
+            answer,
+            assistant_phase="final_answer",
+            assistant_metadata=assistant_metadata,
+        )
+        yield _sse_event("start", assistant_metadata)
+        yield _sse_event(
+            "final",
+            {
+                "response": answer,
+                "tasks_queued": tasks_queued,
+                "phase": "final_answer",
+                **assistant_metadata,
+            },
+        )
+
+    return StreamingResponse(generate(), media_type="text/event-stream")
 
 
 async def _extract_and_queue_tasks(raw: str) -> tuple[str, list[dict[str, Any]]]:
@@ -588,7 +1102,14 @@ async def _extract_and_queue_tasks(raw: str) -> tuple[str, list[dict[str, Any]]]
     return cleaned, created
 
 
-async def _persist_messages(session_id: str, user_msg: str, assistant_msg: str) -> None:
+async def _persist_messages(
+    session_id: str,
+    user_msg: str,
+    assistant_msg: str,
+    *,
+    assistant_phase: str = "final_answer",
+    assistant_metadata: dict[str, Any] | None = None,
+) -> None:
     """Write a user+assistant exchange to conversation_messages."""
     try:
         import uuid as _uuid
@@ -598,6 +1119,7 @@ async def _persist_messages(session_id: str, user_msg: str, assistant_msg: str) 
         from src.kortana.database import get_db_manager
 
         db = get_db_manager()
+        assistant_id = str(_uuid.uuid4())
         async with db.session_scope() as session:
             await session.execute(
                 _text(
@@ -607,11 +1129,23 @@ async def _persist_messages(session_id: str, user_msg: str, assistant_msg: str) 
                 ),
                 {
                     "id1": str(_uuid.uuid4()),
-                    "id2": str(_uuid.uuid4()),
+                    "id2": assistant_id,
                     "sid": session_id,
                     "user_msg": user_msg,
                     "asst_msg": assistant_msg,
                 },
+            )
+            session.add(
+                AuditLog(
+                    action=_CONVERSATION_MESSAGE_META_ACTION,
+                    resource_type="conversation_message",
+                    resource_id=assistant_id,
+                    details={
+                        "session_id": session_id,
+                        "phase": _normalize_chat_phase(assistant_phase),
+                        **(assistant_metadata or {}),
+                    },
+                )
             )
     except Exception as _e:
         pass  # persistence is best-effort, never break chat
@@ -623,7 +1157,7 @@ async def get_chat_history(
 ) -> dict[str, Any]:
     """Return the last N messages for a session (oldest first)."""
     try:
-        from sqlalchemy import text as _text
+        from sqlalchemy import select, text as _text
 
         from src.kortana.database import get_db_manager
 
@@ -631,16 +1165,69 @@ async def get_chat_history(
         async with db.session_scope() as session:
             result = await session.execute(
                 _text(
-                    "SELECT role, content, created_at FROM ("
-                    "  SELECT role, content, created_at FROM conversation_messages "
+                    "SELECT id, role, content, created_at FROM ("
+                    "  SELECT id, role, content, created_at FROM conversation_messages "
                     "  WHERE session_id = :sid ORDER BY created_at DESC LIMIT :lim"
                     ") sub ORDER BY created_at ASC"
                 ),
                 {"sid": session_id, "lim": limit},
             )
             rows = result.fetchall()
+            assistant_ids = [str(r[0]) for r in rows if r[1] == "assistant"]
+            phase_by_message_id: dict[str, str] = {}
+            metadata_by_message_id: dict[str, dict[str, Any]] = {}
+            if assistant_ids:
+                audit_result = await session.execute(
+                    select(AuditLog)
+                    .where(
+                        AuditLog.action.in_(
+                            [
+                                _CONVERSATION_MESSAGE_META_ACTION,
+                                _LEGACY_CONVERSATION_MESSAGE_PHASE_ACTION,
+                            ]
+                        )
+                    )
+                    .where(AuditLog.resource_type == "conversation_message")
+                    .where(AuditLog.resource_id.in_(assistant_ids))
+                )
+                for log in audit_result.scalars().all():
+                    details: dict[str, object] = (
+                        log.details if isinstance(log.details, dict) else {}
+                    )
+                    resource_id = str(log.resource_id)
+                    metadata_by_message_id.setdefault(resource_id, {})
+                    phase = details.get("phase")
+                    if phase:
+                        phase_by_message_id[resource_id] = _normalize_chat_phase(
+                            str(phase)
+                        )
+                    for key in (
+                        "provider",
+                        "model",
+                        "lane",
+                        "response_id",
+                        "stateful",
+                        "used_previous_response_id",
+                    ):
+                        value = details.get(key)
+                        if value is not None:
+                            metadata_by_message_id[resource_id][key] = value
         messages = [
-            {"role": r[0], "content": r[1], "created_at": r[2].isoformat()}
+            {
+                "role": r[1],
+                "content": r[2],
+                "created_at": r[3].isoformat(),
+                "phase": (
+                    phase_by_message_id.get(str(r[0]), "final_answer")
+                    if r[1] == "assistant"
+                    else None
+                ),
+                **(
+                    metadata_by_message_id.get(str(r[0]), {})
+                    if r[1] == "assistant"
+                    else {}
+                ),
+            }
             for r in rows
         ]
         return {"messages": messages}

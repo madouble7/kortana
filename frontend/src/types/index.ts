@@ -2,6 +2,31 @@
  * TypeScript type definitions for Kor'tana
  */
 
+export type ChatPhase = 'analysis' | 'commentary' | 'final_answer';
+
+export interface QueuedTaskSummary {
+  id: string;
+  name: string;
+  branch: string;
+}
+
+export interface ChatHistoryEntry {
+  role: 'user' | 'assistant';
+  content: string;
+  phase?: ChatPhase;
+}
+
+export interface ChatTurnMetadata {
+  phase?: ChatPhase;
+  provider?: string;
+  model?: string;
+  lane?: string;
+  response_id?: string;
+  stateful?: boolean;
+  used_previous_response_id?: boolean;
+  tasks_queued?: QueuedTaskSummary[];
+}
+
 export interface SandboxResult {
   ok: boolean;
   status: string;
@@ -63,12 +88,12 @@ export interface Task {
   sandbox_result?: SandboxResult;
 }
 
-export interface Message {
+export interface Message extends ChatTurnMetadata {
   id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: string;
-  tasks_queued?: Array<{ id: string; name: string; branch: string }>;
+  streaming?: boolean;
 }
 
 export interface Conversation {
