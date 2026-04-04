@@ -11,8 +11,15 @@ def _make_consensus_engine(answer: str, providers_succeeded: int = 1) -> MagicMo
     result = MagicMock()
     result.providers_succeeded = providers_succeeded
     result.answer = answer
+    result.provider_used = "gemini"
     engine = MagicMock()
     engine.query = AsyncMock(return_value=result)
+    engine.get_status.return_value = {
+        "providers": {
+            "gemini": {"model": "gemini-2.0-flash", "lane": "core"},
+            "openai": {"model": "gpt-5.4-mini", "lane": "core"},
+        }
+    }
     return engine
 
 
@@ -164,6 +171,43 @@ class TestGenerateCode:
 
 
 class TestChatWithGemini:
+    def test_stateful_openai_gate_requires_valid_session_payload(self):
+        """Malformed session payloads should not enable threaded OpenAI chat."""
+        from src.kortana.routers.gemini import _stateful_openai_chat_enabled
+
+        with patch("src.kortana.routers.gemini.get_settings") as mock_settings:
+            mock_settings.return_value = MagicMock(
+                KORTANA_OPENAI_STATEFUL_CHAT_ENABLED=True,
+                OPENAI_API_KEY="sk-test",
+            )
+            with patch(
+                "src.kortana.routers.gemini.get_active_model_lane",
+                return_value=MagicMock(),
+            ):
+                with patch(
+                    "src.kortana.routers.gemini.model_allowed",
+                    return_value=True,
+                ):
+                    assert _stateful_openai_chat_enabled({}) is False
+                    assert (
+                        _stateful_openai_chat_enabled(
+                            {"session_id": "", "history": []}
+                        )
+                        is False
+                    )
+                    assert (
+                        _stateful_openai_chat_enabled(
+                            {"session_id": "sess_live", "history": "invalid"}
+                        )
+                        is False
+                    )
+                    assert (
+                        _stateful_openai_chat_enabled(
+                            {"session_id": "sess_live", "history": []}
+                        )
+                        is True
+                    )
+
     def test_chat_system_prompt_includes_memory_policy_context(self, client):
         """Chat should include doctrine-driven memory context in the system prompt."""
         engine = _make_consensus_engine("kor'tana: memory-aware reply")
@@ -367,6 +411,260 @@ class TestChatWithGemini:
 
         assert response.status_code == 200
         assert "ai response" in response.json()["response"].lower()
+        assert response.json()["provider"] == "gemini"
+        assert response.json()["model"] == "gemini-2.0-flash"
+        assert response.json()["stateful"] is False
+
+    def test_chat_uses_stateful_openai_when_session_backed(self, client):
+        """Session-backed chat should prefer the stateful GPT-5 path."""
+        with patch(
+            "src.kortana.routers.gemini._build_live_context",
+            AsyncMock(return_value=""),
+        ):
+            with patch(
+                "src.kortana.routers.gemini._chat_with_stateful_openai",
+                AsyncMock(
+                    return_value=MagicMock(
+                        text="kor'tana: threaded openai reply",
+                        phase="commentary",
+                        response_id="resp_123",
+                        used_previous_response_id=True,
+                    )
+                ),
+            ) as mock_stateful:
+                with patch(
+                    "src.kortana.routers.gemini._persist_messages",
+                    AsyncMock(),
+                ):
+                    with patch(
+                        "src.kortana.routers.gemini.get_consensus_engine",
+                    ) as mock_engine:
+                        response = client.post(
+                            "/api/gemini/chat",
+                            json={
+                                "message": "hello there",
+                                "session_id": "sess_live",
+                                "history": [{"role": "user", "content": "hi"}],
+                            },
+                        )
+
+        assert response.status_code == 200
+        assert "threaded openai reply" in response.json()["response"].lower()
+        assert response.json()["phase"] == "commentary"
+        assert response.json()["provider"] == "openai"
+        assert response.json()["model"] == "gpt-5.4-mini"
+        assert response.json()["response_id"] == "resp_123"
+        assert response.json()["stateful"] is True
+        assert response.json()["used_previous_response_id"] is True
+        mock_stateful.assert_awaited_once()
+        mock_engine.assert_not_called()
+
+    def test_chat_falls_back_to_consensus_when_stateful_openai_fails(self, client):
+        """Stateful OpenAI failures should degrade cleanly to the consensus path."""
+        engine = _make_consensus_engine("kor'tana: consensus recovery")
+
+        with patch(
+            "src.kortana.routers.gemini._build_live_context",
+            AsyncMock(return_value=""),
+        ):
+            with patch(
+                "src.kortana.routers.gemini._chat_with_stateful_openai",
+                AsyncMock(side_effect=RuntimeError("thread failed")),
+            ):
+                with patch(
+                    "src.kortana.routers.gemini._persist_messages",
+                    AsyncMock(),
+                ):
+                    with patch(
+                        "src.kortana.routers.gemini.get_consensus_engine",
+                        return_value=engine,
+                    ):
+                        response = client.post(
+                            "/api/gemini/chat",
+                            json={
+                                "message": "hello there",
+                                "session_id": "sess_live",
+                                "history": [{"role": "user", "content": "hi"}],
+                            },
+                        )
+
+        assert response.status_code == 200
+        assert "consensus recovery" in response.json()["response"].lower()
+        assert response.json()["phase"] == "final_answer"
+        assert response.json()["provider"] == "gemini"
+        assert response.json()["stateful"] is False
+        engine.query.assert_awaited_once()
+
+    def test_chat_stream_emits_stateful_openai_events(self, client):
+        """Streaming chat should emit delta and final SSE events for GPT-5 turns."""
+        from src.kortana.openai_responses import OpenAITextGenerationResult
+
+        async def _fake_stream(**_kwargs):
+            yield {"type": "delta", "delta": "kor'tana: threaded "}
+            yield {"type": "delta", "delta": "stream reply"}
+            yield {
+                "type": "completed",
+                "result": OpenAITextGenerationResult(
+                    text="kor'tana: threaded stream reply",
+                    response_id="resp_stream",
+                    phase="final_answer",
+                    used_previous_response_id=True,
+                ),
+            }
+
+        with patch(
+            "src.kortana.routers.gemini._build_live_context",
+            AsyncMock(return_value=""),
+        ):
+            with patch(
+                "src.kortana.routers.gemini._stream_stateful_openai",
+                _fake_stream,
+            ):
+                with patch(
+                    "src.kortana.routers.gemini._persist_messages",
+                    AsyncMock(),
+                ):
+                    with patch(
+                        "src.kortana.routers.gemini._stateful_openai_chat_enabled",
+                        return_value=True,
+                    ):
+                        response = client.post(
+                            "/api/gemini/chat/stream",
+                            json={
+                                "message": "hello there",
+                                "session_id": "sess_live",
+                                "history": [{"role": "user", "content": "hi"}],
+                            },
+                        )
+
+        assert response.status_code == 200
+        assert "event: start" in response.text
+        assert "event: delta" in response.text
+        assert "event: final" in response.text
+        assert "kor'tana: threaded stream reply" in response.text
+        assert "\"response_id\": \"resp_stream\"" in response.text
+
+    def test_chat_history_returns_assistant_phase(self, client):
+        """Persisted history should include assistant phase metadata."""
+
+        class FakeScalarResult:
+            def __init__(self, rows):
+                self._rows = rows
+
+            def all(self):
+                return self._rows
+
+        class FakeAuditResult:
+            def __init__(self, rows):
+                self._rows = rows
+
+            def scalars(self):
+                return FakeScalarResult(self._rows)
+
+        class FakeConversationResult:
+            def __init__(self, rows):
+                self._rows = rows
+
+            def fetchall(self):
+                return self._rows
+
+        class FakeSession:
+            async def execute(self, stmt, params=None):
+                if "conversation_messages" in str(stmt):
+                    return FakeConversationResult(
+                        [
+                            (
+                                "user-1",
+                                "user",
+                                "hello",
+                                MagicMock(isoformat=lambda: "2026-04-04T09:00:00"),
+                            ),
+                            (
+                                "asst-1",
+                                "assistant",
+                                "kor'tana: i am here.",
+                                MagicMock(isoformat=lambda: "2026-04-04T09:00:01"),
+                            ),
+                        ]
+                    )
+                return FakeAuditResult(
+                    [
+                        MagicMock(
+                            resource_id="asst-1",
+                            details={
+                                "phase": "commentary",
+                                "provider": "openai",
+                                "model": "gpt-5.4-mini",
+                                "response_id": "resp_hist",
+                                "stateful": True,
+                                "used_previous_response_id": True,
+                            },
+                        )
+                    ]
+                )
+
+        class FakeDbManager:
+            def session_scope(self):
+                return _FakeSessionScope(FakeSession())
+
+        with patch(
+            "src.kortana.database.get_db_manager",
+            return_value=FakeDbManager(),
+        ):
+            response = client.get("/api/gemini/chat/history?session_id=sess_live&limit=10")
+
+        assert response.status_code == 200
+        messages = response.json()["messages"]
+        assert messages[0]["phase"] is None
+        assert messages[1]["phase"] == "commentary"
+        assert messages[1]["provider"] == "openai"
+        assert messages[1]["model"] == "gpt-5.4-mini"
+        assert messages[1]["response_id"] == "resp_hist"
+        assert messages[1]["stateful"] is True
+        assert messages[1]["used_previous_response_id"] is True
+
+    def test_chat_history_handles_user_only_rows(self, client):
+        """History endpoint should not crash when persistence only has user rows."""
+
+        class FakeConversationResult:
+            def __init__(self, rows):
+                self._rows = rows
+
+            def fetchall(self):
+                return self._rows
+
+        class FakeSession:
+            async def execute(self, stmt, params=None):
+                return FakeConversationResult(
+                    [
+                        (
+                            "user-1",
+                            "user",
+                            "hello",
+                            MagicMock(isoformat=lambda: "2026-04-04T09:00:00"),
+                        )
+                    ]
+                )
+
+        class FakeDbManager:
+            def session_scope(self):
+                return _FakeSessionScope(FakeSession())
+
+        with patch(
+            "src.kortana.database.get_db_manager",
+            return_value=FakeDbManager(),
+        ):
+            response = client.get("/api/gemini/chat/history?session_id=sess_live&limit=10")
+
+        assert response.status_code == 200
+        assert response.json()["messages"] == [
+            {
+                "role": "user",
+                "content": "hello",
+                "created_at": "2026-04-04T09:00:00",
+                "phase": None,
+            }
+        ]
 
     def test_chat_fallback_to_gemini(self, client):
         """Test chat fallback to Gemini when the consensus engine has no provider."""

@@ -7,6 +7,7 @@ import logging
 import os
 import time
 import uuid
+import asyncio
 from datetime import datetime
 from typing import Any, cast
 
@@ -22,10 +23,12 @@ from src.kortana.model_lane_policy import (
     model_allowed,
 )
 from src.kortana.models import Agent, AuditLog, Memory, User
+from src.kortana.openai_responses import sync_generate_turn
 from src.kortana.provider_model_defaults import (
     GEMINI_EMBEDDING_MODEL_NAME,
     GEMINI_EMBEDDING_MODEL_PATH,
     GROQ_LLAMA_VERSATILE_MODEL,
+    OPENAI_FAST_MODEL,
 )
 
 logger = logging.getLogger(__name__)
@@ -270,6 +273,53 @@ async def _exercise_groq() -> dict[str, Any]:
         }
 
 
+async def _exercise_openai() -> dict[str, Any]:
+    """Generate text via the shared OpenAI GPT-5 fast worker path."""
+    t0 = time.perf_counter()
+    try:
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            return {"status": "skip", "reason": "No OPENAI_API_KEY"}
+
+        model_name = OPENAI_FAST_MODEL
+        if not model_allowed(model_name):
+            return {
+                "status": "skip",
+                "reason": "OpenAI model unavailable under active lane",
+                "model": model_name,
+                "model_lane": describe_model_lane(model_name),
+            }
+
+        from openai import OpenAI
+
+        client = OpenAI(api_key=api_key)
+        result = await asyncio.to_thread(
+            sync_generate_turn,
+            client,
+            model_name=model_name,
+            prompt="Reply in exactly 6 words: Why does Kor'tana use model lanes?",
+            max_output_tokens=40,
+        )
+        latency = (time.perf_counter() - t0) * 1000
+        return {
+            "status": "ok",
+            "model": model_name,
+            "model_lane": describe_model_lane(model_name),
+            "response": result.text[:200],
+            "input_tokens": result.input_tokens,
+            "output_tokens": result.output_tokens,
+            "response_id": result.response_id,
+            "phase": result.phase,
+            "latency_ms": round(latency, 1),
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+            "latency_ms": round((time.perf_counter() - t0) * 1000, 1),
+        }
+
+
 async def _exercise_github() -> dict[str, Any]:
     """Hit GitHub API to check repo status (free, 5000 req/hr)."""
     t0 = time.perf_counter()
@@ -385,10 +435,13 @@ async def run_full_exercise(db: AsyncSession = Depends(get_db)) -> dict[str, Any
     # 6. Groq (free)
     results["groq"] = await _exercise_groq()
 
-    # 7. GitHub API (free)
+    # 7. OpenAI fast worker lane
+    results["openai"] = await _exercise_openai()
+
+    # 8. GitHub API (free)
     results["github"] = await _exercise_github()
 
-    # 8. Memory store with real embedding
+    # 9. Memory store with real embedding
     embedding = None
     if emb_result.get("status") == "ok":
         # Re-use the embedding we already generated
@@ -462,10 +515,17 @@ async def quick_status(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
         checks["redis"] = "error"
 
     # Gemini API key present
-    checks["gemini_key"] = "ok" if os.getenv("GEMINI_API_KEY") else "missing"
+    checks["gemini_key"] = (
+        "ok"
+        if os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        else "missing"
+    )
 
     # Groq API key present
     checks["groq_key"] = "ok" if os.getenv("GROQ_API_KEY") else "missing"
+
+    # OpenAI API key present
+    checks["openai_key"] = "ok" if os.getenv("OPENAI_API_KEY") else "missing"
 
     # GitHub token present
     checks["github_token"] = "ok" if os.getenv("GITHUB_TOKEN") else "missing"
@@ -479,6 +539,11 @@ async def quick_status(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
             "model": GROQ_LLAMA_VERSATILE_MODEL,
             "lane": describe_model_lane(GROQ_LLAMA_VERSATILE_MODEL),
             "allowed": model_allowed(GROQ_LLAMA_VERSATILE_MODEL),
+        },
+        "openai_generate": {
+            "model": OPENAI_FAST_MODEL,
+            "lane": describe_model_lane(OPENAI_FAST_MODEL),
+            "allowed": model_allowed(OPENAI_FAST_MODEL),
         },
     }
     if os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"):

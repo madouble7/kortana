@@ -2,7 +2,7 @@ import { ClipboardList, Loader2, Send, Sparkles } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { api } from '../lib/api';
 import { cn, formatRelativeTime } from '../lib/utils';
-import type { Message } from '../types';
+import type { ChatHistoryEntry, ChatPhase, Message } from '../types';
 
 // Stable session ID persisted in localStorage so history survives page refreshes.
 function getSessionId(): string {
@@ -15,16 +15,39 @@ function getSessionId(): string {
   return id;
 }
 
+function buildChatHistory(messages: Message[]): ChatHistoryEntry[] {
+  return messages
+    .filter((message): message is Message & { role: 'user' | 'assistant' } => (
+      message.role === 'user' || message.role === 'assistant'
+    ))
+    .slice(-10)
+    .map((message) => ({
+      role: message.role,
+      content: message.content,
+      phase: message.phase,
+    }));
+}
+
+function formatChatPhase(phase: ChatPhase): string {
+  return phase.replace(/_/g, ' ');
+}
+
 export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const sessionId = getSessionId();
+  const [sessionId] = useState(() => getSessionId());
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const updateMessage = (id: string, updater: (message: Message) => Message) => {
+    setMessages((prev) => prev.map((message) => (
+      message.id === id ? updater(message) : message
+    )));
   };
 
   // Load persisted history from DB on mount
@@ -33,10 +56,17 @@ export default function Chat() {
       .then((data) => {
         if (data?.messages?.length) {
           const loaded: Message[] = data.messages.map((m, i: number) => ({
-            id: `hist_${i}`,
-            role: m.role === 'user' ? 'user' : 'assistant',
+            id: `hist_${m.created_at ?? i}_${m.role}_${i}`,
+            role: m.role,
             content: m.content,
             timestamp: m.created_at ?? new Date().toISOString(),
+            phase: m.phase,
+            provider: m.provider,
+            model: m.model,
+            lane: m.lane,
+            response_id: m.response_id,
+            stateful: m.stateful,
+            used_previous_response_id: m.used_previous_response_id,
           }));
           setMessages(loaded);
         }
@@ -64,35 +94,84 @@ export default function Chat() {
     setInput('');
     setLoading(true);
 
+    const assistantMessageId = `${Date.now() + 1}`;
+    const assistantPlaceholder: Message = {
+      id: assistantMessageId,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date().toISOString(),
+      phase: 'commentary',
+      streaming: true,
+    };
+
+    setMessages((prev) => [...prev, assistantPlaceholder]);
+
     try {
-      // Build history from current messages (last 10 turns)
-      const history = messages.slice(-10).map((m) => ({
-        role: m.role === 'user' ? 'user' : 'assistant',
-        content: m.content,
-      }));
-      const response = await api.sendChatMessage(input, history, conversationId || undefined, sessionId);
+      const history = buildChatHistory(messages);
+      await api.sendChatMessageStream(
+        input,
+        history,
+        conversationId || undefined,
+        sessionId,
+        {
+          onStart: (payload) => {
+            updateMessage(assistantMessageId, (message) => ({
+              ...message,
+              provider: payload.provider,
+              model: payload.model,
+              lane: payload.lane,
+              stateful: payload.stateful,
+              used_previous_response_id: payload.used_previous_response_id,
+            }));
+          },
+          onPhase: (phase) => {
+            updateMessage(assistantMessageId, (message) => ({
+              ...message,
+              phase,
+            }));
+          },
+          onDelta: (delta) => {
+            updateMessage(assistantMessageId, (message) => ({
+              ...message,
+              content: message.content + delta,
+            }));
+          },
+          onFinal: (response) => {
+            if (response.conversation_id && !conversationId) {
+              setConversationId(response.conversation_id);
+            }
 
-      if (response.conversation_id && !conversationId) {
-        setConversationId(response.conversation_id);
-      }
-
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: response.response || response.message || '',
-        timestamp: new Date().toISOString(),
-        tasks_queued: response.tasks_queued?.length ? response.tasks_queued : undefined,
-      };
-
-      setMessages((prev) => [...prev, assistantMessage]);
+            updateMessage(assistantMessageId, (message) => ({
+              ...message,
+              content: response.response || response.message || message.content,
+              phase: response.phase ?? 'final_answer',
+              provider: response.provider,
+              model: response.model,
+              lane: response.lane,
+              response_id: response.response_id,
+              stateful: response.stateful,
+              used_previous_response_id: response.used_previous_response_id,
+              tasks_queued: response.tasks_queued?.length ? response.tasks_queued : undefined,
+              streaming: false,
+            }));
+          },
+          onError: (streamError) => {
+            updateMessage(assistantMessageId, (message) => ({
+              ...message,
+              content: message.content || `Error: ${streamError}`,
+              streaming: false,
+            }));
+          },
+        }
+      );
     } catch (error: unknown) {
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
+      updateMessage(assistantMessageId, (message) => ({
+        ...message,
         role: 'system',
         content: `Error: ${error instanceof Error ? error.message : 'Failed to send message'}`,
-        timestamp: new Date().toISOString(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
+        streaming: false,
+        phase: undefined,
+      }));
     } finally {
       setLoading(false);
     }
@@ -147,7 +226,11 @@ export default function Chat() {
               >
                 <div className="flex items-start gap-2">
                   <div className="flex-1">
-                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    {message.streaming && !message.content ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    )}
                     <p
                       className={cn(
                         'text-xs mt-1',
@@ -160,6 +243,21 @@ export default function Chat() {
                     >
                       {formatRelativeTime(message.timestamp)}
                     </p>
+                    {message.role === 'assistant' && message.phase && message.phase !== 'final_answer' ? (
+                      <p className="text-[10px] uppercase tracking-[0.2em] text-indigo-300/70 mt-1">
+                        {formatChatPhase(message.phase)}
+                      </p>
+                    ) : null}
+                    {message.role === 'assistant' && (message.provider || message.model || message.stateful) ? (
+                      <p className="text-[10px] text-gray-400 mt-1">
+                        {[
+                          message.provider,
+                          message.model,
+                          message.stateful ? 'threaded' : null,
+                          message.used_previous_response_id ? 'continued' : null,
+                        ].filter(Boolean).join(' · ')}
+                      </p>
+                    ) : null}
                     {message.tasks_queued?.length ? (
                       <div className="mt-2 flex flex-wrap gap-1">
                         {message.tasks_queued.map((t) => (
@@ -180,7 +278,7 @@ export default function Chat() {
             </div>
           ))
         )}
-        {loading && (
+        {loading && !messages.some((message) => message.streaming) && (
           <div className="flex justify-start">
             <div className="bg-gray-800 text-gray-100 rounded-lg px-4 py-3">
               <Loader2 className="w-5 h-5 animate-spin" />

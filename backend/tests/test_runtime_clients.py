@@ -175,3 +175,138 @@ class TestAPIIntegrationModelLaneRuntime:
         assert input_tokens == 8
         assert output_tokens == 5
         mock_client.responses.create.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_openai_helper_passes_previous_response_id_for_gpt5_models(
+        self,
+    ) -> None:
+        from src.kortana.openai_responses import async_generate_turn
+
+        mock_client = MagicMock()
+        mock_client.responses.create = AsyncMock(
+            return_value=MagicMock(
+                id="resp_new",
+                output_text="Threaded OpenAI output",
+                usage=MagicMock(input_tokens=13, output_tokens=7),
+            )
+        )
+
+        result = await async_generate_turn(
+            mock_client,
+            model_name=AI_CONSENSUS_DEFAULTS.openai,
+            prompt="continue",
+            previous_response_id="resp_prev",
+            timeout=30.0,
+        )
+
+        kwargs = mock_client.responses.create.await_args.kwargs
+        assert kwargs["previous_response_id"] == "resp_prev"
+        assert result.text == "Threaded OpenAI output"
+        assert result.response_id == "resp_new"
+
+    @pytest.mark.asyncio
+    async def test_openai_helper_replays_assistant_phase_in_history(self) -> None:
+        from src.kortana.openai_responses import async_generate_turn
+
+        mock_client = MagicMock()
+        mock_client.responses.create = AsyncMock(
+            return_value=MagicMock(
+                id="resp_hist",
+                output=[
+                    MagicMock(role="assistant", phase="final_answer"),
+                ],
+                output_text="Phase aware output",
+                usage=MagicMock(input_tokens=4, output_tokens=6),
+            )
+        )
+
+        result = await async_generate_turn(
+            mock_client,
+            model_name=AI_CONSENSUS_DEFAULTS.openai,
+            prompt="what next?",
+            history=[
+                {"role": "user", "content": "hello"},
+                {
+                    "role": "assistant",
+                    "content": "kor'tana: i am here.",
+                    "phase": "commentary",
+                },
+            ],
+        )
+
+        input_payload = mock_client.responses.create.await_args.kwargs["input"]
+        assert input_payload[1]["phase"] == "commentary"
+        assert result.phase == "final_answer"
+
+    @pytest.mark.asyncio
+    async def test_openai_helper_streams_gpt5_text_deltas(self) -> None:
+        from src.kortana.openai_responses import (
+            OpenAITextGenerationResult,
+            async_stream_turn,
+        )
+
+        class _FakeStream:
+            def __init__(self, events, final_response):
+                self._events = list(events)
+                self._final_response = final_response
+
+            def __aiter__(self):
+                self._index = 0
+                return self
+
+            async def __anext__(self):
+                if self._index >= len(self._events):
+                    raise StopAsyncIteration
+                item = self._events[self._index]
+                self._index += 1
+                return item
+
+            async def get_final_response(self):
+                return self._final_response
+
+        class _FakeManager:
+            def __init__(self, stream):
+                self._stream = stream
+
+            async def __aenter__(self):
+                return self._stream
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return None
+
+        final_response = MagicMock(
+            id="resp_stream",
+            output=[MagicMock(role="assistant", phase="final_answer")],
+            output_text="kor'tana: streamed reply",
+            usage=MagicMock(input_tokens=9, output_tokens=4),
+        )
+        fake_stream = _FakeStream(
+            [
+                MagicMock(type="response.output_text.delta", delta="kor'tana: "),
+                MagicMock(type="response.output_text.delta", delta="streamed "),
+                MagicMock(type="response.output_text.delta", delta="reply"),
+            ],
+            final_response,
+        )
+        mock_client = MagicMock()
+        mock_client.responses.stream = MagicMock(return_value=_FakeManager(fake_stream))
+
+        events = [
+            event
+            async for event in async_stream_turn(
+                mock_client,
+                model_name=AI_CONSENSUS_DEFAULTS.openai,
+                prompt="hello",
+            )
+        ]
+
+        assert events[:3] == [
+            {"type": "delta", "delta": "kor'tana: "},
+            {"type": "delta", "delta": "streamed "},
+            {"type": "delta", "delta": "reply"},
+        ]
+        completed = events[-1]
+        assert completed["type"] == "completed"
+        assert isinstance(completed["result"], OpenAITextGenerationResult)
+        assert completed["result"].text == "kor'tana: streamed reply"
+        assert completed["result"].response_id == "resp_stream"
