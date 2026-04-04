@@ -23,17 +23,18 @@ if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
 # Import configuration and utilities
-from src.kortana.config import get_settings
-from src.kortana.exceptions import KortanaException
-from src.kortana.logger import log_error, log_request, setup_logging
-from src.kortana.middleware.cache import (
+# noqa: E402 — these must follow the sys.path.insert block above
+from src.kortana.config import get_settings  # noqa: E402
+from src.kortana.exceptions import KortanaException  # noqa: E402
+from src.kortana.logger import log_error, log_request, setup_logging  # noqa: E402
+from src.kortana.middleware.cache import (  # noqa: E402
     DEFAULT_CACHE_EXCLUDE_PATHS,
     CacheStrategy,
     ResponseCacheMiddleware,
 )
 
 # Import security middleware
-from src.kortana.middleware.security import (
+from src.kortana.middleware.security import (  # noqa: E402
     RateLimitMiddleware,
     RequestIDMiddleware,
     RequestLoggingMiddleware,
@@ -79,8 +80,8 @@ try:
         pr_creation,
         prayer,
         rclone,
-        songwriting,
         singularity_bridge,
+        songwriting,
         system,
         task_queue,
         test_orchestrator,
@@ -117,13 +118,10 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         print(
             f"   - Discord Bot: {'[OK]' if settings.DISCORD_BOT_TOKEN else '[MISSING]'}"
         )
-        print(f"   - OpenAI Key: {'[OK]' if settings.OPENAI_API_KEY else '[MISSING]'}")
-        print(
-            f"   - Anthropic Key: {'[OK]' if settings.ANTHROPIC_API_KEY else '[MISSING]'}"
-        )
-        print(
-            f"   - Pinecone Key: {'[OK]' if settings.PINECONE_API_KEY else '[MISSING]'}"
-        )
+        ok_missing = lambda k: "[OK]" if k else "[MISSING]"  # noqa: E731
+        print(f"   - OpenAI Key: {ok_missing(settings.OPENAI_API_KEY)}")
+        print(f"   - Anthropic Key: {ok_missing(settings.ANTHROPIC_API_KEY)}")
+        print(f"   - Pinecone Key: {ok_missing(settings.PINECONE_API_KEY)}")
         print(
             f"   - Stripe Keys: {'[OK]' if settings.STRIPE_SECRET_KEY else '[MISSING]'}"
         )
@@ -149,15 +147,24 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     log_request("system", f"Kor'tana API starting in {settings.ENVIRONMENT} mode")
     print(f"[*] Kor'tana API starting in {settings.ENVIRONMENT} mode")
 
-    # Start autonomy daemon
-    try:
-        from src.kortana.services.autonomy_daemon import get_autonomy_daemon
+    # Start autonomy daemon only when this process is explicitly the daemon host.
+    # In the default decoupled deployment the daemon runs as a separate process
+    # (Procfile `daemon:` / Railway daemon service); set
+    # KORTANA_DAEMON_IN_PROCESS=true to opt back in to the embedded model.
+    if os.getenv("KORTANA_DAEMON_IN_PROCESS", "false").lower() == "true":
+        try:
+            from src.kortana.services.autonomy_daemon import get_autonomy_daemon
 
-        daemon = get_autonomy_daemon()
-        await daemon.start()
-        print("[*] Autonomy daemon started")
-    except Exception as e:
-        print(f"[WARN] Autonomy daemon startup: {e}")
+            daemon = get_autonomy_daemon()
+            await daemon.start()
+            print("[*] Autonomy daemon started (in-process)")
+        except Exception as e:
+            print(f"[WARN] Autonomy daemon startup: {e}")
+    else:
+        print(
+            "[*] Autonomy daemon skipped in web process "
+            "(dedicated daemon service expected)"
+        )
 
     try:
         from src.kortana.services.workspace_bridge_service import get_workspace_bridge
@@ -203,9 +210,12 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         learner = await get_adaptive_learner()
         gm = get_goal_manager()
         await gm.load_from_db()
-        print(
-            f"[*] Intelligence online — SA:{sa._state.value}  Goals:{gm.get_status()['total_goals']}  Learner:{learner.get_status()['outcomes_recorded']} outcomes"
+        status_line = (
+            f"[*] Intelligence online — SA:{sa._state.value} "
+            f" Goals:{gm.get_status()['total_goals']} "
+            f" Learner:{learner.get_status()['outcomes_recorded']} outcomes"
         )
+        print(status_line)
     except Exception as e:
         print(f"[WARN] Intelligence systems startup: {e}")
 
@@ -551,7 +561,7 @@ def create_app() -> FastAPI:
 
             @app.get("/{full_path:path}")
             async def serve_frontend(request: Request, full_path: str) -> Response:
-                """Serve the frontend SPA for any unmatched routes with runtime config injection"""
+                """Serve the frontend SPA for unmatched routes."""
                 # Don't intercept /api routes
                 if full_path.startswith("api"):
                     return JSONResponse(

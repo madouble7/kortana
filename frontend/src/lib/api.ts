@@ -8,10 +8,21 @@ import { getApiBaseUrl } from './runtimeConfig';
 
 const API_URL = getApiBaseUrl();
 
+interface ChatSendResponse {
+  conversation_id?: string;
+  response?: string;
+  message?: string;
+  tasks_queued?: Array<{ id: string; name: string; branch: string }>;
+}
+
+interface ChatHistoryResponse {
+  messages?: Array<{ role: string; content: string; created_at?: string }>;
+}
+
 interface ApiError {
   message: string;
   status: number;
-  details?: any;
+  details?: unknown;
 }
 
 const toIsoTimestamp = (value?: string) => value || new Date().toISOString();
@@ -57,47 +68,52 @@ const priorityToNumber = (priority?: Task['priority']): number => {
   }
 };
 
-const normalizeTask = (task: any): Task => {
-  const createdAt = toIsoTimestamp(task?.created_at);
+const normalizeTask = (task: unknown): Task => {
+  const t = task as Record<string, unknown>;
+  const createdAt = toIsoTimestamp(t.created_at as string | undefined);
   return {
-    id: String(task?.id ?? ''),
-    title: task?.title ?? task?.name ?? 'Untitled Task',
-    description: task?.description ?? undefined,
-    status: normalizeTaskStatus(task?.status),
-    priority: normalizePriority(task?.priority),
-    classification: task?.classification ?? 'auto',
+    id: String(t.id ?? ''),
+    title: String(t.title ?? t.name ?? 'Untitled Task'),
+    description: t.description as string | undefined,
+    status: normalizeTaskStatus(t.status as string | undefined),
+    priority: normalizePriority(t.priority),
+    classification: (t.classification as 'auto' | 'ho' | 'approval' | undefined) ?? 'auto',
     created_at: createdAt,
-    updated_at: toIsoTimestamp(task?.updated_at ?? createdAt),
-    result: task?.result ?? undefined,
-    error: task?.error ?? undefined,
-    hop_capable: task?.hop_capable ?? undefined,
-    hop_executed_by: task?.hop_executed_by ?? undefined,
-    ho_scaffold: task?.ho_scaffold ?? undefined,
+    updated_at: toIsoTimestamp((t.updated_at as string | undefined) ?? createdAt),
+    result: t.result as string | undefined,
+    error: t.error as string | undefined,
+    hop_capable: t.hop_capable as boolean | undefined,
+    hop_executed_by: t.hop_executed_by as 'human' | 'hop' | undefined,
+    ho_scaffold: t.ho_scaffold as string | undefined,
   };
 };
 
-const normalizeMemory = (memory: any): Memory => ({
-  id: String(memory?.id ?? ''),
-  content: memory?.content ?? memory?.text ?? '',
-  embedding: memory?.embedding ?? undefined,
-  created_at: toIsoTimestamp(memory?.created_at),
-  relevance_score: memory?.relevance_score ?? memory?.score ?? undefined,
-});
+const normalizeMemory = (memory: unknown): Memory => {
+  const m = memory as Record<string, unknown>;
+  return {
+    id: String(m.id ?? ''),
+    content: (m.content ?? m.text ?? '') as string,
+    embedding: m.embedding as number[] | undefined,
+    created_at: toIsoTimestamp(m.created_at as string | undefined),
+    relevance_score: (m.relevance_score ?? m.score) as number | undefined,
+  };
+};
 
-const normalizeGitHubIssue = (issue: any): GitHubIssue => {
-  const labels = Array.isArray(issue?.labels)
-    ? issue.labels
-      .map((label: any) => (typeof label === 'string' ? label : label?.name))
-      .filter(Boolean)
+const normalizeGitHubIssue = (issue: unknown): GitHubIssue => {
+  const i = issue as Record<string, unknown>;
+  const labels = Array.isArray(i.labels)
+    ? i.labels
+      .map((label: unknown) => (typeof label === 'string' ? label : (label as Record<string, unknown>)?.name as string | undefined))
+      .filter((l): l is string => typeof l === 'string')
     : [];
 
   return {
-    number: issue?.number,
-    title: issue?.title ?? '',
-    body: issue?.body ?? '',
-    state: issue?.state ?? 'open',
-    created_at: toIsoTimestamp(issue?.created_at),
-    updated_at: toIsoTimestamp(issue?.updated_at ?? issue?.created_at),
+    number: i.number as number,
+    title: (i.title ?? '') as string,
+    body: (i.body ?? '') as string,
+    state: (i.state ?? 'open') as 'open' | 'closed',
+    created_at: toIsoTimestamp(i.created_at as string | undefined),
+    updated_at: toIsoTimestamp((i.updated_at ?? i.created_at) as string | undefined),
     labels,
   };
 };
@@ -157,11 +173,10 @@ class ApiClient {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw {
-          message: errorData.message || errorData.detail || 'Request failed',
-          status: response.status,
-          details: errorData,
-        } as ApiError;
+        const err = new Error(errorData.message || errorData.detail || 'Request failed') as Error & ApiError;
+        err.status = response.status;
+        err.details = errorData;
+        throw err;
       }
 
       if (trackAvailability) {
@@ -176,11 +191,10 @@ class ApiClient {
       if (trackAvailability) {
         this._setOffline(true);
       }
-      throw {
-        message: 'Network error',
-        status: 0,
-        details: error,
-      } as ApiError;
+      const netErr = new Error('Network error') as Error & ApiError;
+      netErr.status = 0;
+      netErr.details = error;
+      throw netErr;
     }
   }
 
@@ -199,8 +213,8 @@ class ApiClient {
     history?: Array<{ role: string; content: string }>,
     conversationId?: string,
     sessionId?: string
-  ): Promise<any> {
-    return this.request<any>('/api/gemini/chat', {
+  ): Promise<ChatSendResponse> {
+    return this.request<ChatSendResponse>('/api/gemini/chat', {
       method: 'POST',
       body: JSON.stringify({
         message,
@@ -211,8 +225,8 @@ class ApiClient {
     });
   }
 
-  async getChatHistory(sessionId: string = 'default', limit: number = 40): Promise<any> {
-    return this.request<any>(`/api/gemini/chat/history?session_id=${encodeURIComponent(sessionId)}&limit=${limit}`);
+  async getChatHistory(sessionId: string = 'default', limit: number = 40): Promise<ChatHistoryResponse> {
+    return this.request<ChatHistoryResponse>(`/api/gemini/chat/history?session_id=${encodeURIComponent(sessionId)}&limit=${limit}`);
   }
 
   async getConversations() {
@@ -225,9 +239,10 @@ class ApiClient {
 
   // Task endpoints
   async getTasks(status?: string): Promise<Task[]> {
-    const response = await this.request<any>('/api/task-queue');
-    const tasks = Array.isArray(response) ? response : response?.tasks || [];
-    return tasks.map((task: any) => {
+    const response = await this.request<unknown>('/api/task-queue');
+    const r = response as Record<string, unknown>;
+    const tasks = Array.isArray(response) ? (response as unknown[]) : ((r.tasks as unknown[]) || []);
+    return tasks.map((task: unknown) => {
       const normalized = normalizeTask(task);
       if (status && normalized.status !== status) {
         return null;
@@ -237,7 +252,7 @@ class ApiClient {
   }
 
   async getTask(id: string): Promise<Task> {
-    const task = await this.request<any>(`/api/task-queue/${id}`);
+    const task = await this.request<unknown>(`/api/task-queue/${id}`);
     return normalizeTask(task);
   }
 
@@ -251,7 +266,7 @@ class ApiClient {
       description: task.description,
       priority: priorityToNumber(task.priority),
     };
-    const created = await this.request<any>('/api/task-queue', {
+    const created = await this.request<unknown>('/api/task-queue', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
@@ -262,7 +277,7 @@ class ApiClient {
     if (!updates?.status) {
       return this.getTask(id);
     }
-    const response = await this.request<any>(`/api/task-queue/${id}/status`, {
+    const response = await this.request<unknown>(`/api/task-queue/${id}/status`, {
       method: 'POST',
       body: JSON.stringify({ status: updates.status }),
     });
@@ -282,12 +297,12 @@ class ApiClient {
   }
 
   // Task Approval endpoints
-  async getApprovalQueue(): Promise<any[]> {
-    const data = await this.request<any>('/api/always-on/approval-queue');
-    return data.items || [];
+  async getApprovalQueue(): Promise<Record<string, unknown>[]> {
+    const data = await this.request<Record<string, unknown>>('/api/always-on/approval-queue');
+    return (data.items as Record<string, unknown>[] | undefined) || [];
   }
 
-  async resolveApproval(taskId: string, approved: boolean, notes?: string): Promise<any> {
+  async resolveApproval(taskId: string, approved: boolean, notes?: string): Promise<unknown> {
     const params = new URLSearchParams();
     params.append('approved', approved.toString());
     if (notes) params.append('notes', notes);
@@ -299,8 +314,9 @@ class ApiClient {
 
   // Autonomy endpoints
   async getAutonomyStatus(): Promise<AutonomyStatus> {
-    const data = await this.request<any>('/api/autonomy/status');
-    const stats = data?.stats || {};
+    const data = await this.request<unknown>('/api/autonomy/status');
+    const d = data as Record<string, unknown>;
+    const stats = (d.stats as Record<string, unknown>) || {};
     const pending = Number(stats.pending || 0);
     const running =
       Number(stats.running || 0) +
@@ -311,7 +327,8 @@ class ApiClient {
     const completed = Number(stats.completed || 0);
     const failed = Number(stats.failed || 0);
     const total =
-      Number(data?.total_tasks || 0) || pending + running + completed + failed;
+      Number(d.total_tasks || 0) || pending + running + completed + failed;
+    const recentTasks = d.recent_tasks as Array<Record<string, unknown>> | undefined;
 
     return {
       status: total > 0 ? 'active' : 'inactive',
@@ -331,7 +348,7 @@ class ApiClient {
           approval: 0,
         },
       },
-      last_run: data?.recent_tasks?.[0]?.updated_at,
+      last_run: recentTasks?.[0]?.updated_at as string | undefined,
       tasks_executed: completed,
     };
   }
@@ -353,11 +370,11 @@ class ApiClient {
       return [];
     }
     const { owner, name } = parsed;
-    const issues = await this.request<any[]>(
+    const issues = await this.request<unknown[]>(
       `/api/github/repos/${owner}/${name}/issues?state=open`
     );
     return issues
-      .filter((issue) => !issue?.pull_request)
+      .filter((issue) => !(issue as Record<string, unknown>)?.pull_request)
       .map((issue) => normalizeGitHubIssue(issue));
   }
 
@@ -375,31 +392,35 @@ class ApiClient {
 
   // Memory endpoints
   async getMemories(): Promise<Memory[]> {
-    const response = await this.request<any>('/api/memory/documents');
-    const documents = response?.documents || [];
-    return documents.map((doc: any) =>
-      normalizeMemory({
-        id: doc.id,
-        content: doc.content ?? doc.title ?? '',
-        created_at: doc.created_at,
-      })
-    );
+    const response = await this.request<unknown>('/api/memory/documents');
+    const r = response as Record<string, unknown>;
+    const documents = (r.documents as unknown[]) || [];
+    return documents.map((doc: unknown) => {
+      const d = doc as Record<string, unknown>;
+      return normalizeMemory({
+        id: d.id,
+        content: (d.content ?? d.title ?? '') as string,
+        created_at: d.created_at as string | undefined,
+      });
+    });
   }
 
   async searchMemory(query: string): Promise<Memory[]> {
-    const response = await this.request<any>('/api/memory/search', {
+    const response = await this.request<unknown>('/api/memory/search', {
       method: 'POST',
       body: JSON.stringify({ query }),
     });
-    const results = response?.results || [];
-    return results.map((result: any) =>
-      normalizeMemory({
-        id: result.id,
-        content: result.content ?? result.title ?? '',
-        created_at: result.created_at,
-        relevance_score: result.relevance_score,
-      })
-    );
+    const r = response as Record<string, unknown>;
+    const results = (r.results as unknown[]) || [];
+    return results.map((result: unknown) => {
+      const res = result as Record<string, unknown>;
+      return normalizeMemory({
+        id: res.id,
+        content: (res.content ?? res.title ?? '') as string,
+        created_at: res.created_at as string | undefined,
+        relevance_score: res.relevance_score as number | undefined,
+      });
+    });
   }
 }
 

@@ -100,13 +100,16 @@ async def best_provider(task_type: str) -> dict[str, Any]:
 @router.get("/goals/status")
 async def goals_status() -> dict[str, Any]:
     """Goal manager overview."""
-    return get_goal_manager().get_status()
+    mgr = get_goal_manager()
+    await mgr.ensure_loaded()
+    return mgr.get_status()
 
 
 @router.get("/goals/active")
 async def goals_active(tier: str | None = None) -> dict[str, Any]:
     """List active goals, optionally filtered by tier."""
     mgr = get_goal_manager()
+    await mgr.ensure_loaded()
     t = GoalTier(tier) if tier else None
     from dataclasses import asdict
 
@@ -119,7 +122,9 @@ async def goals_next() -> dict[str, Any]:
     """Highest-priority unblocked goal."""
     from dataclasses import asdict
 
-    goal = get_goal_manager().next_goal()
+    mgr = get_goal_manager()
+    await mgr.ensure_loaded()
+    goal = mgr.next_goal()
     return {"goal": asdict(goal) if goal else None}
 
 
@@ -129,6 +134,7 @@ async def create_goal(body: dict[str, Any]) -> dict[str, Any]:
     from dataclasses import asdict
 
     mgr = get_goal_manager()
+    await mgr.ensure_loaded()
     goal = mgr.create(**body)
     await mgr.persist_goal(goal)
     return {"created": asdict(goal)}
@@ -140,6 +146,7 @@ async def complete_goal(goal_id: str) -> dict[str, Any]:
     from dataclasses import asdict
 
     mgr = get_goal_manager()
+    await mgr.ensure_loaded()
     goal = mgr.complete(goal_id)
     if not goal:
         return {"error": "Goal not found"}

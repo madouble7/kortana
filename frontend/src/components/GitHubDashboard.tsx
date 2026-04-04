@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react';
+import { getApiBaseUrl } from '../lib/runtimeConfig';
+
+const API_BASE = getApiBaseUrl();
 
 type IssueTask = {
   id: string;
@@ -60,7 +63,7 @@ export default function GitHubDashboard() {
   const fetchQueue = async () => {
     try {
       const params = new URLSearchParams({ limit: '100', hide_local: String(hideLocal) });
-      const res = await fetch(`http://localhost:8000/api/always-on/issue-queue?${params}`);
+      const res = await fetch(`${API_BASE}/api/always-on/issue-queue?${params}`);
       if (!res.ok) return;
       const json: QueueData = await res.json();
       setData(json);
@@ -73,9 +76,9 @@ export default function GitHubDashboard() {
 
   const fetchMetrics = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/always-on/metrics');
+      const res = await fetch(`${API_BASE}/api/always-on/metrics`);
       if (!res.ok) return;
-      const json = await res.json();
+      const json = await res.json() as { provider_health?: ProviderHealth };
       if (json.provider_health) setProviderHealth(json.provider_health);
     } catch {
       // best-effort
@@ -87,6 +90,7 @@ export default function GitHubDashboard() {
     fetchMetrics();
     const id = setInterval(() => { fetchQueue(); fetchMetrics(); }, 8000);
     return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hideLocal]);
 
   const tasks = data?.tasks ?? [];
@@ -111,8 +115,8 @@ export default function GitHubDashboard() {
           <button
             onClick={() => setHideLocal(h => !h)}
             className={`flex items-center gap-1.5 px-2 py-1 rounded-md border transition-colors ${hideLocal
-                ? 'border-gray-700 text-gray-500 hover:text-gray-300'
-                : 'border-purple-700/50 bg-purple-900/20 text-purple-400'
+              ? 'border-gray-700 text-gray-500 hover:text-gray-300'
+              : 'border-purple-700/50 bg-purple-900/20 text-purple-400'
               }`}
             title={hideLocal ? 'Local tasks hidden — click to show' : 'Showing local tasks — click to hide'}
           >

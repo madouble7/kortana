@@ -2,8 +2,24 @@ import { AlertTriangle, CheckCircle, Loader2, XCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 
+interface ApprovalItem {
+  id: string;
+  github_task_id?: string;
+  title?: string;
+  rationale?: string;
+  tool_name?: string;
+  priority?: string | number;
+  task?: {
+    title?: string;
+    tool_name?: string;
+    priority?: string | number;
+    context?: { rationale?: string };
+  };
+  context?: { rationale?: string };
+}
+
 export function ApprovalQueue() {
-  const [tasks, setTasks] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<ApprovalItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actioningId, setActioningId] = useState<string | null>(null);
@@ -11,7 +27,7 @@ export function ApprovalQueue() {
   const fetchQueue = async () => {
     try {
       const data = await api.getApprovalQueue();
-      setTasks(data);
+      setTasks(data as unknown as ApprovalItem[]);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch approval queue');
@@ -81,58 +97,59 @@ export function ApprovalQueue() {
 
       <div className="grid gap-4">
         {tasks.map((item) => {
-          const t = item.task || {};
+          const t = item.task;
           const taskId = item.github_task_id || item.id;
           return (
-          <div key={item.id} className="bg-gray-800/80 rounded-lg p-5 border border-yellow-900/40 hover:border-yellow-700/50 transition-colors">
-            <div className="flex justify-between items-start mb-3">
-              <div>
-                <h4 className="text-white font-medium">{t.title || item.title || 'Unknown Task'}</h4>
-                <p className="text-xs text-gray-500 mt-1 font-mono">{taskId}</p>
+            <div key={item.id} className="bg-gray-800/80 rounded-lg p-5 border border-yellow-900/40 hover:border-yellow-700/50 transition-colors">
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                  <h4 className="text-white font-medium">{t?.title || item.title || 'Unknown Task'}</h4>
+                  <p className="text-xs text-gray-500 mt-1 font-mono">{taskId}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleAction(taskId, true)}
+                    disabled={actioningId === taskId}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500/10 hover:bg-green-500/20 text-green-400 rounded-md text-sm transition-colors disabled:opacity-50"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => handleAction(taskId, false)}
+                    disabled={actioningId === taskId}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-md text-sm transition-colors disabled:opacity-50"
+                  >
+                    <XCircle className="w-4 h-4" />
+                    Reject
+                  </button>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleAction(taskId, true)}
-                  disabled={actioningId === taskId}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500/10 hover:bg-green-500/20 text-green-400 rounded-md text-sm transition-colors disabled:opacity-50"
-                >
-                  <CheckCircle className="w-4 h-4" />
-                  Approve
-                </button>
-                <button
-                  onClick={() => handleAction(taskId, false)}
-                  disabled={actioningId === taskId}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-md text-sm transition-colors disabled:opacity-50"
-                >
-                  <XCircle className="w-4 h-4" />
-                  Reject
-                </button>
-              </div>
-            </div>
 
-            {(item.rationale || (item.context && item.context.rationale) || (t.context && t.context.rationale)) && (
-              <div className="mt-3 p-3 bg-gray-900/50 rounded border border-gray-800">
-                <p className="text-sm text-gray-300">
-                  <span className="text-gray-500 font-semibold mr-2">Rationale:</span>
-                  {item.rationale || (item.context && item.context.rationale) || (t.context && t.context.rationale)}
-                </p>
-              </div>
-            )}
+              {(item.rationale || item.context?.rationale || t?.context?.rationale) && (
+                <div className="mt-3 p-3 bg-gray-900/50 rounded border border-gray-800">
+                  <p className="text-sm text-gray-300">
+                    <span className="text-gray-500 font-semibold mr-2">Rationale:</span>
+                    {item.rationale || item.context?.rationale || t?.context?.rationale}
+                  </p>
+                </div>
+              )}
 
-            {(item.tool_name || t.tool_name) && (
-              <div className="mt-3 flex gap-2">
-                <span className="px-2 py-1 bg-gray-900 rounded text-xs text-gray-400 border border-gray-800">
-                  Tool: {item.tool_name || t.tool_name}
-                </span>
-                {(item.priority || t.priority) && (
+              {(item.tool_name || t?.tool_name) && (
+                <div className="mt-3 flex gap-2">
                   <span className="px-2 py-1 bg-gray-900 rounded text-xs text-gray-400 border border-gray-800">
-                    Priority: {item.priority || t.priority}
+                    Tool: {item.tool_name || t?.tool_name}
                   </span>
-                )}
-              </div>
-            )}
-          </div>
-        )})}
+                  {(item.priority || t?.priority) && (
+                    <span className="px-2 py-1 bg-gray-900 rounded text-xs text-gray-400 border border-gray-800">
+                      Priority: {item.priority || t?.priority}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   );

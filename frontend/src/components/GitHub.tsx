@@ -12,6 +12,7 @@ export default function GitHubPanel() {
 
   useEffect(() => {
     fetchIssues();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchIssues = async () => {
@@ -37,8 +38,8 @@ export default function GitHubPanel() {
       setCreating(issue.number);
       await api.createTaskFromIssue(issue, repo);
       alert('Task created successfully!');
-    } catch (error: any) {
-      alert(`Failed to create task: ${error.message}`);
+    } catch (error: unknown) {
+      alert(`Failed to create task: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setCreating(null);
     }
@@ -110,8 +111,8 @@ export default function GitHubPanel() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span
                         className={`text-xs px-2 py-1 rounded ${issue.state === 'open'
-                            ? 'bg-green-900/20 text-green-400'
-                            : 'bg-gray-700 text-gray-400'
+                          ? 'bg-green-900/20 text-green-400'
+                          : 'bg-gray-700 text-gray-400'
                           }`}
                       >
                         {issue.state}

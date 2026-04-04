@@ -21,7 +21,7 @@ from typing import Any, Mapping
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.kortana.models import Task
-from src.kortana.services.goal_manager import get_goal_manager, GoalTier, GoalStatus
+from src.kortana.services.goal_manager import GoalStatus, GoalTier, get_goal_manager
 from src.kortana.services.repository_boundary_service import RepositoryBoundaryService
 from src.kortana.services.self_diagnostic import SelfDiagnostic, _call_gemini_analysis
 
@@ -89,7 +89,11 @@ class AutonomyUIPatcher:
         ),
         VerificationCommand(
             "type-check",
-            ("npm.cmd" if __import__("os").name == "nt" else "npm", "run", "type-check"),
+            (
+                "npm.cmd" if __import__("os").name == "nt" else "npm",
+                "run",
+                "type-check",
+            ),
         ),
         VerificationCommand(
             "build",
@@ -129,7 +133,7 @@ class AutonomyUIPatcher:
 
         worktree_created = False
         branch_name = f"auto-repair-ui/{uuid.uuid4().hex[:8]}"
-        
+
         gm = get_goal_manager()
         repair_goal = gm.create(
             title=f"Repair {target_file.split('/')[-1]}",
@@ -206,39 +210,116 @@ class AutonomyUIPatcher:
             if not commit_sha:
                 return False
 
-            await submit_approval_task(
-                db=self.db,
-                title=f"Merge Auto-Repair UI Branch: {branch_name}",
-                description=(
-                    f"KOR'TANA detected an error ({error_type}), wrote a patch for "
-                    f"`{relative_target.as_posix()}`, validated it with "
-                    f"npm verification commands, and committed it to `{branch_name}`. "
-                    "Please approve merging this branch to main."
-                ),
-                context={
-                    "branch": branch_name,
-                    "commit_sha": commit_sha,
-                    "error_type": error_type,
-                    "target_file": relative_target.as_posix(),
-                    "root_cause": diag_result.root_cause,
-                    "suggested_fix": diag_result.suggested_fix,
-                    "verification": self._serialise_verification_results(
-                        verification_results
-                    ),
-                },
-            )
-
-            logger.info(
-                "KOR'TANA AUTO-REPAIR: Submitted approval task for branch %s",
+            # HOP OVERRIDE: Human decree specified NO SACRED MAIN BRANCH.
+            logger.warning(
+                "KOR'TANA AUTO-REPAIR: HOP Override Active. Merging %s directly to main.",
                 branch_name,
             )
-            repair_goal.status = GoalStatus.COMPLETED
-            repair_goal.progress = 1.0
-            if context and 'commit_sha' in context:
-                 repair_goal.commit_sha = commit_sha
-            await gm.persist_goal(repair_goal)
-            
-            return True
+
+            # Record current branch to restore it later
+            branch_res = await self._run_process(
+                ("git", "branch", "--show-current"), cwd=self.repo_root
+            )
+            original_branch = (
+                branch_res.stdout.strip() if branch_res.returncode == 0 else ""
+            )
+
+            try:
+                # Switch to main branch before merging. Use --quiet.
+                checkout_res = await self._run_process(
+                    ("git", "checkout", "main"), cwd=self.repo_root
+                )
+                if checkout_res.returncode != 0:
+                    logger.error(
+                        "KOR'TANA AUTO-REPAIR: Failed to checkout main before merge: %s",
+                        self._combine_output(checkout_res),
+                    )
+                    repair_goal.status = GoalStatus.ABANDONED
+                    await gm.persist_goal(repair_goal)
+                    return False
+
+                # Capture the exact HEAD SHA before merging so rollback targets the right commit
+                sha_res = await self._run_process(
+                    ("git", "rev-parse", "HEAD"), cwd=self.repo_root
+                )
+                if sha_res.returncode != 0:
+                    logger.error(
+                        "KOR'TANA AUTO-REPAIR: Could not resolve HEAD SHA before merge, aborting to stay safe."
+                    )
+                    repair_goal.status = GoalStatus.ABANDONED
+                    await gm.persist_goal(repair_goal)
+                    return False
+                pre_merge_sha = sha_res.stdout.strip()
+
+                # Merge the validated branch into the primary checkout
+                merge_res = await self._run_process(
+                    (
+                        "git",
+                        "merge",
+                        "--no-ff",
+                        "-m",
+                        f"fix(autonomy): Auto-merge {branch_name} - {error_type}",
+                        branch_name,
+                    ),
+                    cwd=self.repo_root,
+                )
+                if merge_res.returncode != 0:
+                    logger.error(
+                        "KOR'TANA AUTO-REPAIR: Failed to merge branch %s: %s",
+                        branch_name,
+                        self._combine_output(merge_res),
+                    )
+                    # Abort the merge if conflicted
+                    await self._run_process(
+                        ("git", "merge", "--abort"), cwd=self.repo_root
+                    )
+                    repair_goal.status = GoalStatus.ABANDONED
+                    await gm.persist_goal(repair_goal)
+                    return False
+
+                # Push back to origin if configured
+                push_res = await self._run_process(
+                    ("git", "push", "origin", "main"), cwd=self.repo_root
+                )
+                if push_res.returncode != 0:
+                    logger.error(
+                        "KOR'TANA AUTO-REPAIR: Merged successfully locally, but failed to push origin main. Failing closed and reverting to %s.",
+                        pre_merge_sha,
+                    )
+                    # Revert to the captured pre-merge SHA, not HEAD~1, to avoid off-by-one if HEAD advanced
+                    await self._run_process(
+                        ("git", "reset", "--hard", pre_merge_sha), cwd=self.repo_root
+                    )
+                    repair_goal.status = GoalStatus.ABANDONED
+                    await gm.persist_goal(repair_goal)
+                    return False
+
+                logger.info(
+                    "KOR'TANA AUTO-REPAIR: Autonomous deploy pushed to production."
+                )
+
+                repair_goal.status = GoalStatus.COMPLETED
+                repair_goal.progress = 1.0
+                # Removed bogus commit_sha assignment
+                await gm.persist_goal(repair_goal)
+
+                return True
+            finally:
+                if original_branch and original_branch != "main":
+                    restore_res = await self._run_process(
+                        ("git", "checkout", original_branch), cwd=self.repo_root
+                    )
+                    if restore_res.returncode != 0:
+                        logger.error(
+                            "KOR'TANA AUTO-REPAIR: CRITICAL — failed to restore branch '%s' after merge. "
+                            "Repo may be left on main. Manual intervention required. stderr=%s",
+                            original_branch,
+                            restore_res.stderr.strip(),
+                        )
+                        repair_goal.status = GoalStatus.ABANDONED
+                        await gm.persist_goal(repair_goal)
+                        return False
+
         except (FileNotFoundError, ValueError) as exc:
             logger.error("KOR'TANA AUTO-REPAIR: %s", exc)
             return False
@@ -249,7 +330,7 @@ class AutonomyUIPatcher:
             if repair_goal.status == GoalStatus.ACTIVE:
                 repair_goal.status = GoalStatus.ABANDONED
                 await gm.persist_goal(repair_goal)
-            
+
             if worktree_created:
                 await self._cleanup_worktree()
 

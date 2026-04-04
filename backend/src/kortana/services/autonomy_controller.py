@@ -45,6 +45,7 @@ class AutonomyController:
         learner = await get_adaptive_learner()
         insights = [asdict(item) for item in learner.generate_insights()]
         goal_manager = get_goal_manager()
+        await goal_manager.ensure_loaded()
         operator_summary = await get_active_operator_summary()
 
         recommended_controls = self._recommend_controls(

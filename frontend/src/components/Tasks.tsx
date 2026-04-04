@@ -19,11 +19,12 @@ export default function Tasks() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>('all');
   const [showNewTask, setShowNewTask] = useState(false);
-  const [newTask, setNewTask] = useState({ title: '', description: '', priority: 'medium' as const });
+  const [newTask, setNewTask] = useState<{ title: string; description: string; priority: Task['priority'] }>({ title: '', description: '', priority: 'medium' });
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     fetchTasks();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
 
   const fetchTasks = async () => {
@@ -159,7 +160,7 @@ export default function Tasks() {
             <div className="flex items-center gap-2">
               <select
                 value={newTask.priority}
-                onChange={(e) => setNewTask({ ...newTask, priority: e.target.value as any })}
+                onChange={(e) => setNewTask({ ...newTask, priority: e.target.value as 'low' | 'medium' | 'high' })}
                 className="bg-gray-900 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="low">Low Priority</option>

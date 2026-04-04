@@ -30,18 +30,19 @@ export default function Chat() {
   // Load persisted history from DB on mount
   useEffect(() => {
     api.getChatHistory(sessionId, 40)
-      .then((data: any) => {
+      .then((data) => {
         if (data?.messages?.length) {
-          const loaded: Message[] = data.messages.map((m: any, i: number) => ({
+          const loaded: Message[] = data.messages.map((m, i: number) => ({
             id: `hist_${i}`,
             role: m.role === 'user' ? 'user' : 'assistant',
             content: m.content,
-            timestamp: m.created_at,
+            timestamp: m.created_at ?? new Date().toISOString(),
           }));
           setMessages(loaded);
         }
       })
       .catch(() => { /* history fetch is best-effort */ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -78,17 +79,17 @@ export default function Chat() {
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: response.response || response.message,
+        content: response.response || response.message || '',
         timestamp: new Date().toISOString(),
         tasks_queued: response.tasks_queued?.length ? response.tasks_queued : undefined,
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'system',
-        content: `Error: ${error.message || 'Failed to send message'}`,
+        content: `Error: ${error instanceof Error ? error.message : 'Failed to send message'}`,
         timestamp: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, errorMessage]);

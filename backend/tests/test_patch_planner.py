@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from src.kortana.models import IncidentMemory
+from src.kortana.services.memory_policy import MemoryPolicyContext, MemorySurface
 from src.kortana.services.patch_planner import (
     PatchPlan,
     PatchPlanner,
@@ -67,6 +68,48 @@ async def test_stage_1_analyze_forbidden_files_hit(planner, mock_incident):
 
     plan = await planner._stage_1_analyze(mock_incident)
     assert plan.forbidden_files_hit == [".env"]
+
+
+@pytest.mark.asyncio
+async def test_stage_1_analyze_includes_doctrine_reasoning_context(
+    planner, mock_incident
+):
+    planner._db = AsyncMock()
+    planner.gemini.analyze_text = AsyncMock(
+        return_value="""{
+        "should_patch": true,
+        "root_cause": "Scheduler state drift",
+        "confidence": 0.91,
+        "candidate_files": ["backend/src/scheduler.py"],
+        "forbidden_files_hit": [],
+        "validation_commands": ["pytest tests/test_scheduler.py"]
+    }"""
+    )
+
+    with patch(
+        "src.kortana.services.patch_planner.MemoryPolicyService.build_context",
+        AsyncMock(
+            return_value=MemoryPolicyContext(
+                architecture_lines=[
+                    "- [scheduler_loop] Owns queue reconciliation and worker wake-ups (confidence 0.95)"
+                ],
+                related_incident_lines=[
+                    "- [test_error, resolved] Historical queue drift under worker saturation | strategy: Restart scheduler workers"
+                ],
+            )
+        ),
+    ) as mock_build_context:
+        plan = await planner._stage_1_analyze(mock_incident)
+
+    prompt = planner.gemini.analyze_text.await_args.args[0]
+    assert "Durable reasoning memory:" in prompt
+    assert "## relevant architecture memory" in prompt
+    assert "scheduler_loop" in prompt
+    assert "Historical queue drift under worker saturation" in prompt
+    assert "Restart scheduler workers" in prompt
+    assert mock_build_context.await_args.kwargs["surface"] == MemorySurface.PATCH_ANALYSIS
+    assert mock_build_context.await_args.kwargs["incident"] is mock_incident
+    assert plan.should_patch is True
 
 
 @pytest.mark.asyncio

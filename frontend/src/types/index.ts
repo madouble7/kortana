@@ -133,5 +133,5 @@ export interface HealthStatus {
 export interface ApiError {
   message: string;
   status: number;
-  details?: any;
+  details?: unknown;
 }

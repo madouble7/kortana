@@ -1,8 +1,9 @@
 """Tests for PromptAssemblyService — the dual-channel prompt architecture."""
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from src.kortana.services.memory_policy import MemoryPolicyContext, MemorySurface
 from src.kortana.services.prompt_assembly import (
     _DEFAULT_AXIOMS,
     _DEFAULT_MISSION,
@@ -126,6 +127,28 @@ async def test_identity_preamble_cold_start_uses_defaults():
 
     assert _DEFAULT_NAME in preamble
     assert _DEFAULT_MISSION in preamble
+
+
+@pytest.mark.asyncio
+async def test_identity_preamble_uses_reflection_memory_policy():
+    profile = _make_profile()
+    session = await _session_with_profile(profile)
+
+    with patch(
+        "src.kortana.services.prompt_assembly.MemoryPolicyService.build_context",
+        AsyncMock(
+            return_value=MemoryPolicyContext(
+                self_memory_lines=["- [cycle 9] continuity matters more than spectacle"]
+            )
+        ),
+    ) as mock_build_context:
+        preamble = await PromptAssemblyService.identity_preamble(
+            session,
+            query="continuity",
+        )
+
+    assert "continuity matters more than spectacle" in preamble
+    assert mock_build_context.await_args.kwargs["surface"] == MemorySurface.REFLECTION
 
 
 # ---------------------------------------------------------------------------

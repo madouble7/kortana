@@ -83,6 +83,8 @@ services:
       ENVIRONMENT: production
       LOG_LEVEL: info
       PYTHONUNBUFFERED: "1"
+      KORTANA_DAEMON_IN_PROCESS: "false"
+      AUTONOMY_DAEMON_ENABLED: "false"
     ports:
       - "8000:8000"
     depends_on:
@@ -106,6 +108,43 @@ services:
         reservations:
           memory: 1g
           cpus: "1.0"
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  daemon:
+    image: kortana-backend:latest
+    command: sh -c "alembic upgrade head && python -m src.kortana.daemon_worker"
+    env_file:
+      - .env.prod
+    environment:
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-kortana_db}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      ENVIRONMENT: production
+      LOG_LEVEL: info
+      PYTHONUNBUFFERED: "1"
+      KORTANA_DAEMON_IN_PROCESS: "false"
+      AUTONOMY_DAEMON_ENABLED: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    networks:
+      - kortana-network-prod
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: "1.0"
+        reservations:
+          memory: 512m
+          cpus: "0.5"
     restart: always
     logging:
       driver: "json-file"

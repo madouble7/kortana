@@ -4,7 +4,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { AgentInfo, apiService, SystemMetrics, TaskInfo } from '../services/apiService';
+import { AgentInfo, apiService, HealthResponse, SystemMetrics, TaskInfo } from '../services/apiService';
 import './Dashboard.css';
 
 interface DashboardProps {
@@ -13,7 +13,7 @@ interface DashboardProps {
 
 export const Dashboard: React.FC<DashboardProps> = () => {
   const [activeSection, setActiveSection] = useState('overview');
-  const [systemInfo, setSystemInfo] = useState<any>(null);
+  const [systemInfo, setSystemInfo] = useState<HealthResponse | null>(null);
   const [agents, setAgents] = useState<AgentInfo[]>([]);
   const [tasks, setTasks] = useState<TaskInfo[]>([]);
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
@@ -129,7 +129,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
 
 // Section Components
 const OverviewSection: React.FC<{
-  systemInfo: any;
+  systemInfo: HealthResponse | null;
   agents: AgentInfo[];
   tasks: TaskInfo[];
   metrics: SystemMetrics | null;

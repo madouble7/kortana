@@ -5,7 +5,7 @@ import os
 import re
 import uuid
 from datetime import datetime, timedelta
-from typing import List, Optional
+from typing import Any, List, Optional, cast
 
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.kortana.models import IncidentMemory, RepairPlaybook
 from src.kortana.services.gemini import GeminiService
+from src.kortana.services.memory_policy import MemoryPolicyService, MemorySurface
 from src.kortana.services.patch_validator import PatchValidator, ValidationFailure
 
 logger = logging.getLogger(__name__)
@@ -293,7 +294,7 @@ class PatchPlanner:
                 )
                 .limit(1)
             )
-            existing = res.scalars().first()
+            existing = cast(Any, res.scalars().first())
             if existing:
                 existing.times_used = (existing.times_used or 0) + 1
                 existing.last_used_at = datetime.utcnow()
@@ -321,8 +322,8 @@ class PatchPlanner:
 
         At most 3 files × 30 lines are returned to keep the prompt bounded.
         """
-        stack_trace = incident.stack_trace or ""
-        description = incident.description or ""
+        stack_trace = cast(str | None, incident.stack_trace) or ""
+        description = cast(str | None, incident.description) or ""
 
         # Extract file:line references from stack traces
         # Pattern covers both Python tracebacks and pytest output
@@ -388,6 +389,28 @@ class PatchPlanner:
 
         return "\n\n".join(snippets)
 
+    async def _load_patch_analysis_context(self, incident: IncidentMemory) -> str:
+        """Return bounded non-persona memory for Stage 1 incident analysis."""
+        if self._db is None:
+            return ""
+
+        query = "\n".join(
+            part
+            for part in (
+                str(incident.incident_type or ""),
+                str(incident.description or ""),
+                str(incident.stack_trace or ""),
+            )
+            if part
+        )
+        context = await MemoryPolicyService.build_context(
+            self._db,
+            surface=MemorySurface.PATCH_ANALYSIS,
+            query=query,
+            incident=incident,
+        )
+        return context.render()
+
     async def _stage_1_analyze(self, incident: IncidentMemory) -> PatchPlan:
         system_instruction = """You are Vector Alpha Analysis.
 
@@ -417,10 +440,16 @@ JSON schema:
         playbook_context = await self._query_repair_playbook(
             str(incident.incident_type or "")
         )
+        memory_context = await self._load_patch_analysis_context(incident)
         context_snippets = self._extract_context_snippets(incident)
         snippets_section = (
             f"\nCode context around the error:\n{context_snippets}\n"
             if context_snippets
+            else ""
+        )
+        memory_section = (
+            f"\nDurable reasoning memory:\n{memory_context}\n"
+            if memory_context
             else ""
         )
         prompt = f"""Incident:
@@ -437,6 +466,7 @@ Context:
 Repository hints:
 Avoid editing anything if it looks like a major architectural rewrite.
 {snippets_section}
+{memory_section}
 {playbook_context}
 
 Respond with JSON only."""

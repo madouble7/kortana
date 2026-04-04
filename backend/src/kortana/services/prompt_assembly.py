@@ -19,8 +19,9 @@ execution loops.
 
 from __future__ import annotations
 
-import math
 from typing import Any, List
+
+from src.kortana.services.memory_policy import MemoryPolicyService, MemorySurface
 
 # ---------------------------------------------------------------------------
 # Defaults — used when no IdentityProfile row exists yet (cold start)
@@ -141,6 +142,7 @@ class PromptAssemblyService:
         session: Any,
         memory_entries: int = 3,
         query: str | None = None,
+        surface: MemorySurface = MemorySurface.REFLECTION,
     ) -> str:
         """Return the full 'who I am' block for identity-channel prompts.
 
@@ -159,26 +161,26 @@ class PromptAssemblyService:
 
         Do NOT use in patch_planner, verification, or diff stages.
         """
-        from src.kortana.models import (
-            SelfMemory,  # noqa: F401 — kept for import side-effect
-        )
-
         profile = await PromptAssemblyService.load_profile(session)
-        memory_lines: list[str] = []
+        memory_lines: list[str] | None = None
         try:
-            memories = await PromptAssemblyService.semantic_memory(
-                session, query=query, limit=memory_entries
+            memory_context = await MemoryPolicyService.build_context(
+                session,
+                surface=surface,
+                query=query,
+                self_memory_limit=memory_entries,
             )
-            if memories:
+            if memory_context.self_memory_lines:
                 memory_lines = [
-                    f"  [cycle {m.cycle_number}] {m.summary}" for m in memories
+                    line.replace("- ", "  ", 1)
+                    for line in memory_context.self_memory_lines
                 ]
         except Exception:
             pass
 
         return PromptAssemblyService.render_identity_profile(
             profile,
-            memory_lines=memory_lines or None,
+            memory_lines=memory_lines,
         )
 
     @staticmethod
@@ -198,57 +200,11 @@ class PromptAssemblyService:
 
         This method never raises — callers receive an empty list on total failure.
         """
-        from sqlalchemy import select
-
-        from src.kortana.models import SelfMemory
-
-        try:
-            if query is not None:
-                # Attempt semantic ranking
-                query_vec = PromptAssemblyService._embed(query)
-                if query_vec is not None:
-                    stmt = select(SelfMemory).where(SelfMemory.embedding.isnot(None))
-                    result = await session.execute(stmt)
-                    candidates = result.scalars().all()
-                    if candidates:
-                        scored = [
-                            (m, PromptAssemblyService._cosine(query_vec, m.embedding))
-                            for m in candidates
-                            if m.embedding
-                        ]
-                        scored.sort(key=lambda x: x[1], reverse=True)
-                        return [m for m, _ in scored[:limit]]
-
-            # Recency fallback
-            stmt = (
-                select(SelfMemory).order_by(SelfMemory.created_at.desc()).limit(limit)
-            )
-            result = await session.execute(stmt)
-            return list(reversed(result.scalars().all()))
-        except Exception:
-            return []
-
-    @staticmethod
-    def _embed(text: str) -> list[float] | None:
-        """Synchronous embedding call via the shared GeminiService instance."""
-        try:
-            from src.kortana.services.gemini import gemini_service
-
-            return gemini_service.embed_text(text)
-        except Exception:
-            return None
-
-    @staticmethod
-    def _cosine(a: list[float], b: list[float]) -> float:
-        """Cosine similarity in [0, 1].  Returns 0.0 on empty/mismatched vectors."""
-        if not a or not b or len(a) != len(b):
-            return 0.0
-        dot = sum(x * y for x, y in zip(a, b))
-        mag_a = math.sqrt(sum(x * x for x in a))
-        mag_b = math.sqrt(sum(x * x for x in b))
-        if mag_a == 0.0 or mag_b == 0.0:
-            return 0.0
-        return dot / (mag_a * mag_b)
+        return await MemoryPolicyService.semantic_self_memory(
+            session,
+            query=query,
+            limit=limit,
+        )
 
     # ------------------------------------------------------------------
     # OPERATIONAL CORE — for patch_planner, verify, diff, protected paths
