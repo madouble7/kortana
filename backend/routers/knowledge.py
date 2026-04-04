@@ -190,7 +190,7 @@ class KnowledgeManager:
         try:
             dt = datetime.fromisoformat(timestamp)
             return (datetime.now() - dt).days <= days
-        except:
+        except ValueError:
             return False
 
 # Global instance

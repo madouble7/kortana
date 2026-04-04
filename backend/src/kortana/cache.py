@@ -315,7 +315,7 @@ class CacheManager:
                 client.ping()
                 return True
             return False
-        except:
+        except Exception:
             return False
 
 

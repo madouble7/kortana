@@ -119,7 +119,7 @@ class TestGetUserByEmail:
         data.email = email
         data.password = "validpassword"
         data.confirm_password = "validpassword"
-        created = create_user(data)
+        create_user(data)
         found = get_user_by_email(email)
         assert found is not None
         assert found.email == email

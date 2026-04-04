@@ -200,7 +200,7 @@ class TestAlwaysOnMonitorForceCheck:
         with patch.object(
             monitor, "_monitoring_cycle", new_callable=AsyncMock
         ) as mock_cycle:
-            result = await monitor.force_check()
+            await monitor.force_check()
             mock_cycle.assert_called_once()
 
         monitor.is_running = False  # Cleanup
@@ -464,7 +464,6 @@ async def test_get_memory_endpoint():
     from src.kortana.models import ArchitectureMemory
     from src.kortana.routers.always_on import get_repository_memory
     
-    mock_db = AsyncMock()
     mock_db_manager = AsyncMock()
     
     mock_session = AsyncMock()

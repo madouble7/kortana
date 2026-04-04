@@ -154,7 +154,6 @@ class TestTaskQueueService:
             "classification": "auto"
         }
 
-        mock_task = MagicMock()
         mock_db.add = MagicMock()
         mock_db.commit = MagicMock()
         mock_db.refresh = MagicMock()
