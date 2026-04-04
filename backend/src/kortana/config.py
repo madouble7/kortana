@@ -6,20 +6,39 @@ Loads secrets from .env file and environment variables
 
 import os
 from functools import lru_cache
+from os import PathLike
 from pathlib import Path
 from secrets import token_urlsafe
-from typing import Any
+from typing import IO, TYPE_CHECKING, Any
 
-try:
+if TYPE_CHECKING:
     from dotenv import dotenv_values, load_dotenv
-except ModuleNotFoundError:  # pragma: no cover - exercised in packaging/runtime smoke tests
-    def load_dotenv(*_args: object, **_kwargs: object) -> bool:
-        """No-op fallback when python-dotenv is unavailable at runtime."""
-        return False
+else:
+    try:
+        from dotenv import dotenv_values, load_dotenv
+    except ModuleNotFoundError:  # pragma: no cover - exercised in packaging/runtime smoke tests
+        def load_dotenv(
+            dotenv_path: str | PathLike[str] | None = None,
+            stream: IO[str] | None = None,
+            verbose: bool = False,
+            override: bool = False,
+            interpolate: bool = True,
+            encoding: str | None = "utf-8",
+        ) -> bool:
+            """No-op fallback when python-dotenv is unavailable at runtime."""
+            del dotenv_path, stream, verbose, override, interpolate, encoding
+            return False
 
-    def dotenv_values(*_args: object, **_kwargs: object) -> dict[str, str | None]:
-        """Return no .env values when python-dotenv is unavailable."""
-        return {}
+        def dotenv_values(
+            dotenv_path: str | PathLike[str] | None = None,
+            stream: IO[str] | None = None,
+            verbose: bool = False,
+            interpolate: bool = True,
+            encoding: str | None = "utf-8",
+        ) -> dict[str, str | None]:
+            """Return no .env values when python-dotenv is unavailable."""
+            del dotenv_path, stream, verbose, interpolate, encoding
+            return {}
 
 _ENV_FILENAMES = (".env",)
 _PLACEHOLDER_VALUES = {
