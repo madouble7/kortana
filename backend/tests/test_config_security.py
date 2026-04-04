@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import sys
 
 import pytest
 
@@ -85,6 +86,42 @@ def test_find_env_file_prefers_repo_root_over_backend_env(
     root_env.write_text("GEMINI_API_KEY=realish\n", encoding="utf-8")
 
     assert config_module._find_env_file(package_dir) == root_env
+
+
+def test_get_env_prefers_real_dotenv_value_over_placeholder_process_env(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A stale placeholder process env should not shadow a real repo-root secret."""
+    config_module = reload_config_module(monkeypatch)
+    env_file = tmp_path / ".env"
+    env_file.write_text("OPENAI_API_KEY=sk-real-dotenv-key\n", encoding="utf-8")
+    monkeypatch.setenv("OPENAI_API_KEY", "<your-api-key-here>")
+
+    config_module._LOADED_ENV_FILE = env_file
+    config_module._DOTENV_VALUES = {"OPENAI_API_KEY": "sk-real-dotenv-key"}
+
+    assert config_module._get_env("OPENAI_API_KEY") == "sk-real-dotenv-key"
+
+
+def test_config_import_tolerates_missing_python_dotenv(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Runtime config should still import when python-dotenv is unavailable."""
+    original_dotenv = sys.modules.pop("dotenv", None)
+    monkeypatch.setitem(sys.modules, "dotenv", None)
+    try:
+        config_module = reload_config_module(
+            monkeypatch,
+            OPENAI_API_KEY="openai-test-key",
+            GEMINI_API_KEY="gemini-test-key",
+        )
+        settings = config_module.get_settings()
+        assert settings.OPENAI_API_KEY == "openai-test-key"
+        assert settings.GEMINI_API_KEY == "gemini-test-key"
+    finally:
+        sys.modules.pop("dotenv", None)
+        if original_dotenv is not None:
+            sys.modules["dotenv"] = original_dotenv
 
 
 def test_secret_key_is_generated_for_development(
