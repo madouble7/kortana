@@ -1,6 +1,6 @@
-import { ClipboardList, Loader2, Send, Sparkles } from 'lucide-react';
+import { AlertTriangle, ClipboardList, Loader2, Send, Sparkles, X } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { api } from '../lib/api';
+import { api, type ApiError } from '../lib/api';
 import { cn, formatRelativeTime } from '../lib/utils';
 import type { ChatHistoryEntry, ChatPhase, Message } from '../types';
 
@@ -32,12 +32,42 @@ function formatChatPhase(phase: ChatPhase): string {
   return phase.replace(/_/g, ' ');
 }
 
+type ChatNoticeTone = 'info' | 'warning' | 'error';
+
+interface ChatNotice {
+  message: string;
+  tone: ChatNoticeTone;
+}
+
+function toChatNotice(error: unknown, fallback: string): ChatNotice {
+  const apiError = error as Partial<ApiError> | undefined;
+  if (apiError?.isRateLimited) {
+    return {
+      tone: 'warning',
+      message: apiError.retryAfterSeconds
+        ? `Rate limit reached. Try again in ${apiError.retryAfterSeconds}s.`
+        : 'Rate limit reached. Please wait a moment and try again.',
+    };
+  }
+  if (apiError?.isOffline) {
+    return {
+      tone: 'warning',
+      message: 'Backend is unreachable right now. Check the API and try again.',
+    };
+  }
+  if (error instanceof Error && error.message) {
+    return { tone: 'error', message: error.message };
+  }
+  return { tone: 'error', message: fallback };
+}
+
 export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [sessionId] = useState(() => getSessionId());
+  const [notice, setNotice] = useState<ChatNotice | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -71,7 +101,9 @@ export default function Chat() {
           setMessages(loaded);
         }
       })
-      .catch(() => { /* history fetch is best-effort */ });
+      .catch((error: unknown) => {
+        setNotice(toChatNotice(error, 'Previous chat history could not be loaded.'));
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -82,6 +114,7 @@ export default function Chat() {
   const sendMessage = async (e: FormEvent) => {
     e.preventDefault();
     if (!input.trim() || loading) return;
+    setNotice(null);
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -156,15 +189,21 @@ export default function Chat() {
             }));
           },
           onError: (streamError) => {
+            setNotice({ tone: 'error', message: streamError });
             updateMessage(assistantMessageId, (message) => ({
               ...message,
-              content: message.content || `Error: ${streamError}`,
+              role: message.content ? 'assistant' : 'system',
+              content: message.content
+                ? `${message.content}\n\n[stream interrupted: ${streamError}]`
+                : `Error: ${streamError}`,
               streaming: false,
+              phase: undefined,
             }));
           },
         }
       );
     } catch (error: unknown) {
+      setNotice(toChatNotice(error, 'Failed to send chat message.'));
       updateMessage(assistantMessageId, (message) => ({
         ...message,
         role: 'system',
@@ -191,6 +230,29 @@ export default function Chat() {
           </span>
         )}
       </div>
+      {notice && (
+        <div
+          className={cn(
+            'mx-6 mt-4 rounded-xl border px-4 py-3 text-sm flex items-start gap-3',
+            notice.tone === 'error'
+              ? 'border-red-800/80 bg-red-950/60 text-red-100'
+              : notice.tone === 'warning'
+                ? 'border-amber-700/70 bg-amber-950/50 text-amber-100'
+                : 'border-sky-800/70 bg-sky-950/50 text-sky-100'
+          )}
+        >
+          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+          <p className="flex-1">{notice.message}</p>
+          <button
+            type="button"
+            onClick={() => setNotice(null)}
+            className="text-current/70 hover:text-current transition-colors"
+            aria-label="Dismiss chat notice"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">

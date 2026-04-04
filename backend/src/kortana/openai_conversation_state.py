@@ -5,11 +5,13 @@ from __future__ import annotations
 from sqlalchemy import select
 
 from src.kortana.database import get_db_manager
+from src.kortana.logger import get_logger
 from src.kortana.models import AuditLog
 
 _OPENAI_RESPONSE_STATE_ACTION = "openai_response_state"
 _RESOURCE_TYPE = "conversation_session"
 _MAX_LOOKBACK = 20
+logger = get_logger(__name__)
 
 
 async def get_previous_response_id(session_id: str) -> str | None:
@@ -17,16 +19,24 @@ async def get_previous_response_id(session_id: str) -> str | None:
     if not session_id.strip():
         return None
 
-    async with get_db_manager().session_scope() as session:
-        result = await session.execute(
-            select(AuditLog)
-            .where(AuditLog.action == _OPENAI_RESPONSE_STATE_ACTION)
-            .where(AuditLog.resource_type == _RESOURCE_TYPE)
-            .where(AuditLog.resource_id == session_id)
-            .order_by(AuditLog.created_at.desc())
-            .limit(_MAX_LOOKBACK)
+    try:
+        async with get_db_manager().session_scope() as session:
+            result = await session.execute(
+                select(AuditLog)
+                .where(AuditLog.action == _OPENAI_RESPONSE_STATE_ACTION)
+                .where(AuditLog.resource_type == _RESOURCE_TYPE)
+                .where(AuditLog.resource_id == session_id)
+                .order_by(AuditLog.created_at.desc())
+                .limit(_MAX_LOOKBACK)
+            )
+            logs = list(result.scalars().all())
+    except Exception as exc:
+        logger.debug(
+            "Failed to load previous OpenAI response id for %s: %s",
+            session_id,
+            exc,
         )
-        logs = list(result.scalars().all())
+        return None
 
     for log in logs:
         raw_details = log.details
@@ -52,19 +62,26 @@ async def store_response_id(
     if not session_id.strip() or not response_id.strip():
         return
 
-    async with get_db_manager().session_scope() as session:
-        session.add(
-            AuditLog(
-                action=_OPENAI_RESPONSE_STATE_ACTION,
-                resource_type=_RESOURCE_TYPE,
-                resource_id=session_id,
-                details={
-                    "provider": "openai",
-                    "response_id": response_id,
-                    "model": model_name,
-                    "route": route,
-                },
+    try:
+        async with get_db_manager().session_scope() as session:
+            session.add(
+                AuditLog(
+                    action=_OPENAI_RESPONSE_STATE_ACTION,
+                    resource_type=_RESOURCE_TYPE,
+                    resource_id=session_id,
+                    details={
+                        "provider": "openai",
+                        "response_id": response_id,
+                        "model": model_name,
+                        "route": route,
+                    },
+                )
             )
+    except Exception as exc:
+        logger.debug(
+            "Failed to persist OpenAI response id for %s: %s",
+            session_id,
+            exc,
         )
 
 
@@ -78,18 +95,25 @@ async def clear_response_id(
     if not session_id.strip():
         return
 
-    async with get_db_manager().session_scope() as session:
-        session.add(
-            AuditLog(
-                action=_OPENAI_RESPONSE_STATE_ACTION,
-                resource_type=_RESOURCE_TYPE,
-                resource_id=session_id,
-                details={
-                    "provider": "openai",
-                    "response_id": None,
-                    "route": route,
-                    "reason": reason,
-                    "cleared": True,
-                },
+    try:
+        async with get_db_manager().session_scope() as session:
+            session.add(
+                AuditLog(
+                    action=_OPENAI_RESPONSE_STATE_ACTION,
+                    resource_type=_RESOURCE_TYPE,
+                    resource_id=session_id,
+                    details={
+                        "provider": "openai",
+                        "response_id": None,
+                        "route": route,
+                        "reason": reason,
+                        "cleared": True,
+                    },
+                )
             )
+    except Exception as exc:
+        logger.debug(
+            "Failed to clear OpenAI response id for %s: %s",
+            session_id,
+            exc,
         )
