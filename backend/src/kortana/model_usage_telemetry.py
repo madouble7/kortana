@@ -72,6 +72,10 @@ class ModelUsageTelemetry:
             self._pending_persistence_tasks.add(task)
         task.add_done_callback(self._finalize_persistence_task)
 
+    def _discard_persistence_task(self, task: asyncio.Task[None]) -> None:
+        with self._lock:
+            self._pending_persistence_tasks.discard(task)
+
     def _finalize_persistence_task(self, task: asyncio.Task[None]) -> None:
         with self._lock:
             self._pending_persistence_tasks.discard(task)
@@ -144,6 +148,7 @@ class ModelUsageTelemetry:
 
     async def flush_persistence(self) -> None:
         """Wait for any in-flight persistence tasks. Intended for tests and status reads."""
+        current_loop = asyncio.get_running_loop()
         while True:
             with self._lock:
                 pending = tuple(self._pending_persistence_tasks)
@@ -151,7 +156,30 @@ class ModelUsageTelemetry:
             if not pending:
                 return
 
-            await asyncio.gather(*pending, return_exceptions=True)
+            current_loop_pending: list[asyncio.Task[None]] = []
+            for task in pending:
+                if task.done():
+                    self._discard_persistence_task(task)
+                    continue
+
+                task_loop = task.get_loop()
+                if task_loop is current_loop:
+                    current_loop_pending.append(task)
+                    continue
+
+                if task_loop.is_closed():
+                    self._discard_persistence_task(task)
+                    continue
+
+                logger.debug(
+                    "Skipping model usage persistence task owned by a different event loop"
+                )
+                self._discard_persistence_task(task)
+
+            if not current_loop_pending:
+                return
+
+            await asyncio.gather(*current_loop_pending, return_exceptions=True)
 
     @staticmethod
     def _empty_summary() -> dict[str, Any]:
