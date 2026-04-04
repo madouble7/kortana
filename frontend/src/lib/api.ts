@@ -383,6 +383,7 @@ class ApiClient {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
+    let sawTerminalEvent = false;
 
     const dispatchEvent = (rawEvent: string) => {
       const lines = rawEvent.split('\n');
@@ -424,9 +425,11 @@ class ApiClient {
           }
           break;
         case 'final':
+          sawTerminalEvent = true;
           handlers.onFinal?.(normalizeChatSendResponse(data));
           break;
         case 'error':
+          sawTerminalEvent = true;
           handlers.onError?.(
             typeof data.message === 'string' ? data.message : 'Streaming failed'
           );
@@ -458,6 +461,10 @@ class ApiClient {
     const trailing = buffer.trim();
     if (trailing) {
       dispatchEvent(trailing);
+    }
+
+    if (!sawTerminalEvent) {
+      throw new Error('Stream ended before delivering a final response');
     }
   }
 
