@@ -32,6 +32,27 @@ if "sqlite" in db_url:
     sync_url = db_url.replace("aiosqlite", "sqlite").replace("sqlite+sqlite", "sqlite")
 else:
     sync_url = db_url.replace("+asyncpg", "")
+    # Verify the sync driver is available; fall back to SQLite for local dev
+    # when psycopg2 / psycopg isn't installed in the current environment.
+    import importlib
+
+    _has_sync_driver = (
+        importlib.util.find_spec("psycopg2") is not None
+        or importlib.util.find_spec("psycopg") is not None
+    )
+    if not _has_sync_driver:
+        import os as _os
+
+        if _os.getenv("ENVIRONMENT", "development") != "production":
+            import warnings
+
+            warnings.warn(
+                "No sync Postgres driver (psycopg2/psycopg) found — "
+                "running Alembic against local SQLite fallback. "
+                "Install psycopg2-binary to run migrations against Postgres.",
+                stacklevel=1,
+            )
+            sync_url = "sqlite:///./kortana.db"
 
 config.set_main_option("sqlalchemy.url", sync_url)
 
