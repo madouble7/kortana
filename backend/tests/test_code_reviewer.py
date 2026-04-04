@@ -148,9 +148,16 @@ x = 1
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
-        with patch.dict("os.environ", {"GEMINI_API_KEY": "test_key"}), patch(
-            "src.kortana.routers.code_reviewer.httpx.AsyncClient",
-            return_value=mock_client,
+        with (
+            patch.dict("os.environ", {"GEMINI_API_KEY": "test_key"}),
+            patch(
+                "src.kortana.routers.code_reviewer.httpx.AsyncClient",
+                return_value=mock_client,
+            ),
+            patch(
+                "src.kortana.routers.code_reviewer.get_preferred_model_name",
+                return_value="gemini-2.0-flash",
+            ),
         ):
             review = await code_reviewer.generate_review(
                 code="def hello(): pass", plan="Add hello function"
@@ -158,6 +165,8 @@ x = 1
 
             assert "score" in review
             assert review["score"] >= 0
+            called_url = mock_client.post.await_args.args[0]
+            assert "gemini-2.0-flash:generateContent" in called_url
 
     def test_should_auto_approve_high_quality(self, code_reviewer):
         """Test auto-approval for high quality code"""

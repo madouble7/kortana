@@ -3,10 +3,15 @@ Gemini AI Service for Kor'tana - Minimal Working Version
 """
 
 import os
+from typing import Any
 
 from google.genai import Client
 
 from src.kortana.config import get_settings
+from src.kortana.provider_model_defaults import (
+    GEMINI_EMBEDDING_FALLBACK_MODEL_PATH,
+    GEMINI_EMBEDDING_MODEL_PATH,
+)
 from src.kortana.services.gemini_config import get_model_name
 
 
@@ -85,7 +90,7 @@ class GeminiService:
         if self.client is None:
             raise RuntimeError("Gemini client is not initialized")
 
-        contents = [text]
+        contents: list[Any] = [text]
         if files:
             contents.extend(files)
 
@@ -146,8 +151,8 @@ class GeminiService:
             return None
 
         candidates = [
-            ("v1beta", "models/gemini-embedding-001"),
-            ("v1beta", "models/gemini-embedding-2-preview"),
+            ("v1beta", GEMINI_EMBEDDING_MODEL_PATH),
+            ("v1beta", GEMINI_EMBEDDING_FALLBACK_MODEL_PATH),
         ]
 
         try:

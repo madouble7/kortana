@@ -2,6 +2,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from src.kortana.provider_model_defaults import MULTI_MODEL_DEFAULTS
 
 
 class TestMultiModelAIServiceInit:
@@ -133,6 +134,7 @@ class TestMultiModelAIServiceInitOpenAI:
             service._init_openai()
 
         assert "openai" in service.providers
+        assert service.providers["openai"]["model"] == MULTI_MODEL_DEFAULTS.openai
 
 
 class TestMultiModelAIServiceInitAnthropic:
@@ -155,6 +157,7 @@ class TestMultiModelAIServiceInitAnthropic:
             service._init_anthropic()
 
         assert "anthropic" in service.providers
+        assert service.providers["anthropic"]["model"] == MULTI_MODEL_DEFAULTS.anthropic
 
 
 class TestMultiModelAIServiceInitGroq:
@@ -177,6 +180,7 @@ class TestMultiModelAIServiceInitGroq:
             service._init_groq()
 
         assert "groq" in service.providers
+        assert service.providers["groq"]["model"] == MULTI_MODEL_DEFAULTS.groq
 
 
 class TestMultiModelAIServiceInitOpenRouter:
@@ -199,6 +203,7 @@ class TestMultiModelAIServiceInitOpenRouter:
             service._init_openrouter()
 
         assert "openrouter" in service.providers
+        assert service.providers["openrouter"]["model"] == MULTI_MODEL_DEFAULTS.openrouter
 
 
 class TestMultiModelAIServiceAnalyzeText:

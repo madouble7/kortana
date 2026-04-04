@@ -10,6 +10,7 @@ Covers:
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from src.kortana.provider_model_defaults import MEMORY_ENGINE_EMBEDDING_MODEL
 
 
 # ---------------------------------------------------------------
@@ -130,7 +131,7 @@ class TestMemoryEngine:
             return_value=fake_embedding,
         ):
             engine = MemoryEngine(mock_db)
-            mem = await engine.store("test content")
+            await engine.store("test content")
             mock_db.add.assert_called_once()
             mock_db.commit.assert_awaited_once()
 
@@ -143,7 +144,7 @@ class TestMemoryEngine:
             return_value=None,
         ):
             engine = MemoryEngine(mock_db)
-            mem = await engine.store("test content")
+            await engine.store("test content")
             mock_db.add.assert_called_once()
 
     @pytest.mark.asyncio
@@ -158,7 +159,7 @@ class TestMemoryEngine:
         stats = await engine.stats()
         assert stats["total_memories"] == 0
         assert stats["embedded"] == 0
-        assert stats["embedding_model"] == "text-embedding-004"
+        assert stats["embedding_model"] == MEMORY_ENGINE_EMBEDDING_MODEL
 
     @pytest.mark.asyncio
     async def test_recall_no_results(self, mock_db):
@@ -271,6 +272,19 @@ class TestSelfDiagnostic:
             assert result.error_type == "ImportError"
             assert result.root_cause == "test"
 
+    def test_analysis_model_info_exposes_resolved_lane(self):
+        from src.kortana.services.self_diagnostic import get_analysis_model_info
+
+        with patch(
+            "src.kortana.services.self_diagnostic.get_preferred_model_name",
+            return_value="gemini-3.1-flash-lite-preview",
+        ):
+            info = get_analysis_model_info()
+
+        assert info["preferred_model"] == "gemini-2.0-flash"
+        assert info["model"] == "gemini-3.1-flash-lite-preview"
+        assert "model_lane" in info
+
 
 # ---------------------------------------------------------------
 # Unit tests — ExperienceDistiller (with mocked Gemini)
@@ -304,6 +318,8 @@ class TestExperienceDistiller:
         assert "session_tokens_used" in stats
         assert "session_token_budget" in stats
         assert "budget_pct_used" in stats
+        assert "model" in stats
+        assert "model_lane" in stats
 
     def test_get_capsules_empty(self):
         from src.kortana.services.experience_distiller import ExperienceDistiller
@@ -332,6 +348,10 @@ class TestConsciousnessRouter:
         assert "memory_engine" in data["systems"]
         assert "self_diagnostic" in data["systems"]
         assert "experience_distiller" in data["systems"]
+        assert "model" in data["systems"]["self_diagnostic"]
+        assert "model_lane" in data["systems"]["self_diagnostic"]
+        assert "model" in data["systems"]["experience_distiller"]
+        assert "model_lane" in data["systems"]["experience_distiller"]
 
     def test_memory_stats(self, client):
         resp = client.get("/api/consciousness/memory/stats")
@@ -400,6 +420,8 @@ class TestConsciousnessRouter:
         assert resp.status_code == 200
         data = resp.json()
         assert "session_tokens_used" in data
+        assert "model" in data
+        assert "model_lane" in data
 
     def test_experience_distil(self, client):
         resp = client.post(

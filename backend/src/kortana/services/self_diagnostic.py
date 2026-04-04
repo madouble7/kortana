@@ -8,16 +8,29 @@ import os
 import traceback
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.kortana.model_lane_policy import describe_model_lane
 from src.kortana.models import AuditLog
+from src.kortana.provider_model_defaults import LLM_ROUTER_GEMINI_MODEL
+from src.kortana.services.gemini_config import get_preferred_model_name
 
 logger = logging.getLogger(__name__)
 
-ANALYSIS_MODEL = "gemini-2.0-flash"
+ANALYSIS_MODEL = LLM_ROUTER_GEMINI_MODEL
+
+
+def get_analysis_model_info() -> Dict[str, str]:
+    """Return preferred and resolved Gemini model metadata for diagnostics."""
+    resolved_model = get_preferred_model_name(ANALYSIS_MODEL)
+    return {
+        "preferred_model": ANALYSIS_MODEL,
+        "model": resolved_model,
+        "model_lane": describe_model_lane(resolved_model),
+    }
 
 
 class DiagnosticResult:
@@ -78,8 +91,9 @@ async def _call_gemini_analysis(prompt: str) -> Optional[str]:
         from google import genai
 
         client = genai.Client(api_key=api_key)
+        model_info = get_analysis_model_info()
         response = client.models.generate_content(
-            model=ANALYSIS_MODEL,
+            model=model_info["model"],
             contents=prompt,
         )
         return response.text
@@ -304,7 +318,7 @@ class SelfDiagnostic:
         logs = result.scalars().all()
 
         for log_entry in reversed(logs):
-            details = log_entry.details or {}
+            details = cast(Dict[str, Any], log_entry.details or {})
             dr = DiagnosticResult(
                 error_type=details.get("error_type", "unknown"),
                 error_message=details.get("error_message", ""),

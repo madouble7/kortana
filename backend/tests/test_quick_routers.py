@@ -94,6 +94,24 @@ class TestSystemRouter:
         assert "debug" in data
         assert "version" in data
 
+    def test_system_model_lanes(self, client):
+        resp = client.get("/api/system/model-lanes")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "active_lane" in data
+        assert "catalogs" in data
+        assert "runtime_usage" in data
+        assert "gemini_service" in data
+        assert "llm_router" in data
+        assert "consensus" in data
+        assert "cost_router" in data
+        assert "chat_models" in data["catalogs"]
+        assert "embedding_models" in data["catalogs"]
+        assert "known_core_catalog" in data["catalogs"]["chat_models"]
+        assert "subsystem_defaults" in data["catalogs"]["chat_models"]
+        assert "memory_engine" in data["catalogs"]["embedding_models"]
+        assert "total_generations" in data["runtime_usage"]
+
     def test_system_logs_no_file(self, client):
         # Log file probably doesn't exist in test environment
         resp = client.get("/api/system/logs")

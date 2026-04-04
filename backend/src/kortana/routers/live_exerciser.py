@@ -8,7 +8,7 @@ import os
 import time
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 import httpx
 from fastapi import APIRouter, Depends
@@ -16,7 +16,17 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.kortana.database import get_db
+from src.kortana.model_lane_policy import (
+    describe_model_lane,
+    get_active_model_lane,
+    model_allowed,
+)
 from src.kortana.models import Agent, AuditLog, Memory, User
+from src.kortana.provider_model_defaults import (
+    GEMINI_EMBEDDING_MODEL_NAME,
+    GEMINI_EMBEDDING_MODEL_PATH,
+    GROQ_LLAMA_VERSATILE_MODEL,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +41,8 @@ SYSTEM_AGENT_ID = "kortana-system"
 # ------------------------------------------------------------------
 async def _ensure_bootstrap(db: AsyncSession) -> dict[str, str]:
     """Create the system user and agent if they don't exist."""
+    from src.kortana.services.gemini_config import get_model_name
+
     result = await db.execute(select(User).where(User.id == SYSTEM_USER_ID))
     user = result.scalars().first()
     if not user:
@@ -49,12 +61,13 @@ async def _ensure_bootstrap(db: AsyncSession) -> dict[str, str]:
     agent_result = await db.execute(select(Agent).where(Agent.id == SYSTEM_AGENT_ID))
     agent = agent_result.scalars().first()
     if not agent:
+        system_model = get_model_name()
         agent = Agent(
             id=SYSTEM_AGENT_ID,
             owner_id=SYSTEM_USER_ID,
             name="KOR'TANA Prime",
             description="Autonomous system agent",
-            model="gemini-3.1-flash-lite-preview",
+            model=system_model,
             system_prompt="we are kor'tana, an autonomous ai agent.",
             is_active=True,
         )
@@ -123,10 +136,11 @@ async def _exercise_redis() -> dict[str, Any]:
         r.set(test_key, datetime.utcnow().isoformat(), ex=60)
         val = r.get(test_key)
         latency = (time.perf_counter() - t0) * 1000
+        decoded_val = val.decode() if isinstance(val, (bytes, bytearray)) else val
         return {
             "status": "ok",
             "url": url.split("@")[-1] if "@" in url else url,
-            "roundtrip_value": val.decode() if val else None,
+            "roundtrip_value": decoded_val,
             "latency_ms": round(latency, 1),
         }
     except Exception as e:
@@ -138,7 +152,7 @@ async def _exercise_redis() -> dict[str, Any]:
 
 
 async def _exercise_gemini_embedding() -> dict[str, Any]:
-    """Generate a real embedding via Gemini gemini-embedding-001 (free tier)."""
+    """Generate a real embedding via the shared Gemini embedding model."""
     t0 = time.perf_counter()
     try:
         api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
@@ -149,7 +163,7 @@ async def _exercise_gemini_embedding() -> dict[str, Any]:
 
         client = genai.Client(api_key=api_key)
         resp = client.models.embed_content(
-            model="models/gemini-embedding-001",
+            model=GEMINI_EMBEDDING_MODEL_PATH,
             contents="KOR'TANA autonomous agent live exercise",
         )
         embeddings = resp.embeddings
@@ -159,7 +173,7 @@ async def _exercise_gemini_embedding() -> dict[str, Any]:
         latency = (time.perf_counter() - t0) * 1000
         return {
             "status": "ok",
-            "model": "gemini-embedding-001",
+            "model": GEMINI_EMBEDDING_MODEL_NAME,
             "dimensions": len(embedding) if embedding else 0,
             "sample": list(embedding[:5]) if embedding else [],
             "latency_ms": round(latency, 1),
@@ -195,6 +209,7 @@ async def _exercise_gemini_generate() -> dict[str, Any]:
         return {
             "status": "ok",
             "model": model,
+            "model_lane": describe_model_lane(model),
             "response": (text_out or "(empty)")[:200],
             "latency_ms": round(latency, 1),
         }
@@ -214,11 +229,20 @@ async def _exercise_groq() -> dict[str, Any]:
         if not api_key:
             return {"status": "skip", "reason": "No GROQ_API_KEY"}
 
+        model_name = GROQ_LLAMA_VERSATILE_MODEL
+        if not model_allowed(model_name):
+            return {
+                "status": "skip",
+                "reason": "Groq model unavailable under active lane",
+                "model": model_name,
+                "model_lane": describe_model_lane(model_name),
+            }
+
         import groq
 
         client = groq.Groq(api_key=api_key)
         resp = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model=model_name,
             messages=[
                 {
                     "role": "user",
@@ -227,11 +251,14 @@ async def _exercise_groq() -> dict[str, Any]:
             ],
             max_tokens=30,
         )
-        text_out = resp.choices[0].message.content if resp.choices else "(empty)"
+        text_out = (
+            str(resp.choices[0].message.content or "") if resp.choices else "(empty)"
+        )
         latency = (time.perf_counter() - t0) * 1000
         return {
             "status": "ok",
-            "model": "llama-3.3-70b-versatile",
+            "model": model_name,
+            "model_lane": describe_model_lane(model_name),
             "response": text_out[:200],
             "latency_ms": round(latency, 1),
         }
@@ -301,15 +328,20 @@ async def _exercise_memory_store(
         # Read it back
         result = await db.execute(select(Memory).where(Memory.id == mem.id))
         stored = result.scalars().first()
+        raw_embedding = stored.embedding if stored is not None else None
+        if isinstance(raw_embedding, list):
+            stored_embedding = cast(list[float], raw_embedding)
+            embedding_dims = len(stored_embedding)
+        else:
+            stored_embedding = None
+            embedding_dims = 0
 
         latency = (time.perf_counter() - t0) * 1000
         return {
             "status": "ok",
             "memory_id": mem.id,
-            "has_embedding": bool(stored.embedding) if stored else False,
-            "embedding_dims": len(stored.embedding)
-            if stored and isinstance(stored.embedding, list)
-            else 0,
+            "has_embedding": bool(stored_embedding),
+            "embedding_dims": embedding_dims,
             "latency_ms": round(latency, 1),
         }
     except Exception as e:
@@ -366,7 +398,7 @@ async def run_full_exercise(db: AsyncSession = Depends(get_db)) -> dict[str, Any
 
             client = genai.Client(api_key=api_key)
             resp = client.models.embed_content(
-                model="models/gemini-embedding-001",
+                model=GEMINI_EMBEDDING_MODEL_PATH,
                 contents=f"Live exerciser memory at {datetime.utcnow().isoformat()}",
             )
             emb_list = resp.embeddings
@@ -395,6 +427,7 @@ async def run_full_exercise(db: AsyncSession = Depends(get_db)) -> dict[str, Any
         "services_ok": ok_count,
         "services_total": total_services,
         "all_green": ok_count == total_services,
+        "model_usage_lane": get_active_model_lane().value,
     }
 
     logger.info(
@@ -407,6 +440,7 @@ async def run_full_exercise(db: AsyncSession = Depends(get_db)) -> dict[str, Any
 async def quick_status(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
     """Quick connectivity check for all external dependencies."""
     checks: dict[str, Any] = {}
+    model_usage_lane = get_active_model_lane().value
 
     # PostgreSQL
     try:
@@ -436,7 +470,30 @@ async def quick_status(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
     # GitHub token present
     checks["github_token"] = "ok" if os.getenv("GITHUB_TOKEN") else "missing"
 
+    models = {
+        "gemini_generate": {
+            "model": None,
+            "lane": None,
+        },
+        "groq_generate": {
+            "model": GROQ_LLAMA_VERSATILE_MODEL,
+            "lane": describe_model_lane(GROQ_LLAMA_VERSATILE_MODEL),
+            "allowed": model_allowed(GROQ_LLAMA_VERSATILE_MODEL),
+        },
+    }
+    if os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"):
+        from src.kortana.services.gemini_config import get_model_name
+
+        gemini_model = get_model_name()
+        models["gemini_generate"] = {
+            "model": gemini_model,
+            "lane": describe_model_lane(gemini_model),
+            "allowed": model_allowed(gemini_model),
+        }
+
     return {
         "status": "all_ok" if all(v == "ok" for v in checks.values()) else "degraded",
+        "model_usage_lane": model_usage_lane,
         "checks": checks,
+        "models": models,
     }

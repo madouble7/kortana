@@ -23,6 +23,13 @@ from typing import Any
 import httpx
 
 from src.kortana.logger import get_logger
+from src.kortana.model_lane_policy import (
+    describe_model_lane,
+    get_active_model_lane,
+    model_allowed,
+)
+from src.kortana.model_usage_telemetry import get_model_usage_telemetry
+from src.kortana.provider_model_defaults import AI_CONSENSUS_DEFAULTS
 
 logger = get_logger(__name__)
 
@@ -91,6 +98,20 @@ class AIConsensusEngine:
         self._providers: dict[str, dict[str, Any]] = {}
         self._stats: dict[str, ProviderStats] = {}
         self._initialized = False
+        self._model_usage_lane = get_active_model_lane()
+
+    def _model_allowed(self, provider_name: str, model_name: str) -> bool:
+        if model_allowed(model_name, active_lane=self._model_usage_lane):
+            return True
+
+        logger.info(
+            "Skipping %s model %s (%s lane) under %s runtime",
+            provider_name,
+            model_name,
+            describe_model_lane(model_name),
+            self._model_usage_lane.value,
+        )
+        return False
 
     def _ensure_initialized(self) -> None:
         if self._initialized:
@@ -122,6 +143,8 @@ class AIConsensusEngine:
 
             client = Client(api_key=key)
             model = get_model_name()
+            if not self._model_allowed("gemini", model):
+                return
             self._providers["gemini"] = {"client": client, "model": model}
             self._stats["gemini"] = ProviderStats()
         except Exception as e:
@@ -138,7 +161,12 @@ class AIConsensusEngine:
                 api_key=key,
                 http_client=httpx.AsyncClient(timeout=30.0),
             )
-            self._providers["openai"] = {"client": client, "model": "gpt-4o-mini"}
+            if not self._model_allowed("openai", AI_CONSENSUS_DEFAULTS.openai):
+                return
+            self._providers["openai"] = {
+                "client": client,
+                "model": AI_CONSENSUS_DEFAULTS.openai,
+            }
             self._stats["openai"] = ProviderStats()
         except Exception as e:
             logger.warning(f"OpenAI init failed: {e}")
@@ -151,9 +179,13 @@ class AIConsensusEngine:
             import anthropic
 
             client = anthropic.AsyncAnthropic(api_key=key)
+            if not self._model_allowed(
+                "anthropic", AI_CONSENSUS_DEFAULTS.anthropic
+            ):
+                return
             self._providers["anthropic"] = {
                 "client": client,
-                "model": "claude-3-5-sonnet-20241022",
+                "model": AI_CONSENSUS_DEFAULTS.anthropic,
             }
             self._stats["anthropic"] = ProviderStats()
         except Exception as e:
@@ -167,9 +199,11 @@ class AIConsensusEngine:
             import groq
 
             client = groq.AsyncGroq(api_key=key)
+            if not self._model_allowed("groq", AI_CONSENSUS_DEFAULTS.groq):
+                return
             self._providers["groq"] = {
                 "client": client,
-                "model": "llama-3.3-70b-versatile",
+                "model": AI_CONSENSUS_DEFAULTS.groq,
             }
             self._stats["groq"] = ProviderStats()
         except Exception as e:
@@ -187,9 +221,13 @@ class AIConsensusEngine:
                 base_url="https://openrouter.ai/api/v1",
                 http_client=httpx.AsyncClient(timeout=30.0),
             )
+            if not self._model_allowed(
+                "openrouter", AI_CONSENSUS_DEFAULTS.openrouter
+            ):
+                return
             self._providers["openrouter"] = {
                 "client": client,
-                "model": "meta-llama/llama-3-70b-instruct",
+                "model": AI_CONSENSUS_DEFAULTS.openrouter,
             }
             self._stats["openrouter"] = ProviderStats()
         except Exception as e:
@@ -198,7 +236,13 @@ class AIConsensusEngine:
     # ----- provider dispatch -----
 
     async def _call_provider(
-        self, name: str, prompt: str, system: str | None = None, max_tokens: int = 1024
+        self,
+        name: str,
+        prompt: str,
+        system: str | None = None,
+        max_tokens: int = 1024,
+        *,
+        selection: str = "provider_query",
     ) -> ProviderResponse:
         prov = self._providers[name]
         t0 = time.monotonic()
@@ -206,6 +250,14 @@ class AIConsensusEngine:
             text = await self._dispatch(name, prov, prompt, system, max_tokens)
             latency = time.monotonic() - t0
             self._record(name, success=True, latency=latency)
+            get_model_usage_telemetry().record_generation(
+                subsystem="ai_consensus",
+                provider=name,
+                model=str(prov.get("model", "unknown")),
+                catalog="ai_consensus_defaults",
+                selection=selection,
+                runtime_lane=self._model_usage_lane.value,
+            )
             return ProviderResponse(provider=name, text=text, latency=latency)
         except Exception as e:
             latency = time.monotonic() - t0
@@ -237,7 +289,9 @@ class AIConsensusEngine:
             resp = await prov["client"].chat.completions.create(
                 model=prov["model"], messages=messages, max_tokens=max_tokens
             )
-            return resp.choices[0].message.content or "" if resp.choices else ""
+            return (
+                str(resp.choices[0].message.content or "") if resp.choices else ""
+            )
 
         if name == "anthropic":
             kwargs: dict[str, Any] = {
@@ -248,7 +302,9 @@ class AIConsensusEngine:
             if system:
                 kwargs["system"] = system
             resp = await prov["client"].messages.create(**kwargs)
-            return resp.content[0].text if resp.content else ""
+            return (
+                str(getattr(resp.content[0], "text", "")) if resp.content else ""
+            )
 
         raise ValueError(f"Unknown provider: {name}")
 
@@ -302,7 +358,15 @@ class AIConsensusEngine:
         deadline = t0 + timeout
 
         pending: set[asyncio.Task[ProviderResponse]] = {
-            asyncio.create_task(self._call_provider(name, prompt, system, max_tokens))
+            asyncio.create_task(
+                self._call_provider(
+                    name,
+                    prompt,
+                    system,
+                    max_tokens,
+                    selection="fastest_query",
+                )
+            )
             for name in ranked
         }
 
@@ -410,7 +474,11 @@ class AIConsensusEngine:
         synthesis_prompt = self._build_synthesis_prompt(prompt, succeeded)
         synthesiser = self._ranked_providers()[0]
         synth_resp = await self._call_provider(
-            synthesiser, synthesis_prompt, system=None, max_tokens=max_tokens
+            synthesiser,
+            synthesis_prompt,
+            system=None,
+            max_tokens=max_tokens,
+            selection="consensus_synthesis",
         )
 
         providers_used = [r.provider for r in succeeded]
@@ -437,12 +505,19 @@ class AIConsensusEngine:
     ) -> list[ProviderResponse]:
         ranked = self._ranked_providers()
         coros = [
-            self._call_provider(name, prompt, system, max_tokens) for name in ranked
+            self._call_provider(
+                name,
+                prompt,
+                system,
+                max_tokens,
+                selection="parallel_query",
+            )
+            for name in ranked
         ]
         results = await asyncio.gather(*coros, return_exceptions=True)
         out: list[ProviderResponse] = []
         for i, r in enumerate(results):
-            if isinstance(r, Exception):
+            if isinstance(r, BaseException):
                 out.append(
                     ProviderResponse(
                         provider=ranked[i],
@@ -452,7 +527,7 @@ class AIConsensusEngine:
                         error=str(r),
                     )
                 )
-            else:
+            elif isinstance(r, ProviderResponse):
                 out.append(r)
         return out
 
@@ -476,9 +551,13 @@ class AIConsensusEngine:
     def get_status(self) -> dict[str, Any]:
         self._ensure_initialized()
         return {
+            "model_usage_lane": self._model_usage_lane.value,
             "providers": {
                 name: {
                     "model": self._providers[name].get("model", "unknown"),
+                    "lane": describe_model_lane(
+                        str(self._providers[name].get("model", "unknown"))
+                    ),
                     "calls": self._stats[name].calls,
                     "success_rate": round(self._stats[name].success_rate, 3),
                     "avg_latency": round(self._stats[name].avg_latency, 3),

@@ -8,16 +8,19 @@ import logging
 import os
 import uuid
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.kortana.model_lane_policy import describe_model_lane
 from src.kortana.models import AuditLog, Memory
+from src.kortana.provider_model_defaults import LLM_ROUTER_GEMINI_MODEL
+from src.kortana.services.gemini_config import get_preferred_model_name
 
 logger = logging.getLogger(__name__)
 
-DISTILL_MODEL = "gemini-2.0-flash"
+DISTILL_MODEL = LLM_ROUTER_GEMINI_MODEL
 # Tokens used in current session (in-memory counter, resets on restart)
 _session_tokens_used = 0
 _SESSION_TOKEN_BUDGET = 50_000  # conservative free-tier guard
@@ -63,6 +66,16 @@ class ExperienceCapsule:
         }
 
 
+def get_distillation_model_info() -> Dict[str, str]:
+    """Return preferred and resolved Gemini model metadata for distillation."""
+    resolved_model = get_preferred_model_name(DISTILL_MODEL)
+    return {
+        "preferred_model": DISTILL_MODEL,
+        "model": resolved_model,
+        "model_lane": describe_model_lane(resolved_model),
+    }
+
+
 async def _call_gemini_distill(prompt: str) -> Optional[str]:
     """Call Gemini to distil memories into an insight, respecting token budget."""
     global _session_tokens_used
@@ -78,8 +91,9 @@ async def _call_gemini_distill(prompt: str) -> Optional[str]:
         from google import genai
 
         client = genai.Client(api_key=api_key)
+        model_info = get_distillation_model_info()
         response = client.models.generate_content(
-            model=DISTILL_MODEL,
+            model=model_info["model"],
             contents=prompt,
         )
         # Rough token estimate (4 chars ≈ 1 token)
@@ -125,7 +139,7 @@ class ExperienceDistiller:
         # Group by memory_type
         groups: Dict[str, List[Memory]] = {}
         for mem in old_memories:
-            groups.setdefault(mem.memory_type, []).append(mem)
+            groups.setdefault(str(mem.memory_type), []).append(mem)
 
         capsules: List[ExperienceCapsule] = []
         for mem_type, mems in groups.items():
@@ -183,7 +197,7 @@ class ExperienceDistiller:
             category=category,
             source_count=len(memories),
             confidence=0.8 if insight else 0.5,
-            source_ids=[m.id for m in memories],
+            source_ids=[str(m.id) for m in memories],
         )
 
     # ------------------------------------------------------------------
@@ -225,6 +239,7 @@ class ExperienceDistiller:
                 _session_tokens_used / _SESSION_TOKEN_BUDGET * 100, 1
             ),
             "capsules_created": len(self._capsules),
+            **get_distillation_model_info(),
         }
 
     # ------------------------------------------------------------------
@@ -258,7 +273,7 @@ class ExperienceDistiller:
 
         items = []
         for log_entry in logs:
-            details = log_entry.details or {}
+            details = cast(Dict[str, Any], log_entry.details or {})
             items.append(
                 f"- {details.get('error_type', '?')}: "
                 f"{details.get('root_cause', 'unknown')}"
