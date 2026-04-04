@@ -58,10 +58,69 @@ interface ApiError {
   message: string;
   status: number;
   details?: unknown;
+  retryAfterSeconds?: number;
+  isRateLimited?: boolean;
+  isOffline?: boolean;
 }
 
 const toIsoTimestamp = (value?: string) => value || new Date().toISOString();
 const CHAT_PHASES: ChatPhase[] = ['analysis', 'commentary', 'final_answer'];
+
+const parseRetryAfterSeconds = (value: string | null): number | undefined => {
+  if (!value) {
+    return undefined;
+  }
+
+  const asSeconds = Number(value);
+  if (Number.isFinite(asSeconds) && asSeconds >= 0) {
+    return Math.ceil(asSeconds);
+  }
+
+  const retryAt = Date.parse(value);
+  if (Number.isNaN(retryAt)) {
+    return undefined;
+  }
+
+  const remainingMs = retryAt - Date.now();
+  return remainingMs > 0 ? Math.ceil(remainingMs / 1000) : 0;
+};
+
+const buildApiError = (
+  status: number,
+  errorData: unknown,
+  headers?: Headers
+): Error & ApiError => {
+  const details = (errorData ?? {}) as Record<string, unknown>;
+  const retryAfterSeconds = parseRetryAfterSeconds(headers?.get('retry-after') ?? null);
+  const err = new Error(
+    typeof details.message === 'string'
+      ? details.message
+      : typeof details.detail === 'string'
+        ? details.detail
+        : status === 429
+          ? retryAfterSeconds
+            ? `Rate limit reached. Try again in ${retryAfterSeconds}s.`
+            : 'Rate limit reached. Please wait a moment and try again.'
+          : status === 503
+            ? 'Service temporarily unavailable. Try again shortly.'
+            : 'Request failed'
+  ) as Error & ApiError;
+  err.status = status;
+  err.details = errorData;
+  err.retryAfterSeconds = retryAfterSeconds;
+  err.isRateLimited = status === 429;
+  err.isOffline = false;
+  return err;
+};
+
+const buildNetworkError = (error: unknown): Error & ApiError => {
+  const err = new Error('Network error. Check that the backend is reachable.') as Error & ApiError;
+  err.status = 0;
+  err.details = error;
+  err.isOffline = true;
+  err.isRateLimited = false;
+  return err;
+};
 
 const normalizeString = (value: unknown): string | undefined => {
   return typeof value === 'string' && value.trim() ? value : undefined;
@@ -295,10 +354,7 @@ class ApiClient {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        const err = new Error(errorData.message || errorData.detail || 'Request failed') as Error & ApiError;
-        err.status = response.status;
-        err.details = errorData;
-        throw err;
+        throw buildApiError(response.status, errorData, response.headers);
       }
 
       if (trackAvailability) {
@@ -313,10 +369,7 @@ class ApiClient {
       if (trackAvailability) {
         this._setOffline(true);
       }
-      const netErr = new Error('Network error') as Error & ApiError;
-      netErr.status = 0;
-      netErr.details = error;
-      throw netErr;
+      throw buildNetworkError(error);
     }
   }
 
@@ -370,10 +423,7 @@ class ApiClient {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      const err = new Error(errorData.message || errorData.detail || 'Request failed') as Error & ApiError;
-      err.status = response.status;
-      err.details = errorData;
-      throw err;
+      throw buildApiError(response.status, errorData, response.headers);
     }
 
     if (!response.body) {
