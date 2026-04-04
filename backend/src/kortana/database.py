@@ -128,12 +128,33 @@ class DatabaseManager:
                 logger.warning(
                     "Postgres unreachable in development — falling back to SQLite"
                 )
-                self.engine = None
-                self.session_factory = None
-                self._connected = False
-                self.config._base_url = "sqlite+aiosqlite:///./kortana.db"
+                if self.engine is not None:
+                    await self.engine.dispose()
+                sqlite_url = "sqlite+aiosqlite:///./kortana.db"
+                self.engine = create_async_engine(
+                    sqlite_url,
+                    echo=self.config.echo,
+                    poolclass=StaticPool,
+                    connect_args={"check_same_thread": False},
+                    future=True,
+                )
+                self.config._base_url = sqlite_url
                 self.config.is_sqlite = True
-                await self.initialize()
+                self.session_factory = async_sessionmaker(
+                    self.engine,
+                    class_=AsyncSession,
+                    expire_on_commit=False,
+                    autoflush=False,
+                )
+                from src.kortana.models import Base
+
+                async with self.engine.begin() as conn:
+                    await conn.run_sync(Base.metadata.create_all)
+                async with self.engine.connect() as conn:
+                    await conn.execute(text("SELECT 1"))
+                    await conn.commit()
+                self._connected = True
+                logger.info("Database connected: SQLite fallback (async, StaticPool)")
             else:
                 raise
 
