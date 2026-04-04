@@ -232,6 +232,11 @@ class Settings:
                 "— falling back to SQLite (ephemeral on most hosts)"
             )
 
+        # Use /app/tmp so the kortana non-root user can always write the file.
+        # Falls back to relative path on local dev where the cwd is writable.
+        import os as _os
+        if _os.path.isdir("/app/tmp"):
+            return "sqlite+aiosqlite:////app/tmp/kortana.db"
         return "sqlite+aiosqlite:///./kortana.db"
 
     # Logging
