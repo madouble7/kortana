@@ -128,6 +128,7 @@ async def test_generate_records_runtime_usage(llm_router):
         ),
     ):
         await llm_router.generate("Record this generation")
+        await telemetry.flush_persistence()
 
     summary = telemetry.get_summary()
     assert summary["total_generations"] == 1
