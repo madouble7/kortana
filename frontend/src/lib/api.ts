@@ -39,6 +39,10 @@ interface ChatStreamHandlers {
   onError?: (message: string) => void;
 }
 
+interface ChatStreamOptions {
+  signal?: AbortSignal;
+}
+
 interface ChatHistoryResponse {
   messages?: Array<{
     role: ChatHistoryEntry['role'];
@@ -61,6 +65,7 @@ interface ApiError {
   retryAfterSeconds?: number;
   isRateLimited?: boolean;
   isOffline?: boolean;
+  isAborted?: boolean;
 }
 
 const toIsoTimestamp = (value?: string) => value || new Date().toISOString();
@@ -110,17 +115,30 @@ const buildApiError = (
   err.retryAfterSeconds = retryAfterSeconds;
   err.isRateLimited = status === 429;
   err.isOffline = false;
+  err.isAborted = false;
   return err;
 };
 
 const buildNetworkError = (error: unknown): Error & ApiError => {
-  const err = new Error('Network error. Check that the backend is reachable.') as Error & ApiError;
+  const isAborted = error instanceof DOMException
+    ? error.name === 'AbortError'
+    : typeof error === 'object' && error !== null && 'name' in error
+      ? (error as { name?: string }).name === 'AbortError'
+      : false;
+  const err = new Error(
+    isAborted
+      ? 'Generation stopped.'
+      : 'Network error. Check that the backend is reachable.'
+  ) as Error & ApiError;
   err.status = 0;
   err.details = error;
-  err.isOffline = true;
+  err.isOffline = !isAborted;
   err.isRateLimited = false;
+  err.isAborted = isAborted;
   return err;
 };
+
+const STREAM_FALLBACK_STATUSES = new Set([404, 405, 406, 426, 500, 501, 502, 503, 504]);
 
 const normalizeString = (value: unknown): string | undefined => {
   return typeof value === 'string' && value.trim() ? value : undefined;
@@ -406,115 +424,160 @@ class ApiClient {
     history: ChatHistoryEntry[] | undefined,
     conversationId: string | undefined,
     sessionId: string | undefined,
-    handlers: ChatStreamHandlers
+    handlers: ChatStreamHandlers,
+    options: ChatStreamOptions = {}
   ): Promise<void> {
-    const response = await fetch(`${this.baseURL}/api/gemini/chat/stream`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    const fallbackToStandardChat = async () => {
+      const response = await this.sendChatMessage(
         message,
-        history: history || [],
-        conversation_id: conversationId,
-        session_id: sessionId || 'default',
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw buildApiError(response.status, errorData, response.headers);
-    }
-
-    if (!response.body) {
-      throw new Error('Streaming response body unavailable');
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let sawTerminalEvent = false;
-
-    const dispatchEvent = (rawEvent: string) => {
-      const lines = rawEvent.split('\n');
-      let eventName = 'message';
-      const dataLines: string[] = [];
-
-      for (const line of lines) {
-        if (line.startsWith('event:')) {
-          eventName = line.slice(6).trim();
-        } else if (line.startsWith('data:')) {
-          dataLines.push(line.slice(5).trimStart());
-        }
+        history,
+        conversationId,
+        sessionId
+      );
+      handlers.onStart?.(response);
+      if (response.phase) {
+        handlers.onPhase?.(response.phase);
       }
-
-      if (!dataLines.length) {
-        return;
-      }
-
-      let payload: unknown = {};
-      try {
-        payload = JSON.parse(dataLines.join('\n'));
-      } catch {
-        return;
-      }
-
-      const data = payload as Record<string, unknown>;
-      switch (eventName) {
-        case 'start':
-          handlers.onStart?.(normalizeChatSendResponse(data));
-          break;
-        case 'phase':
-          if (normalizeChatPhase(data.phase)) {
-            handlers.onPhase?.(normalizeChatPhase(data.phase)!);
-          }
-          break;
-        case 'delta':
-          if (typeof data.delta === 'string') {
-            handlers.onDelta?.(data.delta);
-          }
-          break;
-        case 'final':
-          sawTerminalEvent = true;
-          handlers.onFinal?.(normalizeChatSendResponse(data));
-          break;
-        case 'error':
-          sawTerminalEvent = true;
-          handlers.onError?.(
-            typeof data.message === 'string' ? data.message : 'Streaming failed'
-          );
-          break;
-        default:
-          break;
-      }
+      handlers.onFinal?.(response);
     };
 
-    let done = false;
-    while (!done) {
-      const { done: readDone, value } = await reader.read();
-      done = readDone;
-      if (done) {
-        break;
+    let sawTerminalEvent = false;
+    let sawMeaningfulEvent = false;
+
+    try {
+      const response = await fetch(`${this.baseURL}/api/gemini/chat/stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: options.signal,
+        body: JSON.stringify({
+          message,
+          history: history || [],
+          conversation_id: conversationId,
+          session_id: sessionId || 'default',
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        if (STREAM_FALLBACK_STATUSES.has(response.status)) {
+          await fallbackToStandardChat();
+          return;
+        }
+        throw buildApiError(response.status, errorData, response.headers);
       }
 
-      buffer += decoder.decode(value, { stream: true });
-      const events = buffer.split('\n\n');
-      buffer = events.pop() || '';
-      for (const eventChunk of events) {
-        const trimmed = eventChunk.trim();
-        if (trimmed) {
-          dispatchEvent(trimmed);
+      if (!response.body) {
+        await fallbackToStandardChat();
+        return;
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      const dispatchEvent = (rawEvent: string) => {
+        const lines = rawEvent.split('\n');
+        let eventName = 'message';
+        const dataLines: string[] = [];
+
+        for (const line of lines) {
+          if (line.startsWith('event:')) {
+            eventName = line.slice(6).trim();
+          } else if (line.startsWith('data:')) {
+            dataLines.push(line.slice(5).trimStart());
+          }
+        }
+
+        if (!dataLines.length) {
+          return;
+        }
+
+        let payload: unknown = {};
+        try {
+          payload = JSON.parse(dataLines.join('\n'));
+        } catch {
+          return;
+        }
+
+        const data = payload as Record<string, unknown>;
+        sawMeaningfulEvent = true;
+        switch (eventName) {
+          case 'start':
+            handlers.onStart?.(normalizeChatSendResponse(data));
+            break;
+          case 'phase':
+            if (normalizeChatPhase(data.phase)) {
+              handlers.onPhase?.(normalizeChatPhase(data.phase)!);
+            }
+            break;
+          case 'delta':
+            if (typeof data.delta === 'string') {
+              handlers.onDelta?.(data.delta);
+            }
+            break;
+          case 'final':
+            sawTerminalEvent = true;
+            handlers.onFinal?.(normalizeChatSendResponse(data));
+            break;
+          case 'error':
+            sawTerminalEvent = true;
+            handlers.onError?.(
+              typeof data.message === 'string' ? data.message : 'Streaming failed'
+            );
+            break;
+          default:
+            break;
+        }
+      };
+
+      let done = false;
+      while (!done) {
+        const { done: readDone, value } = await reader.read();
+        done = readDone;
+        if (done) {
+          break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split('\n\n');
+        buffer = events.pop() || '';
+        for (const eventChunk of events) {
+          const trimmed = eventChunk.trim();
+          if (trimmed) {
+            dispatchEvent(trimmed);
+          }
         }
       }
-    }
 
-    const trailing = buffer.trim();
-    if (trailing) {
-      dispatchEvent(trailing);
-    }
+      const trailing = buffer.trim();
+      if (trailing) {
+        dispatchEvent(trailing);
+      }
 
-    if (!sawTerminalEvent) {
-      throw new Error('Stream ended before delivering a final response');
+      if (!sawTerminalEvent) {
+        if (!sawMeaningfulEvent) {
+          await fallbackToStandardChat();
+          return;
+        }
+        throw new Error('Stream ended before delivering a final response');
+      }
+    } catch (error) {
+      const apiError = ((error as ApiError).status !== undefined || (error as ApiError).isAborted)
+        ? error as ApiError
+        : buildNetworkError(error);
+
+      if (apiError.isAborted) {
+        throw apiError;
+      }
+
+      if (!sawMeaningfulEvent && apiError.status && STREAM_FALLBACK_STATUSES.has(apiError.status)) {
+        await fallbackToStandardChat();
+        return;
+      }
+
+      throw apiError;
     }
   }
 

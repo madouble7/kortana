@@ -162,4 +162,5 @@ export interface ApiError {
   retryAfterSeconds?: number;
   isRateLimited?: boolean;
   isOffline?: boolean;
+  isAborted?: boolean;
 }
