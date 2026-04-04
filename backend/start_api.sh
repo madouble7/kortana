@@ -6,13 +6,13 @@
 set -e
 
 echo "[kortana-api] Running database migrations..."
-if python -m alembic upgrade head; then
+if alembic upgrade head; then
     echo "[kortana-api] Migrations complete."
 else
     echo "[kortana-api] Migration failed — stamping existing DB to current head..."
-    python -m alembic stamp head
+    alembic stamp head
     echo "[kortana-api] Stamped. Retrying upgrade..."
-    python -m alembic upgrade head
+    alembic upgrade head
     echo "[kortana-api] Migration verified clean."
 fi
 
