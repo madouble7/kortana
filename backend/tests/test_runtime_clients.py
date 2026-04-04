@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import asyncio
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
+import pytest
 
 from src.kortana.api_integration import (
     ClaudeAPIClient,
@@ -152,3 +153,25 @@ class TestAPIIntegrationModelLaneRuntime:
 
         assert default_client.model == "gemini-2.0-flash"
         assert preferred_client.model == "gemini-2.5-flash"
+
+    @pytest.mark.asyncio
+    async def test_openai_client_uses_responses_api_for_gpt5_models(self) -> None:
+        mock_async_openai = MagicMock()
+        mock_client = MagicMock()
+        mock_client.close = AsyncMock()
+        mock_client.responses.create = AsyncMock(
+            return_value=MagicMock(
+                output_text="OpenAI responses output",
+                usage=MagicMock(input_tokens=8, output_tokens=5),
+            )
+        )
+        mock_async_openai.return_value = mock_client
+
+        with patch.dict("sys.modules", {"openai": MagicMock(AsyncOpenAI=mock_async_openai)}):
+            client = OpenAIAPIClient("sk-test")
+            text, input_tokens, output_tokens = await client.generate("Hello world")
+
+        assert text == "OpenAI responses output"
+        assert input_tokens == 8
+        assert output_tokens == 5
+        mock_client.responses.create.assert_awaited_once()

@@ -25,6 +25,7 @@ from src.kortana.model_lane_policy import (
     model_allowed,
 )
 from src.kortana.model_usage_telemetry import get_model_usage_telemetry
+from src.kortana.openai_responses import async_generate_text
 from src.kortana.provider_model_defaults import API_INTEGRATION_FALLBACK_DEFAULTS
 from src.kortana.services.gemini_config import (
     get_model_name,
@@ -276,21 +277,21 @@ class OpenAIAPIClient:
             )
 
             try:
-                response = await client.chat.completions.create(
-                    model=self.model,
-                    messages=[{"role": "user", "content": prompt}],
-                    max_tokens=max_tokens,
+                content, input_tokens, output_tokens = await async_generate_text(
+                    client,
+                    model_name=self.model,
+                    prompt=prompt,
+                    max_output_tokens=max_tokens,
                     temperature=temperature,
+                    timeout=30.0,
                 )
             finally:
                 await client.close()
 
-            content = response.choices[0].message.content
-            usage = response.usage
             return (
-                str(content or ""),
-                usage.prompt_tokens if usage is not None else 0,
-                usage.completion_tokens if usage is not None else 0,
+                content,
+                input_tokens or 0,
+                output_tokens or 0,
             )
 
         except Exception as e:
