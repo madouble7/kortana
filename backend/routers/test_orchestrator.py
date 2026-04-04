@@ -332,7 +332,7 @@ class TestOrchestrator:
                     data = json.loads(result["output"])
                     result["vulnerabilities"] = data.get("results", [])
                     result["passed"] = len(result["vulnerabilities"]) == 0
-                except:
+                except json.JSONDecodeError:
                     result["passed"] = False
 
             # Check dependencies with safety
@@ -353,7 +353,7 @@ class TestOrchestrator:
                         result["dependency_issues"] = safety_data.get("vulnerabilities", [])
                         if result["passed"]:
                             result["passed"] = len(result["dependency_issues"]) == 0
-                    except:
+                    except json.JSONDecodeError:
                         pass
 
             except FileNotFoundError:
@@ -396,7 +396,7 @@ class TestOrchestrator:
                     data = json.load(f)
                     if test_type is None or data.get("test_type") == test_type:
                         results.append(data)
-            except:
+            except (OSError, json.JSONDecodeError):
                 continue
 
         return results
@@ -473,7 +473,7 @@ class TestOrchestrator:
             try:
                 subprocess.run([tool, "--version"], capture_output=True, timeout=5)
                 tools_status[tool] = True
-            except:
+            except (FileNotFoundError, subprocess.SubprocessError, OSError):
                 tools_status[tool] = False
 
         config["tools_available"] = tools_status

@@ -623,7 +623,7 @@ async def test_gateway_resets_git_index_on_block(tmp_path, monkeypatch):
             # PatchValidator itself does not call _run_git; the reset is called by
             # the gateway block branch inside execute_task.
             # We patch _get_pending_diff to bypass the internal git add/diff calls.
-            result = await service.execute_task(task)
+            await service.execute_task(task)
 
     assert task.status == "failed"
     # git reset HEAD should have been called with the workspace as cwd

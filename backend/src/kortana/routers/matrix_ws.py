@@ -23,7 +23,7 @@ async def matrix_stream(websocket: WebSocket):
     await websocket.accept()
     logger.info("New client connected to Matrix Stream.")
 
-    bus = await get_shared_bus()
+    await get_shared_bus()
 
     try:
         # We need a dedicated subscriber for each websocket connection,
