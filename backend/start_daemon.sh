@@ -7,13 +7,13 @@
 set -e
 
 echo "[kortana-daemon] Running database migrations..."
-if alembic upgrade head; then
+if python -m alembic upgrade head; then
     echo "[kortana-daemon] Migrations complete."
 else
     echo "[kortana-daemon] Migration failed — tables may already exist. Stamping to current head..."
-    alembic stamp head
+    python -m alembic stamp head
     echo "[kortana-daemon] DB stamped. Verifying..."
-    alembic upgrade head
+    python -m alembic upgrade head
     echo "[kortana-daemon] Verified clean."
 fi
 
