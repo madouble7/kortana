@@ -24,6 +24,13 @@ from enum import Enum
 from typing import Optional
 
 from src.kortana.logger import get_logger
+from src.kortana.model_lane_policy import (
+    describe_model_lane,
+    get_active_model_lane,
+    model_allowed,
+)
+from src.kortana.provider_model_defaults import COST_ROUTER_DEFAULTS
+from src.kortana.services.gemini_config import get_model_name
 
 logger = get_logger(__name__)
 
@@ -65,6 +72,7 @@ class ModelConfig:
     max_tokens: int = 4096
     priority: int = 0  # Lower = higher priority
     is_free_tier: bool = False
+    lane: str = "core"
 
 
 @dataclass
@@ -108,11 +116,27 @@ class CostOptimizedModelRouter:
     - FALLBACK 4: OpenAI (expensive, use sparingly)
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.configs: dict[ModelProvider, ModelConfig] = {}
         self.cost_tracking: dict[ModelProvider, CostEstimate] = {}
         self.request_counts: dict[ModelProvider, int] = {}
+        self.model_usage_lane = get_active_model_lane()
         self.init_providers()
+
+    def _register_provider(self, config: ModelConfig) -> None:
+        """Register a provider when its model is allowed in the active lane."""
+        if not model_allowed(config.model_name, active_lane=self.model_usage_lane):
+            logger.info(
+                "Skipping %s provider model %s (%s lane) under %s runtime",
+                config.provider.value,
+                config.model_name,
+                describe_model_lane(config.model_name),
+                self.model_usage_lane.value,
+            )
+            return
+
+        config.lane = describe_model_lane(config.model_name)
+        self.configs[config.provider] = config
 
     def init_providers(self) -> None:
         """Initialize all available providers from environment"""
@@ -120,77 +144,88 @@ class CostOptimizedModelRouter:
 
         # Groq: Free tier, unlimited, fast
         if groq_key := os.getenv("GROQ_API_KEY"):
-            self.configs[ModelProvider.GROQ] = ModelConfig(
-                provider=ModelProvider.GROQ,
-                api_key=groq_key,
-                model_name="mixtral-8x7b-32768",  # Free tier model
-                cost_per_1k_input=0.0,
-                cost_per_1k_output=0.0,
-                quota_limit=None,  # Unlimited
-                max_tokens=32768,
-                priority=1,  # Highest priority (cheapest)
-                is_free_tier=True,
+            self._register_provider(
+                ModelConfig(
+                    provider=ModelProvider.GROQ,
+                    api_key=groq_key,
+                    model_name=COST_ROUTER_DEFAULTS.groq,  # Free tier model
+                    cost_per_1k_input=0.0,
+                    cost_per_1k_output=0.0,
+                    quota_limit=None,  # Unlimited
+                    max_tokens=32768,
+                    priority=1,  # Highest priority (cheapest)
+                    is_free_tier=True,
+                )
             )
             logger.info("✅ Groq provider initialized (FREE TIER)")
 
         # OpenRouter: Cost-efficient aggregation
         if openrouter_key := os.getenv("OPENROUTER_API_KEY"):
-            self.configs[ModelProvider.OPENROUTER] = ModelConfig(
-                provider=ModelProvider.OPENROUTER,
-                api_key=openrouter_key,
-                model_name="openrouter/auto",  # Auto-routes to cheapest
-                cost_per_1k_input=0.00001,  # Approximately (varies by model)
-                cost_per_1k_output=0.00001,
-                quota_limit=None,
-                max_tokens=4096,
-                priority=2,
-                is_free_tier=False,
+            self._register_provider(
+                ModelConfig(
+                    provider=ModelProvider.OPENROUTER,
+                    api_key=openrouter_key,
+                    model_name=COST_ROUTER_DEFAULTS.openrouter,  # Auto-routes to cheapest
+                    cost_per_1k_input=0.00001,  # Approximately (varies by model)
+                    cost_per_1k_output=0.00001,
+                    quota_limit=None,
+                    max_tokens=4096,
+                    priority=2,
+                    is_free_tier=False,
+                )
             )
             logger.info("✅ OpenRouter provider initialized (cost-efficient)")
 
         # Gemini: Free tier with quotas
         if gemini_key := os.getenv("GEMINI_API_KEY"):
-            self.configs[ModelProvider.GEMINI] = ModelConfig(
-                provider=ModelProvider.GEMINI,
-                api_key=gemini_key,
-                model_name="gemini-3.1-flash-lite-preview",
-                cost_per_1k_input=0.0,
-                cost_per_1k_output=0.0,
-                quota_limit=1500,  # 1,500 requests/day
-                quota_period_seconds=86400,  # 24 hours
-                max_tokens=4096,
-                priority=3,
-                is_free_tier=True,
+            gemini_model_name = get_model_name()
+            self._register_provider(
+                ModelConfig(
+                    provider=ModelProvider.GEMINI,
+                    api_key=gemini_key,
+                    model_name=gemini_model_name,
+                    cost_per_1k_input=0.0,
+                    cost_per_1k_output=0.0,
+                    quota_limit=1500,  # 1,500 requests/day
+                    quota_period_seconds=86400,  # 24 hours
+                    max_tokens=4096,
+                    priority=3,
+                    is_free_tier=True,
+                )
             )
             logger.info("✅ Gemini provider initialized (FREE, quota-limited)")
 
         # Claude: Premium, for critical decisions
         if anthropic_key := os.getenv("ANTHROPIC_API_KEY"):
-            self.configs[ModelProvider.CLAUDE] = ModelConfig(
-                provider=ModelProvider.CLAUDE,
-                api_key=anthropic_key,
-                model_name="claude-3-5-sonnet-20241022",
-                cost_per_1k_input=0.003,  # Premium pricing
-                cost_per_1k_output=0.015,
-                quota_limit=None,
-                max_tokens=4096,
-                priority=4,
-                is_free_tier=False,
+            self._register_provider(
+                ModelConfig(
+                    provider=ModelProvider.CLAUDE,
+                    api_key=anthropic_key,
+                    model_name=COST_ROUTER_DEFAULTS.anthropic,
+                    cost_per_1k_input=0.003,  # Premium pricing
+                    cost_per_1k_output=0.015,
+                    quota_limit=None,
+                    max_tokens=4096,
+                    priority=4,
+                    is_free_tier=False,
+                )
             )
             logger.info("✅ Claude provider initialized (premium, use sparingly)")
 
         # OpenAI: Expensive, fallback only
         if openai_key := os.getenv("OPENAI_API_KEY"):
-            self.configs[ModelProvider.OPENAI] = ModelConfig(
-                provider=ModelProvider.OPENAI,
-                api_key=openai_key,
-                model_name="gpt-4o-mini",  # Fast, cheaper than full GPT-4
-                cost_per_1k_input=0.00015,
-                cost_per_1k_output=0.0006,
-                quota_limit=None,
-                max_tokens=4096,
-                priority=5,  # Lowest priority (most expensive)
-                is_free_tier=False,
+            self._register_provider(
+                ModelConfig(
+                    provider=ModelProvider.OPENAI,
+                    api_key=openai_key,
+                    model_name=COST_ROUTER_DEFAULTS.openai,  # Fast, cheaper than full GPT-4
+                    cost_per_1k_input=0.00015,
+                    cost_per_1k_output=0.0006,
+                    quota_limit=None,
+                    max_tokens=4096,
+                    priority=5,  # Lowest priority (most expensive)
+                    is_free_tier=False,
+                )
             )
             logger.info("✅ OpenAI provider initialized (expensive, last resort)")
 
@@ -333,13 +368,15 @@ class CostOptimizedModelRouter:
             f"Daily total: ${self.cost_tracking[provider].daily_spend:.2f}"
         )
 
-    def get_cost_report(self) -> dict:
+    def get_cost_report(self) -> dict[str, object]:
         """Get comprehensive cost analysis"""
         total_daily = sum(c.daily_spend for c in self.cost_tracking.values())
         total_monthly = sum(c.monthly_spend for c in self.cost_tracking.values())
 
         provider_breakdown = {
-            provider: {
+            provider.value: {
+                "model": self.configs[provider].model_name,
+                "lane": self.configs[provider].lane,
                 "daily": self.cost_tracking.get(
                     provider,
                     CostEstimate(provider=provider, task_type=TaskType.ANALYSIS),
@@ -357,6 +394,7 @@ class CostOptimizedModelRouter:
             "total_daily_spend": f"${total_daily:.2f}",
             "total_monthly_spend": f"${total_monthly:.2f}",
             "providers": provider_breakdown,
+            "model_usage_lane": self.model_usage_lane.value,
             "free_tier_usage": {
                 p.value: self.request_counts.get(p, 0)
                 for p in [ModelProvider.GROQ, ModelProvider.GEMINI]
@@ -364,9 +402,10 @@ class CostOptimizedModelRouter:
             },
         }
 
-    def get_routing_strategy(self) -> dict:
+    def get_routing_strategy(self) -> dict[str, object]:
         """Get current routing strategy"""
         return {
+            "model_usage_lane": self.model_usage_lane.value,
             "priorities": [
                 (p.value, c.priority)
                 for p, c in sorted(
@@ -374,6 +413,7 @@ class CostOptimizedModelRouter:
                     key=lambda x: x[1].priority,
                 )
             ],
+            "model_lanes": {p.value: c.lane for p, c in self.configs.items()},
             "free_providers": [
                 p.value for p, c in self.configs.items() if c.is_free_tier
             ],

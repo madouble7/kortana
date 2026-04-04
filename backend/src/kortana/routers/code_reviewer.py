@@ -10,6 +10,7 @@ import httpx
 from fastapi import APIRouter
 
 from src.kortana.config import get_settings
+from src.kortana.services.gemini_config import get_preferred_model_name
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -217,8 +218,9 @@ Provide a JSON response ONLY with the following structure:
 }}"""
 
             # Call Gemini API
+            model_name = get_preferred_model_name("gemini-pro")
             url = (
-                f"{self.base_url}/gemini-pro:generateContent?key={self.gemini_api_key}"
+                f"{self.base_url}/{model_name}:generateContent?key={self.gemini_api_key}"
             )
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(

@@ -8,16 +8,17 @@ import logging
 import math
 import os
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.kortana.models import Memory
+from src.kortana.provider_model_defaults import MEMORY_ENGINE_EMBEDDING_MODEL
 
 logger = logging.getLogger(__name__)
 
-EMBEDDING_MODEL = "text-embedding-004"
+EMBEDDING_MODEL = MEMORY_ENGINE_EMBEDDING_MODEL
 EMBEDDING_DIM = 768
 SYSTEM_AGENT_ID = "kortana-system"
 
@@ -48,8 +49,13 @@ async def generate_embedding(text: str) -> Optional[List[float]]:
             model=EMBEDDING_MODEL,
             contents=text[:2048],  # Gemini limit guard
         )
-        embedding = result.embeddings[0].values
-        return list(embedding)
+        embeddings = result.embeddings
+        if not embeddings:
+            return None
+        values = embeddings[0].values
+        if not values:
+            return None
+        return [float(value) for value in values]
     except Exception as e:
         logger.error(f"Embedding generation failed: {e}")
         return None
@@ -112,18 +118,21 @@ class MemoryEngine:
             return []
 
         if query_embedding:
-            scored = [
-                (m, _cosine_similarity(query_embedding, m.embedding))
-                for m in candidates
-                if m.embedding
-            ]
+            scored = []
+            for m in candidates:
+                embedding = cast(list[float] | None, m.embedding)
+                if not embedding:
+                    continue
+                scored.append((m, _cosine_similarity(query_embedding, embedding)))
             scored.sort(key=lambda x: x[1], reverse=True)
             hits = [(m, s) for m, s in scored if s >= threshold][:limit]
         else:
             # Fallback: keyword match
             q_lower = query.lower()
             hits = [
-                (m, 1.0) for m in candidates if q_lower in (m.content or "").lower()
+                (m, 1.0)
+                for m in candidates
+                if q_lower in cast(str, m.content or "").lower()
             ][:limit]
 
         # Touch accessed_at for retrieved memories
@@ -144,7 +153,7 @@ class MemoryEngine:
         """Return the single most relevant memory's content, or None."""
         results = await self.search(query, limit=1)
         if results:
-            return results[0][0].content
+            return cast(str | None, results[0][0].content)
         return None
 
     # ------------------------------------------------------------------
@@ -158,8 +167,9 @@ class MemoryEngine:
         by_type: Dict[str, int] = {}
         embedded = 0
         for m in all_mems:
-            by_type[m.memory_type] = by_type.get(m.memory_type, 0) + 1
-            if m.embedding:
+            memory_type = cast(str, m.memory_type)
+            by_type[memory_type] = by_type.get(memory_type, 0) + 1
+            if cast(list[float] | None, m.embedding):
                 embedded += 1
 
         return {
@@ -182,7 +192,7 @@ class MemoryEngine:
 
         filled = 0
         for mem in memories:
-            emb = await generate_embedding(mem.content)
+            emb = await generate_embedding(cast(str, mem.content))
             if emb:
                 await self.db.execute(
                     update(Memory).where(Memory.id == mem.id).values(embedding=emb)

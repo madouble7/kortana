@@ -8,7 +8,7 @@ Handles real API calls with fallback chains and cost tracking.
 from __future__ import annotations
 
 import asyncio
-import os
+from typing import Protocol
 
 import aiohttp
 import httpx
@@ -19,17 +19,64 @@ from src.kortana.cost_optimized_model_router import (
     TaskType,
 )
 from src.kortana.logger import get_logger
+from src.kortana.model_lane_policy import (
+    describe_model_lane,
+    get_active_model_lane,
+    model_allowed,
+)
+from src.kortana.model_usage_telemetry import get_model_usage_telemetry
+from src.kortana.provider_model_defaults import API_INTEGRATION_FALLBACK_DEFAULTS
+from src.kortana.services.gemini_config import (
+    get_model_name,
+    get_preferred_model_name,
+)
 
 logger = get_logger(__name__)
+
+def _resolve_allowed_model_name(
+    requested_model_name: str | None,
+    *,
+    default_model_name: str,
+    provider_name: str,
+) -> str:
+    candidate = (requested_model_name or default_model_name).strip()
+    if model_allowed(candidate):
+        return candidate
+
+    logger.warning(
+        "Requested %s model '%s' is unavailable under the %s runtime lane; "
+        "falling back to '%s' (%s lane)",
+        provider_name,
+        candidate,
+        get_active_model_lane().value,
+        default_model_name,
+        describe_model_lane(default_model_name),
+    )
+    return default_model_name
+
+
+class SupportsGenerationClient(Protocol):
+    """Client contract for provider-specific generation adapters."""
+
+    async def generate(
+        self,
+        prompt: str,
+        max_tokens: int = 2048,
+        temperature: float = 0.7,
+    ) -> tuple[str, int, int]: ...
 
 
 class GroqAPIClient:
     """Groq API client (free, unlimited, fast)"""
 
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, model_name: str | None = None):
         self.api_key = api_key
         self.base_url = "https://api.groq.com/openai/v1"
-        self.model = "mixtral-8x7b-32768"
+        self.model = _resolve_allowed_model_name(
+            model_name,
+            default_model_name=API_INTEGRATION_FALLBACK_DEFAULTS.groq,
+            provider_name="groq",
+        )
 
     async def generate(
         self,
@@ -86,9 +133,13 @@ class GroqAPIClient:
 class GeminiAPIClient:
     """Gemini API client (free, quota-limited)"""
 
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, model_name: str | None = None):
         self.api_key = api_key
-        self.model = "gemini-3.1-flash-lite-preview"
+        self.model = (
+            get_preferred_model_name(model_name)
+            if model_name is not None
+            else get_model_name()
+        )
 
     async def generate(
         self,
@@ -132,10 +183,14 @@ class GeminiAPIClient:
 class ClaudeAPIClient:
     """Claude API client (premium, for critical decisions)"""
 
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, model_name: str | None = None):
         self.api_key = api_key
         self.base_url = "https://api.anthropic.com/v1"
-        self.model = "claude-3-5-sonnet-20241022"
+        self.model = _resolve_allowed_model_name(
+            model_name,
+            default_model_name=API_INTEGRATION_FALLBACK_DEFAULTS.anthropic,
+            provider_name="anthropic",
+        )
 
     async def generate(
         self,
@@ -193,9 +248,13 @@ class ClaudeAPIClient:
 class OpenAIAPIClient:
     """OpenAI API client (expensive, fallback)"""
 
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, model_name: str | None = None):
         self.api_key = api_key
-        self.model = "gpt-4o-mini"
+        self.model = _resolve_allowed_model_name(
+            model_name,
+            default_model_name=API_INTEGRATION_FALLBACK_DEFAULTS.openai,
+            provider_name="openai",
+        )
 
     async def generate(
         self,
@@ -229,9 +288,9 @@ class OpenAIAPIClient:
             content = response.choices[0].message.content
             usage = response.usage
             return (
-                content,
-                usage.prompt_tokens,
-                usage.completion_tokens,
+                str(content or ""),
+                usage.prompt_tokens if usage is not None else 0,
+                usage.completion_tokens if usage is not None else 0,
             )
 
         except Exception as e:
@@ -245,30 +304,28 @@ class UnifiedAPIClient:
     Automatically selects optimal provider and handles fallback chains.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.router = CostOptimizedModelRouter()
-        self.clients: dict[ModelProvider, object] = {}
+        self.clients: dict[ModelProvider, SupportsGenerationClient] = {}
         self._init_clients()
 
     def _init_clients(self) -> None:
         """Initialize all available API clients"""
-        if os.getenv("GROQ_API_KEY"):
-            self.clients[ModelProvider.GROQ] = GroqAPIClient(os.getenv("GROQ_API_KEY"))
-
-        if os.getenv("GEMINI_API_KEY"):
-            self.clients[ModelProvider.GEMINI] = GeminiAPIClient(
-                os.getenv("GEMINI_API_KEY")
-            )
-
-        if os.getenv("ANTHROPIC_API_KEY"):
-            self.clients[ModelProvider.CLAUDE] = ClaudeAPIClient(
-                os.getenv("ANTHROPIC_API_KEY")
-            )
-
-        if os.getenv("OPENAI_API_KEY"):
-            self.clients[ModelProvider.OPENAI] = OpenAIAPIClient(
-                os.getenv("OPENAI_API_KEY")
-            )
+        for provider, config in self.router.configs.items():
+            if provider == ModelProvider.GROQ:
+                self.clients[provider] = GroqAPIClient(config.api_key, config.model_name)
+            elif provider == ModelProvider.GEMINI:
+                self.clients[provider] = GeminiAPIClient(
+                    config.api_key, config.model_name
+                )
+            elif provider == ModelProvider.CLAUDE:
+                self.clients[provider] = ClaudeAPIClient(
+                    config.api_key, config.model_name
+                )
+            elif provider == ModelProvider.OPENAI:
+                self.clients[provider] = OpenAIAPIClient(
+                    config.api_key, config.model_name
+                )
 
     async def generate(
         self,
@@ -305,6 +362,20 @@ class UnifiedAPIClient:
                 self.router.record_usage(
                     provider, task_type, input_tokens, output_tokens
                 )
+                model_name = getattr(client, "model", None)
+                if not model_name:
+                    config = self.router.configs.get(provider)
+                    model_name = config.model_name if config is not None else "unknown"
+                get_model_usage_telemetry().record_generation(
+                    subsystem="api_integration",
+                    provider=provider.value,
+                    model=model_name,
+                    catalog="cost_router_defaults",
+                    selection=f"task:{task_type.value}",
+                    runtime_lane=self.router.model_usage_lane.value,
+                    tokens_used=input_tokens + output_tokens,
+                    task_type=task_type.value,
+                )
 
                 logger.info(
                     f"✅ Success with {provider.value} "
@@ -321,10 +392,10 @@ class UnifiedAPIClient:
         # All providers failed
         raise Exception(f"All providers exhausted for {task_type.value}")
 
-    def get_cost_report(self) -> dict:
+    def get_cost_report(self) -> dict[str, object]:
         """Get current cost tracking"""
         return self.router.get_cost_report()
 
-    def get_routing_info(self) -> dict:
+    def get_routing_info(self) -> dict[str, object]:
         """Get routing strategy info"""
         return self.router.get_routing_strategy()
