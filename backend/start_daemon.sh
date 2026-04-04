@@ -1,21 +1,6 @@
 #!/bin/sh
-# Daemon startup script with graceful migration handling.
-# Alembic can fail with "table already exists" when the DB was previously
-# initialized via create_all but not tracked by alembic. In that case,
-# stamp the current head and continue rather than hard-crashing.
-
+# Daemon startup script.
+# Migrations are handled by the API service on startup.
+# The daemon just needs to run the worker process.
 set -e
-
-echo "[kortana-daemon] Running database migrations..."
-if python -m alembic upgrade head; then
-    echo "[kortana-daemon] Migrations complete."
-else
-    echo "[kortana-daemon] Migration failed — tables may already exist. Stamping to current head..."
-    python -m alembic stamp head
-    echo "[kortana-daemon] DB stamped. Verifying..."
-    python -m alembic upgrade head
-    echo "[kortana-daemon] Verified clean."
-fi
-
-echo "[kortana-daemon] Starting daemon worker..."
 exec python -m src.kortana.daemon_worker
