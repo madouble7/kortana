@@ -272,7 +272,7 @@ class TestMultiModelAIServiceAnalyzeText:
         mock_openai_client.chat.completions.create.return_value = mock_response
         service.providers["openai"] = {
             "client": mock_openai_client,
-            "model": "gpt-3.5-turbo",
+            "model": MULTI_MODEL_DEFAULTS.openai,
             "type": "openai",
         }
 
@@ -368,7 +368,7 @@ class TestMultiModelAICallProvider:
 
         service.providers["openai"] = {
             "client": mock_client,
-            "model": "gpt-3.5-turbo",
+            "model": MULTI_MODEL_DEFAULTS.openai,
             "type": "openai",
         }
 
