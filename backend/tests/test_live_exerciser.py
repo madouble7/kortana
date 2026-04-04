@@ -3,7 +3,8 @@ Tests for the Live Exerciser router.
 Unit tests use mocked externals; the router is tested via SyncTestClient.
 """
 
-from unittest.mock import AsyncMock, MagicMock
+import sys
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -12,6 +13,7 @@ from src.kortana.routers.live_exerciser import (
     SYSTEM_AGENT_ID,
     SYSTEM_USER_ID,
     _ensure_bootstrap,
+    _exercise_openai,
 )
 from tests.conftest import SyncTestClient
 
@@ -60,6 +62,16 @@ class TestBootstrap:
 # Router endpoint tests (TestClient)
 # ------------------------------------------------------------------
 class TestLiveExerciserRouter:
+    def test_quick_status_accepts_google_api_key_for_gemini(self, monkeypatch):
+        """Gemini status should accept either GEMINI_API_KEY or GOOGLE_API_KEY."""
+        monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+        monkeypatch.setenv("GOOGLE_API_KEY", "gm-test")
+
+        resp = sync_client.get("/api/live/status")
+
+        assert resp.status_code == 200
+        assert resp.json()["checks"]["gemini_key"] == "ok"
+
     def test_quick_status_endpoint(self):
         """GET /api/live/status should return checks dict."""
         resp = sync_client.get("/api/live/status")
@@ -75,7 +87,11 @@ class TestLiveExerciserRouter:
         assert "redis" in checks
         assert "gemini_key" in checks
         assert "groq_key" in checks
+        assert "openai_key" in checks
         assert "github_token" in checks
+
+        models = data["models"]
+        assert "openai_generate" in models
 
     def test_exercise_endpoint_returns_results(self):
         """POST /api/live/exercise should return results for all services."""
@@ -88,6 +104,7 @@ class TestLiveExerciserRouter:
         assert "gemini_embedding" in data
         assert "gemini_generate" in data
         assert "groq" in data
+        assert "openai" in data
         assert "github" in data
         assert "memory_store" in data
         # Summary should have counts
@@ -96,3 +113,30 @@ class TestLiveExerciserRouter:
         assert "services_total" in summary
         assert "total_ms" in summary
         assert "model_usage_lane" in summary
+
+    @pytest.mark.asyncio
+    async def test_exercise_openai_returns_phase_and_response_id(self, monkeypatch):
+        """OpenAI exercise should surface GPT-5 response metadata for diagnostics."""
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+
+        mock_openai_module = MagicMock()
+        mock_openai_module.OpenAI.return_value = MagicMock()
+
+        with (
+            patch.dict(sys.modules, {"openai": mock_openai_module}),
+            patch(
+                "src.kortana.routers.live_exerciser.sync_generate_turn",
+                return_value=MagicMock(
+                    text="lanes preserve reliability boundaries",
+                    input_tokens=8,
+                    output_tokens=5,
+                    response_id="resp_live",
+                    phase="final_answer",
+                ),
+            ),
+        ):
+            result = await _exercise_openai()
+
+        assert result["status"] == "ok"
+        assert result["response_id"] == "resp_live"
+        assert result["phase"] == "final_answer"
