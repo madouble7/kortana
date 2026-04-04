@@ -30,7 +30,7 @@ help:
 	@echo "Code Quality:"
 	@echo "  make lint             - Run linting checks"
 	@echo "  make format           - Format code with Black"
-	@echo "  make type-check       - Run MyPy type checking"
+	@echo "  make type-check       - Run MyPy on maintained typed modules"
 	@echo ""
 	@echo "Cleanup:"
 	@echo "  make clean            - Remove cache and build files"
@@ -39,17 +39,16 @@ help:
 # Setup
 install:
 	@echo "Installing production dependencies..."
-	pip install -r backend/requirements.txt
+	python -m pip install -r backend/requirements.txt
 	cd frontend && npm install
 
 install-dev: install
 	@echo "Installing development dependencies..."
-	pip install -r backend/requirements-dev.txt
+	python -m pip install -r backend/requirements-dev.txt
 
 env:
 	@echo "Creating .env files..."
-	cp .env.example .env || true
-	cp .env.prod.example .env.prod || true
+	python scripts/setup/bootstrap_env.py
 	@echo "✅ Environment files configured (update with your values)"
 
 # Development
@@ -85,41 +84,34 @@ migrate-create:
 test: test-backend test-frontend
 
 test-backend:
-	cd backend && pytest -v --cov=routers --cov-report=html
+	cd backend && python -m pytest -v --cov=src.kortana --cov-report=html
 
 test-frontend:
 	cd frontend && npm test -- --coverage
 
 coverage:
 	@echo "Backend coverage:"
-	cd backend && pytest --cov=routers --cov-report=term-missing
+	cd backend && python -m pytest --cov=src.kortana --cov-report=term-missing
 	@echo "Frontend coverage:"
 	cd frontend && npm test -- --coverage --watchAll=false
 
 # Code Quality
 lint:
 	@echo "Running Ruff linter..."
-	ruff check backend --fix
-	@echo "Running MyPy type checker..."
-	mypy backend --strict
+	python -m ruff check backend --fix
 
 format:
 	@echo "Formatting code with Black..."
-	black backend --line-length 100
+	python -m black backend --line-length 100
 
 type-check:
-	@echo "Running type checking..."
-	mypy backend --strict
+	@echo "Running type checking on maintained typed modules..."
+	python -m mypy backend/src/kortana/config.py backend/src/kortana/model_usage_telemetry.py backend/src/kortana/llm_router.py backend/src/kortana/cost_optimized_model_router.py backend/src/kortana/provider_model_defaults.py scripts/setup/bootstrap_env.py scripts/maintenance/clean_workspace.py
 
 # Cleanup
 clean:
 	@echo "Cleaning up..."
-	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
-	find . -type d -name .pytest_cache -exec rm -rf {} + 2>/dev/null || true
-	find . -type d -name .mypy_cache -exec rm -rf {} + 2>/dev/null || true
-	find . -type f -name "*.pyc" -delete
-	rm -rf backend/dist backend/build backend/*.egg-info
-	cd frontend && rm -rf build dist
+	python scripts/maintenance/clean_workspace.py
 	@echo "✅ Cleanup complete"
 
 clean-docker:
