@@ -15,7 +15,7 @@ google-genai==1.60.0
 google-auth==2.49.1
 
 # LLM Providers
-openai==1.42.0
+openai==2.6.1
 anthropic==0.65.0
 groq==1.1.2
 

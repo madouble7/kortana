@@ -61,7 +61,7 @@ print = safe_print
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.kortana.config import Settings
+from src.kortana.config import Settings  # noqa: E402
 
 
 class SyncTestClient:
@@ -477,11 +477,14 @@ def mock_discord_api():
 def mock_openai_api():
     """Mock OpenAI API calls"""
     with patch("openai.OpenAI") as mock_openai:
-        mock_instance = MagicMock()
         mock_client = MagicMock()
-        mock_instance.return_value = mock_client
+        mock_openai.return_value = mock_client
         mock_client.chat.completions.create.return_value = MagicMock(
             choices=[MagicMock(message=MagicMock(content="Mocked OpenAI response"))]
+        )
+        mock_client.responses.create.return_value = MagicMock(
+            output_text="Mocked OpenAI response",
+            usage=MagicMock(input_tokens=3, output_tokens=2),
         )
         yield mock_client
 
@@ -490,9 +493,8 @@ def mock_openai_api():
 def mock_anthropic_api():
     """Mock Anthropic API calls"""
     with patch("anthropic.Anthropic") as mock_anthropic:
-        mock_instance = MagicMock()
         mock_client = MagicMock()
-        mock_instance.return_value = mock_client
+        mock_anthropic.return_value = mock_client
         mock_client.messages.create.return_value = MagicMock(
             content=[MagicMock(text="Mocked Anthropic response")]
         )

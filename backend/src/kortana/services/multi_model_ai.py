@@ -14,6 +14,7 @@ from src.kortana.model_lane_policy import (
     model_allowed,
 )
 from src.kortana.model_usage_telemetry import get_model_usage_telemetry
+from src.kortana.openai_responses import sync_generate_text
 from src.kortana.provider_model_defaults import MULTI_MODEL_DEFAULTS
 from src.kortana.services.gemini_config import get_model_name
 
@@ -220,13 +221,11 @@ class MultiModelAIService:
 
             # OpenAI
             elif provider_name == "openai":
-                response = provider["client"].chat.completions.create(
-                    model=provider["model"],
-                    messages=[{"role": "user", "content": text}],
-                    max_tokens=500,
-                )
-                text_out = (
-                    response.choices[0].message.content if response.choices else None
+                text_out, _, _ = sync_generate_text(
+                    provider["client"],
+                    model_name=str(provider["model"]),
+                    prompt=text,
+                    max_output_tokens=500,
                 )
                 if text_out:
                     get_model_usage_telemetry().record_generation(
