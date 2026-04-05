@@ -15,6 +15,12 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response as StarletteResponse
 
 from src.kortana.logger import get_logger
+from src.kortana.metrics import (
+    track_cache_bypass,
+    track_cache_error,
+    track_cache_eviction,
+    track_cache_hit,
+)
 
 logger = get_logger(__name__)
 
@@ -116,10 +122,13 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
             ]
 
             try:
+                deleted = 0
                 for pattern in patterns:
                     for key in self.redis.scan_iter(match=pattern):
-                        self.redis.delete(key)
+                        deleted += self.redis.delete(key)
                     logger.debug(f"Invalidated cache for path pattern: {pattern}")
+                if deleted:
+                    track_cache_eviction(int(deleted))
             except Exception as e:
                 logger.warning(f"Cache invalidation failed: {e}")
 
@@ -153,6 +162,7 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
                         headers["age"] = str(int(time.time() - cache_entry["time"]))
 
                         self.stats["hits"] += 1
+                        track_cache_hit(True)
 
                         return StarletteResponse(
                             content=body,
@@ -163,10 +173,13 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
                 except (json.JSONDecodeError, KeyError, ValueError) as e:
                     logger.debug(f"Cache read error for {cache_key}: {e}")
                     self.stats["errors"] += 1
+                    track_cache_error("response_cache_read")
 
                 self.stats["misses"] += 1
+                track_cache_hit(False)
             else:
                 self.stats["bypassed"] += 1
+                track_cache_bypass()
 
             # Process request
             response = await call_next(request)
@@ -195,6 +208,7 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
                     except Exception as e:
                         logger.warning(f"Cache write error: {e}")
                         self.stats["errors"] += 1
+                        track_cache_error("response_cache_write")
 
                     # Add cache headers to response
                     response.headers[
@@ -227,6 +241,7 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
                 f"{_CACHE_CIRCUIT_BREAKER_SECONDS}s): {e}"
             )
             self.stats["errors"] += 1
+            track_cache_error("response_cache_dispatch")
             return await call_next(request)
 
     def get_stats(self) -> dict:
