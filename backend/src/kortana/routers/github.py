@@ -1,21 +1,24 @@
-import hmac
 import hashlib
-from fastapi import Request, BackgroundTasks
+import hmac
 import logging
 import os
+import re
 import time
 from datetime import datetime
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Path, Request
 from pydantic import BaseModel
 
-from src.kortana.config import get_settings
 from src.kortana.cache import cache_result_async
+from src.kortana.config import get_settings
 from src.kortana.services.gemini_config import get_preferred_model_name
 
 router = APIRouter()
+
+# Only allow safe GitHub owner/repo name characters
+_GITHUB_NAME_RE = re.compile(r"^[A-Za-z0-9_.\-]{1,100}$")
 
 # Rate limiting
 RATE_LIMIT_CACHE = {}
@@ -71,12 +74,28 @@ class GitHubAnalysisResponse(BaseModel):
     analyzed_at: str
 
 
+def _validate_github_name(value: str, field: str) -> str:
+    """Raise 422 if owner or repo contains unsafe characters."""
+    if not _GITHUB_NAME_RE.match(value):
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid {field}: only alphanumeric, dash, dot, and underscore are allowed (max 100 chars)",
+        )
+    return value
+
+
 @router.get("/repos/{owner}/{repo}/issues")
 @cache_result_async(ttl=60, key_prefix="github_issues")
 async def get_repo_issues(
-    owner: str, repo: str, state: str | None = "open", page: int = 1, per_page: int = 30
+    owner: str = Path(..., max_length=100),
+    repo: str = Path(..., max_length=100),
+    state: str | None = "open",
+    page: int = 1,
+    per_page: int = 30,
 ):
     """Fetch issues from a GitHub repository with pagination."""
+    _validate_github_name(owner, "owner")
+    _validate_github_name(repo, "repo")
     if not rate_limit_check(f"issues:{owner}/{repo}"):
         raise HTTPException(status_code=429, detail="Rate limit exceeded")
 
@@ -126,9 +145,15 @@ async def get_repo_issues(
 @router.get("/repos/{owner}/{repo}/pulls")
 @cache_result_async(ttl=60, key_prefix="github_pulls")
 async def get_repo_pulls(
-    owner: str, repo: str, state: str | None = "open", page: int = 1, per_page: int = 30
+    owner: str = Path(..., max_length=100),
+    repo: str = Path(..., max_length=100),
+    state: str | None = "open",
+    page: int = 1,
+    per_page: int = 30,
 ):
     """Fetch pull requests from a GitHub repository with pagination."""
+    _validate_github_name(owner, "owner")
+    _validate_github_name(repo, "repo")
     if not rate_limit_check(f"pulls:{owner}/{repo}"):
         raise HTTPException(status_code=429, detail="Rate limit exceeded")
 

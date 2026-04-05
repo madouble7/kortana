@@ -3,8 +3,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import httpx
-import requests  # noqa: F401 - May be used by external integrations
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from src.kortana.config import get_settings
 
@@ -12,6 +11,9 @@ router = APIRouter()
 settings = get_settings()
 
 KORTANA_BACKEND_URL = settings.KORTANA_BACKEND_URL
+
+_MAX_CONTENT_LEN = 51_200  # 50 KB cap for ingest payloads
+_MAX_SEARCH_LIMIT = 50     # upper bound on search result count
 
 # In-memory knowledge base (in production, use vector database like ChromaDB)
 knowledge_base: List[Dict[str, Any]] = []
@@ -46,7 +48,7 @@ class KnowledgeManager:
         gemini_payload = {"text": prompt}
 
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
                     f"{KORTANA_BACKEND_URL}/api/gemini/analyze", json=gemini_payload
                 )
@@ -55,6 +57,8 @@ class KnowledgeManager:
                     analysis = result.get("analysis", "Analysis failed")
                 else:
                     analysis = "Failed to analyze content"
+        except httpx.TimeoutException:
+            analysis = "Gemini service timed out"
         except httpx.RequestError:
             analysis = "Error connecting to Gemini service"
 
@@ -165,7 +169,7 @@ class KnowledgeManager:
         gemini_payload = {"text": prompt}
 
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
                     f"{KORTANA_BACKEND_URL}/api/gemini/analyze", json=gemini_payload
                 )
@@ -174,6 +178,8 @@ class KnowledgeManager:
                     content = result.get("analysis", "Ritual generation failed")
                 else:
                     content = "Failed to generate ritual"
+        except httpx.TimeoutException:
+            content = "Gemini service timed out"
         except httpx.RequestError:
             content = "Error connecting to Gemini service"
 
@@ -235,6 +241,11 @@ async def ingest_learning(payload: Dict[str, Any]) -> Dict[str, Any]:
 
     if not content:
         raise HTTPException(status_code=400, detail="Content is required")
+    if len(content) > _MAX_CONTENT_LEN:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Content too large (max {_MAX_CONTENT_LEN // 1024} KB)",
+        )
 
     try:
         result = await knowledge_manager.ingest_learning(content, source, metadata)
@@ -245,7 +256,9 @@ async def ingest_learning(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 @router.get("/search")
 async def search_knowledge(
-    query: str, tags: Optional[str] = None, limit: int = 10
+    query: str,
+    tags: Optional[str] = None,
+    limit: int = Query(default=10, ge=1, le=_MAX_SEARCH_LIMIT),
 ) -> Dict[str, Any]:
     """Search the knowledge base."""
     tag_list = tags.split(",") if tags else None

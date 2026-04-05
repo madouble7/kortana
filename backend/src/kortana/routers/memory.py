@@ -1,11 +1,20 @@
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
 
 router = APIRouter()
 
 # Placeholder for knowledge base - in production, use a database
 knowledge_base: list[Any] = []
+
+_MAX_TITLE_LEN = 500
+_MAX_CONTENT_LEN = 51_200  # 50 KB
+
+
+class DocumentIn(BaseModel):
+    title: str = Field("", max_length=_MAX_TITLE_LEN)
+    content: str = Field("", max_length=_MAX_CONTENT_LEN)
 
 
 @router.get("/documents")
@@ -15,11 +24,13 @@ async def get_documents():
 
 
 @router.post("/add_document")
-async def add_document(payload: dict):
+async def add_document(payload: DocumentIn):
     """Add a document to the knowledge base."""
-    title = payload.get("title", "")
-    content = payload.get("content", "")
-    doc = {"title": title, "content": content, "id": len(knowledge_base)}
+    doc = {
+        "id": len(knowledge_base),
+        "title": payload.title,
+        "content": payload.content,
+    }
     knowledge_base.append(doc)
     return {"message": "Document added", "document": doc}
 
@@ -27,11 +38,13 @@ async def add_document(payload: dict):
 @router.get("/search")
 async def search_documents_get(query: str):
     """Search knowledge base via GET."""
-    query = query.lower()
+    if len(query) > 500:
+        raise HTTPException(status_code=422, detail="Query too long (max 500 chars)")
+    q = query.lower()
     results = [
         doc
         for doc in knowledge_base
-        if query in doc["content"].lower() or query in doc["title"].lower()
+        if q in doc["content"].lower() or q in doc["title"].lower()
     ]
     return {"query": query, "results": results}
 
@@ -39,7 +52,7 @@ async def search_documents_get(query: str):
 @router.post("/search")
 async def search_documents(payload: dict):
     """Search knowledge base."""
-    query = payload.get("query", "").lower()
+    query = str(payload.get("query", ""))[:500].lower()
     results = [
         doc
         for doc in knowledge_base
