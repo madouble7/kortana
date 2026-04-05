@@ -98,10 +98,14 @@ export default function Settings() {
   const persistedUsage = modelLaneSummary?.runtime_usage.persisted;
   const inMemoryUsage = modelLaneSummary?.runtime_usage.memory;
   const costSummary = modelLaneSummary?.cost_router.cost;
+  const adaptiveRetry = modelLaneSummary?.adaptive_retry;
   const providerEntries = Object.entries(costSummary?.providers || {}).sort(
     (left, right) => right[1].requests - left[1].requests
   );
   const providerUsageEntries = Object.entries(persistedUsage?.by_provider || {}).sort(
+    (left, right) => right[1] - left[1]
+  );
+  const retryCategoryEntries = Object.entries(adaptiveRetry?.by_category || {}).sort(
     (left, right) => right[1] - left[1]
   );
 
@@ -343,6 +347,62 @@ export default function Settings() {
           ) : (
             <p className="text-gray-500 text-sm">
               Cost report unavailable.
+            </p>
+          )}
+        </div>
+
+        <div className="bg-gray-800 rounded-lg p-6">
+          <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5" />
+            Retry & Backoff
+          </h3>
+          {adaptiveRetry ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">Retry Events</span>
+                <span className="text-gray-300">{adaptiveRetry.total_events}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">Scheduled Retries</span>
+                <span className="text-gray-300">{adaptiveRetry.scheduled_retries}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">Skipped Retries</span>
+                <span className="text-gray-300">{adaptiveRetry.skipped_retries}</span>
+              </div>
+              {adaptiveRetry.last_recorded_at ? (
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-400">Last Retry Event</span>
+                  <span className="text-gray-300">
+                    {new Date(adaptiveRetry.last_recorded_at).toLocaleTimeString()}
+                  </span>
+                </div>
+              ) : null}
+              {retryCategoryEntries.length ? (
+                <div className="pt-3 border-t border-gray-700">
+                  <p className="text-xs uppercase tracking-[0.18em] text-gray-500 mb-2">
+                    Retry Categories
+                  </p>
+                  <div className="space-y-2">
+                    {retryCategoryEntries.slice(0, 4).map(([category, count]) => (
+                      <div key={category} className="flex items-center justify-between text-sm">
+                        <span className="text-gray-300 capitalize">
+                          {category.replace(/_/g, ' ')}
+                        </span>
+                        <span className="text-gray-400">{count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">
+                  No retry events have been recorded yet.
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-sm">
+              Retry telemetry unavailable.
             </p>
           )}
         </div>

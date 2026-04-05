@@ -106,6 +106,7 @@ class TestSystemRouter:
         assert "llm_router" in data
         assert "consensus" in data
         assert "cost_router" in data
+        assert "adaptive_retry" in data
         assert "chat_models" in data["catalogs"]
         assert "embedding_models" in data["catalogs"]
         assert "known_core_catalog" in data["catalogs"]["chat_models"]
@@ -115,23 +116,36 @@ class TestSystemRouter:
         assert "memory" in data["runtime_usage"]
         assert "persisted" in data["runtime_usage"]
 
-    def test_system_model_lanes_uses_shared_cost_router(self, client):
+    def test_system_model_lanes_uses_shared_runtime_observability(self, client):
         shared_router = MagicMock()
         shared_router.get_routing_strategy.return_value = {"priorities": []}
         shared_router.get_cost_report.return_value = {
             "totals": {"requests": 1},
             "providers": {},
         }
+        retry_engine = MagicMock()
+        retry_engine.get_retry_stats.return_value = {
+            "total_events": 2,
+            "scheduled_retries": 1,
+            "skipped_retries": 1,
+            "by_category": {"network": 2},
+            "last_recorded_at": None,
+            "recent": [],
+        }
 
         with patch(
             "src.kortana.cost_optimized_model_router.get_cost_optimized_model_router",
             return_value=shared_router,
+        ), patch(
+            "src.kortana.adaptive_retry_engine.get_adaptive_retry_engine",
+            return_value=retry_engine,
         ):
             resp = client.get("/api/system/model-lanes")
 
         assert resp.status_code == 200
         data = resp.json()
         assert data["cost_router"]["cost"]["totals"]["requests"] == 1
+        assert data["adaptive_retry"]["scheduled_retries"] == 1
 
     def test_system_logs_no_file(self, client):
         # Log file probably doesn't exist in test environment
