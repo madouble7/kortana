@@ -19,7 +19,7 @@ Strategy:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 from typing import Optional
 
@@ -137,8 +137,59 @@ class CostOptimizedModelRouter:
         self.configs: dict[ModelProvider, ModelConfig] = {}
         self.cost_tracking: dict[ModelProvider, CostEstimate] = {}
         self.request_counts: dict[ModelProvider, int] = {}
+        self.provider_cooldowns: dict[ModelProvider, datetime] = {}
+        self.provider_last_errors: dict[ModelProvider, str] = {}
         self.model_usage_lane = get_active_model_lane()
         self.init_providers()
+
+    def _get_cooldown_seconds(self, provider: ModelProvider) -> int:
+        """Return active cooldown seconds remaining for a provider."""
+        cooldown_until = self.provider_cooldowns.get(provider)
+        if cooldown_until is None:
+            return 0
+
+        remaining = int((cooldown_until - datetime.utcnow()).total_seconds())
+        if remaining <= 0:
+            self.provider_cooldowns.pop(provider, None)
+            return 0
+        return remaining
+
+    def _provider_available(
+        self, provider: ModelProvider, budget_limit: float
+    ) -> bool:
+        """Return True when the provider is not cooling down and within budget."""
+        return (
+            provider in self.configs
+            and self._get_cooldown_seconds(provider) == 0
+            and self._within_budget(provider, budget_limit)
+        )
+
+    def mark_rate_limited(
+        self,
+        provider: ModelProvider,
+        retry_after_seconds: int | None = None,
+        reason: str | None = None,
+    ) -> None:
+        """Put a provider on temporary cooldown after a rate-limit response."""
+        retry_after = max(retry_after_seconds or 60, 1)
+        self.provider_cooldowns[provider] = datetime.utcnow().replace(
+            microsecond=0
+        ) + timedelta(seconds=retry_after)
+        self.provider_last_errors[provider] = reason or "rate_limited"
+        logger.warning(
+            "Cooling down %s for %ss after rate limit: %s",
+            provider.value,
+            retry_after,
+            self.provider_last_errors[provider],
+        )
+
+    def record_provider_failure(
+        self,
+        provider: ModelProvider,
+        reason: str,
+    ) -> None:
+        """Store the most recent provider failure reason for operator visibility."""
+        self.provider_last_errors[provider] = reason
 
     def _register_provider(self, config: ModelConfig) -> None:
         """Register a provider when its model is allowed in the active lane."""
@@ -306,12 +357,16 @@ class CostOptimizedModelRouter:
         available = [
             p
             for p in preferred
-            if p in self.configs and self._within_budget(p, budget_limit)
+            if self._provider_available(p, budget_limit)
         ]
 
         if not available:
-            # Fallback: use any available provider
-            available = list(self.configs.keys())
+            # Fallback: use any configured provider that is not cooling down.
+            available = [
+                provider
+                for provider in self.configs.keys()
+                if self._get_cooldown_seconds(provider) == 0
+            ]
 
         logger.info(f"Route {task_type.value}: {[p.value for p in available[:3]]}")
         return available
@@ -384,6 +439,8 @@ class CostOptimizedModelRouter:
             input_tokens=input_tokens,
             output_tokens=output_tokens,
         )
+        self.provider_cooldowns.pop(provider, None)
+        self.provider_last_errors.pop(provider, None)
 
         self.request_counts[provider] = self.request_counts.get(provider, 0) + 1
 
@@ -459,6 +516,9 @@ class CostOptimizedModelRouter:
                     provider,
                     CostEstimate(provider=provider, task_type=TaskType.ANALYSIS),
                 ).last_used_at,
+                "cooldown_seconds": self._get_cooldown_seconds(provider),
+                "cooling_down": self._get_cooldown_seconds(provider) > 0,
+                "last_error": self.provider_last_errors.get(provider),
             }
             for provider in self.configs.keys()
         }
@@ -503,6 +563,7 @@ class CostOptimizedModelRouter:
                 p.value: {
                     "limit": c.quota_limit,
                     "period_hours": c.quota_period_seconds / 3600,
+                    "cooldown_seconds": self._get_cooldown_seconds(p),
                 }
                 for p, c in self.configs.items()
                 if c.quota_limit
