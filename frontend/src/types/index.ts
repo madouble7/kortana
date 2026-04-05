@@ -176,6 +176,27 @@ export interface CostProviderSummary {
   last_used_at?: string | null;
 }
 
+export interface AdaptiveRetryEvent {
+  operation_id: string;
+  provider?: string | null;
+  task_type?: string | null;
+  error_category: string;
+  error_type: string;
+  attempt: number;
+  will_retry: boolean;
+  delay_seconds?: number | null;
+  timestamp: string;
+}
+
+export interface AdaptiveRetrySummary {
+  total_events: number;
+  scheduled_retries: number;
+  skipped_retries: number;
+  by_category: Record<string, number>;
+  last_recorded_at?: string | null;
+  recent: AdaptiveRetryEvent[];
+}
+
 export interface ModelLaneSummary {
   active_lane: string;
   runtime_usage: {
@@ -201,6 +222,7 @@ export interface ModelLaneSummary {
       free_tier_usage: Record<string, number>;
     };
   };
+  adaptive_retry: AdaptiveRetrySummary;
 }
 
 export interface DaemonCycle {

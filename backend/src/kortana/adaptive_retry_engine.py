@@ -246,16 +246,22 @@ class AdaptiveRetryEngine:
         exception: Exception,
         attempt_number: int,
         will_retry: bool,
+        delay_seconds: Optional[float] = None,
+        provider: Optional[str] = None,
+        task_type: Optional[str] = None,
     ) -> None:
         """Record retry attempt for analytics"""
         category = self.categorize_error(exception)
         self.retry_history.append(
             {
                 "operation_id": operation_id,
+                "provider": provider,
+                "task_type": task_type,
                 "error_category": category.value,
                 "error_type": exception.__class__.__name__,
                 "attempt": attempt_number,
                 "will_retry": will_retry,
+                "delay_seconds": delay_seconds,
                 "timestamp": datetime.utcnow().isoformat(),
             }
         )
@@ -263,19 +269,46 @@ class AdaptiveRetryEngine:
     def get_retry_stats(self) -> dict:
         """Get statistics about retry patterns"""
         if not self.retry_history:
-            return {"total_retries": 0, "categories": {}}
+            return {
+                "total_events": 0,
+                "scheduled_retries": 0,
+                "skipped_retries": 0,
+                "by_category": {},
+                "last_recorded_at": None,
+                "recent": [],
+            }
 
         total = len(self.retry_history)
         by_category: dict[str, int] = {}
+        scheduled_retries = 0
         for entry in self.retry_history:
-            cat = entry["error_category"]
+            cat = str(entry["error_category"])
             by_category[cat] = by_category.get(cat, 0) + 1
+            if entry["will_retry"]:
+                scheduled_retries += 1
 
         return {
-            "total_retries": total,
+            "total_events": total,
+            "scheduled_retries": scheduled_retries,
+            "skipped_retries": total - scheduled_retries,
             "by_category": by_category,
-            "success_rate": sum(1 for e in self.retry_history if e["will_retry"])
-            / total
-            if total > 0
-            else 0,
+            "last_recorded_at": self.retry_history[-1]["timestamp"],
+            "recent": self.retry_history[-5:],
         }
+
+
+_adaptive_retry_engine: AdaptiveRetryEngine | None = None
+
+
+def get_adaptive_retry_engine() -> AdaptiveRetryEngine:
+    """Return the process-wide retry engine so retry telemetry remains shared."""
+    global _adaptive_retry_engine
+    if _adaptive_retry_engine is None:
+        _adaptive_retry_engine = AdaptiveRetryEngine()
+    return _adaptive_retry_engine
+
+
+def reset_adaptive_retry_engine() -> None:
+    """Reset the shared retry engine. Intended for tests only."""
+    global _adaptive_retry_engine
+    _adaptive_retry_engine = None

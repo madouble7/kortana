@@ -13,6 +13,7 @@ from typing import Protocol
 import aiohttp
 import httpx
 
+from src.kortana.adaptive_retry_engine import get_adaptive_retry_engine
 from src.kortana.cost_optimized_model_router import (
     ModelProvider,
     TaskType,
@@ -366,6 +367,7 @@ class UnifiedAPIClient:
 
     def __init__(self) -> None:
         self.router = get_cost_optimized_model_router()
+        self.retry_engine = get_adaptive_retry_engine()
         self.clients: dict[ModelProvider, SupportsGenerationClient] = {}
         self._init_clients()
 
@@ -409,61 +411,108 @@ class UnifiedAPIClient:
             if not client:
                 continue
 
-            try:
-                logger.info(f"Attempting {provider.value} for {task_type.value}")
+            attempt_number = 0
+            operation_id = f"{provider.value}:{task_type.value}"
 
-                content, input_tokens, output_tokens = await client.generate(
-                    prompt, max_tokens, temperature
-                )
+            while True:
+                try:
+                    logger.info(f"Attempting {provider.value} for {task_type.value}")
 
-                # Record usage and calculate cost
-                cost = self.router.estimate_cost(
-                    provider, task_type, input_tokens, output_tokens
-                )
-                self.router.record_usage(
-                    provider, task_type, input_tokens, output_tokens
-                )
-                model_name = getattr(client, "model", None)
-                if not model_name:
-                    config = self.router.configs.get(provider)
-                    model_name = config.model_name if config is not None else "unknown"
-                get_model_usage_telemetry().record_generation(
-                    subsystem="api_integration",
-                    provider=provider.value,
-                    model=model_name,
-                    catalog="cost_router_defaults",
-                    selection=f"task:{task_type.value}",
-                    runtime_lane=self.router.model_usage_lane.value,
-                    tokens_used=input_tokens + output_tokens,
-                    task_type=task_type.value,
-                )
+                    content, input_tokens, output_tokens = await client.generate(
+                        prompt, max_tokens, temperature
+                    )
 
-                logger.info(
-                    f"✅ Success with {provider.value} "
-                    f"(${cost:.4f}, {len(content)} chars)"
-                )
-                return content, provider, cost
+                    # Record usage and calculate cost
+                    cost = self.router.estimate_cost(
+                        provider, task_type, input_tokens, output_tokens
+                    )
+                    self.router.record_usage(
+                        provider, task_type, input_tokens, output_tokens
+                    )
+                    model_name = getattr(client, "model", None)
+                    if not model_name:
+                        config = self.router.configs.get(provider)
+                        model_name = (
+                            config.model_name if config is not None else "unknown"
+                        )
+                    get_model_usage_telemetry().record_generation(
+                        subsystem="api_integration",
+                        provider=provider.value,
+                        model=model_name,
+                        catalog="cost_router_defaults",
+                        selection=f"task:{task_type.value}",
+                        runtime_lane=self.router.model_usage_lane.value,
+                        tokens_used=input_tokens + output_tokens,
+                        task_type=task_type.value,
+                    )
 
-            except ProviderRateLimitError as e:
-                self.router.mark_rate_limited(
-                    provider,
-                    retry_after_seconds=e.retry_after_seconds,
-                    reason=str(e),
-                )
-                failure_reasons.append(f"{provider.value}: rate limited")
-                logger.warning(
-                    "Provider %s rate limited: %s. Trying next...",
-                    provider.value,
-                    e,
-                )
-                continue
-            except Exception as e:
-                self.router.record_provider_failure(provider, str(e))
-                failure_reasons.append(f"{provider.value}: {e}")
-                logger.warning(
-                    f"Provider {provider.value} failed: {e}. " f"Trying next..."
-                )
-                continue
+                    logger.info(
+                        f"✅ Success with {provider.value} "
+                        f"(${cost:.4f}, {len(content)} chars)"
+                    )
+                    return content, provider, cost
+
+                except ProviderRateLimitError as e:
+                    self.retry_engine.record_retry(
+                        operation_id,
+                        e,
+                        attempt_number,
+                        will_retry=False,
+                        provider=provider.value,
+                        task_type=task_type.value,
+                    )
+                    self.router.mark_rate_limited(
+                        provider,
+                        retry_after_seconds=e.retry_after_seconds,
+                        reason=str(e),
+                    )
+                    failure_reasons.append(f"{provider.value}: rate limited")
+                    logger.warning(
+                        "Provider %s rate limited: %s. Trying next...",
+                        provider.value,
+                        e,
+                    )
+                    break
+                except Exception as e:
+                    status_code = getattr(e, "status_code", None)
+                    should_retry = self.retry_engine.should_retry(
+                        e,
+                        attempt_number,
+                        status_code=status_code,
+                    )
+                    delay_seconds = None
+                    if should_retry:
+                        delay_seconds = self.retry_engine.get_retry_delay(
+                            e,
+                            attempt_number,
+                            status_code=status_code,
+                        )
+                    self.retry_engine.record_retry(
+                        operation_id,
+                        e,
+                        attempt_number,
+                        will_retry=should_retry,
+                        delay_seconds=delay_seconds,
+                        provider=provider.value,
+                        task_type=task_type.value,
+                    )
+                    if should_retry and delay_seconds is not None:
+                        logger.warning(
+                            "Provider %s failed with %s. Retrying in %.2fs...",
+                            provider.value,
+                            e,
+                            delay_seconds,
+                        )
+                        attempt_number += 1
+                        await asyncio.sleep(delay_seconds)
+                        continue
+
+                    self.router.record_provider_failure(provider, str(e))
+                    failure_reasons.append(f"{provider.value}: {e}")
+                    logger.warning(
+                        f"Provider {provider.value} failed: {e}. " f"Trying next..."
+                    )
+                    break
 
         # All providers failed
         if failure_reasons:
