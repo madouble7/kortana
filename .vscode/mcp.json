@@ -1,0 +1,12 @@
+{
+  "servers": {
+    "kortana-pc": {
+      "type": "stdio",
+      "command": "C:\\Program Files\\Python311\\python.exe",
+      "args": [
+        "c:\\kortana\\mcp-server\\server.py"
+      ],
+      "env": {}
+    }
+  }
+}
