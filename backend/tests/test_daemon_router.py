@@ -26,6 +26,11 @@ async def test_daemon_status_reports_external_worker_health(app_fixture, db):
                 "github": "backoff_until:2026-04-05T12:00:00 (45s remaining)",
                 "gemini": "ok",
             },
+            "system_state": "degraded",
+            "safe_mode": True,
+            "live_execution_enabled": False,
+            "control_mode": "supervised",
+            "autonomy_index": 0.42,
         },
     )
     db.add(cycle)
@@ -52,11 +57,17 @@ async def test_daemon_status_reports_external_worker_health(app_fixture, db):
     assert data["deployment_mode"] == "external"
     assert data["control_available"] is False
     assert data["local_process"] == {"running": False, "enabled": True}
+    assert data["github_mode"] in {"full", "deferred", "disabled"}
     assert data["provider_health"]["github"].startswith("backoff_until:")
     assert data["external_daemon"]["alive"] is True
     assert data["external_daemon"]["state"] == "alive"
     assert data["external_daemon"]["last_cycle_id"] == "cycle_test_1"
     assert data["external_daemon"]["provider_health"]["gemini"] == "ok"
+    assert data["external_daemon"]["system_state"] == "degraded"
+    assert data["external_daemon"]["safe_mode"] is True
+    assert data["external_daemon"]["live_execution_enabled"] is False
+    assert data["external_daemon"]["control_mode"] == "supervised"
+    assert data["external_daemon"]["autonomy_index"] == 0.42
 
 
 @pytest.mark.asyncio
@@ -174,6 +185,7 @@ def test_daemon_status_embedded_exposes_provider_health(app_fixture):
     fake_daemon.get_status.return_value = {
         "running": True,
         "enabled": True,
+        "control_mode": "self-aware",
         "provider_health": {"github": "ok", "gemini": "ok"},
     }
 
@@ -193,4 +205,5 @@ def test_daemon_status_embedded_exposes_provider_health(app_fixture):
     assert response.status_code == 200
     data = response.json()
     assert data["deployment_mode"] == "embedded"
+    assert data["control_mode"] == "self-aware"
     assert data["provider_health"] == {"github": "ok", "gemini": "ok"}

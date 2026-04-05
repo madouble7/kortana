@@ -258,6 +258,18 @@ export interface DaemonStatus {
   deployment_mode: 'embedded' | 'external';
   control_available: boolean;
   message: string;
+  running?: boolean;
+  enabled?: boolean;
+  cycle_interval_seconds?: number;
+  base_cycle_interval_seconds?: number;
+  max_tasks_per_cycle?: number;
+  base_max_tasks_per_cycle?: number;
+  github_mode?: string;
+  safe_mode?: boolean;
+  live_execution_enabled?: boolean;
+  control_mode?: string;
+  workspace_bridge?: unknown;
+  last_cycle?: Record<string, unknown>;
   provider_health?: Record<string, string>;
   local_process?: { running: boolean; enabled: boolean };
   external_daemon?: {
@@ -271,6 +283,13 @@ export interface DaemonStatus {
     tasks_processed?: number;
     errors_encountered?: number;
     provider_health?: Record<string, string>;
+    system_state?: string;
+    safe_mode?: boolean;
+    live_execution_enabled?: boolean;
+    control_mode?: string;
+    workspace_bridge?: unknown;
+    operator_guidance?: string | null;
+    autonomy_index?: number | null;
   };
 }
 
