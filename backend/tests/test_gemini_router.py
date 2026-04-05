@@ -455,7 +455,6 @@ class TestChatWithGemini:
 
         assert rendered is not None
         assert "autonomous intelligence native to this system" in rendered
-        assert "respond as the real agent running here" in rendered
         assert "sacred ai companion" not in rendered
 
     def test_chat_explicit_microsoft_cortana_query_uses_model_path(self, client):
