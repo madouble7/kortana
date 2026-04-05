@@ -22,7 +22,6 @@ from datetime import datetime
 from pathlib import Path
 
 import httpx
-import pyttsx3
 import speech_recognition as sr
 
 # ── config ─────────────────────────────────────────────────────────────────────
@@ -47,16 +46,14 @@ WAKE_PHRASES = {
 COMMAND_TIMEOUT = 8
 COMMAND_PHRASE_LIMIT = 15
 
-# pyttsx3 voice rate (words per minute). 175 = natural pace.
+# TTS rate: PowerShell SAPI rate scale is -10 (slow) to +10 (fast), 0 = default
+# Map env var in words-per-minute (175 = 0, every 25wpm = 1 step)
 TTS_RATE = int(os.getenv("KORTANA_TTS_RATE", "175"))
-# Voice index: 0 = first installed voice, typically Zira (female) on Windows 11
-TTS_VOICE_INDEX = int(os.getenv("KORTANA_VOICE_INDEX", "0"))
 
 LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 # ── globals ────────────────────────────────────────────────────────────────────
 _speak_lock = threading.Lock()
-_tts_engine: pyttsx3.Engine | None = None
 _conversation_history: list[dict[str, str]] = []
 
 
@@ -70,29 +67,26 @@ def log(msg: str, level: str = "INFO") -> None:
 
 
 # ── TTS ────────────────────────────────────────────────────────────────────────
-def _init_tts() -> pyttsx3.Engine:
-    engine = pyttsx3.init()
-    engine.setProperty("rate", TTS_RATE)
-    voices = engine.getProperty("voices")
-    if voices and TTS_VOICE_INDEX < len(voices):
-        engine.setProperty("voice", voices[TTS_VOICE_INDEX].id)
-    return engine
-
-
 def speak(text: str) -> None:
-    """Speak text aloud via Windows SAPI, thread-safe."""
-    global _tts_engine
+    """Speak text via Windows System.Speech SAPI — works in any Windows session."""
     with _speak_lock:
-        if _tts_engine is None:
-            _tts_engine = _init_tts()
-        # reinitialize if the engine was stopped
+        # Escape single quotes for PowerShell here-string
+        safe = text.replace("'", "''").replace('"', '`"')
+        rate = max(-10, min(10, (TTS_RATE - 175) // 25))
+        ps = f"""
+Add-Type -AssemblyName System.Speech
+$s = New-Object System.Speech.Synthesis.SpeechSynthesizer
+$s.Rate = {rate}
+$s.SelectVoiceByHints([System.Speech.Synthesis.VoiceGender]::Female)
+$s.Speak('{safe}')
+"""
         try:
-            _tts_engine.say(text)
-            _tts_engine.runAndWait()
-        except Exception:
-            _tts_engine = _init_tts()
-            _tts_engine.say(text)
-            _tts_engine.runAndWait()
+            subprocess.run(
+                ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
+                capture_output=True, timeout=60,
+            )
+        except Exception as e:
+            log(f"speak error: {e}", "WARN")
     log(f"spoke: {text[:80]}")
 
 
