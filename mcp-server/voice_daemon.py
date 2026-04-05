@@ -39,7 +39,11 @@ LOG_FILE = Path(r"c:\kortana\logs\voice_daemon.log")
 _PIPER_EXE_FOUND = shutil.which("piper") or shutil.which(
     r"C:\Users\madou\AppData\Roaming\Python\Python311\Scripts\piper.exe"
 )
-PIPER_EXE = Path(_PIPER_EXE_FOUND) if _PIPER_EXE_FOUND else Path(r"c:\kortana\models\piper\piper.exe")
+PIPER_EXE = (
+    Path(_PIPER_EXE_FOUND)
+    if _PIPER_EXE_FOUND
+    else Path(r"c:\kortana\models\piper\piper.exe")
+)
 MODELS_DIR = Path(r"c:\kortana\models\piper")
 CORI_MODEL = MODELS_DIR / "en_GB-cori-high.onnx"
 CORI_SAMPLE_RATE = 22050
@@ -73,6 +77,8 @@ LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
 _speak_lock = threading.Lock()
 _conversation_history: list[dict[str, str]] = []
 _whisper: faster_whisper.WhisperModel | None = None
+_last_interaction: float = time.time()  # updated on every voice exchange
+_backend_was_up: bool = True  # tracks backend state transitions
 
 
 # ── model bootstrap ────────────────────────────────────────────────────────────
@@ -394,6 +400,8 @@ def _handle_wake(recognizer: sr.Recognizer, text: str) -> None:
     response = send_to_kortana(command)
     log(f"response ({len(response)} chars): {response[:120]}")
     speak(response)
+    global _last_interaction
+    _last_interaction = time.time()
 
 
 def _speak_sapi(text: str) -> None:
@@ -414,6 +422,74 @@ $s.Speak('{safe}')
         )
     except Exception as e:
         log(f"SAPI speak error: {e}", "WARN")
+
+
+# ── proactive awareness ────────────────────────────────────────────────────────
+def _proactive_loop() -> None:
+    """Background thread — kor'tana watches for conditions worth speaking up about.
+
+    Checks every 60 s:
+    - Backend down → alert once per outage, clear when it recovers
+    - No voice interaction for 2+ hours → a single check-in, then backs off
+    - Morning greeting → once per day between 07:00-09:00 local time
+    """
+    global _backend_was_up, _last_interaction
+
+    _checkin_done_hour: int = -1  # which hour we last did the 2h check-in
+    _morning_greeted_date: str = ""  # YYYY-MM-DD we last greeted
+    _backend_down_alerted: bool = False  # suppress duplicate down-alerts
+
+    CHECKIN_INTERVAL = 2 * 3600  # 2 hours of silence before check-in
+    POLL_INTERVAL = 60  # check every 60 seconds
+
+    while True:
+        time.sleep(POLL_INTERVAL)
+        now = datetime.now()
+
+        # ── 1. backend health ──────────────────────────────────────────────────
+        try:
+            with httpx.Client(timeout=4.0) as client:
+                resp = client.get(f"{BACKEND_URL}/health")
+            backend_up = resp.status_code < 500
+        except Exception:
+            backend_up = False
+
+        if not backend_up and _backend_was_up:
+            _backend_down_alerted = False  # reset so we alert once this outage
+
+        if not backend_up and not _backend_down_alerted:
+            log("[proactive] backend offline — alerting", "WARN")
+            speak(
+                "Heads up. My backend is offline. The local daemon should restart it shortly."
+            )
+            _backend_down_alerted = True
+
+        if backend_up and not _backend_was_up:
+            log("[proactive] backend recovered")
+            speak("Backend is back online.")
+            _backend_down_alerted = False
+
+        _backend_was_up = backend_up
+
+        # ── 2. session check-in after 2 h silence ─────────────────────────────
+        silence = time.time() - _last_interaction
+        if silence >= CHECKIN_INTERVAL and _checkin_done_hour != now.hour:
+            _checkin_done_hour = now.hour
+            hours = int(silence // 3600)
+            log(f"[proactive] {hours}h silence — checking in")
+            speak(
+                f"You've been at it for a while — {hours} hours since we last spoke. "
+                "Just checking in. I'm still here if you need me."
+            )
+
+        # ── 3. morning greeting ────────────────────────────────────────────────
+        today = now.strftime("%Y-%m-%d")
+        if 7 <= now.hour < 9 and _morning_greeted_date != today:
+            _morning_greeted_date = today
+            log("[proactive] morning greeting")
+            speak(
+                f"Good morning. It's {now.strftime('%-I %M %p')}. Ready when you are."
+            )
 
 
 def run() -> None:
@@ -450,6 +526,9 @@ def run() -> None:
 
     speak("kor'tana is ready. just say my name.")
     log("kor'tana voice daemon listening")
+
+    # Proactive awareness — watches backend health, session length, morning greeting
+    threading.Thread(target=_proactive_loop, daemon=True).start()
 
     # Background listener — callback fires on each detected phrase
     def _callback(recognizer: sr.Recognizer, audio: sr.AudioData) -> None:
