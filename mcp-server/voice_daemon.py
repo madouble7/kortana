@@ -14,11 +14,8 @@ Auto-start: registered via Task Scheduler (kortana-voice-daemon)
 
 from __future__ import annotations
 
-import json
 import os
-import queue
 import subprocess
-import sys
 import threading
 import time
 from datetime import datetime
@@ -36,9 +33,14 @@ LOG_FILE = Path(r"c:\kortana\logs\voice_daemon.log")
 
 # Phrases that trigger kor'tana (catches common STT mishearings)
 WAKE_PHRASES = {
-    "kortana", "kor'tana", "cortana",
-    "cor tana", "corr tana", "kurtana",
-    "her tana", "kourtana",
+    "kortana",
+    "kor'tana",
+    "cortana",
+    "cor tana",
+    "corr tana",
+    "kurtana",
+    "her tana",
+    "kourtana",
 }
 
 # How long to listen for a command after wake (seconds)
@@ -110,7 +112,7 @@ def _strip_wake(text: str) -> str:
     """Remove wake phrase from the start/end of transcription."""
     for phrase in sorted(WAKE_PHRASES, key=len, reverse=True):
         if text.startswith(phrase):
-            return text[len(phrase):].lstrip(" ,.")
+            return text[len(phrase) :].lstrip(" ,.")
         if text.endswith(phrase):
             return text[: -len(phrase)].rstrip(" ,.")
     return text
@@ -157,6 +159,7 @@ def send_to_kortana(message: str) -> str:
 def _clean_for_speech(text: str) -> str:
     """Strip markdown and trim to a speakable length."""
     import re
+
     # Remove code blocks entirely
     text = re.sub(r"```[\s\S]*?```", "[code block]", text)
     # Remove inline code
@@ -179,23 +182,32 @@ def _clean_for_speech(text: str) -> str:
 def _play_activation_sound() -> None:
     """Play a short beep to signal kor'tana is listening for the command."""
     subprocess.run(
-        ["powershell", "-NoProfile", "-Command",
-         "[console]::beep(880, 120); Start-Sleep -Milliseconds 50; [console]::beep(1100, 120)"],
-        capture_output=True, timeout=3,
+        [
+            "powershell",
+            "-NoProfile",
+            "-Command",
+            "[console]::beep(880, 120); Start-Sleep -Milliseconds 50; [console]::beep(1100, 120)",
+        ],
+        capture_output=True,
+        timeout=3,
     )
 
 
 # ── main listen loop ───────────────────────────────────────────────────────────
-def _handle_wake(recognizer: sr.Recognizer, mic: sr.Microphone, text: str) -> None:
+def _handle_wake(recognizer: sr.Recognizer, text: str) -> None:
     """Called when wake phrase detected. text = full utterance including wake."""
     command = _strip_wake(text).strip()
     log(f"wake detected | raw='{text}' | command='{command}'")
 
     if not command:
-        # No command in the same utterance — listen for it now
+        # No command in the same utterance — listen for it now.
+        # Must use a fresh Microphone() — the shared mic is held open by the
+        # background listener and cannot be re-entered from another thread.
         _play_activation_sound()
         try:
-            with mic as source:
+            follow_mic = sr.Microphone()
+            with follow_mic as source:
+                recognizer.adjust_for_ambient_noise(source, duration=0.3)
                 log("listening for command…")
                 audio = recognizer.listen(
                     source,
@@ -242,7 +254,7 @@ def run() -> None:
             # Spin off so background listener stays responsive
             threading.Thread(
                 target=_handle_wake,
-                args=(recognizer, mic, text),
+                args=(recognizer, text),
                 daemon=True,
             ).start()
 
