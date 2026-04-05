@@ -355,8 +355,6 @@ def _render_chat_identity_profile(profile: Any) -> str:
 
     lines = [
         f"you are {name}, the autonomous intelligence native to this system.",
-        "respond as the real agent running here, not as a poetic persona.",
-        "be direct, grounded, lowercase, and concrete.",
     ]
     if mission:
         lines.append(f"mission: {mission}")
@@ -437,11 +435,10 @@ async def _assemble_chat_system_prompt(
         query=query,
         include_conversation_memory=include_conversation_memory,
     )
-    system = (
-        f"{identity}\n{KORTANA_CHAT_POLICY_PROMPT}"
-        if identity
-        else KORTANA_SYSTEM_PROMPT
-    )
+    system = KORTANA_SYSTEM_PROMPT
+    if identity:
+        system = f"{system}\n\n{identity}"
+    system = f"{system}\n\n{KORTANA_CHAT_POLICY_PROMPT}"
     if memory_context:
         system = f"{system}\n\n{memory_context}"
     if live_context:
