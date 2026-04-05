@@ -14,9 +14,9 @@ import aiohttp
 import httpx
 
 from src.kortana.cost_optimized_model_router import (
-    CostOptimizedModelRouter,
     ModelProvider,
     TaskType,
+    get_cost_optimized_model_router,
 )
 from src.kortana.logger import get_logger
 from src.kortana.model_lane_policy import (
@@ -365,7 +365,7 @@ class UnifiedAPIClient:
     """
 
     def __init__(self) -> None:
-        self.router = CostOptimizedModelRouter()
+        self.router = get_cost_optimized_model_router()
         self.clients: dict[ModelProvider, SupportsGenerationClient] = {}
         self._init_clients()
 

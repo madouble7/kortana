@@ -1,5 +1,6 @@
 """Tests for small routers: agents, system, memory, prayer, rclone"""
 import pytest
+from unittest.mock import MagicMock, patch
 
 
 @pytest.fixture
@@ -113,6 +114,24 @@ class TestSystemRouter:
         assert "total_generations" in data["runtime_usage"]
         assert "memory" in data["runtime_usage"]
         assert "persisted" in data["runtime_usage"]
+
+    def test_system_model_lanes_uses_shared_cost_router(self, client):
+        shared_router = MagicMock()
+        shared_router.get_routing_strategy.return_value = {"priorities": []}
+        shared_router.get_cost_report.return_value = {
+            "totals": {"requests": 1},
+            "providers": {},
+        }
+
+        with patch(
+            "src.kortana.cost_optimized_model_router.get_cost_optimized_model_router",
+            return_value=shared_router,
+        ):
+            resp = client.get("/api/system/model-lanes")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["cost_router"]["cost"]["totals"]["requests"] == 1
 
     def test_system_logs_no_file(self, client):
         # Log file probably doesn't exist in test environment
