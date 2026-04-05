@@ -57,6 +57,34 @@ _speak_lock = threading.Lock()
 _conversation_history: list[dict[str, str]] = []
 
 
+# ── history bootstrap ──────────────────────────────────────────────────────────
+def _load_history_from_backend() -> list[dict[str, str]]:
+    """Load recent voice conversation history from backend DB on startup.
+
+    This is the cross-session memory bridge — without it every restart
+    feels like a first meeting. With it, kor'tana picks up mid-thought.
+    """
+    try:
+        with httpx.Client(timeout=5.0) as client:
+            r = client.get(
+                f"{BACKEND_URL}/api/gemini/chat/history",
+                params={"session_id": SESSION_ID, "limit": 20},
+            )
+        if r.status_code == 200:
+            messages = r.json().get("messages", [])
+            history = [
+                {"role": m["role"], "content": m["content"]}
+                for m in messages
+                if m.get("role") in ("user", "assistant") and m.get("content")
+            ]
+            if history:
+                log(f"Loaded {len(history)} messages from past session — memory intact")
+            return history
+    except Exception as e:
+        log(f"Could not load past history (non-fatal): {e}", "WARN")
+    return []
+
+
 # ── logging ────────────────────────────────────────────────────────────────────
 def log(msg: str, level: str = "INFO") -> None:
     ts = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -83,7 +111,8 @@ $s.Speak('{safe}')
         try:
             subprocess.run(
                 ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
-                capture_output=True, timeout=60,
+                capture_output=True,
+                timeout=60,
             )
         except Exception as e:
             log(f"speak error: {e}", "WARN")
@@ -116,10 +145,94 @@ def _contains_wake(text: str) -> bool:
     return any(p in text for p in WAKE_PHRASES)
 
 
+# ── episodic memory ────────────────────────────────────────────────────────────
+_MEMORY_STORE = f"{BACKEND_URL}/api/consciousness/memory/self"
+_memory_count = 0  # exchanges since last memory write
+_MEMORY_EVERY = 3  # write a memory every N completed turns
+
+
+def _write_episodic_memory(user_msg: str, assistant_reply: str) -> None:
+    """Persist a compact episodic memory of this voice exchange to the DB.
+
+    Runs in a daemon thread so it never blocks voice response.
+    The memory gets picked up by MemoryPolicyService.build_context() and
+    injected into future chat system prompts automatically.
+    """
+    try:
+        ts = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+        content = (
+            f"[voice exchange — {ts}] "
+            f'Matt said: "{user_msg[:200]}" | '
+            f'kor\'tana replied: "{assistant_reply[:300]}"'
+        )
+        with httpx.Client(timeout=5.0) as client:
+            client.post(
+                _MEMORY_STORE,
+                json={
+                    "summary": content,
+                    "tags": ["voice", "episodic"],
+                    "source": "voice",
+                },
+            )
+        log(f"[memory] wrote episodic entry ({len(content)} chars)")
+    except Exception as e:
+        log(f"[memory] write skipped: {e}", "WARN")
+
+
+def _seed_identity_memory() -> None:
+    """On first start with an empty DB, write a few foundational identity memories.
+
+    These give kor'tana immediate self-knowledge without waiting for the
+    Railway daemon to accumulate reflections.  Only written if the DB is empty.
+    """
+    try:
+        r = httpx.get(
+            f"{BACKEND_URL}/api/consciousness/memory/self",
+            params={"source": "identity-seed"},
+            timeout=5.0,
+        )
+        if r.status_code == 200 and r.json().get("count", 0) > 0:
+            return  # already seeded — skip
+    except Exception:
+        return
+
+    seeds = [
+        (
+            "kor'tana is an always-on AI companion built by Matt (madouble7). "
+            "She runs as a voice daemon on his Windows machine, speaking via SAPI TTS "
+            "and listening via Google STT. She is calm, reverent, decisive, and honest.",
+            ["identity", "core"],
+        ),
+        (
+            "Matt is kor'tana's primary human. He is building a JARVIS-like companion. "
+            "He prefers direct, concise answers. He is budget-constrained and values "
+            "free-tier infrastructure. He is spiritually grounded and values humility.",
+            ["relationship", "matt"],
+        ),
+        (
+            "kor'tana's voice session_id is 'voice'. She keeps the last 20 turns in "
+            "local memory and writes episodic entries to the consciousness DB after "
+            "every 3 voice exchanges. Past conversation history is loaded on startup.",
+            ["system", "memory"],
+        ),
+    ]
+
+    try:
+        with httpx.Client(timeout=10.0) as client:
+            for summary, tags in seeds:
+                client.post(
+                    _MEMORY_STORE,
+                    json={"summary": summary, "tags": tags, "source": "identity-seed"},
+                )
+        log(f"[memory] seeded {len(seeds)} foundational identity memories")
+    except Exception as e:
+        log(f"[memory] seed failed: {e}", "WARN")
+
+
 # ── backend chat ───────────────────────────────────────────────────────────────
 def send_to_kortana(message: str) -> str:
     """Send message to kor'tana backend, return spoken response."""
-    global _conversation_history
+    global _conversation_history, _memory_count
     try:
         payload = {
             "message": message,
@@ -138,6 +251,14 @@ def send_to_kortana(message: str) -> str:
             _conversation_history.append({"role": "assistant", "content": response})
             if len(_conversation_history) > 20:
                 _conversation_history = _conversation_history[-20:]
+            # episodic memory — write every N turns without blocking
+            _memory_count += 1
+            if _memory_count % _MEMORY_EVERY == 0:
+                threading.Thread(
+                    target=_write_episodic_memory,
+                    args=(message, response),
+                    daemon=True,
+                ).start()
             return response
         else:
             log(f"Backend returned {r.status_code}: {r.text[:200]}", "WARN")
@@ -237,6 +358,12 @@ def run() -> None:
     with mic as source:
         recognizer.adjust_for_ambient_noise(source, duration=1.5)
     log(f"energy threshold set to {recognizer.energy_threshold:.0f}")
+
+    # Seed foundational identity memories on first run (no-op if DB already has content)
+    threading.Thread(target=_seed_identity_memory, daemon=True).start()
+
+    # Restore cross-session memory before announcing readiness
+    _conversation_history.extend(_load_history_from_backend())
 
     speak("kor'tana is ready. just say my name.")
     log("kor'tana voice daemon listening")

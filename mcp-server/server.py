@@ -13,6 +13,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+import httpx
 import mcp.server.stdio
 import mcp.types as types
 import psutil
@@ -20,6 +21,8 @@ from mcp.server import NotificationOptions, Server
 from mcp.server.models import InitializationOptions
 
 server = Server("kortana-pc")
+
+KORTANA_BACKEND = os.getenv("KORTANA_BACKEND_URL", "http://localhost:8000")
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -303,7 +306,10 @@ async def list_tools() -> list[types.Tool]:
                 "type": "object",
                 "properties": {
                     "text": {"type": "string", "description": "Text to speak aloud"},
-                    "rate": {"type": "integer", "description": "Words per minute (default: 175)"},
+                    "rate": {
+                        "type": "integer",
+                        "description": "Words per minute (default: 175)",
+                    },
                 },
                 "required": ["text"],
             },
@@ -318,6 +324,71 @@ async def list_tools() -> list[types.Tool]:
                     "message": {"type": "string", "description": "Notification body"},
                 },
                 "required": ["title", "message"],
+            },
+        ),
+        types.Tool(
+            name="memory_write",
+            description=(
+                "Permanently store a fact, observation, or preference about Matt or the project "
+                "in kor'tana's long-term memory. Use this to teach her things that should survive "
+                "across sessions — habits, preferences, context, decisions."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "content": {
+                        "type": "string",
+                        "description": "The fact or observation to remember (1–2 sentences, specific)",
+                    },
+                    "memory_type": {
+                        "type": "string",
+                        "enum": ["long_term", "short_term", "episodic"],
+                        "description": "Memory tier (default: long_term)",
+                    },
+                },
+                "required": ["content"],
+            },
+        ),
+        types.Tool(
+            name="memory_search",
+            description=(
+                "Semantically search kor'tana's memory for relevant facts, past observations, "
+                "or stored context. Use before answering questions about past conversations, "
+                "Matt's preferences, or project history."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Natural language search query",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Max results to return (default: 5)",
+                    },
+                },
+                "required": ["query"],
+            },
+        ),
+        types.Tool(
+            name="memory_recall",
+            description=(
+                "Load the most recent voice conversation history from kor'tana's persistent store. "
+                "Returns the last N exchanges from the voice session, oldest first."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "limit": {
+                        "type": "integer",
+                        "description": "Number of messages to return (default: 20)",
+                    },
+                    "session_id": {
+                        "type": "string",
+                        "description": "Session to recall (default: voice)",
+                    },
+                },
             },
         ),
         types.Tool(
@@ -788,9 +859,18 @@ $synth.Speak('{text}')
 """
         result = subprocess.run(
             ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
-            capture_output=True, text=True, timeout=60,
+            capture_output=True,
+            text=True,
+            timeout=60,
         )
-        return [types.TextContent(type="text", text=json.dumps({"spoken": result.returncode == 0, "text": arguments["text"][:80]}))]
+        return [
+            types.TextContent(
+                type="text",
+                text=json.dumps(
+                    {"spoken": result.returncode == 0, "text": arguments["text"][:80]}
+                ),
+            )
+        ]
 
     # ── notify ─────────────────────────────────────────────────────────────────
     if name == "notify":
@@ -842,6 +922,51 @@ $toast = New-Object Windows.UI.Notifications.ToastNotification $xml
                 text=_json.dumps({"queued": True, "task_count": len(tasks)}),
             )
         ]
+
+    # ── memory_write ───────────────────────────────────────────────────────────
+    if name == "memory_write":
+        content = arguments["content"]
+        memory_type = arguments.get("memory_type", "long_term")
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                r = await client.post(
+                    f"{KORTANA_BACKEND}/api/consciousness/memory/store",
+                    json={"content": content, "memory_type": memory_type, "agent_id": "kortana-mcp"},
+                )
+            data = r.json() if r.status_code == 200 else {"error": r.text[:200], "status_code": r.status_code}
+        except Exception as e:
+            data = {"error": str(e)}
+        return [types.TextContent(type="text", text=json.dumps(data, indent=2))]
+
+    # ── memory_search ──────────────────────────────────────────────────────────
+    if name == "memory_search":
+        query = arguments["query"]
+        limit = arguments.get("limit", 5)
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                r = await client.get(
+                    f"{KORTANA_BACKEND}/api/consciousness/memory/search",
+                    params={"q": query, "limit": limit},
+                )
+            data = r.json() if r.status_code == 200 else {"error": r.text[:200], "status_code": r.status_code}
+        except Exception as e:
+            data = {"error": str(e)}
+        return [types.TextContent(type="text", text=json.dumps(data, indent=2))]
+
+    # ── memory_recall ──────────────────────────────────────────────────────────
+    if name == "memory_recall":
+        limit = arguments.get("limit", 20)
+        session_id = arguments.get("session_id", "voice")
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                r = await client.get(
+                    f"{KORTANA_BACKEND}/api/gemini/chat/history",
+                    params={"session_id": session_id, "limit": limit},
+                )
+            data = r.json() if r.status_code == 200 else {"error": r.text[:200], "status_code": r.status_code}
+        except Exception as e:
+            data = {"error": str(e)}
+        return [types.TextContent(type="text", text=json.dumps(data, indent=2))]
 
     return [
         types.TextContent(

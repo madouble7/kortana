@@ -35,6 +35,14 @@ class MemoryStoreRequest(BaseModel):
     agent_id: str = Field(default="kortana-system")
 
 
+class SelfMemoryWriteRequest(BaseModel):
+    """Write directly to SelfMemory — the table injected into every chat prompt."""
+
+    summary: str = Field(..., min_length=1, max_length=3000)
+    tags: Optional[list] = Field(default=None)
+    source: str = Field(default="voice")
+
+
 class MemorySearchResponse(BaseModel):
     id: str
     content: str
@@ -108,6 +116,49 @@ async def memory_stats(
     """Return memory system statistics."""
     engine = MemoryEngine(db)
     return await engine.stats()
+
+
+@router.get("/memory/self")
+async def count_self_memories(
+    source: Optional[str] = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """Return the count of SelfMemory entries, optionally filtered by source."""
+    from sqlalchemy import func, select
+
+    from src.kortana.models import SelfMemory
+
+    stmt = select(func.count()).select_from(SelfMemory)
+    if source:
+        stmt = stmt.where(SelfMemory.source == source)
+    result = await db.execute(stmt)
+    count = result.scalar() or 0
+    return {"count": count, "source_filter": source}
+
+
+@router.post("/memory/self")
+async def write_self_memory(
+    body: SelfMemoryWriteRequest,
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """Write an entry directly to SelfMemory.
+
+    SelfMemory rows are injected into every chat system prompt via
+    MemoryPolicyService.build_context(), giving kor'tana continuity of self.
+    No agent FK required — this is kor'tana's own introspective memory.
+    """
+    from src.kortana.models import SelfMemory
+
+    entry = SelfMemory(
+        cycle_number=0,  # 0 = externally written (not from autonomy cycle)
+        summary=body.summary,
+        tags=body.tags or [],
+        source=body.source,
+    )
+    db.add(entry)
+    await db.commit()
+    await db.refresh(entry)
+    return {"id": entry.id, "source": entry.source, "status": "stored"}
 
 
 @router.post("/memory/backfill")
