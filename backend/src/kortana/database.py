@@ -48,6 +48,10 @@ class DatabaseConfig:
             if "aiosqlite" in url:
                 return url
             return url.replace("sqlite://", "sqlite+aiosqlite://", 1)
+        # Ensure asyncpg driver is specified for async postgres connections
+        if url.startswith("postgresql://") or url.startswith("postgres://"):
+            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+            url = url.replace("postgres://", "postgresql+asyncpg://", 1)
         return url
 
     def get_sync_url(self) -> str:
