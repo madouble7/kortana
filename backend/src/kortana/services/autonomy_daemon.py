@@ -565,6 +565,121 @@ class AutonomyDaemon:
         },
     ]
 
+    async def _generate_ai_driven_tasks(self, session: Any) -> None:
+        """Ask Gemini to generate new evolution tasks every N cycles.
+
+        Supplements the static catalogue with tasks kor'tana derives herself
+        by analyzing her own codebase and current state.
+        """
+        from sqlalchemy import func
+
+        GENERATE_EVERY_N_CYCLES = 10
+        cycle_num = self.metrics.get("cycles_completed", 0)
+        if cycle_num % GENERATE_EVERY_N_CYCLES != 0:
+            return
+
+        try:
+            from src.kortana.services.ai_consensus import (
+                ConsensusMode,
+                get_consensus_engine,
+            )
+
+            # Gather context for task generation
+            active_res = await session.execute(
+                select(func.count())
+                .select_from(GitHubTask)
+                .where(GitHubTask.status.in_(["queued", "pending", "analyzed", "planning_complete"]))
+            )
+            active_count = active_res.scalar_one_or_none() or 0
+
+            recent_titles_res = await session.execute(
+                select(GitHubTask.title)
+                .where(GitHubTask.status == "executed")
+                .order_by(GitHubTask.executed_at.desc())
+                .limit(10)
+            )
+            recent_executed = [row[0] for row in recent_titles_res.fetchall()]
+            recent_list = "\n".join(f"- {t}" for t in recent_executed) or "- none yet"
+
+            system_state = self.metrics.get("system_state", "unknown")
+            autonomy_index = (self.metrics.get("controller_reflection") or {}).get("autonomy_index", 0)
+
+            prompt = (
+                "you are kor'tana, an autonomous ai agent running continuous self-evolution cycles.\n"
+                f"current system_state: {system_state}, autonomy_index: {autonomy_index}/100\n"
+                f"active queued tasks: {active_count}\n"
+                f"recently completed tasks:\n{recent_list}\n\n"
+                "generate exactly 3 new, concrete, code-level evolution tasks for improving the kortana backend.\n"
+                "each task must be specific enough for a code generator to implement without further clarification.\n"
+                "focus on: tests, api endpoints, performance, observability, or real feature gaps.\n"
+                "avoid tasks already in the recent list above.\n\n"
+                "respond with ONLY a JSON array like:\n"
+                '[{"title":"[EVOLVE] ...", "description":"...step-by-step...", "priority":"high|normal"}]\n'
+                "no prose, no explanation, just the JSON array."
+            )
+            engine = get_consensus_engine()
+            result = await engine.query(
+                prompt=prompt,
+                mode=ConsensusMode.FASTEST,
+                max_tokens=600,
+                timeout=20.0,
+            )
+            if result.providers_succeeded == 0:
+                return
+
+            import json as _json
+            import re as _re
+
+            raw = result.answer.strip()
+            match = _re.search(r"\[.*\]", raw, _re.DOTALL)
+            if not match:
+                return
+            tasks_spec = _json.loads(match.group(0))
+
+            seeded = 0
+            for spec in tasks_spec[:3]:
+                title = str(spec.get("title", "")).strip()
+                description = str(spec.get("description", "")).strip()
+                priority = str(spec.get("priority", "normal")).strip()
+                if not title or not description:
+                    continue
+
+                dup_res = await session.execute(
+                    select(func.count())
+                    .select_from(GitHubTask)
+                    .where(
+                        GitHubTask.title == title,
+                        GitHubTask.status.in_(["queued", "pending", "analyzed", "planning", "planning_complete", "executing"]),
+                    )
+                )
+                if (dup_res.scalar_one_or_none() or 0) > 0:
+                    continue
+
+                issue_num_res = await session.execute(
+                    select(func.coalesce(func.min(GitHubTask.github_issue_number), 0))
+                    .select_from(GitHubTask)
+                    .where(GitHubTask.github_issue_number < 0)
+                )
+                min_local = issue_num_res.scalar_one_or_none() or 0
+                task = GitHubTask(
+                    github_issue_number=min_local - 1,
+                    github_repo="madouble7/kortana",
+                    title=title,
+                    description=description,
+                    status="pending",
+                    classification="evolution",
+                    priority=priority,
+                )
+                session.add(task)
+                seeded += 1
+
+            if seeded:
+                await session.commit()
+                logger.info("[AI-TASKS] kor'tana self-generated %d new evolution tasks", seeded)
+        except Exception as exc:
+            await session.rollback()
+            logger.warning(f"AI-driven task generation failed: {exc}")
+
     async def _generate_perpetual_tasks(self, session: Any) -> None:
         """
         Ensure there is always queued evolution work.
@@ -574,7 +689,7 @@ class AutonomyDaemon:
         """
         from sqlalchemy import func
 
-        LOW_WATER = 3  # seed when fewer than this many active tasks exist
+        LOW_WATER = 5  # seed when fewer than this many active tasks exist
 
         try:
             active_res = await session.execute(
@@ -630,7 +745,7 @@ class AutonomyDaemon:
 
                 task = GitHubTask(
                     github_issue_number=new_issue_number,
-                    github_repo="local/evolve",
+                    github_repo="madouble7/kortana",
                     title=spec["title"],
                     description=spec["description"],
                     status="pending",
@@ -967,6 +1082,7 @@ class AutonomyDaemon:
             )
             # Seed tasks BEFORE processing so they can be picked up this cycle
             await self._generate_perpetual_tasks(session)
+            await self._generate_ai_driven_tasks(session)
             await self._seed_kortana_investigations(session)
             effective_limit = self.max_tasks
             processed, succeeded, failed, deferred = await self._process_tasks(
