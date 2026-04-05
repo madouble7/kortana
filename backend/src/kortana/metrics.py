@@ -154,6 +154,25 @@ cache_misses_total = Counter(
     registry=registry,
 )
 
+cache_bypassed_total = Counter(
+    "kortana_cache_bypassed_total",
+    "Total number of requests that bypassed cache",
+    registry=registry,
+)
+
+cache_errors_total = Counter(
+    "kortana_cache_errors_total",
+    "Total number of cache errors",
+    ["operation"],
+    registry=registry,
+)
+
+cache_evictions_total = Counter(
+    "kortana_cache_evictions_total",
+    "Total number of cache evictions",
+    registry=registry,
+)
+
 # ==================== Error Metrics ====================
 
 # Error counter by type
@@ -247,6 +266,22 @@ def track_cache_hit(hit: bool):
         cache_misses_total.inc()
 
 
+def track_cache_bypass() -> None:
+    """Record that cache was intentionally bypassed."""
+    cache_bypassed_total.inc()
+
+
+def track_cache_error(operation: str) -> None:
+    """Record a cache-layer error for the given operation."""
+    cache_errors_total.labels(operation=operation).inc()
+
+
+def track_cache_eviction(count: int = 1) -> None:
+    """Record cache evictions."""
+    if count > 0:
+        cache_evictions_total.inc(count)
+
+
 def track_error(error_type: str, endpoint: str):
     """Record an error occurrence"""
     errors_total.labels(error_type=error_type, endpoint=endpoint).inc()
@@ -324,6 +359,7 @@ async def metrics_middleware(request, call_next):
     http_requests_in_progress.labels(method=method, endpoint=endpoint).inc()
 
     start_time = time.time()
+    status_code = 500
 
     try:
         response = await call_next(request)
@@ -348,6 +384,9 @@ __all__ = [
     "track_agent_execution",
     "track_llm_call",
     "track_cache_hit",
+    "track_cache_bypass",
+    "track_cache_error",
+    "track_cache_eviction",
     "track_error",
     "track_auth_failure",
     "track_rate_limit_hit",
