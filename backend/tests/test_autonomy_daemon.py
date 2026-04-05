@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from src.kortana.models import GitHubTask
-from src.kortana.services.autonomy_daemon import AutonomyDaemon
+from src.kortana.services.autonomy_daemon import AutonomyDaemon, DaemonEvent
 from src.kortana.services.operator_directive_service import DirectiveSummary
 
 
@@ -486,6 +486,36 @@ class TestAutonomyDaemon:
         task_deferred = next(event for event in events if event.type == "task_deferred")
         assert task_deferred.data["task_id"] == "task-guardrail"
         assert task_deferred.data["reason"] == "patch_guardrail_rejected"
+
+    def test_emit_records_recent_task_events_for_cycle_summary(self) -> None:
+        daemon = build_daemon()
+
+        daemon._emit(DaemonEvent(type="cycle_start"))
+        daemon._emit(
+            DaemonEvent(
+                type="task_deferred",
+                data={
+                    "task_id": "task-guardrail",
+                    "title": "Guardrail blocked task",
+                    "reason": "patch_guardrail_rejected",
+                },
+            )
+        )
+        daemon._emit(
+            DaemonEvent(
+                type="task_blocked",
+                data={
+                    "task_id": "task-abstract",
+                    "title": "Abstract task",
+                    "reason": "non_executable",
+                },
+            )
+        )
+
+        assert len(daemon._cycle_event_log) == 2
+        assert daemon._cycle_event_log[0]["type"] == "task_deferred"
+        assert daemon._cycle_event_log[0]["data"]["reason"] == "patch_guardrail_rejected"
+        assert daemon._cycle_event_log[1]["type"] == "task_blocked"
 
     def test_prioritize_tasks_prefers_focus_topics_and_filters_avoid(self) -> None:
         daemon = build_daemon()
