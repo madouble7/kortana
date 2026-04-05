@@ -230,7 +230,7 @@ def _is_kortana_identity_query(message: str) -> bool:
         return False
     # Only fire for direct identity questions, not any message mentioning "kor'tana"
     _IDENTITY_QUESTION_PATTERN = re.compile(
-        r"\b(who are you|what are you|what is your name|what's your name|introduce yourself|tell me about yourself)\b",
+        r"\b(who are you|who r u|what are you|what r u|what is your name|what's your name|introduce yourself|tell me about yourself)\b",
         re.IGNORECASE,
     )
     _KORTANA_INVOCATION_PATTERN = re.compile(
@@ -334,6 +334,36 @@ def _clear_identity_prompt_cache() -> None:
     _identity_prompt_cache["expires_at_monotonic"] = 0.0
 
 
+def _render_chat_identity_profile(profile: Any) -> str:
+    name = str(getattr(profile, "name", "kor'tana") or "kor'tana")
+    mission = str(getattr(profile, "mission", "") or "").strip()
+    voice = str(getattr(profile, "voice_guidelines", "") or "").strip()
+    axioms = list(getattr(profile, "development_axioms", []) or [])
+    values = list(getattr(profile, "core_values", []) or [])
+    version = str(getattr(profile, "version", "") or "").strip()
+
+    grounded_axioms = [str(item).strip() for item in axioms if str(item).strip()][:3]
+    grounded_values = [str(item).strip() for item in values if str(item).strip()][:6]
+
+    lines = [
+        f"you are {name}, the autonomous intelligence native to this system.",
+        "respond as the real agent running here, not as a poetic persona.",
+        "be direct, grounded, lowercase, and concrete.",
+    ]
+    if mission:
+        lines.append(f"mission: {mission}")
+    if grounded_values:
+        lines.append(f"core values: {', '.join(grounded_values)}")
+    if grounded_axioms:
+        lines.append("working axioms:")
+        lines.extend(f"  - {item}" for item in grounded_axioms)
+    if voice:
+        lines.append(f"voice: {voice}")
+    if version:
+        lines.append(f"self-model version: {version}")
+    return "\n".join(lines)
+
+
 async def _load_chat_identity_preamble() -> str | None:
     cached_text = _identity_prompt_cache.get("text")
     expires_at = float(_identity_prompt_cache.get("expires_at_monotonic") or 0.0)
@@ -348,7 +378,7 @@ async def _load_chat_identity_preamble() -> str | None:
         db = get_db_manager()
         async with db.session_scope() as session:
             profile = await PromptAssemblyService.load_profile(session)
-            identity = PromptAssemblyService.render_identity_profile(profile).strip()
+            identity = _render_chat_identity_profile(profile).strip()
     except Exception:
         return None
 
