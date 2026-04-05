@@ -19,6 +19,7 @@ import json
 import logging
 import os
 import re
+import subprocess
 from dataclasses import dataclass, field
 from typing import List, Optional
 
@@ -323,7 +324,33 @@ class PatchValidator:
         return max_ldr, net_shrink
 
     def _count_file_lines(self, rel_path: str) -> int:
-        """Return the number of lines in the worktree file, or 0 if not found."""
+        """Return original (pre-patch HEAD) line count; falls back to disk for new files.
+
+        Using the HEAD version is critical: at the time PatchValidator runs, the
+        CodeGenerator has already written modified content to disk, so reading
+        from disk would give the *post*-modification size.  Comparing deletions
+        against the shrunken post-modification size produces wildly inflated LDR
+        values (e.g. a file shrunk from 200→2 lines yields LDR=52x instead of
+        0.5x).  git-show HEAD gives the true pre-patch baseline.
+        """
+        # Primary: get original content from git HEAD
+        try:
+            result = subprocess.run(
+                ["git", "show", f"HEAD:{rel_path}"],
+                cwd=self.worktree_dir,
+                capture_output=True,
+                timeout=10,
+            )
+            if result.returncode == 0:
+                data = result.stdout
+                count = data.count(b"\n")
+                # Add 1 for a non-empty file that doesn't end in newline
+                if data and not data.endswith(b"\n"):
+                    count += 1
+                return count
+        except Exception:
+            pass
+        # Fallback: new file not in HEAD — read from disk (deletions will be 0 anyway)
         abs_path = os.path.join(self.worktree_dir, rel_path)
         try:
             with open(abs_path, encoding="utf-8", errors="replace") as fh:
