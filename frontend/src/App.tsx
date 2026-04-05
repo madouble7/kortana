@@ -23,6 +23,7 @@ import Settings from './components/Settings';
 import Tasks from './components/Tasks';
 import { api } from './lib/api';
 import { cn } from './lib/utils';
+import type { DaemonStatus } from './types';
 
 type View = 'chat' | 'tasks' | 'autonomy' | 'memory' | 'github' | 'settings' | 'akashic' | 'operator';
 
@@ -43,8 +44,8 @@ function GitHubViewWithTabs() {
             key={t}
             onClick={() => setTab(t)}
             className={`px-6 py-3 text-sm font-medium transition-colors ${tab === t
-                ? 'text-green-400 border-b-2 border-green-400 bg-gray-800/40'
-                : 'text-gray-400 hover:text-gray-200'
+              ? 'text-green-400 border-b-2 border-green-400 bg-gray-800/40'
+              : 'text-gray-400 hover:text-gray-200'
               }`}
           >
             {t === 'pipeline' ? '⚙ Pipeline' : '🔍 Browse Issues'}
@@ -62,6 +63,7 @@ function App() {
   const [currentView, setCurrentView] = useState<View>('chat');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [offline, setOffline] = useState(false);
+  const [daemonStatus, setDaemonStatus] = useState<DaemonStatus | null>(null);
 
   useEffect(() => {
     const probeHealth = () => {
@@ -78,6 +80,44 @@ function App() {
       unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadDaemonStatus = async () => {
+      try {
+        const status = await api.getDaemonStatus();
+        if (!cancelled) {
+          setDaemonStatus(status);
+        }
+      } catch {
+        if (!cancelled) {
+          setDaemonStatus(null);
+        }
+      }
+    };
+
+    loadDaemonStatus();
+    const interval = setInterval(loadDaemonStatus, 20000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
+
+  const daemonAlive = daemonStatus?.deployment_mode === 'embedded'
+    ? daemonStatus.running
+    : daemonStatus?.external_daemon?.alive;
+  const daemonLabel = daemonStatus?.deployment_mode === 'embedded'
+    ? daemonStatus?.running
+      ? 'Daemon Running'
+      : 'Daemon Idle'
+    : daemonStatus?.external_daemon?.alive
+      ? 'Worker Fresh'
+      : daemonStatus?.external_daemon?.state === 'stale'
+        ? 'Worker Stale'
+        : 'Worker Unknown';
 
   const navItems: NavItem[] = [
     {
@@ -222,9 +262,30 @@ function App() {
 
           {/* Footer */}
           <div className="px-6 py-4 border-t border-gray-800">
-            <div className="flex items-center gap-2">
-              <div className={cn('w-2 h-2 rounded-full', offline ? 'bg-amber-500' : 'bg-green-500 animate-pulse')} />
-              <span className="text-sm text-gray-400">{offline ? 'Demo Mode' : 'System Online'}</span>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className={cn('w-2 h-2 rounded-full', offline ? 'bg-amber-500' : 'bg-green-500 animate-pulse')} />
+                <span className="text-sm text-gray-400">{offline ? 'Demo Mode' : 'System Online'}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setCurrentView('autonomy');
+                  setSidebarOpen(false);
+                }}
+                className="w-full flex items-center justify-between rounded-lg bg-gray-800/80 px-3 py-2 text-left hover:bg-gray-800 transition-colors"
+              >
+                <span className="text-xs text-gray-400 uppercase tracking-wide">Autonomy</span>
+                <span className="flex items-center gap-2">
+                  <span className={cn('w-2 h-2 rounded-full', daemonAlive ? 'bg-green-500 animate-pulse' : 'bg-red-500')} />
+                  <span className="text-sm text-gray-300">{daemonLabel}</span>
+                </span>
+              </button>
+              {daemonStatus?.provider_health && Object.values(daemonStatus.provider_health).some((state) => state !== 'ok' && state !== 'unknown') && (
+                <div className="text-xs text-yellow-300">
+                  Provider attention required
+                </div>
+              )}
             </div>
           </div>
         </div>

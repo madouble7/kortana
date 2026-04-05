@@ -743,6 +743,18 @@ class ApiClient {
     return this.request<DaemonCycle[]>(`/api/daemon/cycles?limit=${limit}`);
   }
 
+  async startDaemon(): Promise<DaemonStatus & { status: string }> {
+    return this.request<DaemonStatus & { status: string }>('/api/daemon/start', {
+      method: 'POST',
+    });
+  }
+
+  async stopDaemon(): Promise<DaemonStatus & { status: string }> {
+    return this.request<DaemonStatus & { status: string }>('/api/daemon/stop', {
+      method: 'POST',
+    });
+  }
+
   // GitHub endpoints
   async getGitHubIssues(repo?: string): Promise<GitHubIssue[]> {
     const parsed = parseRepo(repo);
