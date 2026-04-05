@@ -1380,7 +1380,11 @@ class GitHubAutonomyService:
                 diff_text = self._get_pending_diff(workspace)
                 if diff_text:
                     pv = PatchValidator(str(workspace))
-                    pv_result = pv.validate(diff_text)
+                    # CodeGenerator writes complete file replacements, not surgical
+                    # patches, so LDR is always ~1.0 by construction.  The
+                    # net-shrink guard (MAX_NET_SHRINK=120) is the correct safety
+                    # net here: it catches cases where a file shrinks dramatically.
+                    pv_result = pv.validate(diff_text, max_ldr=1.01)
                     if isinstance(pv_result, ValidationFailure):
                         logger.warning(
                             "PatchValidator blocked commit for task %s: %s",

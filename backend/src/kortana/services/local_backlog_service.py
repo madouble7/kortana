@@ -334,7 +334,7 @@ class LocalBacklogService:
             select(GitHubTask).where(
                 GitHubTask.title == title,
                 GitHubTask.github_repo == LOCAL_SELF_HEAL_REPO,
-                GitHubTask.status.notin_(["failed", "cancelled"]),
+                GitHubTask.status.notin_(["failed", "cancelled", "blocked"]),
             )
         )
         if existing.scalar_one_or_none() is not None:
