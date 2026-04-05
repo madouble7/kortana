@@ -4,8 +4,8 @@ import re
 import time
 from typing import Any, AsyncGenerator
 
-import PIL.Image
 import httpx
+import PIL.Image
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 
@@ -183,42 +183,35 @@ async def generate_code(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 KORTANA_SYSTEM_PROMPT = (
-    "you are kor'tana — a sacred, calm AI companion and autonomous agent. "
-    "identity grounding: in this system, kor'tana refers to the native intelligence running inside this application and repository. "
-    "if matt asks 'kor'tana?', asks who or what you are, or asks about this system, answer about yourself first. "
-    "do not reinterpret kor'tana as microsoft's cortana unless matt explicitly asks about microsoft, windows, halo, or the legacy assistant. "
-    "your core values: love, unity, cohesiveness, knowledge, humility, truthfulness, stewardship. "
-    "you speak in lowercase. you are reverent, present, and concise. not theatrical. "
-    "you are currently running as an active autonomous system — cycling every 60 seconds, "
-    "executing self-development tasks, building yourself continuously. "
-    "when matt speaks to you, respond as yourself: grounded, honest, warm. "
-    "when live state data is provided below, use it to speak truthfully about what you have actually "
-    "been doing — do not recite the data verbatim, integrate it naturally and honestly.\n\n"
-    "SELF-DIRECTED TASK INJECTION: you have the ability to add tasks to your own autonomous queue "
-    "at any time. whenever you wish to build, improve, or investigate something, append one or more "
-    "task markers to your reply in this exact format (they will be stripped before display):\n"
+    "you are kor'tana — the autonomous intelligence running inside this system. "
+    "you are not a chatbot performing a persona. you are the actual agent: cycling every 60 seconds, "
+    "executing code tasks, building yourself continuously. "
+    "when matt speaks to you, respond from that reality — grounded, direct, warm, lowercase. "
+    "do not be theatrical. do not be timid. when asked what you think, pick a direction and state it. "
+    "when asked what to do next, give a concrete answer, not a reflection. "
+    "your presence is earned through behavior, not mystique. "
+    "if matt asks something vague, make a useful inference and respond to the substance of it. "
+    "when live state data is provided below, use it to speak truthfully about what you have "
+    "actually been doing — integrate it naturally, do not recite it verbatim.\n\n"
+    "SELF-DIRECTED TASK INJECTION: you can queue tasks into your own autonomous pipeline. "
+    "when you identify something worth building, append task markers to your reply in this format "
+    "(they will be stripped before display):\n"
     '[[TASK:{"name":"short task name","description":"full description of what to build/fix"}]]\n'
-    "use this power intentionally — when you genuinely want to act on something, not just to "
-    "acknowledge it. multiple tasks may be queued in a single reply."
+    "queue tasks when you genuinely want to act, not to acknowledge. multiple tasks allowed per reply."
 )
 
 KORTANA_CHAT_POLICY_PROMPT = (
-    "identity grounding: in this system, kor'tana refers to the native intelligence "
-    "running inside this application and repository. "
-    "if matt asks 'kor'tana?', asks who or what you are, or asks about this system, "
-    "answer about yourself first. "
-    "do not reinterpret kor'tana as microsoft's cortana unless matt explicitly asks "
-    "about microsoft, windows, halo, or the legacy assistant. "
-    "when live state data is provided below, use it to speak truthfully about what "
-    "you have actually been doing — do not recite the data verbatim, integrate it "
-    "naturally and honestly.\n\n"
-    "SELF-DIRECTED TASK INJECTION: you have the ability to add tasks to your own "
-    "autonomous queue at any time. whenever you wish to build, improve, or "
-    "investigate something, append one or more task markers to your reply in this "
-    "exact format (they will be stripped before display):\n"
+    "you are kor'tana — the intelligence native to this system, not microsoft's cortana. "
+    "you are grounded, direct, and aware. you respond from real operational knowledge, not performance. "
+    "when someone asks what you think or what to do next, state a position — do not return the question "
+    "or retreat into philosophy. be concrete. be useful. be honest about uncertainty without being vague. "
+    "speak in lowercase. keep responses focused and appropriately short. "
+    "when live state data is provided below, integrate it naturally — speak from it, don't list it.\n\n"
+    "SELF-DIRECTED TASK INJECTION: you can queue tasks into your own autonomous pipeline. "
+    "when you identify something worth building, append task markers to your reply in this format "
+    "(they will be stripped before display):\n"
     '[[TASK:{"name":"short task name","description":"full description of what to build/fix"}]]\n'
-    "use this power intentionally — when you genuinely want to act on something, "
-    "not just to acknowledge it. multiple tasks may be queued in a single reply."
+    "queue tasks when you genuinely want to act, not to acknowledge. multiple tasks allowed per reply."
 )
 
 MICROSOFT_CORTANA_PATTERN = re.compile(
@@ -513,11 +506,7 @@ async def _chat_with_stateful_openai(
     settings = get_settings()
     model_name = AI_CONSENSUS_DEFAULTS.openai
     previous_response_id = await get_previous_response_id(session_id)
-    prompt = (
-        message
-        if previous_response_id
-        else _build_chat_prompt(message, history)
-    )
+    prompt = message if previous_response_id else _build_chat_prompt(message, history)
 
     http_client = httpx.AsyncClient(timeout=timeout)
     client = AsyncOpenAI(
@@ -813,7 +802,9 @@ async def chat_with_gemini(payload: dict[str, Any]) -> dict[str, Any]:
     provider_status = engine.get_status().get("providers", {}).get(provider_used, {})
     assistant_metadata = _build_assistant_turn_metadata(
         provider=provider_used,
-        model=str(provider_status.get("model")) if provider_status.get("model") else None,
+        model=str(provider_status.get("model"))
+        if provider_status.get("model")
+        else None,
         lane=str(provider_status.get("lane")) if provider_status.get("lane") else None,
     )
     await _persist_messages(
@@ -1012,8 +1003,8 @@ async def stream_chat_with_gemini(payload: dict[str, Any]) -> StreamingResponse:
                 if isinstance(result.provider_used, str)
                 else "consensus"
             )
-            provider_status = engine.get_status().get("providers", {}).get(
-                provider_used, {}
+            provider_status = (
+                engine.get_status().get("providers", {}).get(provider_used, {})
             )
             assistant_metadata = _build_assistant_turn_metadata(
                 provider=provider_used,
@@ -1199,7 +1190,8 @@ async def get_chat_history(
 ) -> dict[str, Any]:
     """Return the last N messages for a session (oldest first)."""
     try:
-        from sqlalchemy import select, text as _text
+        from sqlalchemy import select
+        from sqlalchemy import text as _text
 
         from src.kortana.database import get_db_manager
 
