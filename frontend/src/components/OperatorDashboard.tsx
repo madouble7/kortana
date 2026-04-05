@@ -9,10 +9,11 @@ import {
     XCircle,
     Zap,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useRuntimeTelemetry } from '../hooks/useRuntimeTelemetry';
 import { api } from '../lib/api';
-import { cn } from '../lib/utils';
-import type { DaemonCycle, DaemonStatus, ModelLaneSummary } from '../types';
+import { cn, formatRelativeTime } from '../lib/utils';
+import type { DaemonCycle } from '../types';
 
 type CycleTaskEvent = NonNullable<NonNullable<DaemonCycle['metrics']>['task_events']>[number];
 
@@ -272,33 +273,60 @@ function SafeBlockRow({
 // ─── main component ───────────────────────────────────────────────────────────
 
 export default function OperatorDashboard() {
-    const [daemon, setDaemon] = useState<DaemonStatus | null>(null);
     const [cycles, setCycles] = useState<DaemonCycle[]>([]);
-    const [lanes, setLanes] = useState<ModelLaneSummary | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
-
-    const load = useCallback(async () => {
-        const [d, c, l] = await Promise.allSettled([
-            api.getDaemonStatus(),
-            api.getDaemonCycles(15),
-            api.getModelLaneSummary(),
-        ]);
-        if (d.status === 'fulfilled') setDaemon(d.value);
-        if (c.status === 'fulfilled') setCycles(c.value);
-        if (l.status === 'fulfilled') setLanes(l.value);
-        setLoading(false);
-        setLastRefresh(new Date());
-    }, []);
+    const [loadingCycles, setLoadingCycles] = useState(true);
+    const [cycleError, setCycleError] = useState<string | null>(null);
+    const {
+        daemon,
+        lanes,
+        errors,
+        loading: runtimeLoading,
+        refreshing: runtimeRefreshing,
+        lastUpdatedAt,
+        refresh,
+    } = useRuntimeTelemetry();
 
     useEffect(() => {
-        load();
-        const interval = setInterval(load, 15000);
-        return () => clearInterval(interval);
-    }, [load]);
+        let cancelled = false;
+        let timeoutId: number | null = null;
+
+        const pollCycles = async () => {
+            try {
+                const nextCycles = await api.getDaemonCycles(15);
+                if (cancelled) {
+                    return;
+                }
+                setCycles(nextCycles);
+                setCycleError(null);
+            } catch (error) {
+                if (!cancelled) {
+                    setCycleError(
+                        error instanceof Error ? error.message : 'Unable to load daemon cycles.'
+                    );
+                }
+            } finally {
+                if (!cancelled) {
+                    setLoadingCycles(false);
+                    timeoutId = window.setTimeout(() => {
+                        void pollCycles();
+                    }, 15000);
+                }
+            }
+        };
+
+        void pollCycles();
+        return () => {
+            cancelled = true;
+            if (timeoutId !== null) {
+                window.clearTimeout(timeoutId);
+            }
+        };
+    }, []);
 
     const ext = daemon?.external_daemon;
     const alive = ext?.alive ?? (daemon?.deployment_mode === 'embedded' && daemon?.local_process?.running);
+    const loading = runtimeLoading || loadingCycles;
+    const notice = errors.daemon || errors.lanes || cycleError;
 
     // Aggregate cycle stats for header cards
     const totalCycles = cycles.length;
@@ -349,20 +377,40 @@ export default function OperatorDashboard() {
                 </div>
                 <div className="flex items-center gap-3">
                     <span className="text-xs text-gray-500">
-                        refreshed {lastRefresh.toLocaleTimeString()}
+                        {lastUpdatedAt ? `runtime ${formatRelativeTime(lastUpdatedAt)}` : 'refreshing…'}
                     </span>
                     <button
-                        onClick={load}
+                        onClick={() => {
+                            setLoadingCycles(true);
+                            void Promise.all([
+                                refresh({ force: true, resources: ['daemon', 'lanes'] }),
+                                api.getDaemonCycles(15).then((nextCycles) => {
+                                    setCycles(nextCycles);
+                                    setCycleError(null);
+                                }).catch((error) => {
+                                    setCycleError(
+                                        error instanceof Error ? error.message : 'Unable to refresh daemon cycles.'
+                                    );
+                                }).finally(() => {
+                                    setLoadingCycles(false);
+                                }),
+                            ]);
+                        }}
                         disabled={loading}
                         className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition-colors disabled:opacity-40"
                     >
-                        <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
+                        <RefreshCw className={cn('w-3.5 h-3.5', (loading || runtimeRefreshing) && 'animate-spin')} />
                         Refresh
                     </button>
                 </div>
             </div>
 
             <div className="flex-1 px-6 py-5 space-y-6">
+                {notice ? (
+                    <div className="rounded-xl border border-amber-800/70 bg-amber-950/40 px-4 py-3 text-sm text-amber-100">
+                        {notice}
+                    </div>
+                ) : null}
                 {/* ── Daemon Health Cards ── */}
                 <section>
                     <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
@@ -458,8 +506,8 @@ export default function OperatorDashboard() {
                     </div>
 
                     {providerHealthEntries.length > 0 && (
-                        <div className="rounded-xl border border-gray-800 bg-gray-900/40 overflow-hidden">
-                            <table className="w-full">
+                        <div className="rounded-xl border border-gray-800 bg-gray-900/40 overflow-x-auto">
+                            <table className="w-full min-w-[520px]">
                                 <thead>
                                     <tr className="text-xs text-gray-500 uppercase tracking-wide">
                                         <th className="text-left py-2 px-3">Provider</th>
@@ -520,8 +568,8 @@ export default function OperatorDashboard() {
                     </div>
 
                     {Object.keys(providers).length > 0 && (
-                        <div className="rounded-xl border border-gray-800 bg-gray-900/40 overflow-hidden">
-                            <table className="w-full">
+                        <div className="rounded-xl border border-gray-800 bg-gray-900/40 overflow-x-auto">
+                            <table className="w-full min-w-[640px]">
                                 <thead>
                                     <tr className="text-xs text-gray-500 uppercase tracking-wide">
                                         <th className="text-left py-2 px-3">Provider</th>
@@ -555,8 +603,8 @@ export default function OperatorDashboard() {
                             )}
                         </div>
                     ) : (
-                        <div className="rounded-xl border border-gray-800 bg-gray-900/40 overflow-hidden">
-                            <table className="w-full">
+                        <div className="rounded-xl border border-gray-800 bg-gray-900/40 overflow-x-auto">
+                            <table className="w-full min-w-[760px]">
                                 <thead>
                                     <tr className="text-xs text-gray-500 uppercase tracking-wide">
                                         <th className="text-left py-2 px-3">Cycle ID</th>
@@ -587,8 +635,8 @@ export default function OperatorDashboard() {
                             No recent guardrail deferrals or blocks recorded in the last {cycles.length} cycles.
                         </div>
                     ) : (
-                        <div className="rounded-xl border border-gray-800 bg-gray-900/40 overflow-hidden">
-                            <table className="w-full">
+                        <div className="rounded-xl border border-gray-800 bg-gray-900/40 overflow-x-auto">
+                            <table className="w-full min-w-[720px]">
                                 <thead>
                                     <tr className="text-xs text-gray-500 uppercase tracking-wide">
                                         <th className="text-left py-2 px-3">When</th>

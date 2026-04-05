@@ -11,7 +11,7 @@ import {
   X,
 } from 'lucide-react';
 import type { ElementType } from 'react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import AkashicRecord from './components/AkashicRecord';
 import Autonomy from './components/Autonomy';
 import Chat from './components/Chat';
@@ -21,9 +21,8 @@ import Memory from './components/Memory';
 import OperatorDashboard from './components/OperatorDashboard';
 import Settings from './components/Settings';
 import Tasks from './components/Tasks';
-import { api } from './lib/api';
-import { cn } from './lib/utils';
-import type { DaemonStatus } from './types';
+import { useRuntimeTelemetry } from './hooks/useRuntimeTelemetry';
+import { cn, formatRelativeTime } from './lib/utils';
 
 type View = 'chat' | 'tasks' | 'autonomy' | 'memory' | 'github' | 'settings' | 'akashic' | 'operator';
 
@@ -62,49 +61,14 @@ function GitHubViewWithTabs() {
 function App() {
   const [currentView, setCurrentView] = useState<View>('chat');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [offline, setOffline] = useState(false);
-  const [daemonStatus, setDaemonStatus] = useState<DaemonStatus | null>(null);
+  const { health, daemon, errors, lastUpdatedAt } = useRuntimeTelemetry();
 
-  useEffect(() => {
-    const probeHealth = () => {
-      api.health().catch(() => setOffline(true));
-    };
-
-    // Probe backend on load and keep the availability banner fresh.
-    probeHealth();
-    const interval = setInterval(probeHealth, 15000);
-    const unsubscribe = api.onOfflineChange(setOffline);
-
-    return () => {
-      clearInterval(interval);
-      unsubscribe();
-    };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadDaemonStatus = async () => {
-      try {
-        const status = await api.getDaemonStatus();
-        if (!cancelled) {
-          setDaemonStatus(status);
-        }
-      } catch {
-        if (!cancelled) {
-          setDaemonStatus(null);
-        }
-      }
-    };
-
-    loadDaemonStatus();
-    const interval = setInterval(loadDaemonStatus, 20000);
-
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, []);
+  const offline = health?.status === 'down' || (!!errors.health && !health);
+  const daemonStatus = daemon;
+  const providerHealth = daemonStatus?.provider_health ?? daemonStatus?.external_daemon?.provider_health ?? {};
+  const providerNeedsAttention = Object.values(providerHealth).some(
+    (state) => state !== 'ok' && state !== 'unknown'
+  );
 
   const daemonAlive = daemonStatus?.deployment_mode === 'embedded'
     ? daemonStatus.running
@@ -281,11 +245,16 @@ function App() {
                   <span className="text-sm text-gray-300">{daemonLabel}</span>
                 </span>
               </button>
-              {daemonStatus?.provider_health && Object.values(daemonStatus.provider_health).some((state) => state !== 'ok' && state !== 'unknown') && (
+              {providerNeedsAttention && (
                 <div className="text-xs text-yellow-300">
                   Provider attention required
                 </div>
               )}
+              {lastUpdatedAt ? (
+                <div className="text-[11px] text-gray-500">
+                  runtime {formatRelativeTime(lastUpdatedAt)}
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

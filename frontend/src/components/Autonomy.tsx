@@ -13,11 +13,11 @@ import {
   WifiOff,
   XCircle,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useRuntimeTelemetry } from '../hooks/useRuntimeTelemetry';
 import { useAutonomyRealtime } from '../hooks/useAutonomyRealtime';
 import { api } from '../lib/api';
 import { cn, formatRelativeTime } from '../lib/utils';
-import type { DaemonStatus, ModelLaneSummary } from '../types';
 import { ApprovalQueue } from './ApprovalQueue';
 
 function providerTone(status: string | undefined) {
@@ -42,11 +42,8 @@ function metricTone(value: boolean | undefined, fallback: string, active: string
 
 export default function Autonomy() {
   const [runningCycle, setRunningCycle] = useState(false);
-  const [runtimeLoading, setRuntimeLoading] = useState(true);
-  const [runtimeError, setRuntimeError] = useState<string | null>(null);
   const [daemonActionPending, setDaemonActionPending] = useState<'start' | 'stop' | null>(null);
-  const [daemon, setDaemon] = useState<DaemonStatus | null>(null);
-  const [lanes, setLanes] = useState<ModelLaneSummary | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const {
     status,
@@ -61,67 +58,30 @@ export default function Autonomy() {
     reconnectDelay: 2000,
   });
 
-  useEffect(() => {
-    let cancelled = false;
+  const {
+    daemon,
+    lanes,
+    errors,
+    loading: runtimeLoading,
+    refreshing: runtimeRefreshing,
+    lastUpdatedAt,
+    refresh,
+  } = useRuntimeTelemetry();
 
-    const loadRuntime = async () => {
-      try {
-        const [daemonStatus, laneSummary] = await Promise.all([
-          api.getDaemonStatus(),
-          api.getModelLaneSummary(),
-        ]);
-
-        if (cancelled) {
-          return;
-        }
-
-        setDaemon(daemonStatus);
-        setLanes(laneSummary);
-        setRuntimeError(null);
-      } catch (loadError) {
-        if (!cancelled) {
-          setRuntimeError(loadError instanceof Error ? loadError.message : 'Unable to load daemon runtime data.');
-        }
-      } finally {
-        if (!cancelled) {
-          setRuntimeLoading(false);
-        }
-      }
-    };
-
-    loadRuntime();
-    const interval = setInterval(loadRuntime, 15000);
-
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, []);
+  const runtimeError = errors.daemon || errors.lanes || null;
 
   const refreshRuntime = async () => {
-    setRuntimeLoading(true);
-    try {
-      const [daemonStatus, laneSummary] = await Promise.all([
-        api.getDaemonStatus(),
-        api.getModelLaneSummary(),
-      ]);
-      setDaemon(daemonStatus);
-      setLanes(laneSummary);
-      setRuntimeError(null);
-    } catch (loadError) {
-      setRuntimeError(loadError instanceof Error ? loadError.message : 'Unable to refresh daemon runtime data.');
-    } finally {
-      setRuntimeLoading(false);
-    }
+    await refresh({ force: true, resources: ['daemon', 'lanes'] });
   };
 
   const triggerCycle = async () => {
     try {
       setRunningCycle(true);
+      setActionError(null);
       await api.triggerAutonomyCycle();
     } catch (triggerError) {
       console.error('Failed to trigger autonomy cycle:', triggerError);
-      setRuntimeError(
+      setActionError(
         triggerError instanceof Error ? triggerError.message : 'Failed to trigger autonomy cycle.'
       );
     } finally {
@@ -133,11 +93,12 @@ export default function Autonomy() {
   const toggleDaemon = async (action: 'start' | 'stop') => {
     try {
       setDaemonActionPending(action);
-      const nextStatus = action === 'start' ? await api.startDaemon() : await api.stopDaemon();
-      setDaemon(nextStatus);
-      setRuntimeError(null);
+      setActionError(null);
+      await (action === 'start' ? api.startDaemon() : api.stopDaemon());
+      await refresh({ force: true, resources: ['daemon'] });
     } catch (actionError) {
-      setRuntimeError(
+      console.error(`Failed to ${action} daemon:`, actionError);
+      setActionError(
         actionError instanceof Error
           ? actionError.message
           : `Failed to ${action === 'start' ? 'start' : 'stop'} daemon.`
@@ -219,33 +180,40 @@ export default function Autonomy() {
                 )}
               />
               <span className="text-sm text-gray-300 capitalize">
-                {runtimeLoading ? 'Refreshing runtime...' : `Daemon ${daemonState}`}
+                {runtimeLoading || runtimeRefreshing ? 'Refreshing runtime...' : `Daemon ${daemonState}`}
               </span>
             </div>
 
             <button
               onClick={() => void refreshRuntime()}
-              disabled={runtimeLoading}
+              disabled={runtimeLoading || runtimeRefreshing}
               className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition-colors disabled:opacity-40"
             >
-              <RefreshCw className={cn('w-3.5 h-3.5', runtimeLoading && 'animate-spin')} />
+              <RefreshCw className={cn('w-3.5 h-3.5', (runtimeLoading || runtimeRefreshing) && 'animate-spin')} />
               Refresh
             </button>
           </div>
         </div>
 
-        {(error || runtimeError) && (
+        {(error || runtimeError || actionError) && (
           <div className="mt-3 px-3 py-2 bg-red-900/20 border border-red-700/50 rounded-lg">
             <p className="text-sm text-red-400">
               {error ? `Task status issue: ${error}` : null}
-              {error && runtimeError ? ' | ' : null}
+              {error && (runtimeError || actionError) ? ' | ' : null}
               {runtimeError ? `Runtime issue: ${runtimeError}` : null}
+              {runtimeError && actionError ? ' | ' : null}
+              {actionError ? `Action issue: ${actionError}` : null}
               {connectionState.fallbackToPolling && (
                 <span className="text-yellow-400 ml-2">Using polling fallback.</span>
               )}
             </p>
           </div>
         )}
+        {lastUpdatedAt ? (
+          <p className="mt-3 text-xs text-gray-500">
+            Runtime telemetry {formatRelativeTime(lastUpdatedAt)}
+          </p>
+        ) : null}
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">

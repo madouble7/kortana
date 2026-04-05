@@ -1,99 +1,22 @@
 import { AlertTriangle, Globe, Key, RefreshCw, Settings as SettingsIcon, Zap } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
-import { api, type ApiError } from '../lib/api';
+import { useMemo } from 'react';
+import { useRuntimeTelemetry } from '../hooks/useRuntimeTelemetry';
 import { getDisplayApiBaseUrl, getRuntimeEnvironment } from '../lib/runtimeConfig';
-import type { HealthStatus, ModelLaneSummary } from '../types';
 
 export default function Settings() {
-  const [health, setHealth] = useState<HealthStatus | null>(null);
-  const [modelLaneSummary, setModelLaneSummary] = useState<ModelLaneSummary | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
+  const {
+    health,
+    lanes: modelLaneSummary,
+    errors,
+    loading,
+    refreshing,
+    lastUpdatedAt,
+    refresh,
+  } = useRuntimeTelemetry();
 
-  const describeError = useCallback((error: unknown, fallback: string) => {
-    const apiError = error as Partial<ApiError> | undefined;
-    if (apiError?.isRateLimited) {
-      return apiError.retryAfterSeconds
-        ? `Rate limit reached. Refreshing again in ${apiError.retryAfterSeconds}s.`
-        : 'Rate limit reached. Refreshing again shortly.';
-    }
-    if (apiError?.isOffline) {
-      return 'Backend is unreachable right now. Retrying automatically.';
-    }
-    if (error instanceof Error && error.message) {
-      return error.message;
-    }
-    return fallback;
-  }, []);
-
-  const fetchHealth = useCallback(async (): Promise<number> => {
-    setRefreshing(true);
-
-    try {
-      const [healthResult, laneResult] = await Promise.allSettled([
-        api.health(),
-        api.getModelLaneSummary(),
-      ]);
-
-      if (healthResult.status === 'fulfilled') {
-        setHealth(healthResult.value);
-      }
-
-      if (laneResult.status === 'fulfilled') {
-        setModelLaneSummary(laneResult.value);
-      }
-
-      const issues: string[] = [];
-      if (healthResult.status === 'rejected') {
-        issues.push(describeError(healthResult.reason, 'System status refresh failed.'));
-      }
-      if (laneResult.status === 'rejected') {
-        issues.push(describeError(laneResult.reason, 'Model routing summary refresh failed.'));
-      }
-
-      setNotice(issues.length ? issues[0] : null);
-      setLastUpdatedAt(new Date().toISOString());
-      return 10000;
-    } catch (error) {
-      console.error('Failed to refresh settings:', error);
-      setNotice(describeError(error, 'Settings refresh failed.'));
-      const retryAfterSeconds = (error as Partial<ApiError>)?.retryAfterSeconds;
-      return retryAfterSeconds ? retryAfterSeconds * 1000 : 15000;
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [describeError]);
-
-  useEffect(() => {
-    let active = true;
-    let timeoutId: number | null = null;
-
-    const scheduleNextPoll = (delayMs: number) => {
-      if (!active) {
-        return;
-      }
-      timeoutId = window.setTimeout(() => {
-        void poll();
-      }, delayMs);
-    };
-
-    const poll = async () => {
-      const delayMs = await fetchHealth();
-      scheduleNextPoll(delayMs);
-    };
-
-    void poll();
-
-    return () => {
-      active = false;
-      if (timeoutId !== null) {
-        window.clearTimeout(timeoutId);
-      }
-    };
-  }, [fetchHealth]);
+  const notice = useMemo(() => {
+    return errors.health || errors.lanes || null;
+  }, [errors.health, errors.lanes]);
 
   const persistedUsage = modelLaneSummary?.runtime_usage.persisted;
   const inMemoryUsage = modelLaneSummary?.runtime_usage.memory;
@@ -134,7 +57,7 @@ export default function Settings() {
           <button
             type="button"
             onClick={() => {
-              void fetchHealth();
+              void refresh({ force: true, resources: ['health', 'lanes'] });
             }}
             className="inline-flex items-center gap-2 rounded-lg border border-gray-700 px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 transition-colors"
           >

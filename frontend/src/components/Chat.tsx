@@ -1,5 +1,6 @@
 import { AlertTriangle, ClipboardList, Loader2, Send, Sparkles, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { getCachedModelLaneSummary } from '../hooks/useRuntimeTelemetry';
 import { api, type ApiError } from '../lib/api';
 import { cn, formatCompactNumber, formatCompactUsd, formatRelativeTime } from '../lib/utils';
 import type {
@@ -350,7 +351,7 @@ export default function Chat() {
       }
 
       try {
-        const summary = await api.getModelLaneSummary();
+        const summary = await getCachedModelLaneSummary(1200);
         if (cancelled) {
           return;
         }
@@ -430,7 +431,7 @@ export default function Chat() {
       })
     );
 
-    void api.getModelLaneSummary()
+    void getCachedModelLaneSummary(1200)
       .then((summary) => {
         const tracker = activeStreamUsageRef.current;
         if (!tracker || tracker.messageId !== assistantMessageId) {
