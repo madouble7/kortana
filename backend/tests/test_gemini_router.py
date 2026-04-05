@@ -376,6 +376,7 @@ class TestChatWithGemini:
                     body = response.json()
                     assert body["tasks_queued"] == []
                     assert "i am kor'tana" in body["response"].lower()
+                    assert not body["response"].lower().startswith("kor'tana:")
                     assert "not microsoft's cortana" in body["response"].lower()
                     assert "oriented toward strengthen continuity of self" in body[
                         "response"
@@ -383,6 +384,30 @@ class TestChatWithGemini:
                     assert "steady posture" in body["response"].lower()
                     assert "unresolved threads" in body["response"].lower()
                     mock_engine.assert_not_called()
+
+    def test_chat_name_mention_does_not_trigger_identity_short_circuit(self, client):
+        """Messages that merely mention Kor'tana should still go through the normal model path."""
+        engine = _make_consensus_engine("i'll answer naturally now.")
+
+        with patch(
+            "src.kortana.routers.gemini._build_live_context",
+            AsyncMock(return_value=""),
+        ):
+            with patch("src.kortana.routers.gemini._persist_messages", AsyncMock()):
+                with patch(
+                    "src.kortana.routers.gemini.get_consensus_engine",
+                    return_value=engine,
+                ):
+                    response = client.post(
+                        "/api/gemini/chat",
+                        json={
+                            "message": "you don't have to begin every response with 'kor'tana:' anymore"
+                        },
+                    )
+
+        assert response.status_code == 200
+        assert response.json()["response"] == "i'll answer naturally now."
+        engine.query.assert_awaited_once()
 
     def test_chat_explicit_microsoft_cortana_query_uses_model_path(self, client):
         """Explicit external Cortana queries should still use the normal model path."""
