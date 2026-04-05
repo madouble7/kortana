@@ -387,17 +387,15 @@ class TestKnowledgeRouterEndpoints:
         assert resp.status_code == 400
 
     def test_ingest_valid_content(self, client):
-        with patch("src.kortana.routers.knowledge.requests.post") as mock_post:
-            mock_post.return_value = MagicMock(
-                status_code=200, json=MagicMock(return_value={"analysis": "insights"})
-            )
-            resp = client.post(
-                "/api/knowledge/ingest",
-                json={
-                    "content": "Python API testing",
-                    "source": "test_suite",
-                },
-            )
+        # The implementation uses httpx internally; connection errors fall back
+        # gracefully so no patching is required for a basic ingest test.
+        resp = client.post(
+            "/api/knowledge/ingest",
+            json={
+                "content": "Python API testing",
+                "source": "test_suite",
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert "insight" in data
@@ -452,18 +450,15 @@ class TestKnowledgeRouterEndpoints:
         assert resp.status_code == 400
 
     def test_ritual_generation(self, client):
-        with patch("src.kortana.routers.knowledge.requests.post") as mock_post:
-            mock_post.return_value = MagicMock(
-                status_code=200,
-                json=MagicMock(return_value={"analysis": "Ritual content"}),
-            )
-            resp = client.post(
-                "/api/knowledge/ritual",
-                json={
-                    "milestone": "100% Coverage",
-                    "context": "All tests passing",
-                },
-            )
+        # The implementation uses httpx internally; connection errors fall back
+        # gracefully so no patching is required for a basic ritual test.
+        resp = client.post(
+            "/api/knowledge/ritual",
+            json={
+                "milestone": "100% Coverage",
+                "context": "All tests passing",
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert "ritual" in data

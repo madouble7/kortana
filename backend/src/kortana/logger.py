@@ -6,23 +6,35 @@ Provides JSON-formatted logging with context tracking
 import logging
 import sys
 import json
+from contextvars import ContextVar
 from datetime import datetime
 from typing import Any
 
+# Per-async-task request ID — set by RequestIDMiddleware, read by ContextFilter.
+# Using a ContextVar means each concurrent request gets its own isolated value.
+_request_id_var: ContextVar[str] = ContextVar("request_id", default="N/A")
+
+
+def set_request_id(request_id: str) -> None:
+    """Set the request ID for the current async task/context."""
+    _request_id_var.set(request_id)
+
+
+def get_request_id() -> str:
+    """Return the request ID bound to the current async task/context."""
+    return _request_id_var.get()
+
 
 class ContextFilter(logging.Filter):
-    """Filter to add contextual information to log records"""
+    """Filter to add contextual information to log records.
 
-    def __init__(self) -> None:
-        super().__init__()
-        self.request_id: str | None = None
+    Reads the request ID from a ContextVar so that concurrent async
+    requests never share or overwrite each other's trace context.
+    """
 
     def filter(self, record: logging.LogRecord) -> bool:
         """Add context to log record"""
-        if self.request_id:
-            record.request_id = self.request_id
-        else:
-            record.request_id = "N/A"
+        record.request_id = _request_id_var.get()
         record.timestamp = datetime.utcnow().isoformat()
         return True
 

@@ -534,6 +534,115 @@ def test_provider_health_surfaces_last_github_error(monkeypatch) -> None:
     GitHubAutonomyService._provider_last_error.clear()
 
 
+def test_fetch_and_queue_issues_sync_retries_transient_github_failures(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("GITHUB_TOKEN", "test-token")
+    GitHubAutonomyService._provider_backoff_until.clear()
+    GitHubAutonomyService._provider_last_error.clear()
+
+    service = GitHubAutonomyService(db_session=MagicMock())
+    request = httpx.Request(
+        "GET", "https://api.github.com/repos/test/repo/issues?state=open&per_page=50"
+    )
+    response = MagicMock()
+    response.raise_for_status.return_value = None
+    response.json.return_value = []
+
+    request_mock = MagicMock(
+        side_effect=[httpx.ConnectError("boom", request=request), response]
+    )
+    monkeypatch.setattr(
+        "src.kortana.services.github_autonomy_service.httpx.request",
+        request_mock,
+    )
+
+    sleep_calls: list[float] = []
+    monkeypatch.setattr(
+        "src.kortana.services.github_autonomy_service.time.sleep",
+        lambda seconds: sleep_calls.append(seconds),
+    )
+
+    service.retry_engine = MagicMock()
+    service.retry_engine.should_retry.side_effect = [True]
+    service.retry_engine.get_retry_delay.return_value = 0
+    service.retry_engine.record_retry = MagicMock()
+
+    tasks = service.fetch_and_queue_issues_sync("test/repo")
+
+    assert tasks == []
+    assert request_mock.call_count == 2
+    assert sleep_calls == [0]
+    service.retry_engine.record_retry.assert_called_once()
+    GitHubAutonomyService._provider_backoff_until.clear()
+    GitHubAutonomyService._provider_last_error.clear()
+
+
+def test_fetch_and_queue_issues_sync_respects_github_backoff(monkeypatch) -> None:
+    monkeypatch.setenv("GITHUB_TOKEN", "test-token")
+    GitHubAutonomyService._provider_backoff_until["github"] = datetime.utcnow() + timedelta(
+        seconds=30
+    )
+
+    service = GitHubAutonomyService(db_session=MagicMock())
+    request_mock = MagicMock()
+    monkeypatch.setattr(
+        "src.kortana.services.github_autonomy_service.httpx.request",
+        request_mock,
+    )
+
+    tasks = service.fetch_and_queue_issues_sync("test/repo")
+
+    assert tasks == []
+    request_mock.assert_not_called()
+    GitHubAutonomyService._provider_backoff_until.clear()
+    GitHubAutonomyService._provider_last_error.clear()
+
+
+def test_fetch_and_queue_issues_sync_sets_github_backoff_on_rate_limit(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("GITHUB_TOKEN", "test-token")
+    GitHubAutonomyService._provider_backoff_until.clear()
+    GitHubAutonomyService._provider_last_error.clear()
+
+    service = GitHubAutonomyService(db_session=MagicMock())
+    reset_at = int((datetime.utcnow() + timedelta(seconds=60)).timestamp())
+    request = httpx.Request(
+        "GET", "https://api.github.com/repos/test/repo/issues?state=open&per_page=50"
+    )
+    response = httpx.Response(
+        403,
+        request=request,
+        json={"message": "API rate limit exceeded"},
+        headers={
+            "x-ratelimit-remaining": "0",
+            "x-ratelimit-reset": str(reset_at),
+        },
+    )
+    failing_response = MagicMock()
+    failing_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+        "403 Client Error", request=request, response=response
+    )
+
+    monkeypatch.setattr(
+        "src.kortana.services.github_autonomy_service.httpx.request",
+        MagicMock(return_value=failing_response),
+    )
+
+    service.retry_engine = MagicMock()
+    service.retry_engine.record_retry = MagicMock()
+
+    tasks = service.fetch_and_queue_issues_sync("test/repo")
+
+    assert tasks == []
+    assert GitHubAutonomyService.get_provider_health()["github"].startswith(
+        "backoff_until:"
+    )
+    GitHubAutonomyService._provider_backoff_until.clear()
+    GitHubAutonomyService._provider_last_error.clear()
+
+
 # ---------------------------------------------------------------------------
 # PatchValidator gateway tests
 # ---------------------------------------------------------------------------

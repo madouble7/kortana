@@ -154,10 +154,15 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
                         body = cache_entry["body"].encode()
                         headers = cache_entry["headers"]
 
-                        # Add cache headers
-                        headers[
-                            "cache-control"
-                        ] = f"max-age={self.strategy.ttl}, stale-while-revalidate=60"
+                        # Preserve auth-scope on cached responses.
+                        cache_scope = (
+                            "private"
+                            if request.headers.get("authorization")
+                            else "public"
+                        )
+                        headers["cache-control"] = (
+                            f"max-age={self.strategy.ttl}, {cache_scope}, stale-while-revalidate=60"
+                        )
                         headers["x-cache"] = "HIT"
                         headers["age"] = str(int(time.time() - cache_entry["time"]))
 
@@ -210,10 +215,17 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
                         self.stats["errors"] += 1
                         track_cache_error("response_cache_write")
 
-                    # Add cache headers to response
-                    response.headers[
-                        "cache-control"
-                    ] = f"max-age={self.strategy.ttl}, public"
+                    # Use "private" when the response was produced for an
+                    # authenticated user so CDNs / shared proxies never serve
+                    # one user's data to another.
+                    cache_scope = (
+                        "private"
+                        if request.headers.get("authorization")
+                        else "public"
+                    )
+                    response.headers["cache-control"] = (
+                        f"max-age={self.strategy.ttl}, {cache_scope}"
+                    )
                     response.headers["x-cache"] = "MISS"
 
                     # Return response with body
