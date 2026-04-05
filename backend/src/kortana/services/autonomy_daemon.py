@@ -584,7 +584,7 @@ class AutonomyDaemon:
                     (idx + offset) % len(self._PERPETUAL_TASK_CATALOGUE)
                 ]
 
-                # Skip if a task with same title has ever been attempted
+                # Skip if a task with same title is active (not failed/cancelled)
                 dup_res = await session.execute(
                     select(func.count())
                     .select_from(GitHubTask)
@@ -600,7 +600,6 @@ class AutonomyDaemon:
                                 "executing",
                                 "executed",
                                 "blocked",
-                                "failed",
                             ]
                         ),
                     )
