@@ -1,6 +1,8 @@
 import json
+from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
+import httpx
 import pytest
 from src.kortana.models import GitHubTask
 from src.kortana.services.github_autonomy_service import GitHubAutonomyService
@@ -420,6 +422,116 @@ async def test_fetch_and_queue_issues_skips_when_github_mode_deferred(
 
     assert tasks == []
     service.http_client.get.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_fetch_and_queue_issues_retries_transient_github_failures(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("GITHUB_TOKEN", "test-token")
+    service = GitHubAutonomyService(db_session=MagicMock())
+
+    request = httpx.Request(
+        "GET", "https://api.github.com/repos/test/repo/issues?state=open&per_page=50"
+    )
+    response = MagicMock()
+    response.json.return_value = []
+
+    service.retry_engine = MagicMock()
+    service.retry_engine.should_retry.side_effect = [True]
+    service.retry_engine.get_retry_delay.return_value = 0
+    service.retry_engine.record_retry = MagicMock()
+    service.http_client.get = AsyncMock(
+        side_effect=[httpx.ConnectError("boom", request=request), response]
+    )
+
+    sleep_mock = AsyncMock()
+    monkeypatch.setattr(
+        "src.kortana.services.github_autonomy_service.asyncio.sleep",
+        sleep_mock,
+    )
+
+    tasks = await service.fetch_and_queue_issues("test/repo")
+
+    assert tasks == []
+    assert service.http_client.get.await_count == 2
+    sleep_mock.assert_awaited_once_with(0)
+    service.retry_engine.record_retry.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_fetch_and_queue_issues_sets_github_backoff_on_rate_limit(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("GITHUB_TOKEN", "test-token")
+    GitHubAutonomyService._provider_backoff_until.clear()
+    GitHubAutonomyService._provider_last_error.clear()
+
+    service = GitHubAutonomyService(db_session=MagicMock())
+    reset_at = int((datetime.utcnow() + timedelta(seconds=60)).timestamp())
+    request = httpx.Request(
+        "GET", "https://api.github.com/repos/test/repo/issues?state=open&per_page=50"
+    )
+    response = httpx.Response(
+        403,
+        request=request,
+        json={"message": "API rate limit exceeded"},
+        headers={
+            "x-ratelimit-remaining": "0",
+            "x-ratelimit-reset": str(reset_at),
+        },
+    )
+
+    service.retry_engine = MagicMock()
+    service.retry_engine.record_retry = MagicMock()
+    service.http_client.get = AsyncMock(
+        side_effect=httpx.HTTPStatusError(
+            "403 Client Error", request=request, response=response
+        )
+    )
+
+    tasks = await service.fetch_and_queue_issues("test/repo")
+
+    assert tasks == []
+    assert GitHubAutonomyService.get_provider_health()["github"].startswith(
+        "backoff_until:"
+    )
+    GitHubAutonomyService._provider_backoff_until.clear()
+    GitHubAutonomyService._provider_last_error.clear()
+
+
+@pytest.mark.asyncio
+async def test_fetch_issue_comments_skips_during_github_backoff(monkeypatch) -> None:
+    monkeypatch.setenv("GITHUB_TOKEN", "test-token")
+    GitHubAutonomyService._provider_backoff_until["github"] = datetime.utcnow() + timedelta(
+        seconds=30
+    )
+
+    service = GitHubAutonomyService(db_session=MagicMock())
+    service.http_client.get = AsyncMock()
+    task = GitHubTask(github_issue_number=1, github_repo="owner/repo")
+
+    comments = await service.fetch_issue_comments(task)
+
+    assert comments == []
+    service.http_client.get.assert_not_awaited()
+    GitHubAutonomyService._provider_backoff_until.clear()
+    GitHubAutonomyService._provider_last_error.clear()
+
+
+def test_provider_health_surfaces_last_github_error(monkeypatch) -> None:
+    monkeypatch.setenv("GITHUB_TOKEN", "test-token")
+    GitHubAutonomyService._provider_backoff_until.clear()
+    GitHubAutonomyService._provider_last_error.clear()
+
+    GitHubAutonomyService._provider_last_error["github"] = "network timeout"
+
+    health = GitHubAutonomyService.get_provider_health()
+
+    assert health["github"] == "error:network timeout"
+    assert health["gemini"] == "ok"
+    GitHubAutonomyService._provider_backoff_until.clear()
+    GitHubAutonomyService._provider_last_error.clear()
 
 
 # ---------------------------------------------------------------------------

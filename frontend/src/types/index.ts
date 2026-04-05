@@ -238,6 +238,18 @@ export interface DaemonCycle {
     succeeded?: number;
     processed?: number;
     system_state?: string;
+    task_events?: Array<{
+      type: string;
+      timestamp: string;
+      data: {
+        task_id?: string;
+        title?: string;
+        reason?: string;
+        error?: string;
+        status?: string;
+        [key: string]: unknown;
+      };
+    }>;
     [key: string]: unknown;
   } | null;
 }
@@ -246,6 +258,7 @@ export interface DaemonStatus {
   deployment_mode: 'embedded' | 'external';
   control_available: boolean;
   message: string;
+  provider_health?: Record<string, string>;
   local_process?: { running: boolean; enabled: boolean };
   external_daemon?: {
     alive: boolean;
@@ -257,6 +270,7 @@ export interface DaemonStatus {
     stale_after_seconds: number;
     tasks_processed?: number;
     errors_encountered?: number;
+    provider_health?: Record<string, string>;
   };
 }
 

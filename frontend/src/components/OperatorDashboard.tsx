@@ -14,6 +14,8 @@ import { api } from '../lib/api';
 import { cn } from '../lib/utils';
 import type { DaemonCycle, DaemonStatus, ModelLaneSummary } from '../types';
 
+type CycleTaskEvent = NonNullable<NonNullable<DaemonCycle['metrics']>['task_events']>[number];
+
 // ─── sub-components ──────────────────────────────────────────────────────────
 
 function StatusDot({ alive }: { alive: boolean | undefined }) {
@@ -176,6 +178,97 @@ function ProviderRow({
     );
 }
 
+function providerHealthTone(status: string | undefined) {
+    if (!status || status === 'unknown') {
+        return {
+            label: status ?? 'unknown',
+            className: 'bg-gray-800 text-gray-300',
+        };
+    }
+    if (status === 'ok') {
+        return {
+            label: 'ok',
+            className: 'bg-green-900/60 text-green-300',
+        };
+    }
+    if (status.startsWith('backoff_until:')) {
+        return {
+            label: 'backoff',
+            className: 'bg-yellow-900/60 text-yellow-300',
+        };
+    }
+    return {
+        label: 'error',
+        className: 'bg-red-900/60 text-red-300',
+    };
+}
+
+function ProviderHealthRow({ name, status }: { name: string; status: string }) {
+    const tone = providerHealthTone(status);
+
+    return (
+        <tr className="border-t border-gray-800 text-sm">
+            <td className="py-2 px-3 text-gray-200 font-medium">{name}</td>
+            <td className="py-2 px-3">
+                <span className={cn('text-xs px-1.5 py-0.5 rounded', tone.className)}>
+                    {tone.label}
+                </span>
+            </td>
+            <td className="py-2 px-3 text-gray-400 text-xs">
+                {status === 'ok' ? 'ready' : status}
+            </td>
+        </tr>
+    );
+}
+
+function formatEventReason(reason: unknown) {
+    if (typeof reason !== 'string' || reason.trim() === '') {
+        return 'unspecified';
+    }
+    return reason.replace(/_/g, ' ');
+}
+
+function SafeBlockRow({
+    cycle,
+    event,
+}: {
+    cycle: DaemonCycle;
+    event: CycleTaskEvent;
+}) {
+    const title =
+        typeof event.data?.title === 'string' && event.data.title.trim() !== ''
+            ? event.data.title
+            : typeof event.data?.task_id === 'string' && event.data.task_id.trim() !== ''
+              ? event.data.task_id
+              : 'Untitled task';
+    const reason = formatEventReason(event.data?.reason ?? event.data?.status ?? event.data?.error);
+    const cycleLabel = cycle.cycle_id?.replace('cycle_', '') ?? '—';
+    const tone =
+        event.type === 'task_blocked'
+            ? 'bg-red-950/40 text-red-300 border-red-800/60'
+            : 'bg-yellow-950/40 text-yellow-200 border-yellow-800/60';
+
+    return (
+        <tr className="border-t border-gray-800 text-sm">
+            <td className="py-2 px-3 text-gray-300">
+                {event.timestamp ? new Date(event.timestamp).toLocaleTimeString() : '—'}
+            </td>
+            <td className="py-2 px-3 text-gray-200 font-medium max-w-[280px] truncate" title={title}>
+                {title}
+            </td>
+            <td className="py-2 px-3 text-gray-400 max-w-[280px] truncate" title={reason}>
+                {reason}
+            </td>
+            <td className="py-2 px-3 text-gray-400 font-mono text-xs">{cycleLabel}</td>
+            <td className="py-2 px-3">
+                <span className={cn('text-[11px] px-2 py-0.5 rounded border', tone)}>
+                    {event.type === 'task_blocked' ? 'blocked' : 'deferred'}
+                </span>
+            </td>
+        </tr>
+    );
+}
+
 // ─── main component ───────────────────────────────────────────────────────────
 
 export default function OperatorDashboard() {
@@ -215,12 +308,30 @@ export default function OperatorDashboard() {
         (s, c) => s + (typeof c.metrics?.deferred === 'number' ? c.metrics.deferred : 0),
         0,
     );
+    const safeBlockEvents = cycles
+        .flatMap((cycle) =>
+            (cycle.metrics?.task_events ?? []).map((event) => ({
+                cycle,
+                event,
+            })),
+        )
+        .filter(({ event }) => event.type === 'task_deferred' || event.type === 'task_blocked')
+        .slice(0, 8);
     const latestCycleSecs = ext?.seconds_since_last_cycle;
+    const providerHealth = daemon?.provider_health ?? ext?.provider_health ?? {};
+    const providerHealthEntries = Object.entries(providerHealth);
+    const providersInBackoff = providerHealthEntries.filter(([, status]) =>
+        status.startsWith('backoff_until:'),
+    ).length;
+    const providerIssues = providerHealthEntries.filter(([, status]) =>
+        status !== 'ok' && status !== 'unknown',
+    ).length;
 
     // Model lane info
     const activeLane = lanes?.active_lane ?? '—';
     const totalGens = lanes?.runtime_usage?.total_generations ?? 0;
     const providers = lanes?.cost_router?.cost?.providers ?? {};
+    const retrySummary = lanes?.adaptive_retry;
 
     return (
         <div className="flex flex-col h-full bg-gray-950 overflow-y-auto">
@@ -307,12 +418,71 @@ export default function OperatorDashboard() {
                     </div>
                 </section>
 
+                <section>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
+                        Autonomy Providers
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                        <MetricCard
+                            icon={Activity}
+                            label="Providers Seen"
+                            value={providerHealthEntries.length || '—'}
+                            sub="daemon health snapshot"
+                            accent="blue"
+                        />
+                        <MetricCard
+                            icon={AlertTriangle}
+                            label="Cooling Down"
+                            value={providersInBackoff}
+                            sub={providersInBackoff === 0 ? 'no active backoff' : 'provider backoff active'}
+                            accent={providersInBackoff === 0 ? 'green' : 'yellow'}
+                        />
+                        <MetricCard
+                            icon={RefreshCw}
+                            label="Retry Events"
+                            value={retrySummary?.total_events ?? 0}
+                            sub={
+                                retrySummary
+                                    ? `${retrySummary.scheduled_retries} scheduled / ${retrySummary.skipped_retries} skipped`
+                                    : 'shared retry engine'
+                            }
+                            accent="purple"
+                        />
+                        <MetricCard
+                            icon={XCircle}
+                            label="Provider Issues"
+                            value={providerIssues}
+                            sub={providerIssues === 0 ? 'healthy' : 'needs attention'}
+                            accent={providerIssues === 0 ? 'green' : 'red'}
+                        />
+                    </div>
+
+                    {providerHealthEntries.length > 0 && (
+                        <div className="rounded-xl border border-gray-800 bg-gray-900/40 overflow-hidden">
+                            <table className="w-full">
+                                <thead>
+                                    <tr className="text-xs text-gray-500 uppercase tracking-wide">
+                                        <th className="text-left py-2 px-3">Provider</th>
+                                        <th className="text-left py-2 px-3">State</th>
+                                        <th className="text-left py-2 px-3">Detail</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {providerHealthEntries.map(([name, status]) => (
+                                        <ProviderHealthRow key={name} name={name} status={status} />
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </section>
+
                 {/* ── Model Lane ── */}
                 <section>
                     <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
                         AI Model / Lane
                     </h3>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                         <MetricCard
                             icon={Zap}
                             label="Active Lane"
@@ -335,6 +505,17 @@ export default function OperatorDashboard() {
                                 : '—'}
                             sub="estimated"
                             accent="green"
+                        />
+                        <MetricCard
+                            icon={Clock}
+                            label="Last Retry"
+                            value={
+                                retrySummary?.last_recorded_at
+                                    ? new Date(retrySummary.last_recorded_at).toLocaleTimeString()
+                                    : '—'
+                            }
+                            sub="shared retry telemetry"
+                            accent="yellow"
                         />
                     </div>
 
@@ -390,6 +571,40 @@ export default function OperatorDashboard() {
                                 <tbody>
                                     {cycles.map((cycle, i) => (
                                         <CycleRow key={cycle.cycle_id} cycle={cycle} index={i} />
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </section>
+
+                <section>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
+                        Recent Safe Blocks
+                    </h3>
+                    {safeBlockEvents.length === 0 ? (
+                        <div className="rounded-xl border border-gray-800 bg-gray-900/40 px-4 py-6 text-sm text-gray-500">
+                            No recent guardrail deferrals or blocks recorded in the last {cycles.length} cycles.
+                        </div>
+                    ) : (
+                        <div className="rounded-xl border border-gray-800 bg-gray-900/40 overflow-hidden">
+                            <table className="w-full">
+                                <thead>
+                                    <tr className="text-xs text-gray-500 uppercase tracking-wide">
+                                        <th className="text-left py-2 px-3">When</th>
+                                        <th className="text-left py-2 px-3">Task</th>
+                                        <th className="text-left py-2 px-3">Reason</th>
+                                        <th className="text-left py-2 px-3">Cycle</th>
+                                        <th className="text-left py-2 px-3">Type</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {safeBlockEvents.map(({ cycle, event }, index) => (
+                                        <SafeBlockRow
+                                            key={`${cycle.cycle_id}-${event.timestamp}-${index}`}
+                                            cycle={cycle}
+                                            event={event}
+                                        />
                                     ))}
                                 </tbody>
                             </table>
