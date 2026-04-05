@@ -4,6 +4,7 @@ Gives kor'tana eyes, hands, and memory on the local machine.
 """
 
 import asyncio
+import functools
 import json
 import os
 import platform
@@ -30,6 +31,14 @@ KORTANA_BACKEND = os.getenv("KORTANA_BACKEND_URL", "http://localhost:8000")
 def _safe_path(p: str) -> Path:
     """Expand env vars and ~ but keep it absolute."""
     return Path(os.path.expandvars(os.path.expanduser(p))).resolve()
+
+
+async def _run_proc(*args, **kwargs) -> subprocess.CompletedProcess:
+    """Run subprocess.run in a thread pool so the asyncio event loop stays free."""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(
+        None, functools.partial(subprocess.run, *args, **kwargs)
+    )
 
 
 def _truncate(text: str, limit: int = 32_000) -> str:
@@ -450,7 +459,7 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
         timeout = arguments.get("timeout", 60)
 
         try:
-            result = subprocess.run(
+            result = await _run_proc(
                 ["powershell", "-NoProfile", "-NonInteractive", "-Command", cmd],
                 cwd=cwd,
                 capture_output=True,
@@ -710,7 +719,7 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
             "checkout": f"git checkout {extra}",
         }
         cmd = git_cmds.get(operation, f"git {operation} {extra}")
-        result = subprocess.run(
+        result = await _run_proc(
             cmd, shell=True, cwd=repo, capture_output=True, text=True, timeout=30
         )
         return [
@@ -743,7 +752,7 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
         else:
             cmd = f'Get-ChildItem -Path "{search_path}" -Recurse -Filter "{file_glob}" | Select-String {case_flag} "{pattern}"'
 
-        result = subprocess.run(
+        result = await _run_proc(
             ["powershell", "-NoProfile", "-Command", cmd] if not rg else cmd,
             shell=bool(rg),
             capture_output=True,
@@ -772,7 +781,7 @@ $bmp.Save('{out_path}')
 $g.Dispose(); $bmp.Dispose()
 Write-Host "saved"
 """
-        result = subprocess.run(
+        result = await _run_proc(
             ["powershell", "-NoProfile", "-Command", ps_script],
             capture_output=True,
             text=True,
@@ -790,7 +799,7 @@ Write-Host "saved"
 
     # ── get_clipboard ──────────────────────────────────────────────────────────
     if name == "get_clipboard":
-        result = subprocess.run(
+        result = await _run_proc(
             ["powershell", "-NoProfile", "-Command", "Get-Clipboard"],
             capture_output=True,
             text=True,
@@ -805,7 +814,7 @@ Write-Host "saved"
     # ── set_clipboard ──────────────────────────────────────────────────────────
     if name == "set_clipboard":
         text = arguments["text"].replace("'", "''")
-        subprocess.run(
+        await _run_proc(
             ["powershell", "-NoProfile", "-Command", f"Set-Clipboard '{text}'"],
             capture_output=True,
             timeout=5,
@@ -857,7 +866,7 @@ $synth.Rate = {max(-10, min(10, (rate - 175) // 25))}
 $synth.SelectVoiceByHints([System.Speech.Synthesis.VoiceGender]::Female)
 $synth.Speak('{text}')
 """
-        result = subprocess.run(
+        result = await _run_proc(
             ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
             capture_output=True,
             text=True,
@@ -885,7 +894,7 @@ $xml.LoadXml(\"<toast><visual><binding template='ToastGeneric'><text>{title}</te
 $toast = New-Object Windows.UI.Notifications.ToastNotification $xml
 [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier(\"kor'tana\").Show($toast)
 """
-        result = subprocess.run(
+        result = await _run_proc(
             ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
             capture_output=True,
             text=True,
@@ -931,9 +940,17 @@ $toast = New-Object Windows.UI.Notifications.ToastNotification $xml
             async with httpx.AsyncClient(timeout=10.0) as client:
                 r = await client.post(
                     f"{KORTANA_BACKEND}/api/consciousness/memory/store",
-                    json={"content": content, "memory_type": memory_type, "agent_id": "kortana-mcp"},
+                    json={
+                        "content": content,
+                        "memory_type": memory_type,
+                        "agent_id": "kortana-mcp",
+                    },
                 )
-            data = r.json() if r.status_code == 200 else {"error": r.text[:200], "status_code": r.status_code}
+            data = (
+                r.json()
+                if r.status_code == 200
+                else {"error": r.text[:200], "status_code": r.status_code}
+            )
         except Exception as e:
             data = {"error": str(e)}
         return [types.TextContent(type="text", text=json.dumps(data, indent=2))]
@@ -948,7 +965,11 @@ $toast = New-Object Windows.UI.Notifications.ToastNotification $xml
                     f"{KORTANA_BACKEND}/api/consciousness/memory/search",
                     params={"q": query, "limit": limit},
                 )
-            data = r.json() if r.status_code == 200 else {"error": r.text[:200], "status_code": r.status_code}
+            data = (
+                r.json()
+                if r.status_code == 200
+                else {"error": r.text[:200], "status_code": r.status_code}
+            )
         except Exception as e:
             data = {"error": str(e)}
         return [types.TextContent(type="text", text=json.dumps(data, indent=2))]
@@ -963,7 +984,11 @@ $toast = New-Object Windows.UI.Notifications.ToastNotification $xml
                     f"{KORTANA_BACKEND}/api/gemini/chat/history",
                     params={"session_id": session_id, "limit": limit},
                 )
-            data = r.json() if r.status_code == 200 else {"error": r.text[:200], "status_code": r.status_code}
+            data = (
+                r.json()
+                if r.status_code == 200
+                else {"error": r.text[:200], "status_code": r.status_code}
+            )
         except Exception as e:
             data = {"error": str(e)}
         return [types.TextContent(type="text", text=json.dumps(data, indent=2))]
