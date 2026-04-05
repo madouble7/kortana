@@ -472,6 +472,8 @@ def _build_assistant_turn_metadata(
     response_id: str | None = None,
     stateful: bool = False,
     used_previous_response_id: bool = False,
+    input_tokens: int | None = None,
+    output_tokens: int | None = None,
 ) -> dict[str, Any]:
     metadata: dict[str, Any] = {
         "provider": provider,
@@ -484,6 +486,10 @@ def _build_assistant_turn_metadata(
         metadata["lane"] = lane
     if response_id:
         metadata["response_id"] = response_id
+    if isinstance(input_tokens, int | float):
+        metadata["input_tokens"] = int(input_tokens)
+    if isinstance(output_tokens, int | float):
+        metadata["output_tokens"] = int(output_tokens)
     return metadata
 
 
@@ -760,6 +766,8 @@ async def chat_with_gemini(payload: dict[str, Any]) -> dict[str, Any]:
                 response_id=openai_result.response_id,
                 stateful=True,
                 used_previous_response_id=openai_result.used_previous_response_id,
+                input_tokens=openai_result.input_tokens,
+                output_tokens=openai_result.output_tokens,
             )
             await _persist_messages(
                 session_id,
@@ -952,6 +960,8 @@ async def stream_chat_with_gemini(payload: dict[str, Any]) -> StreamingResponse:
                             response_id=openai_result.response_id,
                             stateful=True,
                             used_previous_response_id=openai_result.used_previous_response_id,
+                            input_tokens=openai_result.input_tokens,
+                            output_tokens=openai_result.output_tokens,
                         )
                         await _persist_messages(
                             session_id,

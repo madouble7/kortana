@@ -467,6 +467,8 @@ class CostOptimizedModelRouter:
                 "model": self.configs[provider].model_name,
                 "lane": self.configs[provider].lane,
                 "is_free_tier": self.configs[provider].is_free_tier,
+                "input_cost_per_1k": self.configs[provider].cost_per_1k_input,
+                "output_cost_per_1k": self.configs[provider].cost_per_1k_output,
                 "daily": self.cost_tracking.get(
                     provider,
                     CostEstimate(provider=provider, task_type=TaskType.ANALYSIS),

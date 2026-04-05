@@ -74,6 +74,8 @@ def test_cost_report_includes_model_metadata(monkeypatch) -> None:
     assert report["model_usage_lane"] == "core"
     assert report["providers"]["openai"]["model"] == "gpt-5.4-nano"
     assert report["providers"]["openai"]["lane"] == "core"
+    assert report["providers"]["openai"]["input_cost_per_1k"] == 0.0002
+    assert report["providers"]["openai"]["output_cost_per_1k"] == 0.00125
     assert report["totals"]["requests"] == 0
     assert report["providers"]["openai"]["total_tokens"] == 0
 

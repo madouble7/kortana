@@ -31,6 +31,8 @@ interface ChatSendResponse {
   response_id?: string;
   stateful?: boolean;
   used_previous_response_id?: boolean;
+  input_tokens?: number;
+  output_tokens?: number;
   tasks_queued?: QueuedTaskSummary[];
 }
 
@@ -58,6 +60,8 @@ interface ChatHistoryResponse {
     response_id?: string;
     stateful?: boolean;
     used_previous_response_id?: boolean;
+    input_tokens?: number;
+    output_tokens?: number;
   }>;
 }
 
@@ -196,6 +200,8 @@ const normalizeChatSendResponse = (value: unknown): ChatSendResponse => {
     response_id: normalizeString(data.response_id),
     stateful: normalizeBoolean(data.stateful),
     used_previous_response_id: normalizeBoolean(data.used_previous_response_id),
+    input_tokens: typeof data.input_tokens === 'number' ? data.input_tokens : undefined,
+    output_tokens: typeof data.output_tokens === 'number' ? data.output_tokens : undefined,
     tasks_queued: normalizeQueuedTasks(data.tasks_queued),
   };
 };

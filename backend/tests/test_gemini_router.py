@@ -519,6 +519,8 @@ class TestChatWithGemini:
                     return_value=MagicMock(
                         text="kor'tana: threaded openai reply",
                         phase="commentary",
+                        input_tokens=17,
+                        output_tokens=9,
                         response_id="resp_123",
                         used_previous_response_id=True,
                     )
@@ -545,6 +547,8 @@ class TestChatWithGemini:
         assert response.json()["phase"] == "commentary"
         assert response.json()["provider"] == "openai"
         assert response.json()["model"] == "gpt-5.4-mini"
+        assert response.json()["input_tokens"] == 17
+        assert response.json()["output_tokens"] == 9
         assert response.json()["response_id"] == "resp_123"
         assert response.json()["stateful"] is True
         assert response.json()["used_previous_response_id"] is True
@@ -598,6 +602,8 @@ class TestChatWithGemini:
                 "type": "completed",
                 "result": OpenAITextGenerationResult(
                     text="kor'tana: threaded stream reply",
+                    input_tokens=21,
+                    output_tokens=11,
                     response_id="resp_stream",
                     phase="final_answer",
                     used_previous_response_id=True,
@@ -634,6 +640,8 @@ class TestChatWithGemini:
         assert "event: delta" in response.text
         assert "event: final" in response.text
         assert "kor'tana: threaded stream reply" in response.text
+        assert "\"input_tokens\": 21" in response.text
+        assert "\"output_tokens\": 11" in response.text
         assert "\"response_id\": \"resp_stream\"" in response.text
 
     def test_chat_history_returns_assistant_phase(self, client):

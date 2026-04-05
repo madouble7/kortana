@@ -251,6 +251,10 @@ class AIConsensusEngine:
             text = await self._dispatch(name, prov, prompt, system, max_tokens)
             latency = time.monotonic() - t0
             self._record(name, success=True, latency=latency)
+            estimated_input_tokens = self._estimate_token_count(prompt)
+            if system:
+                estimated_input_tokens += self._estimate_token_count(system)
+            estimated_output_tokens = self._estimate_token_count(text)
             get_model_usage_telemetry().record_generation(
                 subsystem="ai_consensus",
                 provider=name,
@@ -258,6 +262,7 @@ class AIConsensusEngine:
                 catalog="ai_consensus_defaults",
                 selection=selection,
                 runtime_lane=self._model_usage_lane.value,
+                tokens_used=estimated_input_tokens + estimated_output_tokens,
             )
             return ProviderResponse(provider=name, text=text, latency=latency)
         except Exception as e:
@@ -319,6 +324,13 @@ class AIConsensusEngine:
             )
 
         raise ValueError(f"Unknown provider: {name}")
+
+    @staticmethod
+    def _estimate_token_count(text: str | None) -> int:
+        normalized = (text or "").strip()
+        if not normalized:
+            return 0
+        return max(1, round(len(normalized) / 4))
 
     def _record(self, name: str, *, success: bool, latency: float) -> None:
         s = self._stats[name]

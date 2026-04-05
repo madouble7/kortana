@@ -1,8 +1,14 @@
 import { AlertTriangle, ClipboardList, Loader2, Send, Sparkles, X } from 'lucide-react';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { api, type ApiError } from '../lib/api';
-import { cn, formatRelativeTime } from '../lib/utils';
-import type { ChatHistoryEntry, ChatPhase, Message } from '../types';
+import { cn, formatCompactNumber, formatCompactUsd, formatRelativeTime } from '../lib/utils';
+import type {
+  ChatHistoryEntry,
+  ChatPhase,
+  ChatUsageMetrics,
+  Message,
+  ModelLaneSummary,
+} from '../types';
 
 // Stable session ID persisted in localStorage so history survives page refreshes.
 function getSessionId(): string {
@@ -37,6 +43,118 @@ type ChatNoticeTone = 'info' | 'warning' | 'error';
 interface ChatNotice {
   message: string;
   tone: ChatNoticeTone;
+}
+
+interface ActiveStreamUsage {
+  messageId: string;
+  promptTokens: number;
+  provider?: string;
+  model?: string;
+  responseText: string;
+  baselineSummary: ModelLaneSummary | null;
+  latestSummary: ModelLaneSummary | null;
+  sessionCostBaseUsd: number;
+  sessionTokensBase: number;
+  actualInputTokens?: number;
+  actualOutputTokens?: number;
+}
+
+function estimateTokens(text: string): number {
+  const normalized = text.trim();
+  if (!normalized) {
+    return 0;
+  }
+  return Math.max(1, Math.round(normalized.length / 4));
+}
+
+function getProviderRates(
+  summary: ModelLaneSummary | null,
+  provider?: string
+): { inputCostPer1k: number; outputCostPer1k: number } | null {
+  if (!summary || !provider) {
+    return null;
+  }
+
+  const details = summary.cost_router?.cost?.providers?.[provider];
+  if (!details) {
+    return null;
+  }
+
+  return {
+    inputCostPer1k: details.input_cost_per_1k ?? 0,
+    outputCostPer1k: details.output_cost_per_1k ?? 0,
+  };
+}
+
+function getProviderTokenTotal(
+  usage: ModelLaneSummary['runtime_usage'] | undefined,
+  provider?: string
+): number {
+  if (!usage || !provider) {
+    return 0;
+  }
+  const memoryTokens = usage.memory?.by_provider_tokens?.[provider] ?? 0;
+  const persistedTokens = usage.persisted?.by_provider_tokens?.[provider] ?? 0;
+  return Math.max(memoryTokens, persistedTokens);
+}
+
+function getTelemetryTokenDelta(
+  baseline: ModelLaneSummary | null,
+  latest: ModelLaneSummary | null,
+  provider?: string
+): number {
+  if (!baseline || !latest || !provider) {
+    return 0;
+  }
+
+  const baselineTotal = getProviderTokenTotal(baseline.runtime_usage, provider);
+  const latestTotal = getProviderTokenTotal(latest.runtime_usage, provider);
+  return Math.max(0, latestTotal - baselineTotal);
+}
+
+function buildUsageMetrics(
+  tracker: ActiveStreamUsage,
+  options: {
+    live: boolean;
+    source: ChatUsageMetrics['source'];
+    telemetryTokens?: number;
+  }
+): ChatUsageMetrics {
+  const { live, source, telemetryTokens = 0 } = options;
+  const estimatedOutputTokens = estimateTokens(tracker.responseText);
+  const resolvedInputTokens = tracker.actualInputTokens ?? tracker.promptTokens;
+  const resolvedOutputTokens = tracker.actualOutputTokens ?? estimatedOutputTokens;
+  const resolvedTokens = Math.max(
+    resolvedInputTokens + resolvedOutputTokens,
+    telemetryTokens
+  );
+
+  const rates = getProviderRates(tracker.latestSummary, tracker.provider);
+  const inputTokensForCost = tracker.actualInputTokens ?? tracker.promptTokens;
+  const outputTokensForCost = tracker.actualOutputTokens ?? estimatedOutputTokens;
+  const costUsd = rates
+    ? (inputTokensForCost / 1000) * rates.inputCostPer1k
+      + (outputTokensForCost / 1000) * rates.outputCostPer1k
+    : 0;
+
+  return {
+    tokens: resolvedTokens,
+    inputTokens: tracker.actualInputTokens,
+    outputTokens: tracker.actualOutputTokens,
+    costUsd,
+    sessionCostUsd: tracker.sessionCostBaseUsd + costUsd,
+    live,
+    estimated: tracker.actualInputTokens === undefined || tracker.actualOutputTokens === undefined,
+    source,
+  };
+}
+
+function tokenLabel(usage: ChatUsageMetrics): string {
+  return `${usage.estimated ? '~' : ''}${formatCompactNumber(usage.tokens)} tok`;
+}
+
+function costLabel(usage: ChatUsageMetrics): string {
+  return `${usage.estimated ? '~' : ''}${formatCompactUsd(usage.costUsd)}`;
 }
 
 function toChatNotice(error: unknown, fallback: string): ChatNotice {
@@ -74,22 +192,27 @@ export default function Chat() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [sessionId] = useState(() => getSessionId());
   const [notice, setNotice] = useState<ChatNotice | null>(null);
+  const [sessionCostUsd, setSessionCostUsd] = useState(0);
+  const [sessionTokens, setSessionTokens] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const deltaBufferRef = useRef('');
   const deltaTargetRef = useRef<string | null>(null);
   const deltaFrameRef = useRef<number | null>(null);
+  const usageFrameRef = useRef<number | null>(null);
+  const usageTargetRef = useRef<{ messageId: string; usage: ChatUsageMetrics } | null>(null);
+  const activeStreamUsageRef = useRef<ActiveStreamUsage | null>(null);
   const retryPromptRef = useRef<string | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const updateMessage = (id: string, updater: (message: Message) => Message) => {
+  const updateMessage = useCallback((id: string, updater: (message: Message) => Message) => {
     setMessages((prev) => prev.map((message) => (
       message.id === id ? updater(message) : message
     )));
-  };
+  }, []);
 
   const flushDeltaBuffer = () => {
     const targetId = deltaTargetRef.current;
@@ -122,6 +245,52 @@ export default function Chat() {
     }
     flushDeltaBuffer();
   };
+
+  const flushUsageUpdate = useCallback(() => {
+    const pending = usageTargetRef.current;
+    usageFrameRef.current = null;
+    usageTargetRef.current = null;
+    if (!pending) {
+      return;
+    }
+
+    updateMessage(pending.messageId, (message) => ({
+      ...message,
+      usage: pending.usage,
+    }));
+  }, [updateMessage]);
+
+  const queueUsageUpdate = useCallback((messageId: string, usage: ChatUsageMetrics) => {
+    usageTargetRef.current = { messageId, usage };
+    if (usageFrameRef.current !== null) {
+      return;
+    }
+    usageFrameRef.current = window.requestAnimationFrame(flushUsageUpdate);
+  }, [flushUsageUpdate]);
+
+  const refreshActiveUsage = useCallback((
+    source: ChatUsageMetrics['source'],
+    { live = true }: { live?: boolean } = {}
+  ) => {
+    const tracker = activeStreamUsageRef.current;
+    if (!tracker) {
+      return;
+    }
+
+    const telemetryTokens = getTelemetryTokenDelta(
+      tracker.baselineSummary,
+      tracker.latestSummary,
+      tracker.provider
+    );
+    queueUsageUpdate(
+      tracker.messageId,
+      buildUsageMetrics(tracker, {
+        live,
+        source,
+        telemetryTokens,
+      })
+    );
+  }, [queueUsageUpdate]);
 
   // Load persisted history from DB on mount
   useEffect(() => {
@@ -159,9 +328,61 @@ export default function Chat() {
       if (deltaFrameRef.current !== null) {
         window.cancelAnimationFrame(deltaFrameRef.current);
       }
+      if (usageFrameRef.current !== null) {
+        window.cancelAnimationFrame(usageFrameRef.current);
+      }
       abortControllerRef.current?.abort();
     };
   }, []);
+
+  useEffect(() => {
+    if (!loading) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    let timeoutId: number | null = null;
+
+    const pollTelemetry = async () => {
+      const tracker = activeStreamUsageRef.current;
+      if (!tracker) {
+        return;
+      }
+
+      try {
+        const summary = await api.getModelLaneSummary();
+        if (cancelled) {
+          return;
+        }
+        const activeTracker = activeStreamUsageRef.current;
+        if (!activeTracker || activeTracker.messageId !== tracker.messageId) {
+          return;
+        }
+        activeTracker.latestSummary = summary;
+        if (!activeTracker.baselineSummary) {
+          activeTracker.baselineSummary = summary;
+        }
+        refreshActiveUsage('telemetry');
+      } catch {
+        // The live badge is additive telemetry. Keep the chat path resilient if this fails.
+      } finally {
+        if (!cancelled) {
+          timeoutId = window.setTimeout(() => {
+            void pollTelemetry();
+          }, 1200);
+        }
+      }
+    };
+
+    void pollTelemetry();
+
+    return () => {
+      cancelled = true;
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [loading, refreshActiveUsage]);
 
   const sendPrompt = async (promptText: string) => {
     if (!promptText.trim() || loading) return;
@@ -191,6 +412,38 @@ export default function Chat() {
 
     setMessages((prev) => [...prev, assistantPlaceholder]);
 
+    const promptTokens = estimateTokens(promptText);
+    activeStreamUsageRef.current = {
+      messageId: assistantMessageId,
+      promptTokens,
+      responseText: '',
+      baselineSummary: null,
+      latestSummary: null,
+      sessionCostBaseUsd: sessionCostUsd,
+      sessionTokensBase: sessionTokens,
+    };
+    queueUsageUpdate(
+      assistantMessageId,
+      buildUsageMetrics(activeStreamUsageRef.current, {
+        live: true,
+        source: 'local',
+      })
+    );
+
+    void api.getModelLaneSummary()
+      .then((summary) => {
+        const tracker = activeStreamUsageRef.current;
+        if (!tracker || tracker.messageId !== assistantMessageId) {
+          return;
+        }
+        tracker.baselineSummary = summary;
+        tracker.latestSummary = summary;
+        refreshActiveUsage('telemetry');
+      })
+      .catch(() => {
+        // Live counters can continue from local estimation if runtime telemetry is unavailable.
+      });
+
     try {
       const history = buildChatHistory(messages);
       const abortController = new AbortController();
@@ -202,6 +455,18 @@ export default function Chat() {
         sessionId,
         {
           onStart: (payload) => {
+            const tracker = activeStreamUsageRef.current;
+            if (tracker && tracker.messageId === assistantMessageId) {
+              tracker.provider = payload.provider;
+              tracker.model = payload.model;
+              if (typeof payload.input_tokens === 'number') {
+                tracker.actualInputTokens = payload.input_tokens;
+              }
+              if (typeof payload.output_tokens === 'number') {
+                tracker.actualOutputTokens = payload.output_tokens;
+              }
+              refreshActiveUsage('local');
+            }
             updateMessage(assistantMessageId, (message) => ({
               ...message,
               provider: payload.provider,
@@ -209,6 +474,8 @@ export default function Chat() {
               lane: payload.lane,
               stateful: payload.stateful,
               used_previous_response_id: payload.used_previous_response_id,
+              input_tokens: payload.input_tokens,
+              output_tokens: payload.output_tokens,
             }));
           },
           onPhase: (phase) => {
@@ -218,12 +485,48 @@ export default function Chat() {
             }));
           },
           onDelta: (delta) => {
+            const tracker = activeStreamUsageRef.current;
+            if (tracker && tracker.messageId === assistantMessageId) {
+              tracker.responseText += delta;
+              refreshActiveUsage('local');
+            }
             queueDelta(assistantMessageId, delta);
           },
           onFinal: (response) => {
             flushDeltaIfNeeded();
             if (response.conversation_id && !conversationId) {
               setConversationId(response.conversation_id);
+            }
+
+            const tracker = activeStreamUsageRef.current;
+            let finalUsage: ChatUsageMetrics | undefined;
+            if (tracker && tracker.messageId === assistantMessageId) {
+              tracker.provider = response.provider ?? tracker.provider;
+              tracker.model = response.model ?? tracker.model;
+              tracker.responseText = response.response || response.message || tracker.responseText;
+              if (typeof response.input_tokens === 'number') {
+                tracker.actualInputTokens = response.input_tokens;
+              }
+              if (typeof response.output_tokens === 'number') {
+                tracker.actualOutputTokens = response.output_tokens;
+              }
+              const telemetryTokens = getTelemetryTokenDelta(
+                tracker.baselineSummary,
+                tracker.latestSummary,
+                tracker.provider
+              );
+              finalUsage = buildUsageMetrics(tracker, {
+                live: false,
+                source: tracker.actualInputTokens !== undefined || tracker.actualOutputTokens !== undefined
+                  ? 'openai'
+                  : telemetryTokens > 0
+                    ? 'telemetry'
+                    : 'local',
+                telemetryTokens,
+              });
+              setSessionCostUsd(tracker.sessionCostBaseUsd + finalUsage.costUsd);
+              setSessionTokens(tracker.sessionTokensBase + finalUsage.tokens);
+              activeStreamUsageRef.current = null;
             }
 
             updateMessage(assistantMessageId, (message) => ({
@@ -236,14 +539,23 @@ export default function Chat() {
               response_id: response.response_id,
               stateful: response.stateful,
               used_previous_response_id: response.used_previous_response_id,
+              input_tokens: response.input_tokens,
+              output_tokens: response.output_tokens,
               tasks_queued: response.tasks_queued?.length ? response.tasks_queued : undefined,
               streaming: false,
+              usage: finalUsage ?? message.usage,
             }));
           },
           onError: (streamError) => {
             flushDeltaIfNeeded();
             retryPromptRef.current = promptText;
             setNotice({ tone: 'error', message: streamError });
+            const tracker = activeStreamUsageRef.current;
+            if (tracker && tracker.messageId === assistantMessageId) {
+              tracker.responseText = tracker.responseText || '';
+              refreshActiveUsage('local', { live: false });
+              activeStreamUsageRef.current = null;
+            }
             updateMessage(assistantMessageId, (message) => ({
               ...message,
               role: message.content ? 'assistant' : 'system',
@@ -262,6 +574,11 @@ export default function Chat() {
       const apiError = error as Partial<ApiError> | undefined;
       retryPromptRef.current = promptText;
       setNotice(toChatNotice(error, 'Failed to send chat message.'));
+      const tracker = activeStreamUsageRef.current;
+      if (tracker && tracker.messageId === assistantMessageId) {
+        refreshActiveUsage('local', { live: false });
+        activeStreamUsageRef.current = null;
+      }
       updateMessage(assistantMessageId, (message) => {
         if (apiError?.isAborted) {
           return {
@@ -304,6 +621,16 @@ export default function Chat() {
     await sendPrompt(promptText);
   };
 
+  const latestAssistantUsage = [...messages]
+    .reverse()
+    .find((message) => message.role === 'assistant' && message.usage)?.usage;
+  const sessionLiveCostUsd = latestAssistantUsage?.live && latestAssistantUsage.sessionCostUsd !== undefined
+    ? latestAssistantUsage.sessionCostUsd
+    : sessionCostUsd;
+  const sessionLiveTokens = latestAssistantUsage?.live
+    ? sessionTokens + latestAssistantUsage.tokens
+    : sessionTokens;
+
   return (
     <div className="flex flex-col h-full bg-gray-900">
       {/* Header */}
@@ -312,11 +639,26 @@ export default function Chat() {
           <Sparkles className="w-5 h-5 text-indigo-400" />
           <h2 className="text-lg font-semibold text-white">Chat with Kor'tana</h2>
         </div>
-        {conversationId && (
-          <span className="text-xs text-gray-500">
-            {messages.length} messages
-          </span>
-        )}
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          {sessionLiveTokens > 0 || sessionLiveCostUsd > 0 ? (
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1">
+              <span className="text-[10px] uppercase tracking-[0.18em] text-emerald-200/70">
+                Session
+              </span>
+              <span className="text-xs font-medium text-emerald-100">
+                {formatCompactNumber(sessionLiveTokens)} tok
+              </span>
+              <span className="text-xs text-emerald-200/80">
+                {formatCompactUsd(sessionLiveCostUsd)}
+              </span>
+            </div>
+          ) : null}
+          {conversationId && (
+            <span className="text-xs text-gray-500">
+              {messages.length} messages
+            </span>
+          )}
+        </div>
       </div>
       {notice && (
         <div
@@ -418,6 +760,47 @@ export default function Chat() {
                           message.used_previous_response_id ? 'continued' : null,
                         ].filter(Boolean).join(' · ')}
                       </p>
+                    ) : null}
+                    {message.role === 'assistant' && message.usage ? (
+                      <div
+                        className="mt-2 flex flex-wrap gap-1.5"
+                        aria-label={
+                          message.usage.live
+                            ? 'Live token and cost telemetry for this response'
+                            : 'Token and cost telemetry for this response'
+                        }
+                      >
+                        <span
+                          title={message.usage.estimated ? 'Estimated total tokens for this response' : 'Total tokens for this response'}
+                          className={cn(
+                            'inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-medium tracking-[0.12em]',
+                            message.usage.live
+                              ? 'border-sky-500/20 bg-sky-500/10 text-sky-100'
+                              : 'border-gray-700 bg-gray-900/80 text-gray-200'
+                          )}
+                        >
+                          {tokenLabel(message.usage)}
+                        </span>
+                        <span
+                          title={message.usage.estimated ? 'Estimated cost for this response' : 'Estimated session cost based on shared provider pricing'}
+                          className={cn(
+                            'inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-medium tracking-[0.12em]',
+                            message.usage.live
+                              ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-100'
+                              : 'border-gray-700 bg-gray-900/80 text-gray-200'
+                          )}
+                        >
+                          {costLabel(message.usage)}
+                        </span>
+                        {message.usage.sessionCostUsd !== undefined ? (
+                          <span
+                            title="Estimated total for this chat session"
+                            className="inline-flex items-center rounded-full border border-indigo-500/20 bg-indigo-500/10 px-2.5 py-1 text-[10px] font-medium tracking-[0.12em] text-indigo-100"
+                          >
+                            session {formatCompactUsd(message.usage.sessionCostUsd)}
+                          </span>
+                        ) : null}
+                      </div>
                     ) : null}
                     {message.tasks_queued?.length ? (
                       <div className="mt-2 flex flex-wrap gap-1">

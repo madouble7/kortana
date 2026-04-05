@@ -38,3 +38,27 @@ export function truncate(str: string, maxLength: number): string {
   if (str.length <= maxLength) return str;
   return str.slice(0, maxLength) + '...';
 }
+
+export function formatCompactNumber(value: number): string {
+  return new Intl.NumberFormat('en-US', {
+    notation: value >= 1000 ? 'compact' : 'standard',
+    maximumFractionDigits: value >= 1000 ? 1 : 0,
+  }).format(value);
+}
+
+export function formatCompactUsd(value: number): string {
+  if (value <= 0) {
+    return '$0.00';
+  }
+  if (value < 0.01) {
+    return `${(value * 100).toFixed(value < 0.001 ? 3 : 2)}¢`;
+  }
+  if (value < 1) {
+    return `$${value.toFixed(3)}`;
+  }
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 2,
+  }).format(value);
+}

@@ -63,6 +63,36 @@ class TestAIConsensusRuntime:
         )
         asyncio.run(kwargs["http_client"].aclose())
 
+    @pytest.mark.asyncio
+    async def test_consensus_provider_records_estimated_token_usage(self) -> None:
+        from src.kortana.services.ai_consensus import AIConsensusEngine, ProviderStats
+
+        engine = AIConsensusEngine()
+        engine._providers["openai"] = {"model": AI_CONSENSUS_DEFAULTS.openai}
+        engine._stats["openai"] = ProviderStats()
+
+        with patch.object(
+            engine,
+            "_dispatch",
+            AsyncMock(return_value="threaded reply"),
+        ), patch(
+            "src.kortana.services.ai_consensus.get_model_usage_telemetry"
+        ) as mock_telemetry:
+            telemetry = mock_telemetry.return_value
+            response = await engine._call_provider(
+                "openai",
+                "hello there",
+                "system guidance",
+                128,
+                selection="parallel_query",
+            )
+
+        assert response.success is True
+        telemetry.record_generation.assert_called_once()
+        kwargs = telemetry.record_generation.call_args.kwargs
+        assert kwargs["provider"] == "openai"
+        assert kwargs["tokens_used"] > 0
+
 
 class TestResilientHttpClientRuntime:
     def test_get_http_client_uses_configured_redis_url(self):

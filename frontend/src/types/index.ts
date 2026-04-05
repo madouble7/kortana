@@ -24,7 +24,20 @@ export interface ChatTurnMetadata {
   response_id?: string;
   stateful?: boolean;
   used_previous_response_id?: boolean;
+  input_tokens?: number;
+  output_tokens?: number;
   tasks_queued?: QueuedTaskSummary[];
+}
+
+export interface ChatUsageMetrics {
+  tokens: number;
+  inputTokens?: number;
+  outputTokens?: number;
+  costUsd: number;
+  sessionCostUsd?: number;
+  live?: boolean;
+  estimated?: boolean;
+  source?: 'local' | 'telemetry' | 'openai';
 }
 
 export interface SandboxResult {
@@ -94,6 +107,7 @@ export interface Message extends ChatTurnMetadata {
   content: string;
   timestamp: string;
   streaming?: boolean;
+  usage?: ChatUsageMetrics;
 }
 
 export interface Conversation {
@@ -167,6 +181,8 @@ export interface CostProviderSummary {
   model: string;
   lane: string;
   is_free_tier: boolean;
+  input_cost_per_1k?: number;
+  output_cost_per_1k?: number;
   requests: number;
   total_tokens: number;
   cooling_down?: boolean;
