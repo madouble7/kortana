@@ -493,7 +493,7 @@ async def test_gateway_allows_safe_additive_patch(tmp_path, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_gateway_blocks_destructive_rewrite(tmp_path, monkeypatch):
-    """A diff with LDR > 0.40 must be blocked: status stays pending, commit not called."""
+    """A diff with LDR > 0.40 must be blocked and never reach commit."""
     from unittest.mock import patch as mock_patch
 
     service = _make_service(monkeypatch)
@@ -537,11 +537,13 @@ async def test_gateway_blocks_destructive_rewrite(tmp_path, monkeypatch):
         result = await service.execute_task(task)
 
     assert result is task
-    assert task.status == "failed"
+    assert task.status == "blocked"
+    assert task.error_count == 1
     assert task.error_message is not None
     assert (
         "guardrail" in task.error_message.lower() or "ldr" in task.error_message.lower()
     )
+    assert task.validation_report["stage"] == "guardrail_rejected"
     service._commit_workspace_changes.assert_not_awaited()
 
 
@@ -625,7 +627,7 @@ async def test_gateway_resets_git_index_on_block(tmp_path, monkeypatch):
             # We patch _get_pending_diff to bypass the internal git add/diff calls.
             await service.execute_task(task)
 
-    assert task.status == "failed"
+    assert task.status == "blocked"
     # git reset HEAD should have been called with the workspace as cwd
     assert any(str(workspace) in str(p) for p in reset_calls), (
         f"Expected git reset HEAD call with cwd={workspace}, got: {reset_calls}"
