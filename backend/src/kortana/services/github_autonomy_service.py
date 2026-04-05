@@ -3,6 +3,7 @@ GitHub Autonomy Service for Kor'tana
 Manages the autonomous development loop: monitoring issues, planning, and executing changes.
 """
 
+import asyncio
 import inspect
 import json
 import os
@@ -19,6 +20,7 @@ from typing import Any
 import httpx
 from sqlalchemy import select
 
+from src.kortana.adaptive_retry_engine import get_adaptive_retry_engine
 from src.kortana.config import get_settings
 from src.kortana.http_client import get_http_client
 from src.kortana.logger import get_logger
@@ -128,12 +130,14 @@ class GitHubAutonomyService:
     """Service for autonomous GitHub-driven development"""
 
     _provider_backoff_until: dict[str, datetime] = {}
+    _provider_last_error: dict[str, str] = {}
 
     def __init__(self, db_session=None):
         self.db = db_session
         self.code_gen = CodeGenerator()
         self.settings = get_settings()
         self.http_client = get_http_client()
+        self.retry_engine = get_adaptive_retry_engine()
         self.repo_root = self._resolve_repo_root()
         self._repo_inventory_cache: list[str] | None = None
         self._repo_shape_cache: dict[str, Any] | None = None
@@ -917,6 +921,65 @@ class GitHubAutonomyService:
             return 600
 
     @staticmethod
+    def _github_backoff_seconds() -> int:
+        raw = os.getenv("KORTANA_GITHUB_BACKOFF_SECONDS", "300")
+        try:
+            return max(30, int(raw))
+        except (TypeError, ValueError):
+            return 300
+
+    @staticmethod
+    def _parse_retry_after_seconds(value: str | None) -> int | None:
+        if not value:
+            return None
+        try:
+            seconds = int(value)
+        except (TypeError, ValueError):
+            return None
+        return seconds if seconds >= 0 else None
+
+    @staticmethod
+    def _parse_rate_limit_reset_seconds(value: str | None) -> int | None:
+        if not value:
+            return None
+        try:
+            reset_at = int(value)
+        except (TypeError, ValueError):
+            return None
+        remaining = reset_at - int(datetime.utcnow().timestamp())
+        return remaining if remaining > 0 else 0
+
+    @classmethod
+    def _provider_backoff_remaining_seconds(cls, provider: str) -> int:
+        until = cls._provider_backoff_until.get(provider)
+        if until is None:
+            return 0
+        remaining = int((until - datetime.utcnow()).total_seconds())
+        if remaining <= 0:
+            cls._provider_backoff_until.pop(provider, None)
+            return 0
+        return remaining
+
+    @classmethod
+    def _set_provider_backoff(
+        cls,
+        provider: str,
+        *,
+        seconds: int,
+        reason: str | None = None,
+    ) -> None:
+        cls._provider_backoff_until[provider] = datetime.utcnow() + timedelta(
+            seconds=max(seconds, 1)
+        )
+        if reason:
+            cls._provider_last_error[provider] = reason
+
+    @classmethod
+    def _clear_provider_backoff(cls, provider: str) -> None:
+        cls._provider_backoff_until.pop(provider, None)
+        cls._provider_last_error.pop(provider, None)
+
+    @staticmethod
     def _is_gemini_quota_response(response_text: str) -> bool:
         quota_signals = (
             "quota limits",
@@ -948,7 +1011,158 @@ class GitHubAutonomyService:
         # Always include gemini entry for visibility
         if "gemini" not in health:
             health["gemini"] = "ok"
+        if "github" not in health:
+            health["github"] = "ok"
         return health
+
+    @staticmethod
+    def _github_headers(token: str) -> dict[str, str]:
+        return {
+            "Authorization": f"token {token}",
+            "Accept": "application/vnd.github.v3+json",
+        }
+
+    @staticmethod
+    def _is_github_rate_limit_response(
+        status_code: int | None,
+        detail: str,
+        response: httpx.Response | None,
+    ) -> bool:
+        if status_code == 429:
+            return True
+        if status_code != 403:
+            return False
+
+        lowered = detail.lower()
+        if "rate limit" in lowered or "secondary rate limit" in lowered:
+            return True
+
+        if response is None:
+            return False
+        return response.headers.get("x-ratelimit-remaining") == "0"
+
+    @classmethod
+    def _github_retry_delay_seconds(cls, response: httpx.Response | None) -> int:
+        if response is None:
+            return cls._github_backoff_seconds()
+
+        retry_after = cls._parse_retry_after_seconds(
+            response.headers.get("retry-after")
+        )
+        if retry_after is not None:
+            return max(retry_after, 1)
+
+        reset_delay = cls._parse_rate_limit_reset_seconds(
+            response.headers.get("x-ratelimit-reset")
+        )
+        if reset_delay is not None:
+            return max(reset_delay, 1)
+
+        return cls._github_backoff_seconds()
+
+    async def _request_github_api(
+        self,
+        method: str,
+        url: str,
+        *,
+        operation: str,
+        accept_statuses: set[int] | None = None,
+        **kwargs: Any,
+    ) -> httpx.Response | None:
+        provider = "github"
+        backoff_remaining = self._provider_backoff_remaining_seconds(provider)
+        if backoff_remaining > 0:
+            logger.warning(
+                "Skipping GitHub %s; backoff active for %ss",
+                operation,
+                backoff_remaining,
+            )
+            return None
+
+        operation_id = f"{provider}:{operation}"
+        attempt_number = 0
+        request_method = method.lower()
+        request_fn = getattr(self.http_client, request_method)
+
+        while True:
+            try:
+                response = await request_fn(url, api_name="github_api", **kwargs)
+                self._clear_provider_backoff(provider)
+                return response
+            except Exception as exc:
+                status_code, detail = self._extract_http_error_detail(exc)
+                response = (
+                    exc.response
+                    if isinstance(exc, httpx.HTTPStatusError)
+                    else None
+                )
+
+                if (
+                    accept_statuses
+                    and status_code in accept_statuses
+                    and response is not None
+                ):
+                    return response
+
+                if self._is_github_rate_limit_response(status_code, detail, response):
+                    delay_seconds = self._github_retry_delay_seconds(response)
+                    self.retry_engine.record_retry(
+                        operation_id,
+                        exc,
+                        attempt_number,
+                        will_retry=False,
+                        delay_seconds=float(delay_seconds),
+                        provider=provider,
+                        task_type=operation,
+                    )
+                    self._set_provider_backoff(
+                        provider,
+                        seconds=delay_seconds,
+                        reason=detail,
+                    )
+                    logger.warning(
+                        "GitHub API rate limited during %s; backing off for %ss",
+                        operation,
+                        delay_seconds,
+                    )
+                    return None
+
+                should_retry = self.retry_engine.should_retry(
+                    exc,
+                    attempt_number,
+                    status_code=status_code,
+                )
+                delay_seconds = None
+                if should_retry:
+                    delay_seconds = self.retry_engine.get_retry_delay(
+                        exc,
+                        attempt_number,
+                        status_code=status_code,
+                    )
+                self.retry_engine.record_retry(
+                    operation_id,
+                    exc,
+                    attempt_number,
+                    will_retry=should_retry,
+                    delay_seconds=delay_seconds,
+                    provider=provider,
+                    task_type=operation,
+                )
+
+                if should_retry and delay_seconds is not None:
+                    logger.warning(
+                        "GitHub API %s failed: %s. Retrying in %.2fs...",
+                        operation,
+                        detail,
+                        delay_seconds,
+                    )
+                    attempt_number += 1
+                    await asyncio.sleep(delay_seconds)
+                    continue
+
+                self._provider_last_error[provider] = detail
+                logger.error("GitHub API %s failed: %s", operation, detail)
+                return None
 
     @staticmethod
     def _extract_http_error_detail(exc: Exception) -> tuple[int | None, str]:
@@ -1014,18 +1228,21 @@ class GitHubAutonomyService:
         self._validate_token()
 
         owner, name = repo.split("/") if repo else (self.repo_owner, self.repo_name)
-        headers = {
-            "Authorization": f"token {self.github_token}",
-            "Accept": "application/vnd.github.v3+json",
-        }
+        headers = self._github_headers(self.github_token)
         url = (
             f"https://api.github.com/repos/{owner}/{name}/issues?state=open&per_page=50"
         )
 
         try:
-            response = await self.http_client.get(
-                url, api_name="github_api", headers=headers, timeout=15
+            response = await self._request_github_api(
+                "get",
+                url,
+                operation="issue_discovery",
+                headers=headers,
+                timeout=15,
             )
+            if response is None:
+                return []
             issues = response.json()
         except Exception as e:
             logger.error(f"Failed to fetch GitHub issues: {str(e)}")
@@ -1685,7 +1902,12 @@ class GitHubAutonomyService:
                 f"Branch: {task.branch_name}"
             )
             self._run_git(
-                ["git", "commit", "--no-verify", "-m", commit_message],
+                [
+                    "git",
+                    "-c", "user.email=kortana@kor-tana.dev",
+                    "-c", "user.name=kor'tana",
+                    "commit", "--no-verify", "-m", commit_message,
+                ],
                 cwd=workspace,
             )
             sha_result = self._run_git(
@@ -1766,37 +1988,58 @@ class GitHubAutonomyService:
 
         try:
             owner, repo = task.github_repo.split("/")
-            headers = {
-                "Authorization": f"token {self.github_token}",
-                "Accept": "application/vnd.github.v3+json",
-            }
+            headers = self._github_headers(self.github_token)
 
             # Get main branch SHA
             ref_url = f"https://api.github.com/repos/{owner}/{repo}/git/ref/heads/main"
-            try:
-                ref_response = await self.http_client.get(
-                    ref_url, api_name="github_api", headers=headers, timeout=10
+            ref_response = await self._request_github_api(
+                "get",
+                ref_url,
+                operation="branch_ref_lookup",
+                headers=headers,
+                timeout=10,
+                accept_statuses={404},
+            )
+            if ref_response is None:
+                task.error_message = (
+                    self._provider_last_error.get("github")
+                    or "Failed to fetch main branch reference"
                 )
-                if ref_response.status_code != 200:
-                    logger.debug(
-                        f"Main branch not found (status {ref_response.status_code}), trying master"
-                    )
-                    raise Exception("Main branch not found")
-            except Exception as e:
+                logger.error(task.error_message)
+                return False
+
+            if ref_response.status_code != 200:
                 logger.debug(
-                    f"Getting main branch failed: {str(e)}, trying master branch"
+                    "Getting main branch failed with status %s, trying master branch",
+                    ref_response.status_code,
                 )
                 # Try master branch
                 ref_url = (
                     f"https://api.github.com/repos/{owner}/{repo}/git/ref/heads/master"
                 )
-                ref_response = await self.http_client.get(
-                    ref_url, api_name="github_api", headers=headers, timeout=10
+                ref_response = await self._request_github_api(
+                    "get",
+                    ref_url,
+                    operation="branch_ref_lookup",
+                    headers=headers,
+                    timeout=10,
+                    accept_statuses={404},
                 )
-                if ref_response.status_code != 200:
+                if ref_response is None or ref_response.status_code != 200:
+                    error_detail = (
+                        ref_response.text
+                        if ref_response is not None
+                        else (
+                            self._provider_last_error.get("github")
+                            or "GitHub API unavailable"
+                        )
+                    )
+                    status_code = (
+                        ref_response.status_code if ref_response is not None else "n/a"
+                    )
                     task.error_message = (
-                        f"Failed to get master branch ({ref_response.status_code}): "
-                        f"{ref_response.text}"
+                        f"Failed to get master branch ({status_code}): "
+                        f"{error_detail}"
                     )
                     logger.error(task.error_message)
                     return False
@@ -1817,32 +2060,21 @@ class GitHubAutonomyService:
             create_url = f"https://api.github.com/repos/{owner}/{repo}/git/refs"
             logger.info(f"Creating branch: {task.branch_name}")
 
-            try:
-                create_response = await self.http_client.post(
-                    create_url,
-                    api_name="github_api",
-                    headers=headers,
-                    json=branch_data,
-                    timeout=10,
+            create_response = await self._request_github_api(
+                "post",
+                create_url,
+                operation="branch_create",
+                headers=headers,
+                json=branch_data,
+                timeout=10,
+                accept_statuses={422},
+            )
+            if create_response is None:
+                task.error_message = (
+                    self._provider_last_error.get("github")
+                    or "Branch creation failed before a response was returned"
                 )
-            except Exception as e:
-                status_code, detail = self._extract_http_error_detail(e)
-                if status_code == 422:
-                    logger.info(
-                        f"Branch already exists: {task.branch_name} (idempotent)"
-                    )
-                    return True
-
-                if status_code is not None:
-                    task.error_message = (
-                        f"Branch creation failed with status {status_code}: {detail}"
-                    )
-                    logger.error(task.error_message)
-                else:
-                    task.error_message = (
-                        f"Branch creation failed with exception: {detail}"
-                    )
-                    logger.error(task.error_message)
+                logger.error(task.error_message)
                 return False
 
             # 201 = created, 422 = already exists (idempotent success)
@@ -1880,16 +2112,19 @@ class GitHubAutonomyService:
             return True
         try:
             owner, repo = task.github_repo.split("/")
-            headers = {
-                "Authorization": f"token {self.github_token}",
-                "Accept": "application/vnd.github.v3+json",
-            }
+            headers = self._github_headers(self.github_token)
             url = f"https://api.github.com/repos/{owner}/{repo}/issues/{task.github_issue_number}/comments"
             payload = {"body": body}
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    url, headers=headers, json=payload, timeout=15
-                )
+            response = await self._request_github_api(
+                "post",
+                url,
+                operation="post_issue_comment",
+                headers=headers,
+                json=payload,
+                timeout=15,
+            )
+            if response is None:
+                return False
             if response.status_code != 201:
                 logger.error(
                     f"Failed to post comment to #{task.github_issue_number}: {response.text}"
@@ -1909,13 +2144,17 @@ class GitHubAutonomyService:
             return []
         try:
             owner, repo = task.github_repo.split("/")
-            headers = {
-                "Authorization": f"token {self.github_token}",
-                "Accept": "application/vnd.github.v3+json",
-            }
+            headers = self._github_headers(self.github_token)
             url = f"https://api.github.com/repos/{owner}/{repo}/issues/{task.github_issue_number}/comments"
-            async with httpx.AsyncClient() as client:
-                response = await client.get(url, headers=headers, timeout=15)
+            response = await self._request_github_api(
+                "get",
+                url,
+                operation="fetch_issue_comments",
+                headers=headers,
+                timeout=15,
+            )
+            if response is None:
+                return []
             if response.status_code != 200:
                 logger.error(
                     f"Failed to fetch comments from #{task.github_issue_number}: {response.text}"
@@ -1936,10 +2175,7 @@ class GitHubAutonomyService:
         try:
             owner, repo = task.github_repo.split("/")
 
-            headers = {
-                "Authorization": f"token {self.github_token}",
-                "Accept": "application/vnd.github.v3+json",
-            }
+            headers = self._github_headers(self.github_token)
 
             # Create PR from branch back to main
             pr_data = {
@@ -1952,9 +2188,17 @@ class GitHubAutonomyService:
             # Fallback to master if main doesn't exist
             url = f"https://api.github.com/repos/{owner}/{repo}/pulls"
 
-            response = await self.http_client.post(
-                url, api_name="github_api", headers=headers, json=pr_data, timeout=10
+            response = await self._request_github_api(
+                "post",
+                url,
+                operation="create_pull_request",
+                headers=headers,
+                json=pr_data,
+                timeout=10,
+                accept_statuses={422},
             )
+            if response is None:
+                return None
 
             if response.status_code == 201:
                 pr = response.json()
@@ -1998,16 +2242,21 @@ class GitHubAutonomyService:
 
             url = f"https://api.github.com/repos/{owner_repo}/pulls"
 
-            headers = {
-                "Authorization": f"token {self.github_token}",
-                "Accept": "application/vnd.github.v3+json",
-            }
+            headers = self._github_headers(self.github_token)
 
             pr_data = {"title": title, "body": body, "head": head, "base": base}
 
-            response = await self.http_client.post(
-                url, api_name="github_api", headers=headers, json=pr_data, timeout=10
+            response = await self._request_github_api(
+                "post",
+                url,
+                operation="create_pull_request",
+                headers=headers,
+                json=pr_data,
+                timeout=10,
+                accept_statuses={422},
             )
+            if response is None:
+                return None
 
             if response.status_code == 201:
                 pr = response.json()
