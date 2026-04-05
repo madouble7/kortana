@@ -5,10 +5,9 @@ Provides JSON-formatted logging with context tracking
 
 import logging
 import sys
+import json
 from datetime import datetime
 from typing import Any
-
-from pythonjsonlogger import jsonlogger
 
 
 class ContextFilter(logging.Filter):
@@ -28,25 +27,23 @@ class ContextFilter(logging.Filter):
         return True
 
 
-class CustomJsonFormatter(jsonlogger.JsonFormatter):
-    """Custom JSON formatter with structured logging"""
+class CustomJsonFormatter(logging.Formatter):
+    """Dependency-free JSON formatter for structured logging."""
 
-    def add_fields(
-        self,
-        log_record: dict[str, Any],
-        record: logging.LogRecord,
-        message_dict: dict[str, Any],
-    ) -> None:
-        super().add_fields(log_record, record, message_dict)
-        log_record["level"] = record.levelname
-        log_record["logger"] = record.name
-        log_record["module"] = record.module
-        log_record["function"] = record.funcName
-        log_record["line"] = record.lineno
-        if hasattr(record, "request_id"):
-            log_record["request_id"] = record.request_id
+    def format(self, record: logging.LogRecord) -> str:
+        payload: dict[str, Any] = {
+            "timestamp": getattr(record, "timestamp", datetime.utcnow().isoformat()),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+            "module": record.module,
+            "function": record.funcName,
+            "line": record.lineno,
+            "request_id": getattr(record, "request_id", "N/A"),
+        }
         if record.exc_info:
-            log_record["exception"] = self.formatException(record.exc_info)
+            payload["exception"] = self.formatException(record.exc_info)
+        return json.dumps(payload, ensure_ascii=False)
 
 
 class AutonomyReflectionFilter(logging.Filter):
