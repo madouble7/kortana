@@ -613,7 +613,6 @@ class AutonomyDaemon:
                                 "planning",
                                 "planning_complete",
                                 "executing",
-                                "executed",
                             ]
                         ),
                     )
