@@ -1,4 +1,5 @@
 import {
+  Activity,
   Brain,
   CheckSquare,
   Database,
@@ -17,12 +18,13 @@ import Chat from './components/Chat';
 import GitHubPanel from './components/GitHub';
 import GitHubDashboard from './components/GitHubDashboard';
 import Memory from './components/Memory';
+import OperatorDashboard from './components/OperatorDashboard';
 import Settings from './components/Settings';
 import Tasks from './components/Tasks';
 import { api } from './lib/api';
 import { cn } from './lib/utils';
 
-type View = 'chat' | 'tasks' | 'autonomy' | 'memory' | 'github' | 'settings' | 'akashic';
+type View = 'chat' | 'tasks' | 'autonomy' | 'memory' | 'github' | 'settings' | 'akashic' | 'operator';
 
 interface NavItem {
   id: View;
@@ -79,6 +81,12 @@ function App() {
 
   const navItems: NavItem[] = [
     {
+      id: 'operator' as View,
+      label: 'Operator',
+      icon: Activity,
+      enabled: true,
+    },
+    {
       id: 'chat',
       label: 'Chat',
       icon: MessageSquare,
@@ -127,6 +135,8 @@ function App() {
 
   const renderView = () => {
     switch (currentView) {
+      case 'operator':
+        return <OperatorDashboard />;
       case 'chat':
         return <Chat />;
       case 'tasks':

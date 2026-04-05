@@ -11,7 +11,7 @@ import os
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -147,3 +147,33 @@ async def daemon_stop() -> dict[str, Any]:
         "status": "stopped" if not daemon._running else "running",
         **daemon.get_status(),
     }
+
+
+@router.get("/cycles")
+async def daemon_cycles(
+    limit: int = Query(default=20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+) -> list[dict[str, Any]]:
+    """Return recent autonomy cycle history, newest first."""
+    try:
+        result = await db.execute(
+            select(AutonomyCycleMemory)
+            .order_by(AutonomyCycleMemory.end_time.desc())
+            .limit(limit)
+        )
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=500, detail=f"Database error: {exc}") from exc
+
+    cycles = result.scalars().all()
+    return [
+        {
+            "cycle_id": c.cycle_id,
+            "start_time": c.start_time.isoformat() if c.start_time else None,
+            "end_time": c.end_time.isoformat() if c.end_time else None,
+            "tasks_processed": c.tasks_processed,
+            "approvals_processed": c.approvals_processed,
+            "errors_encountered": c.errors_encountered,
+            "metrics": c.metrics,
+        }
+        for c in cycles
+    ]
