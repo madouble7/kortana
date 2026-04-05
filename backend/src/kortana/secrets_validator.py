@@ -15,11 +15,11 @@ class SecretsValidator:
 
     def validate_gemini(self) -> tuple[bool, str]:
         """Validate Google Gemini API key"""
+        if not self.settings.GEMINI_API_KEY:
+            return False, "GEMINI_API_KEY not configured"
+
         try:
             import google.generativeai as genai
-
-            if not self.settings.GEMINI_API_KEY:
-                return False, "GEMINI_API_KEY not configured"
 
             genai.configure(api_key=self.settings.GEMINI_API_KEY)
             # Try to list models to verify the key works
