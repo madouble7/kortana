@@ -169,6 +169,9 @@ export interface CostProviderSummary {
   is_free_tier: boolean;
   requests: number;
   total_tokens: number;
+  cooling_down?: boolean;
+  cooldown_seconds?: number;
+  last_error?: string | null;
   last_task_type?: string | null;
   last_used_at?: string | null;
 }
@@ -197,6 +200,34 @@ export interface ModelLaneSummary {
       providers: Record<string, CostProviderSummary>;
       free_tier_usage: Record<string, number>;
     };
+  };
+}
+
+export interface DaemonCycle {
+  cycle_id: string;
+  start_time: string;
+  end_time: string | null;
+  tasks_processed: number;
+  approvals_processed: number;
+  errors_encountered: number;
+  metrics: Record<string, unknown> | null;
+}
+
+export interface DaemonStatus {
+  deployment_mode: 'embedded' | 'external';
+  control_available: boolean;
+  message: string;
+  local_process?: { running: boolean; enabled: boolean };
+  external_daemon?: {
+    alive: boolean;
+    state: 'alive' | 'stale' | 'unknown';
+    message: string;
+    last_cycle_id?: string;
+    last_cycle_completed_at?: string;
+    seconds_since_last_cycle?: number;
+    stale_after_seconds: number;
+    tasks_processed?: number;
+    errors_encountered?: number;
   };
 }
 
