@@ -7,6 +7,8 @@ import type {
   AutonomyStatus,
   ChatHistoryEntry,
   ChatPhase,
+  DaemonCycle,
+  DaemonStatus,
   GitHubIssue,
   HealthStatus,
   Memory,
@@ -97,7 +99,12 @@ const buildApiError = (
   headers?: Headers
 ): Error & ApiError => {
   const details = (errorData ?? {}) as Record<string, unknown>;
-  const retryAfterSeconds = parseRetryAfterSeconds(headers?.get('retry-after') ?? null);
+  const retryAfterSeconds = parseRetryAfterSeconds(headers?.get('retry-after') ?? null)
+    ?? (typeof details.retry_after === 'number' && details.retry_after >= 0
+      ? Math.ceil(details.retry_after)
+      : typeof details.retry_after === 'string'
+        ? parseRetryAfterSeconds(details.retry_after)
+        : undefined);
   const err = new Error(
     typeof details.message === 'string'
       ? details.message
@@ -725,6 +732,15 @@ class ApiClient {
 
   async getAutonomyLogs() {
     return this.request('/api/autonomy/actions');
+  }
+
+  // Daemon endpoints
+  async getDaemonStatus(): Promise<DaemonStatus> {
+    return this.request<DaemonStatus>('/api/daemon/status');
+  }
+
+  async getDaemonCycles(limit = 20): Promise<DaemonCycle[]> {
+    return this.request<DaemonCycle[]>(`/api/daemon/cycles?limit=${limit}`);
   }
 
   // GitHub endpoints
