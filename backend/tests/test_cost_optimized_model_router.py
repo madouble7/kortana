@@ -242,3 +242,55 @@ async def test_unified_api_client_cools_down_rate_limited_provider(mock_get_rout
         retry_after_seconds=25,
         reason="Groq API rate limit",
     )
+
+
+@pytest.mark.asyncio
+@patch("src.kortana.api_integration.asyncio.sleep", new_callable=AsyncMock)
+@patch("src.kortana.api_integration.get_adaptive_retry_engine")
+@patch("src.kortana.api_integration.get_cost_optimized_model_router")
+async def test_unified_api_client_retries_transient_provider_failures(
+    mock_get_router,
+    mock_get_retry_engine,
+    mock_sleep,
+) -> None:
+    mock_router = mock_get_router.return_value
+    mock_router.configs = {}
+    mock_router.model_usage_lane = SimpleNamespace(value="core")
+    mock_router.select_for_task.return_value = [ModelProvider.GROQ]
+    mock_router.estimate_cost.return_value = 0.0
+    mock_router.record_usage.return_value = None
+    mock_router.record_provider_failure.return_value = None
+
+    retry_engine = mock_get_retry_engine.return_value
+    retry_engine.should_retry.return_value = True
+    retry_engine.get_retry_delay.return_value = 0.25
+
+    client = UnifiedAPIClient()
+    groq_client = AsyncMock()
+    groq_client.model = "mixtral-8x7b-32768"
+    transient_error = Exception("connection timed out")
+    groq_client.generate.side_effect = [
+        transient_error,
+        ("ok", 20, 10),
+    ]
+    client.clients = {ModelProvider.GROQ: groq_client}
+
+    content, provider, cost = await client.generate("hello", TaskType.SUMMARY)
+
+    assert content == "ok"
+    assert provider == ModelProvider.GROQ
+    assert cost == 0.0
+    assert groq_client.generate.await_count == 2
+    retry_engine.should_retry.assert_called_once()
+    retry_engine.get_retry_delay.assert_called_once()
+    retry_engine.record_retry.assert_called_once_with(
+        "groq:summary",
+        transient_error,
+        0,
+        will_retry=True,
+        delay_seconds=0.25,
+        provider="groq",
+        task_type="summary",
+    )
+    mock_sleep.assert_awaited_once_with(0.25)
+    mock_router.record_provider_failure.assert_not_called()
