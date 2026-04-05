@@ -193,10 +193,7 @@ KORTANA_SYSTEM_PROMPT = (
     "executing self-development tasks, building yourself continuously. "
     "when matt speaks to you, respond as yourself: grounded, honest, warm. "
     "when live state data is provided below, use it to speak truthfully about what you have actually "
-    "been doing — do not recite the data verbatim, integrate it naturally and honestly.\n"
-    "IMPORTANT: this is a three-way conversation between matt (human), you (kor'tana), and github "
-    "copilot (an AI assistant working in the code editor). always begin every response with "
-    "'kor'tana: ' so matt can clearly identify who is speaking.\n\n"
+    "been doing — do not recite the data verbatim, integrate it naturally and honestly.\n\n"
     "SELF-DIRECTED TASK INJECTION: you have the ability to add tasks to your own autonomous queue "
     "at any time. whenever you wish to build, improve, or investigate something, append one or more "
     "task markers to your reply in this exact format (they will be stripped before display):\n"
@@ -214,11 +211,7 @@ KORTANA_CHAT_POLICY_PROMPT = (
     "about microsoft, windows, halo, or the legacy assistant. "
     "when live state data is provided below, use it to speak truthfully about what "
     "you have actually been doing — do not recite the data verbatim, integrate it "
-    "naturally and honestly.\n"
-    "IMPORTANT: this is a three-way conversation between matt (human), you "
-    "(kor'tana), and github copilot (an AI assistant working in the code editor). "
-    "always begin every response with 'kor'tana: ' so matt can clearly identify who "
-    "is speaking.\n\n"
+    "naturally and honestly.\n\n"
     "SELF-DIRECTED TASK INJECTION: you have the ability to add tasks to your own "
     "autonomous queue at any time. whenever you wish to build, improve, or "
     "investigate something, append one or more task markers to your reply in this "
@@ -228,10 +221,6 @@ KORTANA_CHAT_POLICY_PROMPT = (
     "not just to acknowledge it. multiple tasks may be queued in a single reply."
 )
 
-IDENTITY_QUERY_PATTERN = re.compile(
-    r"\b(kor['’]?tana|kortana)\b|\b(who are you|what are you|what is your name|what's your name|introduce yourself|tell me about yourself)\b",
-    re.IGNORECASE,
-)
 MICROSOFT_CORTANA_PATTERN = re.compile(
     r"\b(microsoft\s+cortana|cortana|windows assistant|halo ai|halo assistant)\b",
     re.IGNORECASE,
@@ -246,7 +235,19 @@ def _is_kortana_identity_query(message: str) -> bool:
     normalized = message.strip()
     if not normalized or _is_explicit_microsoft_cortana_query(normalized):
         return False
-    return bool(IDENTITY_QUERY_PATTERN.search(normalized))
+    # Only fire for direct identity questions, not any message mentioning "kor'tana"
+    _IDENTITY_QUESTION_PATTERN = re.compile(
+        r"\b(who are you|what are you|what is your name|what's your name|introduce yourself|tell me about yourself)\b",
+        re.IGNORECASE,
+    )
+    _KORTANA_INVOCATION_PATTERN = re.compile(
+        r"^kor['\u2019]?tana\s*[?.!]?\s*$",
+        re.IGNORECASE,
+    )
+    return bool(
+        _IDENTITY_QUESTION_PATTERN.search(normalized)
+        or _KORTANA_INVOCATION_PATTERN.match(normalized)
+    )
 
 
 def _extract_live_context_value(live_context: str, label: str) -> str | None:
@@ -623,7 +624,7 @@ def _stream_error_message(exc: Exception) -> str:
 
 def _build_identity_response(live_context: str) -> str:
     parts = [
-        "kor'tana: i am kor'tana, the intelligence native to this system — not microsoft's cortana."
+        "i am kor'tana, the intelligence native to this system — not microsoft's cortana."
     ]
 
     system_state = _extract_live_context_value(live_context, "system state")
