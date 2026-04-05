@@ -56,6 +56,30 @@ def test_cost_report_includes_model_metadata(monkeypatch) -> None:
     assert report["model_usage_lane"] == "core"
     assert report["providers"]["openai"]["model"] == "gpt-5.4-nano"
     assert report["providers"]["openai"]["lane"] == "core"
+    assert report["totals"]["requests"] == 0
+    assert report["providers"]["openai"]["total_tokens"] == 0
+
+
+def test_cost_report_tracks_usage_metadata(monkeypatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    monkeypatch.setenv("KORTANA_MODEL_USAGE_LANE", "core")
+    get_settings.cache_clear()
+
+    router = CostOptimizedModelRouter()
+    router.record_usage(ModelProvider.OPENAI, TaskType.SUMMARY, 120, 30)
+    report = router.get_cost_report()
+    openai = report["providers"]["openai"]
+
+    assert report["totals"]["requests"] == 1
+    assert report["totals"]["input_tokens"] == 120
+    assert report["totals"]["output_tokens"] == 30
+    assert report["totals"]["total_tokens"] == 150
+    assert openai["requests"] == 1
+    assert openai["input_tokens"] == 120
+    assert openai["output_tokens"] == 30
+    assert openai["total_tokens"] == 150
+    assert openai["last_task_type"] == "summary"
+    assert openai["last_used_at"] is not None
 
 
 def test_summary_tasks_enable_openai_fast_lane(monkeypatch) -> None:
