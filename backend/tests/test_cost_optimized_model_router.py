@@ -11,6 +11,7 @@ from src.kortana.cost_optimized_model_router import (
     TaskType,
 )
 from src.kortana.api_integration import UnifiedAPIClient
+from src.kortana.api_integration import ProviderRateLimitError
 from src.kortana.model_usage_telemetry import get_model_usage_telemetry
 
 
@@ -103,6 +104,21 @@ def test_summary_tasks_enable_openai_fast_lane(monkeypatch) -> None:
     ]
 
 
+def test_rate_limited_provider_is_temporarily_skipped(monkeypatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    monkeypatch.setenv("GROQ_API_KEY", "groq-test")
+    monkeypatch.setenv("KORTANA_MODEL_USAGE_LANE", "core")
+    get_settings.cache_clear()
+
+    router = CostOptimizedModelRouter()
+    router.mark_rate_limited(ModelProvider.GROQ, retry_after_seconds=30)
+
+    providers = router.select_for_task(TaskType.SUMMARY)
+
+    assert ModelProvider.GROQ not in providers
+    assert providers[0] == ModelProvider.OPENAI
+
+
 def test_cost_router_uses_gemini_service_model_selection(monkeypatch) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "gm-test")
     monkeypatch.setenv("KORTANA_MODEL_USAGE_LANE", "core")
@@ -115,6 +131,26 @@ def test_cost_router_uses_gemini_service_model_selection(monkeypatch) -> None:
         router = CostOptimizedModelRouter()
 
     assert router.configs[ModelProvider.GEMINI].model_name == "gemini-2.0-flash"
+
+
+def test_cost_report_includes_provider_cooldown(monkeypatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    monkeypatch.setenv("KORTANA_MODEL_USAGE_LANE", "core")
+    get_settings.cache_clear()
+
+    router = CostOptimizedModelRouter()
+    router.mark_rate_limited(
+        ModelProvider.OPENAI,
+        retry_after_seconds=45,
+        reason="OpenAI API rate limit",
+    )
+
+    report = router.get_cost_report()
+    openai = report["providers"]["openai"]
+
+    assert openai["cooling_down"] is True
+    assert openai["cooldown_seconds"] > 0
+    assert openai["last_error"] == "OpenAI API rate limit"
 
 
 @pytest.mark.asyncio
@@ -146,3 +182,46 @@ async def test_unified_api_client_records_runtime_usage(mock_router_cls) -> None
     assert summary["total_generations"] == 1
     assert summary["by_subsystem"]["api_integration"] == 1
     assert summary["recent"][0]["selection"] == "task:summary"
+
+
+@pytest.mark.asyncio
+@patch("src.kortana.api_integration.CostOptimizedModelRouter")
+async def test_unified_api_client_cools_down_rate_limited_provider(mock_router_cls) -> None:
+    mock_router = mock_router_cls.return_value
+    mock_router.configs = {}
+    mock_router.model_usage_lane = SimpleNamespace(value="core")
+    mock_router.select_for_task.return_value = [
+        ModelProvider.GROQ,
+        ModelProvider.OPENAI,
+    ]
+    mock_router.estimate_cost.return_value = 0.0
+    mock_router.record_usage.return_value = None
+    mock_router.mark_rate_limited.return_value = None
+    mock_router.record_provider_failure.return_value = None
+
+    client = UnifiedAPIClient()
+    groq_client = AsyncMock()
+    groq_client.model = "mixtral-8x7b-32768"
+    groq_client.generate.side_effect = ProviderRateLimitError(
+        ModelProvider.GROQ,
+        "Groq API rate limit",
+        retry_after_seconds=25,
+    )
+    openai_client = AsyncMock()
+    openai_client.model = "gpt-5.4-nano"
+    openai_client.generate.return_value = ("ok", 12, 8)
+    client.clients = {
+        ModelProvider.GROQ: groq_client,
+        ModelProvider.OPENAI: openai_client,
+    }
+
+    content, provider, cost = await client.generate("hello", TaskType.SUMMARY)
+
+    assert content == "ok"
+    assert provider == ModelProvider.OPENAI
+    assert cost == 0.0
+    mock_router.mark_rate_limited.assert_called_once_with(
+        ModelProvider.GROQ,
+        retry_after_seconds=25,
+        reason="Groq API rate limit",
+    )

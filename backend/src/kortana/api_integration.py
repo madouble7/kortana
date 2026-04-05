@@ -34,6 +34,36 @@ from src.kortana.services.gemini_config import (
 
 logger = get_logger(__name__)
 
+
+class ProviderRateLimitError(Exception):
+    """Raised when an upstream provider reports a rate limit or quota exhaustion."""
+
+    def __init__(
+        self,
+        provider: ModelProvider | str,
+        message: str,
+        retry_after_seconds: int | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.provider = (
+            provider if isinstance(provider, str) else provider.value
+        )
+        self.retry_after_seconds = retry_after_seconds
+
+
+def _parse_retry_after_seconds(value: str | None) -> int | None:
+    """Return integer Retry-After seconds when present and valid."""
+    if not value:
+        return None
+
+    try:
+        seconds = int(value)
+    except (TypeError, ValueError):
+        return None
+
+    return seconds if seconds >= 0 else None
+
+
 def _resolve_allowed_model_name(
     requested_model_name: str | None,
     *,
@@ -119,11 +149,16 @@ class GroqAPIClient:
                             usage["prompt_tokens"],
                             usage["completion_tokens"],
                         )
-                    else:
-                        error_text = await response.text()
-                        raise Exception(
-                            f"Groq API error {response.status}: {error_text}"
+                    error_text = await response.text()
+                    if response.status == 429:
+                        raise ProviderRateLimitError(
+                            ModelProvider.GROQ,
+                            f"Groq API rate limit: {error_text}",
+                            retry_after_seconds=_parse_retry_after_seconds(
+                                response.headers.get("Retry-After")
+                            ),
                         )
+                    raise Exception(f"Groq API error {response.status}: {error_text}")
         except asyncio.TimeoutError:
             raise Exception("Groq API request timeout")
         except Exception as e:
@@ -177,6 +212,12 @@ class GeminiAPIClient:
             return content, int(input_tokens), int(output_tokens)
 
         except Exception as e:
+            message = str(e).lower()
+            if "429" in message or "quota" in message or "rate limit" in message:
+                raise ProviderRateLimitError(
+                    ModelProvider.GEMINI,
+                    f"Gemini API rate limit: {e}",
+                ) from e
             logger.error(f"Gemini API error: {e}")
             raise
 
@@ -234,11 +275,16 @@ class ClaudeAPIClient:
                             usage["input_tokens"],
                             usage["output_tokens"],
                         )
-                    else:
-                        error_text = await response.text()
-                        raise Exception(
-                            f"Claude API error {response.status}: {error_text}"
+                    error_text = await response.text()
+                    if response.status == 429:
+                        raise ProviderRateLimitError(
+                            ModelProvider.CLAUDE,
+                            f"Claude API rate limit: {error_text}",
+                            retry_after_seconds=_parse_retry_after_seconds(
+                                response.headers.get("Retry-After")
+                            ),
                         )
+                    raise Exception(f"Claude API error {response.status}: {error_text}")
         except asyncio.TimeoutError:
             raise Exception("Claude API request timeout")
         except Exception as e:
@@ -295,6 +341,19 @@ class OpenAIAPIClient:
             )
 
         except Exception as e:
+            status_code = getattr(e, "status_code", None)
+            if status_code == 429:
+                retry_after = None
+                response = getattr(e, "response", None)
+                if response is not None:
+                    retry_after = _parse_retry_after_seconds(
+                        response.headers.get("retry-after")
+                    )
+                raise ProviderRateLimitError(
+                    ModelProvider.OPENAI,
+                    f"OpenAI API rate limit: {e}",
+                    retry_after_seconds=retry_after,
+                ) from e
             logger.error(f"OpenAI API error: {e}")
             raise
 
@@ -343,6 +402,7 @@ class UnifiedAPIClient:
         """
         # Get optimal provider chain
         providers = self.router.select_for_task(task_type, budget_limit)
+        failure_reasons: list[str] = []
 
         for provider in providers:
             client = self.clients.get(provider)
@@ -384,13 +444,33 @@ class UnifiedAPIClient:
                 )
                 return content, provider, cost
 
+            except ProviderRateLimitError as e:
+                self.router.mark_rate_limited(
+                    provider,
+                    retry_after_seconds=e.retry_after_seconds,
+                    reason=str(e),
+                )
+                failure_reasons.append(f"{provider.value}: rate limited")
+                logger.warning(
+                    "Provider %s rate limited: %s. Trying next...",
+                    provider.value,
+                    e,
+                )
+                continue
             except Exception as e:
+                self.router.record_provider_failure(provider, str(e))
+                failure_reasons.append(f"{provider.value}: {e}")
                 logger.warning(
                     f"Provider {provider.value} failed: {e}. " f"Trying next..."
                 )
                 continue
 
         # All providers failed
+        if failure_reasons:
+            raise Exception(
+                f"All providers exhausted for {task_type.value}: "
+                + "; ".join(failure_reasons)
+            )
         raise Exception(f"All providers exhausted for {task_type.value}")
 
     def get_cost_report(self) -> dict[str, object]:
