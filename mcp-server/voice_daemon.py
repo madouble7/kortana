@@ -3,10 +3,11 @@ kor'tana voice daemon — always-on voice interface
 
 Wake phrase: say "kortana" (or a close mishear) anywhere in an utterance.
 Flow:
-  1. Continuously listen via microphone (Google STT on detected speech)
-  2. Wake phrase detected → say "yes?" → listen for command
-  3. POST command to kor'tana backend → speak response via Windows SAPI
-  4. Return to listening
+  1. Continuously listen via microphone (VAD via speech_recognition)
+  2. Wake phrase detected → Piper chime → listen for command
+  3. faster-whisper large-v3 (CUDA) transcribes the command
+  4. POST command to kor'tana backend → Piper/Cori speaks the response
+  5. Return to listening
 
 Run:  python c:\kortana\mcp-server\voice_daemon.py
 Auto-start: registered via Task Scheduler (kortana-voice-daemon)
@@ -15,13 +16,17 @@ Auto-start: registered via Task Scheduler (kortana-voice-daemon)
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import threading
 import time
 from datetime import datetime
 from pathlib import Path
 
+import faster_whisper
 import httpx
+import numpy as np
+import sounddevice as sd
 import speech_recognition as sr
 
 # ── config ─────────────────────────────────────────────────────────────────────
@@ -29,6 +34,23 @@ BACKEND_URL = os.getenv("KORTANA_BACKEND_URL", "http://localhost:8000")
 CHAT_ENDPOINT = f"{BACKEND_URL}/api/gemini/chat"
 SESSION_ID = "voice"
 LOG_FILE = Path(r"c:\kortana\logs\voice_daemon.log")
+
+# Piper TTS paths — piper.exe is installed by piper-tts package
+_PIPER_EXE_FOUND = shutil.which("piper") or shutil.which(
+    r"C:\Users\madou\AppData\Roaming\Python\Python311\Scripts\piper.exe"
+)
+PIPER_EXE = Path(_PIPER_EXE_FOUND) if _PIPER_EXE_FOUND else Path(r"c:\kortana\models\piper\piper.exe")
+MODELS_DIR = Path(r"c:\kortana\models\piper")
+CORI_MODEL = MODELS_DIR / "en_GB-cori-high.onnx"
+CORI_SAMPLE_RATE = 22050
+_PIPER_MODEL_URL_BASE = (
+    "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_GB/cori/high"
+)
+
+# Whisper model config — small runs on CPU in ~300ms
+WHISPER_MODEL_SIZE = os.getenv("KORTANA_WHISPER_MODEL", "small")
+WHISPER_DEVICE = "cpu"
+WHISPER_COMPUTE_TYPE = "int8"
 
 # Phrases that trigger kor'tana (catches common STT mishearings)
 WAKE_PHRASES = {
@@ -43,18 +65,38 @@ WAKE_PHRASES = {
 }
 
 # How long to listen for a command after wake (seconds)
-COMMAND_TIMEOUT = 8
 COMMAND_PHRASE_LIMIT = 15
-
-# TTS rate: PowerShell SAPI rate scale is -10 (slow) to +10 (fast), 0 = default
-# Map env var in words-per-minute (175 = 0, every 25wpm = 1 step)
-TTS_RATE = int(os.getenv("KORTANA_TTS_RATE", "175"))
 
 LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 # ── globals ────────────────────────────────────────────────────────────────────
 _speak_lock = threading.Lock()
 _conversation_history: list[dict[str, str]] = []
+_whisper: faster_whisper.WhisperModel | None = None
+
+
+# ── model bootstrap ────────────────────────────────────────────────────────────
+def _download_piper_model() -> bool:
+    """Download Piper voice model if not present. Returns True if available."""
+    if CORI_MODEL.exists():
+        return True
+    MODELS_DIR.mkdir(parents=True, exist_ok=True)
+    log("Downloading Piper voice model (~60 MB)...")
+    try:
+        with httpx.Client(timeout=180.0, follow_redirects=True) as client:
+            for suffix in ("", ".json"):
+                dest = Path(str(CORI_MODEL) + suffix) if suffix else CORI_MODEL
+                url = f"{_PIPER_MODEL_URL_BASE}/{CORI_MODEL.name}{suffix}"
+                r = client.get(url)
+                if r.status_code != 200:
+                    log(f"Piper download failed ({r.status_code}): {url}", "WARN")
+                    return False
+                dest.write_bytes(r.content)
+                log(f"Downloaded {dest.name} ({len(r.content):,} bytes)")
+        return True
+    except Exception as e:
+        log(f"Piper model download error: {e}", "WARN")
+        return False
 
 
 # ── history bootstrap ──────────────────────────────────────────────────────────
@@ -96,38 +138,42 @@ def log(msg: str, level: str = "INFO") -> None:
 
 # ── TTS ────────────────────────────────────────────────────────────────────────
 def speak(text: str) -> None:
-    """Speak text via Windows System.Speech SAPI — works in any Windows session."""
+    """Speak text via Piper TTS (en_GB-cori-high neural voice)."""
     with _speak_lock:
-        # Escape single quotes for PowerShell here-string
-        safe = text.replace("'", "''").replace('"', '`"')
-        rate = max(-10, min(10, (TTS_RATE - 175) // 25))
-        ps = f"""
-Add-Type -AssemblyName System.Speech
-$s = New-Object System.Speech.Synthesis.SpeechSynthesizer
-$s.Rate = {rate}
-$s.SelectVoiceByHints([System.Speech.Synthesis.VoiceGender]::Female)
-$s.Speak('{safe}')
-"""
         try:
-            subprocess.run(
-                ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
-                capture_output=True,
-                timeout=60,
+            proc = subprocess.Popen(
+                [str(PIPER_EXE), "--model", str(CORI_MODEL), "--output_raw"],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
             )
+            raw, _ = proc.communicate(input=text.encode("utf-8"), timeout=60)
+            if raw:
+                audio = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+                sd.play(audio, samplerate=CORI_SAMPLE_RATE)
+                sd.wait()
         except Exception as e:
-            log(f"speak error: {e}", "WARN")
+            log(f"Piper speak error: {e} — falling back to SAPI", "WARN")
+            _speak_sapi(text)
     log(f"spoke: {text[:80]}")
 
 
 # ── STT ────────────────────────────────────────────────────────────────────────
-def transcribe(audio: sr.AudioData, recognizer: sr.Recognizer) -> str | None:
-    """Transcribe audio. Returns lowercase text or None on failure."""
-    try:
-        return recognizer.recognize_google(audio).lower()
-    except sr.UnknownValueError:
+def transcribe(audio: sr.AudioData, _recognizer: sr.Recognizer) -> str | None:
+    """Transcribe audio with faster-whisper large-v3 on CUDA."""
+    if _whisper is None:
         return None
-    except sr.RequestError as e:
-        log(f"STT request error: {e}", "WARN")
+    try:
+        # Convert sr.AudioData → 16kHz float32 numpy array
+        raw = audio.get_raw_data(convert_rate=16000, convert_width=2)
+        audio_np = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+        segments, _ = _whisper.transcribe(
+            audio_np, language="en", beam_size=5, vad_filter=True
+        )
+        text = " ".join(seg.text for seg in segments).strip().lower()
+        return text if text else None
+    except Exception as e:
+        log(f"STT error: {e}", "WARN")
         return None
 
 
@@ -295,17 +341,22 @@ def _clean_for_speech(text: str) -> str:
 
 # ── activation sound ───────────────────────────────────────────────────────────
 def _play_activation_sound() -> None:
-    """Play a short beep to signal kor'tana is listening for the command."""
-    subprocess.run(
-        [
-            "powershell",
-            "-NoProfile",
-            "-Command",
-            "[console]::beep(880, 120); Start-Sleep -Milliseconds 50; [console]::beep(1100, 120)",
-        ],
-        capture_output=True,
-        timeout=3,
-    )
+    """Play a short Piper chime to signal kor'tana is listening."""
+    _chime = "Yes?"
+    try:
+        proc = subprocess.Popen(
+            [str(PIPER_EXE), "--model", str(CORI_MODEL), "--output_raw"],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+        )
+        raw, _ = proc.communicate(input=_chime.encode("utf-8"), timeout=10)
+        if raw:
+            audio = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+            sd.play(audio, samplerate=CORI_SAMPLE_RATE)
+            sd.wait()
+    except Exception:
+        pass  # non-critical
 
 
 # ── main listen loop ───────────────────────────────────────────────────────────
@@ -345,7 +396,39 @@ def _handle_wake(recognizer: sr.Recognizer, text: str) -> None:
     speak(response)
 
 
+def _speak_sapi(text: str) -> None:
+    """Fallback TTS via Windows SAPI if Piper binary or model is unavailable."""
+    safe = text.replace("'", "''").replace('"', '`"')
+    ps = f"""
+Add-Type -AssemblyName System.Speech
+$s = New-Object System.Speech.Synthesis.SpeechSynthesizer
+$s.Rate = 0
+$s.SelectVoiceByHints([System.Speech.Synthesis.VoiceGender]::Female)
+$s.Speak('{safe}')
+"""
+    try:
+        subprocess.run(
+            ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
+            capture_output=True,
+            timeout=60,
+        )
+    except Exception as e:
+        log(f"SAPI speak error: {e}", "WARN")
+
+
 def run() -> None:
+    global _whisper
+
+    # Download Piper model if missing (~60 MB, one-time)
+    _download_piper_model()
+
+    # Load Whisper on CPU with int8 quantization (~300ms/phrase)
+    log(f"loading Whisper [{WHISPER_MODEL_SIZE}] on {WHISPER_DEVICE}...")
+    _whisper = faster_whisper.WhisperModel(
+        WHISPER_MODEL_SIZE, device=WHISPER_DEVICE, compute_type=WHISPER_COMPUTE_TYPE
+    )
+    log("Whisper ready")
+
     recognizer = sr.Recognizer()
     recognizer.dynamic_energy_threshold = True
     recognizer.pause_threshold = 0.8  # seconds of silence = end of phrase
