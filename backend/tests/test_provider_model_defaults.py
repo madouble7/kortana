@@ -4,13 +4,17 @@ from src.kortana.provider_model_defaults import (
     AI_CONSENSUS_DEFAULTS,
     ANTHROPIC_SONNET_MODEL,
     DEFAULT_CORE_MODEL_CATALOG,
+    GEMINI_25_FLASH_MODEL,
     GEMINI_DEFAULT_MODEL,
     GEMINI_DISCOVERY_FALLBACK_MODELS,
     GEMINI_EMBEDDING_FALLBACK_MODEL_PATH,
     GEMINI_EMBEDDING_MODEL_NAME,
     GEMINI_EMBEDDING_MODEL_PATH,
+    GEMINI_FLASH_LITE_LATEST_MODEL,
+    GEMINI_FLASH_LITE_MODEL,
     LLM_ROUTER_DEFAULTS,
     LLM_ROUTER_FALLBACK_ORDER,
+    LLM_ROUTER_GEMINI_MODEL,
     MEMORY_ENGINE_EMBEDDING_MODEL,
     MULTI_MODEL_DEFAULTS,
     OPENAI_FAST_MODEL,
@@ -46,6 +50,16 @@ def test_multi_model_defaults_match_expected_provider_models() -> None:
 def test_gemini_discovery_fallbacks_are_all_core_catalog_models() -> None:
     assert GEMINI_DEFAULT_MODEL == "gemini-3.1-flash-lite-preview"
     assert set(GEMINI_DISCOVERY_FALLBACK_MODELS).issubset(DEFAULT_CORE_MODEL_CATALOG)
+
+
+def test_gemini_discovery_fallbacks_prefer_stable_flash_models_first() -> None:
+    assert GEMINI_DISCOVERY_FALLBACK_MODELS[:5] == (
+        GEMINI_25_FLASH_MODEL,
+        LLM_ROUTER_GEMINI_MODEL,
+        GEMINI_FLASH_LITE_MODEL,
+        GEMINI_DEFAULT_MODEL,
+        GEMINI_FLASH_LITE_LATEST_MODEL,
+    )
 
 
 def test_openai_gpt54_family_is_in_core_catalog() -> None:

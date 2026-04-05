@@ -11,6 +11,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import time
 from base64 import b64encode
 from datetime import datetime, timedelta
 from fnmatch import fnmatch
@@ -1095,9 +1096,7 @@ class GitHubAutonomyService:
             except Exception as exc:
                 status_code, detail = self._extract_http_error_detail(exc)
                 response = (
-                    exc.response
-                    if isinstance(exc, httpx.HTTPStatusError)
-                    else None
+                    exc.response if isinstance(exc, httpx.HTTPStatusError) else None
                 )
 
                 if (
@@ -1161,6 +1160,112 @@ class GitHubAutonomyService:
                     )
                     attempt_number += 1
                     await asyncio.sleep(delay_seconds)
+                    continue
+
+                last_error = (
+                    f"status {status_code}: {detail}"
+                    if status_code is not None
+                    else detail
+                )
+                self._provider_last_error[provider] = last_error
+                logger.error("GitHub API %s failed: %s", operation, last_error)
+                return None
+
+    def _request_github_api_sync(
+        self,
+        method: str,
+        url: str,
+        *,
+        operation: str,
+        accept_statuses: set[int] | None = None,
+        **kwargs: Any,
+    ) -> httpx.Response | None:
+        provider = "github"
+        backoff_remaining = self._provider_backoff_remaining_seconds(provider)
+        if backoff_remaining > 0:
+            logger.warning(
+                "Skipping GitHub %s; backoff active for %ss",
+                operation,
+                backoff_remaining,
+            )
+            return None
+
+        operation_id = f"{provider}:{operation}"
+        attempt_number = 0
+
+        while True:
+            try:
+                response = httpx.request(method.upper(), url, **kwargs)
+                response.raise_for_status()
+                self._clear_provider_backoff(provider)
+                return response
+            except Exception as exc:
+                status_code, detail = self._extract_http_error_detail(exc)
+                response = (
+                    exc.response if isinstance(exc, httpx.HTTPStatusError) else None
+                )
+
+                if (
+                    accept_statuses
+                    and status_code in accept_statuses
+                    and response is not None
+                ):
+                    return response
+
+                if self._is_github_rate_limit_response(status_code, detail, response):
+                    delay_seconds = self._github_retry_delay_seconds(response)
+                    self.retry_engine.record_retry(
+                        operation_id,
+                        exc,
+                        attempt_number,
+                        will_retry=False,
+                        delay_seconds=float(delay_seconds),
+                        provider=provider,
+                        task_type=operation,
+                    )
+                    self._set_provider_backoff(
+                        provider,
+                        seconds=delay_seconds,
+                        reason=detail,
+                    )
+                    logger.warning(
+                        "GitHub API rate limited during %s; backing off for %ss",
+                        operation,
+                        delay_seconds,
+                    )
+                    return None
+
+                should_retry = self.retry_engine.should_retry(
+                    exc,
+                    attempt_number,
+                    status_code=status_code,
+                )
+                delay_seconds = None
+                if should_retry:
+                    delay_seconds = self.retry_engine.get_retry_delay(
+                        exc,
+                        attempt_number,
+                        status_code=status_code,
+                    )
+                self.retry_engine.record_retry(
+                    operation_id,
+                    exc,
+                    attempt_number,
+                    will_retry=should_retry,
+                    delay_seconds=delay_seconds,
+                    provider=provider,
+                    task_type=operation,
+                )
+
+                if should_retry and delay_seconds is not None:
+                    logger.warning(
+                        "GitHub API %s failed: %s. Retrying in %.2fs...",
+                        operation,
+                        detail,
+                        delay_seconds,
+                    )
+                    attempt_number += 1
+                    time.sleep(delay_seconds)
                     continue
 
                 last_error = (
@@ -1314,26 +1419,23 @@ class GitHubAutonomyService:
         self._validate_token()
 
         owner, name = repo.split("/") if repo else (self.repo_owner, self.repo_name)
-        headers = {
-            "Authorization": f"token {self.github_token}",
-            "Accept": "application/vnd.github.v3+json",
-        }
+        headers = self._github_headers(self.github_token)
         url = (
             f"https://api.github.com/repos/{owner}/{name}/issues?state=open&per_page=50"
         )
 
-        try:
-            # Use sync httpx client for Celery compatibility
-            response = httpx.get(url, headers=headers, timeout=15)
-            response.raise_for_status()
-            issues = response.json()
-            logger.info(f"Fetched {len(issues)} issues from {owner}/{name}")
-            return [
-                {"number": issue["number"], "title": issue["title"]} for issue in issues
-            ]
-        except Exception as e:
-            logger.error(f"Failed to fetch GitHub issues: {str(e)}")
+        response = self._request_github_api_sync(
+            "get",
+            url,
+            operation="issue_discovery_sync",
+            headers=headers,
+            timeout=15,
+        )
+        if response is None:
             return []
+        issues = response.json()
+        logger.info(f"Fetched {len(issues)} issues from {owner}/{name}")
+        return [{"number": issue["number"], "title": issue["title"]} for issue in issues]
 
     def _determine_priority(self, issue: dict[str, Any]) -> str:
         """Determine priority from labels"""
@@ -1912,9 +2014,14 @@ class GitHubAutonomyService:
             self._run_git(
                 [
                     "git",
-                    "-c", "user.email=kortana@kor-tana.dev",
-                    "-c", "user.name=kor'tana",
-                    "commit", "--no-verify", "-m", commit_message,
+                    "-c",
+                    "user.email=kortana@kor-tana.dev",
+                    "-c",
+                    "user.name=kor'tana",
+                    "commit",
+                    "--no-verify",
+                    "-m",
+                    commit_message,
                 ],
                 cwd=workspace,
             )
@@ -2046,8 +2153,7 @@ class GitHubAutonomyService:
                         ref_response.status_code if ref_response is not None else "n/a"
                     )
                     task.error_message = (
-                        f"Failed to get master branch ({status_code}): "
-                        f"{error_detail}"
+                        f"Failed to get master branch ({status_code}): {error_detail}"
                     )
                     logger.error(task.error_message)
                     return False
