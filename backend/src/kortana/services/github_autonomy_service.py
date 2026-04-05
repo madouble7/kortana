@@ -1393,9 +1393,40 @@ class GitHubAutonomyService:
                             self._run_git(["git", "reset", "HEAD"], cwd=workspace)
                         except Exception:
                             pass
-                        task.status = "failed"
+                        task.status = "blocked"
+                        task.error_count = (task.error_count or 0) + 1
                         task.error_message = (
                             f"Pre-commit guardrail rejected diff: {pv_result.summary()}"
+                        )
+                        self._record_validation_report(
+                            task,
+                            {
+                                "stage": "guardrail_rejected",
+                                "updated_at": datetime.utcnow().isoformat(),
+                                "publish_target": (
+                                    "github"
+                                    if self._should_publish_to_github(task)
+                                    else "local"
+                                ),
+                                "workspace_strategy": (
+                                    "clone"
+                                    if self._should_publish_to_github(task)
+                                    else "worktree"
+                                ),
+                                "changed_files": normalized_files,
+                                "validation_result": {
+                                    "status": "blocked",
+                                    "details": pv_result.summary(),
+                                    "rejection_type": "patch_validator",
+                                },
+                                "validations": [
+                                    {
+                                        "name": "patch_guardrail",
+                                        "status": "blocked",
+                                        "details": pv_result.summary(),
+                                    }
+                                ],
+                            },
                         )
                         await self._db_commit()
                         return task

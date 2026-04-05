@@ -443,6 +443,50 @@ class TestAutonomyDaemon:
         blocked_event = next(event for event in events if event.type == "task_blocked")
         assert blocked_event.data["task_id"] == "task-abstract"
 
+    @pytest.mark.asyncio
+    async def test_process_tasks_defers_guardrail_blocked_execution(self) -> None:
+        daemon = build_daemon()
+        task = GitHubTask(
+            id="task-guardrail",
+            github_issue_number=189,
+            github_repo="madouble7/kortana",
+            title="Guardrail blocked task",
+            description="desc",
+            status="planning_complete",
+        )
+
+        result = MagicMock()
+        result.scalars.return_value.all.return_value = [task]
+        session = AsyncMock()
+        session.execute = AsyncMock(return_value=result)
+
+        async def execute_task(
+            task_to_execute: GitHubTask, dry_run: bool = False
+        ) -> None:
+            task_to_execute.status = "blocked"
+            task_to_execute.error_message = (
+                "Pre-commit guardrail rejected diff: destructive rewrite suspected"
+            )
+
+        service = AsyncMock()
+        service.execute_task = AsyncMock(side_effect=execute_task)
+
+        events: list[Any] = []
+        daemon.on_event(events.append)
+
+        with patch(
+            "src.kortana.services.github_autonomy_service.GitHubAutonomyService",
+            return_value=service,
+        ):
+            processed, succeeded, failed, deferred = await daemon._process_tasks(
+                session
+            )
+
+        assert (processed, succeeded, failed, deferred) == (1, 0, 0, 1)
+        task_deferred = next(event for event in events if event.type == "task_deferred")
+        assert task_deferred.data["task_id"] == "task-guardrail"
+        assert task_deferred.data["reason"] == "patch_guardrail_rejected"
+
     def test_prioritize_tasks_prefers_focus_topics_and_filters_avoid(self) -> None:
         daemon = build_daemon()
         tasks = [
