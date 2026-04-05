@@ -185,10 +185,13 @@ class ModelUsageTelemetry:
     def _empty_summary() -> dict[str, Any]:
         return {
             "total_generations": 0,
+            "total_tokens_used": 0,
             "last_recorded_at": None,
             "by_subsystem": {},
             "by_provider": {},
+            "by_provider_tokens": {},
             "by_model": {},
+            "by_model_tokens": {},
             "by_catalog": {},
             "recent": [],
         }
@@ -206,18 +209,30 @@ class ModelUsageTelemetry:
 
         by_subsystem: Counter[str] = Counter()
         by_provider: Counter[str] = Counter()
+        by_provider_tokens: Counter[str] = Counter()
         by_model: Counter[str] = Counter()
+        by_model_tokens: Counter[str] = Counter()
         by_catalog: Counter[str] = Counter()
+        total_tokens_used = 0
 
         for event in events:
             subsystem = str(event.get("subsystem", "unknown"))
             provider = str(event.get("provider", "unknown"))
             model = str(event.get("model", "unknown"))
             catalog = str(event.get("catalog", "unknown"))
+            tokens_used = event.get("tokens_used")
+            token_count = (
+                int(tokens_used)
+                if isinstance(tokens_used, int | float) and tokens_used >= 0
+                else 0
+            )
             by_subsystem[subsystem] += 1
             by_provider[provider] += 1
+            by_provider_tokens[provider] += token_count
             by_model[model] += 1
+            by_model_tokens[model] += token_count
             by_catalog[catalog] += 1
+            total_tokens_used += token_count
 
         recent = events[:recent_limit]
         last_recorded_at = recent[0].get("timestamp") if recent else None
@@ -225,10 +240,13 @@ class ModelUsageTelemetry:
             "total_generations": (
                 total_generations if total_generations is not None else len(events)
             ),
+            "total_tokens_used": total_tokens_used,
             "last_recorded_at": last_recorded_at,
             "by_subsystem": dict(by_subsystem.most_common()),
             "by_provider": dict(by_provider.most_common()),
+            "by_provider_tokens": dict(by_provider_tokens.most_common()),
             "by_model": dict(by_model.most_common()),
+            "by_model_tokens": dict(by_model_tokens.most_common()),
             "by_catalog": dict(by_catalog.most_common()),
             "recent": recent,
         }
@@ -301,12 +319,30 @@ class ModelUsageTelemetry:
         with self._lock:
             recent = [asdict(event) for event in list(self._recent)[:recent_limit]]
             last_recorded_at = recent[0]["timestamp"] if recent else None
+            total_tokens_used = sum(
+                event["tokens_used"]
+                for event in recent
+                if isinstance(event.get("tokens_used"), int | float)
+            )
+            by_provider_tokens: Counter[str] = Counter()
+            by_model_tokens: Counter[str] = Counter()
+            for event in recent:
+                tokens_used = (
+                    int(event["tokens_used"])
+                    if isinstance(event.get("tokens_used"), int | float)
+                    else 0
+                )
+                by_provider_tokens[event["provider"]] += tokens_used
+                by_model_tokens[event["model"]] += tokens_used
             return {
                 "total_generations": self._total,
+                "total_tokens_used": total_tokens_used,
                 "last_recorded_at": last_recorded_at,
                 "by_subsystem": dict(self._by_subsystem.most_common()),
                 "by_provider": dict(self._by_provider.most_common()),
+                "by_provider_tokens": dict(by_provider_tokens.most_common()),
                 "by_model": dict(self._by_model.most_common()),
+                "by_model_tokens": dict(by_model_tokens.most_common()),
                 "by_catalog": dict(self._by_catalog.most_common()),
                 "recent": recent,
             }

@@ -2,10 +2,11 @@ import { Globe, Key, Settings as SettingsIcon, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { getDisplayApiBaseUrl, getRuntimeEnvironment } from '../lib/runtimeConfig';
-import type { HealthStatus } from '../types';
+import type { HealthStatus, ModelLaneSummary } from '../types';
 
 export default function Settings() {
   const [health, setHealth] = useState<HealthStatus | null>(null);
+  const [modelLaneSummary, setModelLaneSummary] = useState<ModelLaneSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -16,15 +17,30 @@ export default function Settings() {
 
   const fetchHealth = async () => {
     try {
-      const data = await api.health();
-      setHealth(data);
+      const [healthData, laneData] = await Promise.all([
+        api.health(),
+        api.getModelLaneSummary().catch(() => null),
+      ]);
+      setHealth(healthData);
+      setModelLaneSummary(laneData);
     } catch (error) {
       console.error('Failed to fetch health:', error);
       setHealth(null);
+      setModelLaneSummary(null);
     } finally {
       setLoading(false);
     }
   };
+
+  const persistedUsage = modelLaneSummary?.runtime_usage.persisted;
+  const inMemoryUsage = modelLaneSummary?.runtime_usage.memory;
+  const costSummary = modelLaneSummary?.cost_router.cost;
+  const providerEntries = Object.entries(costSummary?.providers || {}).sort(
+    (left, right) => right[1].requests - left[1].requests
+  );
+  const providerUsageEntries = Object.entries(persistedUsage?.by_provider || {}).sort(
+    (left, right) => right[1] - left[1]
+  );
 
   const getStatusColor = (status?: string) => {
     switch (status?.toLowerCase()) {
@@ -114,6 +130,119 @@ export default function Settings() {
             </div>
           ) : (
             <p className="text-red-400">Failed to connect to backend</p>
+          )}
+        </div>
+
+        <div className="bg-gray-800 rounded-lg p-6">
+          <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+            <Zap className="w-5 h-5" />
+            Model Routing
+          </h3>
+          {modelLaneSummary ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">Active Lane</span>
+                <span className="text-indigo-300">{modelLaneSummary.active_lane}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">Persisted Generations</span>
+                <span className="text-gray-300">{persistedUsage?.total_generations || 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">Persisted Tokens</span>
+                <span className="text-gray-300">{persistedUsage?.total_tokens_used || 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">In-Memory Generations</span>
+                <span className="text-gray-300">{inMemoryUsage?.total_generations || 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">In-Memory Tokens</span>
+                <span className="text-gray-300">{inMemoryUsage?.total_tokens_used || 0}</span>
+              </div>
+              {providerUsageEntries.length ? (
+                <div className="pt-3 border-t border-gray-700">
+                  <p className="text-xs uppercase tracking-[0.18em] text-gray-500 mb-2">
+                    Top Providers
+                  </p>
+                  <div className="space-y-2">
+                    {providerUsageEntries.slice(0, 3).map(([provider, count]) => (
+                      <div key={provider} className="flex items-center justify-between text-sm">
+                        <span className="text-gray-300">{provider}</span>
+                        <span className="text-gray-400">
+                          {count} calls · {persistedUsage?.by_provider_tokens?.[provider] || 0} tokens
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">
+                  No persisted model usage has been recorded yet.
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-sm">
+              Model routing summary unavailable.
+            </p>
+          )}
+        </div>
+
+        <div className="bg-gray-800 rounded-lg p-6">
+          <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+            <Key className="w-5 h-5" />
+            Cost & Provider Activity
+          </h3>
+          {costSummary ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">Daily Spend</span>
+                <span className="text-gray-300">{costSummary.total_daily_spend}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">Monthly Spend</span>
+                <span className="text-gray-300">{costSummary.total_monthly_spend}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">Tracked Requests</span>
+                <span className="text-gray-300">{costSummary.totals.requests}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">Tracked Tokens</span>
+                <span className="text-gray-300">{costSummary.totals.total_tokens}</span>
+              </div>
+              {providerEntries.length ? (
+                <div className="pt-3 border-t border-gray-700 space-y-2">
+                  {providerEntries.slice(0, 4).map(([provider, details]) => (
+                    <div key={provider} className="rounded-lg bg-gray-900 px-3 py-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-white">{provider}</span>
+                        <span className="text-xs text-gray-500">
+                          {details.is_free_tier ? 'free tier' : details.lane}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {details.model} · {details.requests} requests · {details.total_tokens} tokens
+                      </p>
+                      {details.last_task_type || details.last_used_at ? (
+                        <p className="text-[11px] text-gray-500 mt-1">
+                          {[details.last_task_type, details.last_used_at].filter(Boolean).join(' · ')}
+                        </p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">
+                  No provider usage has been recorded yet.
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-sm">
+              Cost report unavailable.
+            </p>
           )}
         </div>
 

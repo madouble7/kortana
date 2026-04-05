@@ -155,6 +155,51 @@ export interface HealthStatus {
   uptime_seconds?: number;
 }
 
+export interface ModelUsageSummary {
+  total_generations: number;
+  total_tokens_used: number;
+  last_recorded_at?: string | null;
+  by_provider: Record<string, number>;
+  by_provider_tokens: Record<string, number>;
+}
+
+export interface CostProviderSummary {
+  model: string;
+  lane: string;
+  is_free_tier: boolean;
+  requests: number;
+  total_tokens: number;
+  last_task_type?: string | null;
+  last_used_at?: string | null;
+}
+
+export interface ModelLaneSummary {
+  active_lane: string;
+  runtime_usage: {
+    total_generations: number;
+    total_tokens_used: number;
+    memory: ModelUsageSummary;
+    persisted: ModelUsageSummary;
+  };
+  cost_router: {
+    cost: {
+      total_daily_spend: string;
+      total_monthly_spend: string;
+      report_generated_at?: string;
+      totals: {
+        daily_spend_usd: number;
+        monthly_spend_usd: number;
+        requests: number;
+        input_tokens: number;
+        output_tokens: number;
+        total_tokens: number;
+      };
+      providers: Record<string, CostProviderSummary>;
+      free_tier_usage: Record<string, number>;
+    };
+  };
+}
+
 export interface ApiError {
   message: string;
   status: number;
