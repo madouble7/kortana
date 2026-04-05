@@ -79,6 +79,7 @@ class AutonomyDaemon:
         self._adaptation_history: list[dict[str, Any]] = []
         self._deferred_tasks: set[str] = set()
         self._cycle_failed_task_ids: list[str] = []
+        self._cycle_event_log: list[dict[str, Any]] = []
 
         self._running = False
         self._task: asyncio.Task[None] | None = None
@@ -148,6 +149,20 @@ class AutonomyDaemon:
         self._listeners.append(callback)
 
     def _emit(self, event: DaemonEvent) -> None:
+        if event.type in {
+            "task_deferred",
+            "task_failed",
+            "task_blocked",
+            "approval_auto_granted",
+        }:
+            self._cycle_event_log.append(
+                {
+                    "type": event.type,
+                    "timestamp": event.timestamp,
+                    "data": dict(event.data or {}),
+                }
+            )
+            self._cycle_event_log = self._cycle_event_log[-20:]
         for callback in self._listeners:
             try:
                 result = callback(event)
@@ -584,7 +599,7 @@ class AutonomyDaemon:
                     (idx + offset) % len(self._PERPETUAL_TASK_CATALOGUE)
                 ]
 
-                # Skip if a task with same title is active (not failed/cancelled)
+                # Skip if a task with same title is active (not failed/cancelled/blocked)
                 dup_res = await session.execute(
                     select(func.count())
                     .select_from(GitHubTask)
@@ -599,7 +614,6 @@ class AutonomyDaemon:
                                 "planning_complete",
                                 "executing",
                                 "executed",
-                                "blocked",
                             ]
                         ),
                     )
@@ -927,6 +941,7 @@ class AutonomyDaemon:
         self.control_mode = "execute"
         cycle_start = time.monotonic()
         cycle_start_dt = datetime.utcnow()
+        self._cycle_event_log = []
         self._emit(DaemonEvent(type="cycle_start"))
         logger.info("--- Autonomy cycle starting ---")
 
@@ -1013,6 +1028,7 @@ class AutonomyDaemon:
             "operator_guidance": self.metrics["operator_guidance"],
             "workspace_bridge": workspace_status,
             "provider_health": self._get_provider_health_snapshot(),
+            "task_events": list(self._cycle_event_log),
         }
 
         # Record Vector Gamma cycle memory
@@ -2000,6 +2016,7 @@ class AutonomyDaemon:
             "control_mode": self.control_mode,
             "adaptation_history": self._adaptation_history[-10:],
             "workspace_bridge": self.metrics.get("workspace_bridge"),
+            "provider_health": self._get_provider_health_snapshot(),
             **self.metrics,
         }
 
