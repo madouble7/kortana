@@ -951,6 +951,9 @@ class AutonomyDaemon:
                 guidance=guidance,
                 workspace_status=workspace_status,
             )
+            # Seed tasks BEFORE processing so they can be picked up this cycle
+            await self._generate_perpetual_tasks(session)
+            await self._seed_kortana_investigations(session)
             effective_limit = self.max_tasks
             processed, succeeded, failed, deferred = await self._process_tasks(
                 session, max_tasks=effective_limit, guidance=guidance
@@ -959,8 +962,6 @@ class AutonomyDaemon:
             approvals_processed_count += app_count
             await self._analyze_architecture(session)
             await self._seed_synthetic_incidents(session)
-            await self._generate_perpetual_tasks(session)
-            await self._seed_kortana_investigations(session)
             await self._heal_vectors(session)
             await self._process_self_directed_tasks(session)
             await self._write_reflection(session)
