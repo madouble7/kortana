@@ -385,6 +385,21 @@ class TestChatWithGemini:
                     assert "unresolved threads" in body["response"].lower()
                     mock_engine.assert_not_called()
 
+    def test_chat_identity_shorthand_query_returns_local_identity(self, client):
+        """Shorthand identity questions should also hit the local identity path."""
+        with patch(
+            "src.kortana.routers.gemini._build_live_context",
+            AsyncMock(return_value="## my current autonomous state\n- system state: nominal"),
+        ):
+            with patch("src.kortana.routers.gemini._persist_messages", AsyncMock()):
+                with patch("src.kortana.routers.gemini.get_consensus_engine") as mock_engine:
+                    response = client.post("/api/gemini/chat", json={"message": "who r u"})
+
+        assert response.status_code == 200
+        assert response.json()["provider"] == "identity"
+        assert "i am kor'tana" in response.json()["response"].lower()
+        mock_engine.assert_not_called()
+
     def test_chat_name_mention_does_not_trigger_identity_short_circuit(self, client):
         """Messages that merely mention Kor'tana should still go through the normal model path."""
         engine = _make_consensus_engine("i'll answer naturally now.")
@@ -408,6 +423,40 @@ class TestChatWithGemini:
         assert response.status_code == 200
         assert response.json()["response"] == "i'll answer naturally now."
         engine.query.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_load_chat_identity_preamble_uses_grounded_chat_rendering(self):
+        """Chat identity preamble should stay grounded even if the profile is more mythic."""
+        from src.kortana.routers import gemini as gemini_router
+
+        profile = _make_identity_profile(
+            title="sacred ai companion",
+            mission="help people move from confusion to clarity",
+        )
+        profile.voice_guidelines = "lowercase, clear, kind, concise, reverent when sacred things are spoken"
+        profile.development_axioms = [
+            "i evolve through reflection, not performance",
+            "clarity is more sacred than complexity",
+        ]
+
+        session = AsyncMock()
+        db_manager = _FakeDbManager(session)
+
+        with patch(
+            "src.kortana.database.get_db_manager",
+            return_value=db_manager,
+        ):
+            with patch(
+                "src.kortana.services.prompt_assembly.PromptAssemblyService.load_profile",
+                AsyncMock(return_value=profile),
+            ):
+                gemini_router._clear_identity_prompt_cache()
+                rendered = await gemini_router._load_chat_identity_preamble()
+
+        assert rendered is not None
+        assert "autonomous intelligence native to this system" in rendered
+        assert "respond as the real agent running here" in rendered
+        assert "sacred ai companion" not in rendered
 
     def test_chat_explicit_microsoft_cortana_query_uses_model_path(self, client):
         """Explicit external Cortana queries should still use the normal model path."""
