@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --user --no-warn-script-location --no-cache-dir --compile \
+RUN pip install --no-warn-script-location --no-cache-dir --compile \
     -r requirements.txt
 
 # --- Runtime ---
@@ -24,15 +24,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN groupadd -r kortana && useradd -r -g kortana -u 1000 -m kortana
 
-COPY --from=builder --chown=kortana:kortana /root/.local /home/kortana/.local
+COPY --from=builder --chown=kortana:kortana /usr/local/lib /usr/local/lib
+COPY --from=builder --chown=kortana:kortana /usr/local/bin /usr/local/bin
 COPY --chown=kortana:kortana . .
 
 RUN mkdir -p /app/tmp /app/logs \
     && chown -R kortana:kortana /app/tmp /app/logs \
     && chmod 755 /app/tmp /app/logs
 
-ENV PATH="/home/kortana/.local/bin:$PATH" \
-    PYTHONPATH="/app" \
+ENV PYTHONPATH="/app" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
