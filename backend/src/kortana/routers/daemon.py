@@ -32,6 +32,17 @@ def _stale_after_seconds() -> int:
     return max(get_settings().AUTONOMY_CYCLE_INTERVAL * 3, 300)
 
 
+def _provider_health_from_metrics(metrics: Any) -> dict[str, str]:
+    if isinstance(metrics, dict):
+        provider_health = metrics.get("provider_health")
+        if isinstance(provider_health, dict):
+            return {
+                str(provider): str(status)
+                for provider, status in provider_health.items()
+            }
+    return {}
+
+
 async def _external_daemon_status(db: AsyncSession) -> dict[str, Any]:
     stale_after = _stale_after_seconds()
     try:
@@ -62,6 +73,7 @@ async def _external_daemon_status(db: AsyncSession) -> dict[str, Any]:
         int((datetime.utcnow() - latest.end_time).total_seconds()),
     )
     alive = seconds_since_last_cycle <= stale_after
+    provider_health = _provider_health_from_metrics(latest.metrics)
     return {
         "alive": alive,
         "state": "alive" if alive else "stale",
@@ -76,6 +88,7 @@ async def _external_daemon_status(db: AsyncSession) -> dict[str, Any]:
         "stale_after_seconds": stale_after,
         "tasks_processed": latest.tasks_processed,
         "errors_encountered": latest.errors_encountered,
+        "provider_health": provider_health,
     }
 
 
@@ -92,6 +105,7 @@ async def daemon_status(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
             **local_status,
         }
 
+    external_status = await _external_daemon_status(db)
     return {
         "deployment_mode": "external",
         "control_available": False,
@@ -103,7 +117,8 @@ async def daemon_status(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
             "running": local_status["running"],
             "enabled": local_status["enabled"],
         },
-        "external_daemon": await _external_daemon_status(db),
+        "provider_health": external_status.get("provider_health", {}),
+        "external_daemon": external_status,
     }
 
 

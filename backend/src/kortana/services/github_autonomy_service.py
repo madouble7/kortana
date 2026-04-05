@@ -1008,6 +1008,9 @@ class GitHubAutonomyService:
                 )
             else:
                 health[provider] = "ok"
+        for provider, detail in cls._provider_last_error.items():
+            if provider not in health and detail:
+                health[provider] = f"error:{detail}"
         # Always include gemini entry for visibility
         if "gemini" not in health:
             health["gemini"] = "ok"
@@ -1160,8 +1163,13 @@ class GitHubAutonomyService:
                     await asyncio.sleep(delay_seconds)
                     continue
 
-                self._provider_last_error[provider] = detail
-                logger.error("GitHub API %s failed: %s", operation, detail)
+                last_error = (
+                    f"status {status_code}: {detail}"
+                    if status_code is not None
+                    else detail
+                )
+                self._provider_last_error[provider] = last_error
+                logger.error("GitHub API %s failed: %s", operation, last_error)
                 return None
 
     @staticmethod
@@ -2070,9 +2078,14 @@ class GitHubAutonomyService:
                 accept_statuses={422},
             )
             if create_response is None:
+                last_error = self._provider_last_error.get("github")
                 task.error_message = (
-                    self._provider_last_error.get("github")
-                    or "Branch creation failed before a response was returned"
+                    f"Branch creation failed with {last_error}"
+                    if last_error and last_error.startswith("status ")
+                    else (
+                        last_error
+                        or "Branch creation failed before a response was returned"
+                    )
                 )
                 logger.error(task.error_message)
                 return False
