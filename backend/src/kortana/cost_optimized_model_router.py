@@ -573,3 +573,20 @@ class CostOptimizedModelRouter:
                 for p, c in self.configs.items()
             },
         }
+
+
+_cost_optimized_model_router: CostOptimizedModelRouter | None = None
+
+
+def get_cost_optimized_model_router() -> CostOptimizedModelRouter:
+    """Return the process-wide cost router so usage and cooldown state persist."""
+    global _cost_optimized_model_router
+    if _cost_optimized_model_router is None:
+        _cost_optimized_model_router = CostOptimizedModelRouter()
+    return _cost_optimized_model_router
+
+
+def reset_cost_optimized_model_router() -> None:
+    """Reset the process-wide cost router. Intended for tests only."""
+    global _cost_optimized_model_router
+    _cost_optimized_model_router = None

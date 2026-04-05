@@ -1,6 +1,6 @@
-import { Globe, Key, Settings as SettingsIcon, Zap } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { api } from '../lib/api';
+import { AlertTriangle, Globe, Key, RefreshCw, Settings as SettingsIcon, Zap } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { api, type ApiError } from '../lib/api';
 import { getDisplayApiBaseUrl, getRuntimeEnvironment } from '../lib/runtimeConfig';
 import type { HealthStatus, ModelLaneSummary } from '../types';
 
@@ -8,29 +8,92 @@ export default function Settings() {
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [modelLaneSummary, setModelLaneSummary] = useState<ModelLaneSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchHealth();
-    const interval = setInterval(fetchHealth, 10000);
-    return () => clearInterval(interval);
+  const describeError = useCallback((error: unknown, fallback: string) => {
+    const apiError = error as Partial<ApiError> | undefined;
+    if (apiError?.isRateLimited) {
+      return apiError.retryAfterSeconds
+        ? `Rate limit reached. Refreshing again in ${apiError.retryAfterSeconds}s.`
+        : 'Rate limit reached. Refreshing again shortly.';
+    }
+    if (apiError?.isOffline) {
+      return 'Backend is unreachable right now. Retrying automatically.';
+    }
+    if (error instanceof Error && error.message) {
+      return error.message;
+    }
+    return fallback;
   }, []);
 
-  const fetchHealth = async () => {
+  const fetchHealth = useCallback(async (): Promise<number> => {
+    setRefreshing(true);
+
     try {
-      const [healthData, laneData] = await Promise.all([
+      const [healthResult, laneResult] = await Promise.allSettled([
         api.health(),
-        api.getModelLaneSummary().catch(() => null),
+        api.getModelLaneSummary(),
       ]);
-      setHealth(healthData);
-      setModelLaneSummary(laneData);
+
+      if (healthResult.status === 'fulfilled') {
+        setHealth(healthResult.value);
+      }
+
+      if (laneResult.status === 'fulfilled') {
+        setModelLaneSummary(laneResult.value);
+      }
+
+      const issues: string[] = [];
+      if (healthResult.status === 'rejected') {
+        issues.push(describeError(healthResult.reason, 'System status refresh failed.'));
+      }
+      if (laneResult.status === 'rejected') {
+        issues.push(describeError(laneResult.reason, 'Model routing summary refresh failed.'));
+      }
+
+      setNotice(issues.length ? issues[0] : null);
+      setLastUpdatedAt(new Date().toISOString());
+      return 10000;
     } catch (error) {
-      console.error('Failed to fetch health:', error);
-      setHealth(null);
-      setModelLaneSummary(null);
+      console.error('Failed to refresh settings:', error);
+      setNotice(describeError(error, 'Settings refresh failed.'));
+      const retryAfterSeconds = (error as Partial<ApiError>)?.retryAfterSeconds;
+      return retryAfterSeconds ? retryAfterSeconds * 1000 : 15000;
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, [describeError]);
+
+  useEffect(() => {
+    let active = true;
+    let timeoutId: number | null = null;
+
+    const scheduleNextPoll = (delayMs: number) => {
+      if (!active) {
+        return;
+      }
+      timeoutId = window.setTimeout(() => {
+        void poll();
+      }, delayMs);
+    };
+
+    const poll = async () => {
+      const delayMs = await fetchHealth();
+      scheduleNextPoll(delayMs);
+    };
+
+    void poll();
+
+    return () => {
+      active = false;
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [fetchHealth]);
 
   const persistedUsage = modelLaneSummary?.runtime_usage.persisted;
   const inMemoryUsage = modelLaneSummary?.runtime_usage.memory;
@@ -59,13 +122,39 @@ export default function Settings() {
     <div className="flex flex-col h-full bg-gray-900 overflow-y-auto">
       {/* Header */}
       <div className="px-6 py-4 border-b border-gray-800 sticky top-0 bg-gray-900 z-10">
-        <div className="flex items-center gap-2">
-          <SettingsIcon className="w-5 h-5 text-gray-400" />
-          <h2 className="text-lg font-semibold text-white">Settings</h2>
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <SettingsIcon className="w-5 h-5 text-gray-400" />
+            <h2 className="text-lg font-semibold text-white">Settings</h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              void fetchHealth();
+            }}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-700 px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 transition-colors"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
         </div>
       </div>
 
       <div className="px-6 py-6 space-y-6">
+        {notice ? (
+          <div className="rounded-lg border border-amber-700/60 bg-amber-950/40 px-4 py-3 text-sm text-amber-100 flex items-start gap-3">
+            <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <p>{notice}</p>
+              {lastUpdatedAt ? (
+                <p className="mt-1 text-xs text-amber-200/70">
+                  Last successful refresh: {new Date(lastUpdatedAt).toLocaleTimeString()}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
         {/* System Status */}
         <div className="bg-gray-800 rounded-lg p-6">
           <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
@@ -218,13 +307,25 @@ export default function Settings() {
                     <div key={provider} className="rounded-lg bg-gray-900 px-3 py-2">
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-white">{provider}</span>
-                        <span className="text-xs text-gray-500">
-                          {details.is_free_tier ? 'free tier' : details.lane}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          {details.cooling_down ? (
+                            <span className="text-[10px] uppercase tracking-[0.18em] text-amber-300">
+                              cooldown {details.cooldown_seconds || 0}s
+                            </span>
+                          ) : null}
+                          <span className="text-xs text-gray-500">
+                            {details.is_free_tier ? 'free tier' : details.lane}
+                          </span>
+                        </div>
                       </div>
                       <p className="text-xs text-gray-400 mt-1">
                         {details.model} · {details.requests} requests · {details.total_tokens} tokens
                       </p>
+                      {details.last_error ? (
+                        <p className="text-[11px] text-amber-300/80 mt-1">
+                          Last issue: {details.last_error}
+                        </p>
+                      ) : null}
                       {details.last_task_type || details.last_used_at ? (
                         <p className="text-[11px] text-gray-500 mt-1">
                           {[details.last_task_type, details.last_used_at].filter(Boolean).join(' · ')}

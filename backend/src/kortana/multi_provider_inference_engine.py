@@ -12,9 +12,10 @@ from dataclasses import dataclass
 from typing import Optional
 
 from src.kortana.cost_optimized_model_router import (
-    CostOptimizedModelRouter,
     ModelProvider,
     TaskType,
+    CostOptimizedModelRouter,
+    get_cost_optimized_model_router,
 )
 from src.kortana.logger import get_logger
 
@@ -62,7 +63,7 @@ class MultiProviderInferenceEngine:
     """
 
     def __init__(self, router: Optional[CostOptimizedModelRouter] = None):
-        self.router = router or CostOptimizedModelRouter()
+        self.router = router or get_cost_optimized_model_router()
         self.request_cache: dict[str, InferenceResult] = {}
 
     async def infer(

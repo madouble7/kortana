@@ -10,9 +10,9 @@ from __future__ import annotations
 from typing import Optional
 
 from src.kortana.cost_optimized_model_router import (
-    CostOptimizedModelRouter,
     ModelProvider,
     TaskType,
+    get_cost_optimized_model_router,
 )
 from src.kortana.logger import get_logger
 
@@ -32,7 +32,7 @@ class UnifiedModelGateway:
 
     def __init__(self):
         """Initialize gateway with cost-optimized router"""
-        self.router = CostOptimizedModelRouter()
+        self.router = get_cost_optimized_model_router()
         logger.info("✅ Unified Model Gateway initialized")
         self._log_available_providers()
 

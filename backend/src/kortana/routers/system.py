@@ -76,7 +76,9 @@ async def get_settings_info() -> dict[str, Any]:
 @router.get("/model-lanes")
 async def get_model_lane_summary() -> dict[str, Any]:
     """Return a compact summary of model lane posture across active subsystems."""
-    from src.kortana.cost_optimized_model_router import CostOptimizedModelRouter
+    from src.kortana.cost_optimized_model_router import (
+        get_cost_optimized_model_router,
+    )
     from src.kortana.llm_router import get_llm_router
     from src.kortana.model_lane_policy import describe_model_lane, get_active_model_lane
     from src.kortana.model_usage_telemetry import get_model_usage_telemetry
@@ -98,7 +100,7 @@ async def get_model_lane_summary() -> dict[str, Any]:
 
     llm_router = get_llm_router()
     consensus_status = get_consensus_engine().get_status()
-    cost_router = CostOptimizedModelRouter()
+    cost_router = get_cost_optimized_model_router()
     telemetry = get_model_usage_telemetry()
     memory_runtime_usage = telemetry.get_summary()
     persisted_runtime_usage = await telemetry.get_persisted_summary()
