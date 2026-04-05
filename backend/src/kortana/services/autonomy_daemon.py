@@ -1725,6 +1725,13 @@ class AutonomyDaemon:
 
                     if self.live_execution_enabled:
                         await service.execute_task(task, dry_run=False)
+                        if task.status == "blocked":
+                            deferred += 1
+                            self._defer_execution(
+                                task,
+                                reason="patch_guardrail_rejected",
+                            )
+                            continue
                         if task.status != "executed":
                             raise RuntimeError(
                                 task.error_message
