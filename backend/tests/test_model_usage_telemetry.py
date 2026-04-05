@@ -36,10 +36,13 @@ def test_model_usage_telemetry_summary_groups_events() -> None:
     summary = telemetry.get_summary()
 
     assert summary["total_generations"] == 2
+    assert summary["total_tokens_used"] == 11
     assert summary["by_subsystem"]["llm_router"] == 1
     assert summary["by_subsystem"]["api_integration"] == 1
     assert summary["by_catalog"]["llm_router_defaults"] == 1
     assert summary["by_provider"]["gemini"] == 1
+    assert summary["by_provider_tokens"]["gemini"] == 11
+    assert summary["by_model_tokens"]["gemini-2.0-flash"] == 11
     assert len(summary["recent"]) == 2
 
 
@@ -109,6 +112,8 @@ async def test_model_usage_telemetry_persists_and_summarizes(monkeypatch) -> Non
     assert stored_logs[0].action == "model_usage"
     assert stored_logs[0].resource_type == "llm_router"
     assert summary["total_generations"] == 1
+    assert summary["total_tokens_used"] == 21
     assert summary["by_subsystem"]["llm_router"] == 1
     assert summary["by_catalog"]["llm_router_defaults"] == 1
+    assert summary["by_provider_tokens"]["gemini"] == 21
     assert summary["recent"][0]["selection"] == "primary_default"

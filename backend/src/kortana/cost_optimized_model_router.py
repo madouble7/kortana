@@ -86,6 +86,11 @@ class CostEstimate:
     estimated_cost: float = 0.0
     daily_spend: float = field(default_factory=float)
     monthly_spend: float = field(default_factory=float)
+    total_input_tokens: int = 0
+    total_output_tokens: int = 0
+    total_requests: int = 0
+    last_task_type: str | None = None
+    last_used_at: str | None = None
     last_reset: datetime = field(default_factory=datetime.utcnow)
 
     def calculate_cost(self, config: ModelConfig) -> float:
@@ -94,14 +99,26 @@ class CostEstimate:
         output_cost = self.estimated_output_tokens / 1000 * config.cost_per_1k_output
         return input_cost + output_cost
 
-    def update_daily_spend(self, cost: float) -> None:
-        """Update daily spending and reset if needed"""
+    def record_usage(
+        self,
+        *,
+        cost: float,
+        task_type: TaskType,
+        input_tokens: int,
+        output_tokens: int,
+    ) -> None:
+        """Update rolling spend and token counters for a completed request."""
         now = datetime.utcnow()
         if (now - self.last_reset).days >= 1:
             self.daily_spend = 0.0
             self.last_reset = now
         self.daily_spend += cost
         self.monthly_spend += cost
+        self.total_input_tokens += input_tokens
+        self.total_output_tokens += output_tokens
+        self.total_requests += 1
+        self.last_task_type = task_type.value
+        self.last_used_at = now.isoformat()
 
 
 class CostOptimizedModelRouter:
@@ -361,7 +378,12 @@ class CostOptimizedModelRouter:
                 provider=provider, task_type=task_type
             )
 
-        self.cost_tracking[provider].update_daily_spend(cost)
+        self.cost_tracking[provider].record_usage(
+            cost=cost,
+            task_type=task_type,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+        )
 
         self.request_counts[provider] = self.request_counts.get(provider, 0) + 1
 
@@ -375,27 +397,84 @@ class CostOptimizedModelRouter:
         """Get comprehensive cost analysis"""
         total_daily = sum(c.daily_spend for c in self.cost_tracking.values())
         total_monthly = sum(c.monthly_spend for c in self.cost_tracking.values())
+        total_requests = sum(c.total_requests for c in self.cost_tracking.values())
+        total_input_tokens = sum(
+            c.total_input_tokens for c in self.cost_tracking.values()
+        )
+        total_output_tokens = sum(
+            c.total_output_tokens for c in self.cost_tracking.values()
+        )
 
         provider_breakdown = {
             provider.value: {
                 "model": self.configs[provider].model_name,
                 "lane": self.configs[provider].lane,
+                "is_free_tier": self.configs[provider].is_free_tier,
                 "daily": self.cost_tracking.get(
                     provider,
                     CostEstimate(provider=provider, task_type=TaskType.ANALYSIS),
                 ).daily_spend,
+                "daily_spend_usd": round(
+                    self.cost_tracking.get(
+                        provider,
+                        CostEstimate(provider=provider, task_type=TaskType.ANALYSIS),
+                    ).daily_spend,
+                    6,
+                ),
                 "monthly": self.cost_tracking.get(
                     provider,
                     CostEstimate(provider=provider, task_type=TaskType.ANALYSIS),
                 ).monthly_spend,
+                "monthly_spend_usd": round(
+                    self.cost_tracking.get(
+                        provider,
+                        CostEstimate(provider=provider, task_type=TaskType.ANALYSIS),
+                    ).monthly_spend,
+                    6,
+                ),
                 "requests": self.request_counts.get(provider, 0),
+                "input_tokens": self.cost_tracking.get(
+                    provider,
+                    CostEstimate(provider=provider, task_type=TaskType.ANALYSIS),
+                ).total_input_tokens,
+                "output_tokens": self.cost_tracking.get(
+                    provider,
+                    CostEstimate(provider=provider, task_type=TaskType.ANALYSIS),
+                ).total_output_tokens,
+                "total_tokens": (
+                    self.cost_tracking.get(
+                        provider,
+                        CostEstimate(provider=provider, task_type=TaskType.ANALYSIS),
+                    ).total_input_tokens
+                    + self.cost_tracking.get(
+                        provider,
+                        CostEstimate(provider=provider, task_type=TaskType.ANALYSIS),
+                    ).total_output_tokens
+                ),
+                "last_task_type": self.cost_tracking.get(
+                    provider,
+                    CostEstimate(provider=provider, task_type=TaskType.ANALYSIS),
+                ).last_task_type,
+                "last_used_at": self.cost_tracking.get(
+                    provider,
+                    CostEstimate(provider=provider, task_type=TaskType.ANALYSIS),
+                ).last_used_at,
             }
             for provider in self.configs.keys()
         }
 
         return {
+            "report_generated_at": datetime.utcnow().isoformat(),
             "total_daily_spend": f"${total_daily:.2f}",
             "total_monthly_spend": f"${total_monthly:.2f}",
+            "totals": {
+                "daily_spend_usd": round(total_daily, 6),
+                "monthly_spend_usd": round(total_monthly, 6),
+                "requests": total_requests,
+                "input_tokens": total_input_tokens,
+                "output_tokens": total_output_tokens,
+                "total_tokens": total_input_tokens + total_output_tokens,
+            },
             "providers": provider_breakdown,
             "model_usage_lane": self.model_usage_lane.value,
             "free_tier_usage": {

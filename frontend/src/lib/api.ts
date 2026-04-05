@@ -10,6 +10,7 @@ import type {
   GitHubIssue,
   HealthStatus,
   Memory,
+  ModelLaneSummary,
   QueuedTaskSummary,
   Task,
 } from '../types';
@@ -594,6 +595,10 @@ class ApiClient {
 
   async getConversation(id: string) {
     return this.request(`/api/conversations/${id}`);
+  }
+
+  async getModelLaneSummary(): Promise<ModelLaneSummary> {
+    return this.request<ModelLaneSummary>('/api/system/model-lanes');
   }
 
   // Task endpoints
