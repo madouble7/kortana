@@ -9,6 +9,8 @@ from src.kortana.cost_optimized_model_router import (
     CostOptimizedModelRouter,
     ModelProvider,
     TaskType,
+    get_cost_optimized_model_router,
+    reset_cost_optimized_model_router,
 )
 from src.kortana.api_integration import UnifiedAPIClient
 from src.kortana.api_integration import ProviderRateLimitError
@@ -32,6 +34,21 @@ def test_cost_router_skips_quarantined_openai_model(monkeypatch) -> None:
     strategy = router.get_routing_strategy()
     assert strategy["model_usage_lane"] == "core"
     assert strategy["model_lanes"]["groq"] == "core"
+
+
+def test_cost_router_singleton_reuses_runtime_state(monkeypatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    monkeypatch.setenv("KORTANA_MODEL_USAGE_LANE", "core")
+    get_settings.cache_clear()
+    reset_cost_optimized_model_router()
+
+    router = get_cost_optimized_model_router()
+    router.record_usage(ModelProvider.OPENAI, TaskType.SUMMARY, 10, 5)
+
+    same_router = get_cost_optimized_model_router()
+
+    assert same_router is router
+    assert same_router.get_cost_report()["totals"]["requests"] == 1
 
 
 def test_unified_api_client_uses_router_configured_models(monkeypatch) -> None:
@@ -154,12 +171,12 @@ def test_cost_report_includes_provider_cooldown(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
-@patch("src.kortana.api_integration.CostOptimizedModelRouter")
-async def test_unified_api_client_records_runtime_usage(mock_router_cls) -> None:
+@patch("src.kortana.api_integration.get_cost_optimized_model_router")
+async def test_unified_api_client_records_runtime_usage(mock_get_router) -> None:
     telemetry = get_model_usage_telemetry()
     telemetry.reset()
 
-    mock_router = mock_router_cls.return_value
+    mock_router = mock_get_router.return_value
     mock_router.configs = {}
     mock_router.model_usage_lane = SimpleNamespace(value="core")
     mock_router.select_for_task.return_value = [ModelProvider.GROQ]
@@ -185,9 +202,9 @@ async def test_unified_api_client_records_runtime_usage(mock_router_cls) -> None
 
 
 @pytest.mark.asyncio
-@patch("src.kortana.api_integration.CostOptimizedModelRouter")
-async def test_unified_api_client_cools_down_rate_limited_provider(mock_router_cls) -> None:
-    mock_router = mock_router_cls.return_value
+@patch("src.kortana.api_integration.get_cost_optimized_model_router")
+async def test_unified_api_client_cools_down_rate_limited_provider(mock_get_router) -> None:
+    mock_router = mock_get_router.return_value
     mock_router.configs = {}
     mock_router.model_usage_lane = SimpleNamespace(value="core")
     mock_router.select_for_task.return_value = [
