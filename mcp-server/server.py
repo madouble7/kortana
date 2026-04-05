@@ -297,6 +297,18 @@ async def list_tools() -> list[types.Tool]:
             },
         ),
         types.Tool(
+            name="speak",
+            description="Make kor'tana speak aloud on MADOUBLE using Windows SAPI text-to-speech. Use to deliver responses, alerts, or updates out loud — even when the voice daemon isn't running.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string", "description": "Text to speak aloud"},
+                    "rate": {"type": "integer", "description": "Words per minute (default: 175)"},
+                },
+                "required": ["text"],
+            },
+        ),
+        types.Tool(
             name="notify",
             description="Send a Windows toast notification to Matt on MADOUBLE. Use to surface important events, completions, or alerts without requiring the chat to be open.",
             inputSchema={
@@ -314,15 +326,40 @@ async def list_tools() -> list[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "kind": {"type": "string", "enum": ["shell", "write_file", "git_commit"], "description": "Task type"},
-                    "description": {"type": "string", "description": "Human-readable description"},
-                    "command": {"type": "string", "description": "Shell command (for kind=shell)"},
+                    "kind": {
+                        "type": "string",
+                        "enum": ["shell", "write_file", "git_commit"],
+                        "description": "Task type",
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Human-readable description",
+                    },
+                    "command": {
+                        "type": "string",
+                        "description": "Shell command (for kind=shell)",
+                    },
                     "cwd": {"type": "string", "description": "Working directory"},
-                    "path": {"type": "string", "description": "File path (for kind=write_file)"},
-                    "content": {"type": "string", "description": "File content (for kind=write_file)"},
-                    "message": {"type": "string", "description": "Commit message (for kind=git_commit)"},
-                    "files": {"type": "string", "description": "Files to stage (for kind=git_commit, default: -A)"},
-                    "push": {"type": "boolean", "description": "Push after commit (default: true)"},
+                    "path": {
+                        "type": "string",
+                        "description": "File path (for kind=write_file)",
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "File content (for kind=write_file)",
+                    },
+                    "message": {
+                        "type": "string",
+                        "description": "Commit message (for kind=git_commit)",
+                    },
+                    "files": {
+                        "type": "string",
+                        "description": "Files to stage (for kind=git_commit, default: -A)",
+                    },
+                    "push": {
+                        "type": "boolean",
+                        "description": "Push after commit (default: true)",
+                    },
                 },
                 "required": ["kind", "description"],
             },
@@ -738,11 +775,28 @@ Write-Host "saved"
                 )
             ]
 
+    # ── speak ──────────────────────────────────────────────────────────────────
+    if name == "speak":
+        text = arguments["text"].replace("'", "''").replace('"', '""')
+        rate = arguments.get("rate", 175)
+        ps = f"""
+Add-Type -AssemblyName System.Speech
+$synth = New-Object System.Speech.Synthesis.SpeechSynthesizer
+$synth.Rate = {max(-10, min(10, (rate - 175) // 25))}
+$synth.SelectVoiceByHints([System.Speech.Synthesis.VoiceGender]::Female)
+$synth.Speak('{text}')
+"""
+        result = subprocess.run(
+            ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
+            capture_output=True, text=True, timeout=60,
+        )
+        return [types.TextContent(type="text", text=json.dumps({"spoken": result.returncode == 0, "text": arguments["text"][:80]}))]
+
     # ── notify ─────────────────────────────────────────────────────────────────
     if name == "notify":
         title = arguments["title"]
         message = arguments["message"]
-        ps = f'''
+        ps = f"""
 [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
 [Windows.UI.Notifications.ToastNotification, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
 [Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null
@@ -750,16 +804,24 @@ $xml = New-Object Windows.Data.Xml.Dom.XmlDocument
 $xml.LoadXml(\"<toast><visual><binding template='ToastGeneric'><text>{title}</text><text>{message}</text></binding></visual></toast>\")
 $toast = New-Object Windows.UI.Notifications.ToastNotification $xml
 [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier(\"kor'tana\").Show($toast)
-'''
+"""
         result = subprocess.run(
             ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
-            capture_output=True, text=True, timeout=8,
+            capture_output=True,
+            text=True,
+            timeout=8,
         )
-        return [types.TextContent(type="text", text=json.dumps({"notified": result.returncode == 0, "title": title}))]
+        return [
+            types.TextContent(
+                type="text",
+                text=json.dumps({"notified": result.returncode == 0, "title": title}),
+            )
+        ]
 
     # ── queue_local_task ───────────────────────────────────────────────────────
     if name == "queue_local_task":
         import json as _json
+
         task_file = Path(r"c:\kortana\mcp-server\local_tasks.json")
         tasks = []
         if task_file.exists():
@@ -767,10 +829,19 @@ $toast = New-Object Windows.UI.Notifications.ToastNotification $xml
                 tasks = _json.loads(task_file.read_text(encoding="utf-8"))
             except Exception:
                 tasks = []
-        task = {**arguments, "status": "pending", "queued_at": datetime.utcnow().isoformat()}
+        task = {
+            **arguments,
+            "status": "pending",
+            "queued_at": datetime.utcnow().isoformat(),
+        }
         tasks.append(task)
         task_file.write_text(_json.dumps(tasks, indent=2), encoding="utf-8")
-        return [types.TextContent(type="text", text=_json.dumps({"queued": True, "task_count": len(tasks)}))]
+        return [
+            types.TextContent(
+                type="text",
+                text=_json.dumps({"queued": True, "task_count": len(tasks)}),
+            )
+        ]
 
     return [
         types.TextContent(
