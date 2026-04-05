@@ -19,6 +19,11 @@ except ImportError:
     print("⚠️  Redis not available. Install: pip install redis aioredis")
 
 from src.kortana.logger import get_logger
+from src.kortana.metrics import (
+    track_cache_error,
+    track_cache_eviction,
+    track_cache_hit,
+)
 
 logger = get_logger(__name__)
 
@@ -154,15 +159,18 @@ class CacheManager:
 
             if value:
                 self.metrics.hits += 1
+                track_cache_hit(True)
                 logger.debug(f"Cache HIT: {key}")
                 return json.loads(value)
             else:
                 self.metrics.misses += 1
+                track_cache_hit(False)
                 logger.debug(f"Cache MISS: {key}")
                 return None
 
         except Exception as e:
             self.metrics.errors += 1
+            track_cache_error("get")
             logger.error(f"Cache GET error: {e}")
             return None
 
@@ -182,15 +190,18 @@ class CacheManager:
 
             if value:
                 self.metrics.hits += 1
+                track_cache_hit(True)
                 logger.debug(f"Async Cache HIT: {key}")
                 return json.loads(value)
             else:
                 self.metrics.misses += 1
+                track_cache_hit(False)
                 logger.debug(f"Async Cache MISS: {key}")
                 return None
 
         except Exception as e:
             self.metrics.errors += 1
+            track_cache_error("async_get")
             logger.error(f"Async Cache GET error: {e}")
             return None
 
@@ -213,6 +224,7 @@ class CacheManager:
 
         except Exception as e:
             self.metrics.errors += 1
+            track_cache_error("set")
             logger.error(f"Cache SET error: {e}")
             return False
 
@@ -235,6 +247,7 @@ class CacheManager:
 
         except Exception as e:
             self.metrics.errors += 1
+            track_cache_error("async_set")
             logger.error(f"Async Cache SET error: {e}")
             return False
 
@@ -251,10 +264,12 @@ class CacheManager:
             result = client.delete(key)
             if result:
                 self.metrics.evictions += 1
+                track_cache_eviction()
                 logger.debug(f"Cache DELETE: {key}")
             return bool(result)
 
         except Exception as e:
+            track_cache_error("delete")
             logger.error(f"Cache DELETE error: {e}")
             return False
 
@@ -271,10 +286,12 @@ class CacheManager:
             result = await client.delete(key)
             if result:
                 self.metrics.evictions += 1
+                track_cache_eviction()
                 logger.debug(f"Async Cache DELETE: {key}")
             return bool(result)
 
         except Exception as e:
+            track_cache_error("async_delete")
             logger.error(f"Async Cache DELETE error: {e}")
             return False
 
@@ -292,11 +309,13 @@ class CacheManager:
             if keys:
                 client.delete(*keys)
                 self.metrics.evictions += len(keys)
+                track_cache_eviction(len(keys))
                 logger.info(f"Cache CLEAR: {len(keys)} keys deleted")
                 return len(keys)
             return 0
 
         except Exception as e:
+            track_cache_error("clear")
             logger.error(f"Cache CLEAR error: {e}")
             return 0
 

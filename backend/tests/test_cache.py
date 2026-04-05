@@ -281,12 +281,38 @@ class TestCacheManagerWithFakeRedis:
         assert result is None
         assert cache.metrics.errors == 1
 
+    def test_get_reports_metric_hit(self, monkeypatch):
+        cache = self._make_cache()
+        cache.set("metric-key", "metric-val", ttl=60)
+        tracked: list[bool] = []
+        monkeypatch.setattr("src.kortana.cache.track_cache_hit", tracked.append)
+
+        assert cache.get("metric-key") == "metric-val"
+        assert tracked == [True]
+
+    def test_get_reports_metric_miss(self, monkeypatch):
+        cache = self._make_cache()
+        tracked: list[bool] = []
+        monkeypatch.setattr("src.kortana.cache.track_cache_hit", tracked.append)
+
+        assert cache.get("missing") is None
+        assert tracked == [False]
+
     def test_set_error_path(self):
         cache = self._make_cache()
         cache._client.setex = MagicMock(side_effect=Exception("Redis error"))
         result = cache.set("key", "val")
         assert result is False
         assert cache.metrics.errors == 1
+
+    def test_set_reports_metric_error(self, monkeypatch):
+        cache = self._make_cache()
+        tracked: list[str] = []
+        monkeypatch.setattr("src.kortana.cache.track_cache_error", tracked.append)
+        cache._client.setex = MagicMock(side_effect=Exception("Redis error"))
+
+        assert cache.set("key", "val") is False
+        assert tracked == ["set"]
 
     def test_delete_error_path(self):
         cache = self._make_cache()
@@ -299,6 +325,18 @@ class TestCacheManagerWithFakeRedis:
         cache._client.keys = MagicMock(side_effect=Exception("Redis error"))
         result = cache.clear()
         assert result == 0
+
+    def test_delete_reports_metric_eviction(self, monkeypatch):
+        cache = self._make_cache()
+        cache.set("evict-me", "value", ttl=60)
+        tracked: list[int] = []
+        monkeypatch.setattr(
+            "src.kortana.cache.track_cache_eviction",
+            lambda count=1: tracked.append(count),
+        )
+
+        assert cache.delete("evict-me") is True
+        assert tracked == [1]
 
     def test_is_available_error(self):
         cache = self._make_cache()

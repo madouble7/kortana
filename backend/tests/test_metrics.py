@@ -3,6 +3,10 @@ Tests for metrics module - verifies PrometheusCounter/Gauge/Histogram objects
 and the utility functions for recording metrics.
 """
 
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+
 
 class TestMetricsModuleImport:
     """Tests that metrics objects are instantiated correctly at module level."""
@@ -38,6 +42,9 @@ class TestMetricsModuleImport:
             api_key_requests_total,
             auth_failures_total,
             cache_hits_total,
+            cache_bypassed_total,
+            cache_errors_total,
+            cache_evictions_total,
             cache_misses_total,
             errors_total,
             github_api_calls_total,
@@ -52,6 +59,9 @@ class TestMetricsModuleImport:
             api_key_requests_total,
             auth_failures_total,
             cache_hits_total,
+            cache_bypassed_total,
+            cache_errors_total,
+            cache_evictions_total,
             cache_misses_total,
             errors_total,
             github_api_calls_total,
@@ -155,6 +165,21 @@ class TestTrackCacheHit:
 
         track_cache_hit(False)
 
+    def test_track_cache_bypass(self):
+        from src.kortana.metrics import track_cache_bypass
+
+        track_cache_bypass()
+
+    def test_track_cache_error(self):
+        from src.kortana.metrics import track_cache_error
+
+        track_cache_error("get")
+
+    def test_track_cache_eviction(self):
+        from src.kortana.metrics import track_cache_eviction
+
+        track_cache_eviction(2)
+
 
 class TestTrackAuthFailure:
     """Tests for track_auth_failure function."""
@@ -221,3 +246,23 @@ class TestSetAppInfo:
         from src.kortana.metrics import set_app_info
 
         set_app_info("0.0.1", "testing")
+
+
+class TestMetricsMiddleware:
+    @pytest.mark.asyncio
+    async def test_metrics_middleware_records_500_on_exception(self):
+        from src.kortana.metrics import http_requests_total, metrics_middleware
+
+        request = MagicMock()
+        request.method = "GET"
+        request.url.path = "/boom"
+        call_next = AsyncMock(side_effect=RuntimeError("boom"))
+
+        labels = {"method": "GET", "endpoint": "/boom", "status_code": "500"}
+        before = http_requests_total.labels(**labels)._value.get()
+
+        with pytest.raises(RuntimeError, match="boom"):
+            await metrics_middleware(request, call_next)
+
+        after = http_requests_total.labels(**labels)._value.get()
+        assert after == before + 1
