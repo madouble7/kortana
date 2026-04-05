@@ -232,7 +232,14 @@ export interface DaemonCycle {
   tasks_processed: number;
   approvals_processed: number;
   errors_encountered: number;
-  metrics: Record<string, unknown> | null;
+  metrics: {
+    deferred?: number;
+    failed?: number;
+    succeeded?: number;
+    processed?: number;
+    system_state?: string;
+    [key: string]: unknown;
+  } | null;
 }
 
 export interface DaemonStatus {

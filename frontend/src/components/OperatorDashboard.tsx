@@ -1,13 +1,13 @@
 import {
-  Activity,
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  Cpu,
-  Loader2,
-  RefreshCw,
-  XCircle,
-  Zap,
+    Activity,
+    AlertTriangle,
+    CheckCircle,
+    Clock,
+    Cpu,
+    Loader2,
+    RefreshCw,
+    XCircle,
+    Zap,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../lib/api';
@@ -17,378 +17,403 @@ import type { DaemonCycle, DaemonStatus, ModelLaneSummary } from '../types';
 // ─── sub-components ──────────────────────────────────────────────────────────
 
 function StatusDot({ alive }: { alive: boolean | undefined }) {
-  if (alive === undefined)
-    return <span className="inline-block w-2.5 h-2.5 rounded-full bg-gray-600" />;
-  return (
-    <span
-      className={cn(
-        'inline-block w-2.5 h-2.5 rounded-full',
-        alive ? 'bg-green-500 animate-pulse' : 'bg-red-500',
-      )}
-    />
-  );
+    if (alive === undefined)
+        return <span className="inline-block w-2.5 h-2.5 rounded-full bg-gray-600" />;
+    return (
+        <span
+            className={cn(
+                'inline-block w-2.5 h-2.5 rounded-full',
+                alive ? 'bg-green-500 animate-pulse' : 'bg-red-500',
+            )}
+        />
+    );
 }
 
 function MetricCard({
-  icon: Icon,
-  label,
-  value,
-  sub,
-  accent,
+    icon: Icon,
+    label,
+    value,
+    sub,
+    accent,
 }: {
-  icon: React.ElementType;
-  label: string;
-  value: React.ReactNode;
-  sub?: string;
-  accent?: 'green' | 'yellow' | 'red' | 'blue' | 'purple';
+    icon: React.ElementType;
+    label: string;
+    value: React.ReactNode;
+    sub?: string;
+    accent?: 'green' | 'yellow' | 'red' | 'blue' | 'purple';
 }) {
-  const accentClass: Record<string, string> = {
-    green: 'border-green-700/60 bg-green-950/30',
-    yellow: 'border-yellow-700/60 bg-yellow-950/30',
-    red: 'border-red-700/60 bg-red-950/30',
-    blue: 'border-indigo-700/60 bg-indigo-950/30',
-    purple: 'border-purple-700/60 bg-purple-950/30',
-  };
-  return (
-    <div
-      className={cn(
-        'rounded-xl border p-4 flex flex-col gap-1',
-        accent ? accentClass[accent] : 'border-gray-800 bg-gray-900/60',
-      )}
-    >
-      <div className="flex items-center gap-2 text-gray-400 text-xs font-medium uppercase tracking-wide">
-        <Icon className="w-3.5 h-3.5" />
-        {label}
-      </div>
-      <div className="text-2xl font-bold text-white">{value}</div>
-      {sub && <div className="text-xs text-gray-500">{sub}</div>}
-    </div>
-  );
+    const accentClass: Record<string, string> = {
+        green: 'border-green-700/60 bg-green-950/30',
+        yellow: 'border-yellow-700/60 bg-yellow-950/30',
+        red: 'border-red-700/60 bg-red-950/30',
+        blue: 'border-indigo-700/60 bg-indigo-950/30',
+        purple: 'border-purple-700/60 bg-purple-950/30',
+    };
+    return (
+        <div
+            className={cn(
+                'rounded-xl border p-4 flex flex-col gap-1',
+                accent ? accentClass[accent] : 'border-gray-800 bg-gray-900/60',
+            )}
+        >
+            <div className="flex items-center gap-2 text-gray-400 text-xs font-medium uppercase tracking-wide">
+                <Icon className="w-3.5 h-3.5" />
+                {label}
+            </div>
+            <div className="text-2xl font-bold text-white">{value}</div>
+            {sub && <div className="text-xs text-gray-500">{sub}</div>}
+        </div>
+    );
 }
 
 function CycleRow({ cycle, index }: { cycle: DaemonCycle; index: number }) {
-  const hasErrors = cycle.errors_encountered > 0;
-  const duration =
-    cycle.start_time && cycle.end_time
-      ? ((new Date(cycle.end_time).getTime() - new Date(cycle.start_time).getTime()) / 1000).toFixed(1)
-      : null;
+    const hasErrors = cycle.errors_encountered > 0;
+    const deferredCount = typeof cycle.metrics?.deferred === 'number' ? cycle.metrics.deferred : 0;
+    const systemState = typeof cycle.metrics?.system_state === 'string' ? cycle.metrics.system_state : null;
+    const duration =
+        cycle.start_time && cycle.end_time
+            ? ((new Date(cycle.end_time).getTime() - new Date(cycle.start_time).getTime()) / 1000).toFixed(1)
+            : null;
 
-  return (
-    <tr
-      className={cn(
-        'border-t border-gray-800 text-sm',
-        index === 0 ? 'bg-gray-800/20' : '',
-      )}
-    >
-      <td className="py-2 px-3 text-gray-400 font-mono text-xs truncate max-w-[120px]">
-        {cycle.cycle_id?.replace('cycle_', '') ?? '—'}
-      </td>
-      <td className="py-2 px-3 text-gray-300">
-        {cycle.end_time
-          ? new Date(cycle.end_time).toLocaleTimeString()
-          : <span className="text-yellow-500">running</span>}
-      </td>
-      <td className="py-2 px-3 text-gray-300">{duration ? `${duration}s` : '—'}</td>
-      <td className="py-2 px-3 text-gray-300">{cycle.tasks_processed}</td>
-      <td className="py-2 px-3">
-        {hasErrors ? (
-          <span className="text-red-400 font-medium">{cycle.errors_encountered}</span>
-        ) : (
-          <span className="text-green-500">0</span>
-        )}
-      </td>
-      <td className="py-2 px-3">
-        {cycle.end_time ? (
-          hasErrors ? (
-            <span className="inline-flex items-center gap-1 text-yellow-400 text-xs">
-              <AlertTriangle className="w-3 h-3" /> degraded
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1 text-green-400 text-xs">
-              <CheckCircle className="w-3 h-3" /> ok
-            </span>
-          )
-        ) : (
-          <span className="inline-flex items-center gap-1 text-blue-400 text-xs">
-            <Loader2 className="w-3 h-3 animate-spin" /> active
-          </span>
-        )}
-      </td>
-    </tr>
-  );
+    return (
+        <tr
+            className={cn(
+                'border-t border-gray-800 text-sm',
+                index === 0 ? 'bg-gray-800/20' : '',
+            )}
+        >
+            <td className="py-2 px-3 text-gray-400 font-mono text-xs truncate max-w-[120px]">
+                {cycle.cycle_id?.replace('cycle_', '') ?? '—'}
+            </td>
+            <td className="py-2 px-3 text-gray-300">
+                {cycle.end_time
+                    ? new Date(cycle.end_time).toLocaleTimeString()
+                    : <span className="text-yellow-500">running</span>}
+            </td>
+            <td className="py-2 px-3 text-gray-300">{duration ? `${duration}s` : '—'}</td>
+            <td className="py-2 px-3 text-gray-300">{cycle.tasks_processed}</td>
+            <td className="py-2 px-3">
+                {hasErrors ? (
+                    <span className="text-red-400 font-medium">{cycle.errors_encountered}</span>
+                ) : (
+                    <span className="text-green-500">0</span>
+                )}
+            </td>
+            <td className="py-2 px-3">
+                {deferredCount > 0 ? (
+                    <span className="text-yellow-300 font-medium">{deferredCount}</span>
+                ) : (
+                    <span className="text-gray-500">0</span>
+                )}
+            </td>
+            <td className="py-2 px-3">
+                {cycle.end_time ? (
+                    hasErrors ? (
+                        <span className="inline-flex items-center gap-1 text-yellow-400 text-xs">
+                            <AlertTriangle className="w-3 h-3" /> degraded
+                        </span>
+                    ) : deferredCount > 0 || systemState === 'degraded' ? (
+                        <span className="inline-flex items-center gap-1 text-yellow-300 text-xs">
+                            <Clock className="w-3 h-3" /> guarded
+                        </span>
+                    ) : (
+                        <span className="inline-flex items-center gap-1 text-green-400 text-xs">
+                            <CheckCircle className="w-3 h-3" /> ok
+                        </span>
+                    )
+                ) : (
+                    <span className="inline-flex items-center gap-1 text-blue-400 text-xs">
+                        <Loader2 className="w-3 h-3 animate-spin" /> active
+                    </span>
+                )}
+            </td>
+        </tr>
+    );
 }
 
 function ProviderRow({
-  name,
-  p,
+    name,
+    p,
 }: {
-  name: string;
-  p: {
-    model: string;
-    lane: string;
-    is_free_tier: boolean;
-    requests: number;
-    cooling_down?: boolean;
-    last_error?: string | null;
-    last_used_at?: string | null;
-  };
+    name: string;
+    p: {
+        model: string;
+        lane: string;
+        is_free_tier: boolean;
+        requests: number;
+        cooling_down?: boolean;
+        last_error?: string | null;
+        last_used_at?: string | null;
+    };
 }) {
-  return (
-    <tr className="border-t border-gray-800 text-sm">
-      <td className="py-2 px-3 text-gray-200 font-medium">{name}</td>
-      <td className="py-2 px-3 text-gray-400 font-mono text-xs">{p.model}</td>
-      <td className="py-2 px-3">
-        <span
-          className={cn(
-            'text-xs px-1.5 py-0.5 rounded',
-            p.lane === 'free' ? 'bg-green-900/60 text-green-300' : 'bg-blue-900/60 text-blue-300',
-          )}
-        >
-          {p.lane}
-        </span>
-      </td>
-      <td className="py-2 px-3 text-gray-300">{p.requests}</td>
-      <td className="py-2 px-3">
-        {p.cooling_down ? (
-          <span className="text-yellow-400 text-xs">cooling down</span>
-        ) : p.last_error ? (
-          <span className="text-red-400 text-xs truncate max-w-[120px] block" title={p.last_error}>
-            error
-          </span>
-        ) : (
-          <span className="text-green-400 text-xs">ok</span>
-        )}
-      </td>
-    </tr>
-  );
+    return (
+        <tr className="border-t border-gray-800 text-sm">
+            <td className="py-2 px-3 text-gray-200 font-medium">{name}</td>
+            <td className="py-2 px-3 text-gray-400 font-mono text-xs">{p.model}</td>
+            <td className="py-2 px-3">
+                <span
+                    className={cn(
+                        'text-xs px-1.5 py-0.5 rounded',
+                        p.lane === 'free' ? 'bg-green-900/60 text-green-300' : 'bg-blue-900/60 text-blue-300',
+                    )}
+                >
+                    {p.lane}
+                </span>
+            </td>
+            <td className="py-2 px-3 text-gray-300">{p.requests}</td>
+            <td className="py-2 px-3">
+                {p.cooling_down ? (
+                    <span className="text-yellow-400 text-xs">cooling down</span>
+                ) : p.last_error ? (
+                    <span className="text-red-400 text-xs truncate max-w-[120px] block" title={p.last_error}>
+                        error
+                    </span>
+                ) : (
+                    <span className="text-green-400 text-xs">ok</span>
+                )}
+            </td>
+        </tr>
+    );
 }
 
 // ─── main component ───────────────────────────────────────────────────────────
 
 export default function OperatorDashboard() {
-  const [daemon, setDaemon] = useState<DaemonStatus | null>(null);
-  const [cycles, setCycles] = useState<DaemonCycle[]>([]);
-  const [lanes, setLanes] = useState<ModelLaneSummary | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+    const [daemon, setDaemon] = useState<DaemonStatus | null>(null);
+    const [cycles, setCycles] = useState<DaemonCycle[]>([]);
+    const [lanes, setLanes] = useState<ModelLaneSummary | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
-  const load = useCallback(async () => {
-    const [d, c, l] = await Promise.allSettled([
-      api.getDaemonStatus(),
-      api.getDaemonCycles(15),
-      api.getModelLaneSummary(),
-    ]);
-    if (d.status === 'fulfilled') setDaemon(d.value);
-    if (c.status === 'fulfilled') setCycles(c.value);
-    if (l.status === 'fulfilled') setLanes(l.value);
-    setLoading(false);
-    setLastRefresh(new Date());
-  }, []);
+    const load = useCallback(async () => {
+        const [d, c, l] = await Promise.allSettled([
+            api.getDaemonStatus(),
+            api.getDaemonCycles(15),
+            api.getModelLaneSummary(),
+        ]);
+        if (d.status === 'fulfilled') setDaemon(d.value);
+        if (c.status === 'fulfilled') setCycles(c.value);
+        if (l.status === 'fulfilled') setLanes(l.value);
+        setLoading(false);
+        setLastRefresh(new Date());
+    }, []);
 
-  useEffect(() => {
-    load();
-    const interval = setInterval(load, 15000);
-    return () => clearInterval(interval);
-  }, [load]);
+    useEffect(() => {
+        load();
+        const interval = setInterval(load, 15000);
+        return () => clearInterval(interval);
+    }, [load]);
 
-  const ext = daemon?.external_daemon;
-  const alive = ext?.alive ?? (daemon?.deployment_mode === 'embedded' && daemon?.local_process?.running);
+    const ext = daemon?.external_daemon;
+    const alive = ext?.alive ?? (daemon?.deployment_mode === 'embedded' && daemon?.local_process?.running);
 
-  // Aggregate cycle stats for header cards
-  const totalCycles = cycles.length;
-  const totalErrors = cycles.reduce((s, c) => s + c.errors_encountered, 0);
-  const totalProcessed = cycles.reduce((s, c) => s + c.tasks_processed, 0);
-  const latestCycleSecs = ext?.seconds_since_last_cycle;
+    // Aggregate cycle stats for header cards
+    const totalCycles = cycles.length;
+    const totalErrors = cycles.reduce((s, c) => s + c.errors_encountered, 0);
+    const totalProcessed = cycles.reduce((s, c) => s + c.tasks_processed, 0);
+    const totalDeferred = cycles.reduce(
+        (s, c) => s + (typeof c.metrics?.deferred === 'number' ? c.metrics.deferred : 0),
+        0,
+    );
+    const latestCycleSecs = ext?.seconds_since_last_cycle;
 
-  // Model lane info
-  const activeLane = lanes?.active_lane ?? '—';
-  const totalGens = lanes?.runtime_usage?.total_generations ?? 0;
-  const providers = lanes?.cost_router?.cost?.providers ?? {};
+    // Model lane info
+    const activeLane = lanes?.active_lane ?? '—';
+    const totalGens = lanes?.runtime_usage?.total_generations ?? 0;
+    const providers = lanes?.cost_router?.cost?.providers ?? {};
 
-  return (
-    <div className="flex flex-col h-full bg-gray-950 overflow-y-auto">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-gray-950/95 backdrop-blur px-6 py-4 border-b border-gray-800 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Activity className="w-5 h-5 text-indigo-400" />
-          <h2 className="text-lg font-semibold text-white">Operator Dashboard</h2>
-          <div className="flex items-center gap-1.5 ml-2">
-            <StatusDot alive={alive} />
-            <span className={cn('text-xs font-medium', alive ? 'text-green-400' : 'text-red-400')}>
-              {loading ? 'loading…' : alive ? 'daemon alive' : 'daemon offline'}
-            </span>
-          </div>
+    return (
+        <div className="flex flex-col h-full bg-gray-950 overflow-y-auto">
+            {/* Header */}
+            <div className="sticky top-0 z-10 bg-gray-950/95 backdrop-blur px-6 py-4 border-b border-gray-800 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <Activity className="w-5 h-5 text-indigo-400" />
+                    <h2 className="text-lg font-semibold text-white">Operator Dashboard</h2>
+                    <div className="flex items-center gap-1.5 ml-2">
+                        <StatusDot alive={alive} />
+                        <span className={cn('text-xs font-medium', alive ? 'text-green-400' : 'text-red-400')}>
+                            {loading ? 'loading…' : alive ? 'daemon alive' : 'daemon offline'}
+                        </span>
+                    </div>
+                </div>
+                <div className="flex items-center gap-3">
+                    <span className="text-xs text-gray-500">
+                        refreshed {lastRefresh.toLocaleTimeString()}
+                    </span>
+                    <button
+                        onClick={load}
+                        disabled={loading}
+                        className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition-colors disabled:opacity-40"
+                    >
+                        <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
+                        Refresh
+                    </button>
+                </div>
+            </div>
+
+            <div className="flex-1 px-6 py-5 space-y-6">
+                {/* ── Daemon Health Cards ── */}
+                <section>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
+                        Daemon Health
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                        <MetricCard
+                            icon={alive ? CheckCircle : XCircle}
+                            label="Status"
+                            value={alive ? 'Alive' : 'Offline'}
+                            sub={daemon?.deployment_mode === 'external' ? 'external worker' : 'embedded'}
+                            accent={alive ? 'green' : 'red'}
+                        />
+                        <MetricCard
+                            icon={Clock}
+                            label="Last Cycle"
+                            value={
+                                latestCycleSecs !== undefined
+                                    ? latestCycleSecs < 60
+                                        ? `${latestCycleSecs}s ago`
+                                        : `${Math.floor(latestCycleSecs / 60)}m ago`
+                                    : '—'
+                            }
+                            sub={ext?.last_cycle_id ? `id ${ext.last_cycle_id.replace('cycle_', '')}` : undefined}
+                            accent={
+                                latestCycleSecs === undefined ? undefined
+                                    : latestCycleSecs < 120 ? 'green'
+                                        : latestCycleSecs < 300 ? 'yellow'
+                                            : 'red'
+                            }
+                        />
+                        <MetricCard
+                            icon={Activity}
+                            label="Tasks / 15 cycles"
+                            value={totalProcessed}
+                            sub={`${totalCycles} cycles shown`}
+                            accent="blue"
+                        />
+                        <MetricCard
+                            icon={AlertTriangle}
+                            label="Errors / 15 cycles"
+                            value={totalErrors}
+                            sub={totalErrors === 0 ? 'clean run' : 'check cycle log'}
+                            accent={totalErrors === 0 ? 'green' : 'yellow'}
+                        />
+                        <MetricCard
+                            icon={Clock}
+                            label="Safe Blocks / 15 cycles"
+                            value={totalDeferred}
+                            sub={totalDeferred === 0 ? 'no guardrail holds' : 'guardrail deferrals'}
+                            accent={totalDeferred === 0 ? 'blue' : 'yellow'}
+                        />
+                    </div>
+                </section>
+
+                {/* ── Model Lane ── */}
+                <section>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
+                        AI Model / Lane
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+                        <MetricCard
+                            icon={Zap}
+                            label="Active Lane"
+                            value={activeLane}
+                            sub="cost router selection"
+                            accent="purple"
+                        />
+                        <MetricCard
+                            icon={Cpu}
+                            label="Runtime Generations"
+                            value={totalGens.toLocaleString()}
+                            sub="since last restart"
+                            accent="blue"
+                        />
+                        <MetricCard
+                            icon={Activity}
+                            label="Daily Spend"
+                            value={lanes?.cost_router?.cost?.totals?.daily_spend_usd !== undefined
+                                ? `$${lanes.cost_router.cost.totals.daily_spend_usd.toFixed(4)}`
+                                : '—'}
+                            sub="estimated"
+                            accent="green"
+                        />
+                    </div>
+
+                    {Object.keys(providers).length > 0 && (
+                        <div className="rounded-xl border border-gray-800 bg-gray-900/40 overflow-hidden">
+                            <table className="w-full">
+                                <thead>
+                                    <tr className="text-xs text-gray-500 uppercase tracking-wide">
+                                        <th className="text-left py-2 px-3">Provider</th>
+                                        <th className="text-left py-2 px-3">Model</th>
+                                        <th className="text-left py-2 px-3">Lane</th>
+                                        <th className="text-left py-2 px-3">Requests</th>
+                                        <th className="text-left py-2 px-3">State</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {Object.entries(providers).map(([name, p]) => (
+                                        <ProviderRow key={name} name={name} p={p} />
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </section>
+
+                {/* ── Cycle History ── */}
+                <section>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
+                        Cycle History (last {cycles.length})
+                    </h3>
+                    {cycles.length === 0 ? (
+                        <div className="rounded-xl border border-gray-800 bg-gray-900/40 px-4 py-8 text-center text-gray-500 text-sm">
+                            {loading ? (
+                                <Loader2 className="w-5 h-5 animate-spin mx-auto" />
+                            ) : (
+                                'No cycles recorded yet'
+                            )}
+                        </div>
+                    ) : (
+                        <div className="rounded-xl border border-gray-800 bg-gray-900/40 overflow-hidden">
+                            <table className="w-full">
+                                <thead>
+                                    <tr className="text-xs text-gray-500 uppercase tracking-wide">
+                                        <th className="text-left py-2 px-3">Cycle ID</th>
+                                        <th className="text-left py-2 px-3">Completed</th>
+                                        <th className="text-left py-2 px-3">Duration</th>
+                                        <th className="text-left py-2 px-3">Tasks</th>
+                                        <th className="text-left py-2 px-3">Errors</th>
+                                        <th className="text-left py-2 px-3">Deferred</th>
+                                        <th className="text-left py-2 px-3">State</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {cycles.map((cycle, i) => (
+                                        <CycleRow key={cycle.cycle_id} cycle={cycle} index={i} />
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </section>
+
+                {/* ── Raw Daemon Message ── */}
+                {ext?.message && (
+                    <section>
+                        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
+                            Daemon Message
+                        </h3>
+                        <div className="rounded-lg border border-gray-800 bg-gray-900/40 px-4 py-3 text-sm text-gray-400">
+                            {ext.message}
+                            {ext.last_cycle_completed_at && (
+                                <span className="ml-3 text-gray-600">
+                                    last cycle: {new Date(ext.last_cycle_completed_at).toLocaleString()}
+                                </span>
+                            )}
+                        </div>
+                    </section>
+                )}
+            </div>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-gray-500">
-            refreshed {lastRefresh.toLocaleTimeString()}
-          </span>
-          <button
-            onClick={load}
-            disabled={loading}
-            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition-colors disabled:opacity-40"
-          >
-            <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
-            Refresh
-          </button>
-        </div>
-      </div>
-
-      <div className="flex-1 px-6 py-5 space-y-6">
-        {/* ── Daemon Health Cards ── */}
-        <section>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
-            Daemon Health
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <MetricCard
-              icon={alive ? CheckCircle : XCircle}
-              label="Status"
-              value={alive ? 'Alive' : 'Offline'}
-              sub={daemon?.deployment_mode === 'external' ? 'external worker' : 'embedded'}
-              accent={alive ? 'green' : 'red'}
-            />
-            <MetricCard
-              icon={Clock}
-              label="Last Cycle"
-              value={
-                latestCycleSecs !== undefined
-                  ? latestCycleSecs < 60
-                    ? `${latestCycleSecs}s ago`
-                    : `${Math.floor(latestCycleSecs / 60)}m ago`
-                  : '—'
-              }
-              sub={ext?.last_cycle_id ? `id ${ext.last_cycle_id.replace('cycle_', '')}` : undefined}
-              accent={
-                latestCycleSecs === undefined ? undefined
-                : latestCycleSecs < 120 ? 'green'
-                : latestCycleSecs < 300 ? 'yellow'
-                : 'red'
-              }
-            />
-            <MetricCard
-              icon={Activity}
-              label="Tasks / 15 cycles"
-              value={totalProcessed}
-              sub={`${totalCycles} cycles shown`}
-              accent="blue"
-            />
-            <MetricCard
-              icon={AlertTriangle}
-              label="Errors / 15 cycles"
-              value={totalErrors}
-              sub={totalErrors === 0 ? 'clean run' : 'check cycle log'}
-              accent={totalErrors === 0 ? 'green' : 'yellow'}
-            />
-          </div>
-        </section>
-
-        {/* ── Model Lane ── */}
-        <section>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
-            AI Model / Lane
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
-            <MetricCard
-              icon={Zap}
-              label="Active Lane"
-              value={activeLane}
-              sub="cost router selection"
-              accent="purple"
-            />
-            <MetricCard
-              icon={Cpu}
-              label="Runtime Generations"
-              value={totalGens.toLocaleString()}
-              sub="since last restart"
-              accent="blue"
-            />
-            <MetricCard
-              icon={Activity}
-              label="Daily Spend"
-              value={lanes?.cost_router?.cost?.totals?.daily_spend_usd !== undefined
-                ? `$${lanes.cost_router.cost.totals.daily_spend_usd.toFixed(4)}`
-                : '—'}
-              sub="estimated"
-              accent="green"
-            />
-          </div>
-
-          {Object.keys(providers).length > 0 && (
-            <div className="rounded-xl border border-gray-800 bg-gray-900/40 overflow-hidden">
-              <table className="w-full">
-                <thead>
-                  <tr className="text-xs text-gray-500 uppercase tracking-wide">
-                    <th className="text-left py-2 px-3">Provider</th>
-                    <th className="text-left py-2 px-3">Model</th>
-                    <th className="text-left py-2 px-3">Lane</th>
-                    <th className="text-left py-2 px-3">Requests</th>
-                    <th className="text-left py-2 px-3">State</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(providers).map(([name, p]) => (
-                    <ProviderRow key={name} name={name} p={p} />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-
-        {/* ── Cycle History ── */}
-        <section>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
-            Cycle History (last {cycles.length})
-          </h3>
-          {cycles.length === 0 ? (
-            <div className="rounded-xl border border-gray-800 bg-gray-900/40 px-4 py-8 text-center text-gray-500 text-sm">
-              {loading ? (
-                <Loader2 className="w-5 h-5 animate-spin mx-auto" />
-              ) : (
-                'No cycles recorded yet'
-              )}
-            </div>
-          ) : (
-            <div className="rounded-xl border border-gray-800 bg-gray-900/40 overflow-hidden">
-              <table className="w-full">
-                <thead>
-                  <tr className="text-xs text-gray-500 uppercase tracking-wide">
-                    <th className="text-left py-2 px-3">Cycle ID</th>
-                    <th className="text-left py-2 px-3">Completed</th>
-                    <th className="text-left py-2 px-3">Duration</th>
-                    <th className="text-left py-2 px-3">Tasks</th>
-                    <th className="text-left py-2 px-3">Errors</th>
-                    <th className="text-left py-2 px-3">State</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {cycles.map((cycle, i) => (
-                    <CycleRow key={cycle.cycle_id} cycle={cycle} index={i} />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-
-        {/* ── Raw Daemon Message ── */}
-        {ext?.message && (
-          <section>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
-              Daemon Message
-            </h3>
-            <div className="rounded-lg border border-gray-800 bg-gray-900/40 px-4 py-3 text-sm text-gray-400">
-              {ext.message}
-              {ext.last_cycle_completed_at && (
-                <span className="ml-3 text-gray-600">
-                  last cycle: {new Date(ext.last_cycle_completed_at).toLocaleString()}
-                </span>
-              )}
-            </div>
-          </section>
-        )}
-      </div>
-    </div>
-  );
+    );
 }
