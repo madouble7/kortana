@@ -1,13 +1,39 @@
 name: Autonomous Merge
 
-permissions:
-  contents: read
-
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
-  check_suite:
-    types: [completed]
+    types: [opened, synchronize, reopened]
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  enable-automerge:
+    runs-on: ubuntu-latest
+    # Only run on daemon-generated branches
+    if: >
+      startsWith(github.head_ref, 'auto-fix/') ||
+      startsWith(github.head_ref, 'evolve/') ||
+      startsWith(github.head_ref, 'auto-repair/')
+    steps:
+      - name: Enable auto-merge
+        run: |
+          gh pr merge "${{ github.event.pull_request.number }}" \
+            --auto \
+            --squash \
+            --subject "$(gh pr view ${{ github.event.pull_request.number }} --json title --jq .title)"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Approve PR
+        run: |
+          gh pr review "${{ github.event.pull_request.number }}" --approve \
+            --body "auto-approved by kor'tana autonomous merge workflow"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
 jobs:
   autoupdate:
