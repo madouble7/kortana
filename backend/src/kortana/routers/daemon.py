@@ -43,6 +43,25 @@ def _provider_health_from_metrics(metrics: Any) -> dict[str, str]:
     return {}
 
 
+def _runtime_metadata_from_metrics(metrics: Any) -> dict[str, Any]:
+    if not isinstance(metrics, dict):
+        return {}
+
+    metadata: dict[str, Any] = {}
+    for key in (
+        "system_state",
+        "safe_mode",
+        "live_execution_enabled",
+        "control_mode",
+        "workspace_bridge",
+        "operator_guidance",
+        "autonomy_index",
+    ):
+        if key in metrics:
+            metadata[key] = metrics[key]
+    return metadata
+
+
 async def _external_daemon_status(db: AsyncSession) -> dict[str, Any]:
     stale_after = _stale_after_seconds()
     try:
@@ -74,6 +93,7 @@ async def _external_daemon_status(db: AsyncSession) -> dict[str, Any]:
     )
     alive = seconds_since_last_cycle <= stale_after
     provider_health = _provider_health_from_metrics(latest.metrics)
+    runtime_metadata = _runtime_metadata_from_metrics(latest.metrics)
     return {
         "alive": alive,
         "state": "alive" if alive else "stale",
@@ -89,6 +109,7 @@ async def _external_daemon_status(db: AsyncSession) -> dict[str, Any]:
         "tasks_processed": latest.tasks_processed,
         "errors_encountered": latest.errors_encountered,
         "provider_health": provider_health,
+        **runtime_metadata,
     }
 
 
@@ -117,6 +138,7 @@ async def daemon_status(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
             "running": local_status["running"],
             "enabled": local_status["enabled"],
         },
+        "github_mode": get_settings().KORTANA_GITHUB_MODE,
         "provider_health": external_status.get("provider_health", {}),
         "external_daemon": external_status,
     }
