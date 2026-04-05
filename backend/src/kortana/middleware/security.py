@@ -15,7 +15,7 @@ from redis.asyncio import Redis
 from redis.exceptions import RedisError
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from src.kortana.logger import log_error, log_request
+from src.kortana.logger import log_error, log_request, set_request_id
 from src.kortana.metrics import track_rate_limit_event, track_rate_limit_hit
 
 # Circuit-breaker cooldown: after a Redis failure, stop retrying for this
@@ -220,21 +220,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             for excluded in self.exclude_paths
         )
 
-    def _cleanup_all(self, now: float) -> None:
-        """Remove all IPs that haven't made a request in the last minute"""
-        minute_ago = now - 60
-        keys_to_delete = []
-        for ip, timestamps in self.requests.items():
-            new_timestamps = [t for t in timestamps if t > minute_ago]
-            if not new_timestamps:
-                keys_to_delete.append(ip)
-            else:
-                self.requests[ip] = new_timestamps
-
-        for ip in keys_to_delete:
-            del self.requests[ip]
-        self.last_cleanup = now
-
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Add security headers to all responses"""
@@ -265,14 +250,16 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 
 class RequestIDMiddleware(BaseHTTPMiddleware):
-    """Add unique request ID for tracking"""
+    """Add unique request ID for tracking and propagate it into the logging context."""
 
     async def dispatch(
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
-        """Add request ID to all requests"""
-        request_id = str(uuid.uuid4())
+        """Stamp every request with a UUID and inject it into the async log context."""
+        request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
         request.state.request_id = request_id
+        # Bind to the ContextVar so all log statements for this request include it.
+        set_request_id(request_id)
 
         response = await call_next(request)
         response.headers["X-Request-ID"] = request_id
