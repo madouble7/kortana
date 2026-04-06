@@ -14,17 +14,16 @@ from datetime import datetime
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
 from src.kortana.models import NextActionCandidate
 from src.kortana.services.execution_gate_service import (
     ExecutionGateService,
     _classify_candidate,
 )
 
-
 # ---------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------
+
 
 def _make_candidate(**kwargs: object) -> NextActionCandidate:
     defaults: dict = {
@@ -302,8 +301,9 @@ class TestExecutionEndpoints:
 
     @pytest.fixture
     def client(self):
-        from tests.conftest import SyncTestClient
         from src.kortana.main import app
+
+        from tests.conftest import SyncTestClient
 
         return SyncTestClient(app)
 

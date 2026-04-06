@@ -1,0 +1,1 @@
+cd C:\kortana; git branch -m main; git push origin main -f; npm run lint; npm run build; cd backend; python -m pytest -q

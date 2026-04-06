@@ -116,7 +116,9 @@ class GoalSelectionService:
         self_model = await self._get_latest_self_model()
         stage = str(self_model.developmental_stage) if self_model else None
         proposed_evolution = (
-            str(self_model.proposed_next_evolution) if self_model and self_model.proposed_next_evolution else None
+            str(self_model.proposed_next_evolution)
+            if self_model and self_model.proposed_next_evolution
+            else None
         )
 
         # 2. Read active goals
@@ -260,9 +262,7 @@ class GoalSelectionService:
         if stage:
             parts.append(f"Current developmental stage is '{stage}'.")
         if proposed_evolution:
-            parts.append(
-                f"Self-model proposes: {proposed_evolution[:200]}"
-            )
+            parts.append(f"Self-model proposes: {proposed_evolution[:200]}")
         if not parts:
             parts.append(
                 f"Highest-scoring goal (tier={goal.tier}, priority={goal.priority})."
@@ -278,7 +278,4 @@ class GoalSelectionService:
             g: AutonomyGoal = entry["goal"]
             s: float = entry["score"]
             lines.append(f"- '{g.title}' scored {s:.4f} (tier={g.tier})")
-        return (
-            "Other candidates considered but scored lower:\n"
-            + "\n".join(lines)
-        )
+        return "Other candidates considered but scored lower:\n" + "\n".join(lines)

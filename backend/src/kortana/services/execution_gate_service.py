@@ -84,7 +84,10 @@ def _classify_candidate(
             "executable",
             f"Action type '{action_type}' is safe for autonomous execution.",
             [
-                {"step": "execute", "detail": f"Run {action_type} action autonomously."},
+                {
+                    "step": "execute",
+                    "detail": f"Run {action_type} action autonomously.",
+                },
                 {"step": "record", "detail": "Log outcome to execution record."},
             ],
         )
@@ -101,9 +104,15 @@ def _classify_candidate(
                 f"is within autonomous execution bounds."
             ),
             [
-                {"step": "prepare", "detail": f"Load goal context for '{candidate.title}'."},
+                {
+                    "step": "prepare",
+                    "detail": f"Load goal context for '{candidate.title}'.",
+                },
                 {"step": "execute", "detail": "Execute planned work autonomously."},
-                {"step": "verify", "detail": "Validate outcome and update goal progress."},
+                {
+                    "step": "verify",
+                    "detail": "Validate outcome and update goal progress.",
+                },
                 {"step": "record", "detail": "Log execution result."},
             ],
         )
@@ -117,7 +126,10 @@ def _classify_candidate(
                 f"Present scaffolded steps to Matt."
             ),
             [
-                {"step": "scaffold", "detail": f"Prepare execution plan for '{candidate.title}'."},
+                {
+                    "step": "scaffold",
+                    "detail": f"Prepare execution plan for '{candidate.title}'.",
+                },
                 {"step": "present", "detail": "Show plan to Matt for approval."},
                 {"step": "await", "detail": "Wait for human decision."},
             ],

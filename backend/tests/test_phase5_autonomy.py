@@ -103,11 +103,8 @@ class TestDurableAutonomyStatus:
     """Verify autonomy status reads from the database, not in-memory."""
 
     @pytest.mark.asyncio
-    async def test_get_last_cycle_record_returns_none_when_empty(
-        self, test_db_session
-    ):
+    async def test_get_last_cycle_record_returns_none_when_empty(self, test_db_session):
         from sqlalchemy import delete as sa_delete
-
         from src.kortana.models import AutonomyCycleRecord
         from src.kortana.services.autonomy_orchestrator import get_last_cycle_record
 
@@ -119,9 +116,7 @@ class TestDurableAutonomyStatus:
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_get_last_cycle_record_returns_persisted_data(
-        self, test_db_session
-    ):
+    async def test_get_last_cycle_record_returns_persisted_data(self, test_db_session):
         from src.kortana.models import AutonomyCycleRecord
         from src.kortana.services.autonomy_orchestrator import get_last_cycle_record
 

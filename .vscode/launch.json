@@ -188,6 +188,26 @@
             "webRoot": "${workspaceFolder}"
         },
         {
+            "name": "Daemon: Voice",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/mcp-server/voice_daemon.py",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "name": "Daemon: Local",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/mcp-server/local_daemon.py",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
             "name": "Extension: Control Panel",
             "type": "extensionHost",
             "request": "launch",
@@ -229,6 +249,15 @@
                 "Backend: FastAPI (awaken frontend + monitoring)",
                 "Frontend UI: Chrome (existing session)",
                 "Monitoring: Grafana (existing session)"
+            ]
+        },
+        {
+            "name": "KORTANA: Backend + Frontend + Daemons",
+            "configurations": [
+                "Backend: FastAPI (src.kortana.main)",
+                "Frontend UI: Chrome (existing session)",
+                "Daemon: Voice",
+                "Daemon: Local"
             ]
         },
         {

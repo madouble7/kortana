@@ -1,5 +1,6 @@
 {
     "python.envFile": "${workspaceFolder}/.env",
+    "python.defaultInterpreterPath": "C:\\Program Files\\Python311\\python.exe",
     "python.testing.pytestEnabled": true,
     "python.testing.cwd": "${workspaceFolder}/backend",
     "python.testing.pytestArgs": [
@@ -24,6 +25,7 @@
         "**/node_modules",
         "**/.backup",
         "**/.benchmarks",
+        "**/.claude/worktrees",
         "**/.kortana",
         "**/.kortana-runtime",
         "**/.mypy_cache",
@@ -34,20 +36,10 @@
         "**/dist",
         "**/htmlcov",
         "**/obsolete",
-        "**/test_results"
+        "**/test_results",
+        "**/.*"
     ],
-    "typescript.tsdk": "node_modules/typescript/lib",
-    "typescript.enablePromptUseWorkspaceTsdk": true,
-    "eslint.workingDirectories": [
-        {
-            "directory": ".",
-            "changeProcessCWD": true
-        },
-        {
-            "directory": "frontend",
-            "changeProcessCWD": true
-        }
-    ],
+    "typescript.tsdk": "frontend/node_modules/typescript/lib",
     "terminal.integrated.env.windows": {
         "PYTHONUNBUFFERED": "1",
         "PYTHONPATH": "${workspaceFolder}\\backend;${workspaceFolder}\\backend\\src;${workspaceFolder}\\src"
@@ -56,13 +48,9 @@
         "PYTHONUNBUFFERED": "1",
         "PYTHONPATH": "${workspaceFolder}/backend:${workspaceFolder}/backend/src:${workspaceFolder}/src"
     },
-    "task.allowAutomaticTasks": "on",
-    "debug.onTaskErrors": "abort",
-    "debug.openDebug": "openOnSessionStart",
-    "debug.internalConsoleOptions": "neverOpen",
-    "testing.automaticallyOpenPeekView": "never",
     "files.exclude": {
         "**/.benchmarks": true,
+        "**/.claude/worktrees": true,
         "**/coverage": true,
         "**/htmlcov": true,
         "**/test_results": true,
@@ -73,6 +61,7 @@
     },
     "search.exclude": {
         "**/.benchmarks": true,
+        "**/.claude/worktrees": true,
         "**/coverage": true,
         "**/htmlcov": true,
         "**/test_results": true,
@@ -83,6 +72,7 @@
     },
     "files.watcherExclude": {
         "**/.benchmarks/**": true,
+        "**/.claude/worktrees/**": true,
         "**/coverage/**": true,
         "**/htmlcov/**": true,
         "**/test_results/**": true,
@@ -90,10 +80,14 @@
         "obsolete/**": true
     },
     "search.followSymlinks": false,
+    "explorer.fileNesting.enabled": true,
     "explorer.fileNesting.patterns": {
-        "requirements.txt": "requirements-dev.txt, pytest.ini, alembic.ini",
+        "requirements.txt": "requirements-dev.txt, pytest.ini",
+        "alembic.ini": "alembic.ini",
         "package.json": "package-lock.json, tsconfig*.json, vite.config.*, postcss.config.*, tailwind.config.*, .eslintrc.cjs",
-        "docker-compose.yml": "docker-compose.*.yml, Dockerfile*"
+        "docker-compose.yml": "docker-compose.*.yml, Dockerfile*",
+        "voice_daemon.py": "temporal_state.json",
+        "local_daemon.py": "proactive_state.json"
     },
     "pieces.cloudCapabilities": "Local"
 }

@@ -29,7 +29,11 @@
       "Bash(ls c:/kortana/frontend/src/*.ts c:/kortana/frontend/src/*.tsx)",
       "Bash(npm run:*)",
       "Bash(python -m pytest tests/test_consciousness.py tests/test_autonomy_daemon.py -q --tb=short)",
-      "Bash(python -m pytest -q --tb=no --ignore=tests/test_conversation_standalone.py)"
+      "Bash(python -m pytest -q --tb=no --ignore=tests/test_conversation_standalone.py)",
+      "Bash(where python:*)",
+      "Bash(ls c:/kortana/mcp-server/*.py)",
+      "Bash(python -c ':*)",
+      "Bash(python)"
     ]
   }
 }

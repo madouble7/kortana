@@ -1,0 +1,10 @@
+[
+  {
+    "command": "git branch -m main && git push origin main -f && cd frontend && npm run check && cd .. && npm run build && cd backend && python -m pytest -q",
+    "cwd": "C:\\kortana",
+    "description": "Finalize branch layout and run verification",
+    "kind": "shell",
+    "status": "pending",
+    "queued_at": "2026-04-06T05:50:56.076017"
+  }
+]

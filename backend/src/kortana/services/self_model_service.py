@@ -162,8 +162,7 @@ class SelfModelService:
         context = _SELF_MODEL_PROMPT.format(
             identity=json.dumps(identity, indent=2),
             goals=json.dumps(goals, indent=2),
-            observations="\n".join(f"- {o}" for o in observations[:30])
-            or "(none yet)",
+            observations="\n".join(f"- {o}" for o in observations[:30]) or "(none yet)",
             tensions=json.dumps(tensions, indent=2),
             previous_summary=previous_summary,
         )
@@ -193,9 +192,7 @@ class SelfModelService:
             active_goals=goals,
             standing_values=parsed.get("standing_values", []),
             tensions=parsed.get("tensions", []),
-            developmental_stage=str(
-                parsed.get("developmental_stage", "nascent")
-            ),
+            developmental_stage=str(parsed.get("developmental_stage", "nascent")),
             capabilities=parsed.get("capabilities", []),
             recent_observations=observations[:20],
             proposed_next_evolution=parsed.get("proposed_next_evolution"),
@@ -284,9 +281,7 @@ class SelfModelService:
         )
         mem_result = await self.db.execute(mem_stmt)
         for m in mem_result.scalars().all():
-            observations.append(
-                f"[memory {m.source}] {m.summary[:200]}"
-            )
+            observations.append(f"[memory {m.source}] {m.summary[:200]}")
 
         # Unsurfaced revelations
         rev_stmt = (
@@ -354,10 +349,7 @@ class SelfModelService:
             return name, (response or "No response").strip()[:300]
 
         try:
-            tasks = [
-                _ask_voice(name, role)
-                for name, role in INNER_COUNCIL.items()
-            ]
+            tasks = [_ask_voice(name, role) for name, role in INNER_COUNCIL.items()]
             results = await asyncio.gather(*tasks, return_exceptions=True)
             votes: Dict[str, str] = {}
             for r in results:

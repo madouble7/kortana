@@ -51,6 +51,7 @@ def is_autonomy_locked() -> bool:
     """Return True if AUTONOMY.lock exists, meaning all cycles should be skipped."""
     return Path(LOCK_FILE).exists()
 
+
 # ---------------------------------------------------------------------------
 # Fingerprint — determines if a new cycle is warranted
 # ---------------------------------------------------------------------------

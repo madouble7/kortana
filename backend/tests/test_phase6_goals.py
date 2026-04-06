@@ -15,7 +15,6 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from sqlalchemy import delete as sa_delete
-
 from src.kortana.models import AutonomyGoal, NextActionCandidate
 from src.kortana.services.goal_selection_service import (
     GoalSelectionService,
@@ -185,9 +184,7 @@ class TestGoalSelectionService:
         assert candidate.why_now  # should have reasoning
 
     @pytest.mark.asyncio
-    async def test_candidate_payload_has_expected_keys(
-        self, test_db_session
-    ) -> None:
+    async def test_candidate_payload_has_expected_keys(self, test_db_session) -> None:
         # Reuse existing goals from prior test (or insert one)
         await test_db_session.execute(sa_delete(NextActionCandidate))
         await test_db_session.execute(sa_delete(AutonomyGoal))

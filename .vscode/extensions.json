@@ -1,24 +1,31 @@
 {
     "recommendations": [
-        "github.copilot",
-        "github.copilot-chat",
-        "github.vscode-pull-request-github",
+        // Python
         "ms-python.python",
         "ms-python.vscode-pylance",
         "ms-python.debugpy",
         "charliermarsh.ruff",
+        // Frontend
         "dbaeumer.vscode-eslint",
         "bradlc.vscode-tailwindcss",
+        "esbenp.prettier-vscode",
+        // Git / GitHub
+        "github.copilot",
+        "github.copilot-chat",
+        "github.vscode-pull-request-github",
+        "eamodio.gitlens",
+        "github.vscode-github-actions",
+        // Infra
         "redhat.vscode-yaml",
         "ms-azuretools.vscode-docker",
-        "ms-vscode-remote.remote-containers",
-        "github.vscode-github-actions",
-        "eamodio.gitlens",
+        // Tooling
         "DavidAnson.vscode-markdownlint",
+        "humao.rest-client",
         "ms-vscode.makefile-tools"
     ],
     "unwantedRecommendations": [
         "ms-python.vscode-pylance-preview",
-        "ms-vscode.vscode-typescript-next"
+        "ms-vscode.vscode-typescript-next",
+        "ms-vscode-remote.remote-containers"
     ]
 }

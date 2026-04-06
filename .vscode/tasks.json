@@ -533,6 +533,56 @@
 			"problemMatcher": []
 		},
 		{
+			"label": "daemon: voice",
+			"type": "shell",
+			"command": "python",
+			"args": ["mcp-server/voice_daemon.py"],
+			"options": { "cwd": "${workspaceFolder}" },
+			"isBackground": true,
+			"presentation": { "reveal": "always", "panel": "dedicated" },
+			"problemMatcher": []
+		},
+		{
+			"label": "daemon: local",
+			"type": "shell",
+			"command": "python",
+			"args": ["mcp-server/local_daemon.py"],
+			"options": { "cwd": "${workspaceFolder}" },
+			"isBackground": true,
+			"presentation": { "reveal": "always", "panel": "dedicated" },
+			"problemMatcher": []
+		},
+		{
+			"label": "daemon: mcp-server",
+			"type": "shell",
+			"command": "python",
+			"args": ["mcp-server/server.py"],
+			"options": { "cwd": "${workspaceFolder}" },
+			"isBackground": true,
+			"presentation": { "reveal": "always", "panel": "dedicated" },
+			"problemMatcher": []
+		},
+		{
+			"label": "backend: migrate",
+			"type": "shell",
+			"command": "python",
+			"args": ["-m", "alembic", "upgrade", "head"],
+			"options": { "cwd": "${workspaceFolder}/backend" },
+			"group": "build",
+			"presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+			"problemMatcher": []
+		},
+		{
+			"label": "backend: ruff fix",
+			"type": "shell",
+			"command": "python",
+			"args": ["-m", "ruff", "check", ".", "--fix"],
+			"options": { "cwd": "${workspaceFolder}/backend" },
+			"group": "test",
+			"presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+			"problemMatcher": []
+		},
+		{
 			"label": "stack: backend + root ui",
 			"dependsOrder": "parallel",
 			"dependsOn": [
@@ -609,6 +659,23 @@
 				"backend: dev",
 				"root: ui dev",
 				"frontend: ui dev"
+			]
+		},
+		{
+			"label": "awaken: daemons",
+			"dependsOrder": "parallel",
+			"dependsOn": [
+				"daemon: voice",
+				"daemon: local"
+			]
+		},
+		{
+			"label": "awaken: kor'tana (backend + frontend + daemons)",
+			"dependsOrder": "sequence",
+			"dependsOn": [
+				"backend: dev",
+				"frontend: ui dev",
+				"awaken: daemons"
 			]
 		},
 		{

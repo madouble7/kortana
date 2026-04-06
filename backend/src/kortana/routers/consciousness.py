@@ -800,9 +800,7 @@ async def get_execution_history(
                 "classification": r.classification,
                 "outcome": r.outcome,
                 "cycle_id": r.cycle_id,
-                "created_at": (
-                    r.created_at.isoformat() if r.created_at else None
-                ),
+                "created_at": (r.created_at.isoformat() if r.created_at else None),
                 "completed_at": (
                     r.completed_at.isoformat() if r.completed_at else None
                 ),
