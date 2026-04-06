@@ -252,7 +252,10 @@ class ExecutionGateService:
                     "Constitutional covenant requires human override for this execution."
                 ),
                 execution_plan=[
-                    {"step": "present", "detail": "Show to Matt for override approval."},
+                    {
+                        "step": "present",
+                        "detail": "Show to Matt for override approval.",
+                    },
                     {"step": "await", "detail": "Wait for human decision."},
                 ],
                 outcome="pending",
@@ -265,7 +268,9 @@ class ExecutionGateService:
                 await self.db.refresh(record)
             except Exception:
                 await self.db.rollback()
-            logger.info(f"Execution requires HUMAN OVERRIDE per covenant: {candidate.title}")
+            logger.info(
+                f"Execution requires HUMAN OVERRIDE per covenant: {candidate.title}"
+            )
             return record
 
         # 2. Classify

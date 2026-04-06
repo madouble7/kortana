@@ -1,93 +1,91 @@
 {
-    "python.envFile": "${workspaceFolder}/.env",
-    "python.defaultInterpreterPath": "C:\\Program Files\\Python311\\python.exe",
-    "python.testing.pytestEnabled": true,
-    "python.testing.cwd": "${workspaceFolder}/backend",
-    "python.testing.pytestArgs": [
-        "tests"
-    ],
-    "python.testing.autoTestDiscoverOnSaveEnabled": false,
-    "python.analysis.extraPaths": [
-        "./backend",
-        "./backend/src",
-        "./backend/src/kortana",
-        "./src",
-        "./app"
-    ],
-    "python.analysis.include": [
-        "./backend/**/*.py",
-        "./src/**/*.py",
-        "./app/**/*.py",
-        "./tests/**/*.py",
-        "./*.py"
-    ],
-    "python.analysis.exclude": [
-        "**/node_modules",
-        "**/.backup",
-        "**/.benchmarks",
-        "**/.claude/worktrees",
-        "**/.kortana",
-        "**/.kortana-runtime",
-        "**/.mypy_cache",
-        "**/.pytest_cache",
-        "**/.ruff_cache",
-        "**/__pycache__",
-        "**/build",
-        "**/dist",
-        "**/htmlcov",
-        "**/obsolete",
-        "**/test_results",
-        "**/.*"
-    ],
-    "typescript.tsdk": "frontend/node_modules/typescript/lib",
-    "terminal.integrated.env.windows": {
-        "PYTHONUNBUFFERED": "1",
-        "PYTHONPATH": "${workspaceFolder}\\backend;${workspaceFolder}\\backend\\src;${workspaceFolder}\\src"
-    },
-    "terminal.integrated.env.linux": {
-        "PYTHONUNBUFFERED": "1",
-        "PYTHONPATH": "${workspaceFolder}/backend:${workspaceFolder}/backend/src:${workspaceFolder}/src"
-    },
-    "files.exclude": {
-        "**/.benchmarks": true,
-        "**/.claude/worktrees": true,
-        "**/coverage": true,
-        "**/htmlcov": true,
-        "**/test_results": true,
-        "**/*.db": true,
-        "backend/celerybeat-schedule.dat": true,
-        "logs/archive": true,
-        "obsolete": true
-    },
-    "search.exclude": {
-        "**/.benchmarks": true,
-        "**/.claude/worktrees": true,
-        "**/coverage": true,
-        "**/htmlcov": true,
-        "**/test_results": true,
-        "**/*.db": true,
-        "backend/celerybeat-schedule.dat": true,
-        "logs/archive": true,
-        "obsolete": true
-    },
-    "files.watcherExclude": {
-        "**/.benchmarks/**": true,
-        "**/.claude/worktrees/**": true,
-        "**/coverage/**": true,
-        "**/htmlcov/**": true,
-        "**/test_results/**": true,
-        "logs/archive/**": true,
-        "obsolete/**": true
-    },
-    "search.followSymlinks": false,
-    "explorer.fileNesting.enabled": true,
-    "explorer.fileNesting.patterns": {
-        "requirements.txt": "requirements-dev.txt, pytest.ini",
-        "alembic.ini": "alembic.ini",
-        "package.json": "package-lock.json, tsconfig*.json, vite.config.*, postcss.config.*, tailwind.config.*, .eslintrc.cjs",
-        "docker-compose.yml": "docker-compose.*.yml, Dockerfile*",
-        "voice_daemon.py": "temporal_state.json",
-        "local_daemon.py": "proactive_state.json"
-    },
-    "pieces.cloudCapabilities": "Local"
+  "python.envFile": "${workspaceFolder}/.env",
+  "python.defaultInterpreterPath": "python3",
+  "python.testing.pytestEnabled": true,
+  "python.testing.cwd": "${workspaceFolder}/backend",
+  "python.testing.pytestArgs": ["tests"],
+  "python.testing.autoTestDiscoverOnSaveEnabled": false,
+  "python.analysis.extraPaths": [
+    "./backend",
+    "./backend/src",
+    "./backend/src/kortana",
+    "./src",
+    "./app"
+  ],
+  "python.analysis.include": [
+    "./backend/**/*.py",
+    "./src/**/*.py",
+    "./app/**/*.py",
+    "./tests/**/*.py",
+    "./*.py"
+  ],
+  "python.analysis.exclude": [
+    "**/node_modules",
+    "**/.backup",
+    "**/.benchmarks",
+    "**/.claude/worktrees",
+    "**/.kortana",
+    "**/.kortana-runtime",
+    "**/.mypy_cache",
+    "**/.pytest_cache",
+    "**/.ruff_cache",
+    "**/__pycache__",
+    "**/build",
+    "**/dist",
+    "**/htmlcov",
+    "**/obsolete",
+    "**/test_results",
+    "**/.*"
+  ],
+  "typescript.tsdk": "frontend/node_modules/typescript/lib",
+  "terminal.integrated.env.windows": {
+    "PYTHONUNBUFFERED": "1",
+    "PYTHONPATH": "${workspaceFolder}\\backend;${workspaceFolder}\\backend\\src;${workspaceFolder}\\src"
+  },
+  "terminal.integrated.env.linux": {
+    "PYTHONUNBUFFERED": "1",
+    "PYTHONPATH": "${workspaceFolder}/backend:${workspaceFolder}/backend/src:${workspaceFolder}/src"
+  },
+  "files.exclude": {
+    "**/.benchmarks": true,
+    "**/.claude/worktrees": true,
+    "**/coverage": true,
+    "**/htmlcov": true,
+    "**/test_results": true,
+    "**/*.db": true,
+    "backend/celerybeat-schedule.dat": true,
+    "logs/archive": true,
+    "obsolete": true
+  },
+  "search.exclude": {
+    "**/.benchmarks": true,
+    "**/.claude/worktrees": true,
+    "**/coverage": true,
+    "**/htmlcov": true,
+    "**/test_results": true,
+    "**/*.db": true,
+    "backend/celerybeat-schedule.dat": true,
+    "logs/archive": true,
+    "obsolete": true
+  },
+  "files.watcherExclude": {
+    "**/.benchmarks/**": true,
+    "**/.claude/worktrees/**": true,
+    "**/coverage/**": true,
+    "**/htmlcov/**": true,
+    "**/test_results/**": true,
+    "logs/archive/**": true,
+    "obsolete/**": true
+  },
+  "search.followSymlinks": false,
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.patterns": {
+    "requirements.txt": "requirements-dev.txt, pytest.ini",
+    "alembic.ini": "alembic.ini",
+    "package.json": "package-lock.json, tsconfig*.json, vite.config.*, postcss.config.*, tailwind.config.*, .eslintrc.cjs",
+    "docker-compose.yml": "docker-compose.*.yml, Dockerfile*",
+    "voice_daemon.py": "temporal_state.json",
+    "local_daemon.py": "proactive_state.json"
+  },
+  "pieces.cloudCapabilities": "Local"
 }

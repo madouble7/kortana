@@ -65,4 +65,4 @@ def test_database_readiness():
     assert any(path.suffix == ".py" for path in versions_dir.iterdir())
 
     if settings.DATABASE_URL.startswith("sqlite"):
-        assert "test_kortana.db" in settings.DATABASE_URL
+        assert "test_kortana" in settings.DATABASE_URL

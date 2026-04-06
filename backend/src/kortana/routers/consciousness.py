@@ -1011,9 +1011,11 @@ def _format_enforcement_record(r: Any) -> Dict[str, Any]:
         "adjusted_score": r.adjusted_score,
         "override_status": r.override_status,
         "override_resolved_at": (
-            r.override_resolved_at.isoformat()
-            if r.override_resolved_at else None
+            r.override_resolved_at.isoformat() if r.override_resolved_at else None
         ),
+        "resolver_identity": getattr(r, "resolver_identity", None),
+        "human_rationale": getattr(r, "human_rationale", None),
+        "resolution_outcome": getattr(r, "resolution_outcome", None),
         "cycle_id": r.cycle_id,
         "created_at": (r.created_at.isoformat() if r.created_at else None),
     }
@@ -1073,4 +1075,102 @@ async def get_covenant_overrides(
     return {
         "count": len(records),
         "overrides": [_format_enforcement_record(r) for r in records],
+    }
+
+
+# ==================================================================
+# Phase 11: Override Resolution — Human Covenant Interface
+#
+# Endpoints for resolving override requests (approve/deny/expire/revoke)
+# and viewing pending/resolved override history.
+# ==================================================================
+
+
+@router.get("/covenant/overrides/pending")
+async def get_pending_overrides(
+    limit: int = Query(default=10, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """Pending override requests awaiting human resolution (FIFO order)."""
+    from src.kortana.services.constitutional_service import ConstitutionalService
+
+    svc = ConstitutionalService(db)
+    records = await svc.get_pending_overrides(limit=limit)
+    return {
+        "count": len(records),
+        "pending": [_format_enforcement_record(r) for r in records],
+    }
+
+
+@router.get("/covenant/overrides/resolved")
+async def get_resolved_overrides(
+    limit: int = Query(default=10, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """Resolved override records (approved, denied, expired, revoked)."""
+    from src.kortana.services.constitutional_service import ConstitutionalService
+
+    svc = ConstitutionalService(db)
+    records = await svc.get_resolved_overrides(limit=limit)
+    return {
+        "count": len(records),
+        "resolved": [_format_enforcement_record(r) for r in records],
+    }
+
+
+@router.post("/covenant/overrides/{record_id}/resolve")
+async def resolve_override(
+    record_id: str,
+    resolution: str = Query(..., pattern="^(approved|denied|expired|revoked)$"),
+    resolver: str = Query(default="matt"),
+    rationale: str = Query(default=""),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """Resolve a pending override request.
+
+    - approved: human approves the overridden action
+    - denied: human denies the override (covenant was correct)
+    - expired: mark as expired (normally done by system)
+    - revoked: revoke a previously approved override
+    """
+    from src.kortana.services.constitutional_service import ConstitutionalService
+    from src.kortana.services.outcome_learning_service import OutcomeLearningService
+
+    svc = ConstitutionalService(db)
+    record = await svc.resolve_override(
+        record_id=record_id,
+        resolution=resolution,
+        resolver=resolver,
+        rationale=rationale,
+    )
+
+    if record is None:
+        return {
+            "status": "error",
+            "detail": (
+                f"Override {record_id} not found or cannot be resolved "
+                f"with '{resolution}' from current state."
+            ),
+        }
+
+    # Feed resolution into outcome learning
+    learning_record = None
+    try:
+        learner = OutcomeLearningService(db)
+        learning_record = await learner.learn_from_override_resolution(record)
+    except Exception:
+        logger.exception("Failed to produce learning from override resolution")
+
+    return {
+        "status": "resolved",
+        "record": _format_enforcement_record(record),
+        "learning": (
+            {
+                "signal": learning_record.adaptation_signal,
+                "weight": learning_record.signal_weight,
+                "lesson": learning_record.lesson,
+            }
+            if learning_record
+            else None
+        ),
     }

@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 # Set test environment variables before any imports
 os.environ["ENVIRONMENT"] = "testing"
-os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test_kortana.db"
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test_kortana_pytest.db"
 os.environ["GEMINI_API_KEY"] = "test_gemini_key"
 os.environ["GITHUB_TOKEN"] = "test_github_token"
 os.environ["DISCORD_BOT_TOKEN"] = "test_discord_token"
@@ -160,7 +160,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 @pytest.fixture(scope="session")
 def test_db_url():
     """Provide test database URL using SQLite"""
-    return "sqlite+aiosqlite:///./test_kortana.db"
+    return "sqlite+aiosqlite:///./test_kortana_pytest.db"
 
 
 @pytest.fixture(scope="session")
@@ -174,8 +174,6 @@ async def test_engine(test_db_url):
 @pytest.fixture(scope="session")
 async def setup_test_db(test_db_url, test_engine):
     """Set up test database schema using alembic migrations"""
-    import os
-    import subprocess
     from pathlib import Path
 
     backend_dir = Path(__file__).parent.parent
@@ -191,7 +189,6 @@ async def setup_test_db(test_db_url, test_engine):
     # Always use create_all from models so tests reflect current schema.
     # Alembic migrations are for production deployments.
     from sqlalchemy import create_engine
-
     from src.kortana.models import Base
 
     sync_url = f"sqlite:///{db_path.as_posix()}"

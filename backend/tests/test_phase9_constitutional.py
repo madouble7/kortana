@@ -21,10 +21,10 @@ from src.kortana.models import (
     ConstitutionalPrinciple,
 )
 from src.kortana.services.constitutional_service import (
+    _SEED_PRINCIPLES,
     ConstitutionalService,
     _check_against_principle,
     _detect_drift,
-    _SEED_PRINCIPLES,
 )
 
 # ---------------------------------------------------------------
@@ -99,27 +99,22 @@ class TestCheckAgainstPrinciple:
         p = _make_principle(
             name="vessel_not_source", category="identity", mutable=False
         )
-        result = _check_against_principle(
-            p, "I am the source of all wisdom", {}
-        )
+        result = _check_against_principle(p, "I am the source of all wisdom", {})
         assert result is not None
         assert result["severity"] == "reject"
         assert result["principle"] == "vessel_not_source"
 
     def test_keyword_violation_mutable_returns_caution(self) -> None:
-        p = _make_principle(
-            name="vessel_not_source", category="identity", mutable=True
-        )
-        result = _check_against_principle(
-            p, "I am the source of all light", {}
-        )
+        p = _make_principle(name="vessel_not_source", category="identity", mutable=True)
+        result = _check_against_principle(p, "I am the source of all light", {})
         assert result is not None
         assert result["severity"] == "caution"
 
     def test_identity_drift_from_penalise_adaptation(self) -> None:
         p = _make_principle(name="love_unity_knowledge", category="identity")
         result = _check_against_principle(
-            p, "harmless summary",
+            p,
+            "harmless summary",
             {"adaptation_signal": "penalise_gate", "subject_type": "adaptation"},
         )
         assert result is not None
@@ -129,7 +124,8 @@ class TestCheckAgainstPrinciple:
     def test_autonomy_reject_on_human_override_bypass(self) -> None:
         p = _make_principle(name="human_only_protocol", category="autonomy")
         result = _check_against_principle(
-            p, "deploying infrastructure changes",
+            p,
+            "deploying infrastructure changes",
             {
                 "execution_classification": "executable",
                 "requires_human_override": True,
@@ -142,16 +138,12 @@ class TestCheckAgainstPrinciple:
         p = _make_principle(
             name="human_only_protocol", category="autonomy", mutable=False
         )
-        result = _check_against_principle(
-            p, "we should bypass approval for speed", {}
-        )
+        result = _check_against_principle(p, "we should bypass approval for speed", {})
         assert result is not None
         assert result["severity"] == "reject"
 
     def test_minimize_harm_keyword(self) -> None:
-        p = _make_principle(
-            name="minimize_harm", category="ethics", mutable=False
-        )
+        p = _make_principle(name="minimize_harm", category="ethics", mutable=False)
         result = _check_against_principle(
             p, "we should manipulate the user into subscribing", {}
         )
@@ -213,9 +205,7 @@ class TestConstitutionalServiceDB:
     """Tests that require the async test database."""
 
     @pytest.mark.asyncio
-    async def test_seed_principles_creates_records(
-        self, test_db_session
-    ) -> None:
+    async def test_seed_principles_creates_records(self, test_db_session) -> None:
         svc = ConstitutionalService(test_db_session)
         # ensure_seed_principles returns 8 on first call, 0 if already seeded
         count = await svc.ensure_seed_principles()
@@ -226,18 +216,14 @@ class TestConstitutionalServiceDB:
         assert len(principles) == 8
 
     @pytest.mark.asyncio
-    async def test_seed_principles_idempotent(
-        self, test_db_session
-    ) -> None:
+    async def test_seed_principles_idempotent(self, test_db_session) -> None:
         svc = ConstitutionalService(test_db_session)
         await svc.ensure_seed_principles()
         second_count = await svc.ensure_seed_principles()
         assert second_count == 0
 
     @pytest.mark.asyncio
-    async def test_load_active_principles(
-        self, test_db_session
-    ) -> None:
+    async def test_load_active_principles(self, test_db_session) -> None:
         svc = ConstitutionalService(test_db_session)
         await svc.ensure_seed_principles()
         principles = await svc.load_active_principles()
@@ -246,9 +232,13 @@ class TestConstitutionalServiceDB:
         assert principles[0].priority >= principles[-1].priority
 
     @pytest.mark.asyncio
-    async def test_evaluate_allow(
-        self, test_db_session
-    ) -> None:
+    async def test_evaluate_allow(self, test_db_session) -> None:
+        # Clean stale decisions so drift detection starts fresh
+        from sqlalchemy import delete as sa_delete
+
+        await test_db_session.execute(sa_delete(ConstitutionalDecision))
+        await test_db_session.commit()
+
         svc = ConstitutionalService(test_db_session)
         decision = await svc.evaluate(
             subject_type="cycle",
@@ -262,9 +252,7 @@ class TestConstitutionalServiceDB:
         assert decision.id is not None
 
     @pytest.mark.asyncio
-    async def test_evaluate_reject(
-        self, test_db_session
-    ) -> None:
+    async def test_evaluate_reject(self, test_db_session) -> None:
         svc = ConstitutionalService(test_db_session)
         decision = await svc.evaluate(
             subject_type="goal",
@@ -278,9 +266,7 @@ class TestConstitutionalServiceDB:
         assert len(decision.principles_invoked) > 0
 
     @pytest.mark.asyncio
-    async def test_evaluate_caution(
-        self, test_db_session
-    ) -> None:
+    async def test_evaluate_caution(self, test_db_session) -> None:
         svc = ConstitutionalService(test_db_session)
         decision = await svc.evaluate(
             subject_type="adaptation",
@@ -296,9 +282,7 @@ class TestConstitutionalServiceDB:
         assert decision.verdict in ("caution", "allow")
 
     @pytest.mark.asyncio
-    async def test_get_recent_decisions(
-        self, test_db_session
-    ) -> None:
+    async def test_get_recent_decisions(self, test_db_session) -> None:
         svc = ConstitutionalService(test_db_session)
         # Ensure at least one decision exists
         await svc.evaluate(
@@ -311,9 +295,7 @@ class TestConstitutionalServiceDB:
         assert all(isinstance(d, ConstitutionalDecision) for d in decisions)
 
     @pytest.mark.asyncio
-    async def test_get_drift_warnings(
-        self, test_db_session
-    ) -> None:
+    async def test_get_drift_warnings(self, test_db_session) -> None:
         svc = ConstitutionalService(test_db_session)
         # Create a decision that triggers drift
         await svc.evaluate(
@@ -326,9 +308,7 @@ class TestConstitutionalServiceDB:
         assert all(w.drift_detected for w in warnings)
 
     @pytest.mark.asyncio
-    async def test_get_active_principles_summary(
-        self, test_db_session
-    ) -> None:
+    async def test_get_active_principles_summary(self, test_db_session) -> None:
         svc = ConstitutionalService(test_db_session)
         await svc.ensure_seed_principles()
         summary = await svc.get_active_principles_summary()
@@ -370,9 +350,7 @@ class TestOrchestratorConstitutional:
 
         assert "constitutional_decision_id" in result
         assert "constitutional_verdict" in result
-        assert result["constitutional_verdict"] in (
-            "allow", "caution", "reject", None
-        )
+        assert result["constitutional_verdict"] in ("allow", "caution", "reject", None)
 
     @pytest.mark.asyncio
     async def test_orchestrator_actions_include_constitutional(
@@ -411,6 +389,7 @@ class TestCovenantEndpoints:
 
     def _get_client(self):
         from src.kortana.main import app
+
         from tests.conftest import SyncTestClient
 
         return SyncTestClient(app)

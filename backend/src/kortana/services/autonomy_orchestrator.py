@@ -146,9 +146,7 @@ class AutonomyOrchestrator:
                 nac_stmt = select(NACModel).where(NACModel.id == next_action_id)
                 nac_result = await self.db.execute(nac_stmt)
                 nac_row = nac_result.scalar_one_or_none()
-                nac_payload: dict = (
-                    nac_row.candidate_payload or {} if nac_row else {}
-                )  # type: ignore[assignment]
+                nac_payload: dict = nac_row.candidate_payload or {} if nac_row else {}  # type: ignore[assignment]
 
                 enforce_verdict, _enf_rec = await covenant.enforce_candidate(
                     candidate_title=next_action_title,

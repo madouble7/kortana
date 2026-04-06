@@ -736,9 +736,12 @@ class OutcomeLearningRecord(Base):
     execution_record_id = Column(
         String(36),
         ForeignKey("action_execution_records.id"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
+    source_type = Column(
+        String(32), nullable=False, default="execution", index=True
+    )  # execution | override_resolution
     outcome_verdict = Column(
         String(32), nullable=False, index=True
     )  # succeeded | partial | failed | inconclusive | skipped
@@ -864,8 +867,15 @@ class CovenantEnforcementRecord(Base):
     adjusted_score = Column(Float, nullable=True)  # after downgrade
     override_status = Column(
         String(32), nullable=True, index=True
-    )  # pending | approved | denied | expired
+    )  # pending | approved | denied | expired | revoked
     override_resolved_at = Column(DateTime, nullable=True)
+    resolver_identity = Column(
+        String(128), nullable=True
+    )  # who resolved: e.g. "matt", "system:expiry"
+    human_rationale = Column(Text, nullable=True)  # why the human approved/denied
+    resolution_outcome = Column(
+        String(32), nullable=True, index=True
+    )  # approved | denied | expired | revoked
     cycle_id = Column(String(8), nullable=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 

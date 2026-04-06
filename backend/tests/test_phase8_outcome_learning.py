@@ -17,7 +17,6 @@ from datetime import datetime
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
 from src.kortana.models import (
     ActionExecutionRecord,
     NextActionCandidate,
@@ -29,10 +28,10 @@ from src.kortana.services.outcome_learning_service import (
     compute_score_adjustment,
 )
 
-
 # ---------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------
+
 
 def _make_candidate(**kwargs: object) -> NextActionCandidate:
     defaults: dict = {
@@ -77,7 +76,9 @@ class TestOutcomeInterpretation:
 
     def test_executable_succeeded(self) -> None:
         c = _make_candidate()
-        r = _make_exec_record(str(c.id), classification="executable", outcome="succeeded")
+        r = _make_exec_record(
+            str(c.id), classification="executable", outcome="succeeded"
+        )
         verdict, expect, lesson, signal, weight, scope = _interpret_outcome(r)
         assert verdict == "succeeded"
         assert expect == "expected"
@@ -117,14 +118,18 @@ class TestOutcomeInterpretation:
 
     def test_requires_human_succeeded(self) -> None:
         c = _make_candidate()
-        r = _make_exec_record(str(c.id), classification="requires_human", outcome="succeeded")
+        r = _make_exec_record(
+            str(c.id), classification="requires_human", outcome="succeeded"
+        )
         verdict, expect, _, signal, weight, _ = _interpret_outcome(r)
         assert verdict == "succeeded"
         assert "trust" in signal
 
     def test_requires_human_pending(self) -> None:
         c = _make_candidate()
-        r = _make_exec_record(str(c.id), classification="requires_human", outcome="pending")
+        r = _make_exec_record(
+            str(c.id), classification="requires_human", outcome="pending"
+        )
         verdict, expect, _, signal, weight, _ = _interpret_outcome(r)
         assert verdict == "inconclusive"
         assert "neutral" in signal
@@ -146,7 +151,11 @@ class TestFeedbackHooks:
 
     def test_score_adjustment_positive_signals(self) -> None:
         signals = [
-            {"signal": "trust_classification:executable", "total_weight": 0.2, "occurrences": 3},
+            {
+                "signal": "trust_classification:executable",
+                "total_weight": 0.2,
+                "occurrences": 3,
+            },
             {"signal": "boost_tier:tactical", "total_weight": 0.1, "occurrences": 1},
         ]
         adj = compute_score_adjustment(signals)
@@ -155,7 +164,11 @@ class TestFeedbackHooks:
 
     def test_score_adjustment_negative_signals(self) -> None:
         signals = [
-            {"signal": "penalise_classification:executable", "total_weight": -0.4, "occurrences": 2},
+            {
+                "signal": "penalise_classification:executable",
+                "total_weight": -0.4,
+                "occurrences": 2,
+            },
         ]
         adj = compute_score_adjustment(signals)
         assert adj < 0
@@ -163,7 +176,11 @@ class TestFeedbackHooks:
 
     def test_score_adjustment_clamped(self) -> None:
         signals = [
-            {"signal": "trust_classification:executable", "total_weight": 1.0, "occurrences": 50},
+            {
+                "signal": "trust_classification:executable",
+                "total_weight": 1.0,
+                "occurrences": 50,
+            },
         ]
         adj = compute_score_adjustment(signals)
         assert adj == 0.3
@@ -173,21 +190,33 @@ class TestFeedbackHooks:
 
     def test_gate_adjustment_matching_classification(self) -> None:
         signals = [
-            {"signal": "trust_classification:executable", "total_weight": 0.15, "occurrences": 2},
+            {
+                "signal": "trust_classification:executable",
+                "total_weight": 0.15,
+                "occurrences": 2,
+            },
         ]
         adj = compute_gate_adjustment(signals, "executable")
         assert adj == 0.15
 
     def test_gate_adjustment_non_matching(self) -> None:
         signals = [
-            {"signal": "trust_classification:requires_human", "total_weight": 0.15, "occurrences": 2},
+            {
+                "signal": "trust_classification:requires_human",
+                "total_weight": 0.15,
+                "occurrences": 2,
+            },
         ]
         adj = compute_gate_adjustment(signals, "executable")
         assert adj == 0.0
 
     def test_gate_adjustment_clamped(self) -> None:
         signals = [
-            {"signal": "penalise_classification:executable", "total_weight": -0.5, "occurrences": 10},
+            {
+                "signal": "penalise_classification:executable",
+                "total_weight": -0.5,
+                "occurrences": 10,
+            },
         ]
         adj = compute_gate_adjustment(signals, "executable")
         assert adj == -0.2
@@ -364,9 +393,7 @@ class TestOrchestratorOutcomeLearning:
     """Verify the orchestrator step 3.9 adds learning fields."""
 
     @pytest.mark.asyncio
-    async def test_cycle_result_includes_learning_fields(
-        self, test_db_session
-    ) -> None:
+    async def test_cycle_result_includes_learning_fields(self, test_db_session) -> None:
         from src.kortana.services.autonomy_orchestrator import AutonomyOrchestrator
 
         candidate = _make_candidate(title="orch-learn-test")
@@ -377,7 +404,9 @@ class TestOrchestratorOutcomeLearning:
         orch.self_model._gather_observations = AsyncMock(return_value=[])
         orch.self_model.evolve = AsyncMock(
             return_value=type(
-                "M", (), {"version": "1.0", "developmental_stage": "testing", "confidence": 0.5}
+                "M",
+                (),
+                {"version": "1.0", "developmental_stage": "testing", "confidence": 0.5},
             )()
         )
         orch.revelation_engine.synthesise = AsyncMock(return_value=[])
@@ -404,8 +433,10 @@ class TestOutcomeEndpoints:
 
     @pytest.fixture
     def client(self):
-        from tests.conftest import SyncTestClient
         from src.kortana.main import app
+
+        from tests.conftest import SyncTestClient
+
         return SyncTestClient(app)
 
     def test_outcomes_current_empty(self, client) -> None:

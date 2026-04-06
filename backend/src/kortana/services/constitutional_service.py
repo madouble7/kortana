@@ -390,21 +390,20 @@ class ConstitutionalService:
         has_reject = any(c["severity"] == "reject" for c in conflicts)
         has_caution = any(c["severity"] == "caution" for c in conflicts)
         requires_override = bool(ctx.get("requires_human_override"))
-        has_autonomy_conflict = any(
-            c["category"] == "autonomy" for c in conflicts
-        )
+        has_autonomy_conflict = any(c["category"] == "autonomy" for c in conflicts)
 
         # Phase 10: requires_human_override takes precedence when HOP is invoked
         if requires_override and (has_autonomy_conflict or has_reject):
             verdict = "requires_human_override"
             override_reasons = [
-                c["reason"] for c in conflicts
+                c["reason"]
+                for c in conflicts
                 if c["category"] == "autonomy" or c["severity"] == "reject"
             ]
-            explanation = (
-                "Human override required. "
-                + ("; ".join(override_reasons) if override_reasons
-                   else "HOP principle invoked for this subject type.")
+            explanation = "Human override required. " + (
+                "; ".join(override_reasons)
+                if override_reasons
+                else "HOP principle invoked for this subject type."
             )
         elif has_reject:
             verdict = "reject"
@@ -809,6 +808,145 @@ class ConstitutionalService:
             select(CovenantEnforcementRecord)
             .where(CovenantEnforcementRecord.action == "override_requested")
             .order_by(CovenantEnforcementRecord.created_at.desc())
+            .limit(limit)
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
+    # ------------------------------------------------------------------
+    # Phase 11: Override Resolution — Human Covenant Interface
+    # ------------------------------------------------------------------
+
+    async def resolve_override(
+        self,
+        record_id: str,
+        resolution: str,
+        resolver: str,
+        rationale: str,
+    ) -> Optional[CovenantEnforcementRecord]:
+        """Resolve an override request: approve, deny, expire, or revoke.
+
+        Only records with override_status='pending' can be resolved
+        (except 'revoke' which can act on 'approved' records).
+
+        Returns the updated record or None if not found / invalid state.
+        """
+        valid_resolutions = {"approved", "denied", "expired", "revoked"}
+        if resolution not in valid_resolutions:
+            logger.warning(f"Invalid resolution '{resolution}' for record {record_id}")
+            return None
+
+        stmt = select(CovenantEnforcementRecord).where(
+            CovenantEnforcementRecord.id == record_id
+        )
+        result = await self.db.execute(stmt)
+        record = result.scalar_one_or_none()
+
+        if record is None:
+            logger.info(f"Override record not found: {record_id}")
+            return None
+
+        # State machine: pending → approved/denied/expired; approved → revoked
+        if resolution == "revoked":
+            if record.override_status != "approved":
+                logger.warning(
+                    f"Cannot revoke record {record_id}: "
+                    f"status is '{record.override_status}', not 'approved'"
+                )
+                return None
+        else:
+            if record.override_status != "pending":
+                logger.warning(
+                    f"Cannot resolve record {record_id}: "
+                    f"status is '{record.override_status}', not 'pending'"
+                )
+                return None
+
+        from datetime import datetime
+
+        record.override_status = resolution
+        record.resolution_outcome = resolution
+        record.override_resolved_at = datetime.utcnow()
+        record.resolver_identity = resolver
+        record.human_rationale = rationale
+
+        try:
+            await self.db.commit()
+            await self.db.refresh(record)
+            logger.info(
+                f"Override {record_id} resolved: {resolution} "
+                f"by {resolver}"
+            )
+        except Exception:
+            await self.db.rollback()
+            logger.exception(f"Failed to resolve override {record_id}")
+            return None
+
+        return record
+
+    async def expire_stale_overrides(
+        self, max_age_hours: int = 24
+    ) -> List[CovenantEnforcementRecord]:
+        """Auto-expire pending overrides older than max_age_hours.
+
+        Returns list of expired records.
+        """
+        from datetime import datetime, timedelta
+
+        cutoff = datetime.utcnow() - timedelta(hours=max_age_hours)
+        stmt = select(CovenantEnforcementRecord).where(
+            CovenantEnforcementRecord.override_status == "pending",
+            CovenantEnforcementRecord.created_at < cutoff,
+        )
+        result = await self.db.execute(stmt)
+        stale = list(result.scalars().all())
+
+        now = datetime.utcnow()
+        for record in stale:
+            record.override_status = "expired"
+            record.resolution_outcome = "expired"
+            record.override_resolved_at = now
+            record.resolver_identity = "system:expiry"
+            record.human_rationale = (
+                f"Auto-expired after {max_age_hours}h without resolution."
+            )
+
+        if stale:
+            try:
+                await self.db.commit()
+                logger.info(f"Expired {len(stale)} stale override requests")
+            except Exception:
+                await self.db.rollback()
+                logger.exception("Failed to expire stale overrides")
+                return []
+
+        return stale
+
+    async def get_pending_overrides(
+        self, limit: int = 10
+    ) -> List[CovenantEnforcementRecord]:
+        """Return pending override requests, oldest first (FIFO)."""
+        stmt = (
+            select(CovenantEnforcementRecord)
+            .where(CovenantEnforcementRecord.override_status == "pending")
+            .order_by(CovenantEnforcementRecord.created_at.asc())
+            .limit(limit)
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_resolved_overrides(
+        self, limit: int = 10
+    ) -> List[CovenantEnforcementRecord]:
+        """Return resolved override records, newest first."""
+        stmt = (
+            select(CovenantEnforcementRecord)
+            .where(
+                CovenantEnforcementRecord.override_status.in_(
+                    ["approved", "denied", "expired", "revoked"]
+                )
+            )
+            .order_by(CovenantEnforcementRecord.override_resolved_at.desc())
             .limit(limit)
         )
         result = await self.db.execute(stmt)

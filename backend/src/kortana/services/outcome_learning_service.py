@@ -30,7 +30,11 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.kortana.models import ActionExecutionRecord, OutcomeLearningRecord
+from src.kortana.models import (
+    ActionExecutionRecord,
+    CovenantEnforcementRecord,
+    OutcomeLearningRecord,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +42,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Outcome interpretation rules (deterministic)
 # ---------------------------------------------------------------------------
+
 
 def _interpret_outcome(
     exec_record: ActionExecutionRecord,
@@ -168,6 +173,7 @@ def _derive_lesson(
 # ---------------------------------------------------------------------------
 # Adaptation signal aggregation (for downstream consumers)
 # ---------------------------------------------------------------------------
+
 
 async def get_active_adaptation_signals(
     db: AsyncSession,
@@ -310,9 +316,7 @@ class OutcomeLearningService:
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_outcome_history(
-        self, limit: int = 10
-    ) -> List[OutcomeLearningRecord]:
+    async def get_outcome_history(self, limit: int = 10) -> List[OutcomeLearningRecord]:
         """Return recent outcome learning records, newest first."""
         stmt = (
             select(OutcomeLearningRecord)
@@ -325,3 +329,100 @@ class OutcomeLearningService:
     async def get_adaptations(self, limit: int = 20) -> List[Dict[str, Any]]:
         """Return aggregated adaptation signals for observation."""
         return await get_active_adaptation_signals(self.db, limit=limit)
+
+    # ------------------------------------------------------------------
+    # Phase 11: Override Resolution Feedback
+    # ------------------------------------------------------------------
+
+    async def learn_from_override_resolution(
+        self,
+        enforcement_record: CovenantEnforcementRecord,
+        cycle_id: Optional[str] = None,
+    ) -> Optional[OutcomeLearningRecord]:
+        """Produce an adaptation signal from an approved/denied override.
+
+        Approved overrides teach kor'tana that the covenant was too strict
+        on this target type — mildly relax future scoring.
+        Denied overrides reinforce that the covenant was correct to flag —
+        strengthen future caution.
+        Expired/revoked overrides produce neutral signals.
+
+        Returns the persisted OutcomeLearningRecord, or None on failure.
+        """
+        resolution = str(enforcement_record.resolution_outcome or "")
+        target_type = str(enforcement_record.target_type or "unknown")
+        rationale = str(enforcement_record.human_rationale or "")
+
+        if resolution == "approved":
+            signal = f"override_approved:{target_type}"
+            weight = 0.15  # mildly loosen future enforcement on this type
+            verdict = "succeeded"
+            expectation = "surprising"
+            lesson = (
+                f"Human approved override for {target_type}. "
+                f"Covenant may have been overly strict. Rationale: {rationale}"
+            )
+            scope = "session"
+        elif resolution == "denied":
+            signal = f"override_denied:{target_type}"
+            weight = -0.15  # reinforce covenant strictness
+            verdict = "failed"
+            expectation = "expected"
+            lesson = (
+                f"Human denied override for {target_type}. "
+                f"Covenant enforcement was appropriate. Rationale: {rationale}"
+            )
+            scope = "session"
+        elif resolution == "expired":
+            signal = f"override_expired:{target_type}"
+            weight = -0.05  # slight negative — no one acted
+            verdict = "inconclusive"
+            expectation = "expected"
+            lesson = (
+                f"Override for {target_type} expired without resolution. "
+                "Treating as implicit denial."
+            )
+            scope = "cycle"
+        elif resolution == "revoked":
+            signal = f"override_revoked:{target_type}"
+            weight = -0.1  # previously approved, now pulled back
+            verdict = "failed"
+            expectation = "surprising"
+            lesson = (
+                f"Previously approved override for {target_type} was revoked. "
+                f"Rationale: {rationale}"
+            )
+            scope = "session"
+        else:
+            logger.info(
+                f"No learning signal for resolution '{resolution}' "
+                f"on record {enforcement_record.id}"
+            )
+            return None
+
+        record = OutcomeLearningRecord(
+            execution_record_id=None,
+            source_type="override_resolution",
+            outcome_verdict=verdict,
+            expectation_match=expectation,
+            lesson=lesson,
+            adaptation_signal=signal,
+            signal_weight=weight,
+            signal_scope=scope,
+            applied=False,
+            cycle_id=cycle_id or enforcement_record.cycle_id,
+        )
+        self.db.add(record)
+        try:
+            await self.db.commit()
+            await self.db.refresh(record)
+            logger.info(
+                f"Override learning: {resolution} → {signal} "
+                f"(weight={weight:+.2f}, scope={scope})"
+            )
+        except Exception:
+            await self.db.rollback()
+            logger.exception("Failed to persist override learning record")
+            return None
+
+        return record
