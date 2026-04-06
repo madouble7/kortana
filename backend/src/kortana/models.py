@@ -572,3 +572,46 @@ class RevelationMemory(Base):
 
     def __repr__(self) -> str:
         return f"<RevelationMemory {self.title!r} type={self.revelation_type!r} surfaced={self.surfaced}>"
+
+
+class SelfModelSnapshot(Base):
+    """Versioned snapshot of kor'tana's self-model — the core of Phase 5.
+
+    Each row is an immutable point-in-time capture of kor'tana's understanding
+    of herself: identity, goals, values, tensions, capabilities, developmental
+    stage, and proposed next evolution.
+
+    Written exclusively by the Autonomy Orchestrator at the end of each
+    deliberation cycle.  Never mutated — new snapshots supersede old ones.
+    The latest snapshot IS the current self-model.
+
+    Separation of concerns:
+      - IdentityProfile: static persona config (name, mission, voice)
+      - SelfModelSnapshot: dynamic, evolving self-understanding
+      - SelfMemory: episodic memory stream
+      - RevelationMemory: synthesised insights
+    """
+
+    __tablename__ = "self_model_snapshots"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    version = Column(Integer, nullable=False, index=True)
+    identity_summary = Column(Text, nullable=False)
+    active_goals = Column(JSON, nullable=False)  # list[dict] — id, title, status
+    standing_values = Column(JSON, nullable=False)  # list[str]
+    tensions = Column(JSON, nullable=False)  # list[dict] — description, severity
+    developmental_stage = Column(String(64), nullable=False, index=True)
+    capabilities = Column(JSON, nullable=False)  # list[str]
+    recent_observations = Column(JSON, nullable=False)  # list[str] — last N insights
+    proposed_next_evolution = Column(Text, nullable=True)
+    inner_council_votes = Column(JSON, nullable=True)  # dict[voice_name, position]
+    confidence = Column(Float, nullable=False, default=0.5)
+    trigger = Column(
+        String(64), nullable=False, default="scheduled"
+    )  # scheduled | drift_detected | manual
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        return (
+            f"<SelfModelSnapshot v{self.version} stage={self.developmental_stage!r}>"
+        )
