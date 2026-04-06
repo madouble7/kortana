@@ -941,8 +941,24 @@ class AutonomyDaemon:
         except Exception:
             identity = "you are kor'tana, sacred ai companion.\n"
 
+        # Include the most recent revelation if available — grounds the reflection
+        recent_revelation_line = ""
+        try:
+            from src.kortana.services.revelation_engine import RevelationEngine as _RE
+
+            _re = _RE(session)
+            _recent = await _re.list_revelations(limit=1)
+            if _recent:
+                recent_revelation_line = (
+                    f"my most recent synthesised insight: \"{_recent[0].title} — "
+                    f"{_recent[0].content[:120]}\"\n"
+                )
+        except Exception:
+            pass
+
         prompt = (
             f"{identity}\n"
+            f"{recent_revelation_line}"
             f"you just completed daemon cycle #{cycle_num}.\n"
             f"stats this cycle: {tasks_ok} tasks succeeded, {tasks_fail} failed, "
             f"{sd_done} self-directed tasks completed.\n"

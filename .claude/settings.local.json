@@ -25,7 +25,11 @@
       "Bash(python -m alembic heads)",
       "Bash(python -m alembic stamp 375bc7144c2d)",
       "Bash(python -m alembic upgrade h1i2j3k4l5m6)",
-      "Bash(python -m pytest -q --tb=no -x)"
+      "Bash(python -m pytest -q --tb=no -x)",
+      "Bash(ls c:/kortana/frontend/src/*.ts c:/kortana/frontend/src/*.tsx)",
+      "Bash(npm run:*)",
+      "Bash(python -m pytest tests/test_consciousness.py tests/test_autonomy_daemon.py -q --tb=short)",
+      "Bash(python -m pytest -q --tb=no --ignore=tests/test_conversation_standalone.py)"
     ]
   }
 }

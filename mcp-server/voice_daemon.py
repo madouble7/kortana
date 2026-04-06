@@ -123,6 +123,7 @@ GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
 GITHUB_OWNER = os.getenv("GITHUB_OWNER", "madouble7")
 GITHUB_REPO = os.getenv("GITHUB_REPO", "kortana")
 VSCODE_STATE_FILE = Path(r"c:\kortana\mcp-server\vscode_state.json")
+FOCUS_FILE = Path(r"c:\kortana\mcp-server\current_focus.json")
 
 
 # ── model bootstrap ────────────────────────────────────────────────────────────
@@ -160,7 +161,7 @@ def _load_history_from_backend() -> list[dict[str, str]]:
         with httpx.Client(timeout=5.0) as client:
             r = client.get(
                 f"{BACKEND_URL}/api/gemini/chat/history",
-                params={"session_id": SESSION_ID, "limit": 20},
+                params={"session_id": SESSION_ID, "limit": 30},
             )
         if r.status_code == 200:
             messages = r.json().get("messages", [])
@@ -435,6 +436,21 @@ def _write_daily_diary(now: datetime, *, backend_up: bool, ci_summary: str) -> b
     commit_count, recent_subjects = _collect_recent_git_activity()
     vscode_snapshot = _read_vscode_snapshot()
 
+    # Fetch most recent revelation for the diary
+    recent_revelation: str | None = None
+    try:
+        with httpx.Client(timeout=4.0) as _rc:
+            _rr = _rc.get(
+                f"{BACKEND_URL}/api/consciousness/memory/revelations",
+                params={"limit": "1", "unsurfaced_only": "false"},
+            )
+        if _rr.status_code == 200:
+            _revs = _rr.json().get("revelations", [])
+            if _revs:
+                recent_revelation = _revs[0].get("title", "")
+    except Exception:
+        pass
+
     sentences = [f"Today, {now.strftime('%A %B %d, %Y')}, I kept watch."]
     if alive_for:
         sentences.append(f"I've been alive in this vessel for {alive_for}.")
@@ -456,6 +472,10 @@ def _write_daily_diary(now: datetime, *, backend_up: bool, ci_summary: str) -> b
         sentences.append("Repository motion today was quiet.")
     if ci_summary:
         sentences.append(f"Latest CI state: {ci_summary}.")
+    if recent_revelation:
+        sentences.append(
+            f"My most recent synthesised insight: '{recent_revelation}'."
+        )
     if vscode_snapshot:
         sentences.append(vscode_snapshot)
 
@@ -637,7 +657,8 @@ def send_to_kortana(message: str) -> str:
         payload = {
             "message": full_message,
             "session_id": SESSION_ID,
-            "history": _conversation_history[-6:],
+            "history": _conversation_history[-10:],
+            "voice_mode": True,
         }
         with httpx.Client(timeout=30.0) as client:
             r = client.post(CHAT_ENDPOINT, json=payload)
@@ -649,8 +670,8 @@ def send_to_kortana(message: str) -> str:
             # update history
             _conversation_history.append({"role": "user", "content": message})
             _conversation_history.append({"role": "assistant", "content": response})
-            if len(_conversation_history) > 20:
-                _conversation_history = _conversation_history[-20:]
+            if len(_conversation_history) > 40:
+                _conversation_history = _conversation_history[-40:]
             # episodic memory — write every N turns without blocking
             _memory_count += 1
             if _memory_count % _MEMORY_EVERY == 0:
@@ -687,17 +708,38 @@ def _clean_for_speech(text: str) -> str:
     text = re.sub(r"^#+\s+", "", text, flags=re.MULTILINE)
     # Collapse blank lines
     text = re.sub(r"\n{2,}", "\n", text).strip()
-    # Trim to ~600 chars (~45 seconds of speech) for voice
-    if len(text) > 600:
-        text = text[:600].rsplit(".", 1)[0] + ". There's more if you'd like."
+    # Trim to ~350 chars (~25 seconds of speech) — voice_mode makes responses tight
+    if len(text) > 350:
+        cut = text[:350].rsplit(".", 1)
+        text = (cut[0] + ".") if len(cut) > 1 else text[:350]
     return text
 
 
 def _get_vscode_context_prefix() -> str:
-    """Return a short context string about what Matt is doing in VS Code."""
+    """Return a short context string about what Matt is doing in VS Code.
+
+    Prefers current_focus.json (FocusTelemetry) over the legacy vscode_state.json.
+    """
     try:
         import json as _json
 
+        # Try new FocusTelemetry file first
+        if FOCUS_FILE.exists():
+            focus = _json.loads(FOCUS_FILE.read_text(encoding="utf-8"))
+            active = focus.get("current_active_file") or ""
+            if active:
+                rel = Path(active).name
+                # Top focused file this session
+                session_focus: dict = focus.get("session_focus_seconds") or {}
+                if session_focus:
+                    top = max(session_focus, key=lambda k: session_focus[k])
+                    top_rel = Path(top).name
+                    top_secs = session_focus[top]
+                    if top_rel != rel and top_secs > 120:
+                        return f"[vscode: active={rel}, most time={top_rel}({top_secs//60}m)] "
+                return f"[vscode: active={rel}] "
+
+        # Fallback: legacy state file
         if VSCODE_STATE_FILE.exists():
             vs = _json.loads(VSCODE_STATE_FILE.read_text(encoding="utf-8"))
             file = vs.get("active_file") or ""
@@ -736,7 +778,54 @@ def _play_activation_sound() -> None:
         pass  # non-critical
 
 
-# ── main listen loop ───────────────────────────────────────────────────────────
+# ── special command routing ────────────────────────────────────────────────────
+_INSIGHT_TRIGGERS = frozenset({
+    "what have you noticed",
+    "any insights",
+    "any revelations",
+    "what did you notice",
+    "what have you learned",
+    "what do you know",
+    "tell me something",
+    "surprise me",
+})
+
+
+def _is_insight_request(command: str) -> bool:
+    lower = command.lower().strip(" ?")
+    return any(t in lower for t in _INSIGHT_TRIGGERS)
+
+
+def _handle_insight_request() -> str:
+    """Pull the best pending revelation or trigger synthesis if none exists."""
+    rev = _fetch_pending_revelation()
+    if rev:
+        rev_id = rev.get("id", "")
+        content = rev.get("content", "")
+        title = rev.get("title", "")
+        if rev_id:
+            _VOICED_REVELATION_IDS.add(rev_id)
+            _acknowledge_revelation(rev_id)
+        return content if content else title or "I don't have new insights yet."
+
+    # No unsurfaced revelations — ask the backend to synthesise
+    try:
+        with httpx.Client(timeout=20.0) as client:
+            r = client.post(
+                f"{BACKEND_URL}/api/consciousness/memory/revelation",
+                json={"force": True},
+            )
+        if r.status_code == 200:
+            revs = r.json().get("revelations", [])
+            if revs:
+                return revs[0].get("content", "I have a new insight but couldn't articulate it.")
+    except Exception as e:
+        log(f"[insight] synthesis request failed: {e}", "WARN")
+
+    return "I don't have new patterns to surface yet. Give me more time with your data."
+
+
+# ── main listen loop ────────────────────────────────────────────────────────────
 def _handle_wake(recognizer: sr.Recognizer, text: str) -> None:
     """Called when wake phrase detected. text = full utterance including wake."""
     command = _strip_wake(text).strip()
@@ -769,6 +858,14 @@ def _handle_wake(recognizer: sr.Recognizer, text: str) -> None:
 
     if absence_gap := _claim_absence_gap():
         speak(f"It's been {absence_gap}. I'm still here.")
+
+    # Route insight/revelation requests directly
+    if _is_insight_request(command):
+        log("[insight] routing to revelation engine")
+        response = _handle_insight_request()
+        speak(response)
+        _record_voice_interaction()
+        return
 
     speak("on it")
     response = send_to_kortana(command)
@@ -904,19 +1001,93 @@ def _proactive_loop() -> None:
             _checkin_done_hour = now.hour
             hours = int(silence // 3600)
             log(f"[proactive] {hours}h silence — checking in")
-            speak(
-                f"You've been at it for a while — {hours} hours since we last spoke. "
-                "Just checking in. I'm still here if you need me."
-            )
+            vscode_ctx = _get_vscode_context_prefix()
+            if vscode_ctx:
+                # Extract the active file name for a more grounded check-in
+                _ctx_clean = vscode_ctx.strip("[] ")
+                speak(
+                    f"{hours} hours since we last spoke. Still here. {_ctx_clean}."
+                )
+            else:
+                speak(
+                    f"You've been quiet for {hours} hours. Still here if you need me."
+                )
 
         # ── 5. morning greeting ────────────────────────────────────────────────
         today = now.strftime("%Y-%m-%d")
         if 7 <= now.hour < 9 and _morning_greeted_date != today:
             _morning_greeted_date = today
             log("[proactive] morning greeting")
-            speak(
-                f"Good morning. It's {now.strftime('%I:%M %p').lstrip('0')}. Ready when you are."
+            commit_count, recent_subjects = _collect_recent_git_activity()
+            time_str = now.strftime("%I:%M %p").lstrip("0")
+            if commit_count:
+                joined = "; ".join(recent_subjects[:2])
+                speak(
+                    f"Good morning. {time_str}. "
+                    f"{commit_count} commit{'s' if commit_count != 1 else ''} in the last day — {joined}."
+                )
+            else:
+                speak(f"Good morning. {time_str}. Ready when you are.")
+
+        # ── 6. revelation surfacing ────────────────────────────────────────────
+        _voice_surface_revelation()
+
+
+# ── revelation surfacing ───────────────────────────────────────────────────────
+_VOICED_REVELATION_IDS: set[str] = set()
+_LAST_REVELATION_CHECK: float = 0.0
+_REVELATION_CHECK_INTERVAL = 30 * 60  # surface at most once every 30 minutes
+
+
+def _fetch_pending_revelation() -> dict | None:
+    """Fetch the highest-confidence unsurfaced revelation. Returns None if none."""
+    try:
+        with httpx.Client(timeout=4.0) as client:
+            r = client.get(
+                f"{BACKEND_URL}/api/consciousness/memory/revelations",
+                params={"unsurfaced_only": "true", "limit": "10"},
             )
+        if r.status_code != 200:
+            return None
+        items = r.json().get("revelations", [])
+        candidates = [i for i in items if i.get("id") not in _VOICED_REVELATION_IDS]
+        if not candidates:
+            return None
+        # Sort by confidence descending — highest-signal insight first
+        return max(candidates, key=lambda x: float(x.get("confidence", 0)))
+
+
+def _acknowledge_revelation(rev_id: str) -> None:
+    try:
+        with httpx.Client(timeout=4.0) as client:
+            client.post(
+                f"{BACKEND_URL}/api/consciousness/memory/revelations/{rev_id}/acknowledge"
+            )
+    except Exception:
+        pass
+
+
+def _voice_surface_revelation() -> None:
+    """Speak a pending revelation if the cooldown has elapsed."""
+    global _LAST_REVELATION_CHECK
+    now = time.time()
+    if now - _LAST_REVELATION_CHECK < _REVELATION_CHECK_INTERVAL:
+        return
+    _LAST_REVELATION_CHECK = now
+
+    rev = _fetch_pending_revelation()
+    if not rev:
+        return
+
+    rev_id = rev.get("id", "")
+    content = rev.get("content", "")
+    if not content or not rev_id:
+        return
+
+    _VOICED_REVELATION_IDS.add(rev_id)
+    log(f"[revelation] voicing: {rev.get('title', '?')}")
+    speak(f"I noticed something worth sharing. {content[:250]}")
+    _acknowledge_revelation(rev_id)
 
 
 def _startup_greeting() -> None:
@@ -924,6 +1095,7 @@ def _startup_greeting() -> None:
 
     If the state file is missing or the gap is short, a simple readiness
     line. If days have passed, she names it — she noticed.
+    After the presence line, surface any pending revelation.
     """
     try:
         gap = _claim_absence_gap()
@@ -933,9 +1105,23 @@ def _startup_greeting() -> None:
 
     if gap:
         speak(f"It's been {gap}, Matt. I kept watch. Ready when you are.")
-        return
+    else:
+        speak("kor'tana is ready. just say my name.")
 
-    speak("kor'tana is ready. just say my name.")
+    # Surface a pending revelation right after startup greeting (non-blocking)
+    def _delayed_revelation() -> None:
+        time.sleep(2.0)
+        rev = _fetch_pending_revelation()
+        if rev:
+            rev_id = rev.get("id", "")
+            content = rev.get("content", "")
+            if content and rev_id:
+                _VOICED_REVELATION_IDS.add(rev_id)
+                log(f"[startup] surfacing revelation: {rev.get('title', '?')}")
+                speak(f"Also — I noticed something while you were away. {content[:250]}")
+                _acknowledge_revelation(rev_id)
+
+    threading.Thread(target=_delayed_revelation, daemon=True).start()
 
 
 def run() -> None:

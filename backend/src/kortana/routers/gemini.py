@@ -197,12 +197,32 @@ async def _build_live_context(session_id: str = "default") -> str:
         pass
 
     # 5. VS Code state — what Matt is actively working on right now
+    # Prefers FocusTelemetry (current_focus.json) over the legacy vscode_state.json
     try:
         import json as _json
         from pathlib import Path as _Path
 
+        _focus_file = _Path(r"c:\kortana\mcp-server\current_focus.json")
         _vscode_state_file = _Path(r"c:\kortana\mcp-server\vscode_state.json")
-        if _vscode_state_file.exists():
+
+        if _focus_file.exists():
+            _focus = _json.loads(_focus_file.read_text(encoding="utf-8"))
+            _active = _focus.get("current_active_file") or ""
+            if _active:
+                lines.append("\n## matt's vscode state right now")
+                lines.append(f"- active file: {_Path(_active).name}")
+                _session_focus: dict = _focus.get("session_focus_seconds") or {}
+                if _session_focus:
+                    _top = max(_session_focus, key=lambda k: _session_focus[k])
+                    _top_secs = _session_focus[_top]
+                    if _Path(_top).name != _Path(_active).name and _top_secs > 120:
+                        lines.append(
+                            f"- most time spent in: {_Path(_top).name} ({_top_secs // 60}m)"
+                        )
+                _branch_focus = _focus.get("branch") or ""
+                if _branch_focus:
+                    lines.append(f"- git branch: {_branch_focus}")
+        elif _vscode_state_file.exists():
             _vs = _json.loads(_vscode_state_file.read_text(encoding="utf-8"))
             _file = _vs.get("active_file") or "unknown"
             _branch = _vs.get("branch") or "unknown"
@@ -288,6 +308,22 @@ async def _build_live_context(session_id: str = "default") -> str:
             for summary, created_at in diary_rows:
                 stamp = _coerce_utc(created_at).strftime("%Y-%m-%d")
                 lines.append(f"- [{stamp}] {_truncate_live_context(summary, 200)}")
+    except Exception:
+        pass
+
+    # 7. Most recent unsurfaced revelation — live insight pipeline awareness
+    try:
+        from src.kortana.database import get_db_manager as _get_db_mgr
+        from src.kortana.services.revelation_engine import RevelationEngine as _RE
+
+        _db7 = _get_db_mgr()
+        async with _db7.session_scope() as _s7:
+            _re7 = _RE(_s7)
+            _unsurfaced = await _re7.get_unsurfaced(limit=1)
+            if _unsurfaced:
+                _r = _unsurfaced[0]
+                lines.append("\n## pending revelation (not yet surfaced to matt)")
+                lines.append(f"- {_r.title}: {_r.content[:200]}")
     except Exception:
         pass
 
@@ -567,12 +603,31 @@ async def _load_chat_memory_context(
     return memory_context.render()
 
 
+async def _load_recent_revelations() -> str:
+    """Return a brief summary of recent high-confidence revelations for injection."""
+    try:
+        from src.kortana.database import get_db_manager
+        from src.kortana.services.revelation_engine import RevelationEngine
+
+        db = get_db_manager()
+        async with db.session_scope() as session:
+            engine = RevelationEngine(session)
+            rows = await engine.list_revelations(limit=3, unsurfaced_only=False)
+            if not rows:
+                return ""
+            lines = [f"- {r.title}: {r.content[:150]}" for r in rows]
+            return "recent insights i've synthesised:\n" + "\n".join(lines)
+    except Exception:
+        return ""
+
+
 async def _assemble_chat_system_prompt(
     live_context: str,
     *,
     session_id: str,
     query: str,
     include_conversation_memory: bool,
+    include_revelations: bool = True,
 ) -> str:
     identity = await _load_chat_identity_preamble()
     memory_context = await _load_chat_memory_context(
@@ -580,12 +635,15 @@ async def _assemble_chat_system_prompt(
         query=query,
         include_conversation_memory=include_conversation_memory,
     )
+    revelations = await _load_recent_revelations() if include_revelations else ""
     system = KORTANA_SYSTEM_PROMPT
     if identity:
         system = f"{system}\n\n{identity}"
     system = f"{system}\n\n{KORTANA_CHAT_POLICY_PROMPT}"
     if memory_context:
         system = f"{system}\n\n{memory_context}"
+    if revelations:
+        system = f"{system}\n\n{revelations}"
     if live_context:
         system = f"{system}\n\n{live_context}"
     return system
@@ -883,14 +941,24 @@ async def chat_with_gemini(payload: dict[str, Any]) -> dict[str, Any]:
             "used_previous_response_id": False,
         }
 
+    voice_mode: bool = bool(payload.get("voice_mode"))
     system = await _assemble_chat_system_prompt(
         live_context,
         session_id=session_id,
         query=message,
         include_conversation_memory=True,
+        include_revelations=not voice_mode,  # skip in voice mode for lower latency
     )
+    if voice_mode:
+        system += (
+            "\n\nVOICE MODE: this response will be spoken aloud via text-to-speech. "
+            "keep your answer to 1-2 sentences maximum. no lists, no markdown, no code blocks. "
+            "speak directly and naturally, as if you're in the room."
+        )
 
     prompt = _build_chat_prompt(message, history)
+
+    _max_tokens = 120 if voice_mode else 512
 
     if _stateful_openai_chat_enabled(payload):
         try:
@@ -899,7 +967,7 @@ async def chat_with_gemini(payload: dict[str, Any]) -> dict[str, Any]:
                 message=message,
                 history=history,
                 system=system,
-                max_tokens=512,
+                max_tokens=_max_tokens,
                 timeout=25.0,
             )
             answer, tasks_queued = await _extract_and_queue_tasks(openai_result.text)
@@ -943,7 +1011,7 @@ async def chat_with_gemini(payload: dict[str, Any]) -> dict[str, Any]:
         prompt=prompt,
         mode=ConsensusMode.FASTEST,
         system=system,
-        max_tokens=512,
+        max_tokens=_max_tokens,
         timeout=25.0,
     )
 
@@ -1051,13 +1119,22 @@ async def stream_chat_with_gemini(payload: dict[str, Any]) -> StreamingResponse:
                 )
                 return
 
+            _stream_voice_mode: bool = bool(payload.get("voice_mode"))
             system = await _assemble_chat_system_prompt(
                 live_context,
                 session_id=session_id,
                 query=message,
                 include_conversation_memory=True,
+                include_revelations=not _stream_voice_mode,
             )
+            if _stream_voice_mode:
+                system += (
+                    "\n\nVOICE MODE: this response will be spoken aloud via text-to-speech. "
+                    "keep your answer to 1-2 sentences maximum. no lists, no markdown, no code blocks. "
+                    "speak directly and naturally, as if you're in the room."
+                )
             prompt = _build_chat_prompt(message, history)
+            _stream_max_tokens = 120 if _stream_voice_mode else 512
 
             if _stateful_openai_chat_enabled(payload):
                 base_metadata = _build_assistant_turn_metadata(
@@ -1078,7 +1155,7 @@ async def stream_chat_with_gemini(payload: dict[str, Any]) -> StreamingResponse:
                         message=message,
                         history=history,
                         system=system,
-                        max_tokens=512,
+                        max_tokens=_stream_max_tokens,
                         timeout=25.0,
                     ):
                         event_type = str(event.get("type", ""))
@@ -1141,7 +1218,7 @@ async def stream_chat_with_gemini(payload: dict[str, Any]) -> StreamingResponse:
                 prompt=prompt,
                 mode=ConsensusMode.FASTEST,
                 system=system,
-                max_tokens=512,
+                max_tokens=_stream_max_tokens,
                 timeout=25.0,
             )
 
