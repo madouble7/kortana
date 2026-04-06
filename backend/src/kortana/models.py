@@ -669,8 +669,50 @@ class NextActionCandidate(Base):
     status = Column(
         String(32), nullable=False, default="proposed", index=True
     )  # proposed | accepted | rejected | executed | expired
-    cycle_id = Column(String(8), nullable=True, index=True)  # links to AutonomyCycleRecord
+    cycle_id = Column(
+        String(8), nullable=True, index=True
+    )  # links to AutonomyCycleRecord
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
     def __repr__(self) -> str:
         return f"<NextActionCandidate {self.title!r} score={self.score:.2f} status={self.status}>"
+
+
+class ActionExecutionRecord(Base):
+    """Durable record of an execution-gate decision and its outcome.
+
+    Written by ExecutionGateService during each autonomy cycle.
+    Answers:
+      1. Can this next action be executed automatically?  (classification)
+      2. If yes, how?  (execution_plan)
+      3. If no, why not?  (gate_rationale)
+      4. What happened?  (outcome, outcome_detail)
+    """
+
+    __tablename__ = "action_execution_records"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    candidate_id = Column(
+        String(36),
+        ForeignKey("next_action_candidates.id"),
+        nullable=False,
+        index=True,
+    )
+    classification = Column(
+        String(32), nullable=False, index=True
+    )  # executable | deferred | blocked | requires_human
+    gate_rationale = Column(Text, nullable=False)
+    execution_plan = Column(JSON, nullable=True)  # steps if executable
+    outcome = Column(
+        String(32), nullable=False, default="pending", index=True
+    )  # pending | succeeded | failed | skipped | deferred
+    outcome_detail = Column(Text, nullable=True)
+    cycle_id = Column(String(8), nullable=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    completed_at = Column(DateTime, nullable=True)
+
+    def __repr__(self) -> str:
+        return (
+            f"<ActionExecutionRecord {self.classification} "
+            f"outcome={self.outcome} candidate={self.candidate_id[:8]}>"
+        )

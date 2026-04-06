@@ -660,9 +660,7 @@ async def get_active_goals(
                 "priority": g.priority,
                 "progress": g.progress,
                 "description": g.description,
-                "created_at": (
-                    g.created_at.isoformat() if g.created_at else None
-                ),
+                "created_at": (g.created_at.isoformat() if g.created_at else None),
             }
             for g in rows
         ],
@@ -730,10 +728,85 @@ async def get_next_action_history(
                 "goal_id": c.goal_id,
                 "status": c.status,
                 "cycle_id": c.cycle_id,
-                "created_at": (
-                    c.created_at.isoformat() if c.created_at else None
-                ),
+                "created_at": (c.created_at.isoformat() if c.created_at else None),
             }
             for c in candidates
+        ],
+    }
+
+
+# ==================================================================
+# Phase 7: Action Realization — Execution Gate
+#
+# Read-only endpoints that surface what the execution gate decided,
+# what is currently being executed, and recent execution outcomes.
+# ==================================================================
+
+
+@router.get("/execution/current")
+async def get_current_execution(
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """Read-only: the most recent execution gate decision.
+
+    Answers: was the last next-action classified as executable, deferred,
+    blocked, or requires-human? What happened?
+    """
+    from src.kortana.services.execution_gate_service import ExecutionGateService
+
+    svc = ExecutionGateService(db)
+    record = await svc.get_current_execution()
+    if record is None:
+        return {
+            "execution": None,
+            "message": "No execution records yet.",
+        }
+    return {
+        "execution": {
+            "id": record.id,
+            "candidate_id": record.candidate_id,
+            "classification": record.classification,
+            "gate_rationale": record.gate_rationale,
+            "execution_plan": record.execution_plan,
+            "outcome": record.outcome,
+            "outcome_detail": record.outcome_detail,
+            "cycle_id": record.cycle_id,
+            "created_at": (
+                record.created_at.isoformat() if record.created_at else None
+            ),
+            "completed_at": (
+                record.completed_at.isoformat() if record.completed_at else None
+            ),
+        },
+    }
+
+
+@router.get("/execution/history")
+async def get_execution_history(
+    limit: int = Query(default=10, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """Read-only: recent execution gate decisions and outcomes."""
+    from src.kortana.services.execution_gate_service import ExecutionGateService
+
+    svc = ExecutionGateService(db)
+    records = await svc.get_execution_history(limit=limit)
+    return {
+        "count": len(records),
+        "executions": [
+            {
+                "id": r.id,
+                "candidate_id": r.candidate_id,
+                "classification": r.classification,
+                "outcome": r.outcome,
+                "cycle_id": r.cycle_id,
+                "created_at": (
+                    r.created_at.isoformat() if r.created_at else None
+                ),
+                "completed_at": (
+                    r.completed_at.isoformat() if r.completed_at else None
+                ),
+            }
+            for r in records
         ],
     }

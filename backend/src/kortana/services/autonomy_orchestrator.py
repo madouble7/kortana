@@ -18,6 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.kortana.models import AutonomyCycleRecord
+from src.kortana.services.execution_gate_service import ExecutionGateService
 from src.kortana.services.goal_selection_service import GoalSelectionService
 from src.kortana.services.revelation_engine import RevelationEngine
 from src.kortana.services.self_model_service import SelfModelService
@@ -131,6 +132,25 @@ class AutonomyOrchestrator:
             logger.exception("Goal selection failed")
             actions_taken.append("goal-selection: failed")
 
+        # ---- 3.7 EXECUTION GATE (Action Realization) ----
+        execution_record_id: Optional[str] = None
+        execution_classification: Optional[str] = None
+        try:
+            gate = ExecutionGateService(self.db)
+            exec_record = await gate.evaluate(
+                candidate_id=next_action_id, cycle_id=cycle_id
+            )
+            if exec_record:
+                execution_record_id = str(exec_record.id)
+                execution_classification = str(exec_record.classification)
+                actions_taken.append(
+                    f"execution-gate: {exec_record.classification} "
+                    f"(outcome={exec_record.outcome})"
+                )
+        except Exception:
+            logger.exception("Execution gate failed")
+            actions_taken.append("execution-gate: failed")
+
         # ---- 4. PERSIST cycle record to DB ----
         elapsed_ms = int((time.monotonic() - start) * 1000)
 
@@ -145,6 +165,8 @@ class AutonomyOrchestrator:
             "developmental_stage": developmental_stage,
             "next_action_candidate_id": next_action_id,
             "next_action_title": next_action_title,
+            "execution_record_id": execution_record_id,
+            "execution_classification": execution_classification,
             "actions_taken": actions_taken,
         }
 
