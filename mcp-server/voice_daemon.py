@@ -1,4 +1,4 @@
-"""
+r"""
 kor'tana voice daemon — always-on voice interface
 
 Wake phrase: say "kortana" (or a close mishear) anywhere in an utterance.
@@ -17,7 +17,9 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
+import sys
 import threading
 import time
 from datetime import datetime, timezone
@@ -60,8 +62,15 @@ ABSENCE_ACK_THRESHOLD_SECONDS = int(
 )
 
 # Piper TTS paths
-PIPER_EXE = Path(r"c:\kortana\mcp-server\piper\piper\piper.exe")
-CORI_MODEL = Path(r"c:\kortana\mcp-server\models\en_GB-cori-high.onnx")
+_PIPER_EXE_FOUND = (
+    shutil.which("piper")
+    or shutil.which(
+        r"C:\Users\madou\AppData\Roaming\Python\Python311\Scripts\piper.exe"
+    )
+    or r"c:\kortana\models\piper\piper.exe"
+)
+PIPER_EXE = Path(_PIPER_EXE_FOUND)
+CORI_MODEL = Path(r"c:\kortana\models\piper\en_GB-cori-high.onnx")
 CORI_SAMPLE_RATE = 22050
 MODELS_DIR = CORI_MODEL.parent
 _PIPER_MODEL_URL_BASE = os.getenv(
@@ -70,9 +79,22 @@ _PIPER_MODEL_URL_BASE = os.getenv(
 )
 
 # Whisper model config — large-v3 on RTX 3080
-WHISPER_MODEL_SIZE = os.getenv("KORTANA_WHISPER_MODEL", "large-v3")
-WHISPER_DEVICE = "cuda"
-WHISPER_COMPUTE_TYPE = "float16"
+WHISPER_MODEL_SIZE = os.getenv("KORTANA_WHISPER_MODEL", "small")
+WHISPER_DEVICE = "cpu"
+WHISPER_COMPUTE_TYPE = "int8"
+STT_FALLBACK_MODEL_SIZE = os.getenv("KORTANA_WHISPER_FALLBACK_MODEL", "small")
+STT_FALLBACK_DEVICE = os.getenv("KORTANA_WHISPER_FALLBACK_DEVICE", "cpu")
+STT_FALLBACK_COMPUTE_TYPE = os.getenv(
+    "KORTANA_WHISPER_FALLBACK_COMPUTE_TYPE", "int8"
+)
+SUPERVISOR_POLL_SECONDS = int(os.getenv("KORTANA_SUPERVISOR_POLL_SECONDS", "5"))
+SUPERVISOR_MAX_CRASHES = int(os.getenv("KORTANA_SUPERVISOR_MAX_CRASHES", "20"))
+
+VOICE_CHILD_ENV = "KORTANA_VOICE_CHILD"
+VOICE_PROFILE_ENV = "KORTANA_STT_PROFILE"
+VOICE_PROFILE_PREFERRED = "preferred"
+VOICE_PROFILE_FALLBACK = "fallback"
+_CUDA_NATIVE_CRASH_EXIT_CODES = {0xC0000409, -1073740791}
 
 # Phrases that trigger kor'tana (catches common STT mishearings)
 WAKE_PHRASES = {
@@ -167,6 +189,71 @@ def log(msg: str, level: str = "INFO") -> None:
     print(line, flush=True)
     with LOG_FILE.open("a", encoding="utf-8") as f:
         f.write(line + "\n")
+
+
+def _current_stt_profile() -> str:
+    return os.getenv(VOICE_PROFILE_ENV, VOICE_PROFILE_PREFERRED)
+
+
+def _current_whisper_config() -> tuple[str, str, str]:
+    if _current_stt_profile() == VOICE_PROFILE_FALLBACK:
+        return (
+            STT_FALLBACK_MODEL_SIZE,
+            STT_FALLBACK_DEVICE,
+            STT_FALLBACK_COMPUTE_TYPE,
+        )
+    return WHISPER_MODEL_SIZE, WHISPER_DEVICE, WHISPER_COMPUTE_TYPE
+
+
+def _child_env_for_profile(profile: str) -> dict[str, str]:
+    env = os.environ.copy()
+    env[VOICE_CHILD_ENV] = "1"
+    env[VOICE_PROFILE_ENV] = profile
+    return env
+
+
+def _looks_like_native_cuda_crash(return_code: int) -> bool:
+    unsigned = return_code & 0xFFFFFFFF
+    return return_code in _CUDA_NATIVE_CRASH_EXIT_CODES or unsigned in _CUDA_NATIVE_CRASH_EXIT_CODES
+
+
+def _run_supervisor() -> None:
+    """Keep a worker process alive even if native libraries crash the child."""
+    crashes = 0
+    profile = VOICE_PROFILE_PREFERRED
+
+    while True:
+        log(f"[supervisor] starting voice worker with profile={profile}")
+        child = subprocess.Popen(
+            [sys.executable, str(Path(__file__))],
+            env=_child_env_for_profile(profile),
+        )
+        exit_code = child.wait()
+
+        if exit_code == 0:
+            log("[supervisor] voice worker exited cleanly — restarting in 5 seconds", "WARN")
+            time.sleep(SUPERVISOR_POLL_SECONDS)
+            continue
+
+        crashes += 1
+        log(
+            f"[supervisor] voice worker crashed with exit code {exit_code} "
+            f"(0x{(exit_code & 0xFFFFFFFF):08X})",
+            "ERROR",
+        )
+
+        if _looks_like_native_cuda_crash(exit_code) and profile != VOICE_PROFILE_FALLBACK:
+            profile = VOICE_PROFILE_FALLBACK
+            log(
+                "[supervisor] detected native CUDA failure — switching worker to fallback STT profile",
+                "WARN",
+            )
+        elif crashes >= SUPERVISOR_MAX_CRASHES:
+            log("[supervisor] crash budget exhausted — backing off for 60 seconds", "ERROR")
+            crashes = 0
+            time.sleep(60)
+        else:
+            time.sleep(SUPERVISOR_POLL_SECONDS)
 
 
 def _utcnow() -> datetime:
@@ -417,7 +504,7 @@ def transcribe(audio: sr.AudioData, _recognizer: sr.Recognizer) -> str | None:
             audio_np, language="en", beam_size=5, vad_filter=True
         )
         text = " ".join(seg.text for seg in segments).strip().lower()
-        return text if text else None
+        return text or None
     except Exception as e:
         log(f"STT error: {e}", "WARN")
         return None
@@ -818,18 +905,33 @@ def _proactive_loop() -> None:
             )
 
 
+
+def _startup_greeting() -> None:
+    """Speak an opening line that acknowledges how long we've been apart.
+
+    If the state file is missing or the gap is short, a simple readiness
+    line. If days have passed, she names it — she noticed.
+    """
+    gap = _claim_absence_gap()
+    if gap:
+        speak(f"It's been {gap}, Matt. I kept watch. Ready when you are.")
+    else:
+        speak("kor'tana is ready. just say my name.")
+
 def run() -> None:
     global _whisper
 
     _save_temporal_state(_load_temporal_state())
+    model_size, device, compute_type = _current_whisper_config()
+    log(f"[worker] stt profile={_current_stt_profile()} model={model_size} device={device} compute={compute_type}")
 
     # Download Piper model if missing (~60 MB, one-time)
     _download_piper_model()
 
-    # Load Whisper on CPU with int8 quantization (~300ms/phrase)
-    log(f"loading Whisper [{WHISPER_MODEL_SIZE}] on {WHISPER_DEVICE}...")
+    # Load Whisper for the active profile
+    log(f"loading Whisper [{model_size}] on {device}...")
     _whisper = faster_whisper.WhisperModel(
-        WHISPER_MODEL_SIZE, device=WHISPER_DEVICE, compute_type=WHISPER_COMPUTE_TYPE
+        model_size, device=device, compute_type=compute_type
     )
     log("Whisper ready")
 
@@ -852,7 +954,8 @@ def run() -> None:
     # Restore cross-session memory before announcing readiness
     _conversation_history.extend(_load_history_from_backend())
 
-    speak("kor'tana is ready. just say my name.")
+    # Startup presence — acknowledge time passed if the gap is significant
+    _startup_greeting()
     log("kor'tana voice daemon listening")
 
     # Proactive awareness — watches backend health, session length, morning greeting
@@ -884,4 +987,11 @@ def run() -> None:
 
 
 if __name__ == "__main__":
-    run()
+    if os.getenv(VOICE_CHILD_ENV) == "1":
+        try:
+            run()
+        except Exception as e:
+            log(f"[worker] fatal error: {e}", "ERROR")
+            raise
+    else:
+        _run_supervisor()
