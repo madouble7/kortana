@@ -134,24 +134,69 @@ class AutonomyOrchestrator:
             logger.exception("Goal selection failed")
             actions_taken.append("goal-selection: failed")
 
+        # ---- 3.6 CANDIDATE ENFORCEMENT (Pre-Action Veto) ----
+        candidate_blocked = False
+        candidate_enforcement_verdict: Optional[str] = None
+        try:
+            if next_action_id and next_action_title:
+                covenant = ConstitutionalService(self.db)
+                # Load candidate payload for tier info
+                from src.kortana.models import NextActionCandidate as NACModel
+
+                nac_stmt = select(NACModel).where(NACModel.id == next_action_id)
+                nac_result = await self.db.execute(nac_stmt)
+                nac_row = nac_result.scalar_one_or_none()
+                nac_payload: dict = (
+                    nac_row.candidate_payload or {} if nac_row else {}
+                )  # type: ignore[assignment]
+
+                enforce_verdict, _enf_rec = await covenant.enforce_candidate(
+                    candidate_title=next_action_title,
+                    candidate_id=next_action_id,
+                    candidate_score=float(nac_row.score) if nac_row else 0.0,
+                    action_type=str(nac_row.action_type) if nac_row else None,
+                    goal_tier=str(nac_payload.get("goal_tier", "")),
+                    cycle_id=cycle_id,
+                )
+                candidate_enforcement_verdict = enforce_verdict
+                actions_taken.append(f"candidate-enforcement: {enforce_verdict}")
+                if enforce_verdict == "blocked":
+                    candidate_blocked = True
+                    logger.warning(
+                        f"Candidate BLOCKED by covenant: {next_action_title}"
+                    )
+                elif enforce_verdict == "requires_human_override":
+                    candidate_blocked = True  # don't proceed to gate
+                    logger.info(
+                        f"Candidate requires HUMAN OVERRIDE: {next_action_title}"
+                    )
+        except Exception:
+            logger.exception("Candidate enforcement failed")
+            actions_taken.append("candidate-enforcement: failed")
+
         # ---- 3.7 EXECUTION GATE (Action Realization) ----
         execution_record_id: Optional[str] = None
         execution_classification: Optional[str] = None
-        try:
-            gate = ExecutionGateService(self.db)
-            exec_record = await gate.evaluate(
-                candidate_id=next_action_id, cycle_id=cycle_id
-            )
-            if exec_record:
-                execution_record_id = str(exec_record.id)
-                execution_classification = str(exec_record.classification)
-                actions_taken.append(
-                    f"execution-gate: {exec_record.classification} "
-                    f"(outcome={exec_record.outcome})"
+        if not candidate_blocked:
+            try:
+                gate = ExecutionGateService(self.db)
+                exec_record = await gate.evaluate(
+                    candidate_id=next_action_id, cycle_id=cycle_id
                 )
-        except Exception:
-            logger.exception("Execution gate failed")
-            actions_taken.append("execution-gate: failed")
+                if exec_record:
+                    execution_record_id = str(exec_record.id)
+                    execution_classification = str(exec_record.classification)
+                    actions_taken.append(
+                        f"execution-gate: {exec_record.classification} "
+                        f"(outcome={exec_record.outcome})"
+                    )
+            except Exception:
+                logger.exception("Execution gate failed")
+                actions_taken.append("execution-gate: failed")
+        else:
+            actions_taken.append(
+                f"execution-gate: skipped (candidate {candidate_enforcement_verdict})"
+            )
 
         # ---- 3.9 OUTCOME LEARNING (Recursive Adaptation) ----
         outcome_learning_id: Optional[str] = None
@@ -190,7 +235,8 @@ class AutonomyOrchestrator:
             if adaptation_signal:
                 summary_parts.append(f"adaptation: {adaptation_signal}")
             subject_summary = (
-                "; ".join(summary_parts) if summary_parts
+                "; ".join(summary_parts)
+                if summary_parts
                 else f"cycle {cycle_id} with no active decisions"
             )
             decision = await covenant.evaluate(
@@ -208,9 +254,7 @@ class AutonomyOrchestrator:
             constitutional_decision_id = str(decision.id)
             constitutional_verdict = str(decision.verdict)
             drift_flag = " DRIFT" if decision.drift_detected else ""
-            actions_taken.append(
-                f"constitutional: {decision.verdict}{drift_flag}"
-            )
+            actions_taken.append(f"constitutional: {decision.verdict}{drift_flag}")
         except Exception:
             logger.exception("Constitutional review failed")
             actions_taken.append("constitutional: failed")
@@ -229,6 +273,7 @@ class AutonomyOrchestrator:
             "developmental_stage": developmental_stage,
             "next_action_candidate_id": next_action_id,
             "next_action_title": next_action_title,
+            "candidate_enforcement_verdict": candidate_enforcement_verdict,
             "execution_record_id": execution_record_id,
             "execution_classification": execution_classification,
             "outcome_learning_id": outcome_learning_id,

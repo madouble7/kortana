@@ -188,36 +188,16 @@ async def setup_test_db(test_db_url, test_engine):
         except PermissionError:
             pass
 
-    # Set DATABASE_URL for alembic
-    env = os.environ.copy()
-    env["DATABASE_URL"] = f"sqlite:///{db_path.as_posix()}"
+    # Always use create_all from models so tests reflect current schema.
+    # Alembic migrations are for production deployments.
+    from sqlalchemy import create_engine
 
-    # Run alembic upgrade to head
-    try:
-        subprocess.run(
-            [sys.executable, "-m", "alembic", "upgrade", "head"],
-            cwd=backend_dir,
-            env=env,
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        # If alembic fails, fall back to creating tables directly
-        if db_path.exists():
-            try:
-                db_path.unlink()
-            except PermissionError:
-                pass
+    from src.kortana.models import Base
 
-        from sqlalchemy import create_engine
-
-        from src.kortana.models import Base
-
-        sync_url = f"sqlite:///{db_path.as_posix()}"
-        engine = create_engine(sync_url)
-        Base.metadata.create_all(engine)
-        engine.dispose()
+    sync_url = f"sqlite:///{db_path.as_posix()}"
+    engine = create_engine(sync_url)
+    Base.metadata.create_all(engine)
+    engine.dispose()
 
     yield
 

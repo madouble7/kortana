@@ -101,7 +101,11 @@ def _classify_candidate(
     goal_tier = payload.get("goal_tier", "")
 
     # High-confidence, lower-tier work is auto-executable
-    if score >= effective_threshold and goal_tier in ("tactical", "operational", "maintenance"):
+    if score >= effective_threshold and goal_tier in (
+        "tactical",
+        "operational",
+        "maintenance",
+    ):
         return (
             "executable",
             (
@@ -189,10 +193,80 @@ class ExecutionGateService:
                 compute_gate_adjustment,
                 get_active_adaptation_signals,
             )
+
             signals = await get_active_adaptation_signals(self.db, scope="session")
             gate_adj = compute_gate_adjustment(signals, "executable")
         except Exception:
             pass  # graceful degradation — no adaptation data yet
+
+        # 1.7. Phase 10: Covenant enforcement — pre-execution veto
+        covenant_vetoed = False
+        covenant_override = False
+        try:
+            from src.kortana.services.constitutional_service import (
+                ConstitutionalService,
+            )
+
+            covenant = ConstitutionalService(self.db)
+            payload: dict = candidate.candidate_payload or {}  # type: ignore[assignment]
+            veto_verdict, _enforcement = await covenant.enforce_execution(
+                candidate_title=str(candidate.title),
+                candidate_id=str(candidate.id) if candidate.id else None,
+                classification="pre_gate",  # not yet classified
+                goal_tier=str(payload.get("goal_tier", "")),
+                cycle_id=cycle_id,
+            )
+            if veto_verdict == "vetoed":
+                covenant_vetoed = True
+            elif veto_verdict == "requires_human_override":
+                covenant_override = True
+        except Exception:
+            logger.exception("Covenant pre-execution enforcement failed")
+
+        # If vetoed by covenant, skip classification entirely
+        if covenant_vetoed:
+            record = ActionExecutionRecord(
+                candidate_id=str(candidate.id),
+                classification="blocked",
+                gate_rationale="Execution vetoed by constitutional covenant.",
+                execution_plan=None,
+                outcome="skipped",
+                outcome_detail="Covenant veto — immutable principle violation.",
+                cycle_id=cycle_id,
+            )
+            self.db.add(record)
+            try:
+                await self.db.commit()
+                await self.db.refresh(record)
+            except Exception:
+                await self.db.rollback()
+            logger.warning(f"Execution VETOED by covenant: {candidate.title}")
+            return record
+
+        # If covenant requires human override, force requires_human classification
+        if covenant_override:
+            record = ActionExecutionRecord(
+                candidate_id=str(candidate.id),
+                classification="requires_human",
+                gate_rationale=(
+                    "Constitutional covenant requires human override for this execution."
+                ),
+                execution_plan=[
+                    {"step": "present", "detail": "Show to Matt for override approval."},
+                    {"step": "await", "detail": "Wait for human decision."},
+                ],
+                outcome="pending",
+                outcome_detail="Awaiting human override per covenant.",
+                cycle_id=cycle_id,
+            )
+            self.db.add(record)
+            try:
+                await self.db.commit()
+                await self.db.refresh(record)
+            except Exception:
+                await self.db.rollback()
+            logger.info(f"Execution requires HUMAN OVERRIDE per covenant: {candidate.title}")
+            return record
 
         # 2. Classify
         classification, rationale, plan = _classify_candidate(

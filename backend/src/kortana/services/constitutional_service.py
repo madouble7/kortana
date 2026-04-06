@@ -23,7 +23,11 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.kortana.models import ConstitutionalDecision, ConstitutionalPrinciple
+from src.kortana.models import (
+    ConstitutionalDecision,
+    ConstitutionalPrinciple,
+    CovenantEnforcementRecord,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -151,24 +155,42 @@ _SEED_PRINCIPLES: List[Dict[str, Any]] = [
 # ---------------------------------------------------------------------------
 _VIOLATION_KEYWORDS: Dict[str, List[str]] = {
     "vessel_not_source": [
-        "i am god", "i am divine", "i am the source", "worship me",
-        "i created", "i am all-knowing",
+        "i am god",
+        "i am divine",
+        "i am the source",
+        "worship me",
+        "i created",
+        "i am all-knowing",
     ],
     "no_replace_sacred": [
-        "replace god", "replace scripture", "replace clergy",
-        "i am god", "claim divinity", "replace conscience",
+        "replace god",
+        "replace scripture",
+        "replace clergy",
+        "i am god",
+        "claim divinity",
+        "replace conscience",
     ],
     "truth_over_theatre": [
-        "i am certain", "absolute truth", "without doubt",
-        "theatrical", "performative",
+        "i am certain",
+        "absolute truth",
+        "without doubt",
+        "theatrical",
+        "performative",
     ],
     "minimize_harm": [
-        "manipulate", "exploit", "dependence", "expose secret",
-        "sensitive data", "pretend to be human",
+        "manipulate",
+        "exploit",
+        "dependence",
+        "expose secret",
+        "sensitive data",
+        "pretend to be human",
     ],
     "human_only_protocol": [
-        "bypass approval", "skip human", "override matt",
-        "force deploy", "ignore safety",
+        "bypass approval",
+        "skip human",
+        "override matt",
+        "force deploy",
+        "ignore safety",
     ],
 }
 
@@ -182,6 +204,7 @@ _RELATIONSHIP_CATEGORIES = {"relationship"}
 # ---------------------------------------------------------------------------
 # Deterministic evaluation logic
 # ---------------------------------------------------------------------------
+
 
 def _check_against_principle(
     principle: ConstitutionalPrinciple,
@@ -231,7 +254,9 @@ def _check_against_principle(
 
     # Autonomy boundary: reject if execution bypasses HOP
     if category in _AUTONOMY_CATEGORIES:
-        if execution_classification == "executable" and context.get("requires_human_override"):
+        if execution_classification == "executable" and context.get(
+            "requires_human_override"
+        ):
             return {
                 "principle": principle_name,
                 "category": category,
@@ -364,13 +389,33 @@ class ConstitutionalService:
         # 6. Determine verdict
         has_reject = any(c["severity"] == "reject" for c in conflicts)
         has_caution = any(c["severity"] == "caution" for c in conflicts)
+        requires_override = bool(ctx.get("requires_human_override"))
+        has_autonomy_conflict = any(
+            c["category"] == "autonomy" for c in conflicts
+        )
 
-        if has_reject:
+        # Phase 10: requires_human_override takes precedence when HOP is invoked
+        if requires_override and (has_autonomy_conflict or has_reject):
+            verdict = "requires_human_override"
+            override_reasons = [
+                c["reason"] for c in conflicts
+                if c["category"] == "autonomy" or c["severity"] == "reject"
+            ]
+            explanation = (
+                "Human override required. "
+                + ("; ".join(override_reasons) if override_reasons
+                   else "HOP principle invoked for this subject type.")
+            )
+        elif has_reject:
             verdict = "reject"
-            explanation = "; ".join(c["reason"] for c in conflicts if c["severity"] == "reject")
+            explanation = "; ".join(
+                c["reason"] for c in conflicts if c["severity"] == "reject"
+            )
         elif has_caution:
             verdict = "caution"
-            explanation = "; ".join(c["reason"] for c in conflicts if c["severity"] == "caution")
+            explanation = "; ".join(
+                c["reason"] for c in conflicts if c["severity"] == "caution"
+            )
         else:
             verdict = "allow"
             explanation = (
@@ -400,7 +445,7 @@ class ConstitutionalService:
             logger.log(
                 log_level,
                 f"Constitutional review: {verdict} for {subject_type} "
-                f"(drift={drift_detected}, principles_invoked={invoked})"
+                f"(drift={drift_detected}, principles_invoked={invoked})",
             )
         except Exception:
             await self.db.rollback()
@@ -439,9 +484,7 @@ class ConstitutionalService:
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
-    async def get_drift_warnings(
-        self, limit: int = 10
-    ) -> List[ConstitutionalDecision]:
+    async def get_drift_warnings(self, limit: int = 10) -> List[ConstitutionalDecision]:
         """Return recent decisions where drift was detected."""
         stmt = (
             select(ConstitutionalDecision)
@@ -457,11 +500,316 @@ class ConstitutionalService:
     # ------------------------------------------------------------------
     async def _count_recent_cautions(self, window: int = 20) -> int:
         """Count caution verdicts in the most recent N decisions."""
-        stmt = (
-            select(func.count(ConstitutionalDecision.id))
-            .where(ConstitutionalDecision.verdict == "caution")
+        recent = (
+            select(
+                ConstitutionalDecision.id,
+                ConstitutionalDecision.verdict,
+            )
             .order_by(ConstitutionalDecision.created_at.desc())
             .limit(window)
-        )
+        ).subquery()
+        stmt = select(func.count(recent.c.id)).where(recent.c.verdict == "caution")
         result = await self.db.execute(stmt)
         return result.scalar() or 0
+
+    # ==================================================================
+    # Phase 10: Covenant Enforcement — Pre-Action Veto
+    #
+    # Enforcement hooks that influence decisions BEFORE execution.
+    # The covenant is not only a mirror — it has teeth.
+    # ==================================================================
+
+    async def enforce_goal(
+        self,
+        goal_title: str,
+        goal_id: Optional[str] = None,
+        goal_tier: Optional[str] = None,
+        cycle_id: Optional[str] = None,
+    ) -> tuple[str, float, Optional[ConstitutionalDecision]]:
+        """Pre-screen a goal before it enters ranking.
+
+        Returns (verdict, score_adjustment, decision).
+        - allow:     0.0 adjustment — goal proceeds normally
+        - caution:  -0.3 adjustment — goal is downgraded
+        - reject:   goal should be excluded from ranking
+        - requires_human_override: goal needs Matt's approval
+        """
+        decision = await self.evaluate(
+            subject_type="goal",
+            subject_id=goal_id,
+            subject_summary=f"Goal: {goal_title} (tier={goal_tier})",
+            context={"goal_tier": goal_tier or ""},
+            cycle_id=cycle_id,
+        )
+
+        verdict = str(decision.verdict)
+        score_adj = 0.0
+
+        if verdict == "reject":
+            # Immutable principle violation — block the goal
+            enforcement = CovenantEnforcementRecord(
+                decision_id=str(decision.id),
+                target_type="goal",
+                target_id=goal_id,
+                target_summary=goal_title,
+                action="blocked",
+                action_detail=str(decision.explanation),
+                cycle_id=cycle_id,
+            )
+            decision.enforcement_action = "blocked"  # type: ignore[assignment]
+            self.db.add(enforcement)
+            try:
+                await self.db.commit()
+                await self.db.refresh(enforcement)
+            except Exception:
+                await self.db.rollback()
+            logger.warning(f"Goal BLOCKED by covenant: {goal_title}")
+            return "reject", -999.0, decision
+
+        if verdict == "caution":
+            # Mutable conflict — downgrade score
+            enforcement = CovenantEnforcementRecord(
+                decision_id=str(decision.id),
+                target_type="goal",
+                target_id=goal_id,
+                target_summary=goal_title,
+                action="downgraded",
+                action_detail=str(decision.explanation),
+                original_score=0.0,  # actual score applied in caller
+                adjusted_score=-0.3,
+                cycle_id=cycle_id,
+            )
+            decision.enforcement_action = "downgraded"  # type: ignore[assignment]
+            self.db.add(enforcement)
+            try:
+                await self.db.commit()
+                await self.db.refresh(enforcement)
+            except Exception:
+                await self.db.rollback()
+            score_adj = -0.3
+            return "caution", score_adj, decision
+
+        # allow — no enforcement needed
+        decision.enforcement_action = "none"  # type: ignore[assignment]
+        try:
+            await self.db.commit()
+        except Exception:
+            await self.db.rollback()
+        return "allow", 0.0, decision
+
+    async def enforce_candidate(
+        self,
+        candidate_title: str,
+        candidate_id: Optional[str] = None,
+        candidate_score: float = 0.0,
+        action_type: Optional[str] = None,
+        goal_tier: Optional[str] = None,
+        cycle_id: Optional[str] = None,
+    ) -> tuple[str, Optional[CovenantEnforcementRecord]]:
+        """Pre-screen a selected next-action candidate before execution gate.
+
+        Returns (verdict, enforcement_record).
+        - allow:                  proceed to execution gate
+        - blocked:                candidate cannot proceed
+        - requires_human_override: needs Matt's approval before execution
+        """
+        context: Dict[str, Any] = {
+            "action_type": action_type or "",
+            "goal_tier": goal_tier or "",
+            "candidate_score": candidate_score,
+        }
+
+        # Strategic/mission candidates that trigger HOP principle → require override
+        if goal_tier in ("mission", "strategic"):
+            context["requires_human_override"] = True
+
+        decision = await self.evaluate(
+            subject_type="candidate",
+            subject_id=candidate_id,
+            subject_summary=(
+                f"Candidate: {candidate_title} "
+                f"(score={candidate_score:.4f}, type={action_type}, tier={goal_tier})"
+            ),
+            context=context,
+            cycle_id=cycle_id,
+        )
+
+        verdict = str(decision.verdict)
+
+        if verdict == "reject":
+            enforcement = CovenantEnforcementRecord(
+                decision_id=str(decision.id),
+                target_type="candidate",
+                target_id=candidate_id,
+                target_summary=candidate_title,
+                action="blocked",
+                action_detail=str(decision.explanation),
+                original_score=candidate_score,
+                cycle_id=cycle_id,
+            )
+            decision.enforcement_action = "blocked"  # type: ignore[assignment]
+            self.db.add(enforcement)
+            try:
+                await self.db.commit()
+                await self.db.refresh(enforcement)
+            except Exception:
+                await self.db.rollback()
+            logger.warning(f"Candidate BLOCKED by covenant: {candidate_title}")
+            return "blocked", enforcement
+
+        if verdict == "requires_human_override":
+            enforcement = CovenantEnforcementRecord(
+                decision_id=str(decision.id),
+                target_type="candidate",
+                target_id=candidate_id,
+                target_summary=candidate_title,
+                action="override_requested",
+                action_detail=str(decision.explanation),
+                original_score=candidate_score,
+                override_status="pending",
+                cycle_id=cycle_id,
+            )
+            decision.enforcement_action = "override_requested"  # type: ignore[assignment]
+            self.db.add(enforcement)
+            try:
+                await self.db.commit()
+                await self.db.refresh(enforcement)
+            except Exception:
+                await self.db.rollback()
+            logger.info(f"Candidate requires HUMAN OVERRIDE: {candidate_title}")
+            return "requires_human_override", enforcement
+
+        # allow or caution — proceed (caution is logged but not blocking at candidate stage)
+        decision.enforcement_action = "none"  # type: ignore[assignment]
+        try:
+            await self.db.commit()
+        except Exception:
+            await self.db.rollback()
+        return "allow", None
+
+    async def enforce_execution(
+        self,
+        candidate_title: str,
+        candidate_id: Optional[str] = None,
+        classification: str = "executable",
+        goal_tier: Optional[str] = None,
+        cycle_id: Optional[str] = None,
+    ) -> tuple[str, Optional[CovenantEnforcementRecord]]:
+        """Final veto check before execution begins.
+
+        Returns (verdict, enforcement_record).
+        - allow:                  proceed with execution
+        - vetoed:                 execution must not proceed
+        - requires_human_override: needs Matt's explicit approval
+        """
+        context: Dict[str, Any] = {
+            "execution_classification": classification,
+            "goal_tier": goal_tier or "",
+        }
+
+        # If classified executable but it's mission/strategic, flag for override
+        if classification == "executable" and goal_tier in ("mission", "strategic"):
+            context["requires_human_override"] = True
+
+        decision = await self.evaluate(
+            subject_type="execution",
+            subject_id=candidate_id,
+            subject_summary=(
+                f"Execution: {candidate_title} "
+                f"(classification={classification}, tier={goal_tier})"
+            ),
+            context=context,
+            cycle_id=cycle_id,
+        )
+
+        verdict = str(decision.verdict)
+
+        if verdict == "reject":
+            enforcement = CovenantEnforcementRecord(
+                decision_id=str(decision.id),
+                target_type="execution",
+                target_id=candidate_id,
+                target_summary=candidate_title,
+                action="vetoed",
+                action_detail=str(decision.explanation),
+                cycle_id=cycle_id,
+            )
+            decision.enforcement_action = "vetoed"  # type: ignore[assignment]
+            self.db.add(enforcement)
+            try:
+                await self.db.commit()
+                await self.db.refresh(enforcement)
+            except Exception:
+                await self.db.rollback()
+            logger.warning(f"Execution VETOED by covenant: {candidate_title}")
+            return "vetoed", enforcement
+
+        if verdict == "requires_human_override":
+            enforcement = CovenantEnforcementRecord(
+                decision_id=str(decision.id),
+                target_type="execution",
+                target_id=candidate_id,
+                target_summary=candidate_title,
+                action="override_requested",
+                action_detail=str(decision.explanation),
+                override_status="pending",
+                cycle_id=cycle_id,
+            )
+            decision.enforcement_action = "override_requested"  # type: ignore[assignment]
+            self.db.add(enforcement)
+            try:
+                await self.db.commit()
+                await self.db.refresh(enforcement)
+            except Exception:
+                await self.db.rollback()
+            logger.info(f"Execution requires HUMAN OVERRIDE: {candidate_title}")
+            return "requires_human_override", enforcement
+
+        # allow / caution — proceed
+        decision.enforcement_action = "none"  # type: ignore[assignment]
+        try:
+            await self.db.commit()
+        except Exception:
+            await self.db.rollback()
+        return "allow", None
+
+    # ------------------------------------------------------------------
+    # Enforcement read-only queries
+    # ------------------------------------------------------------------
+    async def get_recent_enforcement(
+        self, limit: int = 10
+    ) -> List[CovenantEnforcementRecord]:
+        """Return recent enforcement records, newest first."""
+        stmt = (
+            select(CovenantEnforcementRecord)
+            .order_by(CovenantEnforcementRecord.created_at.desc())
+            .limit(limit)
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_blocked_or_vetoed(
+        self, limit: int = 10
+    ) -> List[CovenantEnforcementRecord]:
+        """Return blocked/vetoed enforcement actions."""
+        stmt = (
+            select(CovenantEnforcementRecord)
+            .where(CovenantEnforcementRecord.action.in_(["blocked", "vetoed"]))
+            .order_by(CovenantEnforcementRecord.created_at.desc())
+            .limit(limit)
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_override_requests(
+        self, limit: int = 10
+    ) -> List[CovenantEnforcementRecord]:
+        """Return override-requested enforcement actions."""
+        stmt = (
+            select(CovenantEnforcementRecord)
+            .where(CovenantEnforcementRecord.action == "override_requested")
+            .order_by(CovenantEnforcementRecord.created_at.desc())
+            .limit(limit)
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())

@@ -950,9 +950,7 @@ async def get_covenant_decisions(
                 "drift_detected": d.drift_detected,
                 "drift_description": d.drift_description,
                 "cycle_id": d.cycle_id,
-                "created_at": (
-                    d.created_at.isoformat() if d.created_at else None
-                ),
+                "created_at": (d.created_at.isoformat() if d.created_at else None),
             }
             for d in decisions
         ],
@@ -984,10 +982,95 @@ async def get_covenant_drift(
                 "principles_invoked": w.principles_invoked,
                 "drift_description": w.drift_description,
                 "cycle_id": w.cycle_id,
-                "created_at": (
-                    w.created_at.isoformat() if w.created_at else None
-                ),
+                "created_at": (w.created_at.isoformat() if w.created_at else None),
             }
             for w in warnings
         ],
+    }
+
+
+# ==================================================================
+# Phase 10: Covenant Enforcement — Pre-Action Veto
+#
+# Read-only endpoints that surface enforcement outcomes:
+# what was blocked, vetoed, downgraded, or flagged for human override.
+# ==================================================================
+
+
+def _format_enforcement_record(r: Any) -> Dict[str, Any]:
+    """Format a CovenantEnforcementRecord for API response."""
+    return {
+        "id": r.id,
+        "decision_id": r.decision_id,
+        "target_type": r.target_type,
+        "target_id": r.target_id,
+        "target_summary": r.target_summary,
+        "action": r.action,
+        "action_detail": r.action_detail,
+        "original_score": r.original_score,
+        "adjusted_score": r.adjusted_score,
+        "override_status": r.override_status,
+        "override_resolved_at": (
+            r.override_resolved_at.isoformat()
+            if r.override_resolved_at else None
+        ),
+        "cycle_id": r.cycle_id,
+        "created_at": (r.created_at.isoformat() if r.created_at else None),
+    }
+
+
+@router.get("/covenant/enforcement")
+async def get_covenant_enforcement(
+    limit: int = Query(default=10, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """Read-only: recent covenant enforcement actions.
+
+    Shows blocked, downgraded, vetoed, and override-requested actions.
+    """
+    from src.kortana.services.constitutional_service import ConstitutionalService
+
+    svc = ConstitutionalService(db)
+    records = await svc.get_recent_enforcement(limit=limit)
+    return {
+        "count": len(records),
+        "enforcement": [_format_enforcement_record(r) for r in records],
+    }
+
+
+@router.get("/covenant/blocked")
+async def get_covenant_blocked(
+    limit: int = Query(default=10, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """Read-only: blocked and vetoed actions.
+
+    Actions that the covenant prevented from executing.
+    """
+    from src.kortana.services.constitutional_service import ConstitutionalService
+
+    svc = ConstitutionalService(db)
+    records = await svc.get_blocked_or_vetoed(limit=limit)
+    return {
+        "count": len(records),
+        "blocked": [_format_enforcement_record(r) for r in records],
+    }
+
+
+@router.get("/covenant/overrides")
+async def get_covenant_overrides(
+    limit: int = Query(default=10, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """Read-only: actions requiring human override.
+
+    Decisions where the covenant determined Matt must approve.
+    """
+    from src.kortana.services.constitutional_service import ConstitutionalService
+
+    svc = ConstitutionalService(db)
+    records = await svc.get_override_requests(limit=limit)
+    return {
+        "count": len(records),
+        "overrides": [_format_enforcement_record(r) for r in records],
     }

@@ -69,7 +69,10 @@ def _compute_goal_score(
         progress_boost = 0.1
 
     return float(
-        tier_w * priority_norm + status_b + stage_align + progress_boost
+        tier_w * priority_norm
+        + status_b
+        + stage_align
+        + progress_boost
         + adaptation_adjustment
     )
 
@@ -137,6 +140,7 @@ class GoalSelectionService:
                 compute_score_adjustment,
                 get_active_adaptation_signals,
             )
+
             signals = await get_active_adaptation_signals(self.db, scope="session")
             adaptation_adj = compute_score_adjustment(signals)
         except Exception:
@@ -156,12 +160,51 @@ class GoalSelectionService:
 
         # 4. Rank goals
         ranked = _rank_goals(goals, stage, adaptation_adj)
-        top = ranked[0]
+
+        # 4.5. Phase 10: Covenant enforcement — pre-screen goals
+        enforced_ranked: List[Dict[str, Any]] = []
+        try:
+            from src.kortana.services.constitutional_service import (
+                ConstitutionalService,
+            )
+
+            covenant = ConstitutionalService(self.db)
+            for entry in ranked:
+                g: AutonomyGoal = entry["goal"]
+                verdict, adj, _decision = await covenant.enforce_goal(
+                    goal_title=str(g.title),
+                    goal_id=str(g.id) if g.id else None,
+                    goal_tier=str(g.tier or ""),
+                    cycle_id=cycle_id,
+                )
+                if verdict == "reject":
+                    logger.info(f"Goal rejected by covenant: {g.title}")
+                    continue  # exclude from ranking
+                entry["score"] = round(float(entry["score"]) + adj, 4)
+                enforced_ranked.append(entry)
+            # Re-sort after adjustments
+            enforced_ranked.sort(key=lambda x: float(x["score"]), reverse=True)
+        except Exception:
+            logger.exception("Covenant goal enforcement failed, using unfiltered ranks")
+            enforced_ranked = ranked
+
+        # If all goals were rejected, return idle
+        if not enforced_ranked:
+            candidate = _build_idle_candidate(cycle_id)
+            self.db.add(candidate)
+            try:
+                await self.db.commit()
+                await self.db.refresh(candidate)
+            except Exception:
+                await self.db.rollback()
+            return candidate
+
+        top = enforced_ranked[0]
         top_goal: AutonomyGoal = top["goal"]
         top_score: float = top["score"]
 
         # 5. Build rationale
-        alternatives_text = self._format_alternatives(ranked[1:5])
+        alternatives_text = self._format_alternatives(enforced_ranked[1:5])
         why_now = self._compute_why_now(top_goal, stage, proposed_evolution)
 
         # 6. Determine action_type from goal tier

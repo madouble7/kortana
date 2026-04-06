@@ -783,7 +783,9 @@ class ConstitutionalPrinciple(Base):
     )  # identity | ethics | autonomy | relationship | mystery
     principle = Column(Text, nullable=False)
     rationale = Column(Text, nullable=False)
-    priority = Column(Integer, nullable=False, default=50)  # 0-100, higher = more binding
+    priority = Column(
+        Integer, nullable=False, default=50
+    )  # 0-100, higher = more binding
     mutable = Column(Boolean, nullable=False, default=True)
     active = Column(Boolean, nullable=False, default=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -791,7 +793,9 @@ class ConstitutionalPrinciple(Base):
 
     def __repr__(self) -> str:
         m = "mutable" if self.mutable else "immutable"
-        return f"<ConstitutionalPrinciple {self.name!r} ({m}, priority={self.priority})>"
+        return (
+            f"<ConstitutionalPrinciple {self.name!r} ({m}, priority={self.priority})>"
+        )
 
 
 class ConstitutionalDecision(Base):
@@ -811,10 +815,13 @@ class ConstitutionalDecision(Base):
     subject_id = Column(String(36), nullable=True, index=True)
     subject_summary = Column(Text, nullable=False)
     verdict = Column(
-        String(16), nullable=False, index=True
-    )  # allow | caution | reject
+        String(32), nullable=False, index=True
+    )  # allow | caution | reject | requires_human_override
     explanation = Column(Text, nullable=False)
     principles_invoked = Column(JSON, nullable=False)  # list of principle names
+    enforcement_action = Column(
+        String(32), nullable=True, index=True
+    )  # blocked | downgraded | vetoed | override_requested | none
     drift_detected = Column(Boolean, nullable=False, default=False, index=True)
     drift_description = Column(Text, nullable=True)
     cycle_id = Column(String(8), nullable=True, index=True)
@@ -822,7 +829,48 @@ class ConstitutionalDecision(Base):
 
     def __repr__(self) -> str:
         drift = " DRIFT" if self.drift_detected else ""
+        return f"<ConstitutionalDecision {self.verdict} on {self.subject_type}{drift}>"
+
+
+class CovenantEnforcementRecord(Base):
+    """Records enforcement actions taken by the covenant on pipeline artifacts.
+
+    Links a ConstitutionalDecision to the concrete enforcement outcome:
+    what was blocked, downgraded, vetoed, or flagged for human override,
+    and whether the override was resolved.
+
+    This is the teeth of the covenant — not just observation, but action.
+    """
+
+    __tablename__ = "covenant_enforcement_records"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    decision_id = Column(
+        String(36),
+        ForeignKey("constitutional_decisions.id"),
+        nullable=False,
+        index=True,
+    )
+    target_type = Column(
+        String(32), nullable=False, index=True
+    )  # goal | candidate | execution
+    target_id = Column(String(36), nullable=True, index=True)
+    target_summary = Column(Text, nullable=False)
+    action = Column(
+        String(32), nullable=False, index=True
+    )  # blocked | downgraded | vetoed | override_requested
+    action_detail = Column(Text, nullable=True)
+    original_score = Column(Float, nullable=True)  # before downgrade
+    adjusted_score = Column(Float, nullable=True)  # after downgrade
+    override_status = Column(
+        String(32), nullable=True, index=True
+    )  # pending | approved | denied | expired
+    override_resolved_at = Column(DateTime, nullable=True)
+    cycle_id = Column(String(8), nullable=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:
         return (
-            f"<ConstitutionalDecision {self.verdict} "
-            f"on {self.subject_type}{drift}>"
+            f"<CovenantEnforcementRecord {self.action} on "
+            f"{self.target_type}:{self.target_id}>"
         )
