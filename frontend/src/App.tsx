@@ -65,15 +65,15 @@ function App() {
 
   const offline = health?.status === 'down' || (!!errors.health && !health);
   const daemonStatus = daemon;
+  const daemonAlive = daemonStatus?.deployment_mode === 'embedded'
+    ? daemonStatus.running
+    : daemonStatus?.external_daemon?.alive;
   const providerHealth = daemonStatus?.provider_health ?? daemonStatus?.external_daemon?.provider_health ?? {};
   const providerNeedsAttention = Object.values(providerHealth).some(
     (state) => state !== 'ok' && state !== 'unknown'
   );
   const voiceStatus = daemonStatus?.voice_daemon;
-
-  const daemonAlive = daemonStatus?.deployment_mode === 'embedded'
-    ? daemonStatus.running
-    : daemonStatus?.external_daemon?.alive;
+  const presenceLabel = daemonAlive ? 'Silent Presence Active' : 'Presence Offline';
   const daemonLabel = daemonStatus?.deployment_mode === 'embedded'
     ? daemonStatus?.running
       ? 'Daemon Running'
@@ -230,7 +230,7 @@ function App() {
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <div className={cn('w-2 h-2 rounded-full', offline ? 'bg-amber-500' : 'bg-green-500 animate-pulse')} />
-                <span className="text-sm text-gray-400">{offline ? 'Demo Mode' : 'System Online'}</span>
+                <span className="text-sm text-gray-400">{offline ? 'Demo Mode' : presenceLabel}</span>
               </div>
               <button
                 type="button"
@@ -240,7 +240,7 @@ function App() {
                 }}
                 className="w-full flex items-center justify-between rounded-lg bg-gray-800/80 px-3 py-2 text-left hover:bg-gray-800 transition-colors"
               >
-                <span className="text-xs text-gray-400 uppercase tracking-wide">Autonomy</span>
+                <span className="text-xs text-gray-400 uppercase tracking-wide">Silent Autonomy</span>
                 <span className="flex items-center gap-2">
                   <span className={cn('w-2 h-2 rounded-full', daemonAlive ? 'bg-green-500 animate-pulse' : 'bg-red-500')} />
                   <span className="text-sm text-gray-300">{daemonLabel}</span>
@@ -253,9 +253,13 @@ function App() {
               )}
               {voiceStatus ? (
                 <div className="text-xs text-gray-500">
-                  voice {voiceStatus.status}
+                  voice dormant · {voiceStatus.status}
                 </div>
-              ) : null}
+              ) : (
+                <div className="text-xs text-gray-500">
+                  voice dormant
+                </div>
+              )}
               {lastUpdatedAt ? (
                 <div className="text-[11px] text-gray-500">
                   runtime {formatRelativeTime(lastUpdatedAt)}

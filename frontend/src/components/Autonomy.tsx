@@ -156,7 +156,7 @@ export default function Autonomy() {
             <div>
               <h2 className="text-lg font-semibold text-white">HOP Autonomy</h2>
               <p className="text-xs text-gray-500">
-                Daemon control, task flow, and provider health in one surface
+                Silent background evolution, continuity, and operator guidance in one surface
               </p>
             </div>
           </div>
@@ -232,6 +232,24 @@ export default function Autonomy() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+        <div className="rounded-xl border border-indigo-900/40 bg-gradient-to-br from-indigo-950/40 via-gray-900 to-gray-900 px-5 py-4">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.24em] text-indigo-300/70">
+                Primary Form
+              </p>
+              <h3 className="mt-1 text-white font-semibold">Silent Presence</h3>
+              <p className="mt-2 max-w-3xl text-sm leading-relaxed text-gray-300">
+                Kor&apos;tana is now optimized for continuous background awareness, self-directed improvement,
+                and deliberate high-signal outputs. Voice remains archived as an experiment, not the center of the system.
+              </p>
+            </div>
+            <div className="rounded-full border border-indigo-800/50 bg-indigo-950/40 px-3 py-1 text-xs text-indigo-200">
+              presence over conversation
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <div className="bg-gray-800 rounded-lg p-4">
             <p className="text-gray-400 text-sm">Daemon Mode</p>
@@ -292,38 +310,38 @@ export default function Autonomy() {
               <div>
                 <h3 className="text-white font-semibold mb-1 flex items-center gap-2">
                   <Mic className="w-5 h-5 text-cyan-300" />
-                  Voice Runtime
+                  Archived Voice Experiment
                 </h3>
                 <p className="text-gray-400 text-sm">
-                  {voice.message}
+                  Voice is retained only as a dormant capability. The active product focus is continuity, memory, and autonomous evolution.
                 </p>
               </div>
               <span className={cn('rounded-full border px-3 py-1 text-xs font-medium uppercase tracking-[0.2em]', voiceTone(voice.status))}>
-                {voice.status}
+                archived
               </span>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-5">
               <div className="bg-gray-900 rounded-lg p-4">
-                <p className="text-gray-400 text-sm">Wake Stack</p>
+                <p className="text-gray-400 text-sm">Continuity State</p>
                 <p className="text-lg font-bold text-white mt-1">
+                  {voice.temporal_state_present ? 'present' : 'missing'}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {voice.last_diary_date ? `diary ${voice.last_diary_date}` : 'no diary snapshot'}
+                </p>
+              </div>
+              <div className="bg-gray-900 rounded-lg p-4">
+                <p className="text-gray-400 text-sm">Archived Stack</p>
+                <p className="text-lg font-bold text-white mt-1 capitalize">
                   {voice.model ?? 'unknown'}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
-                  {voice.device ?? 'device unknown'} · {voice.compute_type ?? 'compute unknown'}
+                  {[voice.device, voice.compute_type].filter(Boolean).join(' · ') || 'runtime unknown'}
                 </p>
               </div>
               <div className="bg-gray-900 rounded-lg p-4">
-                <p className="text-gray-400 text-sm">Speech Profile</p>
-                <p className="text-lg font-bold text-white mt-1 capitalize">
-                  {voice.stt_profile ?? 'unknown'}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {voice.binary_present ? 'piper ready' : 'piper missing'}
-                </p>
-              </div>
-              <div className="bg-gray-900 rounded-lg p-4">
-                <p className="text-gray-400 text-sm">Last Heard</p>
+                <p className="text-gray-400 text-sm">Last Voice Touch</p>
                 <p className="text-lg font-bold text-white mt-1">
                   {voice.last_voice_interaction_at ? formatRelativeTime(voice.last_voice_interaction_at) : '—'}
                 </p>
@@ -337,7 +355,7 @@ export default function Autonomy() {
                   {[voice.script_present, voice.binary_present, voice.model_present].filter(Boolean).length}/3
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
-                  {voice.last_log_at ? `log ${formatRelativeTime(voice.last_log_at)}` : 'no runtime log'}
+                  {voice.last_log_at ? `last log ${formatRelativeTime(voice.last_log_at)}` : 'no runtime log'}
                 </p>
               </div>
             </div>
@@ -358,6 +376,9 @@ export default function Autonomy() {
                   diary {voice.last_diary_date}
                 </span>
               ) : null}
+              <span className="rounded-full border border-indigo-800/40 bg-indigo-950/30 px-3 py-1 text-[11px] text-indigo-200">
+                not part of primary experience
+              </span>
             </div>
           </div>
         ) : null}

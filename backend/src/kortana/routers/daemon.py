@@ -107,9 +107,9 @@ def _voice_runtime_from_log(log_path: Path) -> dict[str, Any]:
 
     runtime: dict[str, Any] = {}
     for line in reversed(lines[-200:]):
-        if "[worker] stt profile=" not in line:
+        marker = "[worker] stt "
+        if marker not in line:
             continue
-        marker = "[worker] stt profile="
         payload = line.split(marker, 1)[1]
         parts = dict(
             segment.split("=", 1)

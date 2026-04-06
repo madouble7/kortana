@@ -73,8 +73,8 @@ export default function GitHubDashboard() {
         <div className="flex items-center gap-3">
           <span className="text-2xl">🔗</span>
           <div>
-            <h2 className="text-lg font-semibold text-green-400">GitHub Issue Executor</h2>
-            <p className="text-xs text-gray-500">kor'tana's autonomous issue pipeline</p>
+            <h2 className="text-lg font-semibold text-green-400">Silent Evolution Pipeline</h2>
+            <p className="text-xs text-gray-500">self-directed background work flowing through GitHub</p>
           </div>
         </div>
         <div className="flex items-center gap-4 text-xs text-gray-500">
@@ -187,7 +187,7 @@ export default function GitHubDashboard() {
             </div>
             <p className="text-gray-400 text-xs leading-relaxed">
               No real GitHub issues are queued. The pipeline is running in local evolution mode.<br />
-              To enable autonomous issue execution, a valid GitHub PAT is required.<br />
+              To deepen autonomous background work, a valid GitHub PAT is required.<br />
               <span className="text-yellow-300">HO task →</span> generate a new PAT at{' '}
               <a href="https://github.com/settings/tokens" target="_blank" rel="noreferrer" className="text-blue-400 underline">github.com/settings/tokens</a>
               {' '}with <code className="bg-gray-800 px-1 rounded">repo</code>, <code className="bg-gray-800 px-1 rounded">issues</code>, <code className="bg-gray-800 px-1 rounded">pull_requests</code> permissions, update <code className="bg-gray-800 px-1 rounded">.env GITHUB_TOKEN</code>, then restart the backend.

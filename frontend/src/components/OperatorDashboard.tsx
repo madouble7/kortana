@@ -223,31 +223,6 @@ function ProviderHealthRow({ name, status }: { name: string; status: string }) {
     );
 }
 
-function voiceStatusTone(status: string | undefined) {
-    switch (status) {
-        case 'ready':
-            return {
-                label: 'ready',
-                className: 'bg-green-900/60 text-green-300',
-            };
-        case 'degraded':
-            return {
-                label: 'degraded',
-                className: 'bg-yellow-900/60 text-yellow-300',
-            };
-        case 'configured':
-            return {
-                label: 'configured',
-                className: 'bg-blue-900/60 text-blue-300',
-            };
-        default:
-            return {
-                label: status ?? 'unknown',
-                className: 'bg-gray-800 text-gray-300',
-            };
-    }
-}
-
 function formatEventReason(reason: unknown) {
     if (typeof reason !== 'string' || reason.trim() === '') {
         return 'unspecified';
@@ -387,7 +362,6 @@ export default function OperatorDashboard() {
     const providers = lanes?.cost_router?.cost?.providers ?? {};
     const retrySummary = lanes?.adaptive_retry;
     const voice = daemon?.voice_daemon;
-    const voiceTone = voiceStatusTone(voice?.status);
 
     return (
         <div className="flex flex-col h-full bg-gray-950 overflow-y-auto">
@@ -555,15 +529,20 @@ export default function OperatorDashboard() {
 
                 {voice ? (
                     <section>
-                        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
-                            Voice Runtime
-                        </h3>
+                        <div className="flex items-center justify-between gap-3 mb-3">
+                            <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                                Archived Voice Experiment
+                            </h3>
+                            <span className="text-[11px] uppercase tracking-[0.2em] text-gray-500">
+                                non-primary
+                            </span>
+                        </div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                             <MetricCard
                                 icon={Volume2}
-                                label="Voice Status"
-                                value={voiceTone.label}
-                                sub={voice.message}
+                                label="Archive State"
+                                value="Dormant"
+                                sub={voice.message ?? 'Retained only for diagnostics and future revival.'}
                                 accent={
                                     voice.status === 'ready'
                                         ? 'green'
@@ -574,25 +553,28 @@ export default function OperatorDashboard() {
                             />
                             <MetricCard
                                 icon={Clock}
-                                label="Last Heard"
+                                label="Last Contact"
                                 value={voice.last_voice_interaction_at ? formatRelativeTime(voice.last_voice_interaction_at) : '—'}
-                                sub={voice.last_log_at ? `log ${formatRelativeTime(voice.last_log_at)}` : 'no voice log'}
+                                sub={voice.last_log_at ? `log ${formatRelativeTime(voice.last_log_at)}` : 'no archived log'}
                                 accent="blue"
                             />
                             <MetricCard
                                 icon={Cpu}
-                                label="STT Runtime"
+                                label="Archived Stack"
                                 value={voice.model ?? 'unknown'}
                                 sub={[voice.device, voice.compute_type].filter(Boolean).join(' · ') || 'runtime unknown'}
                                 accent="purple"
                             />
                             <MetricCard
                                 icon={Activity}
-                                label="Artifacts"
+                                label="Continuity Artifacts"
                                 value={`${[voice.script_present, voice.binary_present, voice.model_present].filter(Boolean).length}/3`}
-                                sub={voice.binary_present ? 'tts ready' : 'tts incomplete'}
+                                sub={voice.temporal_state_present ? 'temporal state retained' : 'temporal state missing'}
                                 accent={voice.binary_present && voice.model_present ? 'green' : 'yellow'}
                             />
+                        </div>
+                        <div className="rounded-xl border border-gray-800 bg-gray-900/30 px-4 py-3 text-sm text-gray-400">
+                            Voice remains shelved until it can match the bar. Operator attention stays on autonomy cycles, provider health, memory continuity, and self-directed work.
                         </div>
                     </section>
                 ) : null}

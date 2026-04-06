@@ -90,7 +90,7 @@ export function ApprovalQueue() {
     <div className="space-y-4">
       <div className="flex items-center gap-2 mb-4">
         <AlertTriangle className="w-5 h-5 text-yellow-500" />
-        <h3 className="text-lg font-semibold text-white">Pending Approvals</h3>
+        <h3 className="text-lg font-semibold text-white">Operator Gate</h3>
         <span className="bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded-full text-xs font-medium">
           {tasks.length}
         </span>
@@ -149,7 +149,7 @@ export function ApprovalQueue() {
 
               <div className="mt-3">
                 <label className="text-xs uppercase tracking-[0.18em] text-gray-500">
-                  Approval Notes
+                  Operator Notes
                 </label>
                 <textarea
                   value={draftNotes[taskId] ?? ''}
@@ -157,7 +157,7 @@ export function ApprovalQueue() {
                     const value = event.target.value;
                     setDraftNotes((prev) => ({ ...prev, [taskId]: value }));
                   }}
-                  placeholder="Optional context for the operator record"
+                  placeholder="Optional guidance for the operator record"
                   className="mt-2 w-full resize-none rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-yellow-600"
                   rows={3}
                 />
