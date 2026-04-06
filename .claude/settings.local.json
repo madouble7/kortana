@@ -17,7 +17,10 @@
       "Bash(py -3.11 -c \"import sounddevice; print\\('sounddevice OK'\\)\")",
       "Bash(py -3.11 -)",
       "Bash(py -3.11 -m py_compile c:/kortana/mcp-server/voice_daemon.py)",
-      "Bash(py -3.11 -c ':*)"
+      "Bash(py -3.11 -c ':*)",
+      "Bash(py -3.11)",
+      "Bash(py -3.11 c:/kortana/mcp-server/_patch_voice_daemon.py)",
+      "Bash(rm c:/kortana/mcp-server/_patch_voice_daemon.py)"
     ]
   }
 }

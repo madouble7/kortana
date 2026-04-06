@@ -1,34 +1,7 @@
 import { useEffect, useState } from 'react';
-import { getApiBaseUrl } from '../lib/runtimeConfig';
-
-const API_BASE = getApiBaseUrl();
-
-type IssueTask = {
-  id: string;
-  issue_number: number;
-  repo: string;
-  title: string;
-  status: string;
-  priority: string;
-  classification: string;
-  is_local: boolean;
-  branch: string | null;
-  pr_number: number | null;
-  error: string | null;
-  error_count: number;
-  created_at: string | null;
-  updated_at: string | null;
-  executed_at: string | null;
-};
-
-type QueueData = {
-  tasks: IssueTask[];
-  total: number;
-  status_counts: Record<string, number>;
-  timestamp: string;
-};
-
-type ProviderHealth = Record<string, string>;
+import { api } from '../lib/api';
+import { formatRelativeTime } from '../lib/utils';
+import type { AlwaysOnMetricsResponse, IssueQueueResponse } from '../types';
 
 const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> = {
   pending: { bg: 'bg-gray-700', text: 'text-gray-300', label: 'Pending' },
@@ -54,41 +27,36 @@ function StatusChip({ status }: { status: string }) {
 const PIPELINE_ORDER = ['pending', 'analyzing', 'analyzed', 'planning', 'planning_complete', 'executing', 'executed', 'completed', 'failed'];
 
 export default function GitHubDashboard() {
-  const [data, setData] = useState<QueueData | null>(null);
+  const [data, setData] = useState<IssueQueueResponse | null>(null);
   const [filter, setFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
-  const [providerHealth, setProviderHealth] = useState<ProviderHealth>({});
+  const [providerHealth, setProviderHealth] = useState<Record<string, string>>({});
   const [hideLocal, setHideLocal] = useState(true);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
 
-  const fetchQueue = async () => {
+  const fetchDashboard = async () => {
     try {
-      const params = new URLSearchParams({ limit: '100', hide_local: String(hideLocal) });
-      const res = await fetch(`${API_BASE}/api/always-on/issue-queue?${params}`);
-      if (!res.ok) return;
-      const json: QueueData = await res.json();
-      setData(json);
-    } catch {
-      // best-effort
+      const [queue, metrics] = await Promise.all([
+        api.getAlwaysOnIssueQueue({ limit: 100, hideLocal }),
+        api.getAlwaysOnMetrics(),
+      ]);
+      setData(queue);
+      setProviderHealth((metrics as AlwaysOnMetricsResponse).provider_health ?? {});
+      setNotice(null);
+      setLastUpdatedAt(new Date().toISOString());
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Failed to refresh GitHub pipeline.');
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchMetrics = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/api/always-on/metrics`);
-      if (!res.ok) return;
-      const json = await res.json() as { provider_health?: ProviderHealth };
-      if (json.provider_health) setProviderHealth(json.provider_health);
-    } catch {
-      // best-effort
-    }
-  };
-
   useEffect(() => {
-    fetchQueue();
-    fetchMetrics();
-    const id = setInterval(() => { fetchQueue(); fetchMetrics(); }, 8000);
+    void fetchDashboard();
+    const id = setInterval(() => {
+      void fetchDashboard();
+    }, 8000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hideLocal]);
@@ -110,6 +78,7 @@ export default function GitHubDashboard() {
           </div>
         </div>
         <div className="flex items-center gap-4 text-xs text-gray-500">
+          {lastUpdatedAt ? <span>updated {formatRelativeTime(lastUpdatedAt)}</span> : null}
           <span className="text-green-400 font-bold">{realIssues.length}</span> real issues
           <span className="text-orange-400 font-bold">{inFlight.length}</span> in-flight
           <button
@@ -122,6 +91,12 @@ export default function GitHubDashboard() {
           >
             {hideLocal ? 'local: hidden' : 'local: visible'}
           </button>
+          <button
+            onClick={() => void fetchDashboard()}
+            className="rounded-md border border-gray-700 px-2 py-1 text-gray-400 transition-colors hover:text-gray-200"
+          >
+            refresh
+          </button>
           <div className="flex items-center gap-1">
             <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div> Live
           </div>
@@ -129,6 +104,11 @@ export default function GitHubDashboard() {
       </div>
 
       <div className="p-6 space-y-6 max-w-6xl mx-auto w-full">
+        {notice ? (
+          <div className="rounded-xl border border-amber-800/70 bg-amber-950/40 px-4 py-3 text-sm text-amber-100">
+            {notice}
+          </div>
+        ) : null}
         {/* Pipeline bar */}
         <section>
           <div className="flex items-center gap-2 mb-3 border-b border-gray-800 pb-2">

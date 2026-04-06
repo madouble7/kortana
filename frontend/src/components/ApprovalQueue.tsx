@@ -23,12 +23,16 @@ export function ApprovalQueue() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actioningId, setActioningId] = useState<string | null>(null);
+  const [draftNotes, setDraftNotes] = useState<Record<string, string>>({});
+  const [notice, setNotice] = useState<string | null>(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
 
   const fetchQueue = async () => {
     try {
       const data = await api.getApprovalQueue();
       setTasks(data as unknown as ApprovalItem[]);
       setError(null);
+      setLastUpdatedAt(new Date().toISOString());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch approval queue');
     } finally {
@@ -46,16 +50,13 @@ export function ApprovalQueue() {
   const handleAction = async (taskId: string, approved: boolean) => {
     setActioningId(taskId);
     try {
-      const notes = prompt(`Any notes for this ${approved ? 'approval' : 'rejection'}? (Optional)`);
-      if (notes === null) {
-        // Cancelled prompt
-        setActioningId(null);
-        return;
-      }
+      const notes = draftNotes[taskId]?.trim() || undefined;
       await api.resolveApproval(taskId, approved, notes);
+      setDraftNotes((prev) => ({ ...prev, [taskId]: '' }));
+      setNotice(approved ? 'Approval recorded.' : 'Rejection recorded.');
       await fetchQueue();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to resolve approval');
+      setNotice(err instanceof Error ? err.message : 'Failed to resolve approval');
     } finally {
       setActioningId(null);
     }
@@ -93,7 +94,18 @@ export function ApprovalQueue() {
         <span className="bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded-full text-xs font-medium">
           {tasks.length}
         </span>
+        {lastUpdatedAt ? (
+          <span className="text-xs text-gray-500 ml-auto">
+            updated {new Date(lastUpdatedAt).toLocaleTimeString()}
+          </span>
+        ) : null}
       </div>
+
+      {notice ? (
+        <div className="rounded-lg border border-gray-700 bg-gray-900/70 px-4 py-3 text-sm text-gray-200">
+          {notice}
+        </div>
+      ) : null}
 
       <div className="grid gap-4">
         {tasks.map((item) => {
@@ -134,6 +146,22 @@ export function ApprovalQueue() {
                   </p>
                 </div>
               )}
+
+              <div className="mt-3">
+                <label className="text-xs uppercase tracking-[0.18em] text-gray-500">
+                  Approval Notes
+                </label>
+                <textarea
+                  value={draftNotes[taskId] ?? ''}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setDraftNotes((prev) => ({ ...prev, [taskId]: value }));
+                  }}
+                  placeholder="Optional context for the operator record"
+                  className="mt-2 w-full resize-none rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-yellow-600"
+                  rows={3}
+                />
+              </div>
 
               {(item.tool_name || t?.tool_name) && (
                 <div className="mt-3 flex gap-2">

@@ -69,6 +69,7 @@ function App() {
   const providerNeedsAttention = Object.values(providerHealth).some(
     (state) => state !== 'ok' && state !== 'unknown'
   );
+  const voiceStatus = daemonStatus?.voice_daemon;
 
   const daemonAlive = daemonStatus?.deployment_mode === 'embedded'
     ? daemonStatus.running
@@ -250,6 +251,11 @@ function App() {
                   Provider attention required
                 </div>
               )}
+              {voiceStatus ? (
+                <div className="text-xs text-gray-500">
+                  voice {voiceStatus.status}
+                </div>
+              ) : null}
               {lastUpdatedAt ? (
                 <div className="text-[11px] text-gray-500">
                   runtime {formatRelativeTime(lastUpdatedAt)}

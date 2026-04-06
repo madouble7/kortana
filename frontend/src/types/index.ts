@@ -157,6 +157,36 @@ export interface GitHubIssue {
   labels: string[];
 }
 
+export interface IssueQueueTask {
+  id: string;
+  issue_number: number;
+  repo: string;
+  title: string;
+  status: string;
+  priority: string;
+  classification: string;
+  is_local: boolean;
+  branch: string | null;
+  pr_number: number | null;
+  error: string | null;
+  error_count: number;
+  created_at: string | null;
+  updated_at: string | null;
+  executed_at: string | null;
+}
+
+export interface IssueQueueResponse {
+  tasks: IssueQueueTask[];
+  total: number;
+  status_counts: Record<string, number>;
+  timestamp: string;
+}
+
+export interface AlwaysOnMetricsResponse {
+  provider_health?: Record<string, string>;
+  timestamp?: string;
+}
+
 export interface HealthStatus {
   status: 'alive' | 'degraded' | 'down';
   message: string;
@@ -270,10 +300,31 @@ export interface DaemonCycle {
   } | null;
 }
 
+export interface VoiceDaemonStatus {
+  status: 'ready' | 'degraded' | 'configured' | 'unavailable';
+  message: string;
+  script_present: boolean;
+  binary_present: boolean;
+  model_present: boolean;
+  temporal_state_present: boolean;
+  log_present: boolean;
+  binary_path?: string | null;
+  model_path?: string | null;
+  last_log_at?: string | null;
+  last_voice_interaction_at?: string | null;
+  last_absence_ack_at?: string | null;
+  last_diary_date?: string | null;
+  stt_profile?: string | null;
+  model?: string | null;
+  device?: string | null;
+  compute_type?: string | null;
+}
+
 export interface DaemonStatus {
   deployment_mode: 'embedded' | 'external';
   control_available: boolean;
   message: string;
+  voice_daemon?: VoiceDaemonStatus;
   running?: boolean;
   enabled?: boolean;
   cycle_interval_seconds?: number;

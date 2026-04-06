@@ -6,6 +6,7 @@ import {
     Cpu,
     Loader2,
     RefreshCw,
+    Volume2,
     XCircle,
     Zap,
 } from 'lucide-react';
@@ -222,6 +223,31 @@ function ProviderHealthRow({ name, status }: { name: string; status: string }) {
     );
 }
 
+function voiceStatusTone(status: string | undefined) {
+    switch (status) {
+        case 'ready':
+            return {
+                label: 'ready',
+                className: 'bg-green-900/60 text-green-300',
+            };
+        case 'degraded':
+            return {
+                label: 'degraded',
+                className: 'bg-yellow-900/60 text-yellow-300',
+            };
+        case 'configured':
+            return {
+                label: 'configured',
+                className: 'bg-blue-900/60 text-blue-300',
+            };
+        default:
+            return {
+                label: status ?? 'unknown',
+                className: 'bg-gray-800 text-gray-300',
+            };
+    }
+}
+
 function formatEventReason(reason: unknown) {
     if (typeof reason !== 'string' || reason.trim() === '') {
         return 'unspecified';
@@ -360,6 +386,8 @@ export default function OperatorDashboard() {
     const totalGens = lanes?.runtime_usage?.total_generations ?? 0;
     const providers = lanes?.cost_router?.cost?.providers ?? {};
     const retrySummary = lanes?.adaptive_retry;
+    const voice = daemon?.voice_daemon;
+    const voiceTone = voiceStatusTone(voice?.status);
 
     return (
         <div className="flex flex-col h-full bg-gray-950 overflow-y-auto">
@@ -524,6 +552,50 @@ export default function OperatorDashboard() {
                         </div>
                     )}
                 </section>
+
+                {voice ? (
+                    <section>
+                        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
+                            Voice Runtime
+                        </h3>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                            <MetricCard
+                                icon={Volume2}
+                                label="Voice Status"
+                                value={voiceTone.label}
+                                sub={voice.message}
+                                accent={
+                                    voice.status === 'ready'
+                                        ? 'green'
+                                        : voice.status === 'degraded'
+                                            ? 'yellow'
+                                            : 'blue'
+                                }
+                            />
+                            <MetricCard
+                                icon={Clock}
+                                label="Last Heard"
+                                value={voice.last_voice_interaction_at ? formatRelativeTime(voice.last_voice_interaction_at) : '—'}
+                                sub={voice.last_log_at ? `log ${formatRelativeTime(voice.last_log_at)}` : 'no voice log'}
+                                accent="blue"
+                            />
+                            <MetricCard
+                                icon={Cpu}
+                                label="STT Runtime"
+                                value={voice.model ?? 'unknown'}
+                                sub={[voice.device, voice.compute_type].filter(Boolean).join(' · ') || 'runtime unknown'}
+                                accent="purple"
+                            />
+                            <MetricCard
+                                icon={Activity}
+                                label="Artifacts"
+                                value={`${[voice.script_present, voice.binary_present, voice.model_present].filter(Boolean).length}/3`}
+                                sub={voice.binary_present ? 'tts ready' : 'tts incomplete'}
+                                accent={voice.binary_present && voice.model_present ? 'green' : 'yellow'}
+                            />
+                        </div>
+                    </section>
+                ) : null}
 
                 {/* ── Model Lane ── */}
                 <section>

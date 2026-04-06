@@ -11,8 +11,10 @@ import type {
   DaemonStatus,
   GitHubIssue,
   HealthStatus,
+  IssueQueueResponse,
   Memory,
   ModelLaneSummary,
+  AlwaysOnMetricsResponse,
   QueuedTaskSummary,
   Task,
 } from '../types';
@@ -677,6 +679,22 @@ class ApiClient {
   async getApprovalQueue(): Promise<Record<string, unknown>[]> {
     const data = await this.request<Record<string, unknown>>('/api/always-on/approval-queue');
     return (data.items as Record<string, unknown>[] | undefined) || [];
+  }
+
+  async getAlwaysOnIssueQueue(options: {
+    limit?: number;
+    hideLocal?: boolean;
+    activeOnly?: boolean;
+  } = {}): Promise<IssueQueueResponse> {
+    const params = new URLSearchParams();
+    params.set('limit', String(options.limit ?? 100));
+    params.set('hide_local', String(options.hideLocal ?? false));
+    params.set('active_only', String(options.activeOnly ?? false));
+    return this.request<IssueQueueResponse>(`/api/always-on/issue-queue?${params.toString()}`);
+  }
+
+  async getAlwaysOnMetrics(): Promise<AlwaysOnMetricsResponse> {
+    return this.request<AlwaysOnMetricsResponse>('/api/always-on/metrics');
   }
 
   async resolveApproval(taskId: string, approved: boolean, notes?: string): Promise<unknown> {

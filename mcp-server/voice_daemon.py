@@ -22,6 +22,7 @@ import subprocess
 import sys
 import threading
 import time
+import traceback
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -84,9 +85,7 @@ WHISPER_DEVICE = "cpu"
 WHISPER_COMPUTE_TYPE = "int8"
 STT_FALLBACK_MODEL_SIZE = os.getenv("KORTANA_WHISPER_FALLBACK_MODEL", "small")
 STT_FALLBACK_DEVICE = os.getenv("KORTANA_WHISPER_FALLBACK_DEVICE", "cpu")
-STT_FALLBACK_COMPUTE_TYPE = os.getenv(
-    "KORTANA_WHISPER_FALLBACK_COMPUTE_TYPE", "int8"
-)
+STT_FALLBACK_COMPUTE_TYPE = os.getenv("KORTANA_WHISPER_FALLBACK_COMPUTE_TYPE", "int8")
 SUPERVISOR_POLL_SECONDS = int(os.getenv("KORTANA_SUPERVISOR_POLL_SECONDS", "5"))
 SUPERVISOR_MAX_CRASHES = int(os.getenv("KORTANA_SUPERVISOR_MAX_CRASHES", "20"))
 
@@ -214,7 +213,10 @@ def _child_env_for_profile(profile: str) -> dict[str, str]:
 
 def _looks_like_native_cuda_crash(return_code: int) -> bool:
     unsigned = return_code & 0xFFFFFFFF
-    return return_code in _CUDA_NATIVE_CRASH_EXIT_CODES or unsigned in _CUDA_NATIVE_CRASH_EXIT_CODES
+    return (
+        return_code in _CUDA_NATIVE_CRASH_EXIT_CODES
+        or unsigned in _CUDA_NATIVE_CRASH_EXIT_CODES
+    )
 
 
 def _run_supervisor() -> None:
@@ -231,7 +233,10 @@ def _run_supervisor() -> None:
         exit_code = child.wait()
 
         if exit_code == 0:
-            log("[supervisor] voice worker exited cleanly — restarting in 5 seconds", "WARN")
+            log(
+                "[supervisor] voice worker exited cleanly — restarting in 5 seconds",
+                "WARN",
+            )
             time.sleep(SUPERVISOR_POLL_SECONDS)
             continue
 
@@ -242,14 +247,20 @@ def _run_supervisor() -> None:
             "ERROR",
         )
 
-        if _looks_like_native_cuda_crash(exit_code) and profile != VOICE_PROFILE_FALLBACK:
+        if (
+            _looks_like_native_cuda_crash(exit_code)
+            and profile != VOICE_PROFILE_FALLBACK
+        ):
             profile = VOICE_PROFILE_FALLBACK
             log(
                 "[supervisor] detected native CUDA failure — switching worker to fallback STT profile",
                 "WARN",
             )
         elif crashes >= SUPERVISOR_MAX_CRASHES:
-            log("[supervisor] crash budget exhausted — backing off for 60 seconds", "ERROR")
+            log(
+                "[supervisor] crash budget exhausted — backing off for 60 seconds",
+                "ERROR",
+            )
             crashes = 0
             time.sleep(60)
         else:
@@ -264,7 +275,10 @@ def _parse_timestamp(value: str | None) -> datetime | None:
     if not value:
         return None
     try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            return parsed.replace(tzinfo=timezone.utc)
+        return parsed
     except ValueError:
         return None
 
@@ -905,25 +919,33 @@ def _proactive_loop() -> None:
             )
 
 
-
 def _startup_greeting() -> None:
     """Speak an opening line that acknowledges how long we've been apart.
 
     If the state file is missing or the gap is short, a simple readiness
     line. If days have passed, she names it — she noticed.
     """
-    gap = _claim_absence_gap()
+    try:
+        gap = _claim_absence_gap()
+    except Exception as e:
+        log(f"[startup] continuity greeting fallback: {e}", "WARN")
+        gap = None
+
     if gap:
         speak(f"It's been {gap}, Matt. I kept watch. Ready when you are.")
-    else:
-        speak("kor'tana is ready. just say my name.")
+        return
+
+    speak("kor'tana is ready. just say my name.")
+
 
 def run() -> None:
     global _whisper
 
     _save_temporal_state(_load_temporal_state())
     model_size, device, compute_type = _current_whisper_config()
-    log(f"[worker] stt profile={_current_stt_profile()} model={model_size} device={device} compute={compute_type}")
+    log(
+        f"[worker] stt profile={_current_stt_profile()} model={model_size} device={device} compute={compute_type}"
+    )
 
     # Download Piper model if missing (~60 MB, one-time)
     _download_piper_model()
@@ -992,6 +1014,7 @@ if __name__ == "__main__":
             run()
         except Exception as e:
             log(f"[worker] fatal error: {e}", "ERROR")
+            log(traceback.format_exc(), "ERROR")
             raise
     else:
         _run_supervisor()

@@ -4,6 +4,7 @@ import {
   Brain,
   CheckCircle,
   Loader2,
+  Mic,
   Pause,
   Play,
   RefreshCw,
@@ -38,6 +39,19 @@ function metricTone(value: boolean | undefined, fallback: string, active: string
     return fallback;
   }
   return value ? active : inactive;
+}
+
+function voiceTone(status: string | undefined) {
+  switch (status) {
+    case 'ready':
+      return 'text-green-300 bg-green-950/40 border-green-800/50';
+    case 'degraded':
+      return 'text-yellow-200 bg-yellow-950/40 border-yellow-800/50';
+    case 'configured':
+      return 'text-blue-200 bg-blue-950/40 border-blue-800/50';
+    default:
+      return 'text-gray-300 bg-gray-900/60 border-gray-700';
+  }
 }
 
 export default function Autonomy() {
@@ -131,6 +145,7 @@ export default function Autonomy() {
   const providerErrors = providerHealthEntries.filter(([, state]) => state.startsWith('error:')).length;
   const retrySummary = lanes?.adaptive_retry;
   const ext = daemon?.external_daemon;
+  const voice = daemon?.voice_daemon;
 
   return (
     <div className="flex flex-col h-full bg-gray-900">
@@ -270,6 +285,82 @@ export default function Autonomy() {
             </p>
           </div>
         </div>
+
+        {voice ? (
+          <div className="bg-gray-800 rounded-lg p-6">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div>
+                <h3 className="text-white font-semibold mb-1 flex items-center gap-2">
+                  <Mic className="w-5 h-5 text-cyan-300" />
+                  Voice Runtime
+                </h3>
+                <p className="text-gray-400 text-sm">
+                  {voice.message}
+                </p>
+              </div>
+              <span className={cn('rounded-full border px-3 py-1 text-xs font-medium uppercase tracking-[0.2em]', voiceTone(voice.status))}>
+                {voice.status}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-5">
+              <div className="bg-gray-900 rounded-lg p-4">
+                <p className="text-gray-400 text-sm">Wake Stack</p>
+                <p className="text-lg font-bold text-white mt-1">
+                  {voice.model ?? 'unknown'}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {voice.device ?? 'device unknown'} · {voice.compute_type ?? 'compute unknown'}
+                </p>
+              </div>
+              <div className="bg-gray-900 rounded-lg p-4">
+                <p className="text-gray-400 text-sm">Speech Profile</p>
+                <p className="text-lg font-bold text-white mt-1 capitalize">
+                  {voice.stt_profile ?? 'unknown'}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {voice.binary_present ? 'piper ready' : 'piper missing'}
+                </p>
+              </div>
+              <div className="bg-gray-900 rounded-lg p-4">
+                <p className="text-gray-400 text-sm">Last Heard</p>
+                <p className="text-lg font-bold text-white mt-1">
+                  {voice.last_voice_interaction_at ? formatRelativeTime(voice.last_voice_interaction_at) : '—'}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {voice.last_absence_ack_at ? `ack ${formatRelativeTime(voice.last_absence_ack_at)}` : 'no absence ack'}
+                </p>
+              </div>
+              <div className="bg-gray-900 rounded-lg p-4">
+                <p className="text-gray-400 text-sm">Artifacts</p>
+                <p className="text-lg font-bold text-white mt-1">
+                  {[voice.script_present, voice.binary_present, voice.model_present].filter(Boolean).length}/3
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {voice.last_log_at ? `log ${formatRelativeTime(voice.last_log_at)}` : 'no runtime log'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2 mt-4">
+              {voice.temporal_state_present ? (
+                <span className="rounded-full border border-gray-700 bg-gray-900/70 px-3 py-1 text-[11px] text-gray-300">
+                  temporal state present
+                </span>
+              ) : null}
+              {voice.log_present ? (
+                <span className="rounded-full border border-gray-700 bg-gray-900/70 px-3 py-1 text-[11px] text-gray-300">
+                  voice log present
+                </span>
+              ) : null}
+              {voice.last_diary_date ? (
+                <span className="rounded-full border border-gray-700 bg-gray-900/70 px-3 py-1 text-[11px] text-gray-300">
+                  diary {voice.last_diary_date}
+                </span>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
 
         <div className="bg-gray-800 rounded-lg p-6">
           <div className="flex items-center justify-between gap-4 flex-wrap">

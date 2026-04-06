@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import os
 from datetime import datetime, timedelta
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -207,3 +209,67 @@ def test_daemon_status_embedded_exposes_provider_health(app_fixture):
     assert data["deployment_mode"] == "embedded"
     assert data["control_mode"] == "self-aware"
     assert data["provider_health"] == {"github": "ok", "gemini": "ok"}
+
+
+def test_daemon_status_includes_voice_runtime_details(app_fixture, tmp_path: Path):
+    temporal_state = tmp_path / "temporal_state.json"
+    temporal_state.write_text(
+        json.dumps(
+            {
+                "last_voice_interaction_at": "2026-04-05T10:00:00+00:00",
+                "last_absence_ack_at": "2026-04-05T11:00:00+00:00",
+                "last_diary_date": "2026-04-05",
+            }
+        ),
+        encoding="utf-8",
+    )
+    log_file = tmp_path / "voice_daemon.log"
+    log_file.write_text(
+        "[2026-04-05T10:30:00Z] [INFO] [worker] stt profile=fallback model=small device=cpu compute=int8\n",
+        encoding="utf-8",
+    )
+    script_file = tmp_path / "voice_daemon.py"
+    script_file.write_text("# voice daemon\n", encoding="utf-8")
+    piper_file = tmp_path / "piper.exe"
+    piper_file.write_text("", encoding="utf-8")
+    model_file = tmp_path / "voice.onnx"
+    model_file.write_text("", encoding="utf-8")
+
+    fake_daemon = MagicMock()
+    fake_daemon.get_status.return_value = {"running": True, "enabled": True}
+
+    with (
+        patch.dict(os.environ, {"KORTANA_DAEMON_IN_PROCESS": "true"}, clear=False),
+        patch("src.kortana.routers.daemon.VOICE_TEMPORAL_STATE_FILE", temporal_state),
+        patch("src.kortana.routers.daemon.VOICE_LOG_FILE", log_file),
+        patch("src.kortana.routers.daemon.VOICE_SCRIPT_FILE", script_file),
+        patch(
+            "src.kortana.routers.daemon.VOICE_PIPER_CANDIDATES",
+            [piper_file],
+        ),
+        patch(
+            "src.kortana.routers.daemon.VOICE_MODEL_CANDIDATES",
+            [model_file],
+        ),
+        patch(
+            "src.kortana.routers.daemon.get_autonomy_daemon",
+            return_value=fake_daemon,
+        ),
+    ):
+        client = SyncTestClient(app_fixture)
+        try:
+            response = client.get("/api/daemon/status")
+        finally:
+            client.close()
+
+    assert response.status_code == 200
+    voice = response.json()["voice_daemon"]
+    assert voice["status"] == "ready"
+    assert voice["binary_present"] is True
+    assert voice["model_present"] is True
+    assert voice["stt_profile"] == "fallback"
+    assert voice["model"] == "small"
+    assert voice["device"] == "cpu"
+    assert voice["compute_type"] == "int8"
+    assert voice["last_voice_interaction_at"] == "2026-04-05T10:00:00+00:00"
+    assert voice["last_diary_date"] == "2026-04-05"

@@ -8,7 +8,9 @@ liveness in split-service deployments.
 from __future__ import annotations
 
 import os
+import json
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -22,6 +24,27 @@ from src.kortana.models import AutonomyCycleMemory
 from src.kortana.services.autonomy_daemon import get_autonomy_daemon
 
 router = APIRouter(prefix="/api/daemon", tags=["daemon"])
+
+VOICE_TEMPORAL_STATE_FILE = Path(
+    os.getenv(
+        "KORTANA_VOICE_TEMPORAL_STATE_FILE",
+        r"c:\kortana\mcp-server\temporal_state.json",
+    )
+)
+VOICE_LOG_FILE = Path(
+    os.getenv("KORTANA_VOICE_LOG_FILE", r"c:\kortana\logs\voice_daemon.log")
+)
+VOICE_SCRIPT_FILE = Path(
+    os.getenv("KORTANA_VOICE_SCRIPT_FILE", r"c:\kortana\mcp-server\voice_daemon.py")
+)
+VOICE_PIPER_CANDIDATES = [
+    Path(r"c:\kortana\models\piper\piper.exe"),
+    Path(r"c:\kortana\mcp-server\piper\piper\piper.exe"),
+]
+VOICE_MODEL_CANDIDATES = [
+    Path(r"c:\kortana\models\piper\en_GB-cori-high.onnx"),
+    Path(r"c:\kortana\mcp-server\models\en_GB-cori-high.onnx"),
+]
 
 
 def _daemon_runs_in_process() -> bool:
@@ -60,6 +83,112 @@ def _runtime_metadata_from_metrics(metrics: Any) -> dict[str, Any]:
         if key in metrics:
             metadata[key] = metrics[key]
     return metadata
+
+
+def _read_json_file(path: Path) -> dict[str, Any]:
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except OSError:
+        return {}
+
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return {}
+
+    return data if isinstance(data, dict) else {}
+
+
+def _voice_runtime_from_log(log_path: Path) -> dict[str, Any]:
+    try:
+        lines = log_path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return {}
+
+    runtime: dict[str, Any] = {}
+    for line in reversed(lines[-200:]):
+        if "[worker] stt profile=" not in line:
+            continue
+        marker = "[worker] stt profile="
+        payload = line.split(marker, 1)[1]
+        parts = dict(
+            segment.split("=", 1)
+            for segment in payload.split()
+            if "=" in segment
+        )
+        runtime["stt_profile"] = parts.get("profile")
+        runtime["model"] = parts.get("model")
+        runtime["device"] = parts.get("device")
+        runtime["compute_type"] = parts.get("compute")
+        break
+    return runtime
+
+
+def _iso_mtime(path: Path) -> str | None:
+    try:
+        return datetime.utcfromtimestamp(path.stat().st_mtime).isoformat()
+    except OSError:
+        return None
+
+
+def _voice_daemon_status() -> dict[str, Any]:
+    temporal_state = _read_json_file(VOICE_TEMPORAL_STATE_FILE)
+    log_runtime = _voice_runtime_from_log(VOICE_LOG_FILE)
+    piper_path = next((path for path in VOICE_PIPER_CANDIDATES if path.exists()), None)
+    model_path = next((path for path in VOICE_MODEL_CANDIDATES if path.exists()), None)
+
+    script_present = VOICE_SCRIPT_FILE.exists()
+    temporal_state_present = VOICE_TEMPORAL_STATE_FILE.exists()
+    log_present = VOICE_LOG_FILE.exists()
+    binary_present = piper_path is not None
+    model_present = model_path is not None
+    last_log_at = _iso_mtime(VOICE_LOG_FILE) if log_present else None
+    last_interaction_at = (
+        str(temporal_state.get("last_voice_interaction_at"))
+        if temporal_state.get("last_voice_interaction_at")
+        else None
+    )
+
+    if not script_present:
+        status = "unavailable"
+        message = "Voice daemon script is not present."
+    elif binary_present and model_present and (log_present or temporal_state_present):
+        status = "ready"
+        message = "Voice runtime artifacts are present and state has been observed."
+    elif binary_present or model_present:
+        status = "degraded"
+        message = "Voice runtime is partially configured."
+    else:
+        status = "configured"
+        message = "Voice daemon is present but no runtime artifacts have been observed yet."
+
+    return {
+        "status": status,
+        "message": message,
+        "script_present": script_present,
+        "binary_present": binary_present,
+        "model_present": model_present,
+        "temporal_state_present": temporal_state_present,
+        "log_present": log_present,
+        "binary_path": str(piper_path) if piper_path else None,
+        "model_path": str(model_path) if model_path else None,
+        "last_log_at": last_log_at,
+        "last_voice_interaction_at": last_interaction_at,
+        "last_absence_ack_at": (
+            str(temporal_state.get("last_absence_ack_at"))
+            if temporal_state.get("last_absence_ack_at")
+            else None
+        ),
+        "last_diary_date": (
+            str(temporal_state.get("last_diary_date"))
+            if temporal_state.get("last_diary_date")
+            else None
+        ),
+        "stt_profile": log_runtime.get("stt_profile"),
+        "model": log_runtime.get("model"),
+        "device": log_runtime.get("device"),
+        "compute_type": log_runtime.get("compute_type"),
+    }
 
 
 async def _external_daemon_status(db: AsyncSession) -> dict[str, Any]:
@@ -118,11 +247,13 @@ async def daemon_status(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
     """Return daemon status for embedded or external deployments."""
     daemon = get_autonomy_daemon()
     local_status = daemon.get_status()
+    voice_status = _voice_daemon_status()
     if _daemon_runs_in_process():
         return {
             "deployment_mode": "embedded",
             "control_available": True,
             "message": "Daemon is hosted in this web process.",
+            "voice_daemon": voice_status,
             **local_status,
         }
 
@@ -140,6 +271,7 @@ async def daemon_status(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
         },
         "github_mode": get_settings().KORTANA_GITHUB_MODE,
         "provider_health": external_status.get("provider_health", {}),
+        "voice_daemon": voice_status,
         "external_daemon": external_status,
     }
 
