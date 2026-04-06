@@ -3,10 +3,9 @@ KOR'TANA Autonomy Orchestrator — Phase 5 Core Loop
 
 The single internal loop that drives kor'tana's self-evolution:
 
-    observe → reflect → synthesize self-model → deliberate → decide → persist
+    observe → reflect (revelation synthesis) → synthesize self-model → persist
 
 Called exclusively by the Silent Reviewer daemon.  No public API triggers.
-This is not a feature — it is the heartbeat.
 """
 
 import logging
@@ -15,21 +14,38 @@ import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.kortana.models import AutonomyCycleRecord
 from src.kortana.services.revelation_engine import RevelationEngine
 from src.kortana.services.self_model_service import SelfModelService
 
 logger = logging.getLogger(__name__)
 
-# Cycle result is stored in-memory for the /autonomy/status endpoint.
-# Persisted self-model snapshots are the durable record.
-_last_cycle_result: Optional[Dict[str, Any]] = None
 
-
-def get_last_cycle_result() -> Optional[Dict[str, Any]]:
-    """Return the most recent orchestrator cycle result (in-memory)."""
-    return _last_cycle_result
+async def get_last_cycle_record(db: AsyncSession) -> Optional[Dict[str, Any]]:
+    """Read the most recent AutonomyCycleRecord from the database."""
+    stmt = (
+        select(AutonomyCycleRecord)
+        .order_by(AutonomyCycleRecord.created_at.desc())
+        .limit(1)
+    )
+    result = await db.execute(stmt)
+    row = result.scalar_one_or_none()
+    if row is None:
+        return None
+    return {
+        "cycle_id": row.cycle_id,
+        "trigger": row.trigger,
+        "timestamp": row.created_at.isoformat() if row.created_at else None,
+        "duration_ms": row.duration_ms,
+        "observations": row.observations_count,
+        "revelations_written": row.revelations_written,
+        "self_model_version": row.self_model_version,
+        "developmental_stage": row.developmental_stage,
+        "actions_taken": row.actions_taken,
+    }
 
 
 class AutonomyOrchestrator:
@@ -43,9 +59,9 @@ class AutonomyOrchestrator:
     async def run_cycle(self, trigger: str = "scheduled") -> Dict[str, Any]:
         """Execute one full autonomy cycle.
 
+        Steps: observe → reflect (revelation synthesis) → synthesize self-model → persist.
         Returns a summary dict with cycle metadata.
         """
-        global _last_cycle_result
         cycle_id = str(uuid.uuid4())[:8]
         start = time.monotonic()
         actions_taken: List[str] = []
@@ -97,7 +113,7 @@ class AutonomyOrchestrator:
             logger.exception("Self-model synthesis failed")
             actions_taken.append("self-model: failed")
 
-        # ---- 4. PERSIST cycle result ----
+        # ---- 4. PERSIST cycle record to DB ----
         elapsed_ms = int((time.monotonic() - start) * 1000)
 
         result: Dict[str, Any] = {
@@ -112,7 +128,22 @@ class AutonomyOrchestrator:
             "actions_taken": actions_taken,
         }
 
-        _last_cycle_result = result
+        try:
+            record = AutonomyCycleRecord(
+                cycle_id=cycle_id,
+                trigger=trigger,
+                duration_ms=elapsed_ms,
+                observations_count=len(observations),
+                revelations_written=revelations_written,
+                self_model_version=snapshot_version,
+                developmental_stage=developmental_stage,
+                actions_taken=actions_taken,
+            )
+            self.db.add(record)
+            await self.db.commit()
+        except Exception:
+            logger.exception("Failed to persist AutonomyCycleRecord")
+            await self.db.rollback()
 
         logger.info(
             f"Autonomy cycle {cycle_id} complete in {elapsed_ms}ms — "

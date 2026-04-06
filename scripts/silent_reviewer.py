@@ -4,13 +4,14 @@
 Single source of truth for all self-generated activity:
   - Observation gathering
   - Revelation synthesis
-  - Wisdom distillation & prediction
   - Self-model evolution (Inner Council deliberation)
 
 Runs continuously on a configurable interval (default 18 min).
 Uses SHA-256 fingerprinting to skip cycles when nothing meaningful
 has changed.  Calls the Autonomy Orchestrator internal endpoint
 which handles the full observe→reflect→synthesize→persist pipeline.
+
+Kill switch: create an AUTONOMY.lock file at the repo root to pause all cycles.
 """
 
 import hashlib
@@ -18,6 +19,7 @@ import logging
 import os
 import subprocess
 import time
+from pathlib import Path
 
 import httpx
 
@@ -33,12 +35,21 @@ REPO_ROOT = os.getenv(
 
 AUTONOMY_CYCLE_URL = f"{BACKEND_URL}/api/consciousness/_internal/autonomy-cycle"
 MEMORY_URL = f"{BACKEND_URL}/api/consciousness/memory/self"
+LOCK_FILE = os.path.join(REPO_ROOT, "AUTONOMY.lock")
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [SilentReviewer] %(levelname)s  %(message)s",
 )
 log = logging.getLogger("silent_reviewer")
+
+
+# ---------------------------------------------------------------------------
+# Kill switch — AUTONOMY.lock
+# ---------------------------------------------------------------------------
+def is_autonomy_locked() -> bool:
+    """Return True if AUTONOMY.lock exists, meaning all cycles should be skipped."""
+    return Path(LOCK_FILE).exists()
 
 # ---------------------------------------------------------------------------
 # Fingerprint — determines if a new cycle is warranted
@@ -81,6 +92,9 @@ def _compute_fingerprint() -> str:
 
 def _has_meaningful_change() -> bool:
     """Return True if the fingerprint differs from last cycle."""
+    if is_autonomy_locked():
+        log.info("AUTONOMY.lock present — skipping fingerprint check.")
+        return False
     global _last_fingerprint
     fp = _compute_fingerprint()
     if fp == _last_fingerprint:
@@ -97,8 +111,11 @@ def trigger_autonomy_cycle() -> dict | None:
     """POST to the Autonomy Orchestrator internal endpoint.
 
     This single call executes the full pipeline:
-      observe → reflect → distill wisdom → predict → evolve self-model.
+      observe → reflect (revelation synthesis) → evolve self-model → persist.
     """
+    if is_autonomy_locked():
+        log.info("AUTONOMY.lock present — skipping orchestrator POST.")
+        return None
     try:
         resp = httpx.post(AUTONOMY_CYCLE_URL, timeout=120.0)
         resp.raise_for_status()
@@ -123,6 +140,9 @@ def trigger_autonomy_cycle() -> dict | None:
 # ---------------------------------------------------------------------------
 def run_cycle() -> None:
     """Execute one iteration of the Silent Reviewer."""
+    if is_autonomy_locked():
+        log.info("AUTONOMY.lock present — autonomy paused.")
+        return
     if not _has_meaningful_change():
         return
     log.info("Meaningful change detected — initiating autonomy cycle.")

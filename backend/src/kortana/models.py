@@ -612,6 +612,28 @@ class SelfModelSnapshot(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
     def __repr__(self) -> str:
-        return (
-            f"<SelfModelSnapshot v{self.version} stage={self.developmental_stage!r}>"
-        )
+        return f"<SelfModelSnapshot v{self.version} stage={self.developmental_stage!r}>"
+
+
+class AutonomyCycleRecord(Base):
+    """Durable record of each autonomy orchestrator cycle.
+
+    Persisted so that /autonomy/status survives process restarts.
+    One row per cycle — never mutated after creation.
+    """
+
+    __tablename__ = "autonomy_cycle_records"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    cycle_id = Column(String(8), nullable=False, index=True)
+    trigger = Column(String(64), nullable=False, default="scheduled")
+    duration_ms = Column(Integer, nullable=False)
+    observations_count = Column(Integer, nullable=False, default=0)
+    revelations_written = Column(Integer, nullable=False, default=0)
+    self_model_version = Column(Integer, nullable=True)
+    developmental_stage = Column(String(64), nullable=True)
+    actions_taken = Column(JSON, nullable=False)  # list[str]
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        return f"<AutonomyCycleRecord {self.cycle_id} v{self.self_model_version}>"
