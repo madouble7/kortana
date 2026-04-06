@@ -13,7 +13,6 @@ import uuid
 from datetime import datetime, timedelta
 
 import pytest
-
 from src.kortana.models import (
     CovenantEnforcementRecord,
     User,
@@ -24,7 +23,6 @@ from src.kortana.services.constitutional_service import (
     resolve_context_for_system,
     resolve_context_from_user,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -106,9 +104,7 @@ class TestResolverContext:
 
     @pytest.mark.asyncio
     async def test_user_context_superuser(self, test_db_session) -> None:
-        user = _make_user(
-            test_db_session, username="matt", is_superuser=True
-        )
+        user = _make_user(test_db_session, username="matt", is_superuser=True)
         await test_db_session.commit()
         await test_db_session.refresh(user)
 
@@ -130,9 +126,7 @@ class TestResolverContext:
         await test_db_session.commit()
         await test_db_session.refresh(user)
 
-        token = FakeTokenData(
-            user_id=user.id, email=user.email, username="jane"
-        )
+        token = FakeTokenData(user_id=user.id, email=user.email, username="jane")
         ctx = await resolve_context_from_user(token, test_db_session)
         assert ctx.actor_type == "human"
         assert ctx.actor_name == "jane"
@@ -140,9 +134,7 @@ class TestResolverContext:
         assert ctx.authority_tier == "operator"
 
     @pytest.mark.asyncio
-    async def test_user_context_nonexistent_user(
-        self, test_db_session
-    ) -> None:
+    async def test_user_context_nonexistent_user(self, test_db_session) -> None:
         token = FakeTokenData(
             user_id="nonexistent-id", email="ghost@x.com", username="ghost"
         )
@@ -174,7 +166,10 @@ class TestResolveWithContext:
         )
         svc = ConstitutionalService(test_db_session)
         result = await svc.resolve_override(
-            record.id, "approved", "matt", "Auth-bound approval.",
+            record.id,
+            "approved",
+            "matt",
+            "Auth-bound approval.",
             resolver_context=ctx,
         )
         assert result is not None
@@ -184,9 +179,7 @@ class TestResolveWithContext:
         assert result.resolver_actor_type == "human"
 
     @pytest.mark.asyncio
-    async def test_operator_context_cannot_approve(
-        self, test_db_session
-    ) -> None:
+    async def test_operator_context_cannot_approve(self, test_db_session) -> None:
         record = _make_pending_record(test_db_session)
         await test_db_session.commit()
         await test_db_session.refresh(record)
@@ -199,15 +192,16 @@ class TestResolveWithContext:
         )
         svc = ConstitutionalService(test_db_session)
         result = await svc.resolve_override(
-            record.id, "approved", "jane", "I want to approve.",
+            record.id,
+            "approved",
+            "jane",
+            "I want to approve.",
             resolver_context=ctx,
         )
         assert result is None  # insufficient authority
 
     @pytest.mark.asyncio
-    async def test_empty_tier_context_rejected(
-        self, test_db_session
-    ) -> None:
+    async def test_empty_tier_context_rejected(self, test_db_session) -> None:
         """Context with empty authority tier (unknown user) is rejected."""
         record = _make_pending_record(test_db_session)
         await test_db_session.commit()
@@ -221,7 +215,10 @@ class TestResolveWithContext:
         )
         svc = ConstitutionalService(test_db_session)
         result = await svc.resolve_override(
-            record.id, "approved", "ghost", "No auth.",
+            record.id,
+            "approved",
+            "ghost",
+            "No auth.",
             resolver_context=ctx,
         )
         assert result is None  # unauthorized (empty tier → None)
@@ -235,7 +232,10 @@ class TestResolveWithContext:
         ctx = resolve_context_for_system("system:expiry")
         svc = ConstitutionalService(test_db_session)
         result = await svc.resolve_override(
-            record.id, "expired", "system:expiry", "Timed out.",
+            record.id,
+            "expired",
+            "system:expiry",
+            "Timed out.",
             resolver_context=ctx,
         )
         assert result is not None
@@ -253,9 +253,7 @@ class TestAuditTrustedIdentity:
     """Test that audit records capture resolver_user_id and resolver_actor_type."""
 
     @pytest.mark.asyncio
-    async def test_authorized_audit_has_trusted_fields(
-        self, test_db_session
-    ) -> None:
+    async def test_authorized_audit_has_trusted_fields(self, test_db_session) -> None:
         record = _make_pending_record(test_db_session)
         await test_db_session.commit()
         await test_db_session.refresh(record)
@@ -268,7 +266,10 @@ class TestAuditTrustedIdentity:
         )
         svc = ConstitutionalService(test_db_session)
         await svc.resolve_override(
-            record.id, "approved", "matt", "Approved.",
+            record.id,
+            "approved",
+            "matt",
+            "Approved.",
             resolver_context=ctx,
         )
 
@@ -280,9 +281,7 @@ class TestAuditTrustedIdentity:
         assert audit.resolver_actor_type == "human"
 
     @pytest.mark.asyncio
-    async def test_unauthorized_audit_has_actor_type(
-        self, test_db_session
-    ) -> None:
+    async def test_unauthorized_audit_has_actor_type(self, test_db_session) -> None:
         """Even failed attempts with context capture actor_type."""
         record = _make_pending_record(test_db_session)
         await test_db_session.commit()
@@ -296,7 +295,10 @@ class TestAuditTrustedIdentity:
         )
         svc = ConstitutionalService(test_db_session)
         await svc.resolve_override(
-            record.id, "approved", "nobody", "Try.",
+            record.id,
+            "approved",
+            "nobody",
+            "Try.",
             resolver_context=ctx,
         )
 
@@ -306,9 +308,7 @@ class TestAuditTrustedIdentity:
         assert audits[0].resolver_user_id is None
 
     @pytest.mark.asyncio
-    async def test_system_expiry_audit_has_system_fields(
-        self, test_db_session
-    ) -> None:
+    async def test_system_expiry_audit_has_system_fields(self, test_db_session) -> None:
         record = _make_pending_record(test_db_session)
         record.created_at = datetime.utcnow() - timedelta(hours=48)
         await test_db_session.commit()
@@ -325,9 +325,7 @@ class TestAuditTrustedIdentity:
         assert sys_exp[0].resolver_user_id is None
 
     @pytest.mark.asyncio
-    async def test_legacy_resolve_no_context(
-        self, test_db_session
-    ) -> None:
+    async def test_legacy_resolve_no_context(self, test_db_session) -> None:
         """Phase 12 compat: resolve without context still works."""
         record = _make_pending_record(test_db_session)
         await test_db_session.commit()
@@ -335,7 +333,10 @@ class TestAuditTrustedIdentity:
 
         svc = ConstitutionalService(test_db_session)
         result = await svc.resolve_override(
-            record.id, "approved", "matt", "Old-style.",
+            record.id,
+            "approved",
+            "matt",
+            "Old-style.",
         )
         assert result is not None
         assert result.override_status == "approved"
@@ -379,9 +380,7 @@ class TestAuthenticatedEndpoint:
         assert data["status"] == "error"
         assert "resolver" in data
 
-    def test_enforcement_record_trusted_fields_via_endpoint(
-        self, client
-    ) -> None:
+    def test_enforcement_record_trusted_fields_via_endpoint(self, client) -> None:
         """Audit records from authenticated endpoint include trusted fields."""
         resp = client.get("/api/consciousness/covenant/authority/audit")
         assert resp.status_code == 200

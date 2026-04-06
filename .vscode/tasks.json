@@ -686,12 +686,5 @@
 				"frontend: ui dev"
 			]
 		},
-		{
-			"label": "finalize-main",
-			"type": "shell",
-			"command": "git branch -m main && git push origin main -f && build && test",
-			"isBackground": false,
-			"group": "build"
-		}
 	]
 }

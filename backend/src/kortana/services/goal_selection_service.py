@@ -215,7 +215,7 @@ class GoalSelectionService:
             action_type=action_type,
             rationale=(
                 f"Goal '{top_goal.title}' (tier={top_goal.tier}, "
-                f"priority={top_goal.priority}, progress={top_goal.progress:.0%}) "
+                f"priority={top_goal.priority}, progress={(top_goal.progress or 0):.0%}) "
                 f"scored highest at {top_score:.4f}."
             ),
             why_now=why_now,
@@ -317,7 +317,7 @@ class GoalSelectionService:
         parts = []
         if goal.status == "in_progress":
             parts.append(
-                f"Already in progress ({goal.progress:.0%} complete) — "
+                f"Already in progress ({(goal.progress or 0):.0%} complete) — "
                 f"continuing reduces context-switch cost."
             )
         if stage:

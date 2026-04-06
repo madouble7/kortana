@@ -44,9 +44,9 @@ logger = logging.getLogger(__name__)
 # ------------------------------------------------------------------
 
 AUTHORITY_TIERS: Dict[str, int] = {
-    "owner": 100,    # Matt — full authority
+    "owner": 100,  # Matt — full authority
     "operator": 50,  # trusted operators — limited resolution
-    "system": 10,    # automated processes — expiry only
+    "system": 10,  # automated processes — expiry only
 }
 
 # Map resolver identities to their authority tier
@@ -58,10 +58,10 @@ RESOLVER_AUTHORITY: Dict[str, str] = {
 
 # Map resolution actions to minimum required tier
 RESOLUTION_REQUIRED_TIER: Dict[str, str] = {
-    "approved": "owner",     # only Matt can approve
-    "denied": "owner",       # only Matt can deny
-    "revoked": "owner",      # only Matt can revoke
-    "expired": "system",     # automated or anyone above
+    "approved": "owner",  # only Matt can approve
+    "denied": "owner",  # only Matt can deny
+    "revoked": "owner",  # only Matt can revoke
+    "expired": "system",  # automated or anyone above
 }
 
 
@@ -956,9 +956,7 @@ class ConstitutionalService:
         audit = OverrideAuditRecord(
             enforcement_record_id=enforcement_record_id,
             resolver_identity=resolver,
-            resolver_user_id=(
-                resolver_context.user_id if resolver_context else None
-            ),
+            resolver_user_id=(resolver_context.user_id if resolver_context else None),
             resolver_actor_type=(
                 resolver_context.actor_type if resolver_context else None
             ),
@@ -1015,9 +1013,7 @@ class ConstitutionalService:
 
         # --- Derive authority from context or string ---
         if resolver_context is not None:
-            resolver_tier: Optional[str] = (
-                resolver_context.authority_tier or None
-            )
+            resolver_tier: Optional[str] = resolver_context.authority_tier or None
             resolver = resolver_context.actor_name
         else:
             resolver_tier = self._get_resolver_tier(resolver)
@@ -1072,7 +1068,7 @@ class ConstitutionalService:
         if record is None:
             logger.info(f"Override record not found: {record_id}")
             await self._record_audit(
-                enforcement_record_id=record_id,
+                enforcement_record_id=None,
                 resolver=resolver,
                 authority_tier=resolver_tier,
                 required_tier=required_tier,
@@ -1163,10 +1159,12 @@ class ConstitutionalService:
 
         # --- Feed outcome back into the learning loop ---
         try:
-            from src.kortana.services.outcome_learning_service import OutcomeLearningService
+            from src.kortana.services.outcome_learning_service import (
+                OutcomeLearningService,
+            )
 
             ols = OutcomeLearningService(self.db)
-            await ols.learn_from_override(
+            await ols.learn_from_override_resolution(
                 enforcement_record=record,
                 cycle_id=record.cycle_id,
             )
@@ -1267,9 +1265,7 @@ class ConstitutionalService:
     # Phase 12: Authority Audit Queries
     # ------------------------------------------------------------------
 
-    async def get_audit_history(
-        self, limit: int = 20
-    ) -> List[OverrideAuditRecord]:
+    async def get_audit_history(self, limit: int = 20) -> List[OverrideAuditRecord]:
         """Return recent audit records, newest first."""
         stmt = (
             select(OverrideAuditRecord)

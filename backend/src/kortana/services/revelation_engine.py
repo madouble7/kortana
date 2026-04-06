@@ -158,7 +158,7 @@ async def _gather_outcome_signals(db: AsyncSession, limit: int = 20) -> List[str
         ts = r.created_at.strftime("%Y-%m-%d") if r.created_at else "?"
         lines.append(
             f"{ts} outcome={r.outcome_verdict} signal={r.adaptation_signal} "
-            f"weight={r.weight_delta:+.2f} scope={r.scope} lesson={r.lesson[:80]}"
+            f"weight={r.signal_weight:+.2f} scope={r.signal_scope} lesson={r.lesson[:80]}"
         )
     return lines
 

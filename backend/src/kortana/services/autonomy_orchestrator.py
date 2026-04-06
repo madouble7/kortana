@@ -175,7 +175,7 @@ class AutonomyOrchestrator:
         # ---- 3.7 EXECUTION GATE (Action Realization) ----
         execution_record_id: Optional[str] = None
         execution_classification: Optional[str] = None
-        if not candidate_blocked:
+        if not candidate_blocked and next_action_id:
             try:
                 gate = ExecutionGateService(self.db)
                 exec_record = await gate.evaluate(

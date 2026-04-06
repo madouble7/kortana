@@ -875,9 +875,7 @@ class CovenantEnforcementRecord(Base):
     resolver_user_id = Column(
         String(36), nullable=True, index=True
     )  # FK-like ref to users.id when resolver is human
-    resolver_actor_type = Column(
-        String(16), nullable=True
-    )  # human | system
+    resolver_actor_type = Column(String(16), nullable=True)  # human | system
     human_rationale = Column(Text, nullable=True)  # why the human approved/denied
     resolution_outcome = Column(
         String(32), nullable=True, index=True
@@ -920,9 +918,7 @@ class OverrideAuditRecord(Base):
     resolver_user_id = Column(
         String(36), nullable=True, index=True
     )  # users.id when resolver is human, None for system
-    resolver_actor_type = Column(
-        String(16), nullable=True
-    )  # human | system
+    resolver_actor_type = Column(String(16), nullable=True)  # human | system
     authority_tier = Column(
         String(32), nullable=True
     )  # owner | operator | system | None (unknown)
