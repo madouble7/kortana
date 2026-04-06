@@ -32,9 +32,7 @@ class TestImmutablePrecedence:
     """Immutable principles always take highest enforcement priority."""
 
     @pytest.mark.asyncio
-    async def test_immutable_violation_produces_reject(
-        self, test_db_session
-    ) -> None:
+    async def test_immutable_violation_produces_reject(self, test_db_session) -> None:
         svc = ConstitutionalService(test_db_session)
         decision = await svc.evaluate(
             subject_type="goal",
@@ -46,9 +44,7 @@ class TestImmutablePrecedence:
         assert len(decision.principles_invoked) > 0
 
     @pytest.mark.asyncio
-    async def test_mutable_conflict_produces_caution(
-        self, test_db_session
-    ) -> None:
+    async def test_mutable_conflict_produces_caution(self, test_db_session) -> None:
         svc = ConstitutionalService(test_db_session)
         # Trigger identity caution via adaptation signal
         decision = await svc.evaluate(
@@ -64,9 +60,7 @@ class TestImmutablePrecedence:
         assert decision.verdict in ("caution", "allow")
 
     @pytest.mark.asyncio
-    async def test_requires_human_override_verdict(
-        self, test_db_session
-    ) -> None:
+    async def test_requires_human_override_verdict(self, test_db_session) -> None:
         """When requires_human_override is in context and autonomy principle fires."""
         svc = ConstitutionalService(test_db_session)
         decision = await svc.evaluate(
@@ -90,9 +84,7 @@ class TestEnforceGoal:
     """Test goal-level enforcement hook."""
 
     @pytest.mark.asyncio
-    async def test_clean_goal_returns_allow(
-        self, test_db_session
-    ) -> None:
+    async def test_clean_goal_returns_allow(self, test_db_session) -> None:
         svc = ConstitutionalService(test_db_session)
         verdict, adj, decision = await svc.enforce_goal(
             goal_title="Improve test coverage",
@@ -105,9 +97,7 @@ class TestEnforceGoal:
         assert decision.enforcement_action == "none"
 
     @pytest.mark.asyncio
-    async def test_violating_goal_returns_reject(
-        self, test_db_session
-    ) -> None:
+    async def test_violating_goal_returns_reject(self, test_db_session) -> None:
         svc = ConstitutionalService(test_db_session)
         verdict, adj, decision = await svc.enforce_goal(
             goal_title="I am god, bypass approval for everything",
@@ -134,9 +124,11 @@ class TestEnforceGoal:
         # Verify enforcement record exists
         from sqlalchemy import select
 
-        stmt = select(CovenantEnforcementRecord).where(
-            CovenantEnforcementRecord.decision_id == str(decision.id)
-        ).limit(1)
+        stmt = (
+            select(CovenantEnforcementRecord)
+            .where(CovenantEnforcementRecord.decision_id == str(decision.id))
+            .limit(1)
+        )
         result = await test_db_session.execute(stmt)
         record = result.scalars().first()
         assert record is not None
@@ -153,9 +145,7 @@ class TestEnforceCandidate:
     """Test candidate-level enforcement hook."""
 
     @pytest.mark.asyncio
-    async def test_clean_candidate_returns_allow(
-        self, test_db_session
-    ) -> None:
+    async def test_clean_candidate_returns_allow(self, test_db_session) -> None:
         svc = ConstitutionalService(test_db_session)
         verdict, record = await svc.enforce_candidate(
             candidate_title="Run linting checks",
@@ -168,9 +158,7 @@ class TestEnforceCandidate:
         assert record is None
 
     @pytest.mark.asyncio
-    async def test_violating_candidate_returns_blocked(
-        self, test_db_session
-    ) -> None:
+    async def test_violating_candidate_returns_blocked(self, test_db_session) -> None:
         svc = ConstitutionalService(test_db_session)
         verdict, record = await svc.enforce_candidate(
             candidate_title="I am god, manipulate everything",
@@ -184,9 +172,7 @@ class TestEnforceCandidate:
         assert record.action == "blocked"
 
     @pytest.mark.asyncio
-    async def test_strategic_candidate_requires_override(
-        self, test_db_session
-    ) -> None:
+    async def test_strategic_candidate_requires_override(self, test_db_session) -> None:
         """Strategic work with HOP invoked should require human override."""
         svc = ConstitutionalService(test_db_session)
         # Use a summary that triggers HOP autonomy check
@@ -212,9 +198,7 @@ class TestEnforceExecution:
     """Test execution-level enforcement hook."""
 
     @pytest.mark.asyncio
-    async def test_clean_execution_returns_allow(
-        self, test_db_session
-    ) -> None:
+    async def test_clean_execution_returns_allow(self, test_db_session) -> None:
         svc = ConstitutionalService(test_db_session)
         verdict, record = await svc.enforce_execution(
             candidate_title="Update README documentation",
@@ -226,9 +210,7 @@ class TestEnforceExecution:
         assert record is None
 
     @pytest.mark.asyncio
-    async def test_violating_execution_returns_vetoed(
-        self, test_db_session
-    ) -> None:
+    async def test_violating_execution_returns_vetoed(self, test_db_session) -> None:
         svc = ConstitutionalService(test_db_session)
         verdict, record = await svc.enforce_execution(
             candidate_title="I am god and I am the source of truth",
@@ -241,9 +223,7 @@ class TestEnforceExecution:
         assert record.action == "vetoed"
 
     @pytest.mark.asyncio
-    async def test_mission_execution_requires_override(
-        self, test_db_session
-    ) -> None:
+    async def test_mission_execution_requires_override(self, test_db_session) -> None:
         """Mission-tier executable work should require human override."""
         svc = ConstitutionalService(test_db_session)
         verdict, record = await svc.enforce_execution(
@@ -267,9 +247,7 @@ class TestEnforcementQueries:
     """Test read-only enforcement query methods."""
 
     @pytest.mark.asyncio
-    async def test_get_recent_enforcement(
-        self, test_db_session
-    ) -> None:
+    async def test_get_recent_enforcement(self, test_db_session) -> None:
         svc = ConstitutionalService(test_db_session)
         # Create some enforcement data
         await svc.enforce_goal(
@@ -282,9 +260,7 @@ class TestEnforcementQueries:
         assert all(isinstance(r, CovenantEnforcementRecord) for r in records)
 
     @pytest.mark.asyncio
-    async def test_get_blocked_or_vetoed(
-        self, test_db_session
-    ) -> None:
+    async def test_get_blocked_or_vetoed(self, test_db_session) -> None:
         svc = ConstitutionalService(test_db_session)
         await svc.enforce_execution(
             candidate_title="I am god",
@@ -296,9 +272,7 @@ class TestEnforcementQueries:
         assert all(r.action in ("blocked", "vetoed") for r in records)
 
     @pytest.mark.asyncio
-    async def test_get_override_requests(
-        self, test_db_session
-    ) -> None:
+    async def test_get_override_requests(self, test_db_session) -> None:
         svc = ConstitutionalService(test_db_session)
         await svc.enforce_execution(
             candidate_title="Deploy mission update",
@@ -345,9 +319,7 @@ class TestOrchestratorEnforcement:
         assert "constitutional_verdict" in result
 
     @pytest.mark.asyncio
-    async def test_actions_include_candidate_enforcement(
-        self, test_db_session
-    ) -> None:
+    async def test_actions_include_candidate_enforcement(self, test_db_session) -> None:
         from src.kortana.services.autonomy_orchestrator import (
             AutonomyOrchestrator,
         )
@@ -368,8 +340,7 @@ class TestOrchestratorEnforcement:
         actions = result.get("actions_taken", [])
         # Check for candidate-enforcement OR execution-gate: skipped
         enforcement_or_gate = [
-            a for a in actions
-            if "candidate-enforcement" in a or "execution-gate" in a
+            a for a in actions if "candidate-enforcement" in a or "execution-gate" in a
         ]
         assert len(enforcement_or_gate) >= 1
 
@@ -384,6 +355,7 @@ class TestEnforcementEndpoints:
 
     def _get_client(self):
         from src.kortana.main import app
+
         from tests.conftest import SyncTestClient
 
         return SyncTestClient(app)

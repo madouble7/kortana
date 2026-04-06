@@ -22,7 +22,14 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.kortana.model_lane_policy import describe_model_lane
-from src.kortana.models import ConversationMessage, RevelationMemory, SelfMemory
+from src.kortana.models import (
+    ConstitutionalDecision,
+    ConversationMessage,
+    CovenantEnforcementRecord,
+    OutcomeLearningRecord,
+    RevelationMemory,
+    SelfMemory,
+)
 from src.kortana.provider_model_defaults import LLM_ROUTER_GEMINI_MODEL
 from src.kortana.services.gemini_config import get_preferred_model_name
 
@@ -137,6 +144,65 @@ async def _recent_revelation_titles(db: AsyncSession, hours: int = 72) -> List[s
     return [row[0] for row in result.all()]
 
 
+async def _gather_outcome_signals(db: AsyncSession, limit: int = 20) -> List[str]:
+    """Summarise recent outcome learning records for the synthesis prompt."""
+    stmt = (
+        select(OutcomeLearningRecord)
+        .order_by(OutcomeLearningRecord.created_at.desc())
+        .limit(limit)
+    )
+    result = await db.execute(stmt)
+    rows = result.scalars().all()
+    lines = []
+    for r in rows:
+        ts = r.created_at.strftime("%Y-%m-%d") if r.created_at else "?"
+        lines.append(
+            f"{ts} outcome={r.outcome_verdict} signal={r.adaptation_signal} "
+            f"weight={r.weight_delta:+.2f} scope={r.scope} lesson={r.lesson[:80]}"
+        )
+    return lines
+
+
+async def _gather_covenant_decisions(db: AsyncSession, limit: int = 15) -> List[str]:
+    """Summarise recent constitutional decisions for the synthesis prompt."""
+    stmt = (
+        select(ConstitutionalDecision)
+        .order_by(ConstitutionalDecision.created_at.desc())
+        .limit(limit)
+    )
+    result = await db.execute(stmt)
+    rows = result.scalars().all()
+    lines = []
+    for r in rows:
+        ts = r.created_at.strftime("%Y-%m-%d") if r.created_at else "?"
+        drift = " DRIFT" if r.drift_detected else ""
+        lines.append(
+            f"{ts} verdict={r.verdict} subject={r.subject_type}{drift} "
+            f"principles={r.principles_invoked}"
+        )
+    return lines
+
+
+async def _gather_override_resolutions(db: AsyncSession, limit: int = 10) -> List[str]:
+    """Summarise recent human override resolutions for the synthesis prompt."""
+    stmt = (
+        select(CovenantEnforcementRecord)
+        .where(CovenantEnforcementRecord.override_status != "pending")
+        .order_by(CovenantEnforcementRecord.override_resolved_at.desc())
+        .limit(limit)
+    )
+    result = await db.execute(stmt)
+    rows = result.scalars().all()
+    lines = []
+    for r in rows:
+        ts = r.override_resolved_at.strftime("%Y-%m-%d") if r.override_resolved_at else "?"
+        lines.append(
+            f"{ts} resolution={r.override_status} target={r.target_type} "
+            f"action={r.action} rationale={str(r.human_rationale or '')[:60]}"
+        )
+    return lines
+
+
 def _is_duplicate(new_title: str, existing_titles: List[str]) -> bool:
     """Simple token-overlap dedup — avoid re-surfacing the same insight."""
     new_words = set(new_title.lower().split())
@@ -167,6 +233,15 @@ You have access to the following raw observations:
 ## Recent git activity (what code has actually been changing)
 {git_activity}
 
+## Recent outcome learning signals (what succeeded, failed, or was inconclusive in the autonomy pipeline)
+{outcome_signals}
+
+## Recent covenant decisions (constitutional verdicts on goals, candidates, and adaptations)
+{covenant_decisions}
+
+## Recent human override resolutions (where Matt intervened in the autonomy pipeline)
+{override_resolutions}
+
 ---
 
 Your task: Identify at most 2 revelations — genuine insights that:
@@ -174,6 +249,12 @@ Your task: Identify at most 2 revelations — genuine insights that:
   - Cross-cut multiple observation categories above
   - Would be genuinely useful or meaningful for Matt to hear
   - Are specific, not generic platitudes
+
+Pay particular attention to:
+  - Patterns in outcome signals (recurring failures, surprising successes)
+  - Drift between covenant verdicts and actual override decisions (is the covenant calibrated?)
+  - Whether human overrides cluster around specific goal or action types
+  - Whether autonomy pipeline weight shifts are converging or oscillating
 
 For each revelation, respond with EXACTLY this JSON structure (no markdown, no preamble):
 [
@@ -220,12 +301,20 @@ class RevelationEngine:
             logger.info("Revelation Engine: cooldown active, skipping")
             return []
 
-        # Gather observations
-        self_memories = await _gather_self_memories(self.db, limit=40)
-        conversation_topics = await _gather_conversation_topics(self.db, limit=20)
-        git_activity = await asyncio.to_thread(_gather_git_activity)
+        # Gather observations — core + autonomy pipeline
+        self_memories, conversation_topics, git_activity, outcome_signals, covenant_decisions, override_resolutions = await asyncio.gather(
+            _gather_self_memories(self.db, limit=40),
+            _gather_conversation_topics(self.db, limit=20),
+            asyncio.to_thread(_gather_git_activity),
+            _gather_outcome_signals(self.db, limit=20),
+            _gather_covenant_decisions(self.db, limit=15),
+            _gather_override_resolutions(self.db, limit=10),
+        )
 
-        total_observations = len(self_memories) + len(conversation_topics) + len(git_activity)
+        total_observations = (
+            len(self_memories) + len(conversation_topics) + len(git_activity)
+            + len(outcome_signals) + len(covenant_decisions)
+        )
         if total_observations < MIN_OBSERVATIONS:
             logger.info(
                 f"Revelation Engine: only {total_observations} observations — need {MIN_OBSERVATIONS}"
@@ -236,6 +325,9 @@ class RevelationEngine:
             self_memories="\n".join(self_memories) or "(none yet)",
             conversation_topics="\n".join(conversation_topics) or "(none yet)",
             git_activity="\n".join(git_activity) or "(none yet)",
+            outcome_signals="\n".join(outcome_signals) or "(none yet)",
+            covenant_decisions="\n".join(covenant_decisions) or "(none yet)",
+            override_resolutions="\n".join(override_resolutions) or "(none yet)",
         )
 
         raw = await _call_gemini_revelation(prompt)

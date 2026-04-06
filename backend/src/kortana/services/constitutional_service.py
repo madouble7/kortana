@@ -27,9 +27,41 @@ from src.kortana.models import (
     ConstitutionalDecision,
     ConstitutionalPrinciple,
     CovenantEnforcementRecord,
+    OverrideAuditRecord,
 )
 
 logger = logging.getLogger(__name__)
+
+# ------------------------------------------------------------------
+# Phase 12: Authority Policy — Trust Calibration
+#
+# Deterministic, in-code authority configuration.
+# Maps resolver identities to authority tiers and defines
+# which resolutions require which minimum tier.
+#
+# Tier hierarchy (highest → lowest): owner > operator > system
+# ------------------------------------------------------------------
+
+AUTHORITY_TIERS: Dict[str, int] = {
+    "owner": 100,    # Matt — full authority
+    "operator": 50,  # trusted operators — limited resolution
+    "system": 10,    # automated processes — expiry only
+}
+
+# Map resolver identities to their authority tier
+RESOLVER_AUTHORITY: Dict[str, str] = {
+    "matt": "owner",
+    "system:expiry": "system",
+    "system:sweep": "system",
+}
+
+# Map resolution actions to minimum required tier
+RESOLUTION_REQUIRED_TIER: Dict[str, str] = {
+    "approved": "owner",     # only Matt can approve
+    "denied": "owner",       # only Matt can deny
+    "revoked": "owner",      # only Matt can revoke
+    "expired": "system",     # automated or anyone above
+}
 
 
 # ---------------------------------------------------------------------------
@@ -814,8 +846,53 @@ class ConstitutionalService:
         return list(result.scalars().all())
 
     # ------------------------------------------------------------------
-    # Phase 11: Override Resolution — Human Covenant Interface
+    # Phase 11+12: Override Resolution with Authority Checks
     # ------------------------------------------------------------------
+
+    async def _record_audit(
+        self,
+        enforcement_record_id: Optional[str],
+        resolver: str,
+        authority_tier: Optional[str],
+        required_tier: Optional[str],
+        action_attempted: str,
+        outcome: str,
+        detail: Optional[str] = None,
+        cycle_id: Optional[str] = None,
+    ) -> OverrideAuditRecord:
+        """Persist an audit record for an override resolution attempt."""
+        audit = OverrideAuditRecord(
+            enforcement_record_id=enforcement_record_id,
+            resolver_identity=resolver,
+            authority_tier=authority_tier,
+            required_tier=required_tier,
+            action_attempted=action_attempted,
+            outcome=outcome,
+            detail=detail,
+            cycle_id=cycle_id,
+        )
+        self.db.add(audit)
+        try:
+            await self.db.commit()
+            await self.db.refresh(audit)
+        except Exception:
+            await self.db.rollback()
+            logger.exception("Failed to persist audit record")
+        return audit
+
+    def _get_resolver_tier(self, resolver: str) -> Optional[str]:
+        """Look up the authority tier for a resolver identity."""
+        return RESOLVER_AUTHORITY.get(resolver)
+
+    def _has_sufficient_authority(
+        self, resolver_tier: Optional[str], required_tier: str
+    ) -> bool:
+        """Check if resolver_tier meets or exceeds required_tier."""
+        if resolver_tier is None:
+            return False
+        resolver_level = AUTHORITY_TIERS.get(resolver_tier, 0)
+        required_level = AUTHORITY_TIERS.get(required_tier, 999)
+        return resolver_level >= required_level
 
     async def resolve_override(
         self,
@@ -824,18 +901,59 @@ class ConstitutionalService:
         resolver: str,
         rationale: str,
     ) -> Optional[CovenantEnforcementRecord]:
-        """Resolve an override request: approve, deny, expire, or revoke.
+        """Resolve an override request with authority check and audit trail.
 
         Only records with override_status='pending' can be resolved
         (except 'revoke' which can act on 'approved' records).
 
-        Returns the updated record or None if not found / invalid state.
+        Returns the updated record or None if unauthorized / invalid state.
         """
         valid_resolutions = {"approved", "denied", "expired", "revoked"}
         if resolution not in valid_resolutions:
             logger.warning(f"Invalid resolution '{resolution}' for record {record_id}")
             return None
 
+        # --- Authority check ---
+        resolver_tier = self._get_resolver_tier(resolver)
+        required_tier = RESOLUTION_REQUIRED_TIER.get(resolution, "owner")
+
+        if resolver_tier is None:
+            # Unknown resolver — unauthorized
+            logger.warning(
+                f"Unauthorized resolver '{resolver}' attempted "
+                f"'{resolution}' on record {record_id}"
+            )
+            await self._record_audit(
+                enforcement_record_id=record_id,
+                resolver=resolver,
+                authority_tier=None,
+                required_tier=required_tier,
+                action_attempted=resolution,
+                outcome="unauthorized",
+                detail=f"Resolver '{resolver}' not in authority policy.",
+            )
+            return None
+
+        if not self._has_sufficient_authority(resolver_tier, required_tier):
+            logger.warning(
+                f"Insufficient authority: '{resolver}' (tier={resolver_tier}) "
+                f"attempted '{resolution}' requiring tier={required_tier}"
+            )
+            await self._record_audit(
+                enforcement_record_id=record_id,
+                resolver=resolver,
+                authority_tier=resolver_tier,
+                required_tier=required_tier,
+                action_attempted=resolution,
+                outcome="insufficient_authority",
+                detail=(
+                    f"Resolver '{resolver}' has tier '{resolver_tier}' "
+                    f"but '{resolution}' requires '{required_tier}'."
+                ),
+            )
+            return None
+
+        # --- Load record ---
         stmt = select(CovenantEnforcementRecord).where(
             CovenantEnforcementRecord.id == record_id
         )
@@ -844,14 +962,36 @@ class ConstitutionalService:
 
         if record is None:
             logger.info(f"Override record not found: {record_id}")
+            await self._record_audit(
+                enforcement_record_id=record_id,
+                resolver=resolver,
+                authority_tier=resolver_tier,
+                required_tier=required_tier,
+                action_attempted=resolution,
+                outcome="not_found",
+                detail=f"Enforcement record {record_id} does not exist.",
+            )
             return None
 
-        # State machine: pending → approved/denied/expired; approved → revoked
+        # --- State machine: pending → approved/denied/expired; approved → revoked ---
         if resolution == "revoked":
             if record.override_status != "approved":
                 logger.warning(
                     f"Cannot revoke record {record_id}: "
                     f"status is '{record.override_status}', not 'approved'"
+                )
+                await self._record_audit(
+                    enforcement_record_id=record_id,
+                    resolver=resolver,
+                    authority_tier=resolver_tier,
+                    required_tier=required_tier,
+                    action_attempted=resolution,
+                    outcome="invalid_state",
+                    detail=(
+                        f"Cannot revoke: status is '{record.override_status}', "
+                        f"not 'approved'."
+                    ),
+                    cycle_id=record.cycle_id,
                 )
                 return None
         else:
@@ -860,8 +1000,22 @@ class ConstitutionalService:
                     f"Cannot resolve record {record_id}: "
                     f"status is '{record.override_status}', not 'pending'"
                 )
+                await self._record_audit(
+                    enforcement_record_id=record_id,
+                    resolver=resolver,
+                    authority_tier=resolver_tier,
+                    required_tier=required_tier,
+                    action_attempted=resolution,
+                    outcome="invalid_state",
+                    detail=(
+                        f"Cannot '{resolution}': status is "
+                        f"'{record.override_status}', not 'pending'."
+                    ),
+                    cycle_id=record.cycle_id,
+                )
                 return None
 
+        # --- Apply resolution ---
         from datetime import datetime
 
         record.override_status = resolution
@@ -873,14 +1027,37 @@ class ConstitutionalService:
         try:
             await self.db.commit()
             await self.db.refresh(record)
-            logger.info(
-                f"Override {record_id} resolved: {resolution} "
-                f"by {resolver}"
-            )
+            logger.info(f"Override {record_id} resolved: {resolution} by {resolver}")
         except Exception:
             await self.db.rollback()
             logger.exception(f"Failed to resolve override {record_id}")
             return None
+
+        # --- Record authorized audit ---
+        await self._record_audit(
+            enforcement_record_id=record_id,
+            resolver=resolver,
+            authority_tier=resolver_tier,
+            required_tier=required_tier,
+            action_attempted=resolution,
+            outcome="authorized",
+            detail=f"Resolved: {resolution}. Rationale: {rationale}",
+            cycle_id=record.cycle_id,
+        )
+
+        # --- Feed outcome back into the learning loop ---
+        try:
+            from src.kortana.services.outcome_learning_service import OutcomeLearningService
+
+            ols = OutcomeLearningService(self.db)
+            await ols.learn_from_override(
+                enforcement_record=record,
+                cycle_id=record.cycle_id,
+            )
+        except Exception:
+            logger.exception(
+                f"Non-fatal: outcome learning from override {record_id} failed"
+            )
 
         return record
 
@@ -889,6 +1066,7 @@ class ConstitutionalService:
     ) -> List[CovenantEnforcementRecord]:
         """Auto-expire pending overrides older than max_age_hours.
 
+        Records system_expiry audit for each expired record.
         Returns list of expired records.
         """
         from datetime import datetime, timedelta
@@ -919,6 +1097,19 @@ class ConstitutionalService:
                 await self.db.rollback()
                 logger.exception("Failed to expire stale overrides")
                 return []
+
+            # Record audit entries for each expired record
+            for record in stale:
+                await self._record_audit(
+                    enforcement_record_id=str(record.id),
+                    resolver="system:expiry",
+                    authority_tier="system",
+                    required_tier="system",
+                    action_attempted="expired",
+                    outcome="system_expiry",
+                    detail=f"Auto-expired after {max_age_hours}h.",
+                    cycle_id=str(record.cycle_id) if record.cycle_id else None,
+                )
 
         return stale
 
@@ -951,3 +1142,45 @@ class ConstitutionalService:
         )
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
+
+    # ------------------------------------------------------------------
+    # Phase 12: Authority Audit Queries
+    # ------------------------------------------------------------------
+
+    async def get_audit_history(
+        self, limit: int = 20
+    ) -> List[OverrideAuditRecord]:
+        """Return recent audit records, newest first."""
+        stmt = (
+            select(OverrideAuditRecord)
+            .order_by(OverrideAuditRecord.created_at.desc())
+            .limit(limit)
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_unauthorized_attempts(
+        self, limit: int = 20
+    ) -> List[OverrideAuditRecord]:
+        """Return unauthorized or insufficient-authority resolution attempts."""
+        stmt = (
+            select(OverrideAuditRecord)
+            .where(
+                OverrideAuditRecord.outcome.in_(
+                    ["unauthorized", "insufficient_authority"]
+                )
+            )
+            .order_by(OverrideAuditRecord.created_at.desc())
+            .limit(limit)
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
+    @staticmethod
+    def get_authority_policy() -> Dict[str, Any]:
+        """Return the current authority policy configuration."""
+        return {
+            "tiers": AUTHORITY_TIERS,
+            "resolver_authority": RESOLVER_AUTHORITY,
+            "resolution_required_tier": RESOLUTION_REQUIRED_TIER,
+        }

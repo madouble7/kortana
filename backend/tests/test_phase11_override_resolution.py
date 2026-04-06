@@ -24,7 +24,6 @@ from src.kortana.services.outcome_learning_service import (
     OutcomeLearningService,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -121,9 +120,7 @@ class TestResolveOverride:
 
         svc = ConstitutionalService(test_db_session)
         # First approve
-        await svc.resolve_override(
-            record.id, "approved", "matt", "Go ahead."
-        )
+        await svc.resolve_override(record.id, "approved", "matt", "Go ahead.")
         # Then revoke
         result = await svc.resolve_override(
             record.id, "revoked", "matt", "Changed my mind."
@@ -142,9 +139,7 @@ class TestResolveOverride:
         svc = ConstitutionalService(test_db_session)
         await svc.resolve_override(record.id, "denied", "matt", "No.")
         # Try to approve after denial — should fail
-        result = await svc.resolve_override(
-            record.id, "approved", "matt", "Wait, yes."
-        )
+        result = await svc.resolve_override(record.id, "approved", "matt", "Wait, yes.")
         assert result is None
 
     @pytest.mark.asyncio
@@ -155,17 +150,13 @@ class TestResolveOverride:
         await test_db_session.refresh(record)
 
         svc = ConstitutionalService(test_db_session)
-        result = await svc.resolve_override(
-            record.id, "revoked", "matt", "Nope."
-        )
+        result = await svc.resolve_override(record.id, "revoked", "matt", "Nope.")
         assert result is None
 
     @pytest.mark.asyncio
     async def test_invalid_resolution_returns_none(self, test_db_session) -> None:
         svc = ConstitutionalService(test_db_session)
-        result = await svc.resolve_override(
-            "nonexistent", "invalid_status", "matt", ""
-        )
+        result = await svc.resolve_override("nonexistent", "invalid_status", "matt", "")
         assert result is None
 
     @pytest.mark.asyncio
@@ -255,12 +246,8 @@ class TestOverrideLearningFeedback:
     """Test that override resolutions produce correct adaptation signals."""
 
     @pytest.mark.asyncio
-    async def test_approved_produces_positive_signal(
-        self, test_db_session
-    ) -> None:
-        record = _make_pending_record(
-            test_db_session, target_type="candidate"
-        )
+    async def test_approved_produces_positive_signal(self, test_db_session) -> None:
+        record = _make_pending_record(test_db_session, target_type="candidate")
         await test_db_session.commit()
         await test_db_session.refresh(record)
 
@@ -280,19 +267,13 @@ class TestOverrideLearningFeedback:
         assert lr.execution_record_id is None
 
     @pytest.mark.asyncio
-    async def test_denied_produces_negative_signal(
-        self, test_db_session
-    ) -> None:
-        record = _make_pending_record(
-            test_db_session, target_type="execution"
-        )
+    async def test_denied_produces_negative_signal(self, test_db_session) -> None:
+        record = _make_pending_record(test_db_session, target_type="execution")
         await test_db_session.commit()
         await test_db_session.refresh(record)
 
         svc = ConstitutionalService(test_db_session)
-        resolved = await svc.resolve_override(
-            record.id, "denied", "matt", "Too risky."
-        )
+        resolved = await svc.resolve_override(record.id, "denied", "matt", "Too risky.")
 
         learner = OutcomeLearningService(test_db_session)
         lr = await learner.learn_from_override_resolution(resolved)
@@ -303,9 +284,7 @@ class TestOverrideLearningFeedback:
         assert lr.outcome_verdict == "failed"
 
     @pytest.mark.asyncio
-    async def test_expired_produces_weak_negative(
-        self, test_db_session
-    ) -> None:
+    async def test_expired_produces_weak_negative(self, test_db_session) -> None:
         record = _make_pending_record(test_db_session)
         await test_db_session.commit()
         await test_db_session.refresh(record)
@@ -322,12 +301,8 @@ class TestOverrideLearningFeedback:
         assert lr.signal_weight == -0.05
 
     @pytest.mark.asyncio
-    async def test_revoked_produces_negative_signal(
-        self, test_db_session
-    ) -> None:
-        record = _make_pending_record(
-            test_db_session, target_type="goal"
-        )
+    async def test_revoked_produces_negative_signal(self, test_db_session) -> None:
+        record = _make_pending_record(test_db_session, target_type="goal")
         await test_db_session.commit()
         await test_db_session.refresh(record)
 
@@ -368,9 +343,7 @@ class TestOverrideEndpoints:
 
     def test_resolve_override_endpoint_requires_resolution(self, client) -> None:
         """POST without resolution param should fail validation."""
-        resp = client.post(
-            "/api/consciousness/covenant/overrides/fake_id/resolve"
-        )
+        resp = client.post("/api/consciousness/covenant/overrides/fake_id/resolve")
         assert resp.status_code == 422  # missing required 'resolution'
 
     def test_resolve_override_invalid_resolution(self, client) -> None:

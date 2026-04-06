@@ -257,6 +257,19 @@ class AutonomyOrchestrator:
             logger.exception("Constitutional review failed")
             actions_taken.append("constitutional: failed")
 
+        # ---- 3.97 STALE OVERRIDE EXPIRY (Trust Calibration) ----
+        expired_count = 0
+        try:
+            covenant_for_expiry = ConstitutionalService(self.db)
+            expired = await covenant_for_expiry.expire_stale_overrides(
+                max_age_hours=24
+            )
+            expired_count = len(expired)
+            if expired_count > 0:
+                actions_taken.append(f"expired_overrides: {expired_count}")
+        except Exception:
+            logger.exception("Stale override expiry sweep failed")
+
         # ---- 4. PERSIST cycle record to DB ----
         elapsed_ms = int((time.monotonic() - start) * 1000)
 
@@ -279,6 +292,7 @@ class AutonomyOrchestrator:
             "adaptation_signal": adaptation_signal,
             "constitutional_decision_id": constitutional_decision_id,
             "constitutional_verdict": constitutional_verdict,
+            "expired_overrides": expired_count,
             "actions_taken": actions_taken,
         }
 

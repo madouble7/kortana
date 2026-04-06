@@ -884,3 +884,51 @@ class CovenantEnforcementRecord(Base):
             f"<CovenantEnforcementRecord {self.action} on "
             f"{self.target_type}:{self.target_id}>"
         )
+
+
+class OverrideAuditRecord(Base):
+    """Audit trail for every override resolution attempt.
+
+    Every call to resolve an override — whether it succeeds or fails —
+    is recorded here. This is the authority accountability layer.
+
+    Outcomes:
+      authorized        — resolver had sufficient authority, resolution applied
+      unauthorized      — resolver not recognized in authority policy
+      insufficient_authority — resolver recognized but tier too low
+      system_expiry     — automatic expiry by the background sweep
+      invalid_state     — record not in a valid state for this resolution
+      not_found         — enforcement record does not exist
+    """
+
+    __tablename__ = "override_audit_records"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    enforcement_record_id = Column(
+        String(36),
+        ForeignKey("covenant_enforcement_records.id"),
+        nullable=True,
+        index=True,
+    )
+    resolver_identity = Column(String(128), nullable=False, index=True)
+    authority_tier = Column(
+        String(32), nullable=True
+    )  # owner | operator | system | None (unknown)
+    required_tier = Column(
+        String(32), nullable=True
+    )  # what tier was needed for this resolution
+    action_attempted = Column(
+        String(32), nullable=False, index=True
+    )  # approved | denied | expired | revoked
+    outcome = Column(
+        String(32), nullable=False, index=True
+    )  # authorized | unauthorized | insufficient_authority | system_expiry | invalid_state | not_found
+    detail = Column(Text, nullable=True)
+    cycle_id = Column(String(8), nullable=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        return (
+            f"<OverrideAuditRecord {self.action_attempted} "
+            f"by {self.resolver_identity}: {self.outcome}>"
+        )

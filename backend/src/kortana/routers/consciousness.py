@@ -1174,3 +1174,71 @@ async def resolve_override(
             else None
         ),
     }
+
+
+# ==================================================================
+# Phase 12: Trust Calibration / Authority Boundaries
+#
+# Endpoints for viewing authority policy, audit history, and
+# unauthorized resolution attempts.
+# ==================================================================
+
+
+def _format_audit_record(r: Any) -> Dict[str, Any]:
+    """Format an OverrideAuditRecord for API response."""
+    return {
+        "id": r.id,
+        "enforcement_record_id": r.enforcement_record_id,
+        "resolver_identity": r.resolver_identity,
+        "authority_tier": r.authority_tier,
+        "required_tier": r.required_tier,
+        "action_attempted": r.action_attempted,
+        "outcome": r.outcome,
+        "detail": r.detail,
+        "cycle_id": r.cycle_id,
+        "created_at": (r.created_at.isoformat() if r.created_at else None),
+    }
+
+
+@router.get("/covenant/authority/policy")
+async def get_authority_policy() -> Dict[str, Any]:
+    """Current authority policy configuration.
+
+    Shows who can resolve overrides, at what tier, and
+    what tier each resolution type requires.
+    """
+    from src.kortana.services.constitutional_service import ConstitutionalService
+
+    return ConstitutionalService.get_authority_policy()
+
+
+@router.get("/covenant/authority/audit")
+async def get_authority_audit(
+    limit: int = Query(default=20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """Recent override resolution audit trail (all outcomes)."""
+    from src.kortana.services.constitutional_service import ConstitutionalService
+
+    svc = ConstitutionalService(db)
+    records = await svc.get_audit_history(limit=limit)
+    return {
+        "count": len(records),
+        "audit": [_format_audit_record(r) for r in records],
+    }
+
+
+@router.get("/covenant/authority/unauthorized")
+async def get_unauthorized_attempts(
+    limit: int = Query(default=20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """Unauthorized or insufficient-authority resolution attempts."""
+    from src.kortana.services.constitutional_service import ConstitutionalService
+
+    svc = ConstitutionalService(db)
+    records = await svc.get_unauthorized_attempts(limit=limit)
+    return {
+        "count": len(records),
+        "unauthorized": [_format_audit_record(r) for r in records],
+    }
