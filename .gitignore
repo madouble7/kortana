@@ -234,6 +234,14 @@ vscode-extension/.vscode-test/
 # Runtime temporal continuity state
 mcp-server/temporal_state.json
 
+# Large local media / model artifacts
+*.mp4
+*.db-journal
+temp_*
+models/piper/**
+mcp-server/models/**
+mcp-server/piper/**
+
 # Secrets
 secrets.json
 key.json
@@ -245,3 +253,4 @@ key.json
 celerybeat-schedule.*
 .kortana/operator_inbox.md
 .vector_alpha_worktree/
+.claude/worktrees/
