@@ -3,12 +3,12 @@ import { execSync } from "child_process";
 import * as vscode from "vscode";
 import {
     COMMAND_CHECK_HEALTH,
+    COMMAND_KILL_SWITCH,
     COMMAND_OPEN_AI_STUDIO,
     COMMAND_OPEN_AUTONOMY_AUDIT,
     COMMAND_OPEN_DEPLOY_PAGE,
     COMMAND_UNSEAL_RUNTIME,
     COMMAND_VIEW_METRICS,
-    COMMAND_KILL_SWITCH,
 } from "./commands";
 import { FocusTelemetry } from "./telemetry";
 import { getAutonomyAuditContent } from "./webview/audit";
@@ -121,7 +121,7 @@ export function activate(context: vscode.ExtensionContext) {
                 "Yes, Engage Kill Switch",
                 "Cancel"
             );
-            
+
             if (answer !== "Yes, Engage Kill Switch") {
                 return;
             }
@@ -130,7 +130,7 @@ export function activate(context: vscode.ExtensionContext) {
                 // Call the local backend kill-switch endpoint
                 const axios = require("axios");
                 await axios.post("http://localhost:8000/api/autonomy/kill-switch");
-                
+
                 vscode.window.showInformationMessage(
                     "🛑 KILL SWITCH ENGAGED. Autonomy locked and rollback initiated."
                 );

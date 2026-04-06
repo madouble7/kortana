@@ -3,7 +3,7 @@ export const COMMAND_OPEN_DEPLOY_PAGE = "kortana.openDeployPage";
 export const COMMAND_UNSEAL_RUNTIME = "kortana.unsealRuntime";
 export const COMMAND_CHECK_HEALTH = "kortana.checkHealth";
 export const COMMAND_VIEW_METRICS = "kortana.viewMetrics";
-export const COMMAND_OPEN_AUTONOMY_AUDIT = "kortana.autonomy.audit.open";export const COMMAND_KILL_SWITCH = "kortana.killSwitch";
+export const COMMAND_OPEN_AUTONOMY_AUDIT = "kortana.autonomy.audit.open"; export const COMMAND_KILL_SWITCH = "kortana.killSwitch";
 export const DASHBOARD_COMMAND_MAP: Record<string, string> = {
     openAIStudio: COMMAND_OPEN_AI_STUDIO,
     openDeployPage: COMMAND_OPEN_DEPLOY_PAGE,
