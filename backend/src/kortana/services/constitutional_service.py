@@ -18,6 +18,7 @@ Kor'tana can evolve without losing herself.
 """
 
 import logging
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import func, select
@@ -62,6 +63,92 @@ RESOLUTION_REQUIRED_TIER: Dict[str, str] = {
     "revoked": "owner",      # only Matt can revoke
     "expired": "system",     # automated or anyone above
 }
+
+
+# ------------------------------------------------------------------
+# Phase 13: Auth-Bound Resolver Identity
+#
+# Trusted resolver context derived from authenticated user state
+# or known system actor identity — never from caller-provided text.
+# ------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ResolverContext:
+    """Trusted resolver identity for override resolution.
+
+    For human resolvers: built from authenticated TokenData + User record.
+    For system actors: built from known system actor names.
+    """
+
+    actor_type: str  # "human" | "system"
+    actor_name: str  # e.g. "matt", "system:expiry"
+    user_id: Optional[str]  # User.id if human, None if system
+    authority_tier: str  # derived from trusted source
+
+
+def resolve_context_for_system(actor_name: str) -> ResolverContext:
+    """Build a ResolverContext for a known system actor.
+
+    System actors have deterministic tier from RESOLVER_AUTHORITY.
+    Unknown system actors get no tier (will fail authority checks).
+    """
+    tier = RESOLVER_AUTHORITY.get(actor_name)
+    return ResolverContext(
+        actor_type="system",
+        actor_name=actor_name,
+        user_id=None,
+        authority_tier=tier or "",
+    )
+
+
+async def resolve_context_from_user(
+    token_data: Any, db: AsyncSession
+) -> ResolverContext:
+    """Build a ResolverContext from an authenticated user.
+
+    Derives authority tier from the actual User record:
+      - is_superuser=True → owner
+      - is_active regular user → operator
+      - fallback → no authority (empty string, will fail checks)
+
+    Also checks RESOLVER_AUTHORITY for username-based overrides.
+    """
+    from src.kortana.models import User
+
+    user_id: Optional[str] = None
+    actor_name: str = token_data.email or token_data.username or "unknown"
+    tier: str = ""
+
+    # Look up the real user record for trusted state
+    if token_data.user_id:
+        stmt = select(User).where(User.id == str(token_data.user_id))
+        result = await db.execute(stmt)
+        user = result.scalar_one_or_none()
+        if user is not None:
+            user_id = str(user.id)
+            actor_name = user.username or user.email
+
+            # Derive tier from trusted DB state
+            if user.is_superuser:
+                tier = "owner"
+            elif user.is_active:
+                tier = "operator"
+
+    # Allow RESOLVER_AUTHORITY override (e.g. "matt" → "owner" even if
+    # DB doesn't have is_superuser set for some reason)
+    policy_tier = RESOLVER_AUTHORITY.get(actor_name)
+    if policy_tier and AUTHORITY_TIERS.get(policy_tier, 0) > AUTHORITY_TIERS.get(
+        tier, 0
+    ):
+        tier = policy_tier
+
+    return ResolverContext(
+        actor_type="human",
+        actor_name=actor_name,
+        user_id=user_id,
+        authority_tier=tier,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -846,7 +933,7 @@ class ConstitutionalService:
         return list(result.scalars().all())
 
     # ------------------------------------------------------------------
-    # Phase 11+12: Override Resolution with Authority Checks
+    # Phase 11+12+13: Override Resolution with Auth-Bound Authority
     # ------------------------------------------------------------------
 
     async def _record_audit(
@@ -859,11 +946,22 @@ class ConstitutionalService:
         outcome: str,
         detail: Optional[str] = None,
         cycle_id: Optional[str] = None,
+        resolver_context: Optional["ResolverContext"] = None,
     ) -> OverrideAuditRecord:
-        """Persist an audit record for an override resolution attempt."""
+        """Persist an audit record for an override resolution attempt.
+
+        When resolver_context is provided, trusted identity fields
+        (resolver_user_id, resolver_actor_type) are captured.
+        """
         audit = OverrideAuditRecord(
             enforcement_record_id=enforcement_record_id,
             resolver_identity=resolver,
+            resolver_user_id=(
+                resolver_context.user_id if resolver_context else None
+            ),
+            resolver_actor_type=(
+                resolver_context.actor_type if resolver_context else None
+            ),
             authority_tier=authority_tier,
             required_tier=required_tier,
             action_attempted=action_attempted,
@@ -900,11 +998,13 @@ class ConstitutionalService:
         resolution: str,
         resolver: str,
         rationale: str,
+        resolver_context: Optional["ResolverContext"] = None,
     ) -> Optional[CovenantEnforcementRecord]:
         """Resolve an override request with authority check and audit trail.
 
-        Only records with override_status='pending' can be resolved
-        (except 'revoke' which can act on 'approved' records).
+        When resolver_context is provided (Phase 13), authority is derived
+        from the trusted context. Otherwise falls back to string-based
+        RESOLVER_AUTHORITY lookup (Phase 12 compat).
 
         Returns the updated record or None if unauthorized / invalid state.
         """
@@ -913,8 +1013,15 @@ class ConstitutionalService:
             logger.warning(f"Invalid resolution '{resolution}' for record {record_id}")
             return None
 
-        # --- Authority check ---
-        resolver_tier = self._get_resolver_tier(resolver)
+        # --- Derive authority from context or string ---
+        if resolver_context is not None:
+            resolver_tier: Optional[str] = (
+                resolver_context.authority_tier or None
+            )
+            resolver = resolver_context.actor_name
+        else:
+            resolver_tier = self._get_resolver_tier(resolver)
+
         required_tier = RESOLUTION_REQUIRED_TIER.get(resolution, "owner")
 
         if resolver_tier is None:
@@ -931,6 +1038,7 @@ class ConstitutionalService:
                 action_attempted=resolution,
                 outcome="unauthorized",
                 detail=f"Resolver '{resolver}' not in authority policy.",
+                resolver_context=resolver_context,
             )
             return None
 
@@ -950,6 +1058,7 @@ class ConstitutionalService:
                     f"Resolver '{resolver}' has tier '{resolver_tier}' "
                     f"but '{resolution}' requires '{required_tier}'."
                 ),
+                resolver_context=resolver_context,
             )
             return None
 
@@ -970,6 +1079,7 @@ class ConstitutionalService:
                 action_attempted=resolution,
                 outcome="not_found",
                 detail=f"Enforcement record {record_id} does not exist.",
+                resolver_context=resolver_context,
             )
             return None
 
@@ -992,6 +1102,7 @@ class ConstitutionalService:
                         f"not 'approved'."
                     ),
                     cycle_id=record.cycle_id,
+                    resolver_context=resolver_context,
                 )
                 return None
         else:
@@ -1012,10 +1123,11 @@ class ConstitutionalService:
                         f"'{record.override_status}', not 'pending'."
                     ),
                     cycle_id=record.cycle_id,
+                    resolver_context=resolver_context,
                 )
                 return None
 
-        # --- Apply resolution ---
+        # --- Apply resolution with trusted identity ---
         from datetime import datetime
 
         record.override_status = resolution
@@ -1023,6 +1135,9 @@ class ConstitutionalService:
         record.override_resolved_at = datetime.utcnow()
         record.resolver_identity = resolver
         record.human_rationale = rationale
+        if resolver_context is not None:
+            record.resolver_user_id = resolver_context.user_id
+            record.resolver_actor_type = resolver_context.actor_type
 
         try:
             await self.db.commit()
@@ -1043,6 +1158,7 @@ class ConstitutionalService:
             outcome="authorized",
             detail=f"Resolved: {resolution}. Rationale: {rationale}",
             cycle_id=record.cycle_id,
+            resolver_context=resolver_context,
         )
 
         # --- Feed outcome back into the learning loop ---
@@ -1080,11 +1196,14 @@ class ConstitutionalService:
         stale = list(result.scalars().all())
 
         now = datetime.utcnow()
+        expiry_ctx = resolve_context_for_system("system:expiry")
         for record in stale:
             record.override_status = "expired"
             record.resolution_outcome = "expired"
             record.override_resolved_at = now
             record.resolver_identity = "system:expiry"
+            record.resolver_user_id = None
+            record.resolver_actor_type = "system"
             record.human_rationale = (
                 f"Auto-expired after {max_age_hours}h without resolution."
             )
@@ -1109,6 +1228,7 @@ class ConstitutionalService:
                     outcome="system_expiry",
                     detail=f"Auto-expired after {max_age_hours}h.",
                     cycle_id=str(record.cycle_id) if record.cycle_id else None,
+                    resolver_context=expiry_ctx,
                 )
 
         return stale

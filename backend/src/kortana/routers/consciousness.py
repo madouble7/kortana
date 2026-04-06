@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.kortana.auth import get_current_active_user as _get_current_active_user
 from src.kortana.database import get_db
 from src.kortana.services.experience_distiller import (
     ExperienceDistiller,
@@ -1190,6 +1191,8 @@ def _format_audit_record(r: Any) -> Dict[str, Any]:
         "id": r.id,
         "enforcement_record_id": r.enforcement_record_id,
         "resolver_identity": r.resolver_identity,
+        "resolver_user_id": getattr(r, "resolver_user_id", None),
+        "resolver_actor_type": getattr(r, "resolver_actor_type", None),
         "authority_tier": r.authority_tier,
         "required_tier": r.required_tier,
         "action_attempted": r.action_attempted,
@@ -1241,4 +1244,85 @@ async def get_unauthorized_attempts(
     return {
         "count": len(records),
         "unauthorized": [_format_audit_record(r) for r in records],
+    }
+
+
+# ==================================================================
+# Phase 13: Auth-Bound Override Resolution
+#
+# Authenticated endpoint that derives resolver identity and authority
+# from the Bearer token / User record — never from caller-provided text.
+# ==================================================================
+
+
+@router.post("/covenant/overrides/{record_id}/resolve/authenticated")
+async def resolve_override_authenticated(
+    record_id: str,
+    resolution: str = Query(..., pattern="^(approved|denied|expired|revoked)$"),
+    rationale: str = Query(default=""),
+    db: AsyncSession = Depends(get_db),
+    current_user: Any = Depends(_get_current_active_user),
+) -> Dict[str, Any]:
+    """Resolve a pending override using authenticated identity.
+
+    Authority tier is derived from the authenticated user's DB state
+    (is_superuser → owner, active user → operator).
+    No self-reported resolver string is accepted.
+    """
+    from src.kortana.services.constitutional_service import (
+        ConstitutionalService,
+        resolve_context_from_user,
+    )
+    from src.kortana.services.outcome_learning_service import OutcomeLearningService
+
+    ctx = await resolve_context_from_user(current_user, db)
+    svc = ConstitutionalService(db)
+    record = await svc.resolve_override(
+        record_id=record_id,
+        resolution=resolution,
+        resolver=ctx.actor_name,
+        rationale=rationale,
+        resolver_context=ctx,
+    )
+
+    if record is None:
+        return {
+            "status": "error",
+            "detail": (
+                f"Override {record_id} not found, unauthorized, or cannot be "
+                f"resolved with '{resolution}' from current state."
+            ),
+            "resolver": {
+                "actor_name": ctx.actor_name,
+                "actor_type": ctx.actor_type,
+                "authority_tier": ctx.authority_tier,
+            },
+        }
+
+    # Feed resolution into outcome learning
+    learning_record = None
+    try:
+        learner = OutcomeLearningService(db)
+        learning_record = await learner.learn_from_override_resolution(record)
+    except Exception:
+        logger.exception("Failed to produce learning from override resolution")
+
+    return {
+        "status": "resolved",
+        "record": _format_enforcement_record(record),
+        "resolver": {
+            "actor_name": ctx.actor_name,
+            "actor_type": ctx.actor_type,
+            "user_id": ctx.user_id,
+            "authority_tier": ctx.authority_tier,
+        },
+        "learning": (
+            {
+                "signal": learning_record.adaptation_signal,
+                "weight": learning_record.signal_weight,
+                "lesson": learning_record.lesson,
+            }
+            if learning_record
+            else None
+        ),
     }
