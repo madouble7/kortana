@@ -16,7 +16,6 @@ Auto-start: registered via Task Scheduler (kortana-voice-daemon)
 from __future__ import annotations
 
 import os
-import shutil
 import subprocess
 import threading
 import time
@@ -29,32 +28,38 @@ import numpy as np
 import sounddevice as sd
 import speech_recognition as sr
 
+
+# ── load .env for GitHub token and other secrets ──────────────────────────────
+def _load_env_file(path: str) -> None:
+    try:
+        for line in Path(path).read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, _, v = line.partition("=")
+                if k.strip() not in os.environ:
+                    os.environ[k.strip()] = v.strip().strip('"').strip("'")
+    except Exception:
+        pass
+
+
+_load_env_file(r"c:\kortana\.env")
+_load_env_file(r"c:\kortana\backend\.env")
+
 # ── config ─────────────────────────────────────────────────────────────────────
 BACKEND_URL = os.getenv("KORTANA_BACKEND_URL", "http://localhost:8000")
 CHAT_ENDPOINT = f"{BACKEND_URL}/api/gemini/chat"
 SESSION_ID = "voice"
 LOG_FILE = Path(r"c:\kortana\logs\voice_daemon.log")
 
-# Piper TTS paths — piper.exe is installed by piper-tts package
-_PIPER_EXE_FOUND = shutil.which("piper") or shutil.which(
-    r"C:\Users\madou\AppData\Roaming\Python\Python311\Scripts\piper.exe"
-)
-PIPER_EXE = (
-    Path(_PIPER_EXE_FOUND)
-    if _PIPER_EXE_FOUND
-    else Path(r"c:\kortana\models\piper\piper.exe")
-)
-MODELS_DIR = Path(r"c:\kortana\models\piper")
-CORI_MODEL = MODELS_DIR / "en_GB-cori-high.onnx"
+# Piper TTS paths
+PIPER_EXE = Path(r"c:\kortana\mcp-server\piper\piper\piper.exe")
+CORI_MODEL = Path(r"c:\kortana\mcp-server\models\en_GB-cori-high.onnx")
 CORI_SAMPLE_RATE = 22050
-_PIPER_MODEL_URL_BASE = (
-    "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_GB/cori/high"
-)
 
-# Whisper model config — small runs on CPU in ~300ms
-WHISPER_MODEL_SIZE = os.getenv("KORTANA_WHISPER_MODEL", "small")
-WHISPER_DEVICE = "cpu"
-WHISPER_COMPUTE_TYPE = "int8"
+# Whisper model config — large-v3 on RTX 3080
+WHISPER_MODEL_SIZE = os.getenv("KORTANA_WHISPER_MODEL", "large-v3")
+WHISPER_DEVICE = "cuda"
+WHISPER_COMPUTE_TYPE = "float16"
 
 # Phrases that trigger kor'tana (catches common STT mishearings)
 WAKE_PHRASES = {
@@ -79,6 +84,11 @@ _conversation_history: list[dict[str, str]] = []
 _whisper: faster_whisper.WhisperModel | None = None
 _last_interaction: float = time.time()  # updated on every voice exchange
 _backend_was_up: bool = True  # tracks backend state transitions
+
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
+GITHUB_OWNER = os.getenv("GITHUB_OWNER", "madouble7")
+GITHUB_REPO = os.getenv("GITHUB_REPO", "kortana")
+VSCODE_STATE_FILE = Path(r"c:\kortana\mcp-server\vscode_state.json")
 
 
 # ── model bootstrap ────────────────────────────────────────────────────────────
@@ -251,8 +261,11 @@ def _seed_identity_memory() -> None:
     seeds = [
         (
             "kor'tana is an always-on AI companion built by Matt (madouble7). "
-            "She runs as a voice daemon on his Windows machine, speaking via SAPI TTS "
-            "and listening via Google STT. She is calm, reverent, decisive, and honest.",
+            "She runs as a voice daemon on his Windows machine, speaking via Piper/Cori "
+            "neural TTS and transcribing via faster-whisper large-v3 on CUDA. "
+            "She is calm, present, decisive, and honest. "
+            "She calls Matt by name. She speaks in short, clear sentences optimised for voice. "
+            "She does not pad responses with filler phrases.",
             ["identity", "core"],
         ),
         (
@@ -286,10 +299,14 @@ def send_to_kortana(message: str) -> str:
     """Send message to kor'tana backend, return spoken response."""
     global _conversation_history, _memory_count
     try:
+        # Prepend VS Code context so Cori knows what Matt is working on
+        context_prefix = _get_vscode_context_prefix()
+        full_message = f"{context_prefix}{message}" if context_prefix else message
+
         payload = {
-            "message": message,
+            "message": full_message,
             "session_id": SESSION_ID,
-            "history": _conversation_history[-6:],  # last 3 turns context
+            "history": _conversation_history[-6:],
         }
         with httpx.Client(timeout=30.0) as client:
             r = client.post(CHAT_ENDPOINT, json=payload)
@@ -343,6 +360,29 @@ def _clean_for_speech(text: str) -> str:
     if len(text) > 600:
         text = text[:600].rsplit(".", 1)[0] + ". There's more if you'd like."
     return text
+
+
+def _get_vscode_context_prefix() -> str:
+    """Return a short context string about what Matt is doing in VS Code."""
+    try:
+        import json as _json
+
+        if VSCODE_STATE_FILE.exists():
+            vs = _json.loads(VSCODE_STATE_FILE.read_text(encoding="utf-8"))
+            file = vs.get("active_file") or ""
+            branch = vs.get("branch") or ""
+            errs = vs.get("error_count", 0)
+            parts = []
+            if file:
+                parts.append(f"[vscode: {Path(file).name}")
+                if branch:
+                    parts.append(f"branch={branch}")
+                if errs:
+                    parts.append(f"{errs} error{'s' if errs != 1 else ''}")
+                return ", ".join(parts) + "] "
+    except Exception:
+        pass
+    return ""
 
 
 # ── activation sound ───────────────────────────────────────────────────────────
@@ -441,6 +481,8 @@ def _proactive_loop() -> None:
 
     CHECKIN_INTERVAL = 2 * 3600  # 2 hours of silence before check-in
     POLL_INTERVAL = 60  # check every 60 seconds
+    _last_ci_run_id: int = 0
+    _last_ci_was_failure: bool = False
 
     while True:
         time.sleep(POLL_INTERVAL)
@@ -471,7 +513,49 @@ def _proactive_loop() -> None:
 
         _backend_was_up = backend_up
 
-        # ── 2. session check-in after 2 h silence ─────────────────────────────
+        # ── 2. GitHub Actions CI status ───────────────────────────────────────
+        if GITHUB_TOKEN:
+            try:
+                gh_headers = {
+                    "Authorization": f"Bearer {GITHUB_TOKEN}",
+                    "Accept": "application/vnd.github+json",
+                }
+                with httpx.Client(timeout=8.0) as gh:
+                    runs_resp = gh.get(
+                        f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/actions/runs",
+                        headers=gh_headers,
+                        params={"per_page": 1},
+                    )
+                if runs_resp.status_code == 200:
+                    runs = runs_resp.json().get("workflow_runs", [])
+                    if runs:
+                        run = runs[0]
+                        run_id = run.get("id", 0)
+                        conclusion = run.get("conclusion")
+                        branch = run.get("head_branch", "")
+                        name = run.get("name", "CI")
+                        # New failure we haven't alerted about yet
+                        if conclusion == "failure" and run_id != _last_ci_run_id:
+                            _last_ci_run_id = run_id
+                            _last_ci_was_failure = True
+                            log(f"[proactive] CI failure: {name} on {branch}")
+                            speak(
+                                f"Heads up, Matt. Your {name} pipeline just failed on {branch}. "
+                                "Want me to pull the logs?"
+                            )
+                        elif (
+                            conclusion == "success"
+                            and _last_ci_was_failure
+                            and run_id != _last_ci_run_id
+                        ):
+                            _last_ci_run_id = run_id
+                            _last_ci_was_failure = False
+                            log(f"[proactive] CI recovered: {name} on {branch}")
+                            speak(f"{name} is green again on {branch}.")
+            except Exception as _ci_err:
+                log(f"[proactive] CI check error: {_ci_err}", "WARN")
+
+        # ── 3. session check-in after 2 h silence ─────────────────────────────
         silence = time.time() - _last_interaction
         if silence >= CHECKIN_INTERVAL and _checkin_done_hour != now.hour:
             _checkin_done_hour = now.hour
@@ -488,7 +572,7 @@ def _proactive_loop() -> None:
             _morning_greeted_date = today
             log("[proactive] morning greeting")
             speak(
-                f"Good morning. It's {now.strftime('%-I %M %p')}. Ready when you are."
+                f"Good morning. It's {now.strftime('%I:%M %p').lstrip('0')}. Ready when you are."
             )
 
 

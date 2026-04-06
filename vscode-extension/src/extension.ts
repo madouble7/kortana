@@ -1,4 +1,6 @@
 import { execSync } from "child_process";
+import * as fs from "fs";
+import * as path from "path";
 
 import * as vscode from "vscode";
 import {
@@ -9,21 +11,20 @@ import {
     COMMAND_UNSEAL_RUNTIME,
     COMMAND_VIEW_METRICS,
 } from "./commands";
+import { getAutonomyAuditContent } from "./webview/audit";
 import {
     getAuditLogPayload,
     getDashboardStatePayload,
     getMetricsStatePayload,
 } from "./webview/backend";
-import { getAutonomyAuditContent } from "./webview/audit";
 import { getDashboardContent } from "./webview/dashboard";
 import { getFrameWebviewContent } from "./webview/html";
 import {
     createAuditLogEnvelope,
     createDashboardStateEnvelope,
     createMetricsStateEnvelope,
-    resolveDashboardCommand,
     resolveWebviewMessage,
-    type WebviewMessage,
+    type WebviewMessage
 } from "./webview/messages";
 import { getMetricsContent } from "./webview/metrics";
 
@@ -34,12 +35,12 @@ export {
     createMetricsStateEnvelope,
     createRequestMessage,
     resolveDashboardCommand,
-    resolveWebviewMessage,
+    resolveWebviewMessage
 } from "./webview/messages";
 export {
     buildAuditLogPayload,
     buildDashboardStatePayload,
-    buildMetricsStatePayload,
+    buildMetricsStatePayload
 } from "./webview/payloads";
 
 export function activate(context: vscode.ExtensionContext) {
@@ -181,6 +182,68 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.showInformationMessage(
         "Kor'tana is online. Use Ctrl+Shift+A for AI Studio, Ctrl+Shift+D for Deploy."
     );
+
+    // ── VS Code state writer ──────────────────────────────────────────────────
+    // Writes current editor state every 10s to a JSON file so kor'tana's
+    // backend and voice daemon know what Matt is working on right now.
+    const STATE_FILE = path.join("c:", "kortana", "mcp-server", "vscode_state.json");
+
+    function writeVSCodeState(): void {
+        try {
+            const editor = vscode.window.activeTextEditor;
+            const activeFile = editor?.document.uri.fsPath ?? null;
+            const language = editor?.document.languageId ?? null;
+            const cursorLine = editor ? editor.selection.active.line + 1 : null;
+
+            // Git branch via simple shell call — non-blocking best-effort
+            let branch: string | null = null;
+            try {
+                branch = execSync("git rev-parse --abbrev-ref HEAD 2>nul", {
+                    cwd: "c:\\kortana",
+                    encoding: "utf-8",
+                    timeout: 2000,
+                }).trim();
+            } catch {
+                branch = null;
+            }
+
+            // Diagnostics — errors and warnings in the current file
+            const diagUri = editor?.document.uri;
+            const diags = diagUri
+                ? vscode.languages.getDiagnostics(diagUri)
+                : [];
+            const errors = diags
+                .filter((d) => d.severity === vscode.DiagnosticSeverity.Error)
+                .slice(0, 5)
+                .map((d) => ({
+                    line: d.range.start.line + 1,
+                    message: d.message,
+                }));
+            const warnings = diags.filter(
+                (d) => d.severity === vscode.DiagnosticSeverity.Warning
+            ).length;
+
+            const state = {
+                timestamp: new Date().toISOString(),
+                active_file: activeFile,
+                language,
+                cursor_line: cursorLine,
+                branch,
+                error_count: errors.length,
+                warning_count: warnings,
+                errors,
+            };
+
+            fs.mkdirSync(path.dirname(STATE_FILE), { recursive: true });
+            fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2), "utf-8");
+        } catch {
+            // Non-critical — swallow silently
+        }
+    }
+
+    writeVSCodeState();
+    const stateInterval = setInterval(writeVSCodeState, 10_000);
+    context.subscriptions.push({ dispose: () => clearInterval(stateInterval) });
 }
 
 function getLocalResourceRoots(

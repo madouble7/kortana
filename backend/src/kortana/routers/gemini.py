@@ -155,6 +155,32 @@ async def _build_live_context() -> str:
     except Exception:
         pass
 
+    # 5. VS Code state — what Matt is actively working on right now
+    try:
+        import json as _json
+        from pathlib import Path as _Path
+
+        _vscode_state_file = _Path(r"c:\kortana\mcp-server\vscode_state.json")
+        if _vscode_state_file.exists():
+            _vs = _json.loads(_vscode_state_file.read_text(encoding="utf-8"))
+            _file = _vs.get("active_file") or "unknown"
+            _branch = _vs.get("branch") or "unknown"
+            _errs = _vs.get("error_count", 0)
+            _lang = _vs.get("language") or ""
+            lines.append("\n## matt's vscode state right now")
+            lines.append(f"- active file: {_file}")
+            if _lang:
+                lines.append(f"- language: {_lang}")
+            lines.append(f"- git branch: {_branch}")
+            if _errs:
+                lines.append(f"- errors in file: {_errs}")
+                for _e in (_vs.get("errors") or [])[:3]:
+                    lines.append(f"  - line {_e.get('line')}: {_e.get('message')}")
+            else:
+                lines.append("- no errors in active file")
+    except Exception:
+        pass
+
     return "\n".join(lines)
 
 
