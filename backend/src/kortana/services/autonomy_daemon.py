@@ -588,7 +588,11 @@ class AutonomyDaemon:
             active_res = await session.execute(
                 select(func.count())
                 .select_from(GitHubTask)
-                .where(GitHubTask.status.in_(["queued", "pending", "analyzed", "planning_complete"]))
+                .where(
+                    GitHubTask.status.in_(
+                        ["queued", "pending", "analyzed", "planning_complete"]
+                    )
+                )
             )
             active_count = active_res.scalar_one_or_none() or 0
 
@@ -602,7 +606,9 @@ class AutonomyDaemon:
             recent_list = "\n".join(f"- {t}" for t in recent_executed) or "- none yet"
 
             system_state = self.metrics.get("system_state", "unknown")
-            autonomy_index = (self.metrics.get("controller_reflection") or {}).get("autonomy_index", 0)
+            autonomy_index = (self.metrics.get("controller_reflection") or {}).get(
+                "autonomy_index", 0
+            )
 
             prompt = (
                 "you are kor'tana, an autonomous ai agent running continuous self-evolution cycles.\n"
@@ -649,7 +655,16 @@ class AutonomyDaemon:
                     .select_from(GitHubTask)
                     .where(
                         GitHubTask.title == title,
-                        GitHubTask.status.in_(["queued", "pending", "analyzed", "planning", "planning_complete", "executing"]),
+                        GitHubTask.status.in_(
+                            [
+                                "queued",
+                                "pending",
+                                "analyzed",
+                                "planning",
+                                "planning_complete",
+                                "executing",
+                            ]
+                        ),
                     )
                 )
                 if (dup_res.scalar_one_or_none() or 0) > 0:
@@ -675,7 +690,9 @@ class AutonomyDaemon:
 
             if seeded:
                 await session.commit()
-                logger.info("[AI-TASKS] kor'tana self-generated %d new evolution tasks", seeded)
+                logger.info(
+                    "[AI-TASKS] kor'tana self-generated %d new evolution tasks", seeded
+                )
         except Exception as exc:
             await session.rollback()
             logger.warning(f"AI-driven task generation failed: {exc}")

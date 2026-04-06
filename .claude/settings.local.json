@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -l \"ConversationMessage\" c:/kortana/backend/src/kortana/**/*.py)",
+      "Bash(grep -E \"\\\\.py$|\\\\.db$\")",
+      "Bash(powershell.exe -Command ':*)",
+      "Bash(powershell.exe -Command \"Invoke-RestMethod 'http://localhost:8000/api/consciousness/memory/self?source=identity-seed' -TimeoutSec 8 | ConvertTo-Json\")",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(Remove-Item C:/kortana/.git/index.lock -Force)",
+      "Bash(py -3.11 -m py_compile c:/kortana/mcp-server/local_daemon.py)",
+      "Bash(py -3.11 -m pip show faster-whisper openWakeWord piper-tts)",
+      "Bash(py -3.11 -m pip show pyaudio sounddevice)",
+      "Bash(py -3.11 -m pip install openwakeword piper-tts)",
+      "Bash(py -3.11 -c \"from piper.voice import PiperVoice; print\\('piper OK'\\)\")",
+      "Bash(py -3.11 -c \"from faster_whisper import WhisperModel; print\\('whisper OK'\\)\")",
+      "Bash(py -3.11 -c \"import sounddevice; print\\('sounddevice OK'\\)\")",
+      "Bash(py -3.11 -)",
+      "Bash(py -3.11 -m py_compile c:/kortana/mcp-server/voice_daemon.py)",
+      "Bash(py -3.11 -c ':*)"
+    ]
+  }
+}
