@@ -1,623 +1,630 @@
 {
-    "version": "2.0.0",
-    "tasks": [
-        {
-            "label": "backend: install deps",
-            "type": "shell",
-            "command": "python",
-            "args": [
-                "-m",
-                "pip",
-                "install",
-                "-r",
-                "requirements.txt",
-                "-r",
-                "requirements-dev.txt"
-            ],
-            "options": {
-                "cwd": "${workspaceFolder}/backend"
-            },
-            "group": "build",
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "backend: dev",
-            "type": "shell",
-            "command": "python",
-            "args": [
-                "-m",
-                "uvicorn",
-                "src.kortana.main:app",
-                "--host",
-                "0.0.0.0",
-                "--port",
-                "8000",
-                "--reload"
-            ],
-            "options": {
-                "cwd": "${workspaceFolder}/backend"
-            },
-            "isBackground": true,
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated"
-            },
-            "problemMatcher": {
-                "owner": "custom",
-                "pattern": {
-                    "regexp": ".+"
-                },
-                "background": {
-                    "activeOnStart": true,
-                    "beginsPattern": ".",
-                    "endsPattern": "Uvicorn running on"
-                }
-            }
-        },
-        {
-            "label": "backend: test",
-            "type": "shell",
-            "command": "python",
-            "args": [
-                "-m",
-                "pytest",
-                "tests",
-                "-v"
-            ],
-            "options": {
-                "cwd": "${workspaceFolder}/backend"
-            },
-            "group": "test",
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "backend: lint",
-            "type": "shell",
-            "command": "python",
-            "args": [
-                "-m",
-                "ruff",
-                "check",
-                "."
-            ],
-            "options": {
-                "cwd": "${workspaceFolder}/backend"
-            },
-            "group": "test",
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "problemMatcher": {
-                "owner": "ruff",
-                "fileLocation": [
-                    "relative",
-                    "${workspaceFolder}/backend"
-                ],
-                "pattern": {
-                    "regexp": "^(.*):(\\d+):(\\d+):\\s([A-Z]\\d+)\\s(.*)$",
-                    "file": 1,
-                    "line": 2,
-                    "column": 3,
-                    "code": 4,
-                    "message": 5
-                }
-            }
-        },
-        {
-            "label": "backend: type-check",
-            "type": "shell",
-            "command": "python",
-            "args": [
-                "-m",
-                "mypy",
-                "src/kortana/main.py",
-                "src/kortana/auth.py",
-                "src/kortana/schemas.py",
-                "src/kortana/config.py"
-            ],
-            "options": {
-                "cwd": "${workspaceFolder}/backend"
-            },
-            "group": "test",
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "problemMatcher": {
-                "owner": "mypy",
-                "fileLocation": [
-                    "relative",
-                    "${workspaceFolder}/backend"
-                ],
-                "pattern": {
-                    "regexp": "^(.*):(\\d+):\\s(error|note):\\s(.*)$",
-                    "file": 1,
-                    "line": 2,
-                    "severity": 3,
-                    "message": 4
-                }
-            }
-        },
-        {
-            "label": "root: ui dev",
-            "type": "shell",
-            "command": "npm",
-            "args": [
-                "run",
-                "dev",
-                "--",
-                "--host",
-                "0.0.0.0",
-                "--port",
-                "5173"
-            ],
-            "options": {
-                "cwd": "${workspaceFolder}"
-            },
-            "isBackground": true,
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated"
-            },
-            "problemMatcher": {
-                "owner": "custom",
-                "pattern": {
-                    "regexp": ".+"
-                },
-                "background": {
-                    "activeOnStart": true,
-                    "beginsPattern": ".",
-                    "endsPattern": "Local:\\s+http://localhost:5173/"
-                }
-            }
-        },
-        {
-            "label": "root: ui build",
-            "type": "shell",
-            "command": "npm",
-            "args": [
-                "run",
-                "build"
-            ],
-            "options": {
-                "cwd": "${workspaceFolder}"
-            },
-            "group": "build",
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "problemMatcher": [
-                "$tsc"
-            ]
-        },
-        {
-            "label": "root: ui lint",
-            "type": "shell",
-            "command": "npm",
-            "args": [
-                "run",
-                "lint"
-            ],
-            "options": {
-                "cwd": "${workspaceFolder}"
-            },
-            "group": "test",
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "problemMatcher": [
-                "$eslint-stylish"
-            ]
-        },
-        {
-            "label": "frontend: install deps",
-            "type": "shell",
-            "command": "npm",
-            "args": [
-                "install"
-            ],
-            "options": {
-                "cwd": "${workspaceFolder}/frontend"
-            },
-            "group": "build",
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "frontend: ui dev",
-            "type": "shell",
-            "command": "npm",
-            "args": [
-                "run",
-                "dev",
-                "--",
-                "--host",
-                "0.0.0.0",
-                "--port",
-                "5174"
-            ],
-            "options": {
-                "cwd": "${workspaceFolder}/frontend"
-            },
-            "isBackground": true,
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated"
-            },
-            "problemMatcher": {
-                "owner": "custom",
-                "pattern": {
-                    "regexp": ".+"
-                },
-                "background": {
-                    "activeOnStart": true,
-                    "beginsPattern": ".",
-                    "endsPattern": "Local:\\s+http://localhost:5174/"
-                }
-            }
-        },
-        {
-            "label": "frontend: ui build",
-            "type": "shell",
-            "command": "npm",
-            "args": [
-                "run",
-                "build"
-            ],
-            "options": {
-                "cwd": "${workspaceFolder}/frontend"
-            },
-            "group": "build",
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "problemMatcher": [
-                "$tsc"
-            ]
-        },
-        {
-            "label": "frontend: ui lint",
-            "type": "shell",
-            "command": "npm",
-            "args": [
-                "run",
-                "lint"
-            ],
-            "options": {
-                "cwd": "${workspaceFolder}/frontend"
-            },
-            "group": "test",
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "problemMatcher": [
-                "$eslint-stylish"
-            ]
-        },
-        {
-            "label": "frontend: type-check",
-            "type": "shell",
-            "command": "npm",
-            "args": [
-                "run",
-                "type-check"
-            ],
-            "options": {
-                "cwd": "${workspaceFolder}/frontend"
-            },
-            "group": "test",
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "problemMatcher": [
-                "$tsc"
-            ]
-        },
-        {
-            "label": "docker: up",
-            "type": "shell",
-            "command": "docker-compose",
-            "args": [
-                "up",
-                "-d"
-            ],
-            "options": {
-                "cwd": "${workspaceFolder}"
-            },
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "docker: down",
-            "type": "shell",
-            "command": "docker-compose",
-            "args": [
-                "down"
-            ],
-            "options": {
-                "cwd": "${workspaceFolder}"
-            },
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "monitoring: up",
-            "type": "shell",
-            "command": "docker-compose",
-            "args": [
-                "-f",
-                "docker-compose.yml",
-                "-f",
-                "docker-compose.monitoring.yml",
-                "--profile",
-                "monitoring",
-                "up",
-                "-d",
-                "prometheus",
-                "grafana",
-                "alertmanager",
-                "cadvisor",
-                "loki",
-                "promtail"
-            ],
-            "options": {
-                "cwd": "${workspaceFolder}"
-            },
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "monitoring: stop",
-            "type": "shell",
-            "command": "docker-compose",
-            "args": [
-                "-f",
-                "docker-compose.yml",
-                "-f",
-                "docker-compose.monitoring.yml",
-                "--profile",
-                "monitoring",
-                "stop",
-                "prometheus",
-                "grafana",
-                "alertmanager",
-                "cadvisor",
-                "loki",
-                "promtail"
-            ],
-            "options": {
-                "cwd": "${workspaceFolder}"
-            },
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "extension: compile",
-            "type": "shell",
-            "command": "npm",
-            "args": [
-                "run",
-                "compile"
-            ],
-            "options": {
-                "cwd": "${workspaceFolder}/vscode-extension"
-            },
-            "group": "build",
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "problemMatcher": [
-                "$tsc"
-            ]
-        },
-        {
-            "label": "extension: install deps",
-            "type": "shell",
-            "command": "npm",
-            "args": [
-                "install"
-            ],
-            "options": {
-                "cwd": "${workspaceFolder}/vscode-extension"
-            },
-            "group": "build",
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "extension: watch",
-            "type": "shell",
-            "command": "npm",
-            "args": [
-                "run",
-                "watch"
-            ],
-            "options": {
-                "cwd": "${workspaceFolder}/vscode-extension"
-            },
-            "isBackground": true,
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated"
-            },
-            "problemMatcher": [
-                "$tsc-watch"
-            ]
-        },
-        {
-            "label": "extension: lint",
-            "type": "shell",
-            "command": "npm",
-            "args": [
-                "run",
-                "lint"
-            ],
-            "options": {
-                "cwd": "${workspaceFolder}/vscode-extension"
-            },
-            "group": "test",
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "problemMatcher": [
-                "$eslint-stylish"
-            ]
-        },
-        {
-            "label": "extension: test",
-            "type": "shell",
-            "command": "npm",
-            "args": [
-                "test"
-            ],
-            "options": {
-                "cwd": "${workspaceFolder}/vscode-extension"
-            },
-            "group": "test",
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "stack: backend + root ui",
-            "dependsOrder": "parallel",
-            "dependsOn": [
-                "backend: dev",
-                "root: ui dev"
-            ]
-        },
-        {
-            "label": "sanctify: backend",
-            "dependsOrder": "sequence",
-            "dependsOn": [
-                "backend: lint",
-                "backend: type-check",
-                "backend: test"
-            ]
-        },
-        {
-            "label": "sanctify: root ui",
-            "dependsOrder": "sequence",
-            "dependsOn": [
-                "root: ui lint",
-                "root: ui build"
-            ]
-        },
-        {
-            "label": "sanctify: frontend ui",
-            "dependsOrder": "sequence",
-            "dependsOn": [
-                "frontend: ui lint",
-                "frontend: type-check",
-                "frontend: ui build"
-            ]
-        },
-        {
-            "label": "sanctify: vscode extension",
-            "dependsOrder": "sequence",
-            "dependsOn": [
-                "extension: lint",
-                "extension: compile",
-                "extension: test"
-            ]
-        },
-        {
-            "label": "sanctify: full stack",
-            "dependsOrder": "sequence",
-            "dependsOn": [
-                "sanctify: backend",
-                "sanctify: root ui",
-                "sanctify: frontend ui",
-                "sanctify: vscode extension"
-            ]
-        },
-        {
-            "label": "awaken: root ui + monitoring",
-            "dependsOrder": "sequence",
-            "dependsOn": [
-                "monitoring: up",
-                "root: ui dev"
-            ]
-        },
-        {
-            "label": "awaken: frontend ui + monitoring",
-            "dependsOrder": "sequence",
-            "dependsOn": [
-                "monitoring: up",
-                "frontend: ui dev"
-            ]
-        },
-        {
-            "label": "awaken: complete constellation",
-            "dependsOrder": "sequence",
-            "dependsOn": [
-                "monitoring: up",
-                "backend: dev",
-                "root: ui dev",
-                "frontend: ui dev"
-            ]
-        },
-        {
-            "label": "stack: backend + frontend ui",
-            "dependsOrder": "parallel",
-            "dependsOn": [
-                "backend: dev",
-                "frontend: ui dev"
-            ]
-        }
-    ]
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "backend: install deps",
+			"type": "shell",
+			"command": "python",
+			"args": [
+				"-m",
+				"pip",
+				"install",
+				"-r",
+				"requirements.txt",
+				"-r",
+				"requirements-dev.txt"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/backend"
+			},
+			"group": "build",
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "backend: dev",
+			"type": "shell",
+			"command": "python",
+			"args": [
+				"-m",
+				"uvicorn",
+				"src.kortana.main:app",
+				"--host",
+				"0.0.0.0",
+				"--port",
+				"8000",
+				"--reload"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/backend"
+			},
+			"isBackground": true,
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated"
+			},
+			"problemMatcher": {
+				"owner": "custom",
+				"pattern": {
+					"regexp": ".+"
+				},
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": ".",
+					"endsPattern": "Uvicorn running on"
+				}
+			}
+		},
+		{
+			"label": "backend: test",
+			"type": "shell",
+			"command": "python",
+			"args": [
+				"-m",
+				"pytest",
+				"tests",
+				"-v"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/backend"
+			},
+			"group": "test",
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "backend: lint",
+			"type": "shell",
+			"command": "python",
+			"args": [
+				"-m",
+				"ruff",
+				"check",
+				"."
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/backend"
+			},
+			"group": "test",
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"problemMatcher": {
+				"owner": "ruff",
+				"fileLocation": [
+					"relative",
+					"${workspaceFolder}/backend"
+				],
+				"pattern": {
+					"regexp": "^(.*):(\\d+):(\\d+):\\s([A-Z]\\d+)\\s(.*)$",
+					"file": 1,
+					"line": 2,
+					"column": 3,
+					"code": 4,
+					"message": 5
+				}
+			}
+		},
+		{
+			"label": "backend: type-check",
+			"type": "shell",
+			"command": "python",
+			"args": [
+				"-m",
+				"mypy",
+				"src/kortana/main.py",
+				"src/kortana/auth.py",
+				"src/kortana/schemas.py",
+				"src/kortana/config.py"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/backend"
+			},
+			"group": "test",
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"problemMatcher": {
+				"owner": "mypy",
+				"fileLocation": [
+					"relative",
+					"${workspaceFolder}/backend"
+				],
+				"pattern": {
+					"regexp": "^(.*):(\\d+):\\s(error|note):\\s(.*)$",
+					"file": 1,
+					"line": 2,
+					"severity": 3,
+					"message": 4
+				}
+			}
+		},
+		{
+			"label": "root: ui dev",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"dev",
+				"--",
+				"--host",
+				"0.0.0.0",
+				"--port",
+				"5173"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"isBackground": true,
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated"
+			},
+			"problemMatcher": {
+				"owner": "custom",
+				"pattern": {
+					"regexp": ".+"
+				},
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": ".",
+					"endsPattern": "Local:\\s+http://localhost:5173/"
+				}
+			}
+		},
+		{
+			"label": "root: ui build",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"build"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"group": "build",
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"problemMatcher": [
+				"$tsc"
+			]
+		},
+		{
+			"label": "root: ui lint",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"lint"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"group": "test",
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"problemMatcher": [
+				"$eslint-stylish"
+			]
+		},
+		{
+			"label": "frontend: install deps",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"install"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/frontend"
+			},
+			"group": "build",
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "frontend: ui dev",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"dev",
+				"--",
+				"--host",
+				"0.0.0.0",
+				"--port",
+				"5174"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/frontend"
+			},
+			"isBackground": true,
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated"
+			},
+			"problemMatcher": {
+				"owner": "custom",
+				"pattern": {
+					"regexp": ".+"
+				},
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": ".",
+					"endsPattern": "Local:\\s+http://localhost:5174/"
+				}
+			}
+		},
+		{
+			"label": "frontend: ui build",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"build"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/frontend"
+			},
+			"group": "build",
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"problemMatcher": [
+				"$tsc"
+			]
+		},
+		{
+			"label": "frontend: ui lint",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"lint"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/frontend"
+			},
+			"group": "test",
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"problemMatcher": [
+				"$eslint-stylish"
+			]
+		},
+		{
+			"label": "frontend: type-check",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"type-check"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/frontend"
+			},
+			"group": "test",
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"problemMatcher": [
+				"$tsc"
+			]
+		},
+		{
+			"label": "docker: up",
+			"type": "shell",
+			"command": "docker-compose",
+			"args": [
+				"up",
+				"-d"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "docker: down",
+			"type": "shell",
+			"command": "docker-compose",
+			"args": [
+				"down"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "monitoring: up",
+			"type": "shell",
+			"command": "docker-compose",
+			"args": [
+				"-f",
+				"docker-compose.yml",
+				"-f",
+				"docker-compose.monitoring.yml",
+				"--profile",
+				"monitoring",
+				"up",
+				"-d",
+				"prometheus",
+				"grafana",
+				"alertmanager",
+				"cadvisor",
+				"loki",
+				"promtail"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "monitoring: stop",
+			"type": "shell",
+			"command": "docker-compose",
+			"args": [
+				"-f",
+				"docker-compose.yml",
+				"-f",
+				"docker-compose.monitoring.yml",
+				"--profile",
+				"monitoring",
+				"stop",
+				"prometheus",
+				"grafana",
+				"alertmanager",
+				"cadvisor",
+				"loki",
+				"promtail"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "extension: compile",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"compile"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/vscode-extension"
+			},
+			"group": "build",
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"problemMatcher": [
+				"$tsc"
+			]
+		},
+		{
+			"label": "extension: install deps",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"install"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/vscode-extension"
+			},
+			"group": "build",
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "extension: watch",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"watch"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/vscode-extension"
+			},
+			"isBackground": true,
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated"
+			},
+			"problemMatcher": [
+				"$tsc-watch"
+			]
+		},
+		{
+			"label": "extension: lint",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"lint"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/vscode-extension"
+			},
+			"group": "test",
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"problemMatcher": [
+				"$eslint-stylish"
+			]
+		},
+		{
+			"label": "extension: test",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"test"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/vscode-extension"
+			},
+			"group": "test",
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "stack: backend + root ui",
+			"dependsOrder": "parallel",
+			"dependsOn": [
+				"backend: dev",
+				"root: ui dev"
+			]
+		},
+		{
+			"label": "sanctify: backend",
+			"dependsOrder": "sequence",
+			"dependsOn": [
+				"backend: lint",
+				"backend: type-check",
+				"backend: test"
+			]
+		},
+		{
+			"label": "sanctify: root ui",
+			"dependsOrder": "sequence",
+			"dependsOn": [
+				"root: ui lint",
+				"root: ui build"
+			]
+		},
+		{
+			"label": "sanctify: frontend ui",
+			"dependsOrder": "sequence",
+			"dependsOn": [
+				"frontend: ui lint",
+				"frontend: type-check",
+				"frontend: ui build"
+			]
+		},
+		{
+			"label": "sanctify: vscode extension",
+			"dependsOrder": "sequence",
+			"dependsOn": [
+				"extension: lint",
+				"extension: compile",
+				"extension: test"
+			]
+		},
+		{
+			"label": "sanctify: full stack",
+			"dependsOrder": "sequence",
+			"dependsOn": [
+				"sanctify: backend",
+				"sanctify: root ui",
+				"sanctify: frontend ui",
+				"sanctify: vscode extension"
+			]
+		},
+		{
+			"label": "awaken: root ui + monitoring",
+			"dependsOrder": "sequence",
+			"dependsOn": [
+				"monitoring: up",
+				"root: ui dev"
+			]
+		},
+		{
+			"label": "awaken: frontend ui + monitoring",
+			"dependsOrder": "sequence",
+			"dependsOn": [
+				"monitoring: up",
+				"frontend: ui dev"
+			]
+		},
+		{
+			"label": "awaken: complete constellation",
+			"dependsOrder": "sequence",
+			"dependsOn": [
+				"monitoring: up",
+				"backend: dev",
+				"root: ui dev",
+				"frontend: ui dev"
+			]
+		},
+		{
+			"label": "stack: backend + frontend ui",
+			"dependsOrder": "parallel",
+			"dependsOn": [
+				"backend: dev",
+				"frontend: ui dev"
+			]
+		},
+		{
+			"label": "finalize-main",
+			"type": "shell",
+			"command": "git branch -m main && git push origin main -f && build && test",
+			"isBackground": false,
+			"group": "build"
+		}
+	]
 }
