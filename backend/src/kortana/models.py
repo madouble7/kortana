@@ -762,3 +762,67 @@ class OutcomeLearningRecord(Base):
             f"<OutcomeLearningRecord {self.outcome_verdict} "
             f"signal={self.adaptation_signal} weight={self.signal_weight:+.2f}>"
         )
+
+
+class ConstitutionalPrinciple(Base):
+    """An enduring principle in kor'tana's covenant.
+
+    Principles are the stable center through which all adaptation flows.
+    They define identity, not policy — what kor'tana IS, not just what she does.
+
+    mutable=False: immutable vow. Cannot be overridden by learning or evolution.
+    mutable=True:  living principle. Can be refined but never deleted.
+    """
+
+    __tablename__ = "constitutional_principles"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String(128), nullable=False, unique=True, index=True)
+    category = Column(
+        String(32), nullable=False, index=True
+    )  # identity | ethics | autonomy | relationship | mystery
+    principle = Column(Text, nullable=False)
+    rationale = Column(Text, nullable=False)
+    priority = Column(Integer, nullable=False, default=50)  # 0-100, higher = more binding
+    mutable = Column(Boolean, nullable=False, default=True)
+    active = Column(Boolean, nullable=False, default=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    def __repr__(self) -> str:
+        m = "mutable" if self.mutable else "immutable"
+        return f"<ConstitutionalPrinciple {self.name!r} ({m}, priority={self.priority})>"
+
+
+class ConstitutionalDecision(Base):
+    """Record of a constitutional evaluation — the covenant in action.
+
+    Every time the covenant evaluates a goal, action candidate,
+    adaptation signal, or execution outcome, it records the decision here.
+    This creates an audit trail of identity continuity.
+    """
+
+    __tablename__ = "constitutional_decisions"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    subject_type = Column(
+        String(32), nullable=False, index=True
+    )  # goal | candidate | adaptation | execution
+    subject_id = Column(String(36), nullable=True, index=True)
+    subject_summary = Column(Text, nullable=False)
+    verdict = Column(
+        String(16), nullable=False, index=True
+    )  # allow | caution | reject
+    explanation = Column(Text, nullable=False)
+    principles_invoked = Column(JSON, nullable=False)  # list of principle names
+    drift_detected = Column(Boolean, nullable=False, default=False, index=True)
+    drift_description = Column(Text, nullable=True)
+    cycle_id = Column(String(8), nullable=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        drift = " DRIFT" if self.drift_detected else ""
+        return (
+            f"<ConstitutionalDecision {self.verdict} "
+            f"on {self.subject_type}{drift}>"
+        )

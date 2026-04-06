@@ -18,6 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.kortana.models import AutonomyCycleRecord
+from src.kortana.services.constitutional_service import ConstitutionalService
 from src.kortana.services.execution_gate_service import ExecutionGateService
 from src.kortana.services.goal_selection_service import GoalSelectionService
 from src.kortana.services.outcome_learning_service import OutcomeLearningService
@@ -176,6 +177,44 @@ class AutonomyOrchestrator:
             logger.exception("Outcome learning failed")
             actions_taken.append("outcome-learning: failed")
 
+        # ---- 3.95 CONSTITUTIONAL REVIEW (Value Governance) ----
+        constitutional_decision_id: Optional[str] = None
+        constitutional_verdict: Optional[str] = None
+        try:
+            covenant = ConstitutionalService(self.db)
+            summary_parts = []
+            if next_action_title:
+                summary_parts.append(f"next-action: {next_action_title}")
+            if execution_classification:
+                summary_parts.append(f"gate: {execution_classification}")
+            if adaptation_signal:
+                summary_parts.append(f"adaptation: {adaptation_signal}")
+            subject_summary = (
+                "; ".join(summary_parts) if summary_parts
+                else f"cycle {cycle_id} with no active decisions"
+            )
+            decision = await covenant.evaluate(
+                subject_type="cycle",
+                subject_id=cycle_id,
+                subject_summary=subject_summary,
+                context={
+                    "next_action_title": next_action_title,
+                    "execution_classification": execution_classification,
+                    "adaptation_signal": adaptation_signal or "",
+                    "outcome_verdict": outcome_verdict,
+                },
+                cycle_id=cycle_id,
+            )
+            constitutional_decision_id = str(decision.id)
+            constitutional_verdict = str(decision.verdict)
+            drift_flag = " DRIFT" if decision.drift_detected else ""
+            actions_taken.append(
+                f"constitutional: {decision.verdict}{drift_flag}"
+            )
+        except Exception:
+            logger.exception("Constitutional review failed")
+            actions_taken.append("constitutional: failed")
+
         # ---- 4. PERSIST cycle record to DB ----
         elapsed_ms = int((time.monotonic() - start) * 1000)
 
@@ -195,6 +234,8 @@ class AutonomyOrchestrator:
             "outcome_learning_id": outcome_learning_id,
             "outcome_verdict": outcome_verdict,
             "adaptation_signal": adaptation_signal,
+            "constitutional_decision_id": constitutional_decision_id,
+            "constitutional_verdict": constitutional_verdict,
             "actions_taken": actions_taken,
         }
 

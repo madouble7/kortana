@@ -873,9 +873,7 @@ async def get_outcome_history(
                 "adaptation_signal": r.adaptation_signal,
                 "signal_weight": r.signal_weight,
                 "cycle_id": r.cycle_id,
-                "created_at": (
-                    r.created_at.isoformat() if r.created_at else None
-                ),
+                "created_at": (r.created_at.isoformat() if r.created_at else None),
             }
             for r in records
         ],
@@ -898,4 +896,98 @@ async def get_adaptations(
     return {
         "count": len(signals),
         "adaptations": signals,
+    }
+
+
+# ==================================================================
+# Phase 9: Constitutional Core — Value Governance
+#
+# Read-only endpoints that surface kor'tana's covenant principles,
+# constitutional decisions, and identity drift warnings.
+# This is not generic ethics. This is identity continuity.
+# ==================================================================
+
+
+@router.get("/covenant/principles")
+async def get_covenant_principles(
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """Read-only: kor'tana's active constitutional principles.
+
+    The stable center through which all adaptation flows.
+    """
+    from src.kortana.services.constitutional_service import ConstitutionalService
+
+    svc = ConstitutionalService(db)
+    principles = await svc.get_active_principles_summary()
+    return {
+        "count": len(principles),
+        "principles": principles,
+    }
+
+
+@router.get("/covenant/decisions")
+async def get_covenant_decisions(
+    limit: int = Query(default=10, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """Read-only: recent constitutional evaluation decisions."""
+    from src.kortana.services.constitutional_service import ConstitutionalService
+
+    svc = ConstitutionalService(db)
+    decisions = await svc.get_recent_decisions(limit=limit)
+    return {
+        "count": len(decisions),
+        "decisions": [
+            {
+                "id": d.id,
+                "subject_type": d.subject_type,
+                "subject_id": d.subject_id,
+                "subject_summary": d.subject_summary,
+                "verdict": d.verdict,
+                "explanation": d.explanation,
+                "principles_invoked": d.principles_invoked,
+                "drift_detected": d.drift_detected,
+                "drift_description": d.drift_description,
+                "cycle_id": d.cycle_id,
+                "created_at": (
+                    d.created_at.isoformat() if d.created_at else None
+                ),
+            }
+            for d in decisions
+        ],
+    }
+
+
+@router.get("/covenant/drift")
+async def get_covenant_drift(
+    limit: int = Query(default=10, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """Read-only: decisions where identity drift was detected.
+
+    An audit trail of moments where kor'tana's covenant was under pressure.
+    """
+    from src.kortana.services.constitutional_service import ConstitutionalService
+
+    svc = ConstitutionalService(db)
+    warnings = await svc.get_drift_warnings(limit=limit)
+    return {
+        "count": len(warnings),
+        "drift_warnings": [
+            {
+                "id": w.id,
+                "subject_type": w.subject_type,
+                "subject_summary": w.subject_summary,
+                "verdict": w.verdict,
+                "explanation": w.explanation,
+                "principles_invoked": w.principles_invoked,
+                "drift_description": w.drift_description,
+                "cycle_id": w.cycle_id,
+                "created_at": (
+                    w.created_at.isoformat() if w.created_at else None
+                ),
+            }
+            for w in warnings
+        ],
     }
