@@ -1490,6 +1490,48 @@ async def test_seed_kortana_investigations_queues_three_tasks():
     assert any("self-reflection" in title.lower() for title in queued_titles)
 
 
+@pytest.mark.asyncio
+async def test_run_revelation_engine_updates_metrics_when_cycle_is_due() -> None:
+    daemon = build_daemon()
+    daemon.metrics["cycles_completed"] = 10
+    session = AsyncMock()
+    revelations = [
+        MagicMock(title="Autonomy is converging"),
+        MagicMock(title="Operator attention stays scarce"),
+    ]
+
+    mock_engine = MagicMock()
+    mock_engine.synthesise = AsyncMock(return_value=revelations)
+
+    with patch(
+        "src.kortana.services.revelation_engine.RevelationEngine",
+        return_value=mock_engine,
+    ):
+        await daemon._run_revelation_engine(session)
+
+    assert daemon.metrics["last_revelations_written"] == 2
+    assert daemon.metrics["revelations_written_total"] == 2
+    assert daemon.metrics["last_revelation_titles"] == [
+        "Autonomy is converging",
+        "Operator attention stays scarce",
+    ]
+    assert daemon.metrics["last_revelation_run"] is not None
+
+
+@pytest.mark.asyncio
+async def test_run_revelation_engine_skips_when_cycle_not_due() -> None:
+    daemon = build_daemon()
+    daemon.metrics["cycles_completed"] = 11
+    session = AsyncMock()
+
+    with patch(
+        "src.kortana.services.revelation_engine.RevelationEngine"
+    ) as mock_engine_cls:
+        await daemon._run_revelation_engine(session)
+
+    mock_engine_cls.assert_not_called()
+
+
 # ---------------------------------------------------------------------------
 # Transaction hygiene tests
 # Verify that every sub-operation that touches the DB calls session.rollback()

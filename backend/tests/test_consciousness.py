@@ -7,6 +7,8 @@ Covers:
   - Consciousness Router endpoints
 """
 
+from datetime import datetime
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -348,10 +350,13 @@ class TestConsciousnessRouter:
         assert "memory_engine" in data["systems"]
         assert "self_diagnostic" in data["systems"]
         assert "experience_distiller" in data["systems"]
+        assert "revelation_engine" in data["systems"]
         assert "model" in data["systems"]["self_diagnostic"]
         assert "model_lane" in data["systems"]["self_diagnostic"]
         assert "model" in data["systems"]["experience_distiller"]
         assert "model_lane" in data["systems"]["experience_distiller"]
+        assert "unsurfaced_revelations" in data["systems"]["revelation_engine"]
+        assert "token_stats" in data
 
     def test_memory_stats(self, client):
         resp = client.get("/api/consciousness/memory/stats")
@@ -435,3 +440,86 @@ class TestConsciousnessRouter:
         assert resp.status_code == 200
         data = resp.json()
         assert "backfilled" in data
+
+    def test_revelation_synthesise_endpoint(self, client):
+        created_at = datetime.utcnow()
+        revelation = SimpleNamespace(
+            id="rev-1",
+            title="Pattern emerging",
+            content="Recent work keeps converging on silent autonomy.",
+            revelation_type="pattern",
+            confidence=0.82,
+            evidence=["memory", "git"],
+            created_at=created_at,
+        )
+
+        with (
+            patch(
+                "src.kortana.routers.consciousness.RevelationEngine.synthesise",
+                new=AsyncMock(return_value=[revelation]),
+            ),
+            patch(
+                "src.kortana.routers.consciousness.get_token_stats",
+                return_value={
+                    "session_tokens_used": 120,
+                    "session_token_budget": 30000,
+                    "budget_remaining": 29880,
+                    "budget_pct_used": 0.4,
+                },
+            ),
+        ):
+            resp = client.post(
+                "/api/consciousness/memory/revelation",
+                json={"force": True},
+            )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["revelations_written"] == 1
+        assert data["revelations"][0]["title"] == "Pattern emerging"
+        assert data["token_stats"]["session_tokens_used"] == 120
+
+    def test_revelation_list_endpoint(self, client):
+        created_at = datetime.utcnow()
+        revelation = SimpleNamespace(
+            id="rev-2",
+            title="Operator stewardship matters",
+            content="Manual acknowledgement keeps high-signal insights scarce.",
+            revelation_type="self_discovery",
+            confidence=0.74,
+            evidence=["operator", "daemon"],
+            surfaced=False,
+            acknowledged_at=None,
+            created_at=created_at,
+        )
+
+        with patch(
+            "src.kortana.routers.consciousness.RevelationEngine.list_revelations",
+            new=AsyncMock(return_value=[revelation]),
+        ):
+            resp = client.get("/api/consciousness/memory/revelations?unsurfaced_only=true")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["count"] == 1
+        assert data["revelations"][0]["revelation_type"] == "self_discovery"
+        assert data["revelations"][0]["surfaced"] is False
+
+    def test_revelation_acknowledge_endpoint(self, client):
+        with patch(
+            "src.kortana.routers.consciousness.RevelationEngine.mark_surfaced",
+            new=AsyncMock(return_value=True),
+        ):
+            resp = client.post("/api/consciousness/memory/revelations/rev-2/acknowledge")
+
+        assert resp.status_code == 200
+        assert resp.json() == {"id": "rev-2", "surfaced": True}
+
+    def test_revelation_acknowledge_returns_404(self, client):
+        with patch(
+            "src.kortana.routers.consciousness.RevelationEngine.mark_surfaced",
+            new=AsyncMock(return_value=False),
+        ):
+            resp = client.post("/api/consciousness/memory/revelations/missing/acknowledge")
+
+        assert resp.status_code == 404

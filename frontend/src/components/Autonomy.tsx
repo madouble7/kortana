@@ -9,16 +9,18 @@ import {
   Play,
   RefreshCw,
   Shield,
+  Sparkles,
   TrendingUp,
   Wifi,
   WifiOff,
   XCircle,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRuntimeTelemetry } from '../hooks/useRuntimeTelemetry';
 import { useAutonomyRealtime } from '../hooks/useAutonomyRealtime';
 import { api } from '../lib/api';
 import { cn, formatRelativeTime } from '../lib/utils';
+import type { ConsciousnessStatus, Revelation } from '../types';
 import { ApprovalQueue } from './ApprovalQueue';
 
 function providerTone(status: string | undefined) {
@@ -58,6 +60,11 @@ export default function Autonomy() {
   const [runningCycle, setRunningCycle] = useState(false);
   const [daemonActionPending, setDaemonActionPending] = useState<'start' | 'stop' | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [revelations, setRevelations] = useState<Revelation[]>([]);
+  const [consciousness, setConsciousness] = useState<ConsciousnessStatus | null>(null);
+  const [revelationLoading, setRevelationLoading] = useState(false);
+  const [revelationActionPending, setRevelationActionPending] = useState<string | 'synthesise' | null>(null);
+  const [revelationNotice, setRevelationNotice] = useState<string | null>(null);
 
   const {
     status,
@@ -84,8 +91,35 @@ export default function Autonomy() {
 
   const runtimeError = errors.daemon || errors.lanes || null;
 
+  const loadRevelationLedger = async () => {
+    try {
+      setRevelationLoading(true);
+      const [ledger, statusSnapshot] = await Promise.all([
+        api.getRevelations({ limit: 6, unsurfacedOnly: false }),
+        api.getConsciousnessStatus(),
+      ]);
+      setRevelations(ledger.revelations);
+      setConsciousness(statusSnapshot);
+      setRevelationNotice(null);
+    } catch (ledgerError) {
+      setRevelationNotice(
+        ledgerError instanceof Error ? ledgerError.message : 'Failed to load revelation ledger.'
+      );
+    } finally {
+      setRevelationLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadRevelationLedger();
+  }, []);
+
   const refreshRuntime = async () => {
     await refresh({ force: true, resources: ['daemon', 'lanes'] });
+  };
+
+  const refreshAll = async () => {
+    await Promise.all([refreshRuntime(), loadRevelationLedger()]);
   };
 
   const triggerCycle = async () => {
@@ -101,6 +135,7 @@ export default function Autonomy() {
     } finally {
       setRunningCycle(false);
       void refreshRuntime();
+      void loadRevelationLedger();
     }
   };
 
@@ -120,6 +155,52 @@ export default function Autonomy() {
     } finally {
       setDaemonActionPending(null);
       void refreshRuntime();
+    }
+  };
+
+  const synthesiseRevelations = async () => {
+    try {
+      setRevelationActionPending('synthesise');
+      setRevelationNotice(null);
+      const result = await api.synthesiseRevelations(true);
+      setRevelationNotice(
+        result.revelations_written > 0
+          ? `Synthesised ${result.revelations_written} new revelation${result.revelations_written === 1 ? '' : 's'}.`
+          : 'No new revelation met the signal threshold.'
+      );
+      await loadRevelationLedger();
+    } catch (synthesisError) {
+      setRevelationNotice(
+        synthesisError instanceof Error ? synthesisError.message : 'Failed to synthesise revelations.'
+      );
+    } finally {
+      setRevelationActionPending(null);
+    }
+  };
+
+  const acknowledgeRevelation = async (revelationId: string) => {
+    try {
+      setRevelationActionPending(revelationId);
+      setRevelationNotice(null);
+      await api.acknowledgeRevelation(revelationId);
+      setRevelations((current) =>
+        current.map((revelation) =>
+          revelation.id === revelationId
+            ? {
+              ...revelation,
+              surfaced: true,
+              acknowledged_at: new Date().toISOString(),
+            }
+            : revelation
+        )
+      );
+      await loadRevelationLedger();
+    } catch (ackError) {
+      setRevelationNotice(
+        ackError instanceof Error ? ackError.message : 'Failed to acknowledge revelation.'
+      );
+    } finally {
+      setRevelationActionPending(null);
     }
   };
 
@@ -146,6 +227,7 @@ export default function Autonomy() {
   const retrySummary = lanes?.adaptive_retry;
   const ext = daemon?.external_daemon;
   const voice = daemon?.voice_daemon;
+  const revelationSystem = consciousness?.systems.revelation_engine;
 
   return (
     <div className="flex flex-col h-full bg-gray-900">
@@ -200,7 +282,7 @@ export default function Autonomy() {
             </div>
 
             <button
-              onClick={() => void refreshRuntime()}
+              onClick={() => void refreshAll()}
               disabled={runtimeLoading || runtimeRefreshing}
               className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition-colors disabled:opacity-40"
             >
@@ -302,6 +384,149 @@ export default function Autonomy() {
               {ext?.last_cycle_id ? `cycle ${ext.last_cycle_id.replace('cycle_', '')}` : 'queue activity'}
             </p>
           </div>
+        </div>
+
+        <div className="bg-gray-800 rounded-lg p-6">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <h3 className="text-white font-semibold mb-1 flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-indigo-300" />
+                Revelation Ledger
+              </h3>
+              <p className="text-gray-400 text-sm">
+                High-signal patterns gathered in the background and surfaced deliberately for operator review.
+              </p>
+            </div>
+            <button
+              onClick={() => void synthesiseRevelations()}
+              disabled={revelationActionPending !== null}
+              className="flex items-center gap-2 rounded-lg border border-indigo-700/50 bg-indigo-950/30 px-4 py-2 text-sm text-indigo-200 hover:bg-indigo-950/50 disabled:opacity-50 transition-colors"
+            >
+              {revelationActionPending === 'synthesise' ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Sparkles className="w-4 h-4" />
+              )}
+              Synthesize now
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-5">
+            <div className="bg-gray-900 rounded-lg p-4">
+              <p className="text-gray-400 text-sm">Unsurfaced</p>
+              <p className="text-2xl font-bold text-indigo-200 mt-1">
+                {revelationSystem?.unsurfaced_revelations ?? revelations.filter((item) => !item.surfaced).length}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                awaiting stewardship
+              </p>
+            </div>
+            <div className="bg-gray-900 rounded-lg p-4">
+              <p className="text-gray-400 text-sm">Total Revelations</p>
+              <p className="text-2xl font-bold text-white mt-1">
+                {revelationSystem?.total_revelations ?? revelations.length}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                cumulative ledger
+              </p>
+            </div>
+            <div className="bg-gray-900 rounded-lg p-4">
+              <p className="text-gray-400 text-sm">Token Budget</p>
+              <p className="text-2xl font-bold text-white mt-1">
+                {revelationSystem?.token_budget_pct_used !== undefined
+                  ? `${revelationSystem.token_budget_pct_used}%`
+                  : '—'}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                {revelationSystem?.session_tokens_used ?? 0} / {revelationSystem?.session_token_budget ?? 0} tokens
+              </p>
+            </div>
+            <div className="bg-gray-900 rounded-lg p-4">
+              <p className="text-gray-400 text-sm">Last Insight</p>
+              <p className="text-lg font-bold text-white mt-1">
+                {revelationSystem?.last_revelation_at ? formatRelativeTime(revelationSystem.last_revelation_at) : '—'}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                {revelationSystem?.latest_revelation_type ?? 'no revelations yet'}
+              </p>
+            </div>
+          </div>
+
+          {revelationNotice ? (
+            <div className="mt-4 rounded-lg border border-gray-700 bg-gray-900/70 px-4 py-3 text-sm text-gray-200">
+              {revelationNotice}
+            </div>
+          ) : null}
+
+          {revelationLoading ? (
+            <div className="mt-4 flex items-center gap-2 text-sm text-gray-400">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Refreshing revelation ledger...
+            </div>
+          ) : revelations.length === 0 ? (
+            <div className="mt-4 rounded-lg border border-gray-800 bg-gray-900/40 px-4 py-4 text-sm text-gray-500">
+              No revelations have been surfaced yet. Kor&apos;tana is still accumulating enough evidence for a high-confidence insight.
+            </div>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {revelations.map((revelation) => (
+                <div key={revelation.id} className="rounded-lg border border-gray-800 bg-gray-900 px-4 py-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-white font-medium">{revelation.title}</p>
+                        <span className="rounded-full border border-gray-700 bg-gray-800 px-2 py-0.5 text-[11px] uppercase tracking-[0.18em] text-gray-300">
+                          {revelation.revelation_type.replace(/_/g, ' ')}
+                        </span>
+                        <span className="text-[11px] text-gray-500">
+                          {(revelation.confidence * 100).toFixed(0)}% confidence
+                        </span>
+                        {revelation.surfaced ? (
+                          <span className="text-[11px] text-green-300">acknowledged</span>
+                        ) : (
+                          <span className="text-[11px] text-indigo-200">unsurfaced</span>
+                        )}
+                      </div>
+                      <p className="mt-2 text-sm leading-relaxed text-gray-300">
+                        {revelation.content}
+                      </p>
+                      {revelation.evidence.length ? (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {revelation.evidence.slice(0, 4).map((evidenceItem, index) => (
+                            <span
+                              key={`${revelation.id}-evidence-${index}`}
+                              className="rounded-full border border-gray-700 bg-gray-800/70 px-3 py-1 text-[11px] text-gray-300"
+                              title={evidenceItem}
+                            >
+                              {evidenceItem}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                    <div className="flex flex-col items-end gap-2 shrink-0">
+                      <span className="text-xs text-gray-500">
+                        {formatRelativeTime(revelation.created_at)}
+                      </span>
+                      {!revelation.surfaced ? (
+                        <button
+                          onClick={() => void acknowledgeRevelation(revelation.id)}
+                          disabled={revelationActionPending !== null}
+                          className="rounded-lg border border-indigo-700/40 px-3 py-1.5 text-xs text-indigo-200 hover:bg-indigo-950/30 disabled:opacity-50 transition-colors"
+                        >
+                          {revelationActionPending === revelation.id ? 'Acknowledging...' : 'Acknowledge'}
+                        </button>
+                      ) : revelation.acknowledged_at ? (
+                        <span className="text-[11px] text-gray-500">
+                          acknowledged {formatRelativeTime(revelation.acknowledged_at)}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {voice ? (

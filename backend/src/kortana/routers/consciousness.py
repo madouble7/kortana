@@ -18,7 +18,6 @@ from src.kortana.services.experience_distiller import (
 from src.kortana.services.memory_engine import MemoryEngine
 from src.kortana.services.revelation_engine import (
     RevelationEngine,
-    get_revelation_model_info,
     get_token_stats,
 )
 from src.kortana.services.self_diagnostic import (
@@ -149,7 +148,7 @@ async def count_self_memories(
                     "summary": m.summary,
                     "tags": m.tags,
                     "source": m.source,
-                    "created_at": m.created_at.isoformat() if m.created_at else None
+                    "created_at": m.created_at.isoformat() if m.created_at else None,
                 }
                 for m in memories
             ]
@@ -353,7 +352,9 @@ async def list_revelations(
                 "confidence": r.confidence,
                 "evidence": r.evidence,
                 "surfaced": r.surfaced,
-                "acknowledged_at": r.acknowledged_at.isoformat() if r.acknowledged_at else None,
+                "acknowledged_at": r.acknowledged_at.isoformat()
+                if r.acknowledged_at
+                else None,
                 "created_at": r.created_at.isoformat(),
             }
             for r in rows
@@ -371,6 +372,7 @@ async def acknowledge_revelation(
     ok = await engine.mark_surfaced(revelation_id)
     if not ok:
         from fastapi import HTTPException
+
         raise HTTPException(status_code=404, detail="Revelation not found")
     return {"id": revelation_id, "surfaced": True}
 

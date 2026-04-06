@@ -1,7 +1,7 @@
 """add revelation_memories table for kor'tana insight synthesis
 
 Revision ID: h1i2j3k4l5m6
-Revises: g8h9i0j1k2l3
+Revises: 375bc7144c2d
 Create Date: 2026-04-05
 
 """

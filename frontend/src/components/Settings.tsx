@@ -1,9 +1,13 @@
 import { AlertTriangle, Globe, Key, RefreshCw, Settings as SettingsIcon, Zap } from 'lucide-react';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRuntimeTelemetry } from '../hooks/useRuntimeTelemetry';
+import { api } from '../lib/api';
 import { getDisplayApiBaseUrl, getRuntimeEnvironment } from '../lib/runtimeConfig';
+import type { ConsciousnessStatus } from '../types';
 
 export default function Settings() {
+  const [consciousness, setConsciousness] = useState<ConsciousnessStatus | null>(null);
+  const [consciousnessError, setConsciousnessError] = useState<string | null>(null);
   const {
     health,
     lanes: modelLaneSummary,
@@ -31,10 +35,28 @@ export default function Settings() {
   const retryCategoryEntries = Object.entries(adaptiveRetry?.by_category || {}).sort(
     (left, right) => right[1] - left[1]
   );
+  const revelationSystem = consciousness?.systems.revelation_engine;
+
+  const loadConsciousness = async () => {
+    try {
+      const data = await api.getConsciousnessStatus();
+      setConsciousness(data);
+      setConsciousnessError(null);
+    } catch (error) {
+      setConsciousnessError(
+        error instanceof Error ? error.message : 'Consciousness status unavailable.'
+      );
+    }
+  };
+
+  useEffect(() => {
+    void loadConsciousness();
+  }, []);
 
   const getStatusColor = (status?: string) => {
     switch (status?.toLowerCase()) {
       case 'alive':
+      case 'active':
       case 'connected':
       case 'configured':
         return 'text-green-400';
@@ -58,6 +80,7 @@ export default function Settings() {
             type="button"
             onClick={() => {
               void refresh({ force: true, resources: ['health', 'lanes'] });
+              void loadConsciousness();
             }}
             className="inline-flex items-center gap-2 rounded-lg border border-gray-700 px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 transition-colors"
           >
@@ -146,6 +169,72 @@ export default function Settings() {
             </div>
           ) : (
             <p className="text-red-400">Failed to connect to backend</p>
+          )}
+        </div>
+
+        <div className="bg-gray-800 rounded-lg p-6">
+          <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+            <Zap className="w-5 h-5" />
+            Silent Intelligence
+          </h3>
+          {revelationSystem ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">Revelation Engine</span>
+                <span className={getStatusColor(revelationSystem.status)}>
+                  {revelationSystem.status}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">Model</span>
+                <span className="text-gray-300">{revelationSystem.model || '—'}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">Model Lane</span>
+                <span className="text-gray-300">{revelationSystem.model_lane || '—'}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">Unsurfaced Revelations</span>
+                <span className="text-indigo-300">{revelationSystem.unsurfaced_revelations ?? 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">Total Revelations</span>
+                <span className="text-gray-300">{revelationSystem.total_revelations ?? 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">Token Budget Used</span>
+                <span className="text-gray-300">
+                  {revelationSystem.token_budget_pct_used !== undefined
+                    ? `${revelationSystem.token_budget_pct_used}%`
+                    : '—'}
+                </span>
+              </div>
+              {revelationSystem.last_revelation_at ? (
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-400">Last Revelation</span>
+                  <span className="text-gray-300">
+                    {new Date(revelationSystem.last_revelation_at).toLocaleString()}
+                  </span>
+                </div>
+              ) : null}
+              {revelationSystem.latest_revelation_title ? (
+                <div className="pt-3 border-t border-gray-700">
+                  <p className="text-xs uppercase tracking-[0.18em] text-gray-500 mb-2">
+                    Latest Insight
+                  </p>
+                  <p className="text-sm text-white">{revelationSystem.latest_revelation_title}</p>
+                  {revelationSystem.latest_revelation_type ? (
+                    <p className="text-xs text-gray-500 mt-1">
+                      {revelationSystem.latest_revelation_type.replace(/_/g, ' ')}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-sm">
+              {consciousnessError || 'Consciousness telemetry unavailable.'}
+            </p>
           )}
         </div>
 
