@@ -40,11 +40,13 @@ _STATUS_BOOST: Dict[str, float] = {
 def _compute_goal_score(
     goal: AutonomyGoal,
     self_model_stage: Optional[str],
+    adaptation_adjustment: float = 0.0,
 ) -> float:
     """Pure deterministic score for a single goal.
 
-    Formula: tier_weight * priority_norm + status_boost + stage_alignment
+    Formula: tier_weight * priority_norm + status_boost + stage_alignment + adaptation
     All inputs from existing AutonomyGoal columns — no new schema needed.
+    adaptation_adjustment is fed from Phase 8 outcome learning signals.
     """
     tier_w = _TIER_WEIGHT.get(str(goal.tier or ""), 0.3)
     priority_norm = (goal.priority or 50) / 100.0
@@ -66,7 +68,10 @@ def _compute_goal_score(
     if 0.7 <= progress < 1.0:
         progress_boost = 0.1
 
-    return float(tier_w * priority_norm + status_b + stage_align + progress_boost)
+    return float(
+        tier_w * priority_norm + status_b + stage_align + progress_boost
+        + adaptation_adjustment
+    )
 
 
 def _build_idle_candidate(cycle_id: Optional[str]) -> NextActionCandidate:
@@ -88,11 +93,12 @@ def _build_idle_candidate(cycle_id: Optional[str]) -> NextActionCandidate:
 def _rank_goals(
     goals: List[AutonomyGoal],
     self_model_stage: Optional[str],
+    adaptation_adjustment: float = 0.0,
 ) -> List[Dict[str, Any]]:
     """Score and rank goals. Returns list sorted by score descending."""
     scored: List[Dict[str, Any]] = []
     for g in goals:
-        s = _compute_goal_score(g, self_model_stage)
+        s = _compute_goal_score(g, self_model_stage, adaptation_adjustment)
         scored.append({"goal": g, "score": round(s, 4)})
     scored.sort(key=lambda x: float(x["score"]), reverse=True)
     return scored
@@ -124,6 +130,18 @@ class GoalSelectionService:
         # 2. Read active goals
         goals = await self._get_active_goals()
 
+        # 2.5. Read adaptation signals from outcome learning (Phase 8)
+        adaptation_adj = 0.0
+        try:
+            from src.kortana.services.outcome_learning_service import (
+                compute_score_adjustment,
+                get_active_adaptation_signals,
+            )
+            signals = await get_active_adaptation_signals(self.db, scope="session")
+            adaptation_adj = compute_score_adjustment(signals)
+        except Exception:
+            pass  # graceful degradation — no adaptation data yet
+
         # 3. If no goals, return idle candidate
         if not goals:
             candidate = _build_idle_candidate(cycle_id)
@@ -137,7 +155,7 @@ class GoalSelectionService:
             return candidate
 
         # 4. Rank goals
-        ranked = _rank_goals(goals, stage)
+        ranked = _rank_goals(goals, stage, adaptation_adj)
         top = ranked[0]
         top_goal: AutonomyGoal = top["goal"]
         top_score: float = top["score"]

@@ -716,3 +716,49 @@ class ActionExecutionRecord(Base):
             f"<ActionExecutionRecord {self.classification} "
             f"outcome={self.outcome} candidate={self.candidate_id[:8]}>"
         )
+
+
+class OutcomeLearningRecord(Base):
+    """Durable record of what kor'tana learned from an execution attempt.
+
+    Written by OutcomeLearningService after each execution gate decision.
+    Answers:
+      1. What happened?            (outcome_verdict)
+      2. Was it as expected?       (expectation_match)
+      3. What was learned?         (lesson)
+      4. How should this change
+         future behaviour?         (adaptation_signal, signal_weight)
+    """
+
+    __tablename__ = "outcome_learning_records"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    execution_record_id = Column(
+        String(36),
+        ForeignKey("action_execution_records.id"),
+        nullable=False,
+        index=True,
+    )
+    outcome_verdict = Column(
+        String(32), nullable=False, index=True
+    )  # succeeded | partial | failed | inconclusive | skipped
+    expectation_match = Column(
+        String(16), nullable=False
+    )  # expected | surprising | contradictory
+    lesson = Column(Text, nullable=False)
+    adaptation_signal = Column(
+        String(48), nullable=False, index=True
+    )  # e.g. boost_tier:tactical, penalise_type:goal_work, trust_observation
+    signal_weight = Column(Float, nullable=False, default=0.0)  # -1.0 to +1.0
+    signal_scope = Column(
+        String(32), nullable=False, default="cycle"
+    )  # cycle | session | persistent
+    applied = Column(Boolean, nullable=False, default=False)
+    cycle_id = Column(String(8), nullable=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        return (
+            f"<OutcomeLearningRecord {self.outcome_verdict} "
+            f"signal={self.adaptation_signal} weight={self.signal_weight:+.2f}>"
+        )

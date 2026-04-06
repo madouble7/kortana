@@ -43,15 +43,20 @@ _BLOCK_SIGNALS = {"missing_dependency", "external_approval_needed"}
 
 def _classify_candidate(
     candidate: NextActionCandidate,
+    gate_adjustment: float = 0.0,
 ) -> tuple[str, str, Optional[List[Dict[str, str]]]]:
     """Classify a NextActionCandidate into an execution gate decision.
 
+    gate_adjustment: confidence modifier from Phase 8 outcome learning.
+      Positive = more confident (lower effective threshold).
+      Negative = less confident (higher effective threshold).
     Returns (classification, rationale, execution_plan).
     """
     action_type = str(candidate.action_type)
     status = str(candidate.status)
     payload: Dict[str, Any] = candidate.candidate_payload or {}  # type: ignore[assignment]
     score = float(candidate.score)
+    effective_threshold = max(0.1, 0.5 - gate_adjustment)  # clamp floor at 0.1
 
     # 1. Already executed or rejected — skip
     if status in ("executed", "rejected", "expired"):
@@ -96,11 +101,11 @@ def _classify_candidate(
     goal_tier = payload.get("goal_tier", "")
 
     # High-confidence, lower-tier work is auto-executable
-    if score >= 0.5 and goal_tier in ("tactical", "operational", "maintenance"):
+    if score >= effective_threshold and goal_tier in ("tactical", "operational", "maintenance"):
         return (
             "executable",
             (
-                f"Score {score:.4f} exceeds threshold (0.5) and tier '{goal_tier}' "
+                f"Score {score:.4f} exceeds threshold ({effective_threshold:.2f}) and tier '{goal_tier}' "
                 f"is within autonomous execution bounds."
             ),
             [
@@ -177,8 +182,22 @@ class ExecutionGateService:
             logger.info("No NextActionCandidate to evaluate.")
             return None
 
+        # 1.5. Read adaptation signals for gate adjustment (Phase 8)
+        gate_adj = 0.0
+        try:
+            from src.kortana.services.outcome_learning_service import (
+                compute_gate_adjustment,
+                get_active_adaptation_signals,
+            )
+            signals = await get_active_adaptation_signals(self.db, scope="session")
+            gate_adj = compute_gate_adjustment(signals, "executable")
+        except Exception:
+            pass  # graceful degradation — no adaptation data yet
+
         # 2. Classify
-        classification, rationale, plan = _classify_candidate(candidate)
+        classification, rationale, plan = _classify_candidate(
+            candidate, gate_adjustment=gate_adj
+        )
 
         # 3. Determine initial outcome from classification
         if classification == "executable":

@@ -808,3 +808,94 @@ async def get_execution_history(
             for r in records
         ],
     }
+
+
+# ==================================================================
+# Phase 8: Outcome Learning — Recursive Adaptation
+#
+# Read-only endpoints that surface what kor'tana learned from each
+# execution attempt and the accumulated adaptation signals that
+# feed back into goal selection and execution gating.
+# ==================================================================
+
+
+@router.get("/outcomes/current")
+async def get_current_outcome(
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """Read-only: the most recent outcome learning record.
+
+    Shows what was learned from the last execution attempt.
+    """
+    from src.kortana.services.outcome_learning_service import OutcomeLearningService
+
+    svc = OutcomeLearningService(db)
+    record = await svc.get_current_outcome()
+    if record is None:
+        return {"outcome": None, "message": "No outcome learning records yet."}
+    return {
+        "outcome": {
+            "id": record.id,
+            "execution_record_id": record.execution_record_id,
+            "outcome_verdict": record.outcome_verdict,
+            "expectation_match": record.expectation_match,
+            "lesson": record.lesson,
+            "adaptation_signal": record.adaptation_signal,
+            "signal_weight": record.signal_weight,
+            "signal_scope": record.signal_scope,
+            "applied": record.applied,
+            "cycle_id": record.cycle_id,
+            "created_at": (
+                record.created_at.isoformat() if record.created_at else None
+            ),
+        },
+    }
+
+
+@router.get("/outcomes/history")
+async def get_outcome_history(
+    limit: int = Query(default=10, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """Read-only: recent outcome learning records and lessons."""
+    from src.kortana.services.outcome_learning_service import OutcomeLearningService
+
+    svc = OutcomeLearningService(db)
+    records = await svc.get_outcome_history(limit=limit)
+    return {
+        "count": len(records),
+        "outcomes": [
+            {
+                "id": r.id,
+                "outcome_verdict": r.outcome_verdict,
+                "expectation_match": r.expectation_match,
+                "lesson": r.lesson,
+                "adaptation_signal": r.adaptation_signal,
+                "signal_weight": r.signal_weight,
+                "cycle_id": r.cycle_id,
+                "created_at": (
+                    r.created_at.isoformat() if r.created_at else None
+                ),
+            }
+            for r in records
+        ],
+    }
+
+
+@router.get("/adaptations")
+async def get_adaptations(
+    limit: int = Query(default=20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """Read-only: aggregated adaptation signals from outcome learning.
+
+    Shows how past outcomes are shaping future goal selection and execution gating.
+    """
+    from src.kortana.services.outcome_learning_service import OutcomeLearningService
+
+    svc = OutcomeLearningService(db)
+    signals = await svc.get_adaptations(limit=limit)
+    return {
+        "count": len(signals),
+        "adaptations": signals,
+    }

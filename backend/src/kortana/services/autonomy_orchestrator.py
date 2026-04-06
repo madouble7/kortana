@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.kortana.models import AutonomyCycleRecord
 from src.kortana.services.execution_gate_service import ExecutionGateService
 from src.kortana.services.goal_selection_service import GoalSelectionService
+from src.kortana.services.outcome_learning_service import OutcomeLearningService
 from src.kortana.services.revelation_engine import RevelationEngine
 from src.kortana.services.self_model_service import SelfModelService
 
@@ -151,6 +152,30 @@ class AutonomyOrchestrator:
             logger.exception("Execution gate failed")
             actions_taken.append("execution-gate: failed")
 
+        # ---- 3.9 OUTCOME LEARNING (Recursive Adaptation) ----
+        outcome_learning_id: Optional[str] = None
+        outcome_verdict: Optional[str] = None
+        adaptation_signal: Optional[str] = None
+        try:
+            if execution_record_id:
+                learner = OutcomeLearningService(self.db)
+                learning = await learner.learn_from_execution(
+                    execution_record_id=execution_record_id,
+                    cycle_id=cycle_id,
+                )
+                if learning:
+                    outcome_learning_id = str(learning.id)
+                    outcome_verdict = str(learning.outcome_verdict)
+                    adaptation_signal = str(learning.adaptation_signal)
+                    actions_taken.append(
+                        f"outcome-learning: {learning.outcome_verdict} "
+                        f"signal={learning.adaptation_signal} "
+                        f"(weight={learning.signal_weight:+.2f})"
+                    )
+        except Exception:
+            logger.exception("Outcome learning failed")
+            actions_taken.append("outcome-learning: failed")
+
         # ---- 4. PERSIST cycle record to DB ----
         elapsed_ms = int((time.monotonic() - start) * 1000)
 
@@ -167,6 +192,9 @@ class AutonomyOrchestrator:
             "next_action_title": next_action_title,
             "execution_record_id": execution_record_id,
             "execution_classification": execution_classification,
+            "outcome_learning_id": outcome_learning_id,
+            "outcome_verdict": outcome_verdict,
+            "adaptation_signal": adaptation_signal,
             "actions_taken": actions_taken,
         }
 
