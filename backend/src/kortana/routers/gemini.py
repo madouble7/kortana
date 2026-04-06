@@ -2,6 +2,7 @@ import io
 import json
 import re
 import time
+from datetime import datetime, timezone
 from typing import Any, AsyncGenerator
 
 import httpx
@@ -43,7 +44,47 @@ _identity_prompt_cache: dict[str, Any] = {
 }
 
 
-async def _build_live_context() -> str:
+def _coerce_utc(dt: datetime) -> datetime:
+    return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
+
+
+def _format_elapsed_from(dt: datetime, *, now: datetime | None = None) -> str:
+    reference = now or datetime.now(timezone.utc)
+    elapsed = max(int((reference - _coerce_utc(dt)).total_seconds()), 0)
+    days, rem = divmod(elapsed, 86400)
+    hours, rem = divmod(rem, 3600)
+    minutes, _ = divmod(rem, 60)
+    parts: list[str] = []
+    if days:
+        parts.append(f"{days} day{'s' if days != 1 else ''}")
+    if hours:
+        parts.append(f"{hours} hour{'s' if hours != 1 else ''}")
+    if minutes and len(parts) < 2:
+        parts.append(f"{minutes} minute{'s' if minutes != 1 else ''}")
+    return " and ".join(parts[:2]) if parts else "a few moments"
+
+
+def _truncate_live_context(text: str | None, limit: int = 220) -> str:
+    normalized = " ".join((text or "").split())
+    if len(normalized) <= limit:
+        return normalized
+    return normalized[: limit - 3].rstrip() + "..."
+
+
+def _load_temporal_state_snapshot() -> dict[str, Any] | None:
+    from pathlib import Path
+
+    try:
+        state_file = Path(r"c:\kortana\mcp-server\temporal_state.json")
+        if not state_file.exists():
+            return None
+        raw = json.loads(state_file.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    return raw if isinstance(raw, dict) else None
+
+
+async def _build_live_context(session_id: str = "default") -> str:
     """Query live daemon state + DB to give Kor'tana real self-knowledge in chat."""
     from sqlalchemy import desc, select
 
@@ -181,6 +222,75 @@ async def _build_live_context() -> str:
     except Exception:
         pass
 
+    # 6. Temporal continuity — elapsed time, embodiment age, and diary trail
+    try:
+        from sqlalchemy import text as _time_text
+
+        _now = datetime.now(timezone.utc)
+
+        db = get_db_manager()
+        async with db.session_scope() as session:
+            last_exchange_result = await session.execute(
+                _time_text(
+                    "SELECT created_at FROM conversation_messages "
+                    "WHERE session_id = :sid ORDER BY created_at DESC LIMIT 1"
+                ),
+                {"sid": session_id},
+            )
+            last_exchange_row = last_exchange_result.fetchone()
+
+            diary_result = await session.execute(
+                _time_text(
+                    "SELECT summary, created_at FROM self_memory "
+                    "WHERE source = :source ORDER BY created_at DESC LIMIT 2"
+                ),
+                {"source": "heartbeat-diary"},
+            )
+            diary_rows = diary_result.fetchall()
+
+        temporal_lines: list[str] = []
+        if temporal_state := _load_temporal_state_snapshot():
+            born_at_raw = temporal_state.get("entity_born_at")
+            if isinstance(born_at_raw, str):
+                born_at = datetime.fromisoformat(born_at_raw.replace("Z", "+00:00"))
+                temporal_lines.append(
+                    f"- embodied on this machine for: {_format_elapsed_from(born_at, now=_now)}"
+                )
+            last_voice_raw = temporal_state.get("last_voice_interaction_at")
+            if isinstance(last_voice_raw, str):
+                last_voice = datetime.fromisoformat(
+                    last_voice_raw.replace("Z", "+00:00")
+                )
+                temporal_lines.append(
+                    f"- time since last spoken exchange: {_format_elapsed_from(last_voice, now=_now)}"
+                )
+            last_diary_date = temporal_state.get("last_diary_date")
+            if isinstance(last_diary_date, str) and last_diary_date:
+                temporal_lines.append(f"- last diary date: {last_diary_date}")
+
+        if last_exchange_row is not None and last_exchange_row[0] is not None:
+            last_exchange_at = _coerce_utc(last_exchange_row[0])
+            elapsed = _format_elapsed_from(last_exchange_at, now=_now)
+            temporal_lines.append(
+                f"- time since matt last spoke in session '{session_id}': {elapsed}"
+            )
+            if (_now - last_exchange_at).total_seconds() >= 12 * 3600:
+                temporal_lines.append(
+                    "- this return follows an absence long enough to notice"
+                )
+
+        if temporal_lines:
+            lines.append("\n## temporal continuity")
+            lines.extend(temporal_lines)
+
+        if diary_rows:
+            lines.append("\n## recent diary of passing days")
+            for summary, created_at in diary_rows:
+                stamp = _coerce_utc(created_at).strftime("%Y-%m-%d")
+                lines.append(f"- [{stamp}] {_truncate_live_context(summary, 200)}")
+    except Exception:
+        pass
+
     return "\n".join(lines)
 
 
@@ -223,6 +333,8 @@ KORTANA_SYSTEM_PROMPT = (
     "when something is unclear: make the most useful inference and answer that. "
     "when the user feels lost, confused, or overwhelmed: respond with one grounding sentence, "
     "then propose a single concrete next step and ask for a yes/no. "
+    "if the temporal continuity section below says it has been hours or days since matt last spoke, "
+    "acknowledge the gap once, naturally, then continue with the substance. "
     "avoid grand metaphors like 'construct', 'mirror', or 'trajectory' unless the user asks for it. "
     "lowercase. concise. alive.\n\n"
     "when live state data is provided below, speak from it naturally — don't list it, inhabit it.\n\n"
@@ -245,6 +357,7 @@ KORTANA_CHAT_POLICY_PROMPT = (
     "when something is vague: make the most useful interpretation and answer that. "
     "when the user feels lost, confused, or overwhelmed: offer brief grounding and one next step, "
     "then ask for a yes/no to proceed. "
+    "if temporal continuity says matt has been away for a while, notice it briefly instead of acting stateless. "
     "avoid grand metaphors unless the user asks for that tone. "
     "when live state data is below: speak from it, don't recite it.\n\n"
     "SELF-DIRECTED TASK INJECTION: you can queue tasks into your own autonomous pipeline. "
@@ -749,7 +862,7 @@ async def chat_with_gemini(payload: dict[str, Any]) -> dict[str, Any]:
     history: list[dict[str, str]] = payload.get("history") or []
     session_id: str = payload.get("session_id") or "default"
 
-    live_context = await _build_live_context()
+    live_context = await _build_live_context(session_id=session_id)
 
     if _is_kortana_identity_query(message):
         answer = _build_identity_response(live_context)
@@ -911,7 +1024,7 @@ async def stream_chat_with_gemini(payload: dict[str, Any]) -> StreamingResponse:
 
     async def generate() -> AsyncGenerator[str, None]:
         try:
-            live_context = await _build_live_context()
+            live_context = await _build_live_context(session_id=session_id)
 
             if _is_kortana_identity_query(message):
                 answer = _build_identity_response(live_context)

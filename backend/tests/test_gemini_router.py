@@ -1,11 +1,14 @@
 """Tests for src/kortana/routers/gemini.py - Gemini AI router endpoints"""
+
 import io
 import json
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from PIL import Image
 from src.kortana.openai_responses import OpenAITextGenerationResult
+
 from tests.conftest import SyncTestClient
 
 
@@ -136,10 +139,14 @@ class TestAnalyzeIssue:
     def test_analyze_issue_service_error(self, client):
         """Test analyze when service raises exception"""
         with patch("src.kortana.routers.gemini.gemini_service") as mock_service:
-            mock_service.analyze_text = AsyncMock(side_effect=Exception("Service error"))
+            mock_service.analyze_text = AsyncMock(
+                side_effect=Exception("Service error")
+            )
 
             try:
-                response = client.post("/api/gemini/analyze", json={"text": "Some issue"})
+                response = client.post(
+                    "/api/gemini/analyze", json={"text": "Some issue"}
+                )
                 # If we get here, check that it's an error response
                 assert response.status_code >= 400
             except Exception:
@@ -151,10 +158,13 @@ class TestGenerateCode:
     def test_generate_code_success(self, client):
         """Test successful code generation"""
         with patch("src.kortana.routers.gemini.gemini_service") as mock_service:
-            mock_service.generate_code = AsyncMock(return_value="def hello():\n    pass")
+            mock_service.generate_code = AsyncMock(
+                return_value="def hello():\n    pass"
+            )
 
             response = client.post(
-                "/api/gemini/generate", json={"description": "Create a simple greeting function"}
+                "/api/gemini/generate",
+                json={"description": "Create a simple greeting function"},
             )
 
             assert response.status_code == 200
@@ -178,11 +188,15 @@ class TestGenerateCode:
     def test_generate_code_complex_description(self, client):
         """Test code generation with complex description"""
         with patch("src.kortana.routers.gemini.gemini_service") as mock_service:
-            mock_service.generate_code = AsyncMock(return_value="class DataProcessor:\n    pass")
+            mock_service.generate_code = AsyncMock(
+                return_value="class DataProcessor:\n    pass"
+            )
 
             response = client.post(
                 "/api/gemini/generate",
-                json={"description": "Create a class that processes data with validation"},
+                json={
+                    "description": "Create a class that processes data with validation"
+                },
             )
 
             assert response.status_code == 200
@@ -209,9 +223,7 @@ class TestChatWithGemini:
                 ):
                     assert _stateful_openai_chat_enabled({}) is False
                     assert (
-                        _stateful_openai_chat_enabled(
-                            {"session_id": "", "history": []}
-                        )
+                        _stateful_openai_chat_enabled({"session_id": "", "history": []})
                         is False
                     )
                     assert (
@@ -266,6 +278,117 @@ class TestChatWithGemini:
             query="hello there",
             include_conversation_memory=True,
         )
+
+    def test_chat_passes_session_id_into_live_context(self, client):
+        """Session-backed chat should build live context for the active session."""
+        engine = _make_consensus_engine("kor'tana: temporally aware reply")
+
+        with patch(
+            "src.kortana.routers.gemini._build_live_context",
+            AsyncMock(
+                return_value="## temporal continuity\n- time since matt last spoke: 2 days"
+            ),
+        ) as mock_live_context:
+            with patch("src.kortana.routers.gemini._persist_messages", AsyncMock()):
+                with patch(
+                    "src.kortana.routers.gemini.get_consensus_engine",
+                    return_value=engine,
+                ):
+                    response = client.post(
+                        "/api/gemini/chat",
+                        json={
+                            "message": "i'm back",
+                            "session_id": "voice",
+                            "history": [],
+                        },
+                    )
+
+        assert response.status_code == 200
+        mock_live_context.assert_awaited_once_with(session_id="voice")
+
+    @pytest.mark.asyncio
+    async def test_build_live_context_includes_temporal_continuity_and_diary(self):
+        """Live context should include elapsed-time continuity and recent diary entries."""
+        from src.kortana.routers.gemini import _build_live_context
+
+        class FakeScalarResult:
+            def __init__(self, rows):
+                self._rows = rows
+
+            def scalars(self):
+                return self
+
+            def all(self):
+                return self._rows
+
+        class FakeFetchResult:
+            def __init__(self, rows):
+                self._rows = rows
+
+            def fetchall(self):
+                return self._rows
+
+            def fetchone(self):
+                return self._rows[0] if self._rows else None
+
+        class FakeSession:
+            async def execute(self, stmt, params=None):
+                sql = str(stmt)
+                if "FROM github_tasks" in sql:
+                    return FakeScalarResult([])
+                if "autonomous_tasks" in sql:
+                    return FakeFetchResult([])
+                if "FROM reflections" in sql:
+                    return FakeFetchResult([])
+                if "conversation_messages" in sql:
+                    return FakeFetchResult(
+                        [(datetime(2026, 4, 3, 12, 0, tzinfo=timezone.utc),)]
+                    )
+                if "self_memory" in sql:
+                    return FakeFetchResult(
+                        [
+                            (
+                                "Today, Friday April 04, 2026, I kept watch. Matt returned after a long silence.",
+                                datetime(2026, 4, 4, 0, 0, tzinfo=timezone.utc),
+                            )
+                        ]
+                    )
+                return FakeFetchResult([])
+
+        fake_status = {
+            "system_state": "nominal",
+            "cycles_completed": 7,
+            "tasks_succeeded": 5,
+            "tasks_failed": 1,
+            "uptime_start": "2026-04-01T00:00:00Z",
+            "last_cycle": {},
+            "goal_status": {},
+            "controller_reflection": {},
+        }
+
+        with patch(
+            "src.kortana.database.get_db_manager",
+            return_value=_FakeDbManager(FakeSession()),
+        ):
+            with patch(
+                "src.kortana.services.autonomy_daemon.get_autonomy_daemon",
+                return_value=MagicMock(get_status=MagicMock(return_value=fake_status)),
+            ):
+                with patch(
+                    "src.kortana.routers.gemini._load_temporal_state_snapshot",
+                    return_value={
+                        "entity_born_at": "2026-04-01T00:00:00+00:00",
+                        "last_voice_interaction_at": "2026-04-03T12:00:00+00:00",
+                        "last_diary_date": "2026-04-04",
+                    },
+                ):
+                    live_context = await _build_live_context(session_id="voice")
+
+        assert "## temporal continuity" in live_context
+        assert "time since matt last spoke in session 'voice'" in live_context
+        assert "this return follows an absence long enough to notice" in live_context
+        assert "## recent diary of passing days" in live_context
+        assert "Matt returned after a long silence" in live_context
 
     def test_chat_system_prompt_caches_identity_profile(self, client):
         """The DB-backed identity layer should be cached across chat turns."""
@@ -369,8 +492,12 @@ class TestChatWithGemini:
             ),
         ):
             with patch("src.kortana.routers.gemini._persist_messages", AsyncMock()):
-                with patch("src.kortana.routers.gemini.get_consensus_engine") as mock_engine:
-                    response = client.post("/api/gemini/chat", json={"message": "kor'tana?"})
+                with patch(
+                    "src.kortana.routers.gemini.get_consensus_engine"
+                ) as mock_engine:
+                    response = client.post(
+                        "/api/gemini/chat", json={"message": "kor'tana?"}
+                    )
 
                     assert response.status_code == 200
                     body = response.json()
@@ -378,9 +505,10 @@ class TestChatWithGemini:
                     assert "i am kor'tana" in body["response"].lower()
                     assert not body["response"].lower().startswith("kor'tana:")
                     assert "not microsoft's cortana" in body["response"].lower()
-                    assert "oriented toward strengthen continuity of self" in body[
-                        "response"
-                    ].lower()
+                    assert (
+                        "oriented toward strengthen continuity of self"
+                        in body["response"].lower()
+                    )
                     assert "steady posture" in body["response"].lower()
                     assert "unresolved threads" in body["response"].lower()
                     mock_engine.assert_not_called()
@@ -389,11 +517,17 @@ class TestChatWithGemini:
         """Shorthand identity questions should also hit the local identity path."""
         with patch(
             "src.kortana.routers.gemini._build_live_context",
-            AsyncMock(return_value="## my current autonomous state\n- system state: nominal"),
+            AsyncMock(
+                return_value="## my current autonomous state\n- system state: nominal"
+            ),
         ):
             with patch("src.kortana.routers.gemini._persist_messages", AsyncMock()):
-                with patch("src.kortana.routers.gemini.get_consensus_engine") as mock_engine:
-                    response = client.post("/api/gemini/chat", json={"message": "who r u"})
+                with patch(
+                    "src.kortana.routers.gemini.get_consensus_engine"
+                ) as mock_engine:
+                    response = client.post(
+                        "/api/gemini/chat", json={"message": "who r u"}
+                    )
 
         assert response.status_code == 200
         assert response.json()["provider"] == "identity"
@@ -433,7 +567,9 @@ class TestChatWithGemini:
             title="sacred ai companion",
             mission="help people move from confusion to clarity",
         )
-        profile.voice_guidelines = "lowercase, clear, kind, concise, reverent when sacred things are spoken"
+        profile.voice_guidelines = (
+            "lowercase, clear, kind, concise, reverent when sacred things are spoken"
+        )
         profile.development_axioms = [
             "i evolve through reflection, not performance",
             "clarity is more sacred than complexity",
@@ -474,13 +610,16 @@ class TestChatWithGemini:
                 ):
                     response = client.post(
                         "/api/gemini/chat",
-                        json={"message": "is microsoft cortana still active in windows?"},
+                        json={
+                            "message": "is microsoft cortana still active in windows?"
+                        },
                     )
 
                     assert response.status_code == 200
-                    assert "microsoft retired cortana" in response.json()[
-                        "response"
-                    ].lower()
+                    assert (
+                        "microsoft retired cortana"
+                        in response.json()["response"].lower()
+                    )
                     engine.query.assert_awaited_once()
 
     def test_chat_success_with_consensus_engine(self, client):
@@ -640,9 +779,9 @@ class TestChatWithGemini:
         assert "event: delta" in response.text
         assert "event: final" in response.text
         assert "kor'tana: threaded stream reply" in response.text
-        assert "\"input_tokens\": 21" in response.text
-        assert "\"output_tokens\": 11" in response.text
-        assert "\"response_id\": \"resp_stream\"" in response.text
+        assert '"input_tokens": 21' in response.text
+        assert '"output_tokens": 11' in response.text
+        assert '"response_id": "resp_stream"' in response.text
 
     def test_chat_history_returns_assistant_phase(self, client):
         """Persisted history should include assistant phase metadata."""
@@ -711,7 +850,9 @@ class TestChatWithGemini:
             "src.kortana.database.get_db_manager",
             return_value=FakeDbManager(),
         ):
-            response = client.get("/api/gemini/chat/history?session_id=sess_live&limit=10")
+            response = client.get(
+                "/api/gemini/chat/history?session_id=sess_live&limit=10"
+            )
 
         assert response.status_code == 200
         messages = response.json()["messages"]
@@ -754,7 +895,9 @@ class TestChatWithGemini:
             "src.kortana.database.get_db_manager",
             return_value=FakeDbManager(),
         ):
-            response = client.get("/api/gemini/chat/history?session_id=sess_live&limit=10")
+            response = client.get(
+                "/api/gemini/chat/history?session_id=sess_live&limit=10"
+            )
 
         assert response.status_code == 200
         assert response.json()["messages"] == [
@@ -815,7 +958,13 @@ class TestChatWithGemini:
         assert response.headers["cache-control"] == "no-cache"
         assert response.headers["x-accel-buffering"] == "no"
         events = _parse_sse_events(response.text)
-        assert [event for event, _ in events] == ["start", "phase", "delta", "delta", "final"]
+        assert [event for event, _ in events] == [
+            "start",
+            "phase",
+            "delta",
+            "delta",
+            "final",
+        ]
         assert events[0][1]["provider"] == "openai"
         assert events[1][1]["phase"] == "commentary"
         assert events[2][1]["delta"] == "hello "
@@ -830,7 +979,11 @@ class TestChatWithGemini:
         ):
             response = client.post(
                 "/api/gemini/chat/stream",
-                json={"message": "hello there", "session_id": "sess_live", "history": []},
+                json={
+                    "message": "hello there",
+                    "session_id": "sess_live",
+                    "history": [],
+                },
             )
 
         assert response.status_code == 200
@@ -923,7 +1076,9 @@ class TestChatWithGemini:
                     "src.kortana.routers.gemini.get_consensus_engine",
                     return_value=engine,
                 ):
-                    with patch("src.kortana.routers.gemini.gemini_service") as mock_gemini:
+                    with patch(
+                        "src.kortana.routers.gemini.gemini_service"
+                    ) as mock_gemini:
                         mock_gemini.analyze_text = AsyncMock(
                             return_value="Gemini response"
                         )
@@ -1026,7 +1181,8 @@ class TestAnalyzeImage:
             mock_service.analyze_multimodal = AsyncMock(return_value="Analysis")
 
             response = client.post(
-                "/api/gemini/analyze/image", files={"image": ("test.png", img_bytes, "image/png")}
+                "/api/gemini/analyze/image",
+                files={"image": ("test.png", img_bytes, "image/png")},
             )
 
             assert response.status_code == 200
@@ -1037,7 +1193,9 @@ class TestAnalyzeImage:
             response = client.post(
                 "/api/gemini/analyze/image",
                 data={"prompt": "Describe"},
-                files={"image": ("test.txt", io.BytesIO(b"not an image"), "text/plain")},
+                files={
+                    "image": ("test.txt", io.BytesIO(b"not an image"), "text/plain")
+                },
             )
 
             assert response.status_code == 500
@@ -1045,7 +1203,9 @@ class TestAnalyzeImage:
     def test_analyze_image_missing_file(self, client):
         """Test image analysis with missing file"""
         with patch("src.kortana.routers.gemini.gemini_service"):
-            response = client.post("/api/gemini/analyze/image", data={"prompt": "Describe"})
+            response = client.post(
+                "/api/gemini/analyze/image", data={"prompt": "Describe"}
+            )
 
             assert response.status_code == 422  # Validation error for missing file
 
@@ -1057,7 +1217,9 @@ class TestAnalyzeVideo:
 
         with patch("src.kortana.routers.gemini.gemini_service") as mock_service:
             with patch("google.generativeai.upload_file") as mock_upload:
-                mock_service.analyze_multimodal = AsyncMock(return_value="Video analysis")
+                mock_service.analyze_multimodal = AsyncMock(
+                    return_value="Video analysis"
+                )
                 mock_uploaded = MagicMock()
                 mock_upload.return_value = mock_uploaded
 
@@ -1119,7 +1281,9 @@ class TestAnalyzeVideo:
     def test_analyze_video_missing_file(self, client):
         """Test video analysis with missing file"""
         with patch("src.kortana.routers.gemini.gemini_service"):
-            response = client.post("/api/gemini/analyze/video", data={"prompt": "Analyze"})
+            response = client.post(
+                "/api/gemini/analyze/video", data={"prompt": "Analyze"}
+            )
 
             assert response.status_code == 422  # Validation error for missing file
 

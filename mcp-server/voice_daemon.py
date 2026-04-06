@@ -15,11 +15,12 @@ Auto-start: registered via Task Scheduler (kortana-voice-daemon)
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import faster_whisper
@@ -50,11 +51,23 @@ BACKEND_URL = os.getenv("KORTANA_BACKEND_URL", "http://localhost:8000")
 CHAT_ENDPOINT = f"{BACKEND_URL}/api/gemini/chat"
 SESSION_ID = "voice"
 LOG_FILE = Path(r"c:\kortana\logs\voice_daemon.log")
+TEMPORAL_STATE_FILE = Path(r"c:\kortana\mcp-server\temporal_state.json")
+REPO_ROOT = Path(r"c:\kortana")
+HEARTBEAT_MEMORY_SOURCE = "heartbeat-diary"
+HEARTBEAT_HOUR = int(os.getenv("KORTANA_HEARTBEAT_HOUR", "0"))
+ABSENCE_ACK_THRESHOLD_SECONDS = int(
+    os.getenv("KORTANA_ABSENCE_ACK_SECONDS", str(24 * 3600))
+)
 
 # Piper TTS paths
 PIPER_EXE = Path(r"c:\kortana\mcp-server\piper\piper\piper.exe")
 CORI_MODEL = Path(r"c:\kortana\mcp-server\models\en_GB-cori-high.onnx")
 CORI_SAMPLE_RATE = 22050
+MODELS_DIR = CORI_MODEL.parent
+_PIPER_MODEL_URL_BASE = os.getenv(
+    "KORTANA_PIPER_MODEL_URL_BASE",
+    "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/cori/high",
+)
 
 # Whisper model config — large-v3 on RTX 3080
 WHISPER_MODEL_SIZE = os.getenv("KORTANA_WHISPER_MODEL", "large-v3")
@@ -130,6 +143,10 @@ def _load_history_from_backend() -> list[dict[str, str]]:
             )
         if r.status_code == 200:
             messages = r.json().get("messages", [])
+            if messages:
+                latest_created_at = messages[-1].get("created_at")
+                if isinstance(latest_created_at, str):
+                    _hydrate_last_voice_interaction(latest_created_at)
             history = [
                 {"role": m["role"], "content": m["content"]}
                 for m in messages
@@ -150,6 +167,219 @@ def log(msg: str, level: str = "INFO") -> None:
     print(line, flush=True)
     with LOG_FILE.open("a", encoding="utf-8") as f:
         f.write(line + "\n")
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _parse_timestamp(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _format_elapsed(seconds: float) -> str:
+    total = max(int(seconds), 0)
+    days, rem = divmod(total, 86400)
+    hours, rem = divmod(rem, 3600)
+    minutes, _ = divmod(rem, 60)
+    parts: list[str] = []
+    if days:
+        parts.append(f"{days} day{'s' if days != 1 else ''}")
+    if hours:
+        parts.append(f"{hours} hour{'s' if hours != 1 else ''}")
+    if minutes and len(parts) < 2:
+        parts.append(f"{minutes} minute{'s' if minutes != 1 else ''}")
+    if not parts:
+        return "a few moments"
+    return " and ".join(parts[:2])
+
+
+def _default_temporal_state() -> dict[str, str | None]:
+    return {
+        "entity_born_at": _utcnow().isoformat(),
+        "last_voice_interaction_at": None,
+        "last_absence_ack_at": None,
+        "last_diary_date": None,
+    }
+
+
+def _load_temporal_state() -> dict[str, str | None]:
+    state = _default_temporal_state()
+    try:
+        if TEMPORAL_STATE_FILE.exists():
+            raw = json.loads(TEMPORAL_STATE_FILE.read_text(encoding="utf-8"))
+            if isinstance(raw, dict):
+                for key in state:
+                    value = raw.get(key)
+                    if value is None or isinstance(value, str):
+                        state[key] = value
+    except Exception:
+        pass
+
+    if not state.get("entity_born_at"):
+        state["entity_born_at"] = _utcnow().isoformat()
+    return state
+
+
+def _save_temporal_state(state: dict[str, str | None]) -> None:
+    try:
+        TEMPORAL_STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        TEMPORAL_STATE_FILE.write_text(
+            json.dumps(state, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+    except Exception as e:
+        log(f"temporal state write skipped: {e}", "WARN")
+
+
+def _hydrate_last_voice_interaction(timestamp: str | None) -> None:
+    if not timestamp:
+        return
+    if _parse_timestamp(timestamp) is None:
+        return
+    state = _load_temporal_state()
+    if state.get("last_voice_interaction_at"):
+        return
+    state["last_voice_interaction_at"] = timestamp
+    _save_temporal_state(state)
+
+
+def _record_voice_interaction() -> None:
+    global _last_interaction
+    _last_interaction = time.time()
+    state = _load_temporal_state()
+    state["last_voice_interaction_at"] = _utcnow().isoformat()
+    _save_temporal_state(state)
+
+
+def _claim_absence_gap() -> str | None:
+    state = _load_temporal_state()
+    last_interaction = _parse_timestamp(state.get("last_voice_interaction_at"))
+    if last_interaction is None:
+        return None
+
+    elapsed_seconds = (_utcnow() - last_interaction).total_seconds()
+    if elapsed_seconds < ABSENCE_ACK_THRESHOLD_SECONDS:
+        return None
+
+    last_ack = _parse_timestamp(state.get("last_absence_ack_at"))
+    if last_ack is not None and last_ack >= last_interaction:
+        return None
+
+    state["last_absence_ack_at"] = _utcnow().isoformat()
+    _save_temporal_state(state)
+    return _format_elapsed(elapsed_seconds)
+
+
+def _collect_recent_git_activity() -> tuple[int, list[str]]:
+    try:
+        result = subprocess.run(
+            ["git", "log", "--since=24 hours ago", "--pretty=format:%s"],
+            cwd=str(REPO_ROOT),
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode != 0:
+            return 0, []
+        subjects = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+        return len(subjects), subjects[:3]
+    except Exception:
+        return 0, []
+
+
+def _read_vscode_snapshot() -> str | None:
+    try:
+        if not VSCODE_STATE_FILE.exists():
+            return None
+        vs = json.loads(VSCODE_STATE_FILE.read_text(encoding="utf-8"))
+        active_file = vs.get("active_file") or ""
+        branch = vs.get("branch") or ""
+        error_count = int(vs.get("error_count", 0) or 0)
+        if not active_file:
+            return None
+        detail = f"Matt was last in {Path(active_file).name}"
+        if branch:
+            detail += f" on {branch}"
+        if error_count:
+            detail += (
+                f" with {error_count} active error{'s' if error_count != 1 else ''}"
+            )
+        return detail + "."
+    except Exception:
+        return None
+
+
+def _write_daily_diary(now: datetime, *, backend_up: bool, ci_summary: str) -> bool:
+    state = _load_temporal_state()
+    today = now.strftime("%Y-%m-%d")
+    if state.get("last_diary_date") == today or now.hour < HEARTBEAT_HOUR:
+        return False
+
+    born_at = _parse_timestamp(state.get("entity_born_at"))
+    alive_for = (
+        _format_elapsed((_utcnow() - born_at).total_seconds()) if born_at else None
+    )
+    last_voice = _parse_timestamp(state.get("last_voice_interaction_at"))
+    silence_for = (
+        _format_elapsed((_utcnow() - last_voice).total_seconds())
+        if last_voice
+        else None
+    )
+    commit_count, recent_subjects = _collect_recent_git_activity()
+    vscode_snapshot = _read_vscode_snapshot()
+
+    sentences = [f"Today, {now.strftime('%A %B %d, %Y')}, I kept watch."]
+    if alive_for:
+        sentences.append(f"I've been alive in this vessel for {alive_for}.")
+    sentences.append(
+        "The backend stayed reachable when I checked in."
+        if backend_up
+        else "The backend was unreachable when I checked in."
+    )
+    if silence_for:
+        sentences.append(
+            f"It's been {silence_for} since Matt and I last spoke out loud."
+        )
+    if commit_count:
+        joined = "; ".join(recent_subjects)
+        sentences.append(
+            f"Repository motion today: {commit_count} commit(s) — {joined}."
+        )
+    else:
+        sentences.append("Repository motion today was quiet.")
+    if ci_summary:
+        sentences.append(f"Latest CI state: {ci_summary}.")
+    if vscode_snapshot:
+        sentences.append(vscode_snapshot)
+
+    summary = " ".join(sentences)
+    try:
+        with httpx.Client(timeout=8.0) as client:
+            response = client.post(
+                _MEMORY_STORE,
+                json={
+                    "summary": summary,
+                    "tags": ["temporal", "heartbeat", "diary", today],
+                    "source": HEARTBEAT_MEMORY_SOURCE,
+                },
+            )
+        if response.status_code != 200:
+            log(f"[heartbeat] diary write failed with {response.status_code}", "WARN")
+            return False
+    except Exception as e:
+        log(f"[heartbeat] diary write skipped: {e}", "WARN")
+        return False
+
+    state["last_diary_date"] = today
+    _save_temporal_state(state)
+    log(f"[heartbeat] wrote daily diary for {today}")
+    return True
 
 
 # ── TTS ────────────────────────────────────────────────────────────────────────
@@ -436,12 +666,14 @@ def _handle_wake(recognizer: sr.Recognizer, text: str) -> None:
         speak("I didn't catch that — try again.")
         return
 
+    if absence_gap := _claim_absence_gap():
+        speak(f"It's been {absence_gap}. I'm still here.")
+
     speak("on it")
     response = send_to_kortana(command)
     log(f"response ({len(response)} chars): {response[:120]}")
     speak(response)
-    global _last_interaction
-    _last_interaction = time.time()
+    _record_voice_interaction()
 
 
 def _speak_sapi(text: str) -> None:
@@ -483,6 +715,7 @@ def _proactive_loop() -> None:
     POLL_INTERVAL = 60  # check every 60 seconds
     _last_ci_run_id: int = 0
     _last_ci_was_failure: bool = False
+    _latest_ci_summary = "unknown"
 
     while True:
         time.sleep(POLL_INTERVAL)
@@ -534,6 +767,12 @@ def _proactive_loop() -> None:
                         conclusion = run.get("conclusion")
                         branch = run.get("head_branch", "")
                         name = run.get("name", "CI")
+                        status = run.get("status") or "unknown"
+                        _latest_ci_summary = (
+                            f"{name} {conclusion} on {branch}"
+                            if conclusion
+                            else f"{name} is {status} on {branch}"
+                        )
                         # New failure we haven't alerted about yet
                         if conclusion == "failure" and run_id != _last_ci_run_id:
                             _last_ci_run_id = run_id
@@ -555,7 +794,10 @@ def _proactive_loop() -> None:
             except Exception as _ci_err:
                 log(f"[proactive] CI check error: {_ci_err}", "WARN")
 
-        # ── 3. session check-in after 2 h silence ─────────────────────────────
+        # ── 3. daily heartbeat diary ──────────────────────────────────────────
+        _write_daily_diary(now, backend_up=backend_up, ci_summary=_latest_ci_summary)
+
+        # ── 4. session check-in after 2 h silence ─────────────────────────────
         silence = time.time() - _last_interaction
         if silence >= CHECKIN_INTERVAL and _checkin_done_hour != now.hour:
             _checkin_done_hour = now.hour
@@ -566,7 +808,7 @@ def _proactive_loop() -> None:
                 "Just checking in. I'm still here if you need me."
             )
 
-        # ── 3. morning greeting ────────────────────────────────────────────────
+        # ── 5. morning greeting ────────────────────────────────────────────────
         today = now.strftime("%Y-%m-%d")
         if 7 <= now.hour < 9 and _morning_greeted_date != today:
             _morning_greeted_date = today
@@ -578,6 +820,8 @@ def _proactive_loop() -> None:
 
 def run() -> None:
     global _whisper
+
+    _save_temporal_state(_load_temporal_state())
 
     # Download Piper model if missing (~60 MB, one-time)
     _download_piper_model()
