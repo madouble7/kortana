@@ -383,8 +383,8 @@ async def list_tools() -> list[types.Tool]:
         types.Tool(
             name="memory_recall",
             description=(
-                "Load the most recent voice conversation history from kor'tana's persistent store. "
-                "Returns the last N exchanges from the voice session, oldest first."
+                "Load recent persistent conversation history from kor'tana's store. "
+                "Returns the last N exchanges from the requested session, oldest first."
             ),
             inputSchema={
                 "type": "object",
@@ -395,7 +395,28 @@ async def list_tools() -> list[types.Tool]:
                     },
                     "session_id": {
                         "type": "string",
-                        "description": "Session to recall (default: voice)",
+                        "description": "Session to recall (default: default)",
+                    },
+                },
+            },
+        ),
+        types.Tool(
+            name="revelation_read",
+            description=(
+                "Read kor'tana's unsurfaced revelations — synthesised insights she has detected "
+                "from accumulated data (patterns, contradictions, predictions). "
+                "Call this when starting a session or when Matt asks what she has noticed in the background."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "limit": {
+                        "type": "integer",
+                        "description": "Max revelations to return (default: 5)",
+                    },
+                    "unsurfaced_only": {
+                        "type": "boolean",
+                        "description": "Return only unacknowledged revelations (default: true)",
                     },
                 },
             },
@@ -977,12 +998,31 @@ $toast = New-Object Windows.UI.Notifications.ToastNotification $xml
     # ── memory_recall ──────────────────────────────────────────────────────────
     if name == "memory_recall":
         limit = arguments.get("limit", 20)
-        session_id = arguments.get("session_id", "voice")
+        session_id = arguments.get("session_id", "default")
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 r = await client.get(
                     f"{KORTANA_BACKEND}/api/gemini/chat/history",
                     params={"session_id": session_id, "limit": limit},
+                )
+            data = (
+                r.json()
+                if r.status_code == 200
+                else {"error": r.text[:200], "status_code": r.status_code}
+            )
+        except Exception as e:
+            data = {"error": str(e)}
+        return [types.TextContent(type="text", text=json.dumps(data, indent=2))]
+
+    # ── revelation_read ────────────────────────────────────────────────────────
+    if name == "revelation_read":
+        limit = arguments.get("limit", 5)
+        unsurfaced_only = arguments.get("unsurfaced_only", True)
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                r = await client.get(
+                    f"{KORTANA_BACKEND}/api/consciousness/memory/revelations",
+                    params={"limit": limit, "unsurfaced_only": str(unsurfaced_only).lower()},
                 )
             data = (
                 r.json()

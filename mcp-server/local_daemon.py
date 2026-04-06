@@ -227,6 +227,44 @@ class ProactiveWatcher:
         self._save_state()
 
 
+# ── revelation poller ─────────────────────────────────────────────────────────
+_SEEN_REVELATIONS: set[str] = set()
+
+
+async def check_new_revelations() -> None:
+    """Poll for unsurfaced revelations and surface them silently."""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.get(
+                f"{BACKEND_URL}/api/consciousness/memory/revelations",
+                params={"unsurfaced_only": "true", "limit": "10"},
+            )
+        if r.status_code != 200:
+            return
+        data = r.json()
+    except Exception:
+        return
+
+    for rev in data.get("revelations", []):
+        rev_id = rev.get("id", "")
+        if not rev_id or rev_id in _SEEN_REVELATIONS:
+            continue
+        _SEEN_REVELATIONS.add(rev_id)
+        title = rev.get("title", "new insight")
+        content = rev.get("content", "")
+        log(f"[revelation] surfacing: {title}")
+        toast(f"kor'tana — {title}", content[:120])
+        # Mark acknowledged so it's not re-toasted after daemon restart
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                await client.post(
+                    f"{BACKEND_URL}/api/consciousness/memory/revelations/{rev_id}/acknowledge"
+                )
+        except Exception:
+            pass
+        break  # one at a time — don't flood
+
+
 # ── health check ───────────────────────────────────────────────────────────────
 async def check_backend_health() -> tuple[bool, dict]:
     try:
@@ -418,6 +456,7 @@ async def cycle(consecutive_failures: list[int], watcher: ProactiveWatcher) -> N
         log(f"git pull error: {e}", "WARN")
 
     run_local_tasks()
+    await check_new_revelations()
     watcher.check()
 
 

@@ -542,3 +542,33 @@ class AutonomyGoal(Base):
 
     def __repr__(self) -> str:
         return f"<AutonomyGoal {self.id!r} tier={self.tier!r} status={self.status!r}>"
+
+
+class RevelationMemory(Base):
+    """Synthesised insights kor'tana surfaces after accumulating enough evidence.
+
+    The Revelation Engine periodically scans SelfMemory, git activity, CI patterns,
+    and conversation topics, then asks an LLM whether any non-obvious pattern has
+    emerged.  Only revelations that meet the confidence threshold are written here.
+
+    Rows are injected into voice greetings and MCP tool output so kor'tana can
+    proactively share what she has noticed — unrequested, high-signal.
+    """
+
+    __tablename__ = "revelation_memories"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    title = Column(String(256), nullable=False)
+    content = Column(Text, nullable=False)
+    evidence = Column(JSON, nullable=True)  # list[str] — source observations
+    revelation_type = Column(
+        String(64), nullable=False, default="pattern", index=True
+    )  # pattern | contradiction | self_discovery | prediction
+    confidence = Column(Float, nullable=False, default=0.7)
+    surfaced = Column(Boolean, nullable=False, default=False, index=True)
+    acknowledged_at = Column(DateTime, nullable=True)
+    source = Column(String(64), nullable=False, default="revelation_engine", index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        return f"<RevelationMemory {self.title!r} type={self.revelation_type!r} surfaced={self.surfaced}>"

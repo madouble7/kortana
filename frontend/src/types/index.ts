@@ -187,6 +187,69 @@ export interface AlwaysOnMetricsResponse {
   timestamp?: string;
 }
 
+export interface Revelation {
+  id: string;
+  title: string;
+  content: string;
+  evidence: string[];
+  revelation_type: string;
+  confidence: number;
+  surfaced: boolean;
+  acknowledged_at?: string | null;
+  created_at: string;
+}
+
+export interface RevelationListResponse {
+  count: number;
+  revelations: Revelation[];
+}
+
+export interface RevelationSynthesisResponse {
+  revelations_written: number;
+  revelations: Revelation[];
+  token_stats: {
+    session_tokens_used: number;
+    session_token_budget: number;
+    budget_remaining: number;
+    budget_pct_used: number;
+  };
+}
+
+export interface ConsciousnessSystemStatus {
+  status: string;
+  model?: string;
+  preferred_model?: string;
+  model_lane?: string;
+  total_revelations?: number;
+  unsurfaced_revelations?: number;
+  last_revelation_at?: string | null;
+  latest_revelation_title?: string | null;
+  latest_revelation_type?: string | null;
+  session_tokens_used?: number;
+  session_token_budget?: number;
+  token_budget_pct_used?: number;
+  cooldown_hours?: number;
+  minimum_observations?: number;
+}
+
+export interface ConsciousnessStatus {
+  phase: number;
+  codename: string;
+  systems: {
+    revelation_engine?: ConsciousnessSystemStatus;
+    [key: string]: unknown;
+  };
+  token_stats?: {
+    revelation_engine?: {
+      session_tokens_used: number;
+      session_token_budget: number;
+      budget_remaining: number;
+      budget_pct_used: number;
+    };
+    distillation_engine?: Record<string, unknown>;
+  };
+}
+
 export interface HealthStatus {
   status: 'alive' | 'degraded' | 'down';
   message: string;

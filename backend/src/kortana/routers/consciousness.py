@@ -16,6 +16,11 @@ from src.kortana.services.experience_distiller import (
     get_distillation_model_info,
 )
 from src.kortana.services.memory_engine import MemoryEngine
+from src.kortana.services.revelation_engine import (
+    RevelationEngine,
+    get_revelation_model_info,
+    get_token_stats,
+)
 from src.kortana.services.self_diagnostic import (
     SelfDiagnostic,
     get_analysis_model_info,
@@ -121,12 +126,34 @@ async def memory_stats(
 @router.get("/memory/self")
 async def count_self_memories(
     source: Optional[str] = Query(default=None),
+    limit: Optional[int] = Query(default=None),
     db: AsyncSession = Depends(get_db),
 ) -> Dict[str, Any]:
-    """Return the count of SelfMemory entries, optionally filtered by source."""
+    """Return the count of SelfMemory entries, optionally filtered by source.
+    If limit is provided, returns the actual memories instead.
+    """
     from sqlalchemy import func, select
 
     from src.kortana.models import SelfMemory
+
+    if limit is not None:
+        stmt = select(SelfMemory)
+        if source:
+            stmt = stmt.where(SelfMemory.source == source)
+        stmt = stmt.order_by(SelfMemory.created_at.desc()).limit(limit)
+        result = await db.execute(stmt)
+        memories = result.scalars().all()
+        return {
+            "memories": [
+                {
+                    "summary": m.summary,
+                    "tags": m.tags,
+                    "source": m.source,
+                    "created_at": m.created_at.isoformat() if m.created_at else None
+                }
+                for m in memories
+            ]
+        }
 
     stmt = select(func.count()).select_from(SelfMemory)
     if source:
@@ -269,6 +296,86 @@ async def distil_diagnostics(
 
 
 # ------------------------------------------------------------------
+# Revelation endpoints
+# ------------------------------------------------------------------
+class RevelationSynthesiseRequest(BaseModel):
+    force: bool = Field(default=False)
+
+
+@router.post("/memory/revelation")
+async def synthesise_revelations(
+    body: RevelationSynthesiseRequest,
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """Run a full revelation synthesis cycle against accumulated observations."""
+    engine = RevelationEngine(db)
+    revelations = await engine.synthesise(force=body.force)
+    return {
+        "revelations_written": len(revelations),
+        "revelations": [
+            {
+                "id": r.id,
+                "title": r.title,
+                "content": r.content,
+                "revelation_type": r.revelation_type,
+                "confidence": r.confidence,
+                "evidence": r.evidence,
+                "created_at": r.created_at.isoformat(),
+            }
+            for r in revelations
+        ],
+        "token_stats": get_token_stats(),
+    }
+
+
+@router.get("/memory/revelations")
+async def list_revelations(
+    limit: int = Query(default=20, ge=1, le=100),
+    unsurfaced_only: bool = Query(default=False),
+    revelation_type: Optional[str] = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """List stored revelations, optionally filtered to unsurfaced only."""
+    engine = RevelationEngine(db)
+    rows = await engine.list_revelations(
+        limit=limit,
+        unsurfaced_only=unsurfaced_only,
+        revelation_type=revelation_type,
+    )
+    return {
+        "count": len(rows),
+        "revelations": [
+            {
+                "id": r.id,
+                "title": r.title,
+                "content": r.content,
+                "revelation_type": r.revelation_type,
+                "confidence": r.confidence,
+                "evidence": r.evidence,
+                "surfaced": r.surfaced,
+                "acknowledged_at": r.acknowledged_at.isoformat() if r.acknowledged_at else None,
+                "created_at": r.created_at.isoformat(),
+            }
+            for r in rows
+        ],
+    }
+
+
+@router.post("/memory/revelations/{revelation_id}/acknowledge")
+async def acknowledge_revelation(
+    revelation_id: str,
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """Mark a revelation as surfaced/acknowledged."""
+    engine = RevelationEngine(db)
+    ok = await engine.mark_surfaced(revelation_id)
+    if not ok:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Revelation not found")
+    return {"id": revelation_id, "surfaced": True}
+
+
+# ------------------------------------------------------------------
 # Phase 8 overview endpoint
 # ------------------------------------------------------------------
 @router.get("/status")
@@ -283,6 +390,8 @@ async def consciousness_status(
     distiller = ExperienceDistiller(db)
     cost = distiller.get_cost_stats()
     distillation_model = get_distillation_model_info()
+    revelation_engine = RevelationEngine(db)
+    revelation_status = await revelation_engine.get_status()
 
     return {
         "phase": 8,
@@ -307,5 +416,25 @@ async def consciousness_status(
                 "capsules_created": cost["capsules_created"],
                 "token_budget_pct_used": cost["budget_pct_used"],
             },
+            "revelation_engine": {
+                "status": revelation_status["status"],
+                "model": revelation_status["model"],
+                "preferred_model": revelation_status["preferred_model"],
+                "model_lane": revelation_status["model_lane"],
+                "session_tokens_used": revelation_status["session_tokens_used"],
+                "session_token_budget": revelation_status["session_token_budget"],
+                "token_budget_pct_used": revelation_status["budget_pct_used"],
+                "total_revelations": revelation_status["total_revelations"],
+                "unsurfaced_revelations": revelation_status["unsurfaced_revelations"],
+                "last_revelation_at": revelation_status["last_revelation_at"],
+                "latest_revelation_title": revelation_status["latest_revelation_title"],
+                "latest_revelation_type": revelation_status["latest_revelation_type"],
+                "cooldown_hours": revelation_status["cooldown_hours"],
+                "minimum_observations": revelation_status["minimum_observations"],
+            },
+        },
+        "token_stats": {
+            "revelation_engine": get_token_stats(),
+            "distillation_engine": cost,
         },
     }

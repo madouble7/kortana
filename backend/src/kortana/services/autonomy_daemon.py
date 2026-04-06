@@ -93,6 +93,10 @@ class AutonomyDaemon:
             "tasks_succeeded": 0,
             "tasks_failed": 0,
             "tasks_deferred": 0,
+            "revelations_written_total": 0,
+            "last_revelation_run": None,
+            "last_revelations_written": 0,
+            "last_revelation_titles": [],
             "self_heals_manifested": 0,
             "adaptive_adjustments": 0,
             "safe_mode_cycles": 0,
@@ -1015,6 +1019,31 @@ class AutonomyDaemon:
             except Exception:
                 pass
 
+    async def _run_revelation_engine(self, session: Any) -> None:
+        """Run the Revelation Engine every 10 cycles to synthesise accumulated insights."""
+        cycle_num = self.metrics.get("cycles_completed", 0)
+        if cycle_num % 10 != 0:
+            return
+        self.metrics["last_revelation_run"] = datetime.utcnow().isoformat()
+        try:
+            from src.kortana.services.revelation_engine import RevelationEngine
+
+            engine = RevelationEngine(session)
+            revelations = await engine.synthesise()
+            self.metrics["last_revelations_written"] = len(revelations)
+            self.metrics["last_revelation_titles"] = [r.title for r in revelations[:3]]
+            if revelations:
+                self.metrics["revelations_written_total"] = int(
+                    self.metrics.get("revelations_written_total", 0)
+                ) + len(revelations)
+                logger.info(
+                    f"[revelation] {len(revelations)} new revelation(s) written this cycle"
+                )
+        except Exception as exc:
+            self.metrics["last_revelations_written"] = 0
+            self.metrics["last_revelation_titles"] = []
+            logger.debug(f"[revelation] engine skipped: {exc}")
+
     def _get_provider_health_snapshot(self) -> dict[str, str]:
         """Return current AI provider backoff state for cycle telemetry."""
         try:
@@ -1112,6 +1141,7 @@ class AutonomyDaemon:
             await self._heal_vectors(session)
             await self._process_self_directed_tasks(session)
             await self._write_reflection(session)
+            await self._run_revelation_engine(session)
 
         try:
             from dataclasses import asdict

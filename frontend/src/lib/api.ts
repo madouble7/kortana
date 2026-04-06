@@ -15,6 +15,9 @@ import type {
   Memory,
   ModelLaneSummary,
   AlwaysOnMetricsResponse,
+  ConsciousnessStatus,
+  RevelationListResponse,
+  RevelationSynthesisResponse,
   QueuedTaskSummary,
   Task,
 } from '../types';
@@ -765,6 +768,44 @@ class ApiClient {
 
   async getDaemonCycles(limit = 20): Promise<DaemonCycle[]> {
     return this.request<DaemonCycle[]>(`/api/daemon/cycles?limit=${limit}`);
+  }
+
+  async getConsciousnessStatus(): Promise<ConsciousnessStatus> {
+    return this.request<ConsciousnessStatus>('/api/consciousness/status');
+  }
+
+  async getRevelations(options: {
+    limit?: number;
+    unsurfacedOnly?: boolean;
+    revelationType?: string;
+  } = {}): Promise<RevelationListResponse> {
+    const params = new URLSearchParams();
+    params.set('limit', String(options.limit ?? 10));
+    if (options.unsurfacedOnly !== undefined) {
+      params.set('unsurfaced_only', String(options.unsurfacedOnly));
+    }
+    if (options.revelationType) {
+      params.set('revelation_type', options.revelationType);
+    }
+    return this.request<RevelationListResponse>(
+      `/api/consciousness/memory/revelations?${params.toString()}`
+    );
+  }
+
+  async synthesiseRevelations(force = false): Promise<RevelationSynthesisResponse> {
+    return this.request<RevelationSynthesisResponse>('/api/consciousness/memory/revelation', {
+      method: 'POST',
+      body: JSON.stringify({ force }),
+    });
+  }
+
+  async acknowledgeRevelation(revelationId: string): Promise<{ id: string; surfaced: boolean }> {
+    return this.request<{ id: string; surfaced: boolean }>(
+      `/api/consciousness/memory/revelations/${encodeURIComponent(revelationId)}/acknowledge`,
+      {
+        method: 'POST',
+      }
+    );
   }
 
   async startDaemon(): Promise<DaemonStatus & { status: string }> {

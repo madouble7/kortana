@@ -20,7 +20,12 @@
       "Bash(py -3.11 -c ':*)",
       "Bash(py -3.11)",
       "Bash(py -3.11 c:/kortana/mcp-server/_patch_voice_daemon.py)",
-      "Bash(rm c:/kortana/mcp-server/_patch_voice_daemon.py)"
+      "Bash(rm c:/kortana/mcp-server/_patch_voice_daemon.py)",
+      "Bash(python -m alembic upgrade head)",
+      "Bash(python -m alembic heads)",
+      "Bash(python -m alembic stamp 375bc7144c2d)",
+      "Bash(python -m alembic upgrade h1i2j3k4l5m6)",
+      "Bash(python -m pytest -q --tb=no -x)"
     ]
   }
 }
