@@ -51,6 +51,12 @@
                 "command": "kortana.autonomy.audit.open",
                 "title": "Kor'tana: Open Autonomy Audit",
                 "category": "Kor'tana"
+            },
+            {
+                "command": "kortana.killSwitch",
+                "title": "Kor'tana: PULL THE PLUG (Kill Switch)",
+                "category": "Kor'tana",
+                "icon": "$(alert)"
             }
         ],
         "viewsContainers": {
@@ -72,6 +78,12 @@
             ]
         },
         "keybindings": [
+            {
+                "command": "kortana.killSwitch",
+                "key": "ctrl+shift+k",
+                "mac": "cmd+shift+k",
+                "when": "editorTextFocus"
+            },
             {
                 "command": "kortana.openAIStudio",
                 "key": "ctrl+shift+a",

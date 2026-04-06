@@ -8,6 +8,7 @@ import {
     COMMAND_OPEN_DEPLOY_PAGE,
     COMMAND_UNSEAL_RUNTIME,
     COMMAND_VIEW_METRICS,
+    COMMAND_KILL_SWITCH,
 } from "./commands";
 import { FocusTelemetry } from "./telemetry";
 import { getAutonomyAuditContent } from "./webview/audit";
@@ -107,6 +108,35 @@ export function activate(context: vscode.ExtensionContext) {
             } catch (error) {
                 vscode.window.showErrorMessage(
                     `Failed to unseal runtime: ${error}`
+                );
+            }
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand(COMMAND_KILL_SWITCH, async () => {
+            const answer = await vscode.window.showWarningMessage(
+                "🚨 PULL THE PLUG? This will block Kor'tana from executing code and revert her last autonomous merge.",
+                { modal: true },
+                "Yes, Engage Kill Switch",
+                "Cancel"
+            );
+            
+            if (answer !== "Yes, Engage Kill Switch") {
+                return;
+            }
+
+            try {
+                // Call the local backend kill-switch endpoint
+                const axios = require("axios");
+                await axios.post("http://localhost:8000/api/autonomy/kill-switch");
+                
+                vscode.window.showInformationMessage(
+                    "🛑 KILL SWITCH ENGAGED. Autonomy locked and rollback initiated."
+                );
+            } catch (error: any) {
+                vscode.window.showErrorMessage(
+                    `Failed to engage kill switch! The backend might be unreachable. Check C:/kortana/scripts/revert_autonomy.py manually. Error: ${error.message}`
                 );
             }
         })

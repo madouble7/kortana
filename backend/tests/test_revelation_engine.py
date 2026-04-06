@@ -4,16 +4,12 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime, timedelta
-from typing import Any
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from src.kortana.models import ConversationMessage, RevelationMemory, SelfMemory
 from src.kortana.services.revelation_engine import (
-    CONFIDENCE_THRESHOLD,
-    DEDUP_SIMILARITY_THRESHOLD,
-    MIN_OBSERVATIONS,
     RevelationEngine,
     _is_duplicate,
     get_revelation_model_info,
@@ -148,7 +144,6 @@ class TestGetUnsurfaced:
     @pytest.mark.asyncio
     async def test_returns_only_unsurfaced(self):
         unsurfaced = _make_revelation(surfaced=False)
-        surfaced = _make_revelation(surfaced=True)
         session = _make_session(rows=[unsurfaced])
         engine = RevelationEngine(session)
         results = await engine.get_unsurfaced()
