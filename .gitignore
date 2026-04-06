@@ -231,6 +231,9 @@ Thumbs.db
 vscode-extension/out/
 vscode-extension/.vscode-test/
 
+# Runtime temporal continuity state
+mcp-server/temporal_state.json
+
 # Secrets
 secrets.json
 key.json
