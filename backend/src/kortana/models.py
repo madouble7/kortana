@@ -637,3 +637,40 @@ class AutonomyCycleRecord(Base):
 
     def __repr__(self) -> str:
         return f"<AutonomyCycleRecord {self.cycle_id} v{self.self_model_version}>"
+
+
+class NextActionCandidate(Base):
+    """A concrete next-action selected by the Goal Selection Service.
+
+    Each row answers three questions:
+      1. What should kor'tana do next?  (title + action_type + payload)
+      2. Why this now?                  (why_now)
+      3. Why not the alternatives?      (why_not_alternatives)
+
+    Written by GoalSelectionService at the end of each autonomy cycle.
+    Immutable after creation — new selections supersede old ones.
+    """
+
+    __tablename__ = "next_action_candidates"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    title = Column(String(512), nullable=False)
+    action_type = Column(
+        String(64), nullable=False, index=True
+    )  # goal_work | self_improvement | observation | maintenance | idle
+    rationale = Column(Text, nullable=False)
+    why_now = Column(Text, nullable=False)
+    why_not_alternatives = Column(Text, nullable=False)
+    score = Column(Float, nullable=False, default=0.0, index=True)
+    goal_id = Column(
+        String(36), ForeignKey("autonomy_goals.id"), nullable=True, index=True
+    )
+    candidate_payload = Column(JSON, nullable=True)  # action-specific metadata
+    status = Column(
+        String(32), nullable=False, default="proposed", index=True
+    )  # proposed | accepted | rejected | executed | expired
+    cycle_id = Column(String(8), nullable=True, index=True)  # links to AutonomyCycleRecord
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        return f"<NextActionCandidate {self.title!r} score={self.score:.2f} status={self.status}>"

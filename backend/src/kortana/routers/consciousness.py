@@ -621,3 +621,119 @@ async def internal_autonomy_cycle(
 
     orchestrator = AutonomyOrchestrator(db)
     return await orchestrator.run_cycle(trigger="daemon")
+
+
+# ==================================================================
+# Phase 6: Agency Core — Goal Selection & Next Action
+#
+# Read-only endpoints that surface what kor'tana currently cares about,
+# what she intends to do next, and why.
+# ==================================================================
+
+
+@router.get("/goals/active")
+async def get_active_goals(
+    limit: int = Query(default=20, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """Read-only: active autonomy goals ranked by priority."""
+    from sqlalchemy import select
+
+    from src.kortana.models import AutonomyGoal
+
+    stmt = (
+        select(AutonomyGoal)
+        .where(AutonomyGoal.status.in_(["active", "in_progress", "pending"]))
+        .order_by(AutonomyGoal.priority.desc())
+        .limit(limit)
+    )
+    result = await db.execute(stmt)
+    rows = result.scalars().all()
+    return {
+        "count": len(rows),
+        "goals": [
+            {
+                "id": g.id,
+                "title": g.title,
+                "tier": g.tier,
+                "status": g.status,
+                "priority": g.priority,
+                "progress": g.progress,
+                "description": g.description,
+                "created_at": (
+                    g.created_at.isoformat() if g.created_at else None
+                ),
+            }
+            for g in rows
+        ],
+    }
+
+
+@router.get("/goals/next-action")
+async def get_next_action(
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """Read-only: the most recent next-action candidate.
+
+    Answers:
+      - What should kor'tana do next?
+      - Why this now?
+      - Why not the alternatives?
+    """
+    from src.kortana.services.goal_selection_service import GoalSelectionService
+
+    svc = GoalSelectionService(db)
+    candidate = await svc.get_current_next_action()
+    if candidate is None:
+        return {
+            "next_action": None,
+            "message": "No next-action candidate selected yet.",
+        }
+    return {
+        "next_action": {
+            "id": candidate.id,
+            "title": candidate.title,
+            "action_type": candidate.action_type,
+            "rationale": candidate.rationale,
+            "why_now": candidate.why_now,
+            "why_not_alternatives": candidate.why_not_alternatives,
+            "score": candidate.score,
+            "goal_id": candidate.goal_id,
+            "candidate_payload": candidate.candidate_payload,
+            "status": candidate.status,
+            "cycle_id": candidate.cycle_id,
+            "created_at": (
+                candidate.created_at.isoformat() if candidate.created_at else None
+            ),
+        },
+    }
+
+
+@router.get("/goals/next-action/history")
+async def get_next_action_history(
+    limit: int = Query(default=10, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """Read-only: recent next-action selection history."""
+    from src.kortana.services.goal_selection_service import GoalSelectionService
+
+    svc = GoalSelectionService(db)
+    candidates = await svc.get_next_action_history(limit=limit)
+    return {
+        "count": len(candidates),
+        "candidates": [
+            {
+                "id": c.id,
+                "title": c.title,
+                "action_type": c.action_type,
+                "score": c.score,
+                "goal_id": c.goal_id,
+                "status": c.status,
+                "cycle_id": c.cycle_id,
+                "created_at": (
+                    c.created_at.isoformat() if c.created_at else None
+                ),
+            }
+            for c in candidates
+        ],
+    }

@@ -18,6 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.kortana.models import AutonomyCycleRecord
+from src.kortana.services.goal_selection_service import GoalSelectionService
 from src.kortana.services.revelation_engine import RevelationEngine
 from src.kortana.services.self_model_service import SelfModelService
 
@@ -101,7 +102,7 @@ class AutonomyOrchestrator:
             )
             if snapshot:
                 snapshot_version = snapshot.version
-                developmental_stage = snapshot.developmental_stage
+                developmental_stage = str(snapshot.developmental_stage)
                 actions_taken.append(
                     f"self-model v{snapshot.version} "
                     f"(stage={snapshot.developmental_stage}, "
@@ -112,6 +113,23 @@ class AutonomyOrchestrator:
         except Exception:
             logger.exception("Self-model synthesis failed")
             actions_taken.append("self-model: failed")
+
+        # ---- 3.5 GOAL SELECTION (Agency Core) ----
+        next_action_id: Optional[str] = None
+        next_action_title: Optional[str] = None
+        try:
+            selector = GoalSelectionService(self.db)
+            candidate = await selector.select_next_action(cycle_id=cycle_id)
+            if candidate:
+                next_action_id = str(candidate.id)
+                next_action_title = str(candidate.title)
+                actions_taken.append(
+                    f"next-action: {candidate.title} "
+                    f"(score={candidate.score:.4f}, type={candidate.action_type})"
+                )
+        except Exception:
+            logger.exception("Goal selection failed")
+            actions_taken.append("goal-selection: failed")
 
         # ---- 4. PERSIST cycle record to DB ----
         elapsed_ms = int((time.monotonic() - start) * 1000)
@@ -125,6 +143,8 @@ class AutonomyOrchestrator:
             "revelations_written": revelations_written,
             "self_model_version": snapshot_version,
             "developmental_stage": developmental_stage,
+            "next_action_candidate_id": next_action_id,
+            "next_action_title": next_action_title,
             "actions_taken": actions_taken,
         }
 
