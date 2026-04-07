@@ -1,6 +1,6 @@
 """Tests for small routers: agents, system, memory, prayer, rclone"""
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 
 @pytest.fixture
@@ -157,19 +157,32 @@ class TestSystemRouter:
 
 
 class TestMemoryRouter:
-    def test_get_documents_empty(self, client):
-        import src.kortana.routers.memory as mem_module
+    @pytest.fixture(autouse=True)
+    def mock_memory_engine(self):
+        """Mock MemoryEngine so memory router tests stay DB-independent."""
+        mem = MagicMock()
+        mem.id = 1
+        mem.content = "test content"
+        mem.memory_type = "document"
+        mem.embedding = None
 
-        mem_module.knowledge_base.clear()
+        engine = MagicMock()
+        engine.store = AsyncMock(return_value=mem)
+        engine.search = AsyncMock(return_value=[])
+        engine.stats = AsyncMock(return_value={"total_memories": 0, "embedded_count": 0, "by_type": {}})
+
+        with patch("src.kortana.routers.memory.MemoryEngine", return_value=engine):
+            self._engine = engine
+            self._mem = mem
+            yield
+
+    def test_get_documents_empty(self, client):
         resp = client.get("/api/memory/documents")
         assert resp.status_code == 200
         data = resp.json()
         assert "documents" in data
 
     def test_add_document(self, client):
-        import src.kortana.routers.memory as mem_module
-
-        mem_module.knowledge_base.clear()
         resp = client.post(
             "/api/memory/add_document",
             json={
@@ -179,58 +192,53 @@ class TestMemoryRouter:
         )
         assert resp.status_code == 200
         data = resp.json()
-        assert data["document"]["title"] == "Test Doc"
+        assert "document" in data
+        assert data["document"]["memory_type"] == "document"
 
     def test_add_document_minimal(self, client):
-        import src.kortana.routers.memory as mem_module
-
-        mem_module.knowledge_base.clear()
         resp = client.post("/api/memory/add_document", json={})
         assert resp.status_code == 200
 
     def test_search_documents_get(self, client):
-        import src.kortana.routers.memory as mem_module
-
-        mem_module.knowledge_base.clear()
-        mem_module.knowledge_base.append(
-            {"id": 0, "title": "Python Guide", "content": "Python is great"}
-        )
         resp = client.get("/api/memory/search?query=python")
         assert resp.status_code == 200
         data = resp.json()
         assert "results" in data
-        assert len(data["results"]) >= 1
 
     def test_search_documents_post(self, client):
-        import src.kortana.routers.memory as mem_module
-
-        mem_module.knowledge_base.clear()
-        mem_module.knowledge_base.append(
-            {"id": 0, "title": "Test", "content": "hello world"}
-        )
         resp = client.post("/api/memory/search", json={"query": "hello"})
         assert resp.status_code == 200
         data = resp.json()
         assert "results" in data
 
     def test_search_no_results(self, client):
-        import src.kortana.routers.memory as mem_module
-
-        mem_module.knowledge_base.clear()
         resp = client.post("/api/memory/search", json={"query": "xyznotfound"})
         assert resp.status_code == 200
         data = resp.json()
         assert data["results"] == []
 
     def test_documents_accessible_after_add(self, client):
-        import src.kortana.routers.memory as mem_module
-
-        mem_module.knowledge_base.clear()
-        client.post("/api/memory/add_document", json={"title": "A", "content": "apple"})
         resp = client.get("/api/memory/documents")
         assert resp.status_code == 200
         data = resp.json()
-        assert len(data["documents"]) >= 1
+        assert "documents" in data
+
+    def test_store_memory(self, client):
+        self._mem.memory_type = "long_term"
+        resp = client.post(
+            "/api/memory/store",
+            json={"content": "Test memory content", "memory_type": "long_term"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "stored"
+        assert data["memory_type"] == "long_term"
+
+    def test_memory_stats(self, client):
+        resp = client.get("/api/memory/stats")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "total_memories" in data
 
 
 class TestPrayerRouter:

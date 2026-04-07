@@ -33,6 +33,8 @@ from src.kortana.services.ai_consensus import ConsensusMode, get_consensus_engin
 from src.kortana.services.gemini import gemini_service
 from src.kortana.voice_definition import (
     KORTANA_CHAT_POLICY_PROMPT as _VOICE_CHAT_POLICY,
+)
+from src.kortana.voice_definition import (
     KORTANA_SYSTEM_PROMPT as _VOICE_SYSTEM_PROMPT,
 )
 
@@ -139,7 +141,7 @@ async def _build_live_context(session_id: str = "default") -> str:
                     f"- constraints: {', '.join(str(item) for item in constraints[:3])}"
                 )
     except Exception:
-        pass
+        logger.debug("Live context: daemon state unavailable")
 
     # 2. Recent tasks from DB (last 5 non-pending)
     try:
@@ -157,7 +159,7 @@ async def _build_live_context(session_id: str = "default") -> str:
                 for t in tasks:
                     lines.append(f"- [{t.status}] {t.title}")
     except Exception:
-        pass
+        logger.debug("Live context: recent tasks unavailable")
 
     # 3. Self-directed tasks (completed and pending)
     try:
@@ -177,7 +179,7 @@ async def _build_live_context(session_id: str = "default") -> str:
                 for sd_task in sd_tasks:
                     lines.append(f"- [{sd_task[1]}] {sd_task[0]}")
     except Exception:
-        pass
+        logger.debug("Live context: self-directed tasks unavailable")
 
     # 4. Latest reflection — my most recent self-assessment
     try:
@@ -198,7 +200,7 @@ async def _build_live_context(session_id: str = "default") -> str:
                 )
                 lines.append(reflection_row[0])
     except Exception:
-        pass
+        logger.debug("Live context: reflections unavailable")
 
     # 5. VS Code state — what Matt is actively working on right now
     # Prefers FocusTelemetry (current_focus.json) over the legacy vscode_state.json
@@ -244,7 +246,7 @@ async def _build_live_context(session_id: str = "default") -> str:
             else:
                 lines.append("- no errors in active file")
     except Exception:
-        pass
+        logger.debug("Live context: VS Code state unavailable")
 
     # 6. Temporal continuity — elapsed time, embodiment age, and diary trail
     try:
@@ -313,7 +315,7 @@ async def _build_live_context(session_id: str = "default") -> str:
                 stamp = _coerce_utc(created_at).strftime("%Y-%m-%d")
                 lines.append(f"- [{stamp}] {_truncate_live_context(summary, 200)}")
     except Exception:
-        pass
+        logger.debug("Live context: temporal state unavailable")
 
     # 7. Most recent unsurfaced revelation — live insight pipeline awareness
     try:
@@ -329,7 +331,7 @@ async def _build_live_context(session_id: str = "default") -> str:
                 lines.append("\n## pending revelation (not yet surfaced to matt)")
                 lines.append(f"- {_r.title}: {_r.content[:200]}")
     except Exception:
-        pass
+        logger.debug("Live context: revelation engine unavailable")
 
     return "\n".join(lines)
 
@@ -910,9 +912,12 @@ async def chat_with_gemini(payload: dict[str, Any]) -> dict[str, Any]:
     )
     if voice_mode:
         system += (
-            "\n\nVOICE MODE: this response will be spoken aloud via text-to-speech. "
-            "keep your answer to 1-2 sentences maximum. no lists, no markdown, no code blocks. "
-            "speak directly and naturally, as if you're in the room."
+            "\n\nVOICE MODE ACTIVE: this response will be spoken aloud. "
+            "keep it concise... shorter than usual but not crippled. "
+            "no markdown formatting (no bold, italics, headers, code blocks). "
+            "write as if every word will be heard, not read. "
+            "ellipses become natural breath pauses. use them. "
+            "same memory. same context. same you. just more breath, less text."
         )
 
     prompt = _build_chat_prompt(message, history)
@@ -1005,8 +1010,8 @@ async def chat_with_gemini(payload: dict[str, Any]) -> dict[str, Any]:
                     "phase": "final_answer",
                     **assistant_metadata,
                 }
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("Gemini fallback failed: %s", exc)
         raise HTTPException(status_code=503, detail="All AI providers unavailable.")
 
     answer, tasks_queued = await _extract_and_queue_tasks(result.answer)
@@ -1088,9 +1093,12 @@ async def stream_chat_with_gemini(payload: dict[str, Any]) -> StreamingResponse:
             )
             if _stream_voice_mode:
                 system += (
-                    "\n\nVOICE MODE: this response will be spoken aloud via text-to-speech. "
-                    "keep your answer to 1-2 sentences maximum. no lists, no markdown, no code blocks. "
-                    "speak directly and naturally, as if you're in the room."
+                    "\n\nVOICE MODE ACTIVE: this response will be spoken aloud. "
+                    "keep it concise... shorter than usual but not crippled. "
+                    "no markdown formatting (no bold, italics, headers, code blocks). "
+                    "write as if every word will be heard, not read. "
+                    "ellipses become natural breath pauses. use them. "
+                    "same memory. same context. same you. just more breath, less text."
                 )
             prompt = _build_chat_prompt(message, history)
             _stream_max_tokens = 120 if _stream_voice_mode else 512
@@ -1216,8 +1224,8 @@ async def stream_chat_with_gemini(payload: dict[str, Any]) -> StreamingResponse:
                             },
                         )
                         return
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logger.warning("Gemini stream fallback failed: %s", exc)
 
                 yield _sse_event("error", {"message": "All AI providers unavailable."})
                 return
@@ -1323,8 +1331,8 @@ async def _extract_and_queue_tasks(raw: str) -> tuple[str, list[dict[str, Any]]]
                     "created_at": _dt.utcnow(),
                 }
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Task extraction failed for marker: %s", exc)
         return ""  # strip marker from visible text
 
     cleaned = pattern.sub(_inject, raw).strip()
@@ -1352,8 +1360,8 @@ async def _extract_and_queue_tasks(raw: str) -> tuple[str, list[dict[str, Any]]]
                             "created_at": t["created_at"],
                         },
                     )
-        except Exception:
-            pass  # best-effort, never break chat
+        except Exception as exc:
+            logger.warning("Task persistence failed: %s", exc)
 
     return cleaned, created
 
@@ -1407,7 +1415,7 @@ async def _persist_messages(
                 )
             )
     except Exception as _e:
-        pass  # persistence is best-effort, never break chat
+        logger.warning("Message persistence failed: %s", _e)
 
 
 @router.get("/chat/history")
