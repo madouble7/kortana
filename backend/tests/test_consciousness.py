@@ -283,7 +283,7 @@ class TestSelfDiagnostic:
         ):
             info = get_analysis_model_info()
 
-        assert info["preferred_model"] == "gemini-2.0-flash"
+        assert info["preferred_model"] == "gemini-2.5-flash"
         assert info["model"] == "gemini-3.1-flash-lite-preview"
         assert "model_lane" in info
 
