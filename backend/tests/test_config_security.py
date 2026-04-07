@@ -29,6 +29,7 @@ ENV_KEYS = [
     "KORTANA_CORE_MODELS",
     "KORTANA_EXPERIMENTAL_MODELS",
     "KORTANA_QUARANTINE_MODELS",
+    "GMAIL_SCOPES",
 ]
 
 
@@ -201,4 +202,23 @@ def test_model_lane_settings_parse_from_environment(
     assert settings.KORTANA_EXPERIMENTAL_MODELS == ["gpt-5-future-preview"]
     assert settings.KORTANA_QUARANTINE_MODELS == [
         "ft:gpt-4o-mini-2024-07-18:personal::rogue"
+    ]
+
+
+def test_gmail_scopes_parse_from_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Gmail scopes should parse cleanly from env for OAuth bootstrap/runtime parity."""
+    config_module = reload_config_module(
+        monkeypatch,
+        GMAIL_SCOPES=(
+            "https://www.googleapis.com/auth/gmail.modify,"
+            "https://www.googleapis.com/auth/gmail.send"
+        ),
+    )
+
+    settings = config_module.get_settings()
+    assert settings.GMAIL_SCOPES == [
+        "https://www.googleapis.com/auth/gmail.modify",
+        "https://www.googleapis.com/auth/gmail.send",
     ]

@@ -101,6 +101,16 @@ REDIS_URL=redis://localhost:6379
 GITHUB_TOKEN=your-github-token
 GEMINI_API_KEY=your-gemini-api-key
 SECRET_KEY=replace-me
+GOOGLE_CLIENT_ID=your-google-oauth-client-id
+GOOGLE_CLIENT_SECRET=your-google-oauth-client-secret
+GOOGLE_REFRESH_TOKEN=your-gmail-refresh-token
+```
+
+If you want Kor'tana to actively steward your Gmail inbox, generate the refresh
+token locally after setting the Google OAuth client credentials:
+
+```bash
+python scripts/setup/bootstrap_gmail_oauth.py --write-env
 ```
 
 ### 3. Install dependencies

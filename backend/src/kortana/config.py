@@ -227,6 +227,11 @@ class Settings:
             or "http://localhost:3000/oauth/callback"
         )
         self.GOOGLE_REFRESH_TOKEN: str | None = _get_env("GOOGLE_REFRESH_TOKEN")
+        self.GMAIL_SCOPES: list[str] = _split_csv_env(
+            "GMAIL_SCOPES",
+            "https://www.googleapis.com/auth/gmail.modify,"
+            "https://www.googleapis.com/auth/gmail.send",
+        )
         self.GOOGLE_APPLICATION_CREDENTIALS: str | None = _get_env(
             "GOOGLE_APPLICATION_CREDENTIALS"
         )
