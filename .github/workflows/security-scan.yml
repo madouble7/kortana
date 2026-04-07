@@ -90,10 +90,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install and run TruffleHog
+      - name: Run TruffleHog
         run: |
-          go install github.com/trufflesecurity/trufflehog/v3@latest
-          $HOME/go/bin/trufflehog filesystem ./ --base64 --zip || true
+          docker run --rm -v "$PWD:/work" -w /work \
+            ghcr.io/trufflesecurity/trufflehog:v3.94.2 \
+            filesystem ./ --base64 --zip || true
 
       - name: Check for tracked environment files
         run: |

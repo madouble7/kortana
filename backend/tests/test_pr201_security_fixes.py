@@ -104,7 +104,9 @@ class TestResolveContextDbMiss:
     @pytest.mark.asyncio
     async def test_db_miss_returns_operator(self) -> None:
         """No user_id on token → tier should be 'operator', not empty."""
-        from src.kortana.services.constitutional_service import resolve_context_from_user
+        from src.kortana.services.constitutional_service import (
+            resolve_context_from_user,
+        )
 
         token = MagicMock()
         token.email = "somebody@example.com"
@@ -125,7 +127,9 @@ class TestResolveContextDbMiss:
     @pytest.mark.asyncio
     async def test_db_miss_superuser_returns_owner(self) -> None:
         """Token with is_superuser=True but DB miss → tier should be 'owner'."""
-        from src.kortana.services.constitutional_service import resolve_context_from_user
+        from src.kortana.services.constitutional_service import (
+            resolve_context_from_user,
+        )
 
         token = MagicMock()
         token.email = "admin@example.com"
@@ -148,7 +152,9 @@ class TestResolveContextDbMiss:
     @pytest.mark.asyncio
     async def test_db_miss_regular_user_returns_operator(self) -> None:
         """Token with user_id but DB miss (no is_superuser) → 'operator'."""
-        from src.kortana.services.constitutional_service import resolve_context_from_user
+        from src.kortana.services.constitutional_service import (
+            resolve_context_from_user,
+        )
 
         token = MagicMock()
         token.email = "user@example.com"

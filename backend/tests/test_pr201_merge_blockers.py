@@ -72,20 +72,20 @@ class TestGoalProgressNoneSafe:
         """Top-goal rationale must not throw when progress is None."""
         goal = _make_goal(progress=None, priority=80, tier="strategic")
         # The formatting used in GoalSelectionService._build_candidate:
-        val = (goal.progress or 0)
+        val = goal.progress or 0
         formatted = f"progress={val:.0%}"
         assert formatted == "progress=0%"
 
     def test_progress_none_in_why_now(self) -> None:
         """Already-in-progress text must not crash when progress is None."""
         goal = _make_goal(progress=None, status="in_progress")
-        val = (goal.progress or 0)
+        val = goal.progress or 0
         formatted = f"Already in progress ({val:.0%} complete)"
         assert formatted == "Already in progress (0% complete)"
 
     def test_progress_float_still_works(self) -> None:
         goal = _make_goal(progress=0.75)
-        val = (goal.progress or 0)
+        val = goal.progress or 0
         formatted = f"progress={val:.0%}"
         assert formatted == "progress=75%"
 
@@ -214,11 +214,15 @@ class TestStaleCandidateSkip:
         from src.kortana.services.autonomy_orchestrator import AutonomyOrchestrator
 
         db = AsyncMock()
-        db.execute = AsyncMock(return_value=MagicMock(
-            scalar_one_or_none=MagicMock(return_value=None),
-            scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[]))),
-            scalar=MagicMock(return_value=0),
-        ))
+        db.execute = AsyncMock(
+            return_value=MagicMock(
+                scalar_one_or_none=MagicMock(return_value=None),
+                scalars=MagicMock(
+                    return_value=MagicMock(all=MagicMock(return_value=[]))
+                ),
+                scalar=MagicMock(return_value=0),
+            )
+        )
         db.commit = AsyncMock()
         db.rollback = AsyncMock()
 
@@ -229,16 +233,18 @@ class TestStaleCandidateSkip:
             MockGate.return_value = mock_gate
 
             # Patch everything the orchestrator needs
-            with patch(
-                "src.kortana.services.autonomy_orchestrator.SelfModelService"
-            ), patch(
-                "src.kortana.services.autonomy_orchestrator.RevelationEngine"
-            ), patch(
-                "src.kortana.services.autonomy_orchestrator.GoalSelectionService"
-            ) as MockGoalSvc, patch(
-                "src.kortana.services.autonomy_orchestrator.ConstitutionalService"
-            ), patch(
-                "src.kortana.services.autonomy_orchestrator.OutcomeLearningService"
+            with (
+                patch("src.kortana.services.autonomy_orchestrator.SelfModelService"),
+                patch("src.kortana.services.autonomy_orchestrator.RevelationEngine"),
+                patch(
+                    "src.kortana.services.autonomy_orchestrator.GoalSelectionService"
+                ) as MockGoalSvc,
+                patch(
+                    "src.kortana.services.autonomy_orchestrator.ConstitutionalService"
+                ),
+                patch(
+                    "src.kortana.services.autonomy_orchestrator.OutcomeLearningService"
+                ),
             ):
                 # Goal selection returns None
                 MockGoalSvc.return_value.select_next_action = AsyncMock(
