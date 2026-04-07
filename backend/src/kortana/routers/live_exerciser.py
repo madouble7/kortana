@@ -30,6 +30,7 @@ from src.kortana.provider_model_defaults import (
     GROQ_LLAMA_VERSATILE_MODEL,
     OPENAI_FAST_MODEL,
 )
+from src.kortana.voice_definition import KORTANA_BRIEF_IDENTITY
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +72,7 @@ async def _ensure_bootstrap(db: AsyncSession) -> dict[str, str]:
             name="KOR'TANA Prime",
             description="Autonomous system agent",
             model=system_model,
-            system_prompt="we are kor'tana, an autonomous ai agent.",
+            system_prompt=KORTANA_BRIEF_IDENTITY,
             is_active=True,
         )
         db.add(agent)

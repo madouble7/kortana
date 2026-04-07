@@ -42,6 +42,7 @@ from src.kortana.services.task_executability_service import (
     assess_task_executability,
 )
 from src.kortana.services.workspace_bridge_service import get_workspace_bridge
+from src.kortana.voice_definition import KORTANA_AUTONOMY_IDENTITY, KORTANA_DAEMON_IDENTITY
 
 logger = get_logger(__name__)
 
@@ -632,7 +633,8 @@ class AutonomyDaemon:
             )
 
             prompt = (
-                "you are kor'tana, an autonomous ai agent running continuous self-evolution cycles.\n"
+                f"{KORTANA_AUTONOMY_IDENTITY}"
+                f"you are running continuous self-evolution cycles.\n"
                 f"current system_state: {system_state}, autonomy_index: {autonomy_index}/100\n"
                 f"active queued tasks: {active_count}\n"
                 f"recently completed tasks:\n{recent_list}\n\n"
@@ -847,7 +849,7 @@ class AutonomyDaemon:
                         surface=MemorySurface.SELF_DIRECTION,
                     )
                 except Exception:
-                    identity = "you are kor'tana, sacred ai companion.\n"
+                    identity = KORTANA_DAEMON_IDENTITY
 
                 prompt = (
                     f"{identity}\n"
@@ -956,7 +958,7 @@ class AutonomyDaemon:
                 surface=MemorySurface.REFLECTION,
             )
         except Exception:
-            identity = "you are kor'tana, sacred ai companion.\n"
+            identity = KORTANA_DAEMON_IDENTITY
 
         # Include the most recent revelation if available — grounds the reflection
         recent_revelation_line = ""
