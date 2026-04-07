@@ -12,7 +12,6 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import select
-
 from src.kortana.models import (
     CovenantEnforcementRecord,
     OutcomeLearningRecord,
@@ -20,7 +19,6 @@ from src.kortana.models import (
     RevelationMemory,
 )
 from src.kortana.services.constitutional_service import ConstitutionalService
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -186,7 +184,9 @@ class TestWisdomPredictionsEndpoints:
 
     async def test_wisdom_response_has_revelation_fields(self, test_db_session):
         """Wisdom entries should expose RevelationMemory fields, not SelfMemory fields."""
-        _make_revelation(test_db_session, "pattern", "Test fields", "Content body", 0.95)
+        _make_revelation(
+            test_db_session, "pattern", "Test fields", "Content body", 0.95
+        )
         await test_db_session.flush()
 
         from src.kortana.routers.consciousness import get_wisdom
@@ -199,7 +199,9 @@ class TestWisdomPredictionsEndpoints:
         assert "confidence" in entry
         assert "type" in entry  # r.revelation_type mapped to "type"
         # Should be querying RevelationMemory, not SelfMemory
-        assert entry["content"] == "Content body"  # proves it read RevelationMemory.content
+        assert (
+            entry["content"] == "Content body"
+        )  # proves it read RevelationMemory.content
 
 
 # ---------------------------------------------------------------------------
