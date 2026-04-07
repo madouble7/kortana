@@ -165,7 +165,6 @@ class TestOverrideLearningMethodName:
             target_summary="requires_human_override",
             action="override_requested",
             override_status="pending",
-            created_at=datetime.utcnow(),
         )
 
         # Mock DB
@@ -178,7 +177,7 @@ class TestOverrideLearningMethodName:
 
         svc = ConstitutionalService(db)
 
-        # Patch outcome learning service
+        # Patch outcome learning service at its source (local import)
         with patch(
             "src.kortana.services.outcome_learning_service.OutcomeLearningService"
         ) as MockOLS:
