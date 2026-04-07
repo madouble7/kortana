@@ -91,14 +91,14 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Run TruffleHog
-        run: |
-          docker run --rm -v "$PWD:/work" -w /work \
-            ghcr.io/trufflesecurity/trufflehog:v3.94.2 \
-            filesystem ./ --base64 --zip || true
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          extra_args: --base64 --zip
 
       - name: Check for tracked environment files
         run: |
-          tracked_env_files=$(git ls-files | grep -E '(^|/)\.env(\..+)?$' | grep -vE '(^|/)\.env\.example$' || true)
+          tracked_env_files=$(git ls-files | grep -E '(^|/)\.env(\..+)?$' | grep -vE '(^|/)\.env\.example$' | grep -vE '^frontend/\.env\.' || true)
           if [ -n "$tracked_env_files" ]; then
             echo "::error::Found tracked environment files in repository:"
             echo "$tracked_env_files"

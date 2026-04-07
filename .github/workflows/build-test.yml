@@ -75,6 +75,7 @@ jobs:
           GITHUB_TOKEN: test_token
           DISCORD_BOT_TOKEN: test_token
           OPENAI_API_KEY: test_key
+          PINECONE_API_KEY: test_key
         run: |
           pytest backend/tests -v --cov=backend --cov-report=xml
 

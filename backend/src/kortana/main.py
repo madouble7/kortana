@@ -273,9 +273,10 @@ def create_app() -> FastAPI:
     # on every request when Redis is absent (e.g. Render free tier).
     redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     _redis_available = False
-    if RedisClient is not None and settings.ENVIRONMENT != "testing":
+    redis_cls = RedisClient
+    if redis_cls is not None and settings.ENVIRONMENT != "testing":
         try:
-            _probe = RedisClient.from_url(redis_url, socket_connect_timeout=2)
+            _probe = redis_cls.from_url(redis_url, socket_connect_timeout=2)
             _probe.ping()
             _probe.close()
             _redis_available = True
@@ -283,9 +284,9 @@ def create_app() -> FastAPI:
             print("[WARN] Redis not reachable — rate limiting and caching disabled")
 
     # Response caching middleware for optimization
-    if _redis_available:
+    if _redis_available and redis_cls is not None:
         try:
-            redis_client = RedisClient.from_url(redis_url)
+            redis_client = redis_cls.from_url(redis_url)
             cache_strategy = CacheStrategy(
                 ttl=300,  # 5 minutes
                 key_prefix="api_cache:",
