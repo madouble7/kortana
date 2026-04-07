@@ -92,14 +92,20 @@ async def test_model_info(llm_router):
 
 def test_quarantined_models_are_filtered_from_core_lane(llm_router):
     """Core lane should exclude explicitly quarantined models."""
-    llm_router.settings.KORTANA_QUARANTINE_MODELS = [LLM_ROUTER_DEFAULTS.openai]
-    llm_router.settings.KORTANA_MODEL_USAGE_LANE = "core"
-    llm_router.model_usage_lane = get_active_model_lane(llm_router.settings)
+    orig_quarantine = llm_router.settings.KORTANA_QUARANTINE_MODELS
+    orig_lane = llm_router.settings.KORTANA_MODEL_USAGE_LANE
+    try:
+        llm_router.settings.KORTANA_QUARANTINE_MODELS = [LLM_ROUTER_DEFAULTS.openai]
+        llm_router.settings.KORTANA_MODEL_USAGE_LANE = "core"
+        llm_router.model_usage_lane = get_active_model_lane(llm_router.settings)
 
-    models = llm_router._initialize_models()
+        models = llm_router._initialize_models()
 
-    assert LLM_ROUTER_DEFAULTS.openai not in models
-    assert LLM_ROUTER_DEFAULTS.gemini in models
+        assert LLM_ROUTER_DEFAULTS.openai not in models
+        assert LLM_ROUTER_DEFAULTS.gemini in models
+    finally:
+        llm_router.settings.KORTANA_QUARANTINE_MODELS = orig_quarantine
+        llm_router.settings.KORTANA_MODEL_USAGE_LANE = orig_lane
 
 
 @pytest.mark.asyncio
