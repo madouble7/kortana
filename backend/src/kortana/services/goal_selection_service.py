@@ -141,7 +141,11 @@ class GoalSelectionService:
                 get_active_adaptation_signals,
             )
 
-            signals = await get_active_adaptation_signals(self.db, scope="session")
+            signals = await get_active_adaptation_signals(
+                self.db,
+                scope="session",
+                cycle_id=cycle_id,
+            )
             adaptation_adj = compute_score_adjustment(signals)
         except Exception:
             pass  # graceful degradation — no adaptation data yet

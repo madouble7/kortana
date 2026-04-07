@@ -194,7 +194,11 @@ class ExecutionGateService:
                 get_active_adaptation_signals,
             )
 
-            signals = await get_active_adaptation_signals(self.db, scope="session")
+            signals = await get_active_adaptation_signals(
+                self.db,
+                scope="session",
+                cycle_id=cycle_id,
+            )
             gate_adj = compute_gate_adjustment(signals, "executable")
         except Exception:
             pass  # graceful degradation — no adaptation data yet

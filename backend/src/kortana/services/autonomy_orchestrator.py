@@ -137,6 +137,8 @@ class AutonomyOrchestrator:
         # ---- 3.6 CANDIDATE ENFORCEMENT (Pre-Action Veto) ----
         candidate_blocked = False
         candidate_enforcement_verdict: Optional[str] = None
+        result_status = "completed"
+        execution_block_reason: Optional[str] = None
         try:
             if next_action_id and next_action_title:
                 covenant = ConstitutionalService(self.db)
@@ -160,17 +162,24 @@ class AutonomyOrchestrator:
                 actions_taken.append(f"candidate-enforcement: {enforce_verdict}")
                 if enforce_verdict == "blocked":
                     candidate_blocked = True
+                    result_status = "blocked"
+                    execution_block_reason = "candidate blocked by covenant"
                     logger.warning(
                         f"Candidate BLOCKED by covenant: {next_action_title}"
                     )
                 elif enforce_verdict == "requires_human_override":
                     candidate_blocked = True  # don't proceed to gate
+                    result_status = "requires_human_override"
+                    execution_block_reason = "candidate requires human override"
                     logger.info(
                         f"Candidate requires HUMAN OVERRIDE: {next_action_title}"
                     )
         except Exception:
             logger.exception("Candidate enforcement failed")
             actions_taken.append("candidate-enforcement: failed")
+            candidate_blocked = True
+            result_status = "blocked"
+            execution_block_reason = "candidate enforcement failed"
 
         # ---- 3.7 EXECUTION GATE (Action Realization) ----
         execution_record_id: Optional[str] = None
@@ -284,7 +293,9 @@ class AutonomyOrchestrator:
             "developmental_stage": developmental_stage,
             "next_action_candidate_id": next_action_id,
             "next_action_title": next_action_title,
+            "status": result_status,
             "candidate_enforcement_verdict": candidate_enforcement_verdict,
+            "execution_block_reason": execution_block_reason,
             "execution_record_id": execution_record_id,
             "execution_classification": execution_classification,
             "outcome_learning_id": outcome_learning_id,

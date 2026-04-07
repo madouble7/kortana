@@ -179,6 +179,7 @@ async def get_active_adaptation_signals(
     db: AsyncSession,
     scope: Optional[str] = None,
     limit: int = 20,
+    cycle_id: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """Read recent adaptation signals for downstream services.
 
@@ -193,6 +194,8 @@ async def get_active_adaptation_signals(
 
     if scope:
         query = query.where(OutcomeLearningRecord.signal_scope == scope)
+        if scope == "session" and cycle_id is not None:
+            query = query.where(OutcomeLearningRecord.cycle_id == cycle_id)
 
     query = query.order_by(
         func.abs(func.sum(OutcomeLearningRecord.signal_weight)).desc()

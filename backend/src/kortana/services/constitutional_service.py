@@ -524,10 +524,8 @@ class ConstitutionalService:
         has_reject = any(c["severity"] == "reject" for c in conflicts)
         has_caution = any(c["severity"] == "caution" for c in conflicts)
         requires_override = bool(ctx.get("requires_human_override"))
-        has_autonomy_conflict = any(c["category"] == "autonomy" for c in conflicts)
-
         # Phase 10: requires_human_override takes precedence when HOP is invoked
-        if requires_override and (has_autonomy_conflict or has_reject):
+        if requires_override:
             verdict = "requires_human_override"
             override_reasons = [
                 c["reason"]
