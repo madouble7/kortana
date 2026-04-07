@@ -273,20 +273,19 @@ def create_app() -> FastAPI:
     # on every request when Redis is absent (e.g. Render free tier).
     redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     _redis_available = False
-    redis_cls = RedisClient
-    if redis_cls is not None and settings.ENVIRONMENT != "testing":
+    if RedisClient is not None and settings.ENVIRONMENT != "testing":
         try:
-            _probe = redis_cls.from_url(redis_url, socket_connect_timeout=2)
-            _probe.ping()
-            _probe.close()
+            probe = RedisClient.from_url(redis_url, socket_connect_timeout=2)
+            probe.ping()
+            probe.close()
             _redis_available = True
         except Exception:
             print("[WARN] Redis not reachable — rate limiting and caching disabled")
 
     # Response caching middleware for optimization
-    if _redis_available and redis_cls is not None:
+    if _redis_available and RedisClient is not None:
         try:
-            redis_client = redis_cls.from_url(redis_url)
+            redis_client = RedisClient.from_url(redis_url)
             cache_strategy = CacheStrategy(
                 ttl=300,  # 5 minutes
                 key_prefix="api_cache:",
@@ -520,7 +519,7 @@ def create_app() -> FastAPI:
             }
 
         @app.get("/", tags=["system"], response_model=None)
-        async def root(request: Request):
+        async def root(request: Request) -> Response | dict[str, Any]:
             """Serve the SPA shell for browsers and JSON info for API callers."""
             accepts = request.headers.get("accept", "")
             if "text/html" in accepts:
