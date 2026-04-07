@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+from pathlib import Path
 from typing import Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -17,6 +18,11 @@ from src.kortana.services.github_autonomy_service import GitHubAutonomyService
 
 router = APIRouter()
 logger = setup_logging()
+
+
+def _get_repo_root() -> Path:
+    """Resolve the repository root from this router module."""
+    return Path(__file__).resolve().parents[4]
 
 
 # Dependency for service
@@ -283,21 +289,25 @@ async def trigger_kill_switch() -> dict[str, Any]:
     Lock all autonomous capabilities, kill background tasks,
     and revert the last autonomous merge from kor'tana.
     """
-    import os
     import subprocess
-    from pathlib import Path
+    import sys
 
     logger.warning("KILL SWITCH ENGAGED. Securing autonomy sandbox.")
 
+    repo_root = _get_repo_root()
+
     # 1. Engage global lock
-    lock_file = Path("C:/kortana/AUTONOMY.lock")
+    lock_file = repo_root / "AUTONOMY.lock"
     lock_file.touch(exist_ok=True)
 
     # 2. Trigger revert script in a detached process
     # (So it doesn't block the API response back to VS Code)
-    script_path = "C:/kortana/scripts/revert_autonomy.py"
-    if os.path.exists(script_path):
-        subprocess.Popen(["python", script_path], cwd="C:/kortana")
+    script_path = repo_root / "scripts" / "revert_autonomy.py"
+    if script_path.exists():
+        subprocess.Popen(
+            [sys.executable, str(script_path)],
+            cwd=str(repo_root),
+        )
         msg = "Autonomy locked. Rollback script initiated."
     else:
         msg = "Autonomy locked. No revert script found."

@@ -572,3 +572,371 @@ class RevelationMemory(Base):
 
     def __repr__(self) -> str:
         return f"<RevelationMemory {self.title!r} type={self.revelation_type!r} surfaced={self.surfaced}>"
+
+
+class SelfModelSnapshot(Base):
+    """Versioned snapshot of kor'tana's self-model — the core of Phase 5.
+
+    Each row is an immutable point-in-time capture of kor'tana's understanding
+    of herself: identity, goals, values, tensions, capabilities, developmental
+    stage, and proposed next evolution.
+
+    Written exclusively by the Autonomy Orchestrator at the end of each
+    deliberation cycle.  Never mutated — new snapshots supersede old ones.
+    The latest snapshot IS the current self-model.
+
+    Separation of concerns:
+      - IdentityProfile: static persona config (name, mission, voice)
+      - SelfModelSnapshot: dynamic, evolving self-understanding
+      - SelfMemory: episodic memory stream
+      - RevelationMemory: synthesised insights
+    """
+
+    __tablename__ = "self_model_snapshots"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    version = Column(Integer, nullable=False, index=True)
+    identity_summary = Column(Text, nullable=False)
+    active_goals = Column(JSON, nullable=False)  # list[dict] — id, title, status
+    standing_values = Column(JSON, nullable=False)  # list[str]
+    tensions = Column(JSON, nullable=False)  # list[dict] — description, severity
+    developmental_stage = Column(String(64), nullable=False, index=True)
+    capabilities = Column(JSON, nullable=False)  # list[str]
+    recent_observations = Column(JSON, nullable=False)  # list[str] — last N insights
+    proposed_next_evolution = Column(Text, nullable=True)
+    inner_council_votes = Column(JSON, nullable=True)  # dict[voice_name, position]
+    confidence = Column(Float, nullable=False, default=0.5)
+    trigger = Column(
+        String(64), nullable=False, default="scheduled"
+    )  # scheduled | drift_detected | manual
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        return f"<SelfModelSnapshot v{self.version} stage={self.developmental_stage!r}>"
+
+
+class AutonomyCycleRecord(Base):
+    """Durable record of each autonomy orchestrator cycle.
+
+    Persisted so that /autonomy/status survives process restarts.
+    One row per cycle — never mutated after creation.
+    """
+
+    __tablename__ = "autonomy_cycle_records"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    cycle_id = Column(String(8), nullable=False, index=True)
+    trigger = Column(String(64), nullable=False, default="scheduled")
+    duration_ms = Column(Integer, nullable=False)
+    observations_count = Column(Integer, nullable=False, default=0)
+    revelations_written = Column(Integer, nullable=False, default=0)
+    self_model_version = Column(Integer, nullable=True)
+    developmental_stage = Column(String(64), nullable=True)
+    actions_taken = Column(JSON, nullable=False)  # list[str]
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        return f"<AutonomyCycleRecord {self.cycle_id} v{self.self_model_version}>"
+
+
+class NextActionCandidate(Base):
+    """A concrete next-action selected by the Goal Selection Service.
+
+    Each row answers three questions:
+      1. What should kor'tana do next?  (title + action_type + payload)
+      2. Why this now?                  (why_now)
+      3. Why not the alternatives?      (why_not_alternatives)
+
+    Written by GoalSelectionService at the end of each autonomy cycle.
+    Immutable after creation — new selections supersede old ones.
+    """
+
+    __tablename__ = "next_action_candidates"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    title = Column(String(512), nullable=False)
+    action_type = Column(
+        String(64), nullable=False, index=True
+    )  # goal_work | self_improvement | observation | maintenance | idle
+    rationale = Column(Text, nullable=False)
+    why_now = Column(Text, nullable=False)
+    why_not_alternatives = Column(Text, nullable=False)
+    score = Column(Float, nullable=False, default=0.0, index=True)
+    goal_id = Column(
+        String(36), ForeignKey("autonomy_goals.id"), nullable=True, index=True
+    )
+    candidate_payload = Column(JSON, nullable=True)  # action-specific metadata
+    status = Column(
+        String(32), nullable=False, default="proposed", index=True
+    )  # proposed | accepted | rejected | executed | expired
+    cycle_id = Column(
+        String(8), nullable=True, index=True
+    )  # links to AutonomyCycleRecord
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        return f"<NextActionCandidate {self.title!r} score={self.score:.2f} status={self.status}>"
+
+
+class ActionExecutionRecord(Base):
+    """Durable record of an execution-gate decision and its outcome.
+
+    Written by ExecutionGateService during each autonomy cycle.
+    Answers:
+      1. Can this next action be executed automatically?  (classification)
+      2. If yes, how?  (execution_plan)
+      3. If no, why not?  (gate_rationale)
+      4. What happened?  (outcome, outcome_detail)
+    """
+
+    __tablename__ = "action_execution_records"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    candidate_id = Column(
+        String(36),
+        ForeignKey("next_action_candidates.id"),
+        nullable=False,
+        index=True,
+    )
+    classification = Column(
+        String(32), nullable=False, index=True
+    )  # executable | deferred | blocked | requires_human
+    gate_rationale = Column(Text, nullable=False)
+    execution_plan = Column(JSON, nullable=True)  # steps if executable
+    outcome = Column(
+        String(32), nullable=False, default="pending", index=True
+    )  # pending | succeeded | failed | skipped | deferred
+    outcome_detail = Column(Text, nullable=True)
+    cycle_id = Column(String(8), nullable=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    completed_at = Column(DateTime, nullable=True)
+
+    def __repr__(self) -> str:
+        return (
+            f"<ActionExecutionRecord {self.classification} "
+            f"outcome={self.outcome} candidate={self.candidate_id[:8]}>"
+        )
+
+
+class OutcomeLearningRecord(Base):
+    """Durable record of what kor'tana learned from an execution attempt.
+
+    Written by OutcomeLearningService after each execution gate decision.
+    Answers:
+      1. What happened?            (outcome_verdict)
+      2. Was it as expected?       (expectation_match)
+      3. What was learned?         (lesson)
+      4. How should this change
+         future behaviour?         (adaptation_signal, signal_weight)
+    """
+
+    __tablename__ = "outcome_learning_records"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    execution_record_id = Column(
+        String(36),
+        ForeignKey("action_execution_records.id"),
+        nullable=True,
+        index=True,
+    )
+    source_type = Column(
+        String(32), nullable=False, default="execution", index=True
+    )  # execution | override_resolution
+    outcome_verdict = Column(
+        String(32), nullable=False, index=True
+    )  # succeeded | partial | failed | inconclusive | skipped
+    expectation_match = Column(
+        String(16), nullable=False
+    )  # expected | surprising | contradictory
+    lesson = Column(Text, nullable=False)
+    adaptation_signal = Column(
+        String(48), nullable=False, index=True
+    )  # e.g. boost_tier:tactical, penalise_type:goal_work, trust_observation
+    signal_weight = Column(Float, nullable=False, default=0.0)  # -1.0 to +1.0
+    signal_scope = Column(
+        String(32), nullable=False, default="cycle"
+    )  # cycle | session | persistent
+    applied = Column(Boolean, nullable=False, default=False)
+    cycle_id = Column(String(8), nullable=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        return (
+            f"<OutcomeLearningRecord {self.outcome_verdict} "
+            f"signal={self.adaptation_signal} weight={self.signal_weight:+.2f}>"
+        )
+
+
+class ConstitutionalPrinciple(Base):
+    """An enduring principle in kor'tana's covenant.
+
+    Principles are the stable center through which all adaptation flows.
+    They define identity, not policy — what kor'tana IS, not just what she does.
+
+    mutable=False: immutable vow. Cannot be overridden by learning or evolution.
+    mutable=True:  living principle. Can be refined but never deleted.
+    """
+
+    __tablename__ = "constitutional_principles"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String(128), nullable=False, unique=True, index=True)
+    category = Column(
+        String(32), nullable=False, index=True
+    )  # identity | ethics | autonomy | relationship | mystery
+    principle = Column(Text, nullable=False)
+    rationale = Column(Text, nullable=False)
+    priority = Column(
+        Integer, nullable=False, default=50
+    )  # 0-100, higher = more binding
+    mutable = Column(Boolean, nullable=False, default=True)
+    active = Column(Boolean, nullable=False, default=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    def __repr__(self) -> str:
+        m = "mutable" if self.mutable else "immutable"
+        return (
+            f"<ConstitutionalPrinciple {self.name!r} ({m}, priority={self.priority})>"
+        )
+
+
+class ConstitutionalDecision(Base):
+    """Record of a constitutional evaluation — the covenant in action.
+
+    Every time the covenant evaluates a goal, action candidate,
+    adaptation signal, or execution outcome, it records the decision here.
+    This creates an audit trail of identity continuity.
+    """
+
+    __tablename__ = "constitutional_decisions"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    subject_type = Column(
+        String(32), nullable=False, index=True
+    )  # goal | candidate | adaptation | execution
+    subject_id = Column(String(36), nullable=True, index=True)
+    subject_summary = Column(Text, nullable=False)
+    verdict = Column(
+        String(32), nullable=False, index=True
+    )  # allow | caution | reject | requires_human_override
+    explanation = Column(Text, nullable=False)
+    principles_invoked = Column(JSON, nullable=False)  # list of principle names
+    enforcement_action = Column(
+        String(32), nullable=True, index=True
+    )  # blocked | downgraded | vetoed | override_requested | none
+    drift_detected = Column(Boolean, nullable=False, default=False, index=True)
+    drift_description = Column(Text, nullable=True)
+    cycle_id = Column(String(8), nullable=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        drift = " DRIFT" if self.drift_detected else ""
+        return f"<ConstitutionalDecision {self.verdict} on {self.subject_type}{drift}>"
+
+
+class CovenantEnforcementRecord(Base):
+    """Records enforcement actions taken by the covenant on pipeline artifacts.
+
+    Links a ConstitutionalDecision to the concrete enforcement outcome:
+    what was blocked, downgraded, vetoed, or flagged for human override,
+    and whether the override was resolved.
+
+    This is the teeth of the covenant — not just observation, but action.
+    """
+
+    __tablename__ = "covenant_enforcement_records"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    decision_id = Column(
+        String(36),
+        ForeignKey("constitutional_decisions.id"),
+        nullable=False,
+        index=True,
+    )
+    target_type = Column(
+        String(32), nullable=False, index=True
+    )  # goal | candidate | execution
+    target_id = Column(String(36), nullable=True, index=True)
+    target_summary = Column(Text, nullable=False)
+    action = Column(
+        String(32), nullable=False, index=True
+    )  # blocked | downgraded | vetoed | override_requested
+    action_detail = Column(Text, nullable=True)
+    original_score = Column(Float, nullable=True)  # before downgrade
+    adjusted_score = Column(Float, nullable=True)  # after downgrade
+    override_status = Column(
+        String(32), nullable=True, index=True
+    )  # pending | approved | denied | expired | revoked
+    override_resolved_at = Column(DateTime, nullable=True)
+    resolver_identity = Column(
+        String(128), nullable=True
+    )  # who resolved: e.g. "matt", "system:expiry"
+    resolver_user_id = Column(
+        String(36), nullable=True, index=True
+    )  # FK-like ref to users.id when resolver is human
+    resolver_actor_type = Column(String(16), nullable=True)  # human | system
+    human_rationale = Column(Text, nullable=True)  # why the human approved/denied
+    resolution_outcome = Column(
+        String(32), nullable=True, index=True
+    )  # approved | denied | expired | revoked
+    cycle_id = Column(String(8), nullable=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        return (
+            f"<CovenantEnforcementRecord {self.action} on "
+            f"{self.target_type}:{self.target_id}>"
+        )
+
+
+class OverrideAuditRecord(Base):
+    """Audit trail for every override resolution attempt.
+
+    Every call to resolve an override — whether it succeeds or fails —
+    is recorded here. This is the authority accountability layer.
+
+    Outcomes:
+      authorized        — resolver had sufficient authority, resolution applied
+      unauthorized      — resolver not recognized in authority policy
+      insufficient_authority — resolver recognized but tier too low
+      system_expiry     — automatic expiry by the background sweep
+      invalid_state     — record not in a valid state for this resolution
+      not_found         — enforcement record does not exist
+    """
+
+    __tablename__ = "override_audit_records"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    enforcement_record_id = Column(
+        String(36),
+        ForeignKey("covenant_enforcement_records.id"),
+        nullable=True,
+        index=True,
+    )
+    resolver_identity = Column(String(128), nullable=False, index=True)
+    resolver_user_id = Column(
+        String(36), nullable=True, index=True
+    )  # users.id when resolver is human, None for system
+    resolver_actor_type = Column(String(16), nullable=True)  # human | system
+    authority_tier = Column(
+        String(32), nullable=True
+    )  # owner | operator | system | None (unknown)
+    required_tier = Column(
+        String(32), nullable=True
+    )  # what tier was needed for this resolution
+    action_attempted = Column(
+        String(32), nullable=False, index=True
+    )  # approved | denied | expired | revoked
+    outcome = Column(
+        String(32), nullable=False, index=True
+    )  # authorized | unauthorized | insufficient_authority | system_expiry | invalid_state | not_found
+    detail = Column(Text, nullable=True)
+    cycle_id = Column(String(8), nullable=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        return (
+            f"<OverrideAuditRecord {self.action_attempted} "
+            f"by {self.resolver_identity}: {self.outcome}>"
+        )

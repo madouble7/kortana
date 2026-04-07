@@ -2,10 +2,8 @@
   "servers": {
     "kortana-pc": {
       "type": "stdio",
-      "command": "C:\\Program Files\\Python311\\python.exe",
-      "args": [
-        "c:\\kortana\\mcp-server\\server.py"
-      ],
+      "command": "python3",
+      "args": ["${workspaceFolder}/mcp-server/server.py"],
       "env": {}
     }
   }

@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 # Set test environment variables before any imports
 os.environ["ENVIRONMENT"] = "testing"
-os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test_kortana.db"
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test_kortana_pytest.db"
 os.environ["GEMINI_API_KEY"] = "test_gemini_key"
 os.environ["GITHUB_TOKEN"] = "test_github_token"
 os.environ["DISCORD_BOT_TOKEN"] = "test_discord_token"
@@ -70,6 +70,7 @@ class SyncTestClient:
     def __init__(self, app):
         self.app = app
         self.base_url = "http://testserver"
+        self.headers = {}
         self._loop = None
         self._client = None
 
@@ -82,6 +83,13 @@ class SyncTestClient:
     def _run_async(self, coro):
         loop = self._get_loop()
         return loop.run_until_complete(coro)
+
+    def _merge_default_headers(self, kwargs):
+        headers = dict(self.headers)
+        headers.update(kwargs.get("headers") or {})
+        if headers:
+            kwargs["headers"] = headers
+        return kwargs
 
     async def _get_client(self):
         if self._client is None:
@@ -113,30 +121,37 @@ class SyncTestClient:
 
     async def _aget(self, url, **kwargs):
         client = await self._get_client()
+        kwargs = self._merge_default_headers(kwargs)
         return await client.request("GET", url, **kwargs)
 
     async def _apost(self, url, **kwargs):
         client = await self._get_client()
+        kwargs = self._merge_default_headers(kwargs)
         return await client.request("POST", url, **kwargs)
 
     async def _aput(self, url, **kwargs):
         client = await self._get_client()
+        kwargs = self._merge_default_headers(kwargs)
         return await client.request("PUT", url, **kwargs)
 
     async def _adelete(self, url, **kwargs):
         client = await self._get_client()
+        kwargs = self._merge_default_headers(kwargs)
         return await client.request("DELETE", url, **kwargs)
 
     async def _apatch(self, url, **kwargs):
         client = await self._get_client()
+        kwargs = self._merge_default_headers(kwargs)
         return await client.request("PATCH", url, **kwargs)
 
     async def _aoptions(self, url, **kwargs):
         client = await self._get_client()
+        kwargs = self._merge_default_headers(kwargs)
         return await client.request("OPTIONS", url, **kwargs)
 
     async def _ahead(self, url, **kwargs):
         client = await self._get_client()
+        kwargs = self._merge_default_headers(kwargs)
         return await client.request("HEAD", url, **kwargs)
 
     def close(self):
@@ -160,7 +175,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 @pytest.fixture(scope="session")
 def test_db_url():
     """Provide test database URL using SQLite"""
-    return "sqlite+aiosqlite:///./test_kortana.db"
+    return "sqlite+aiosqlite:///./test_kortana_pytest.db"
 
 
 @pytest.fixture(scope="session")
@@ -174,8 +189,6 @@ async def test_engine(test_db_url):
 @pytest.fixture(scope="session")
 async def setup_test_db(test_db_url, test_engine):
     """Set up test database schema using alembic migrations"""
-    import os
-    import subprocess
     from pathlib import Path
 
     backend_dir = Path(__file__).parent.parent
@@ -188,36 +201,15 @@ async def setup_test_db(test_db_url, test_engine):
         except PermissionError:
             pass
 
-    # Set DATABASE_URL for alembic
-    env = os.environ.copy()
-    env["DATABASE_URL"] = f"sqlite:///{db_path.as_posix()}"
+    # Always use create_all from models so tests reflect current schema.
+    # Alembic migrations are for production deployments.
+    from sqlalchemy import create_engine
+    from src.kortana.models import Base
 
-    # Run alembic upgrade to head
-    try:
-        subprocess.run(
-            [sys.executable, "-m", "alembic", "upgrade", "head"],
-            cwd=backend_dir,
-            env=env,
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        # If alembic fails, fall back to creating tables directly
-        if db_path.exists():
-            try:
-                db_path.unlink()
-            except PermissionError:
-                pass
-
-        from sqlalchemy import create_engine
-
-        from src.kortana.models import Base
-
-        sync_url = f"sqlite:///{db_path.as_posix()}"
-        engine = create_engine(sync_url)
-        Base.metadata.create_all(engine)
-        engine.dispose()
+    sync_url = f"sqlite:///{db_path.as_posix()}"
+    engine = create_engine(sync_url)
+    Base.metadata.create_all(engine)
+    engine.dispose()
 
     yield
 
@@ -322,7 +314,12 @@ def test_token(test_user):
     from src.kortana.auth import create_access_token
 
     return create_access_token(
-        data={"sub": test_user.username, "scopes": ["read", "write"]}
+        data={
+            "sub": test_user.id,
+            "email": test_user.email,
+            "username": test_user.username,
+            "scopes": ["read", "write"],
+        }
     )
 
 

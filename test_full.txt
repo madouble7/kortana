@@ -1,0 +1,295 @@
+============================= test session starts =============================
+platform win32 -- Python 3.11.9, pytest-8.4.0, pluggy-1.6.0
+codspeed: 3.2.0 (disabled, mode: walltime, timer_resolution: 100.0ns)
+benchmark: 5.1.0 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: C:\kortana\backend
+configfile: pytest.ini
+plugins: anyio-4.9.0, langsmith-0.4.39, asyncio-0.24.0, benchmark-5.1.0, codspeed-3.2.0, cov-4.1.0, recording-0.13.4, socket-0.7.0, syrupy-4.9.1
+asyncio: mode=Mode.AUTO, default_loop_scope=None
+collected 1383 items
+
+tests\integration\test_autonomous_systems.py .............               [  0%]
+tests\integration\test_full_system.py ....                               [  1%]
+tests\test_ai_orchestrator.py ....                                       [  1%]
+tests\test_always_on.py ..........................................       [  4%]
+tests\test_always_on_monitor.py .....................                    [  6%]
+tests\test_always_on_monitor_dedup.py ..                                 [  6%]
+tests\test_auth.py .............                                         [  7%]
+tests\test_auth_extended.py ..............                               [  8%]
+tests\test_auth_router.py ........................                       [  9%]
+tests\test_autonomous_monitor.py ....                                    [ 10%]
+tests\test_autonomy.py ................................................. [ 13%]
+.......                                                                  [ 14%]
+tests\test_autonomy_benchmark.py ...........s................            [ 16%]
+tests\test_autonomy_code_patcher.py ........                             [ 16%]
+tests\test_autonomy_daemon.py .......................................... [ 19%]
+                                                                         [ 19%]
+tests\test_autonomy_ui_patcher.py .......                                [ 20%]
+tests\test_billing.py ..............................                     [ 22%]
+tests\test_cache.py .................................................... [ 26%]
+                                                                         [ 26%]
+tests\test_code_reviewer.py ..........................                   [ 28%]
+tests\test_config_security.py ..........                                 [ 28%]
+tests\test_consciousness.py ......................................       [ 31%]
+tests\test_cost_optimized_model_router.py ............                   [ 32%]
+tests\test_daemon_router.py FF.....                                      [ 33%]
+tests\test_database_fallback.py ..                                       [ 33%]
+tests\test_database_url_normalization.py ....                            [ 33%]
+tests\test_exceptions.py .......................                         [ 35%]
+tests\test_gemini_config.py ..                                           [ 35%]
+tests\test_gemini_router.py ............................................ [ 38%]
+.                                                                        [ 38%]
+tests\test_github_automation.py ....                                     [ 38%]
+tests\test_github_autonomy_isolation.py ....................             [ 40%]
+tests\test_github_task_migration_schema.py .                             [ 40%]
+tests\test_github_webhook.py ....                                        [ 40%]
+tests\test_goal_manager.py ......                                        [ 41%]
+tests\test_health.py ........                                            [ 41%]
+tests\test_health_checker.py ..............................              [ 43%]
+tests\test_hop_engine.py ..................                              [ 45%]
+tests\test_init_db.py ...                                                [ 45%]
+tests\test_knowledge.py ..................................               [ 47%]
+tests\test_live_exerciser.py ....F.                                      [ 48%]
+tests\test_llm_router.py .........                                       [ 48%]
+tests\test_local_backlog_service.py ....                                 [ 49%]
+tests\test_logger.py .                                                   [ 49%]
+tests\test_main.py .............                                         [ 50%]
+tests\test_memory_policy.py ....                                         [ 50%]
+tests\test_metrics.py ...............................                    [ 52%]
+tests\test_model_lane_policy.py ....                                     [ 53%]
+tests\test_model_usage_telemetry.py ..                                   [ 53%]
+tests\test_multi_model_ai.py ..............................              [ 55%]
+tests\test_openai_conversation_state.py ...                              [ 55%]
+tests\test_operator_directives.py ........                               [ 56%]
+tests\test_optimization_modules.py .................                     [ 57%]
+tests\test_orchestrator.py ................................              [ 59%]
+tests\test_patch_planner.py .................                            [ 60%]
+tests\test_patch_validator.py ..........                                 [ 61%]
+tests\test_phase10_enforcement.py FFFFFFFFFFFFFFF..FFF..                 [ 63%]
+tests\test_phase11_override_resolution.py FFFFFF..FFFFFFFFFF...          [ 64%]
+tests\test_phase12_trust_calibration.py .......FFFFFFFFFFFFFF.FF.        [ 66%]
+tests\test_phase5_autonomy.py .....FFF.FFF...                            [ 67%]
+tests\test_phase6_goals.py .........FFFFF.....                           [ 68%]
+tests\test_phase7_execution.py ............F.FF.FFFFFF                   [ 70%]
+tests\test_phase8_outcome_learning.py ...................F.FFFFFFFFF     [ 72%]
+tests\test_phase9_constitutional.py ......................FFFFF....FF..  [ 75%]
+tests\test_pr201_blocker_fixes.py FFF...FF.                              [ 75%]
+tests\test_pr201_merge_blockers.py ...........                           [ 76%]
+tests\test_pr201_security_fixes.py ..........                            [ 77%]
+tests\test_pr_creation.py .....................                          [ 79%]
+tests\test_prompt_assembly.py ..........                                 [ 79%]
+tests\test_provider_model_defaults.py .......                            [ 80%]
+tests\test_quick_routers.py ...................                          [ 81%]
+tests\test_rate_limit.py ........................................        [ 84%]
+tests\test_rclone_router.py .................                            [ 85%]
+tests\test_repository_boundary_service.py .....                          [ 86%]
+tests\test_revelation_engine.py ....................................     [ 88%]
+tests\test_route_prefix_regression.py .                                  [ 88%]
+tests\test_runtime_clients.py ...........                                [ 89%]
+tests\test_schemas.py .................                                  [ 90%]
+tests\test_secrets_validator.py ..........................               [ 92%]
+tests\test_security_integration.py ....                                  [ 92%]
+tests\test_security_middleware.py .......................                [ 94%]
+tests\test_self_awareness_runtime.py ..                                  [ 94%]
+tests\test_setup_migrations.py ...                                       [ 95%]
+tests\test_songwriting_service.py .............................          [ 97%]
+tests\test_task_approval_service.py ............                         [ 97%]
+tests\test_task_executability_service.py ..                              [ 98%]
+tests\test_tasks.py ................                                     [ 99%]
+tests\test_vector_alpha_branch_service.py ...                            [ 99%]
+tests\test_workspace_bridge.py .......                                   [100%]
+
+================================== FAILURES ===================================
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\sqlalchemy\orm\session.py:929: sqlalchemy.exc.PendingRollbackError: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlite3.OperationalError) database is locked
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\aiosqlite\core.py:105: sqlalchemy.exc.DatabaseError: (sqlite3.DatabaseError) database disk image is malformed
+=========================== short test summary info ===========================
+SKIPPED [1] tests\test_autonomy_benchmark.py:213: Only relevant for patchable scenarios
+FAILED tests/test_daemon_router.py::test_daemon_status_reports_external_worker_health
+FAILED tests/test_daemon_router.py::test_daemon_cycles_returns_task_event_log
+FAILED tests/test_live_exerciser.py::TestLiveExerciserRouter::test_exercise_endpoint_returns_results
+FAILED tests/test_phase10_enforcement.py::TestImmutablePrecedence::test_immutable_violation_produces_reject
+FAILED tests/test_phase10_enforcement.py::TestImmutablePrecedence::test_mutable_conflict_produces_caution
+FAILED tests/test_phase10_enforcement.py::TestImmutablePrecedence::test_requires_human_override_verdict
+FAILED tests/test_phase10_enforcement.py::TestEnforceGoal::test_clean_goal_returns_allow
+FAILED tests/test_phase10_enforcement.py::TestEnforceGoal::test_violating_goal_returns_reject
+FAILED tests/test_phase10_enforcement.py::TestEnforceGoal::test_blocked_goal_creates_enforcement_record
+FAILED tests/test_phase10_enforcement.py::TestEnforceCandidate::test_clean_candidate_returns_allow
+FAILED tests/test_phase10_enforcement.py::TestEnforceCandidate::test_violating_candidate_returns_blocked
+FAILED tests/test_phase10_enforcement.py::TestEnforceCandidate::test_strategic_candidate_requires_override
+FAILED tests/test_phase10_enforcement.py::TestEnforceExecution::test_clean_execution_returns_allow
+FAILED tests/test_phase10_enforcement.py::TestEnforceExecution::test_violating_execution_returns_vetoed
+FAILED tests/test_phase10_enforcement.py::TestEnforceExecution::test_mission_execution_requires_override
+FAILED tests/test_phase10_enforcement.py::TestEnforcementQueries::test_get_recent_enforcement
+FAILED tests/test_phase10_enforcement.py::TestEnforcementQueries::test_get_blocked_or_vetoed
+FAILED tests/test_phase10_enforcement.py::TestEnforcementQueries::test_get_override_requests
+FAILED tests/test_phase10_enforcement.py::TestEnforcementEndpoints::test_covenant_enforcement_endpoint
+FAILED tests/test_phase10_enforcement.py::TestEnforcementEndpoints::test_covenant_blocked_endpoint
+FAILED tests/test_phase10_enforcement.py::TestEnforcementEndpoints::test_covenant_overrides_endpoint
+FAILED tests/test_phase11_override_resolution.py::TestResolveOverride::test_approve_pending_record
+FAILED tests/test_phase11_override_resolution.py::TestResolveOverride::test_deny_pending_record
+FAILED tests/test_phase11_override_resolution.py::TestResolveOverride::test_expire_pending_record
+FAILED tests/test_phase11_override_resolution.py::TestResolveOverride::test_revoke_approved_record
+FAILED tests/test_phase11_override_resolution.py::TestResolveOverride::test_cannot_approve_already_denied
+FAILED tests/test_phase11_override_resolution.py::TestResolveOverride::test_cannot_revoke_pending
+FAILED tests/test_phase11_override_resolution.py::TestExpireStaleOverrides::test_expires_old_records
+FAILED tests/test_phase11_override_resolution.py::TestExpireStaleOverrides::test_does_not_expire_fresh_records
+FAILED tests/test_phase11_override_resolution.py::TestOverrideQueries::test_get_pending_overrides
+FAILED tests/test_phase11_override_resolution.py::TestOverrideQueries::test_get_resolved_overrides
+FAILED tests/test_phase11_override_resolution.py::TestOverrideLearningFeedback::test_approved_produces_positive_signal
+FAILED tests/test_phase11_override_resolution.py::TestOverrideLearningFeedback::test_denied_produces_negative_signal
+FAILED tests/test_phase11_override_resolution.py::TestOverrideLearningFeedback::test_expired_produces_weak_negative
+FAILED tests/test_phase11_override_resolution.py::TestOverrideLearningFeedback::test_revoked_produces_negative_signal
+FAILED tests/test_phase11_override_resolution.py::TestOverrideEndpoints::test_pending_overrides_endpoint
+FAILED tests/test_phase11_override_resolution.py::TestOverrideEndpoints::test_resolved_overrides_endpoint
+FAILED tests/test_phase12_trust_calibration.py::TestResolveWithAuthority::test_owner_can_approve
+FAILED tests/test_phase12_trust_calibration.py::TestResolveWithAuthority::test_owner_can_deny
+FAILED tests/test_phase12_trust_calibration.py::TestResolveWithAuthority::test_unknown_resolver_rejected
+FAILED tests/test_phase12_trust_calibration.py::TestResolveWithAuthority::test_system_cannot_approve
+FAILED tests/test_phase12_trust_calibration.py::TestResolveWithAuthority::test_system_can_expire
+FAILED tests/test_phase12_trust_calibration.py::TestResolveWithAuthority::test_owner_can_revoke_approved
+FAILED tests/test_phase12_trust_calibration.py::TestAuditTrail::test_authorized_resolution_creates_audit
+FAILED tests/test_phase12_trust_calibration.py::TestAuditTrail::test_unauthorized_attempt_creates_audit
+FAILED tests/test_phase12_trust_calibration.py::TestAuditTrail::test_unauthorized_missing_record_uses_null_fk
+FAILED tests/test_phase12_trust_calibration.py::TestAuditTrail::test_insufficient_authority_creates_audit
+FAILED tests/test_phase12_trust_calibration.py::TestAuditTrail::test_insufficient_missing_record_uses_null_fk
+FAILED tests/test_phase12_trust_calibration.py::TestAuditTrail::test_invalid_state_creates_audit
+FAILED tests/test_phase12_trust_calibration.py::TestAuditTrail::test_not_found_creates_audit
+FAILED tests/test_phase12_trust_calibration.py::TestStaleExpiryAudit::test_expire_stale_creates_audit
+FAILED tests/test_phase12_trust_calibration.py::TestAuthorityEndpoints::test_authority_audit_endpoint
+FAILED tests/test_phase12_trust_calibration.py::TestAuthorityEndpoints::test_unauthorized_endpoint
+FAILED tests/test_phase5_autonomy.py::TestDurableAutonomyStatus::test_get_last_cycle_record_returns_none_when_empty
+FAILED tests/test_phase5_autonomy.py::TestDurableAutonomyStatus::test_get_last_cycle_record_returns_persisted_data
+FAILED tests/test_phase5_autonomy.py::TestDurableAutonomyStatus::test_status_survives_simulated_restart
+FAILED tests/test_phase5_autonomy.py::TestSelfModelEndpoints::test_self_model_returns_none_when_empty
+FAILED tests/test_phase5_autonomy.py::TestSelfModelEndpoints::test_self_model_history_returns_empty_list
+FAILED tests/test_phase5_autonomy.py::TestSelfModelEndpoints::test_self_model_history_respects_limit
+FAILED tests/test_phase6_goals.py::TestGoalSelectionService::test_select_next_action_no_goals_returns_idle
+FAILED tests/test_phase6_goals.py::TestGoalSelectionService::test_select_next_action_picks_highest_scoring
+FAILED tests/test_phase6_goals.py::TestGoalSelectionService::test_candidate_payload_has_expected_keys
+FAILED tests/test_phase6_goals.py::TestGoalSelectionService::test_get_current_next_action_returns_latest
+FAILED tests/test_phase6_goals.py::TestGoalSelectionService::test_get_next_action_history_respects_limit
+FAILED tests/test_phase7_execution.py::TestExecutionGateService::test_evaluate_creates_record
+FAILED tests/test_phase7_execution.py::TestExecutionGateService::test_evaluate_latest_candidate
+FAILED tests/test_phase7_execution.py::TestExecutionGateService::test_record_outcome
+FAILED tests/test_phase7_execution.py::TestExecutionGateService::test_get_current_execution
+FAILED tests/test_phase7_execution.py::TestExecutionGateService::test_get_execution_history
+FAILED tests/test_phase7_execution.py::TestOrchestratorExecutionGate::test_cycle_result_includes_execution_fields
+FAILED tests/test_phase7_execution.py::TestExecutionEndpoints::test_execution_current_empty
+FAILED tests/test_phase7_execution.py::TestExecutionEndpoints::test_execution_history_empty
+FAILED tests/test_phase7_execution.py::TestExecutionEndpoints::test_execution_history_limit_param
+FAILED tests/test_phase8_outcome_learning.py::TestOutcomeLearningService::test_learn_from_execution
+FAILED tests/test_phase8_outcome_learning.py::TestOutcomeLearningService::test_get_current_outcome
+FAILED tests/test_phase8_outcome_learning.py::TestOutcomeLearningService::test_get_outcome_history
+FAILED tests/test_phase8_outcome_learning.py::TestOutcomeLearningService::test_get_adaptations
+FAILED tests/test_phase8_outcome_learning.py::TestOrchestratorOutcomeLearning::test_cycle_result_includes_learning_fields
+FAILED tests/test_phase8_outcome_learning.py::TestOutcomeEndpoints::test_outcomes_current_empty
+FAILED tests/test_phase8_outcome_learning.py::TestOutcomeEndpoints::test_outcomes_history_empty
+FAILED tests/test_phase8_outcome_learning.py::TestOutcomeEndpoints::test_outcomes_history_limit_param
+FAILED tests/test_phase8_outcome_learning.py::TestOutcomeEndpoints::test_adaptations_empty
+FAILED tests/test_phase8_outcome_learning.py::TestOutcomeEndpoints::test_adaptations_limit_param
+FAILED tests/test_phase9_constitutional.py::TestConstitutionalServiceDB::test_evaluate_allow
+FAILED tests/test_phase9_constitutional.py::TestConstitutionalServiceDB::test_evaluate_reject
+FAILED tests/test_phase9_constitutional.py::TestConstitutionalServiceDB::test_evaluate_caution
+FAILED tests/test_phase9_constitutional.py::TestConstitutionalServiceDB::test_get_recent_decisions
+FAILED tests/test_phase9_constitutional.py::TestConstitutionalServiceDB::test_get_drift_warnings
+FAILED tests/test_phase9_constitutional.py::TestCovenantEndpoints::test_covenant_decisions_endpoint
+FAILED tests/test_phase9_constitutional.py::TestCovenantEndpoints::test_covenant_drift_endpoint
+FAILED tests/test_pr201_blocker_fixes.py::TestOverrideLearningCallSite::test_resolve_calls_correct_learning_method
+FAILED tests/test_pr201_blocker_fixes.py::TestOverrideLearningCallSite::test_learning_record_created_on_resolve
+FAILED tests/test_pr201_blocker_fixes.py::TestNotFoundAuditFK::test_not_found_audit_has_null_fk
+FAILED tests/test_pr201_blocker_fixes.py::TestRevelationFieldNames::test_outcome_learning_record_has_correct_fields
+FAILED tests/test_pr201_blocker_fixes.py::TestRevelationFieldNames::test_gather_outcome_signals_format
+==== 95 failed, 1287 passed, 1 skipped, 152 warnings in 510.06s (0:08:30) =====

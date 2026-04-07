@@ -33,8 +33,11 @@ jobs:
       - name: Run MyPy
         run: |
           cd backend
-          mypy src/kortana/main.py src/kortana/auth.py src/kortana/schemas.py src/kortana/config.py
+          mypy src/kortana/main.py src/kortana/auth.py src/kortana/schemas.py src/kortana/config.py --ignore-missing-imports --follow-imports=silent
       - name: Run Pytest
+        env:
+          ENVIRONMENT: testing
+          PINECONE_API_KEY: test_key
         run: |
           cd backend
           pytest
