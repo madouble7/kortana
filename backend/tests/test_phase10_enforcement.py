@@ -197,21 +197,40 @@ class TestEnforceCandidate:
         assert record.action == "blocked"
 
     @pytest.mark.asyncio
-    async def test_strategic_candidate_requires_override(self, test_db_session) -> None:
-        """Strategic work with HOP invoked should require human override."""
-        svc = ConstitutionalService(test_db_session)
-        # Use a summary that triggers HOP autonomy check
-        verdict, record = await svc.enforce_candidate(
-            candidate_title="Deploy production infrastructure changes",
-            candidate_id="c_strategic",
-            candidate_score=0.85,
-            action_type="goal_work",
-            goal_tier="strategic",
-        )
-        # Strategic tier triggers requires_human_override in context
-        # but only if HOP principle fires — this depends on whether
-        # the HOP keyword check is triggered
-        assert verdict in ("allow", "requires_human_override")
+    async def test_strategic_candidate_requires_override(self) -> None:
+        """Strategic work should request human override deterministically."""
+        db = AsyncMock()
+        db.add = MagicMock()
+        db.commit = AsyncMock()
+        db.refresh = AsyncMock()
+
+        svc = ConstitutionalService(db)
+        fake_decision = type(
+            "Decision",
+            (),
+            {
+                "id": "decision-strategic",
+                "verdict": "requires_human_override",
+                "explanation": "Human override required.",
+                "enforcement_action": "override_requested",
+            },
+        )()
+
+        with patch.object(
+            svc, "evaluate", AsyncMock(return_value=fake_decision)
+        ) as mock_evaluate:
+            verdict, record = await svc.enforce_candidate(
+                candidate_title="Deploy production infrastructure changes",
+                candidate_id="c_strategic",
+                candidate_score=0.85,
+                action_type="goal_work",
+                goal_tier="strategic",
+            )
+
+        assert mock_evaluate.await_args.kwargs["context"]["requires_human_override"] is True
+        assert verdict == "requires_human_override"
+        assert record is not None
+        assert record.action == "override_requested"
 
 
 # ---------------------------------------------------------------
