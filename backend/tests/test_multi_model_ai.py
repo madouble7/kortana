@@ -359,10 +359,12 @@ class TestMultiModelAICallProvider:
         service._initialized = True
 
         mock_client = MagicMock()
+        mock_choice = MagicMock()
+        mock_choice.message.content = "OpenAI response"
         mock_response = MagicMock()
-        mock_response.output_text = "OpenAI response"
-        mock_response.usage = MagicMock(input_tokens=4, output_tokens=2)
-        mock_client.responses.create.return_value = mock_response
+        mock_response.choices = [mock_choice]
+        mock_response.usage = MagicMock(prompt_tokens=4, completion_tokens=2)
+        mock_client.chat.completions.create.return_value = mock_response
 
         service.providers["openai"] = {
             "client": mock_client,

@@ -295,7 +295,7 @@ class AutonomyDaemon:
                     await session.commit()
 
                     if patch_success:
-                        alpha_dry_run = self.settings.VECTOR_ALPHA_DRY_RUN
+                        alpha_dry_run = get_settings().VECTOR_ALPHA_DRY_RUN
                         gh = GitHubAutonomyService(session)
                         success = await alpha.commit_and_propose(
                             inc, gh, dry_run=alpha_dry_run

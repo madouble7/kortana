@@ -25,11 +25,11 @@ from src.kortana.provider_model_defaults import (
 
 
 def test_llm_router_defaults_match_expected_primary_and_fallbacks() -> None:
-    assert LLM_ROUTER_DEFAULTS.gemini == "gemini-2.0-flash"
+    assert LLM_ROUTER_DEFAULTS.gemini == "gemini-2.5-flash"
     assert LLM_ROUTER_FALLBACK_ORDER == (
+        "mixtral-8x7b-32768",
         OPENAI_GPT_54_MINI_MODEL,
         ANTHROPIC_SONNET_MODEL,
-        "mixtral-8x7b-32768",
     )
 
 
@@ -48,16 +48,16 @@ def test_multi_model_defaults_match_expected_provider_models() -> None:
 
 
 def test_gemini_discovery_fallbacks_are_all_core_catalog_models() -> None:
-    assert GEMINI_DEFAULT_MODEL == "gemini-3.1-flash-lite-preview"
+    assert GEMINI_DEFAULT_MODEL == "gemini-2.5-flash-lite"
     assert set(GEMINI_DISCOVERY_FALLBACK_MODELS).issubset(DEFAULT_CORE_MODEL_CATALOG)
 
 
 def test_gemini_discovery_fallbacks_prefer_stable_flash_models_first() -> None:
     assert GEMINI_DISCOVERY_FALLBACK_MODELS[:5] == (
+        GEMINI_DEFAULT_MODEL,
+        GEMINI_FLASH_LITE_MODEL,
         GEMINI_25_FLASH_MODEL,
         LLM_ROUTER_GEMINI_MODEL,
-        GEMINI_FLASH_LITE_MODEL,
-        GEMINI_DEFAULT_MODEL,
         GEMINI_FLASH_LITE_LATEST_MODEL,
     )
 

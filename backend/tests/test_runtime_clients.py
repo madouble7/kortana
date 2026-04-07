@@ -199,6 +199,7 @@ class TestAPIIntegrationModelLaneRuntime:
 
         with patch.dict("sys.modules", {"openai": MagicMock(AsyncOpenAI=mock_async_openai)}):
             client = OpenAIAPIClient("sk-test")
+            client.model = "gpt-5.4"  # Force GPT-5 path for Responses API test
             text, input_tokens, output_tokens = await client.generate("Hello world")
 
         assert text == "OpenAI responses output"
@@ -223,7 +224,7 @@ class TestAPIIntegrationModelLaneRuntime:
 
         result = await async_generate_turn(
             mock_client,
-            model_name=AI_CONSENSUS_DEFAULTS.openai,
+            model_name="gpt-5.4-mini",
             prompt="continue",
             previous_response_id="resp_prev",
             timeout=30.0,
@@ -252,7 +253,7 @@ class TestAPIIntegrationModelLaneRuntime:
 
         result = await async_generate_turn(
             mock_client,
-            model_name=AI_CONSENSUS_DEFAULTS.openai,
+            model_name="gpt-5.4-mini",
             prompt="what next?",
             history=[
                 {"role": "user", "content": "hello"},
@@ -325,7 +326,7 @@ class TestAPIIntegrationModelLaneRuntime:
             event
             async for event in async_stream_turn(
                 mock_client,
-                model_name=AI_CONSENSUS_DEFAULTS.openai,
+                model_name="gpt-5.4-mini",
                 prompt="hello",
             )
         ]

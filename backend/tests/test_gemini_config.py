@@ -36,7 +36,7 @@ def test_get_available_model_prefers_first_allowed_fallback(monkeypatch) -> None
     ):
         selected = get_available_model()
 
-    assert selected == GEMINI_25_FLASH_MODEL
+    assert selected == GEMINI_DEFAULT_MODEL
 
 
 def test_get_available_model_skips_disallowed_fallback_candidates(

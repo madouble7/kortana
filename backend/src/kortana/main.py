@@ -41,11 +41,10 @@ from src.kortana.middleware.security import (  # noqa: E402
     SecurityHeadersMiddleware,
 )
 
-RedisClient: Any = None
 try:
-    from redis import Redis as RedisClient  # type: ignore[no-redef]
+    from redis import Redis as RedisClient
 except ImportError:
-    pass
+    RedisClient = None  # type: ignore[assignment,misc,no-redef]
 
 try:
     from src.kortana.human_only_protocol import router as hop_router
@@ -141,9 +140,8 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
 
         db_manager = get_db_manager()
         await db_manager.initialize()
-        engine = db_manager.engine
-        assert engine is not None, "DB engine not initialized"
-        async with engine.begin() as conn:
+        assert db_manager.engine is not None, "DB engine not initialized"
+        async with db_manager.engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
         print("[*] Database tables verified/created")
     except Exception as e:

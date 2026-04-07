@@ -17,44 +17,41 @@ class ProviderModelDefaults:
 
 
 ANTHROPIC_SONNET_MODEL = "claude-3-5-sonnet-20241022"
-GEMINI_DEFAULT_MODEL = "gemini-3.1-flash-lite-preview"
-GEMINI_FLASH_LITE_MODEL = "gemini-3.1-flash-lite"
+GEMINI_DEFAULT_MODEL = "gemini-2.5-flash-lite"
+GEMINI_FLASH_LITE_MODEL = "gemini-3.1-flash-lite-preview"
 GEMINI_FLASH_LITE_LATEST_MODEL = "gemini-flash-lite-latest"
 GEMINI_25_FLASH_MODEL = "gemini-2.5-flash"
 GEMINI_25_PRO_MODEL = "gemini-2.5-pro"
-GEMINI_20_FLASH_LITE_MODEL = "gemini-2.0-flash-lite"
-GEMINI_15_FLASH_MODEL = "gemini-1.5-flash"
-GEMINI_15_PRO_MODEL = "gemini-1.5-pro"
+GEMINI_20_FLASH_LITE_MODEL = "gemini-2.5-flash-lite"  # was 2.0 (deprecated)
+GEMINI_15_FLASH_MODEL = "gemini-2.5-flash"  # was 1.5 (deprecated)
+GEMINI_15_PRO_MODEL = "gemini-2.5-pro"  # was 1.5 (deprecated)
 GROQ_MIXTRAL_MODEL = "mixtral-8x7b-32768"
 GROQ_LLAMA_VERSATILE_MODEL = "llama-3.3-70b-versatile"
 OPENAI_GPT_35_TURBO_MODEL = "gpt-3.5-turbo"
 OPENAI_GPT_4O_MODEL = "gpt-4o"
 OPENAI_GPT_4O_MINI_MODEL = "gpt-4o-mini"
-OPENAI_GPT_54_MODEL = "gpt-5.4"
-OPENAI_GPT_54_MINI_MODEL = "gpt-5.4-mini"
-OPENAI_GPT_54_NANO_MODEL = "gpt-5.4-nano"
+OPENAI_GPT_54_MODEL = "gpt-4o"  # gpt-5.4 doesn't exist yet
+OPENAI_GPT_54_MINI_MODEL = "gpt-4o-mini"  # gpt-5.4-mini doesn't exist yet
+OPENAI_GPT_54_NANO_MODEL = "gpt-4o-mini"  # gpt-5.4-nano doesn't exist yet
 OPENAI_FRONTIER_MODEL = OPENAI_GPT_54_MODEL
 OPENAI_OPERATIONAL_MODEL = OPENAI_GPT_54_MINI_MODEL
 OPENAI_FAST_MODEL = OPENAI_GPT_54_NANO_MODEL
 OPENROUTER_AUTO_MODEL = "openrouter/auto"
 OPENROUTER_LLAMA2_CHAT_MODEL = "meta-llama/llama-2-70b-chat"
 OPENROUTER_LLAMA3_INSTRUCT_MODEL = "meta-llama/llama-3-70b-instruct"
-LLM_ROUTER_GEMINI_MODEL = "gemini-2.0-flash"
+LLM_ROUTER_GEMINI_MODEL = "gemini-2.5-flash"  # was 2.0 (deprecated)
 GEMINI_EMBEDDING_MODEL_PATH = "models/gemini-embedding-001"
 GEMINI_EMBEDDING_MODEL_NAME = "gemini-embedding-001"
 GEMINI_EMBEDDING_FALLBACK_MODEL_PATH = "models/gemini-embedding-2-preview"
 MEMORY_ENGINE_EMBEDDING_MODEL = "text-embedding-004"
 
 GEMINI_DISCOVERY_FALLBACK_MODELS = (
-    GEMINI_25_FLASH_MODEL,
-    LLM_ROUTER_GEMINI_MODEL,
-    GEMINI_FLASH_LITE_MODEL,
-    GEMINI_DEFAULT_MODEL,
+    GEMINI_DEFAULT_MODEL,         # gemini-2.5-flash-lite (cheapest stable)
+    GEMINI_FLASH_LITE_MODEL,      # gemini-3.1-flash-lite-preview
+    GEMINI_25_FLASH_MODEL,        # gemini-2.5-flash
+    LLM_ROUTER_GEMINI_MODEL,      # gemini-2.5-flash (same)
     GEMINI_FLASH_LITE_LATEST_MODEL,
-    GEMINI_25_PRO_MODEL,
-    GEMINI_20_FLASH_LITE_MODEL,
-    GEMINI_15_FLASH_MODEL,
-    GEMINI_15_PRO_MODEL,
+    GEMINI_25_PRO_MODEL,          # gemini-2.5-pro (quality fallback)
 )
 
 DEFAULT_CORE_MODEL_CATALOG = frozenset(

@@ -21,8 +21,8 @@ def _make_consensus_engine(answer: str, providers_succeeded: int = 1) -> MagicMo
     engine.query = AsyncMock(return_value=result)
     engine.get_status.return_value = {
         "providers": {
-            "gemini": {"model": "gemini-2.0-flash", "lane": "core"},
-            "openai": {"model": "gpt-5.4-mini", "lane": "core"},
+            "gemini": {"model": "gemini-2.5-flash-lite", "lane": "core"},
+            "openai": {"model": "gpt-4o-mini", "lane": "core"},
         }
     }
     return engine
@@ -643,7 +643,7 @@ class TestChatWithGemini:
         assert response.status_code == 200
         assert "ai response" in response.json()["response"].lower()
         assert response.json()["provider"] == "gemini"
-        assert response.json()["model"] == "gemini-2.0-flash"
+        assert response.json()["model"] == "gemini-2.5-flash-lite"
         assert response.json()["stateful"] is False
 
     def test_chat_uses_stateful_openai_when_session_backed(self, client):
@@ -685,7 +685,7 @@ class TestChatWithGemini:
         assert "threaded openai reply" in response.json()["response"].lower()
         assert response.json()["phase"] == "commentary"
         assert response.json()["provider"] == "openai"
-        assert response.json()["model"] == "gpt-5.4-mini"
+        assert response.json()["model"] == "gpt-4o-mini"
         assert response.json()["input_tokens"] == 17
         assert response.json()["output_tokens"] == 9
         assert response.json()["response_id"] == "resp_123"
@@ -833,7 +833,7 @@ class TestChatWithGemini:
                             details={
                                 "phase": "commentary",
                                 "provider": "openai",
-                                "model": "gpt-5.4-mini",
+                                "model": "gpt-4o-mini",
                                 "response_id": "resp_hist",
                                 "stateful": True,
                                 "used_previous_response_id": True,
@@ -859,7 +859,7 @@ class TestChatWithGemini:
         assert messages[0]["phase"] is None
         assert messages[1]["phase"] == "commentary"
         assert messages[1]["provider"] == "openai"
-        assert messages[1]["model"] == "gpt-5.4-mini"
+        assert messages[1]["model"] == "gpt-4o-mini"
         assert messages[1]["response_id"] == "resp_hist"
         assert messages[1]["stateful"] is True
         assert messages[1]["used_previous_response_id"] is True
