@@ -227,6 +227,21 @@ class TestAuditTrail:
         assert audits[0].resolver_identity == "hacker"
 
     @pytest.mark.asyncio
+    async def test_unauthorized_missing_record_uses_null_fk(
+        self, test_db_session
+    ) -> None:
+        fake_id = "missing-unauthorized"
+        svc = ConstitutionalService(test_db_session)
+
+        await svc.resolve_override(fake_id, "approved", "hacker", "Let me in.")
+
+        audits = await svc.get_unauthorized_attempts(limit=5)
+        unauthorized = [a for a in audits if a.outcome == "unauthorized"]
+        assert len(unauthorized) >= 1
+        assert unauthorized[0].enforcement_record_id is None
+        assert fake_id in (unauthorized[0].detail or "")
+
+    @pytest.mark.asyncio
     async def test_insufficient_authority_creates_audit(
         self, test_db_session
     ) -> None:
@@ -247,6 +262,23 @@ class TestAuditTrail:
         assert insufficient[0].resolver_identity == "system:expiry"
         assert insufficient[0].authority_tier == "system"
         assert insufficient[0].required_tier == "owner"
+
+    @pytest.mark.asyncio
+    async def test_insufficient_missing_record_uses_null_fk(
+        self, test_db_session
+    ) -> None:
+        fake_id = "missing-insufficient"
+        svc = ConstitutionalService(test_db_session)
+
+        await svc.resolve_override(fake_id, "approved", "system:expiry", "Auto.")
+
+        audits = await svc.get_unauthorized_attempts(limit=5)
+        insufficient = [
+            a for a in audits if a.outcome == "insufficient_authority"
+        ]
+        assert len(insufficient) >= 1
+        assert insufficient[0].enforcement_record_id is None
+        assert fake_id in (insufficient[0].detail or "")
 
     @pytest.mark.asyncio
     async def test_invalid_state_creates_audit(
@@ -332,16 +364,20 @@ class TestAuthorityEndpoints:
         assert "count" in data
         assert "unauthorized" in data
 
-    def test_resolve_with_unknown_resolver_via_endpoint(self, client) -> None:
-        """Resolve endpoint with unknown resolver returns error."""
-        resp = client.post(
+    def test_resolve_with_unknown_resolver_via_endpoint(
+        self, authenticated_client
+    ) -> None:
+        """Resolve endpoint with auth now derives resolver from token,
+        not from query params.  The 'unknown_intruder' resolver param is
+        ignored — authority comes from the authenticated user context."""
+        resp = authenticated_client.post(
             "/api/consciousness/covenant/overrides/fake_id/resolve",
             params={
                 "resolution": "approved",
-                "resolver": "unknown_intruder",
                 "rationale": "Hack attempt",
             },
         )
+        # With authentication, the endpoint processes the request (record not found)
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "error"

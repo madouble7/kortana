@@ -159,13 +159,13 @@ class TestOverrideLearningMethodName:
         record = CovenantEnforcementRecord(
             id=str(uuid.uuid4()),
             cycle_id="AAAA",
+            decision_id="dec-001",
             target_type="action",
             target_id="some-action",
-            verdict="requires_human_override",
-            matched_principles=["identity"],
-            severity="high",
+            target_summary="requires_human_override",
+            action="override_requested",
             override_status="pending",
-            override_requested_at=datetime.utcnow(),
+            created_at=datetime.utcnow(),
         )
 
         # Mock DB
@@ -180,7 +180,7 @@ class TestOverrideLearningMethodName:
 
         # Patch outcome learning service
         with patch(
-            "src.kortana.services.constitutional_service.OutcomeLearningService"
+            "src.kortana.services.outcome_learning_service.OutcomeLearningService"
         ) as MockOLS:
             mock_ols_instance = AsyncMock()
             MockOLS.return_value = mock_ols_instance

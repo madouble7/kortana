@@ -621,10 +621,12 @@ async def get_autonomy_status(
 @router.post("/_internal/autonomy-cycle")
 async def internal_autonomy_cycle(
     db: AsyncSession = Depends(get_db),
+    _current_user: Any = Depends(_get_current_active_user),
 ) -> Dict[str, Any]:
     """Internal: full autonomy orchestrator cycle.
 
     Called exclusively by the Silent Reviewer daemon.  Not for manual use.
+    Requires authentication to prevent anonymous invocation.
     Runs: observe → reflect → synthesize → deliberate → persist.
     """
     from src.kortana.services.autonomy_orchestrator import AutonomyOrchestrator
@@ -1132,26 +1134,33 @@ async def get_resolved_overrides(
 async def resolve_override(
     record_id: str,
     resolution: str = Query(..., pattern="^(approved|denied|expired|revoked)$"),
-    resolver: str = Query(default="matt"),
     rationale: str = Query(default=""),
     db: AsyncSession = Depends(get_db),
+    current_user: Any = Depends(_get_current_active_user),
 ) -> Dict[str, Any]:
-    """Resolve a pending override request.
+    """Resolve a pending override request (authenticated).
+
+    Resolver identity and authority tier are derived from the
+    authenticated user's token/DB state — never from caller-supplied text.
 
     - approved: human approves the overridden action
     - denied: human denies the override (covenant was correct)
     - expired: mark as expired (normally done by system)
     - revoked: revoke a previously approved override
     """
-    from src.kortana.services.constitutional_service import ConstitutionalService
-    from src.kortana.services.outcome_learning_service import OutcomeLearningService
+    from src.kortana.services.constitutional_service import (
+        ConstitutionalService,
+        resolve_context_from_user,
+    )
 
+    ctx = await resolve_context_from_user(current_user, db)
     svc = ConstitutionalService(db)
     record = await svc.resolve_override(
         record_id=record_id,
         resolution=resolution,
-        resolver=resolver,
+        resolver=ctx.actor_name,
         rationale=rationale,
+        resolver_context=ctx,
     )
 
     if record is None:
@@ -1163,26 +1172,10 @@ async def resolve_override(
             ),
         }
 
-    # Feed resolution into outcome learning
-    learning_record = None
-    try:
-        learner = OutcomeLearningService(db)
-        learning_record = await learner.learn_from_override_resolution(record)
-    except Exception:
-        logger.exception("Failed to produce learning from override resolution")
-
+    # Learning is already recorded inside ConstitutionalService.resolve_override()
     return {
         "status": "resolved",
         "record": _format_enforcement_record(record),
-        "learning": (
-            {
-                "signal": learning_record.adaptation_signal,
-                "weight": learning_record.signal_weight,
-                "lesson": learning_record.lesson,
-            }
-            if learning_record
-            else None
-        ),
     }
 
 
@@ -1282,7 +1275,6 @@ async def resolve_override_authenticated(
         ConstitutionalService,
         resolve_context_from_user,
     )
-    from src.kortana.services.outcome_learning_service import OutcomeLearningService
 
     ctx = await resolve_context_from_user(current_user, db)
     svc = ConstitutionalService(db)
@@ -1308,14 +1300,7 @@ async def resolve_override_authenticated(
             },
         }
 
-    # Feed resolution into outcome learning
-    learning_record = None
-    try:
-        learner = OutcomeLearningService(db)
-        learning_record = await learner.learn_from_override_resolution(record)
-    except Exception:
-        logger.exception("Failed to produce learning from override resolution")
-
+    # Learning is already recorded inside ConstitutionalService.resolve_override()
     return {
         "status": "resolved",
         "record": _format_enforcement_record(record),
@@ -1325,13 +1310,4 @@ async def resolve_override_authenticated(
             "user_id": ctx.user_id,
             "authority_tier": ctx.authority_tier,
         },
-        "learning": (
-            {
-                "signal": learning_record.adaptation_signal,
-                "weight": learning_record.signal_weight,
-                "lesson": learning_record.lesson,
-            }
-            if learning_record
-            else None
-        ),
     }

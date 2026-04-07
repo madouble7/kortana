@@ -263,7 +263,7 @@ class TestGoalSelectionService:
 class TestOrchestratorGoalSelection:
     """Verify autonomy orchestrator cycle result includes next_action fields."""
 
-    def test_cycle_result_contains_next_action_keys(self, client) -> None:
+    def test_cycle_result_contains_next_action_keys(self, authenticated_client) -> None:
         mock_result = {
             "cycle_id": "orch01",
             "trigger": "daemon",
@@ -283,7 +283,9 @@ class TestOrchestratorGoalSelection:
         ) as MockOrch:
             instance = MockOrch.return_value
             instance.run_cycle = AsyncMock(return_value=mock_result)
-            resp = client.post("/api/consciousness/_internal/autonomy-cycle")
+            resp = authenticated_client.post(
+                "/api/consciousness/_internal/autonomy-cycle"
+            )
 
         assert resp.status_code == 200
         data = resp.json()

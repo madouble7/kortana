@@ -176,7 +176,7 @@ class TestDurableAutonomyStatus:
 class TestInternalAutonomyCycleEndpoint:
     """Verify /_internal/autonomy-cycle returns the expected shape."""
 
-    def test_internal_cycle_returns_expected_keys(self, client):
+    def test_internal_cycle_returns_expected_keys(self, authenticated_client):
         """Mock the orchestrator so no Gemini key is needed."""
         mock_result = {
             "cycle_id": "test1234",
@@ -195,7 +195,9 @@ class TestInternalAutonomyCycleEndpoint:
         ) as MockOrch:
             instance = MockOrch.return_value
             instance.run_cycle = AsyncMock(return_value=mock_result)
-            resp = client.post("/api/consciousness/_internal/autonomy-cycle")
+            resp = authenticated_client.post(
+                "/api/consciousness/_internal/autonomy-cycle"
+            )
 
         assert resp.status_code == 200
         data = resp.json()

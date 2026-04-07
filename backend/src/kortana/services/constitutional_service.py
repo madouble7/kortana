@@ -110,7 +110,10 @@ async def resolve_context_from_user(
     Derives authority tier from the actual User record:
       - is_superuser=True → owner
       - is_active regular user → operator
-      - fallback → no authority (empty string, will fail checks)
+
+    When the DB lookup misses (user_id absent or not found), falls back
+    to token-level attributes so that a legitimately authenticated user
+    is never silently downgraded to an empty tier.
 
     Also checks RESOLVER_AUTHORITY for username-based overrides.
     """
@@ -134,6 +137,18 @@ async def resolve_context_from_user(
                 tier = "owner"
             elif user.is_active:
                 tier = "operator"
+        else:
+            # DB lookup missed — derive tier from token attributes
+            if getattr(token_data, "is_superuser", False):
+                tier = "owner"
+            else:
+                tier = "operator"
+    else:
+        # No user_id on token — derive tier from token attributes
+        if getattr(token_data, "is_superuser", False):
+            tier = "owner"
+        else:
+            tier = "operator"
 
     # Allow RESOLVER_AUTHORITY override (e.g. "matt" → "owner" even if
     # DB doesn't have is_superuser set for some reason)
@@ -978,6 +993,20 @@ class ConstitutionalService:
             logger.exception("Failed to persist audit record")
         return audit
 
+    async def _existing_enforcement_record_id(
+        self, record_id: Optional[str]
+    ) -> Optional[str]:
+        """Return record_id only when the enforcement record currently exists."""
+        if not record_id:
+            return None
+
+        stmt = select(CovenantEnforcementRecord.id).where(
+            CovenantEnforcementRecord.id == record_id
+        )
+        result = await self.db.execute(stmt)
+        existing_id = result.scalar_one_or_none()
+        return str(existing_id) if existing_id is not None else None
+
     def _get_resolver_tier(self, resolver: str) -> Optional[str]:
         """Look up the authority tier for a resolver identity."""
         return RESOLVER_AUTHORITY.get(resolver)
@@ -1026,29 +1055,34 @@ class ConstitutionalService:
 
         if resolver_tier is None:
             # Unknown resolver — unauthorized
+            existing_record_id = await self._existing_enforcement_record_id(record_id)
             logger.warning(
                 f"Unauthorized resolver '{resolver}' attempted "
                 f"'{resolution}' on record {record_id}"
             )
             await self._record_audit(
-                enforcement_record_id=record_id,
+                enforcement_record_id=existing_record_id,
                 resolver=resolver,
                 authority_tier=None,
                 required_tier=required_tier,
                 action_attempted=resolution,
                 outcome="unauthorized",
-                detail=f"Resolver '{resolver}' not in authority policy.",
+                detail=(
+                    f"Resolver '{resolver}' not in authority policy. "
+                    f"Attempted record_id='{record_id}'."
+                ),
                 resolver_context=resolver_context,
             )
             return None
 
         if not self._has_sufficient_authority(resolver_tier, required_tier):
+            existing_record_id = await self._existing_enforcement_record_id(record_id)
             logger.warning(
                 f"Insufficient authority: '{resolver}' (tier={resolver_tier}) "
                 f"attempted '{resolution}' requiring tier={required_tier}"
             )
             await self._record_audit(
-                enforcement_record_id=record_id,
+                enforcement_record_id=existing_record_id,
                 resolver=resolver,
                 authority_tier=resolver_tier,
                 required_tier=required_tier,
@@ -1056,7 +1090,8 @@ class ConstitutionalService:
                 outcome="insufficient_authority",
                 detail=(
                     f"Resolver '{resolver}' has tier '{resolver_tier}' "
-                    f"but '{resolution}' requires '{required_tier}'."
+                    f"but '{resolution}' requires '{required_tier}'. "
+                    f"Attempted record_id='{record_id}'."
                 ),
                 resolver_context=resolver_context,
             )

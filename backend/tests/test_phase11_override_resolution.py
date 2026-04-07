@@ -341,24 +341,28 @@ class TestOverrideEndpoints:
         assert "count" in data
         assert "resolved" in data
 
-    def test_resolve_override_endpoint_requires_resolution(self, client) -> None:
+    def test_resolve_override_endpoint_requires_resolution(
+        self, authenticated_client
+    ) -> None:
         """POST without resolution param should fail validation."""
-        resp = client.post("/api/consciousness/covenant/overrides/fake_id/resolve")
+        resp = authenticated_client.post(
+            "/api/consciousness/covenant/overrides/fake_id/resolve"
+        )
         assert resp.status_code == 422  # missing required 'resolution'
 
-    def test_resolve_override_invalid_resolution(self, client) -> None:
+    def test_resolve_override_invalid_resolution(self, authenticated_client) -> None:
         """POST with invalid resolution should fail pattern validation."""
-        resp = client.post(
+        resp = authenticated_client.post(
             "/api/consciousness/covenant/overrides/fake_id/resolve",
             params={"resolution": "invalid_value"},
         )
         assert resp.status_code == 422
 
-    def test_resolve_override_nonexistent_record(self, client) -> None:
+    def test_resolve_override_nonexistent_record(self, authenticated_client) -> None:
         """POST for nonexistent record returns error status."""
-        resp = client.post(
+        resp = authenticated_client.post(
             "/api/consciousness/covenant/overrides/nonexistent/resolve",
-            params={"resolution": "approved", "resolver": "matt", "rationale": "Test"},
+            params={"resolution": "approved", "rationale": "Test"},
         )
         assert resp.status_code == 200
         data = resp.json()

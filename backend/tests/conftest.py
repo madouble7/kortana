@@ -70,6 +70,7 @@ class SyncTestClient:
     def __init__(self, app):
         self.app = app
         self.base_url = "http://testserver"
+        self.headers = {}
         self._loop = None
         self._client = None
 
@@ -82,6 +83,13 @@ class SyncTestClient:
     def _run_async(self, coro):
         loop = self._get_loop()
         return loop.run_until_complete(coro)
+
+    def _merge_default_headers(self, kwargs):
+        headers = dict(self.headers)
+        headers.update(kwargs.get("headers") or {})
+        if headers:
+            kwargs["headers"] = headers
+        return kwargs
 
     async def _get_client(self):
         if self._client is None:
@@ -113,30 +121,37 @@ class SyncTestClient:
 
     async def _aget(self, url, **kwargs):
         client = await self._get_client()
+        kwargs = self._merge_default_headers(kwargs)
         return await client.request("GET", url, **kwargs)
 
     async def _apost(self, url, **kwargs):
         client = await self._get_client()
+        kwargs = self._merge_default_headers(kwargs)
         return await client.request("POST", url, **kwargs)
 
     async def _aput(self, url, **kwargs):
         client = await self._get_client()
+        kwargs = self._merge_default_headers(kwargs)
         return await client.request("PUT", url, **kwargs)
 
     async def _adelete(self, url, **kwargs):
         client = await self._get_client()
+        kwargs = self._merge_default_headers(kwargs)
         return await client.request("DELETE", url, **kwargs)
 
     async def _apatch(self, url, **kwargs):
         client = await self._get_client()
+        kwargs = self._merge_default_headers(kwargs)
         return await client.request("PATCH", url, **kwargs)
 
     async def _aoptions(self, url, **kwargs):
         client = await self._get_client()
+        kwargs = self._merge_default_headers(kwargs)
         return await client.request("OPTIONS", url, **kwargs)
 
     async def _ahead(self, url, **kwargs):
         client = await self._get_client()
+        kwargs = self._merge_default_headers(kwargs)
         return await client.request("HEAD", url, **kwargs)
 
     def close(self):
@@ -299,7 +314,12 @@ def test_token(test_user):
     from src.kortana.auth import create_access_token
 
     return create_access_token(
-        data={"sub": test_user.username, "scopes": ["read", "write"]}
+        data={
+            "sub": test_user.id,
+            "email": test_user.email,
+            "username": test_user.username,
+            "scopes": ["read", "write"],
+        }
     )
 
 
