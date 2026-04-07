@@ -120,7 +120,7 @@ async def resolve_context_from_user(
     from src.kortana.models import User
 
     user_id: Optional[str] = None
-    actor_name: str = token_data.email or token_data.username or "unknown"
+    actor_name: str = token_data.username or token_data.email or "unknown"
     tier: str = ""
 
     # Look up the real user record for trusted state

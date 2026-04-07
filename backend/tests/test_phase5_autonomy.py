@@ -11,7 +11,7 @@ Covers:
 import sys
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -92,6 +92,50 @@ class TestSilentReviewerLockFile:
         try:
             sr.LOCK_FILE = str(lock)
             assert sr._has_meaningful_change() is False
+        finally:
+            sr.LOCK_FILE = original
+
+    def test_trigger_autonomy_cycle_requires_bearer_token(
+        self, tmp_path, monkeypatch, caplog
+    ):
+        import scripts.silent_reviewer as sr
+
+        original = sr.LOCK_FILE
+        try:
+            sr.LOCK_FILE = str(tmp_path / "nonexistent.lock")
+            monkeypatch.delenv("KORTANA_DAEMON_BEARER_TOKEN", raising=False)
+            with patch.object(sr.httpx, "post") as mock_post:
+                result = sr.trigger_autonomy_cycle()
+            assert result is None
+            mock_post.assert_not_called()
+            assert "KORTANA_DAEMON_BEARER_TOKEN is not set" in caplog.text
+        finally:
+            sr.LOCK_FILE = original
+
+    def test_trigger_autonomy_cycle_includes_bearer_header(
+        self, tmp_path, monkeypatch
+    ):
+        import scripts.silent_reviewer as sr
+
+        response = MagicMock()
+        response.json.return_value = {
+            "self_model_version": 7,
+            "developmental_stage": "awakening",
+            "duration_ms": 321,
+        }
+
+        original = sr.LOCK_FILE
+        try:
+            sr.LOCK_FILE = str(tmp_path / "nonexistent.lock")
+            monkeypatch.setenv("KORTANA_DAEMON_BEARER_TOKEN", "daemon-token")
+            with patch.object(sr.httpx, "post", return_value=response) as mock_post:
+                result = sr.trigger_autonomy_cycle()
+            assert result is response.json.return_value
+            mock_post.assert_called_once_with(
+                sr.AUTONOMY_CYCLE_URL,
+                headers={"Authorization": "Bearer daemon-token"},
+                timeout=120.0,
+            )
         finally:
             sr.LOCK_FILE = original
 

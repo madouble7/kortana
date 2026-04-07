@@ -11,9 +11,9 @@ Covers:
 """
 
 from datetime import datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from src.kortana.models import (
     CovenantEnforcementRecord,
 )
@@ -23,7 +23,6 @@ from src.kortana.services.constitutional_service import (
     RESOLVER_AUTHORITY,
     ConstitutionalService,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -181,6 +180,24 @@ class TestResolveWithAuthority:
         )
         assert result is not None
         assert result.override_status == "revoked"
+
+    @pytest.mark.asyncio
+    async def test_db_miss_prefers_username_over_email_for_policy_lookup(self) -> None:
+        from src.kortana.services.constitutional_service import (
+            resolve_context_from_user,
+        )
+
+        token = MagicMock()
+        token.email = "matt@example.com"
+        token.username = "matt"
+        token.user_id = None
+        token.is_superuser = False
+
+        db = AsyncMock()
+
+        ctx = await resolve_context_from_user(token, db)
+        assert ctx.actor_name == "matt"
+        assert ctx.authority_tier == "owner"
 
 
 # ---------------------------------------------------------------

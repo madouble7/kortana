@@ -117,8 +117,19 @@ def trigger_autonomy_cycle() -> dict | None:
     if is_autonomy_locked():
         log.info("AUTONOMY.lock present — skipping orchestrator POST.")
         return None
+    bearer_token = os.getenv("KORTANA_DAEMON_BEARER_TOKEN", "").strip()
+    if not bearer_token:
+        log.error(
+            "KORTANA_DAEMON_BEARER_TOKEN is not set; "
+            "refusing to call protected autonomy-cycle endpoint."
+        )
+        return None
     try:
-        resp = httpx.post(AUTONOMY_CYCLE_URL, timeout=120.0)
+        resp = httpx.post(
+            AUTONOMY_CYCLE_URL,
+            headers={"Authorization": f"Bearer {bearer_token}"},
+            timeout=120.0,
+        )
         resp.raise_for_status()
         data = resp.json()
         log.info(
