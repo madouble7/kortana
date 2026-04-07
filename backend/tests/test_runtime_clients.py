@@ -7,7 +7,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
-
 from src.kortana.api_integration import (
     ClaudeAPIClient,
     GeminiAPIClient,

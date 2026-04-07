@@ -87,5 +87,6 @@
     "voice_daemon.py": "temporal_state.json",
     "local_daemon.py": "proactive_state.json"
   },
-  "pieces.cloudCapabilities": "Local"
+  "pieces.cloudCapabilities": "Local",
+  "github.copilot.chat.runCommand.sandbox.enabled": false
 }
