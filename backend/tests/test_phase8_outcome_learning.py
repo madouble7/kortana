@@ -17,15 +17,19 @@ from datetime import datetime
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from src.kortana.models import (
     ActionExecutionRecord,
+    Base,
     NextActionCandidate,
+    OutcomeLearningRecord,
 )
 from src.kortana.services.outcome_learning_service import (
     OutcomeLearningService,
     _interpret_outcome,
     compute_gate_adjustment,
     compute_score_adjustment,
+    get_active_adaptation_signals,
 )
 
 # ---------------------------------------------------------------
@@ -384,6 +388,51 @@ class TestOutcomeLearningService:
         if len(adaptations) > 0:
             assert "signal" in adaptations[0]
             assert "total_weight" in adaptations[0]
+
+    @pytest.mark.asyncio
+    async def test_session_adaptations_are_scoped_to_current_cycle(self) -> None:
+        engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+        session_factory = async_sessionmaker(engine, expire_on_commit=False)
+        async with session_factory() as session:
+            session.add_all(
+                [
+                    OutcomeLearningRecord(
+                        outcome_verdict="succeeded",
+                        expectation_match="expected",
+                        lesson="current session signal",
+                        adaptation_signal="trust_classification:executable",
+                        signal_weight=0.1,
+                        signal_scope="session",
+                        cycle_id="sess001",
+                    ),
+                    OutcomeLearningRecord(
+                        outcome_verdict="failed",
+                        expectation_match="surprising",
+                        lesson="other session signal",
+                        adaptation_signal="trust_classification:executable",
+                        signal_weight=0.4,
+                        signal_scope="session",
+                        cycle_id="sess999",
+                    ),
+                ]
+            )
+            await session.commit()
+
+            adaptations = await get_active_adaptation_signals(
+                session,
+                scope="session",
+                cycle_id="sess001",
+                limit=10,
+            )
+
+        await engine.dispose()
+
+        by_signal = {item["signal"]: item for item in adaptations}
+        assert by_signal["trust_classification:executable"]["total_weight"] == 0.1
+        assert by_signal["trust_classification:executable"]["occurrences"] == 1
 
 
 # ---------------------------------------------------------------

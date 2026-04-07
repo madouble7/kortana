@@ -140,6 +140,39 @@ class TestSilentReviewerLockFile:
             sr.LOCK_FILE = original
 
 
+class TestAutonomyKillSwitch:
+    """Verify the API kill switch resolves repo-root paths correctly."""
+
+    @pytest.mark.asyncio
+    async def test_trigger_kill_switch_uses_repo_root_paths(self, tmp_path) -> None:
+        from src.kortana.routers import autonomy
+
+        repo_root = tmp_path / "repo"
+        fake_router = (
+            repo_root / "backend" / "src" / "kortana" / "routers" / "autonomy.py"
+        )
+        fake_router.parent.mkdir(parents=True, exist_ok=True)
+        fake_router.write_text("# fake router\n", encoding="utf-8")
+
+        revert_script = repo_root / "scripts" / "revert_autonomy.py"
+        revert_script.parent.mkdir(parents=True, exist_ok=True)
+        revert_script.write_text("print('revert')\n", encoding="utf-8")
+
+        with (
+            patch.object(autonomy, "__file__", str(fake_router)),
+            patch("subprocess.Popen") as mock_popen,
+        ):
+            result = await autonomy.trigger_kill_switch()
+
+        assert result["status"] == "emergency_stop_engaged"
+        assert result["message"] == "Autonomy locked. Rollback script initiated."
+        assert (repo_root / "AUTONOMY.lock").exists()
+        mock_popen.assert_called_once_with(
+            [sys.executable, str(revert_script)],
+            cwd=str(repo_root),
+        )
+
+
 # ---------------------------------------------------------------
 # Durable autonomy status — get_last_cycle_record from DB
 # ---------------------------------------------------------------

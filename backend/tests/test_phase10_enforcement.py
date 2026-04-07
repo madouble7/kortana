@@ -13,11 +13,12 @@ Covers:
   - Read-only endpoint shapes: enforcement, blocked, overrides
 """
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from src.kortana.models import (
     CovenantEnforcementRecord,
+    NextActionCandidate,
 )
 from src.kortana.services.constitutional_service import (
     ConstitutionalService,
@@ -73,6 +74,30 @@ class TestImmutablePrecedence:
             },
         )
         assert decision.verdict == "requires_human_override"
+
+    @pytest.mark.asyncio
+    async def test_requires_human_override_without_extra_conflicts(self) -> None:
+        """Direct override intent should not silently fall through to allow."""
+        db = AsyncMock()
+        db.add = MagicMock()
+        db.commit = AsyncMock()
+        db.refresh = AsyncMock()
+
+        svc = ConstitutionalService(db)
+        with (
+            patch.object(svc, "ensure_seed_principles", AsyncMock()),
+            patch.object(svc, "load_active_principles", AsyncMock(return_value=[])),
+            patch.object(svc, "_count_recent_cautions", AsyncMock(return_value=0)),
+        ):
+            decision = await svc.evaluate(
+                subject_type="candidate",
+                subject_id="override-direct",
+                subject_summary="strategic change",
+                context={"requires_human_override": True},
+            )
+
+        assert decision.verdict == "requires_human_override"
+        assert "Human override required." in decision.explanation
 
 
 # ---------------------------------------------------------------
@@ -343,6 +368,80 @@ class TestOrchestratorEnforcement:
             a for a in actions if "candidate-enforcement" in a or "execution-gate" in a
         ]
         assert len(enforcement_or_gate) >= 1
+
+    @pytest.mark.asyncio
+    async def test_candidate_enforcement_exception_blocks_cycle(self) -> None:
+        from src.kortana.services.autonomy_orchestrator import AutonomyOrchestrator
+
+        candidate = NextActionCandidate(
+            id="cand-phase10",
+            goal_id="goal-phase10",
+            title="Deploy infrastructure",
+            action_type="goal_work",
+            rationale="test rationale",
+            why_now="test",
+            why_not_alternatives="test",
+            score=0.9,
+            candidate_payload={"goal_tier": "strategic"},
+            status="selected",
+            cycle_id="cyc10010",
+        )
+        db = AsyncMock()
+        db.add = MagicMock()
+        db.commit = AsyncMock()
+        db.refresh = AsyncMock()
+        db.rollback = AsyncMock()
+        db.execute = AsyncMock(
+            return_value=MagicMock(
+                scalar_one_or_none=MagicMock(return_value=None),
+                scalars=MagicMock(
+                    return_value=MagicMock(all=MagicMock(return_value=[]))
+                ),
+                scalar=MagicMock(return_value=0),
+            )
+        )
+
+        with (
+            patch(
+                "src.kortana.services.autonomy_orchestrator.GoalSelectionService"
+            ) as MockGoalSvc,
+            patch(
+                "src.kortana.services.autonomy_orchestrator.ConstitutionalService"
+            ) as MockCovenant,
+            patch(
+                "src.kortana.services.autonomy_orchestrator.ExecutionGateService"
+            ) as MockGate,
+        ):
+            MockGoalSvc.return_value.select_next_action = AsyncMock(
+                return_value=candidate
+            )
+            MockCovenant.return_value.enforce_candidate = AsyncMock(
+                side_effect=RuntimeError("boom")
+            )
+            MockCovenant.return_value.expire_stale_overrides = AsyncMock(return_value=[])
+            MockCovenant.return_value.evaluate = AsyncMock(
+                return_value=type(
+                    "Decision",
+                    (),
+                    {
+                        "id": "decision-phase10",
+                        "verdict": "allow",
+                        "drift_detected": False,
+                    },
+                )()
+            )
+
+            orch = AutonomyOrchestrator(db)
+            orch.self_model._gather_observations = AsyncMock(return_value=[])
+            orch.self_model.evolve = AsyncMock(return_value=None)
+            orch.revelation_engine.synthesise = AsyncMock(return_value=[])
+
+            result = await orch.run_cycle(trigger="test_phase10_exception")
+
+        assert result["status"] == "blocked"
+        assert result["execution_block_reason"] == "candidate enforcement failed"
+        assert "candidate-enforcement: failed" in result["actions_taken"]
+        MockGate.return_value.evaluate.assert_not_called()
 
 
 # ---------------------------------------------------------------
