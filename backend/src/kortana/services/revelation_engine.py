@@ -11,38 +11,33 @@ Design principles:
 """
 
 import asyncio
-import json
 import logging
 import os
 import subprocess
 import uuid
-from datetime import datetime, timedelta, timezone
-from pathlib import Path
+from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.kortana.model_lane_policy import describe_model_lane
-from src.kortana.models import ConversationMessage, RevelationMemory, SelfMemory
+from src.kortana.models import (
+    ConstitutionalDecision,
+    ConversationMessage,
+    CovenantEnforcementRecord,
+    OutcomeLearningRecord,
+    RevelationMemory,
+    SelfMemory,
+)
 from src.kortana.provider_model_defaults import LLM_ROUTER_GEMINI_MODEL
 from src.kortana.services.gemini_config import get_preferred_model_name
 
 logger = logging.getLogger(__name__)
 
-
-# Repo root derived from this file location (works on any OS, any clone path)
-_REPO_ROOT = str(Path(__file__).resolve().parents[4])
-
-# Whitelists for LLM-provided tags
-_VALID_DOMAINS = frozenset(
-    {"architecture", "workflow", "performance", "security", "developer_experience", "self_improvement"}
-)
-_VALID_URGENCIES = frozenset({"low", "medium", "high"})
-
 REVELATION_MODEL = LLM_ROUTER_GEMINI_MODEL
 CONFIDENCE_THRESHOLD = 0.65
-MIN_OBSERVATIONS = 5  # don't synthesise without at least this many data points
+MIN_OBSERVATIONS = 5          # don't synthesise without at least this many data points
 REVELATION_COOLDOWN_HOURS = 6  # minimum gap between revelation runs
 DEDUP_SIMILARITY_THRESHOLD = 0.7  # title overlap ratio to skip duplicates
 
@@ -96,9 +91,12 @@ async def _call_gemini_revelation(prompt: str) -> Optional[str]:
 # Observation gathering helpers
 # ---------------------------------------------------------------------------
 
-
 async def _gather_self_memories(db: AsyncSession, limit: int = 40) -> List[str]:
-    stmt = select(SelfMemory).order_by(SelfMemory.created_at.desc()).limit(limit)
+    stmt = (
+        select(SelfMemory)
+        .order_by(SelfMemory.created_at.desc())
+        .limit(limit)
+    )
     result = await db.execute(stmt)
     rows = result.scalars().all()
     return [
@@ -119,9 +117,7 @@ async def _gather_conversation_topics(db: AsyncSession, limit: int = 20) -> List
     return [f"[{r.created_at.strftime('%Y-%m-%d')}] {r.content[:200]}" for r in rows]
 
 
-def _gather_git_activity(repo_root: Optional[str] = None, limit: int = 20) -> List[str]:
-    if repo_root is None:
-        repo_root = _REPO_ROOT
+def _gather_git_activity(repo_root: str = r"c:\kortana", limit: int = 20) -> List[str]:
     try:
         result = subprocess.run(
             ["git", "log", f"--max-count={limit}", "--format=%ad %s", "--date=short"],
@@ -138,7 +134,7 @@ def _gather_git_activity(repo_root: Optional[str] = None, limit: int = 20) -> Li
 
 
 async def _recent_revelation_titles(db: AsyncSession, hours: int = 72) -> List[str]:
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+    cutoff = datetime.utcnow() - timedelta(hours=hours)
     stmt = (
         select(RevelationMemory.title)
         .where(RevelationMemory.created_at >= cutoff)
@@ -148,6 +144,65 @@ async def _recent_revelation_titles(db: AsyncSession, hours: int = 72) -> List[s
     return [row[0] for row in result.all()]
 
 
+async def _gather_outcome_signals(db: AsyncSession, limit: int = 20) -> List[str]:
+    """Summarise recent outcome learning records for the synthesis prompt."""
+    stmt = (
+        select(OutcomeLearningRecord)
+        .order_by(OutcomeLearningRecord.created_at.desc())
+        .limit(limit)
+    )
+    result = await db.execute(stmt)
+    rows = result.scalars().all()
+    lines = []
+    for r in rows:
+        ts = r.created_at.strftime("%Y-%m-%d") if r.created_at else "?"
+        lines.append(
+            f"{ts} outcome={r.outcome_verdict} signal={r.adaptation_signal} "
+            f"weight={r.signal_weight:+.2f} scope={r.signal_scope} lesson={r.lesson[:80]}"
+        )
+    return lines
+
+
+async def _gather_covenant_decisions(db: AsyncSession, limit: int = 15) -> List[str]:
+    """Summarise recent constitutional decisions for the synthesis prompt."""
+    stmt = (
+        select(ConstitutionalDecision)
+        .order_by(ConstitutionalDecision.created_at.desc())
+        .limit(limit)
+    )
+    result = await db.execute(stmt)
+    rows = result.scalars().all()
+    lines = []
+    for r in rows:
+        ts = r.created_at.strftime("%Y-%m-%d") if r.created_at else "?"
+        drift = " DRIFT" if r.drift_detected else ""
+        lines.append(
+            f"{ts} verdict={r.verdict} subject={r.subject_type}{drift} "
+            f"principles={r.principles_invoked}"
+        )
+    return lines
+
+
+async def _gather_override_resolutions(db: AsyncSession, limit: int = 10) -> List[str]:
+    """Summarise recent human override resolutions for the synthesis prompt."""
+    stmt = (
+        select(CovenantEnforcementRecord)
+        .where(CovenantEnforcementRecord.override_status != "pending")
+        .order_by(CovenantEnforcementRecord.override_resolved_at.desc())
+        .limit(limit)
+    )
+    result = await db.execute(stmt)
+    rows = result.scalars().all()
+    lines = []
+    for r in rows:
+        ts = r.override_resolved_at.strftime("%Y-%m-%d") if r.override_resolved_at else "?"
+        lines.append(
+            f"{ts} resolution={r.override_status} target={r.target_type} "
+            f"action={r.action} rationale={str(r.human_rationale or '')[:60]}"
+        )
+    return lines
+
+
 def _is_duplicate(new_title: str, existing_titles: List[str]) -> bool:
     """Simple token-overlap dedup — avoid re-surfacing the same insight."""
     new_words = set(new_title.lower().split())
@@ -155,29 +210,10 @@ def _is_duplicate(new_title: str, existing_titles: List[str]) -> bool:
         existing_words = set(title.lower().split())
         if not new_words or not existing_words:
             continue
-        overlap = len(new_words & existing_words) / max(
-            len(new_words), len(existing_words)
-        )
+        overlap = len(new_words & existing_words) / max(len(new_words), len(existing_words))
         if overlap >= DEDUP_SIMILARITY_THRESHOLD:
             return True
     return False
-
-
-def _parse_llm_json(raw: str) -> Optional[list]:
-    """Strip optional markdown code fences then parse a JSON array from an LLM response."""
-    text = raw.strip()
-    if text.startswith("```"):
-        lines = text.splitlines()
-        text = "\n".join(ln for ln in lines if not ln.startswith("```")).strip()
-    try:
-        items = json.loads(text)
-    except json.JSONDecodeError as exc:
-        logger.error(f"LLM JSON parse failed: {exc}\nRaw: {text[:300]}")
-        return None
-    if not isinstance(items, list):
-        return None
-    return items
-
 
 
 # ---------------------------------------------------------------------------
@@ -197,6 +233,15 @@ You have access to the following raw observations:
 ## Recent git activity (what code has actually been changing)
 {git_activity}
 
+## Recent outcome learning signals (what succeeded, failed, or was inconclusive in the autonomy pipeline)
+{outcome_signals}
+
+## Recent covenant decisions (constitutional verdicts on goals, candidates, and adaptations)
+{covenant_decisions}
+
+## Recent human override resolutions (where Matt intervened in the autonomy pipeline)
+{override_resolutions}
+
 ---
 
 Your task: Identify at most 2 revelations — genuine insights that:
@@ -204,6 +249,12 @@ Your task: Identify at most 2 revelations — genuine insights that:
   - Cross-cut multiple observation categories above
   - Would be genuinely useful or meaningful for Matt to hear
   - Are specific, not generic platitudes
+
+Pay particular attention to:
+  - Patterns in outcome signals (recurring failures, surprising successes)
+  - Drift between covenant verdicts and actual override decisions (is the covenant calibrated?)
+  - Whether human overrides cluster around specific goal or action types
+  - Whether autonomy pipeline weight shifts are converging or oscillating
 
 For each revelation, respond with EXACTLY this JSON structure (no markdown, no preamble):
 [
@@ -225,7 +276,6 @@ Bias strongly toward [] — only surface revelations you are confident about. On
 # Main engine
 # ---------------------------------------------------------------------------
 
-
 class RevelationEngine:
     """Synthesise accumulated observations into high-confidence insights."""
 
@@ -236,7 +286,7 @@ class RevelationEngine:
         """Check if enough time has passed since the last revelation run."""
         if force:
             return True
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=REVELATION_COOLDOWN_HOURS)
+        cutoff = datetime.utcnow() - timedelta(hours=REVELATION_COOLDOWN_HOURS)
         stmt = (
             select(RevelationMemory)
             .where(RevelationMemory.created_at >= cutoff)
@@ -251,13 +301,19 @@ class RevelationEngine:
             logger.info("Revelation Engine: cooldown active, skipping")
             return []
 
-        # Gather observations
-        self_memories = await _gather_self_memories(self.db, limit=40)
-        conversation_topics = await _gather_conversation_topics(self.db, limit=20)
-        git_activity = await asyncio.to_thread(_gather_git_activity)
+        # Gather observations — core + autonomy pipeline
+        self_memories, conversation_topics, git_activity, outcome_signals, covenant_decisions, override_resolutions = await asyncio.gather(
+            _gather_self_memories(self.db, limit=40),
+            _gather_conversation_topics(self.db, limit=20),
+            asyncio.to_thread(_gather_git_activity),
+            _gather_outcome_signals(self.db, limit=20),
+            _gather_covenant_decisions(self.db, limit=15),
+            _gather_override_resolutions(self.db, limit=10),
+        )
 
         total_observations = (
             len(self_memories) + len(conversation_topics) + len(git_activity)
+            + len(outcome_signals) + len(covenant_decisions)
         )
         if total_observations < MIN_OBSERVATIONS:
             logger.info(
@@ -269,6 +325,9 @@ class RevelationEngine:
             self_memories="\n".join(self_memories) or "(none yet)",
             conversation_topics="\n".join(conversation_topics) or "(none yet)",
             git_activity="\n".join(git_activity) or "(none yet)",
+            outcome_signals="\n".join(outcome_signals) or "(none yet)",
+            covenant_decisions="\n".join(covenant_decisions) or "(none yet)",
+            override_resolutions="\n".join(override_resolutions) or "(none yet)",
         )
 
         raw = await _call_gemini_revelation(prompt)
@@ -279,8 +338,22 @@ class RevelationEngine:
 
     async def _parse_and_store(self, raw_json: str) -> List[RevelationMemory]:
         """Parse LLM JSON response and write qualifying revelations to DB."""
-        items = _parse_llm_json(raw_json)
-        if items is None:
+        import json
+
+        # Strip markdown code blocks if present
+        if raw_json.startswith("```"):
+            lines = raw_json.splitlines()
+            raw_json = "\n".join(
+                line for line in lines if not line.startswith("```")
+            ).strip()
+
+        try:
+            items = json.loads(raw_json)
+        except json.JSONDecodeError as e:
+            logger.error(f"Revelation Engine: JSON parse failed: {e}\nRaw: {raw_json[:300]}")
+            return []
+
+        if not isinstance(items, list):
             return []
 
         existing_titles = await _recent_revelation_titles(self.db, hours=72)
@@ -335,190 +408,6 @@ class RevelationEngine:
 
         return written
 
-    # ------------------------------------------------------------------
-    # Phase 4: Wisdom Distillation
-    # ------------------------------------------------------------------
-    async def distill_wisdom(self) -> List[Dict[str, Any]]:
-        """Synthesize long-term architectural wisdom from accumulated revelations.
-
-        Gathers all revelations from the last 30 days, asks the LLM to find
-        convergent truths, and stores them as SelfMemory entries tagged
-        with ["wisdom", "phase4"].
-        """
-        cutoff = datetime.now(timezone.utc) - timedelta(days=30)
-        stmt = (
-            select(RevelationMemory)
-            .where(RevelationMemory.created_at >= cutoff)
-            .order_by(RevelationMemory.created_at.desc())
-            .limit(200)
-        )
-        result = await self.db.execute(stmt)
-        revelations = result.scalars().all()
-
-        if len(revelations) < 3:
-            logger.info(
-                f"Wisdom distillation: only {len(revelations)} revelations — need >= 3"
-            )
-            return []
-
-        rev_text = "\n".join(
-            f"- [{r.created_at.strftime('%Y-%m-%d')} type={r.revelation_type} "
-            f"conf={r.confidence:.2f}] {r.title}: {r.content[:300]}"
-            for r in revelations
-        )
-        git_activity = await asyncio.to_thread(_gather_git_activity)
-
-        prompt = _WISDOM_DISTILLATION_PROMPT.format(
-            revelations=rev_text or "(none)",
-            git_activity="\n".join(git_activity) or "(none)",
-        )
-
-        raw = await _call_gemini_revelation(prompt)
-        if not raw:
-            return []
-
-        items = _parse_llm_json(raw)
-        if items is None:
-            return []
-
-        stored: List[Dict[str, Any]] = []
-        for item in items:
-            if not isinstance(item, dict):
-                continue
-            confidence = float(item.get("confidence", 0.0))
-            if confidence < CONFIDENCE_THRESHOLD:
-                continue
-            wisdom_text = str(item.get("wisdom", ""))
-            if not wisdom_text:
-                continue
-
-            raw_domain = item.get("domain", "architecture")
-            domain = raw_domain if raw_domain in _VALID_DOMAINS else "architecture"
-
-            entry = SelfMemory(
-                cycle_number=0,
-                summary=f"[WISDOM] {wisdom_text}",
-                tags=["wisdom", "phase4", domain],
-                source="revelation-engine-wisdom",
-            )
-            self.db.add(entry)
-            stored.append(
-                {
-                    "wisdom": wisdom_text,
-                    "domain": domain,
-                    "derived_from": item.get("derived_from", []),
-                    "confidence": confidence,
-                }
-            )
-
-        if stored:
-            try:
-                await self.db.commit()
-                logger.info(f"Wisdom distillation: stored {len(stored)} wisdom entries")
-            except Exception:
-                await self.db.rollback()
-                logger.exception("Wisdom distillation: commit failed")
-                return []
-
-        return stored
-
-    async def predict_evolution(self) -> List[Dict[str, Any]]:
-        """Generate forward-looking architectural predictions.
-
-        Uses accumulated wisdom and recent revelations to anticipate
-        drift, friction, and upcoming refactoring needs.
-        """
-        # Gather wisdom entries
-        stmt = (
-            select(SelfMemory)
-            .where(SelfMemory.source == "revelation-engine-wisdom")
-            .order_by(SelfMemory.created_at.desc())
-            .limit(20)
-        )
-        wisdom_result = await self.db.execute(stmt)
-        wisdom_rows = wisdom_result.scalars().all()
-
-        # Gather recent revelations
-        cutoff = datetime.now(timezone.utc) - timedelta(days=14)
-        rev_stmt = (
-            select(RevelationMemory)
-            .where(RevelationMemory.created_at >= cutoff)
-            .order_by(RevelationMemory.created_at.desc())
-            .limit(10)
-        )
-        rev_result = await self.db.execute(rev_stmt)
-        recent_revs = rev_result.scalars().all()
-
-        if not wisdom_rows and not recent_revs:
-            logger.info("Prediction: no wisdom or revelations to predict from")
-            return []
-
-        wisdom_text = "\n".join(f"- {r.summary}" for r in wisdom_rows) or "(none yet)"
-        rev_text = (
-            "\n".join(
-                f"- [{r.created_at.strftime('%Y-%m-%d')}] {r.title}: {r.content[:200]}"
-                for r in recent_revs
-            )
-            or "(none yet)"
-        )
-        git_activity = await asyncio.to_thread(_gather_git_activity)
-
-        prompt = _PREDICTION_PROMPT.format(
-            wisdom_entries=wisdom_text,
-            recent_revelations=rev_text,
-            git_activity="\n".join(git_activity) or "(none)",
-        )
-
-        raw = await _call_gemini_revelation(prompt)
-        if not raw:
-            return []
-
-        items = _parse_llm_json(raw)
-        if items is None:
-            return []
-
-        predictions: List[Dict[str, Any]] = []
-        for item in items:
-            if not isinstance(item, dict):
-                continue
-            confidence = float(item.get("confidence", 0.0))
-            if confidence < CONFIDENCE_THRESHOLD:
-                continue
-            prediction_text = str(item.get("prediction", ""))
-            if not prediction_text:
-                continue
-
-            raw_urgency = item.get("urgency", "low")
-            urgency = raw_urgency if raw_urgency in _VALID_URGENCIES else "low"
-
-            # Store prediction as SelfMemory for continuity
-            entry = SelfMemory(
-                cycle_number=0,
-                summary=f"[PREDICTION] {prediction_text} | Basis: {item.get('basis', '')}",
-                tags=["prediction", "phase4", urgency],
-                source="revelation-engine-prediction",
-            )
-            self.db.add(entry)
-            predictions.append(
-                {
-                    "prediction": prediction_text,
-                    "basis": item.get("basis", ""),
-                    "urgency": urgency,
-                    "confidence": confidence,
-                }
-            )
-
-        if predictions:
-            try:
-                await self.db.commit()
-                logger.info(f"Prediction: stored {len(predictions)} predictions")
-            except Exception:
-                await self.db.rollback()
-                logger.exception("Prediction: commit failed")
-                return []
-
-        return predictions
-
     async def get_unsurfaced(self, limit: int = 5) -> List[RevelationMemory]:
         """Return revelations not yet acknowledged by the user."""
         stmt = (
@@ -538,7 +427,7 @@ class RevelationEngine:
         if not row:
             return False
         row.surfaced = True
-        row.acknowledged_at = datetime.now(timezone.utc)
+        row.acknowledged_at = datetime.utcnow()
         await self.db.commit()
         return True
 
@@ -595,73 +484,3 @@ def get_token_stats() -> Dict[str, Any]:
         "budget_remaining": _SESSION_TOKEN_BUDGET - _session_tokens_used,
         "budget_pct_used": round(_session_tokens_used / _SESSION_TOKEN_BUDGET * 100, 1),
     }
-
-
-# ---------------------------------------------------------------------------
-# Phase 4 prompts — Wisdom Distillation & Self-Prediction
-# ---------------------------------------------------------------------------
-
-_WISDOM_DISTILLATION_PROMPT = """You are kor'tana's Wisdom Distillation Engine — a higher-order subsystem that synthesizes long-term architectural truths from accumulated revelations.
-
-You have access to every revelation generated over the last 30 days:
-
-## Revelations
-{revelations}
-
-## Recent Git Activity
-{git_activity}
-
----
-
-Your task: Distill at most 3 **wisdom statements** — enduring architectural truths that:
-  - Emerge from the convergence of multiple revelations over time
-  - Represent deep, non-obvious patterns about the codebase, the developer, or the system
-  - Are actionable — they can guide future autonomous decisions
-  - Transcend any single data point or revelation
-
-Respond with EXACTLY this JSON structure (no markdown, no preamble):
-[
-  {{
-    "wisdom": "<1-2 sentence distilled truth>",
-    "derived_from": ["<revelation title 1>", "<revelation title 2>", ...],
-    "domain": "<architecture|workflow|performance|security|developer_experience|self_improvement>",
-    "confidence": <float 0.0-1.0>
-  }}
-]
-
-If there is insufficient convergence for genuine wisdom (too few revelations, or no cross-cutting pattern), respond with exactly: []
-
-Bias strongly toward []. Wisdom is rare. One true insight is worth more than many plausible ones."""
-
-
-_PREDICTION_PROMPT = """You are kor'tana's Self-Prediction Engine — a forward-looking subsystem that anticipates architectural evolution.
-
-Based on the following accumulated wisdom and recent trajectory:
-
-## Distilled Wisdom
-{wisdom_entries}
-
-## Recent Revelations
-{recent_revelations}
-
-## Git Trajectory
-{git_activity}
-
----
-
-Your task: Generate at most 2 **predictions** about the system's near-future evolution:
-  - What architectural drift is likely if no intervention occurs?
-  - What optimization or refactor will become necessary within the next 2-4 weeks?
-  - What friction point is growing that hasn't been addressed yet?
-
-Respond with EXACTLY this JSON structure (no markdown, no preamble):
-[
-  {{
-    "prediction": "<1-2 sentence forward-looking statement>",
-    "basis": "<brief explanation of why this prediction is likely>",
-    "urgency": "<low|medium|high>",
-    "confidence": <float 0.0-1.0>
-  }}
-]
-
-If there is insufficient data for confident prediction, respond with exactly: []"""

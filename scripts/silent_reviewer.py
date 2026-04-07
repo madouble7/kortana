@@ -1,31 +1,23 @@
 #!/usr/bin/env python3
-"""
-KOR'TANA Silent Reviewer — Autonomous Wisdom Pipeline
+"""Silent Reviewer — kor'tana's autonomous daemon loop.
 
-The single source of truth for all autonomous synthesis cycles.
-Wisdom distillation and prediction are NEVER triggered via API —
-they run exclusively through this daemon loop.
+Single source of truth for all self-generated activity:
+  - Observation gathering
+  - Revelation synthesis
+  - Self-model evolution (Inner Council deliberation)
 
-On each iteration:
-  1. Detect meaningful change (new commits, new memories, new revelations)
-  2. Gather telemetry / git / SelfMemory context
-  3. Store a structured reflection
-  4. Trigger revelation synthesis (obeys internal cooldown)
-  5. If meaningful change detected → distill wisdom + predict evolution
-  6. Sleep for SILENT_REVIEWER_INTERVAL_MINUTES (default: 18)
+Runs continuously on a configurable interval (default 18 min).
+Uses SHA-256 fingerprinting to skip cycles when nothing meaningful
+has changed.  Calls the Autonomy Orchestrator internal endpoint
+which handles the full observe→reflect→synthesize→persist pipeline.
 
-AUTONOMY.lock acts as a kill switch — if present, the loop halts immediately.
-
-Usage:
-    python scripts/silent_reviewer.py              # continuous loop (default)
-    python scripts/silent_reviewer.py --once        # single pass then exit
+Kill switch: create an AUTONOMY.lock file at the repo root to pause all cycles.
 """
 
 import hashlib
 import logging
 import os
 import subprocess
-import sys
 import time
 from pathlib import Path
 
@@ -34,326 +26,157 @@ import httpx
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-REPO_ROOT = Path(__file__).resolve().parent.parent
-LOCK_FILE = REPO_ROOT / "AUTONOMY.lock"
-STATE_FILE = REPO_ROOT / ".silent_reviewer_state"
 BACKEND_URL = os.getenv("KORTANA_BACKEND_URL", "http://localhost:8000")
-LOOP_INTERVAL_MINUTES = int(os.getenv("SILENT_REVIEWER_INTERVAL_MINUTES", "18"))
-LOOP_INTERVAL_SECONDS = LOOP_INTERVAL_MINUTES * 60
-HTTP_TIMEOUT = 10.0
+CYCLE_INTERVAL_SECONDS = int(os.getenv("KORTANA_CYCLE_INTERVAL", "1080"))  # 18 min
+REPO_ROOT = os.getenv(
+    "KORTANA_REPO_ROOT",
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+)
+
+AUTONOMY_CYCLE_URL = f"{BACKEND_URL}/api/consciousness/_internal/autonomy-cycle"
+MEMORY_URL = f"{BACKEND_URL}/api/consciousness/memory/self"
+LOCK_FILE = os.path.join(REPO_ROOT, "AUTONOMY.lock")
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [silent-reviewer] %(levelname)s %(message)s",
+    format="%(asctime)s [SilentReviewer] %(levelname)s  %(message)s",
 )
-logger = logging.getLogger("silent-reviewer")
+log = logging.getLogger("silent_reviewer")
 
 
 # ---------------------------------------------------------------------------
-# Kill switch
+# Kill switch — AUTONOMY.lock
 # ---------------------------------------------------------------------------
-def is_killed() -> bool:
-    """Return True if AUTONOMY.lock exists — operator pulled the plug."""
-    if LOCK_FILE.exists():
-        logger.warning("AUTONOMY.lock detected — halting.")
-        return True
-    return False
+def is_autonomy_locked() -> bool:
+    """Return True if AUTONOMY.lock exists, meaning all cycles should be skipped."""
+    return Path(LOCK_FILE).exists()
 
 
 # ---------------------------------------------------------------------------
-# Change detection (intelligent throttling)
+# Fingerprint — determines if a new cycle is warranted
 # ---------------------------------------------------------------------------
+_last_fingerprint: str | None = None
+
+
 def _compute_fingerprint() -> str:
-    """Build a fingerprint of current state: HEAD sha + recent memory count + recent rev count.
-
-    If this fingerprint differs from the last stored one, meaningful change has occurred.
-    """
+    """SHA-256 of HEAD commit + memory count + timestamp bucket (18 min)."""
     parts: list[str] = []
 
     # Git HEAD
     try:
-        result = subprocess.run(
+        head = subprocess.check_output(
             ["git", "rev-parse", "HEAD"],
-            capture_output=True,
-            text=True,
-            cwd=str(REPO_ROOT),
+            cwd=REPO_ROOT,
             timeout=5,
-        )
-        parts.append(result.stdout.strip())
+            text=True,
+        ).strip()
+        parts.append(head)
     except Exception:
         parts.append("no-git")
 
-    # Count of recent memories (proxy for new telemetry)
+    # Memory count (cheap GET)
     try:
-        resp = httpx.get(
-            f"{BACKEND_URL}/api/consciousness/memory/stats",
-            timeout=HTTP_TIMEOUT,
-        )
+        resp = httpx.get(MEMORY_URL, params={"limit": 1}, timeout=5.0)
         resp.raise_for_status()
-        parts.append(str(resp.json().get("total_memories", 0)))
+        count = resp.json().get("count", 0)
+        parts.append(str(count))
     except Exception:
         parts.append("0")
 
-    # Fingerprint of unsurfaced revelations (titles, not count — avoids saturation at 0/1)
-    try:
-        resp = httpx.get(
-            f"{BACKEND_URL}/api/consciousness/memory/revelations",
-            params={"limit": 5, "unsurfaced_only": True},
-            timeout=HTTP_TIMEOUT,
-        )
-        resp.raise_for_status()
-        revs = resp.json().get("revelations", [])
-        parts.append("|".join(r.get("title", "") for r in revs) or "0")
-    except Exception:
-        parts.append("0")
+    # Time bucket (rounds to interval)
+    bucket = int(time.time()) // CYCLE_INTERVAL_SECONDS
+    parts.append(str(bucket))
 
     raw = "|".join(parts)
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
-def has_meaningful_change() -> bool:
-    """Compare current fingerprint against last stored state.
+def _has_meaningful_change() -> bool:
+    """Return True if the fingerprint differs from last cycle."""
+    if is_autonomy_locked():
+        log.info("AUTONOMY.lock present — skipping fingerprint check.")
+        return False
+    global _last_fingerprint
+    fp = _compute_fingerprint()
+    if fp == _last_fingerprint:
+        log.info("Fingerprint unchanged (%s) — skipping cycle.", fp)
+        return False
+    _last_fingerprint = fp
+    return True
 
-    Returns True on first run (no state file) or when fingerprint differs.
+
+# ---------------------------------------------------------------------------
+# Orchestrator trigger
+# ---------------------------------------------------------------------------
+def trigger_autonomy_cycle() -> dict | None:
+    """POST to the Autonomy Orchestrator internal endpoint.
+
+    This single call executes the full pipeline:
+      observe → reflect (revelation synthesis) → evolve self-model → persist.
     """
-    current = _compute_fingerprint()
-
-    previous = ""
-    if STATE_FILE.exists():
-        try:
-            previous = STATE_FILE.read_text().strip()
-        except Exception:
-            pass
-
-    if current != previous:
-        try:
-            STATE_FILE.write_text(current)
-        except Exception:
-            pass
-        return True
-
-    logger.info("No meaningful change since last cycle — skipping distillation.")
-    return False
-
-
-# ---------------------------------------------------------------------------
-# Data gathering
-# ---------------------------------------------------------------------------
-def gather_memories(limit: int = 50) -> list:
-    """Fetch recent SelfMemory entries from the consciousness API."""
-    try:
-        resp = httpx.get(
-            f"{BACKEND_URL}/api/consciousness/memory/self",
-            params={"limit": limit},
-            timeout=HTTP_TIMEOUT,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        return data.get("memories", [])
-    except Exception as exc:
-        logger.error(f"Memory fetch failed: {exc}")
-        return []
-
-
-def gather_unsurfaced_revelations(limit: int = 10) -> list:
-    """Fetch unsurfaced revelations for synthesis context."""
-    try:
-        resp = httpx.get(
-            f"{BACKEND_URL}/api/consciousness/memory/revelations",
-            params={"limit": limit, "unsurfaced_only": True},
-            timeout=HTTP_TIMEOUT,
-        )
-        resp.raise_for_status()
-        return resp.json().get("revelations", [])
-    except Exception as exc:
-        logger.error(f"Revelation fetch failed: {exc}")
-        return []
-
-
-def gather_recent_git(limit: int = 20) -> list[str]:
-    """Get recent git log entries from the local repo."""
-    try:
-        result = subprocess.run(
-            ["git", "log", f"--max-count={limit}", "--oneline"],
-            capture_output=True,
-            text=True,
-            cwd=str(REPO_ROOT),
-            timeout=10,
-        )
-        return [line.strip() for line in result.stdout.splitlines() if line.strip()]
-    except Exception as exc:
-        logger.error(f"Git log failed: {exc}")
-        return []
-
-
-# ---------------------------------------------------------------------------
-# Synthesis
-# ---------------------------------------------------------------------------
-def synthesize_reflection(
-    memories: list, revelations: list, git_log: list
-) -> str | None:
-    """Build a structured reflection from recent observations."""
-    if not memories and not revelations and not git_log:
+    if is_autonomy_locked():
+        log.info("AUTONOMY.lock present — skipping orchestrator POST.")
         return None
-
-    parts = ["### Silent Reflection"]
-
-    if memories:
-        tags_seen: set[str] = set()
-        for m in memories:
-            for t in m.get("tags", []):
-                tags_seen.add(t)
-        parts.append(
-            f"- Observed {len(memories)} memories spanning tags: {', '.join(sorted(tags_seen))}"
+    bearer_token = os.getenv("KORTANA_DAEMON_BEARER_TOKEN", "").strip()
+    if not bearer_token:
+        log.error(
+            "KORTANA_DAEMON_BEARER_TOKEN is not set; "
+            "refusing to call protected autonomy-cycle endpoint."
         )
-
-    if revelations:
-        parts.append(f"- {len(revelations)} unsurfaced revelations awaiting synthesis")
-        for r in revelations[:3]:
-            parts.append(
-                f"  - [{r.get('revelation_type', '?')}] {r.get('title', 'untitled')}"
-            )
-
-    if git_log:
-        parts.append(f"- {len(git_log)} recent commits observed")
-        for line in git_log[:5]:
-            parts.append(f"  - {line}")
-
-    parts.append(
-        "\nSynthesizing patterns silently. Wisdom will emerge through the autonomous loop."
-    )
-    return "\n".join(parts)
-
-
-# ---------------------------------------------------------------------------
-# Store reflection
-# ---------------------------------------------------------------------------
-def store_reflection(content: str) -> None:
-    """Write the reflection to SelfMemory via the consciousness API."""
-    try:
-        httpx.post(
-            f"{BACKEND_URL}/api/consciousness/memory/self",
-            json={
-                "summary": content,
-                "tags": ["reflection", "self-evolution", "background", "phase4"],
-                "source": "silent-reviewer",
-            },
-            timeout=HTTP_TIMEOUT,
-        )
-        logger.info("Reflection stored.")
-    except Exception as exc:
-        logger.error(f"Reflection store failed: {exc}")
-
-
-# ---------------------------------------------------------------------------
-# Trigger revelation synthesis
-# ---------------------------------------------------------------------------
-def trigger_revelation_cycle(force: bool = False) -> dict | None:
-    """POST to the revelation synthesis endpoint (cooldown enforced server-side)."""
+        return None
     try:
         resp = httpx.post(
-            f"{BACKEND_URL}/api/consciousness/memory/revelation",
-            json={"force": force},
-            timeout=60.0,
+            AUTONOMY_CYCLE_URL,
+            headers={"Authorization": f"Bearer {bearer_token}"},
+            timeout=120.0,
         )
         resp.raise_for_status()
         data = resp.json()
-        n = data.get("revelations_written", 0)
-        if n:
-            logger.info(f"Revelation cycle: {n} new revelations")
+        log.info(
+            "Autonomy cycle complete — self-model v%s, stage=%s, duration=%sms",
+            data.get("self_model_version", "?"),
+            data.get("developmental_stage", "?"),
+            data.get("duration_ms", "?"),
+        )
         return data
-    except Exception as exc:
-        logger.error(f"Revelation trigger failed: {exc}")
+    except httpx.ConnectError:
+        log.warning("Backend not reachable — skipping cycle.")
+        return None
+    except Exception as e:
+        log.error("Autonomy cycle failed: %s", e)
         return None
 
 
 # ---------------------------------------------------------------------------
-# Autonomous wisdom & prediction (direct engine calls via internal API)
-# ---------------------------------------------------------------------------
-def trigger_wisdom_distillation() -> dict | None:
-    """Call the internal wisdom distillation endpoint.
-
-    This is the ONLY path through which wisdom is generated.
-    The consciousness router exposes read-only access.
-    """
-    try:
-        resp = httpx.post(
-            f"{BACKEND_URL}/api/consciousness/_internal/wisdom-cycle",
-            timeout=90.0,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        w = data.get("wisdom_entries", 0)
-        p = data.get("predictions_generated", 0)
-        if w or p:
-            logger.info(f"Autonomous cycle: {w} wisdom, {p} predictions")
-        return data
-    except Exception as exc:
-        logger.error(f"Wisdom/prediction cycle failed: {exc}")
-        return None
-
-
-# ---------------------------------------------------------------------------
-# Main loop
+# Main daemon loop
 # ---------------------------------------------------------------------------
 def run_cycle() -> None:
-    """Execute one full autonomous review cycle."""
-    if is_killed():
+    """Execute one iteration of the Silent Reviewer."""
+    if is_autonomy_locked():
+        log.info("AUTONOMY.lock present — autonomy paused.")
         return
-
-    logger.info("Cycle start — gathering observations...")
-
-    # 1. Gather context
-    memories = gather_memories()
-    revelations = gather_unsurfaced_revelations()
-    git_log = gather_recent_git()
-
-    if is_killed():
+    if not _has_meaningful_change():
         return
-
-    # 2. Synthesize and store reflection
-    reflection = synthesize_reflection(memories, revelations, git_log)
-    if reflection:
-        store_reflection(reflection)
-
-    if is_killed():
-        return
-
-    # 3. Trigger revelation engine (obeys cooldown internally)
-    trigger_revelation_cycle()
-
-    if is_killed():
-        return
-
-    # 4. Phase 4: autonomous wisdom distillation + prediction
-    #    Only run if meaningful change detected (new commits, memories, revelations)
-    if has_meaningful_change():
-        trigger_wisdom_distillation()
-    else:
-        logger.info("Skipping wisdom cycle — no meaningful change.")
-
-    logger.info("Cycle complete.")
+    log.info("Meaningful change detected — initiating autonomy cycle.")
+    trigger_autonomy_cycle()
 
 
 def main() -> None:
-    """Entry point — continuous loop by default, --once for single pass."""
-    single_pass = "--once" in sys.argv
-
-    if single_pass:
-        logger.info("Single pass mode")
-        run_cycle()
-        logger.info("Done.")
-    else:
-        logger.info(
-            f"Autonomous loop starting (interval={LOOP_INTERVAL_MINUTES}m / {LOOP_INTERVAL_SECONDS}s)"
-        )
-        while not is_killed():
+    """Continuous daemon loop."""
+    log.info(
+        "Silent Reviewer awakening. Cycle interval: %ds. Repo: %s",
+        CYCLE_INTERVAL_SECONDS,
+        REPO_ROOT,
+    )
+    while True:
+        try:
             run_cycle()
-            if is_killed():
-                break
-            logger.info(f"Sleeping {LOOP_INTERVAL_MINUTES}m...")
-            time.sleep(LOOP_INTERVAL_SECONDS)
-        logger.info("Loop terminated.")
+        except KeyboardInterrupt:
+            log.info("Interrupted — shutting down gracefully.")
+            break
+        except Exception as e:
+            log.error("Unexpected error in cycle: %s", e)
+        time.sleep(CYCLE_INTERVAL_SECONDS)
 
 
 if __name__ == "__main__":
