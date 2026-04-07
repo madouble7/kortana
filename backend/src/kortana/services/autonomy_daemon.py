@@ -295,7 +295,7 @@ class AutonomyDaemon:
                     await session.commit()
 
                     if patch_success:
-                        alpha_dry_run = False
+                        alpha_dry_run = self.settings.VECTOR_ALPHA_DRY_RUN
                         gh = GitHubAutonomyService(session)
                         success = await alpha.commit_and_propose(
                             inc, gh, dry_run=alpha_dry_run
@@ -308,7 +308,7 @@ class AutonomyDaemon:
                             else:
                                 logger.info(f"[Vector Alpha] Created PR for {inc.id}")
                     else:
-                        # Clean up the worktree correctly if we abort
+                        # Clean up the worktree AND the orphaned branch ref
                         import asyncio
                         import subprocess
 
@@ -324,6 +324,23 @@ class AutonomyDaemon:
                             cwd=alpha.repo_dir,
                             check=False,
                         )
+                        # Delete the orphaned branch to prevent ref accumulation
+                        if inc.repair_branch:
+                            await asyncio.to_thread(
+                                subprocess.run,
+                                [
+                                    "git",
+                                    "branch",
+                                    "-D",
+                                    inc.repair_branch,
+                                ],
+                                cwd=alpha.repo_dir,
+                                capture_output=True,
+                                check=False,
+                            )
+                            inc.fix_status = "patch_failed"
+                            session.add(inc)
+                            await session.commit()
 
                 # Persist benchmark regardless of outcome
                 benchmark = AutonomyBenchmark(
