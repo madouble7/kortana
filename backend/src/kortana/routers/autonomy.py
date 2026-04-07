@@ -285,19 +285,25 @@ async def trigger_kill_switch() -> dict[str, Any]:
     """
     import os
     import subprocess
+    import sys
     from pathlib import Path
 
     logger.warning("KILL SWITCH ENGAGED. Securing autonomy sandbox.")
 
+    # Resolve repo root relative to this file (works on any OS)
+    _repo_root = Path(__file__).resolve().parent.parent.parent.parent
+
     # 1. Engage global lock
-    lock_file = Path("C:/kortana/AUTONOMY.lock")
+    lock_file = _repo_root / "AUTONOMY.lock"
     lock_file.touch(exist_ok=True)
 
     # 2. Trigger revert script in a detached process
     # (So it doesn't block the API response back to VS Code)
-    script_path = "C:/kortana/scripts/revert_autonomy.py"
-    if os.path.exists(script_path):
-        subprocess.Popen(["python", script_path], cwd="C:/kortana")
+    script_path = _repo_root / "scripts" / "revert_autonomy.py"
+    if script_path.exists():
+        subprocess.Popen(
+            [sys.executable, str(script_path)], cwd=str(_repo_root),
+        )
         msg = "Autonomy locked. Rollback script initiated."
     else:
         msg = "Autonomy locked. No revert script found."

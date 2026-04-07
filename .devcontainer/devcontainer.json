@@ -97,5 +97,8 @@
                 "DavidAnson.vscode-markdownlint"
             ]
         }
+    },
+    "remoteEnv": {
+        "COPILOT_AGENT_SANDBOX": "disabled"
     }
 }

@@ -113,12 +113,14 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         print("--- Secrets Validation: COMPLETE ---")
         print(f"Environment: {settings.ENVIRONMENT}")
         print("API Keys Loaded:")
-        print(f"   - Gemini API: {'[OK]' if settings.GEMINI_API_KEY else '[MISSING]'}")
-        print(f"   - GitHub Token: {'[OK]' if settings.GITHUB_TOKEN else '[MISSING]'}")
+        print(
+            f"   - Gemini API: {'[OK]' if settings.GEMINI_API_KEY else '[MISSING]'}")
+        print(
+            f"   - GitHub Token: {'[OK]' if settings.GITHUB_TOKEN else '[MISSING]'}")
         print(
             f"   - Discord Bot: {'[OK]' if settings.DISCORD_BOT_TOKEN else '[MISSING]'}"
         )
-        ok_missing = lambda k: "[OK]" if k else "[MISSING]"  # noqa: E731
+        def ok_missing(k: str | None) -> str: return "[OK]" if k else "[MISSING]"  # noqa: E731
         print(f"   - OpenAI Key: {ok_missing(settings.OPENAI_API_KEY)}")
         print(f"   - Anthropic Key: {ok_missing(settings.ANTHROPIC_API_KEY)}")
         print(f"   - Pinecone Key: {ok_missing(settings.PINECONE_API_KEY)}")
@@ -145,7 +147,8 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         print(f"[WARN] Database table creation: {e}")
 
-    log_request("system", f"Kor'tana API starting in {settings.ENVIRONMENT} mode")
+    log_request(
+        "system", f"Kor'tana API starting in {settings.ENVIRONMENT} mode")
     print(f"[*] Kor'tana API starting in {settings.ENVIRONMENT} mode")
 
     # Start autonomy daemon only when this process is explicitly the daemon host.
@@ -176,13 +179,15 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
                 f"[WARN] Workspace root drift: {workspace_status['canonical_warning']}"
             )
         else:
-            print(f"[*] Workspace root verified: {workspace_status['repo_root']}")
+            print(
+                f"[*] Workspace root verified: {workspace_status['repo_root']}")
     except Exception as e:
         print(f"[WARN] Workspace root verification: {e}")
 
     # Start Discord bot (non-blocking) only when explicitly enabled.
     if settings.DISCORD_ENABLED:
         try:
+            from src.kortana.services.autonomy_daemon import get_autonomy_daemon
             from src.kortana.services.discord_service import (
                 get_discord_bot,
                 start_discord_bot,
@@ -192,7 +197,8 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
             bot = get_discord_bot()
             if bot:
                 daemon = get_autonomy_daemon()
-                daemon.on_event(lambda evt: bot.relay_event(evt.type, evt.data))
+                daemon.on_event(
+                    lambda evt: bot.relay_event(evt.type, evt.data))
                 print("[*] Discord bot spawned")
             else:
                 print("[*] Discord bot disabled (no token)")
@@ -275,9 +281,12 @@ def create_app() -> FastAPI:
     _redis_available = False
     if RedisClient is not None and settings.ENVIRONMENT != "testing":
         try:
-            probe = RedisClient.from_url(redis_url, socket_connect_timeout=2)
-            probe.ping()
-            probe.close()
+            _probe = RedisClient.from_url(
+                redis_url, socket_connect_timeout=2,
+            )
+            if _probe is not None:
+                _probe.ping()
+                _probe.close()
             _redis_available = True
         except Exception:
             print("[WARN] Redis not reachable — rate limiting and caching disabled")
@@ -300,7 +309,8 @@ def create_app() -> FastAPI:
                 strategy=cache_strategy,
             )
         except Exception as e:
-            log_error("CACHE_INIT", f"Failed to initialize response caching: {e}")
+            log_error("CACHE_INIT",
+                      f"Failed to initialize response caching: {e}")
 
     # Security middleware
     app.add_middleware(SecurityHeadersMiddleware)
@@ -378,19 +388,26 @@ def create_app() -> FastAPI:
     # Mount routers
     try:
         # Authentication router (public - no auth required)
-        app.include_router(auth.router, prefix="/api/auth", tags=["authentication"])
+        app.include_router(auth.router, prefix="/api/auth",
+                           tags=["authentication"])
 
         # Protected API routers
-        app.include_router(health.router, prefix="/api/system/health", tags=["health"])
+        app.include_router(
+            health.router, prefix="/api/system/health", tags=["health"])
         app.include_router(prayer.router)
-        app.include_router(gemini.router, prefix="/api/gemini", tags=["gemini"])
+        app.include_router(
+            gemini.router, prefix="/api/gemini", tags=["gemini"])
         app.include_router(
             orchestrator.router, prefix="/api/orchestrator", tags=["ai-orchestrator"]
         )
-        app.include_router(memory.router, prefix="/api/memory", tags=["memory"])
-        app.include_router(agents.router, prefix="/api/agents", tags=["agents"])
-        app.include_router(github.router, prefix="/api/github", tags=["github"])
-        app.include_router(autonomy.router, prefix="/api/autonomy", tags=["autonomy"])
+        app.include_router(
+            memory.router, prefix="/api/memory", tags=["memory"])
+        app.include_router(
+            agents.router, prefix="/api/agents", tags=["agents"])
+        app.include_router(
+            github.router, prefix="/api/github", tags=["github"])
+        app.include_router(
+            autonomy.router, prefix="/api/autonomy", tags=["autonomy"])
         app.include_router(
             autonomous_systems.router, prefix="/api/autonomous", tags=["autonomous"]
         )
@@ -400,15 +417,18 @@ def create_app() -> FastAPI:
         app.include_router(
             task_queue.router, prefix="/api/task-queue", tags=["task-queue"]
         )
-        app.include_router(rclone.router, prefix="/api/rclone", tags=["rclone"])
+        app.include_router(
+            rclone.router, prefix="/api/rclone", tags=["rclone"])
         app.include_router(songwriting.router)
-        app.include_router(system.router, prefix="/api/system", tags=["system"])
+        app.include_router(
+            system.router, prefix="/api/system", tags=["system"])
         app.include_router(
             always_on.router, prefix="/api/always-on", tags=["always-on"]
         )
 
         # Phase 2: PR Creation, Testing, and Code Review
-        app.include_router(pr_creation.router, prefix="/api/pr", tags=["pr-creation"])
+        app.include_router(pr_creation.router,
+                           prefix="/api/pr", tags=["pr-creation"])
         app.include_router(
             test_orchestrator.router, prefix="/api/testing", tags=["testing"]
         )
@@ -438,7 +458,8 @@ def create_app() -> FastAPI:
 
         # Phase 8: Consciousness Persistence & Self-Repair
         app.include_router(consciousness.router)
-        app.include_router(matrix_ws.router, prefix="/api/matrix", tags=["matrix"])
+        app.include_router(
+            matrix_ws.router, prefix="/api/matrix", tags=["matrix"])
 
         # Live Exerciser: Real API calls + PostgreSQL integration
         app.include_router(live_exerciser.router)
@@ -477,7 +498,8 @@ def create_app() -> FastAPI:
             tags=["adapters", "lobechat"],
         )
 
-        static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+        static_dir = os.path.join(os.path.dirname(
+            os.path.abspath(__file__)), "static")
 
         def render_frontend_index() -> Response | None:
             """Serve the SPA shell with runtime config injection."""
@@ -500,7 +522,8 @@ def create_app() -> FastAPI:
             )
 
             if "window.__KORTANA__ =" not in content and "</head>" in content:
-                content = content.replace("</head>", f"{config_script}\n</head>")
+                content = content.replace(
+                    "</head>", f"{config_script}\n</head>")
 
             from fastapi.responses import HTMLResponse
 
@@ -596,7 +619,8 @@ def create_app() -> FastAPI:
 
                 return JSONResponse(
                     status_code=404,
-                    content={"error": "Not Found", "message": "Frontend not built"},
+                    content={"error": "Not Found",
+                             "message": "Frontend not built"},
                 )
 
     except Exception as e:
