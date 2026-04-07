@@ -43,7 +43,7 @@ from src.kortana.middleware.security import (  # noqa: E402
 
 RedisClient: Any = None
 try:
-    from redis import Redis as RedisClient
+    from redis import Redis as RedisClient  # type: ignore[no-redef]
 except ImportError:
     pass
 

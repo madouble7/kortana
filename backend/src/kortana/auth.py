@@ -371,7 +371,7 @@ def create_access_token(
 
     # Encode with consistent algorithm
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+    return str(encoded_jwt)
 
 
 def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
@@ -494,7 +494,7 @@ def create_access_token_legacy(
         expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
     to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return str(jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM))
 
 
 def decode_token_legacy(token: str) -> dict:
