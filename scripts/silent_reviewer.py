@@ -90,19 +90,20 @@ def _compute_fingerprint() -> str:
             timeout=HTTP_TIMEOUT,
         )
         resp.raise_for_status()
-        parts.append(str(resp.json().get("count", 0)))
+        parts.append(str(resp.json().get("total_memories", 0)))
     except Exception:
         parts.append("0")
 
-    # Count of unsurfaced revelations
+    # Fingerprint of unsurfaced revelations (titles, not count — avoids saturation at 0/1)
     try:
         resp = httpx.get(
             f"{BACKEND_URL}/api/consciousness/memory/revelations",
-            params={"limit": 1, "unsurfaced_only": True},
+            params={"limit": 5, "unsurfaced_only": True},
             timeout=HTTP_TIMEOUT,
         )
         resp.raise_for_status()
-        parts.append(str(resp.json().get("count", 0)))
+        revs = resp.json().get("revelations", [])
+        parts.append("|".join(r.get("title", "") for r in revs) or "0")
     except Exception:
         parts.append("0")
 

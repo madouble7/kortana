@@ -11,11 +11,13 @@ Design principles:
 """
 
 import asyncio
+import json
 import logging
 import os
 import subprocess
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import func, select
@@ -27,6 +29,16 @@ from src.kortana.provider_model_defaults import LLM_ROUTER_GEMINI_MODEL
 from src.kortana.services.gemini_config import get_preferred_model_name
 
 logger = logging.getLogger(__name__)
+
+
+# Repo root derived from this file location (works on any OS, any clone path)
+_REPO_ROOT = str(Path(__file__).resolve().parents[4])
+
+# Whitelists for LLM-provided tags
+_VALID_DOMAINS = frozenset(
+    {"architecture", "workflow", "performance", "security", "developer_experience", "self_improvement"}
+)
+_VALID_URGENCIES = frozenset({"low", "medium", "high"})
 
 REVELATION_MODEL = LLM_ROUTER_GEMINI_MODEL
 CONFIDENCE_THRESHOLD = 0.65
@@ -107,7 +119,9 @@ async def _gather_conversation_topics(db: AsyncSession, limit: int = 20) -> List
     return [f"[{r.created_at.strftime('%Y-%m-%d')}] {r.content[:200]}" for r in rows]
 
 
-def _gather_git_activity(repo_root: str = r"c:\kortana", limit: int = 20) -> List[str]:
+def _gather_git_activity(repo_root: Optional[str] = None, limit: int = 20) -> List[str]:
+    if repo_root is None:
+        repo_root = _REPO_ROOT
     try:
         result = subprocess.run(
             ["git", "log", f"--max-count={limit}", "--format=%ad %s", "--date=short"],
@@ -124,7 +138,7 @@ def _gather_git_activity(repo_root: str = r"c:\kortana", limit: int = 20) -> Lis
 
 
 async def _recent_revelation_titles(db: AsyncSession, hours: int = 72) -> List[str]:
-    cutoff = datetime.utcnow() - timedelta(hours=hours)
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
     stmt = (
         select(RevelationMemory.title)
         .where(RevelationMemory.created_at >= cutoff)
@@ -147,6 +161,23 @@ def _is_duplicate(new_title: str, existing_titles: List[str]) -> bool:
         if overlap >= DEDUP_SIMILARITY_THRESHOLD:
             return True
     return False
+
+
+def _parse_llm_json(raw: str) -> Optional[list]:
+    """Strip optional markdown code fences then parse a JSON array from an LLM response."""
+    text = raw.strip()
+    if text.startswith("```"):
+        lines = text.splitlines()
+        text = "\n".join(ln for ln in lines if not ln.startswith("```")).strip()
+    try:
+        items = json.loads(text)
+    except json.JSONDecodeError as exc:
+        logger.error(f"LLM JSON parse failed: {exc}\nRaw: {text[:300]}")
+        return None
+    if not isinstance(items, list):
+        return None
+    return items
+
 
 
 # ---------------------------------------------------------------------------
@@ -205,7 +236,7 @@ class RevelationEngine:
         """Check if enough time has passed since the last revelation run."""
         if force:
             return True
-        cutoff = datetime.utcnow() - timedelta(hours=REVELATION_COOLDOWN_HOURS)
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=REVELATION_COOLDOWN_HOURS)
         stmt = (
             select(RevelationMemory)
             .where(RevelationMemory.created_at >= cutoff)
@@ -248,24 +279,8 @@ class RevelationEngine:
 
     async def _parse_and_store(self, raw_json: str) -> List[RevelationMemory]:
         """Parse LLM JSON response and write qualifying revelations to DB."""
-        import json
-
-        # Strip markdown code blocks if present
-        if raw_json.startswith("```"):
-            lines = raw_json.splitlines()
-            raw_json = "\n".join(
-                line for line in lines if not line.startswith("```")
-            ).strip()
-
-        try:
-            items = json.loads(raw_json)
-        except json.JSONDecodeError as e:
-            logger.error(
-                f"Revelation Engine: JSON parse failed: {e}\nRaw: {raw_json[:300]}"
-            )
-            return []
-
-        if not isinstance(items, list):
+        items = _parse_llm_json(raw_json)
+        if items is None:
             return []
 
         existing_titles = await _recent_revelation_titles(self.db, hours=72)
@@ -330,11 +345,12 @@ class RevelationEngine:
         convergent truths, and stores them as SelfMemory entries tagged
         with ["wisdom", "phase4"].
         """
-        cutoff = datetime.utcnow() - timedelta(days=30)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=30)
         stmt = (
             select(RevelationMemory)
             .where(RevelationMemory.created_at >= cutoff)
             .order_by(RevelationMemory.created_at.desc())
+            .limit(200)
         )
         result = await self.db.execute(stmt)
         revelations = result.scalars().all()
@@ -361,20 +377,8 @@ class RevelationEngine:
         if not raw:
             return []
 
-        import json
-
-        text = raw.strip()
-        if text.startswith("```"):
-            lines = text.splitlines()
-            text = "\n".join(ln for ln in lines if not ln.startswith("```")).strip()
-
-        try:
-            items = json.loads(text)
-        except json.JSONDecodeError:
-            logger.error(f"Wisdom distillation: JSON parse failed: {text[:300]}")
-            return []
-
-        if not isinstance(items, list):
+        items = _parse_llm_json(raw)
+        if items is None:
             return []
 
         stored: List[Dict[str, Any]] = []
@@ -388,17 +392,20 @@ class RevelationEngine:
             if not wisdom_text:
                 continue
 
+            raw_domain = item.get("domain", "architecture")
+            domain = raw_domain if raw_domain in _VALID_DOMAINS else "architecture"
+
             entry = SelfMemory(
                 cycle_number=0,
                 summary=f"[WISDOM] {wisdom_text}",
-                tags=["wisdom", "phase4", item.get("domain", "architecture")],
+                tags=["wisdom", "phase4", domain],
                 source="revelation-engine-wisdom",
             )
             self.db.add(entry)
             stored.append(
                 {
                     "wisdom": wisdom_text,
-                    "domain": item.get("domain", "architecture"),
+                    "domain": domain,
                     "derived_from": item.get("derived_from", []),
                     "confidence": confidence,
                 }
@@ -432,7 +439,7 @@ class RevelationEngine:
         wisdom_rows = wisdom_result.scalars().all()
 
         # Gather recent revelations
-        cutoff = datetime.utcnow() - timedelta(days=14)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=14)
         rev_stmt = (
             select(RevelationMemory)
             .where(RevelationMemory.created_at >= cutoff)
@@ -466,20 +473,8 @@ class RevelationEngine:
         if not raw:
             return []
 
-        import json
-
-        text = raw.strip()
-        if text.startswith("```"):
-            lines = text.splitlines()
-            text = "\n".join(ln for ln in lines if not ln.startswith("```")).strip()
-
-        try:
-            items = json.loads(text)
-        except json.JSONDecodeError:
-            logger.error(f"Prediction: JSON parse failed: {text[:300]}")
-            return []
-
-        if not isinstance(items, list):
+        items = _parse_llm_json(raw)
+        if items is None:
             return []
 
         predictions: List[Dict[str, Any]] = []
@@ -493,11 +488,14 @@ class RevelationEngine:
             if not prediction_text:
                 continue
 
+            raw_urgency = item.get("urgency", "low")
+            urgency = raw_urgency if raw_urgency in _VALID_URGENCIES else "low"
+
             # Store prediction as SelfMemory for continuity
             entry = SelfMemory(
                 cycle_number=0,
                 summary=f"[PREDICTION] {prediction_text} | Basis: {item.get('basis', '')}",
-                tags=["prediction", "phase4", item.get("urgency", "low")],
+                tags=["prediction", "phase4", urgency],
                 source="revelation-engine-prediction",
             )
             self.db.add(entry)
@@ -505,7 +503,7 @@ class RevelationEngine:
                 {
                     "prediction": prediction_text,
                     "basis": item.get("basis", ""),
-                    "urgency": item.get("urgency", "low"),
+                    "urgency": urgency,
                     "confidence": confidence,
                 }
             )
@@ -540,7 +538,7 @@ class RevelationEngine:
         if not row:
             return False
         row.surfaced = True
-        row.acknowledged_at = datetime.utcnow()
+        row.acknowledged_at = datetime.now(timezone.utc)
         await self.db.commit()
         return True
 

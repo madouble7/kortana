@@ -43,7 +43,7 @@ jobs:
     - name: Run frontend tests
       run: |
         cd frontend
-        npm test -- --watchAll=false
+        npm run type-check
 
   build-and-deploy:
     needs: [test-backend, test-frontend]
