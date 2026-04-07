@@ -8,19 +8,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.kortana.main import app
 from src.kortana.routers.live_exerciser import (
     SYSTEM_AGENT_ID,
     SYSTEM_USER_ID,
     _ensure_bootstrap,
     _exercise_openai,
 )
-from tests.conftest import SyncTestClient
-
-# ------------------------------------------------------------------
-# Test client for integration tests
-# ------------------------------------------------------------------
-sync_client = SyncTestClient(app)
 
 
 # ------------------------------------------------------------------
@@ -62,19 +55,19 @@ class TestBootstrap:
 # Router endpoint tests (TestClient)
 # ------------------------------------------------------------------
 class TestLiveExerciserRouter:
-    def test_quick_status_accepts_google_api_key_for_gemini(self, monkeypatch):
+    def test_quick_status_accepts_google_api_key_for_gemini(self, client, monkeypatch):
         """Gemini status should accept either GEMINI_API_KEY or GOOGLE_API_KEY."""
         monkeypatch.delenv("GEMINI_API_KEY", raising=False)
         monkeypatch.setenv("GOOGLE_API_KEY", "gm-test")
 
-        resp = sync_client.get("/api/live/status")
+        resp = client.get("/api/live/status")
 
         assert resp.status_code == 200
         assert resp.json()["checks"]["gemini_key"] == "ok"
 
-    def test_quick_status_endpoint(self):
+    def test_quick_status_endpoint(self, client):
         """GET /api/live/status should return checks dict."""
-        resp = sync_client.get("/api/live/status")
+        resp = client.get("/api/live/status")
         assert resp.status_code == 200
         data = resp.json()
         assert "checks" in data
@@ -93,9 +86,9 @@ class TestLiveExerciserRouter:
         models = data["models"]
         assert "openai_generate" in models
 
-    def test_exercise_endpoint_returns_results(self):
+    def test_exercise_endpoint_returns_results(self, client):
         """POST /api/live/exercise should return results for all services."""
-        resp = sync_client.post("/api/live/exercise")
+        resp = client.post("/api/live/exercise")
         assert resp.status_code == 200
         data = resp.json()
         assert "summary" in data

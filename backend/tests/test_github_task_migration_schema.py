@@ -1,15 +1,12 @@
-from pathlib import Path
-
 from sqlalchemy import create_engine, inspect
 
 
-def test_github_tasks_table_has_autonomy_columns(test_db_url, setup_test_db):
-    """Alembic migrations should create the GitHub task fields used by the model."""
-    backend_dir = Path(__file__).resolve().parents[1]
-    relative_db_path = test_db_url.replace("sqlite+aiosqlite:///", "")
-    db_path = (backend_dir / relative_db_path).resolve()
-    sync_url = f"sqlite:///{db_path.as_posix()}"
-    engine = create_engine(sync_url)
+def test_github_tasks_table_has_autonomy_columns():
+    """Model metadata should declare the GitHub task autonomy columns."""
+    from src.kortana.models import Base
+
+    engine = create_engine("sqlite://", echo=False)
+    Base.metadata.create_all(engine)
     try:
         inspector = inspect(engine)
         columns = {column["name"] for column in inspector.get_columns("github_tasks")}

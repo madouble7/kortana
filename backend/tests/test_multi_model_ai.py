@@ -126,8 +126,12 @@ class TestMultiModelAIServiceInitOpenAI:
     def test_init_openai_with_mock(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
 
-        mock_openai = MagicMock()
-        with patch.dict("sys.modules", {"openai": mock_openai}):
+        mock_openai_mod = MagicMock()
+        mock_client_instance = MagicMock()
+        mock_openai_mod.OpenAI.return_value = mock_client_instance
+
+        with patch.dict("sys.modules", {"openai": mock_openai_mod}), \
+             patch("httpx.Client", return_value=MagicMock()):
             from src.kortana.services.multi_model_ai import MultiModelAIService
 
             service = MultiModelAIService()

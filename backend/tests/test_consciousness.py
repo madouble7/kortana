@@ -332,13 +332,8 @@ class TestExperienceDistiller:
 
 # ---------------------------------------------------------------
 # Router integration tests
+# (uses conftest.py ``client`` fixture — DB properly overridden)
 # ---------------------------------------------------------------
-@pytest.fixture
-def client():
-    from src.kortana.main import app
-    from tests.conftest import SyncTestClient
-
-    return SyncTestClient(app)
 
 
 class TestConsciousnessRouter:

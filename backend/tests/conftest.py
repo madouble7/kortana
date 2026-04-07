@@ -11,6 +11,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import StaticPool
 
 # Set test environment variables before any imports
 os.environ["ENVIRONMENT"] = "testing"
@@ -174,56 +175,36 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 @pytest.fixture(scope="session")
 def test_db_url():
-    """Provide test database URL using SQLite"""
-    return "sqlite+aiosqlite:///./test_kortana_pytest.db"
+    """Provide test database URL using in-memory SQLite"""
+    return "sqlite+aiosqlite://"
 
 
 @pytest.fixture(scope="session")
 async def test_engine(test_db_url):
-    """Create test database engine"""
-    engine = create_async_engine(test_db_url, echo=False)
+    """Create test database engine with shared in-memory SQLite"""
+    from src.kortana.models import Base
+
+    engine = create_async_engine(
+        test_db_url,
+        echo=False,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
     yield engine
     await engine.dispose()
 
 
 @pytest.fixture(scope="session")
-async def setup_test_db(test_db_url, test_engine):
-    """Set up test database schema using alembic migrations"""
-    from pathlib import Path
-
-    backend_dir = Path(__file__).parent.parent
-    relative_db_path = test_db_url.replace("sqlite+aiosqlite:///", "")
-    db_path = (backend_dir / relative_db_path).resolve()
-
-    if db_path.exists():
-        try:
-            db_path.unlink()
-        except PermissionError:
-            pass
-
-    # Always use create_all from models so tests reflect current schema.
-    # Alembic migrations are for production deployments.
-    from sqlalchemy import create_engine
-    from src.kortana.models import Base
-
-    sync_url = f"sqlite:///{db_path.as_posix()}"
-    engine = create_engine(sync_url)
-    Base.metadata.create_all(engine)
-    engine.dispose()
-
+async def setup_test_db(test_engine):
+    """Schema already created in test_engine; kept for fixture compatibility."""
     yield
-
-    # Clean up test database file after tests
-    if db_path.exists():
-        try:
-            db_path.unlink()
-        except PermissionError:
-            pass  # Windows file locking - file will be cleaned up next run
 
 
 @pytest.fixture
 async def test_db_session(test_engine, setup_test_db):
-    """Provide test database session"""
+    """Provide test database session with per-test rollback isolation"""
     session_factory = async_sessionmaker(
         test_engine, class_=AsyncSession, expire_on_commit=False
     )
@@ -231,6 +212,7 @@ async def test_db_session(test_engine, setup_test_db):
     try:
         yield session
     finally:
+        await session.rollback()
         await session.close()
 
 

@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import pytest
+
 from tests.conftest import SyncTestClient
 
 
@@ -39,6 +41,8 @@ def test_provider_connectivity():
     """Local provider clients should instantiate without network calls."""
     import anthropic
     import openai
+
+    pytest.importorskip("pinecone")
     from pinecone import Pinecone
 
     from src.kortana.config import get_settings
