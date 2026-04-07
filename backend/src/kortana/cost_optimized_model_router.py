@@ -310,46 +310,50 @@ class CostOptimizedModelRouter:
         Returns:
             List of providers in recommended order
         """
-        # Map task types to preferred providers
+        # Map task types to preferred providers (cost-first: free → cheap → premium)
         task_preferences = {
             TaskType.CODE_GENERATION: [
                 ModelProvider.GROQ,
+                ModelProvider.GEMINI,
                 ModelProvider.OPENROUTER,
                 ModelProvider.OPENAI,
             ],
             TaskType.ANALYSIS: [
                 ModelProvider.GROQ,
-                ModelProvider.OPENAI,
                 ModelProvider.GEMINI,
                 ModelProvider.OPENROUTER,
+                ModelProvider.OPENAI,
             ],
             TaskType.DECISION: [
-                ModelProvider.CLAUDE,
                 ModelProvider.GROQ,
+                ModelProvider.GEMINI,
                 ModelProvider.OPENROUTER,
+                ModelProvider.CLAUDE,
             ],
             TaskType.VERIFICATION: [
-                ModelProvider.CLAUDE,
                 ModelProvider.GROQ,
+                ModelProvider.GEMINI,
+                ModelProvider.CLAUDE,
             ],
             TaskType.PLANNING: [
                 ModelProvider.GROQ,
-                ModelProvider.OPENROUTER,
                 ModelProvider.GEMINI,
+                ModelProvider.OPENROUTER,
             ],
             TaskType.SUMMARY: [
                 ModelProvider.GROQ,
-                ModelProvider.OPENAI,
                 ModelProvider.GEMINI,
+                ModelProvider.OPENROUTER,
             ],
             TaskType.RETRIEVAL: [
                 ModelProvider.GROQ,
-                ModelProvider.OPENAI,
                 ModelProvider.GEMINI,
+                ModelProvider.OPENROUTER,
             ],
             TaskType.CORRECTION: [
-                ModelProvider.CLAUDE,
                 ModelProvider.GROQ,
+                ModelProvider.GEMINI,
+                ModelProvider.CLAUDE,
             ],
         }
 

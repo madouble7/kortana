@@ -78,30 +78,31 @@ DEFAULT_CORE_MODEL_CATALOG = frozenset(
 
 LLM_ROUTER_DEFAULTS = ProviderModelDefaults(
     gemini=LLM_ROUTER_GEMINI_MODEL,
-    openai=OPENAI_OPERATIONAL_MODEL,
+    openai=OPENAI_GPT_4O_MINI_MODEL,
     anthropic=ANTHROPIC_SONNET_MODEL,
     groq=GROQ_MIXTRAL_MODEL,
 )
 
+# Cost-efficient fallback: free Groq first, then cheap OpenAI, Anthropic last resort
 LLM_ROUTER_FALLBACK_ORDER = tuple(
     model_name
     for model_name in (
+        LLM_ROUTER_DEFAULTS.groq,
         LLM_ROUTER_DEFAULTS.openai,
         LLM_ROUTER_DEFAULTS.anthropic,
-        LLM_ROUTER_DEFAULTS.groq,
     )
     if model_name
 )
 
 AI_CONSENSUS_DEFAULTS = ProviderModelDefaults(
-    openai=OPENAI_OPERATIONAL_MODEL,
+    openai=OPENAI_GPT_4O_MINI_MODEL,
     anthropic=ANTHROPIC_SONNET_MODEL,
     groq=GROQ_LLAMA_VERSATILE_MODEL,
     openrouter=OPENROUTER_LLAMA3_INSTRUCT_MODEL,
 )
 
 MULTI_MODEL_DEFAULTS = ProviderModelDefaults(
-    openai=OPENAI_FAST_MODEL,
+    openai=OPENAI_GPT_4O_MINI_MODEL,
     anthropic=ANTHROPIC_SONNET_MODEL,
     groq=GROQ_MIXTRAL_MODEL,
     openrouter=OPENROUTER_LLAMA2_CHAT_MODEL,
