@@ -137,6 +137,7 @@ _CONVERSATION_TIMEOUT = 60  # seconds — auto-respond without wake word if rece
 _USE_SILERO_VAD = os.getenv("KORTANA_USE_SILERO_VAD", "1") == "1"
 _vad_model: torch.nn.Module | None = None
 _last_voice_exchange: float = 0.0  # timestamp of last completed voice turn
+_pending_ho: dict | None = None  # HO tool awaiting confirmation
 
 LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
 

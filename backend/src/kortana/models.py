@@ -2579,3 +2579,85 @@ class PublishedReasoningRecord(Base):
     author = Column(String, nullable=True)
     published_at = Column(DateTime, default=func.now())
     reasoning_hash = Column(String, nullable=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# V25: Constitutional Transparency
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class DocketEntryRecord(Base):
+    """V25A — persistent record of a public docket entry."""
+
+    __tablename__ = "docket_entry"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    case_number = Column(String, unique=True, nullable=False, index=True)
+    case_type = Column(String, nullable=False)
+    title = Column(Text, nullable=False)
+    parties_json = Column(Text, default="[]")
+    policy_area = Column(String, nullable=True, index=True)
+    status = Column(String, nullable=False, default="opened")
+    reference_id = Column(String, nullable=True, index=True)
+    opened_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now())
+    closed_at = Column(DateTime, nullable=True)
+    outcome = Column(Text, nullable=True)
+    docket_hash = Column(String, nullable=True)
+
+
+class TimelineEventRecord(Base):
+    """V25B — persistent record of a procedural timeline event."""
+
+    __tablename__ = "timeline_event"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    event_id = Column(String, unique=True, nullable=False, index=True)
+    case_number = Column(String, nullable=False, index=True)
+    event_type = Column(String, nullable=False)
+    actor = Column(String, nullable=False, index=True)
+    description = Column(Text, nullable=False)
+    extra_data_json = Column(Text, default="{}")
+    timestamp = Column(DateTime, default=func.now())
+    event_hash = Column(String, nullable=True)
+
+
+class NoticeRecord(Base):
+    """V25C — persistent record of a procedural notice."""
+
+    __tablename__ = "procedural_notice"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    notice_id = Column(String, unique=True, nullable=False, index=True)
+    case_number = Column(String, nullable=False, index=True)
+    notice_type = Column(String, nullable=False)
+    recipient = Column(String, nullable=False, index=True)
+    subject = Column(Text, nullable=False)
+    body = Column(Text, nullable=False)
+    delivery_status = Column(String, nullable=False, default="pending")
+    sent_at = Column(DateTime, default=func.now())
+    delivered_at = Column(DateTime, nullable=True)
+    acknowledged_at = Column(DateTime, nullable=True)
+    notice_hash = Column(String, nullable=True)
+
+
+class DecisionRegistryRecord(Base):
+    """V25D — persistent record of a constitutional decision."""
+
+    __tablename__ = "decision_registry"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    decision_id = Column(String, unique=True, nullable=False, index=True)
+    case_number = Column(String, nullable=False, index=True)
+    decision_type = Column(String, nullable=False, index=True)
+    outcome = Column(String, nullable=False)
+    summary = Column(Text, nullable=False)
+    policy_area = Column(String, nullable=True, index=True)
+    parties_json = Column(Text, default="[]")
+    reasoning_id = Column(String, nullable=True)
+    cited_articles_json = Column(Text, default="[]")
+    cited_precedents_json = Column(Text, default="[]")
+    decided_by = Column(String, nullable=True)
+    decided_at = Column(DateTime, default=func.now())
+    tags_json = Column(Text, default="[]")
+    decision_hash = Column(String, nullable=True)

@@ -7651,3 +7651,356 @@ async def get_procedure_stats() -> dict:
         "recusals": recusal_mgr.get_summary(),
         "reasoning": registry.get_summary(),
     }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# V25: Constitutional Transparency Endpoints
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+from src.kortana.services.public_docket import (  # noqa: E402
+    get_public_docket,
+    CaseType,
+    CaseStatus,
+)
+from src.kortana.services.procedural_timeline import (  # noqa: E402
+    get_procedural_timeline,
+)
+from src.kortana.services.notice_service import (  # noqa: E402
+    get_notice_service,
+    NoticeType,
+    DeliveryStatus,
+)
+from src.kortana.services.decision_registry import (  # noqa: E402
+    get_decision_registry,
+    DecisionOutcome,
+)
+
+
+# ─── V25A Public Docket ──────────────────────────────────────────────────────
+
+
+@router.post("/docket/open")
+async def open_case(
+    case_type: str = Body(...),
+    title: str = Body(...),
+    parties: list[str] = Body(...),
+    policy_area: str = Body(""),
+    reference_id: str = Body(""),
+) -> dict:
+    """Open a new case on the public docket."""
+    docket = get_public_docket()
+    entry = docket.open_case(CaseType(case_type), title, parties, policy_area, reference_id)
+    return entry.to_dict()
+
+
+@router.post("/docket/{case_number}/status")
+async def update_case_status(
+    case_number: str,
+    status: str = Body(...),
+) -> dict:
+    """Update the status of a docketed case."""
+    docket = get_public_docket()
+    ok = docket.update_status(case_number, CaseStatus(status))
+    return {"updated": ok, "case_number": case_number, "status": status}
+
+
+@router.post("/docket/{case_number}/close")
+async def close_case(
+    case_number: str,
+    outcome: str = Body(...),
+) -> dict:
+    """Close a case with an outcome."""
+    docket = get_public_docket()
+    ok = docket.close_case(case_number, outcome)
+    return {"closed": ok, "case_number": case_number}
+
+
+@router.post("/docket/{case_number}/dismiss")
+async def dismiss_case(
+    case_number: str,
+    reason: str = Body(...),
+) -> dict:
+    """Dismiss a case."""
+    docket = get_public_docket()
+    ok = docket.dismiss_case(case_number, reason)
+    return {"dismissed": ok, "case_number": case_number}
+
+
+@router.get("/docket/search")
+async def search_docket(
+    case_type: str | None = None,
+    status: str | None = None,
+    party: str | None = None,
+    policy_area: str | None = None,
+    reference_id: str | None = None,
+    query: str | None = None,
+) -> dict:
+    """Search the public docket."""
+    docket = get_public_docket()
+    ct = CaseType(case_type) if case_type else None
+    cs = CaseStatus(status) if status else None
+    entries = docket.search(ct, cs, party, policy_area, reference_id, query)
+    return {"entries": [e.to_dict() for e in entries], "count": len(entries)}
+
+
+@router.get("/docket/summary/stats")
+async def get_docket_summary() -> dict:
+    """Get docket summary statistics."""
+    docket = get_public_docket()
+    return docket.get_summary()
+
+
+@router.get("/docket/{case_number}")
+async def get_case(case_number: str) -> dict:
+    """Get a specific case from the docket."""
+    docket = get_public_docket()
+    e = docket.get_case(case_number)
+    if e is None:
+        return {"error": "not_found", "case_number": case_number}
+    return e.to_dict()
+
+
+# ─── V25B Procedural Timeline ────────────────────────────────────────────────
+
+
+@router.post("/timeline/record")
+async def record_timeline_event(
+    case_number: str = Body(...),
+    event_type: str = Body(...),
+    actor: str = Body(...),
+    description: str = Body(...),
+    extra_data: dict | None = Body(None),
+) -> dict:
+    """Record an event in a proceeding's timeline."""
+    timeline = get_procedural_timeline()
+    event = timeline.record_event(
+        case_number, EventType(event_type), actor, description, extra_data,
+    )
+    return event.to_dict()
+
+
+@router.get("/timeline/{case_number}")
+async def get_case_timeline(
+    case_number: str,
+    event_type: str | None = None,
+    actor: str | None = None,
+) -> dict:
+    """Get the timeline for a case."""
+    timeline = get_procedural_timeline()
+    et = EventType(event_type) if event_type else None
+    events = timeline.get_timeline(case_number, et, actor)
+    return {"events": [e.to_dict() for e in events], "count": len(events)}
+
+
+@router.get("/timeline/events")
+async def get_timeline_events(
+    event_type: str | None = None,
+    actor: str | None = None,
+    limit: int | None = None,
+) -> dict:
+    """Get events across all cases."""
+    timeline = get_procedural_timeline()
+    et = EventType(event_type) if event_type else None
+    events = timeline.get_events(et, actor, limit)
+    return {"events": [e.to_dict() for e in events], "count": len(events)}
+
+
+@router.get("/timeline/event/{event_id}")
+async def get_timeline_event(event_id: str) -> dict:
+    """Get a specific timeline event."""
+    timeline = get_procedural_timeline()
+    e = timeline.get_event(event_id)
+    if e is None:
+        return {"error": "not_found", "event_id": event_id}
+    return e.to_dict()
+
+
+@router.get("/timeline/summary/stats")
+async def get_timeline_summary() -> dict:
+    """Get timeline summary statistics."""
+    timeline = get_procedural_timeline()
+    return timeline.get_summary()
+
+
+# ─── V25C Notice Service ─────────────────────────────────────────────────────
+
+
+@router.post("/notices/send")
+async def send_notice(
+    case_number: str = Body(...),
+    notice_type: str = Body(...),
+    recipient: str = Body(...),
+    subject: str = Body(...),
+    body: str = Body(...),
+) -> dict:
+    """Send a formal notice to a party."""
+    svc = get_notice_service()
+    notice = svc.send_notice(case_number, NoticeType(notice_type), recipient, subject, body)
+    return notice.to_dict()
+
+
+@router.post("/notices/notify-parties")
+async def notify_parties(
+    case_number: str = Body(...),
+    notice_type: str = Body(...),
+    parties: list[str] = Body(...),
+    subject: str = Body(...),
+    body: str = Body(...),
+) -> dict:
+    """Send a notice to multiple parties."""
+    svc = get_notice_service()
+    notices = svc.notify_parties(case_number, NoticeType(notice_type), parties, subject, body)
+    return {"notices": [n.to_dict() for n in notices], "count": len(notices)}
+
+
+@router.post("/notices/{notice_id}/delivered")
+async def mark_notice_delivered(notice_id: str) -> dict:
+    """Mark a notice as delivered."""
+    svc = get_notice_service()
+    ok = svc.mark_delivered(notice_id)
+    return {"delivered": ok, "notice_id": notice_id}
+
+
+@router.post("/notices/{notice_id}/acknowledged")
+async def mark_notice_acknowledged(notice_id: str) -> dict:
+    """Mark a notice as acknowledged."""
+    svc = get_notice_service()
+    ok = svc.mark_acknowledged(notice_id)
+    return {"acknowledged": ok, "notice_id": notice_id}
+
+
+@router.post("/notices/{notice_id}/failed")
+async def mark_notice_failed(notice_id: str) -> dict:
+    """Mark a notice as failed."""
+    svc = get_notice_service()
+    ok = svc.mark_failed(notice_id)
+    return {"failed": ok, "notice_id": notice_id}
+
+
+@router.get("/notices")
+async def list_notices(
+    case_number: str | None = None,
+    recipient: str | None = None,
+    notice_type: str | None = None,
+    status: str | None = None,
+) -> dict:
+    """List notices with optional filters."""
+    svc = get_notice_service()
+    nt = NoticeType(notice_type) if notice_type else None
+    ds = DeliveryStatus(status) if status else None
+    notices = svc.get_notices(case_number, recipient, nt, ds)
+    return {"notices": [n.to_dict() for n in notices], "count": len(notices)}
+
+
+@router.get("/notices/unacknowledged")
+async def get_unacknowledged_notices(recipient: str | None = None) -> dict:
+    """Get unacknowledged notices."""
+    svc = get_notice_service()
+    notices = svc.get_unacknowledged(recipient)
+    return {"notices": [n.to_dict() for n in notices], "count": len(notices)}
+
+
+@router.get("/notices/summary/stats")
+async def get_notice_summary() -> dict:
+    """Get notice service statistics."""
+    svc = get_notice_service()
+    return svc.get_summary()
+
+
+@router.get("/notices/{notice_id}")
+async def get_notice(notice_id: str) -> dict:
+    """Get a specific notice."""
+    svc = get_notice_service()
+    n = svc.get_notice(notice_id)
+    if n is None:
+        return {"error": "not_found", "notice_id": notice_id}
+    return n.to_dict()
+
+
+# ─── V25D Decision Registry ──────────────────────────────────────────────────
+
+
+@router.post("/decisions/record")
+async def record_decision(
+    case_number: str = Body(...),
+    decision_type: str = Body(...),
+    outcome: str = Body(...),
+    summary: str = Body(...),
+    policy_area: str = Body(""),
+    parties: list[str] = Body(default=[]),
+    reasoning_id: str = Body(""),
+    cited_articles: list[str] = Body(default=[]),
+    cited_precedents: list[str] = Body(default=[]),
+    decided_by: str = Body(""),
+    tags: list[str] = Body(default=[]),
+) -> dict:
+    """Record a final decision in the public registry."""
+    registry = get_decision_registry()
+    decision = registry.record_decision(
+        case_number, decision_type, DecisionOutcome(outcome), summary,
+        policy_area, parties, reasoning_id, cited_articles, cited_precedents,
+        decided_by, tags,
+    )
+    return decision.to_dict()
+
+
+@router.get("/decisions/search")
+async def search_decisions(
+    decision_type: str | None = None,
+    outcome: str | None = None,
+    policy_area: str | None = None,
+    decided_by: str | None = None,
+    party: str | None = None,
+    tag: str | None = None,
+    query: str | None = None,
+) -> dict:
+    """Search decision records."""
+    registry = get_decision_registry()
+    do = DecisionOutcome(outcome) if outcome else None
+    decisions = registry.search(decision_type, do, policy_area, decided_by, party, tag, query)
+    return {"decisions": [d.to_dict() for d in decisions], "count": len(decisions)}
+
+
+@router.get("/decisions/summary/stats")
+async def get_decision_summary() -> dict:
+    """Get decision registry statistics."""
+    registry = get_decision_registry()
+    return registry.get_summary()
+
+
+@router.get("/decisions/{decision_id}")
+async def get_decision_record(decision_id: str) -> dict:
+    """Get a specific decision record."""
+    registry = get_decision_registry()
+    d = registry.get_decision(decision_id)
+    if d is None:
+        return {"error": "not_found", "decision_id": decision_id}
+    return d.to_dict()
+
+
+@router.get("/decisions/case/{case_number}")
+async def get_case_decisions(case_number: str) -> dict:
+    """Get all decisions for a case."""
+    registry = get_decision_registry()
+    decisions = registry.get_by_case(case_number)
+    return {"decisions": [d.to_dict() for d in decisions], "count": len(decisions)}
+
+
+# ─── V25 Cross-Component Stats ───────────────────────────────────────────────
+
+
+@router.get("/transparency/stats")
+async def get_transparency_stats() -> dict:
+    """Get statistics across all V25 transparency components."""
+    docket = get_public_docket()
+    timeline = get_procedural_timeline()
+    notices = get_notice_service()
+    decisions = get_decision_registry()
+
+    return {
+        "docket": docket.get_summary(),
+        "timeline": timeline.get_summary(),
+        "notices": notices.get_summary(),
+        "decisions": decisions.get_summary(),
+    }
