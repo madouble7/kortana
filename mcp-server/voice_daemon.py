@@ -80,7 +80,7 @@ _PIPER_MODEL_URL_BASE = os.getenv(
 )
 
 # Whisper model config — large-v3 on RTX 3080
-WHISPER_MODEL_SIZE = os.getenv("KORTANA_WHISPER_MODEL", "small")
+WHISPER_MODEL_SIZE = os.getenv("KORTANA_WHISPER_MODEL", "base")
 WHISPER_DEVICE = "cpu"
 WHISPER_COMPUTE_TYPE = "int8"
 STT_FALLBACK_MODEL_SIZE = os.getenv("KORTANA_WHISPER_FALLBACK_MODEL", "small")
@@ -473,9 +473,7 @@ def _write_daily_diary(now: datetime, *, backend_up: bool, ci_summary: str) -> b
     if ci_summary:
         sentences.append(f"Latest CI state: {ci_summary}.")
     if recent_revelation:
-        sentences.append(
-            f"My most recent synthesised insight: '{recent_revelation}'."
-        )
+        sentences.append(f"My most recent synthesised insight: '{recent_revelation}'.")
     if vscode_snapshot:
         sentences.append(vscode_snapshot)
 
@@ -504,24 +502,126 @@ def _write_daily_diary(now: datetime, *, backend_up: bool, ci_summary: str) -> b
 
 
 # ── TTS ────────────────────────────────────────────────────────────────────────
-def speak(text: str) -> None:
-    """Speak text via Piper TTS (en_GB-cori-high neural voice)."""
-    with _speak_lock:
+_EDGE_TTS_VOICE = os.getenv("KORTANA_EDGE_TTS_VOICE", "en-GB-SoniaNeural")
+_USE_EDGE_TTS = True  # prefer edge-tts; falls back to Piper then SAPI
+
+
+def _speak_edge_tts(text: str) -> bool:
+    """Speak via edge-tts (Microsoft neural voices — free, high quality)."""
+    import asyncio
+    import io
+    import tempfile
+
+    try:
+        import edge_tts  # type: ignore[import-untyped]
+    except ImportError:
+        return False
+
+    async def _generate() -> bytes | None:
+        comm = edge_tts.Communicate(text, _EDGE_TTS_VOICE, rate="+10%")
+        buf = io.BytesIO()
+        async for chunk in comm.stream():
+            if chunk["type"] == "audio":
+                buf.write(chunk["data"])
+        data = buf.getvalue()
+        return data if data else None
+
+    try:
+        loop = asyncio.new_event_loop()
+        mp3_data = loop.run_until_complete(_generate())
+        loop.close()
+        if not mp3_data:
+            return False
+        # Decode MP3 → raw PCM via temp file + sounddevice
+        tmp = tempfile.NamedTemporaryFile(suffix=".mp3", delete=False)
+        tmp.write(mp3_data)
+        tmp.close()
         try:
-            proc = subprocess.Popen(
-                [str(PIPER_EXE), "--model", str(CORI_MODEL), "--output_raw"],
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.DEVNULL,
+            import soundfile as sf  # type: ignore[import-untyped]
+
+            audio_data, sr_rate = sf.read(tmp.name, dtype="float32")
+            sd.play(audio_data, samplerate=sr_rate)
+            sd.wait()
+        except ImportError:
+            # Fallback: use ffmpeg to decode mp3 to raw PCM
+            ffmpeg = shutil.which("ffmpeg")
+            if not ffmpeg:
+                os.unlink(tmp.name)
+                return False
+            result = subprocess.run(
+                [
+                    ffmpeg,
+                    "-i",
+                    tmp.name,
+                    "-f",
+                    "s16le",
+                    "-ar",
+                    "24000",
+                    "-ac",
+                    "1",
+                    "-",
+                ],
+                capture_output=True,
+                timeout=30,
             )
-            raw, _ = proc.communicate(input=text.encode("utf-8"), timeout=60)
-            if raw:
-                audio = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
-                sd.play(audio, samplerate=CORI_SAMPLE_RATE)
+            if result.returncode == 0 and result.stdout:
+                audio = (
+                    np.frombuffer(result.stdout, dtype=np.int16).astype(np.float32)
+                    / 32768.0
+                )
+                sd.play(audio, samplerate=24000)
                 sd.wait()
-        except Exception as e:
-            log(f"Piper speak error: {e} — falling back to SAPI", "WARN")
-            _speak_sapi(text)
+            else:
+                os.unlink(tmp.name)
+                return False
+        finally:
+            try:
+                os.unlink(tmp.name)
+            except OSError:
+                pass
+        return True
+    except Exception as e:
+        log(f"edge-tts error: {e}", "WARN")
+        return False
+
+
+def _speak_piper(text: str) -> bool:
+    """Speak via Piper TTS (offline neural voice)."""
+    try:
+        proc = subprocess.Popen(
+            [str(PIPER_EXE), "--model", str(CORI_MODEL), "--output_raw"],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+        )
+        raw, _ = proc.communicate(input=text.encode("utf-8"), timeout=60)
+        if raw:
+            audio = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+            sd.play(audio, samplerate=CORI_SAMPLE_RATE)
+            sd.wait()
+            return True
+    except Exception as e:
+        log(f"Piper speak error: {e}", "WARN")
+    return False
+
+
+def speak(text: str) -> None:
+    """Speak text via best available TTS engine (edge-tts → Piper → SAPI)."""
+    global _is_speaking
+    if _check_interrupt():
+        return
+    with _speak_lock:
+        _is_speaking = True
+        spoken = False
+        try:
+            if _USE_EDGE_TTS and not _check_interrupt():
+                spoken = _speak_edge_tts(text)
+            if not spoken and not _check_interrupt():
+                spoken = _speak_piper(text)
+            if not spoken and not _check_interrupt():
+                _speak_sapi(text)
+        finally:
+            _is_speaking = False
     log(f"spoke: {text[:80]}")
 
 
@@ -646,8 +746,211 @@ def _seed_identity_memory() -> None:
 
 
 # ── backend chat ───────────────────────────────────────────────────────────────
+# ── Barge-in / interrupt support ──────────────────────────────────────────────
+_interrupt = threading.Event()
+_is_speaking = False
+
+
+def _check_interrupt() -> bool:
+    """Returns True if user interrupted (barge-in)."""
+    return _interrupt.is_set()
+
+
+def _signal_interrupt() -> None:
+    """Called from listener thread when speech detected during TTS playback."""
+    global _is_speaking
+    _interrupt.set()
+    _is_speaking = False
+    try:
+        sd.stop()
+    except Exception:
+        pass
+    log("[barge-in] user interrupted — stopping playback")
+
+
+_KORTANA_SYSTEM_PROMPT = (
+    "You are kor'tana, a calm, warm AI companion. "
+    "Respond in 1-2 short sentences optimized for speech. "
+    "No markdown, no code blocks, no bullet lists, no asterisks. "
+    "Be warm, direct, and concise. Sound natural."
+)
+
+
+def _build_groq_messages(message: str) -> list[dict[str, str]]:
+    """Build chat messages for Groq with conversation history."""
+    msgs: list[dict[str, str]] = [{"role": "system", "content": _KORTANA_SYSTEM_PROMPT}]
+    for h in _conversation_history[-6:]:
+        msgs.append({"role": h["role"], "content": h["content"]})
+    msgs.append({"role": "user", "content": message})
+    return msgs
+
+
+def _stream_and_speak(message: str) -> str:
+    """Stream Groq response token-by-token, speak each sentence as it completes.
+
+    This is the core latency optimization: instead of waiting for the full
+    response and then generating full TTS audio, we:
+    1. Stream tokens from Groq (~100ms to first token)
+    2. Buffer until sentence boundary (. ! ?)
+    3. Speak each sentence immediately via edge-tts
+    4. Continue buffering the next sentence while current one plays
+    5. Support barge-in: if _interrupt is set, abort everything
+    """
+    global _conversation_history, _memory_count
+    groq_key = os.getenv("GROQ_API_KEY", "")
+    if not groq_key:
+        # Fallback to non-streaming
+        answer = _try_groq_direct_nonstream(message)
+        if answer:
+            speak(answer)
+            return answer
+        return "I can't reach any AI provider right now."
+
+    _interrupt.clear()
+    full_response = ""
+    sentence_buffer = ""
+    sentence_count = 0
+
+    try:
+        with httpx.Client(timeout=15.0) as client:
+            with client.stream(
+                "POST",
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {groq_key}"},
+                json={
+                    "model": "llama-3.3-70b-versatile",
+                    "messages": _build_groq_messages(message),
+                    "max_tokens": 150,
+                    "temperature": 0.7,
+                    "stream": True,
+                },
+            ) as response:
+                if response.status_code != 200:
+                    log(f"Groq stream error: {response.status_code}", "WARN")
+                    answer = _try_groq_direct_nonstream(message)
+                    if answer:
+                        speak(answer)
+                        return answer
+                    return "I'm having trouble connecting."
+
+                for line in response.iter_lines():
+                    if _check_interrupt():
+                        log("[stream] interrupted by barge-in")
+                        break
+
+                    if not line or not line.startswith("data: "):
+                        continue
+                    data = line[6:]
+                    if data.strip() == "[DONE]":
+                        break
+
+                    try:
+                        import json as _json
+
+                        chunk = _json.loads(data)
+                        delta = chunk.get("choices", [{}])[0].get("delta", {})
+                        token = delta.get("content", "")
+                    except Exception:
+                        continue
+
+                    if not token:
+                        continue
+
+                    full_response += token
+                    sentence_buffer += token
+
+                    # Check for sentence boundary
+                    if _is_sentence_end(sentence_buffer):
+                        sentence = sentence_buffer.strip()
+                        if sentence:
+                            sentence = _clean_for_speech(sentence)
+                            if sentence:
+                                speak(sentence)
+                                sentence_count += 1
+                        sentence_buffer = ""
+
+                        if _check_interrupt():
+                            break
+
+    except Exception as e:
+        log(f"Groq stream error: {e}", "WARN")
+        if not full_response:
+            answer = _try_groq_direct_nonstream(message)
+            if answer:
+                speak(answer)
+                return answer
+            return "Something went wrong."
+
+    # Speak any remaining buffered text
+    if sentence_buffer.strip() and not _check_interrupt():
+        remainder = _clean_for_speech(sentence_buffer.strip())
+        if remainder:
+            speak(remainder)
+
+    if not full_response:
+        full_response = "I'm here, but I didn't get a response."
+
+    # Update conversation history
+    _conversation_history.append({"role": "user", "content": message})
+    _conversation_history.append({"role": "assistant", "content": full_response})
+    if len(_conversation_history) > 40:
+        _conversation_history = _conversation_history[-40:]
+
+    # Episodic memory
+    _memory_count += 1
+    if _memory_count % _MEMORY_EVERY == 0:
+        threading.Thread(
+            target=_write_episodic_memory,
+            args=(message, full_response),
+            daemon=True,
+        ).start()
+
+    return full_response
+
+
+def _is_sentence_end(text: str) -> bool:
+    """Check if the buffer ends at a natural sentence boundary."""
+    text = text.rstrip()
+    if not text:
+        return False
+    # Sentence terminators
+    if text[-1] in ".!?":
+        # Avoid false positives on abbreviations like "Dr." or "U.S."
+        if len(text) >= 3 and text[-2].isupper() and text[-3] == " ":
+            return False  # likely abbreviation
+        return True
+    return False
+
+
+def _try_groq_direct_nonstream(message: str) -> str | None:
+    """Non-streaming Groq fallback."""
+    groq_key = os.getenv("GROQ_API_KEY", "")
+    if not groq_key:
+        return None
+    try:
+        with httpx.Client(timeout=8.0) as client:
+            r = client.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {groq_key}"},
+                json={
+                    "model": "llama-3.3-70b-versatile",
+                    "messages": _build_groq_messages(message),
+                    "max_tokens": 100,
+                    "temperature": 0.7,
+                },
+            )
+        if r.status_code == 200:
+            answer = (
+                r.json().get("choices", [{}])[0].get("message", {}).get("content", "")
+            )
+            return _clean_for_speech(answer) if answer else None
+    except Exception as e:
+        log(f"Groq non-stream failed: {e}", "WARN")
+    return None
+
+
 def send_to_kortana(message: str) -> str:
-    """Send message to kor'tana backend, return spoken response."""
+    """Send message to kor'tana backend (slow path — only used when streaming unavailable)."""
     global _conversation_history, _memory_count
     try:
         # Prepend VS Code context so Cori knows what Matt is working on
@@ -660,7 +963,7 @@ def send_to_kortana(message: str) -> str:
             "history": _conversation_history[-10:],
             "voice_mode": True,
         }
-        with httpx.Client(timeout=30.0) as client:
+        with httpx.Client(timeout=90.0) as client:
             r = client.post(CHAT_ENDPOINT, json=payload)
         if r.status_code == 200:
             data = r.json()
@@ -736,7 +1039,7 @@ def _get_vscode_context_prefix() -> str:
                     top_rel = Path(top).name
                     top_secs = session_focus[top]
                     if top_rel != rel and top_secs > 120:
-                        return f"[vscode: active={rel}, most time={top_rel}({top_secs//60}m)] "
+                        return f"[vscode: active={rel}, most time={top_rel}({top_secs // 60}m)] "
                 return f"[vscode: active={rel}] "
 
         # Fallback: legacy state file
@@ -779,16 +1082,18 @@ def _play_activation_sound() -> None:
 
 
 # ── special command routing ────────────────────────────────────────────────────
-_INSIGHT_TRIGGERS = frozenset({
-    "what have you noticed",
-    "any insights",
-    "any revelations",
-    "what did you notice",
-    "what have you learned",
-    "what do you know",
-    "tell me something",
-    "surprise me",
-})
+_INSIGHT_TRIGGERS = frozenset(
+    {
+        "what have you noticed",
+        "any insights",
+        "any revelations",
+        "what did you notice",
+        "what have you learned",
+        "what do you know",
+        "tell me something",
+        "surprise me",
+    }
+)
 
 
 def _is_insight_request(command: str) -> bool:
@@ -818,7 +1123,9 @@ def _handle_insight_request() -> str:
         if r.status_code == 200:
             revs = r.json().get("revelations", [])
             if revs:
-                return revs[0].get("content", "I have a new insight but couldn't articulate it.")
+                return revs[0].get(
+                    "content", "I have a new insight but couldn't articulate it."
+                )
     except Exception as e:
         log(f"[insight] synthesis request failed: {e}", "WARN")
 
@@ -867,10 +1174,10 @@ def _handle_wake(recognizer: sr.Recognizer, text: str) -> None:
         _record_voice_interaction()
         return
 
-    speak("on it")
-    response = send_to_kortana(command)
+    # Stream response and speak sentence-by-sentence
+    _interrupt.clear()
+    response = _stream_and_speak(command)
     log(f"response ({len(response)} chars): {response[:120]}")
-    speak(response)
     _record_voice_interaction()
 
 
@@ -1005,9 +1312,7 @@ def _proactive_loop() -> None:
             if vscode_ctx:
                 # Extract the active file name for a more grounded check-in
                 _ctx_clean = vscode_ctx.strip("[] ")
-                speak(
-                    f"{hours} hours since we last spoke. Still here. {_ctx_clean}."
-                )
+                speak(f"{hours} hours since we last spoke. Still here. {_ctx_clean}.")
             else:
                 speak(
                     f"You've been quiet for {hours} hours. Still here if you need me."
@@ -1055,6 +1360,8 @@ def _fetch_pending_revelation() -> dict | None:
             return None
         # Sort by confidence descending — highest-signal insight first
         return max(candidates, key=lambda x: float(x.get("confidence", 0)))
+    except Exception:
+        return None
 
 
 def _acknowledge_revelation(rev_id: str) -> None:
@@ -1118,7 +1425,9 @@ def _startup_greeting() -> None:
             if content and rev_id:
                 _VOICED_REVELATION_IDS.add(rev_id)
                 log(f"[startup] surfacing revelation: {rev.get('title', '?')}")
-                speak(f"Also — I noticed something while you were away. {content[:250]}")
+                speak(
+                    f"Also — I noticed something while you were away. {content[:250]}"
+                )
                 _acknowledge_revelation(rev_id)
 
     threading.Thread(target=_delayed_revelation, daemon=True).start()
@@ -1172,7 +1481,12 @@ def run() -> None:
     # Background listener — callback fires on each detected phrase
     def _callback(recognizer: sr.Recognizer, audio: sr.AudioData) -> None:
         text = transcribe(audio, recognizer)
-        if text and _contains_wake(text):
+        if not text:
+            return
+        if _contains_wake(text):
+            # Barge-in: if kor'tana is currently speaking, interrupt her first
+            if _is_speaking:
+                _signal_interrupt()
             # Spin off so background listener stays responsive
             threading.Thread(
                 target=_handle_wake,
