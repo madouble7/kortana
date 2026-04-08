@@ -3060,3 +3060,451 @@ async def list_audit_bundles(
             for r in records
         ],
     }
+
+
+
+# ---------------------------------------------------------------------------
+# V10A — Operator identity endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.post("/operators/register")
+async def register_operator(
+    operator_id: str = Query(...),
+    display_name: str = Query(...),
+    role: str = Query(default="operator"),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Register a new operator with a role."""
+    from src.kortana.models import OperatorRecord
+    from src.kortana.services.operator_identity import (
+        OperatorRole,
+        get_operator_registry,
+    )
+
+    registry = get_operator_registry()
+    try:
+        identity = registry.register(operator_id, display_name, OperatorRole(role))
+    except ValueError as e:
+        return JSONResponse(content={"error": str(e)}, status_code=400)
+
+    try:
+        db.add(OperatorRecord(
+            operator_id=operator_id,
+            display_name=display_name,
+            role=role,
+            identity_hash=identity.identity_hash,
+        ))
+        await db.commit()
+    except Exception:
+        pass
+
+    return {"registered": True, "operator": identity.to_dict()}
+
+
+@router.get("/operators")
+async def list_operators() -> dict[str, Any]:
+    """List all registered operators."""
+    from src.kortana.services.operator_identity import get_operator_registry
+
+    registry = get_operator_registry()
+    return {
+        "total": registry.count,
+        "operators": [op.to_dict() for op in registry.all_operators],
+    }
+
+
+@router.get("/operators/{operator_id}")
+async def get_operator(operator_id: str) -> dict[str, Any]:
+    """Get a specific operator by ID."""
+    from src.kortana.services.operator_identity import get_operator_registry
+
+    registry = get_operator_registry()
+    op = registry.get(operator_id)
+    if op is None:
+        return JSONResponse(
+            content={"error": f"Operator {operator_id!r} not found"},
+            status_code=404,
+        )
+    return {"operator": op.to_dict()}
+
+
+@router.post("/operators/{operator_id}/deactivate")
+async def deactivate_operator(operator_id: str) -> dict[str, Any]:
+    """Deactivate an operator."""
+    from src.kortana.services.operator_identity import get_operator_registry
+
+    registry = get_operator_registry()
+    if not registry.deactivate(operator_id):
+        return JSONResponse(
+            content={"error": f"Operator {operator_id!r} not found"},
+            status_code=404,
+        )
+    return {"deactivated": True, "operator_id": operator_id}
+
+
+@router.post("/operators/{operator_id}/role")
+async def update_operator_role(
+    operator_id: str,
+    new_role: str = Query(...),
+) -> dict[str, Any]:
+    """Update an operator's role."""
+    from src.kortana.services.operator_identity import (
+        OperatorRole,
+        get_operator_registry,
+    )
+
+    registry = get_operator_registry()
+    try:
+        role = OperatorRole(new_role)
+    except ValueError:
+        return JSONResponse(
+            content={"error": f"Invalid role {new_role!r}"},
+            status_code=400,
+        )
+
+    if not registry.update_role(operator_id, role):
+        return JSONResponse(
+            content={"error": f"Operator {operator_id!r} not found"},
+            status_code=404,
+        )
+
+    op = registry.get(operator_id)
+    return {"updated": True, "operator": op.to_dict() if op else None}
+
+
+# ---------------------------------------------------------------------------
+# V10B — Governance action endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.post("/governance/check")
+async def governance_permission_check(
+    operator_id: str = Query(...),
+    permission: str = Query(...),
+) -> dict[str, Any]:
+    """Check if an operator has a specific permission."""
+    from src.kortana.services.operator_identity import (
+        Permission,
+        get_operator_registry,
+    )
+
+    registry = get_operator_registry()
+    try:
+        perm = Permission(permission)
+    except ValueError:
+        return JSONResponse(
+            content={"error": f"Unknown permission {permission!r}"},
+            status_code=400,
+        )
+
+    result = registry.check(operator_id, perm)
+    return result.to_dict()
+
+
+@router.get("/governance/actions")
+async def list_governance_actions(
+    limit: int = Query(default=50, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """List signed governance actions from DB."""
+    from src.kortana.models import GovernanceActionRecord
+
+    try:
+        result = await db.execute(
+            select(GovernanceActionRecord)
+            .order_by(GovernanceActionRecord.created_at.desc())
+            .limit(limit)
+        )
+        records = result.scalars().all()
+    except SQLAlchemyError:
+        records = []
+
+    return {
+        "total": len(records),
+        "actions": [
+            {
+                "id": r.id,
+                "operator_id": r.operator_id,
+                "display_name": r.display_name,
+                "role": r.role,
+                "action": r.action,
+                "resource": r.resource,
+                "action_signature": r.action_signature,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in records
+        ],
+    }
+
+
+# ---------------------------------------------------------------------------
+# V10C — Deploy gate endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.post("/deploy/gate/evaluate")
+async def evaluate_deploy_gate_endpoint(
+    operator_id: str = Query(...),
+    target_mode: str = Query(default=None),
+    min_policy_version: int = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Evaluate the deploy gate for an operator.
+
+    Checks operator identity, override conflicts, quorum state,
+    drill SLO health, rollback cooldown, rate limits, and policy version.
+    """
+    from src.kortana.models import DeployGateRecord
+    from src.kortana.services.deploy_gate import evaluate_deploy_gate
+    from src.kortana.services.drill_scheduler import get_drill_scheduler
+    from src.kortana.services.human_override import get_override_manager
+    from src.kortana.services.quorum_override import get_quorum_manager
+
+    daemon = get_autonomy_daemon()
+    override_manager = get_override_manager()
+    quorum_manager = get_quorum_manager()
+    drill_scheduler = get_drill_scheduler()
+
+    active = override_manager.active()
+    slo_results = [e.to_dict() for e in drill_scheduler.evaluate_all_slos()]
+
+    result = evaluate_deploy_gate(
+        operator_id=operator_id,
+        target_mode=target_mode,
+        current_mode=daemon.default_approval_mode,
+        active_override_mode=getattr(active, "mode", None) if active else None,
+        quorum_pending_count=quorum_manager.count,
+        drill_slo_results=slo_results if slo_results else None,
+        min_policy_version=min_policy_version,
+    )
+
+    # Persist gate record
+    try:
+        db.add(DeployGateRecord(
+            operator_id=operator_id,
+            allowed=result.allowed,
+            checks=[c.to_dict() for c in result.checks],
+            blocking_failures=len(result.blocking_failures),
+            warnings_count=len(result.warnings),
+            gate_hash=result.gate_hash,
+        ))
+        await db.commit()
+    except Exception:
+        pass
+
+    return result.to_dict()
+
+
+@router.get("/deploy/gate/history")
+async def deploy_gate_history(
+    limit: int = Query(default=25, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """List deploy gate evaluation history from DB."""
+    from src.kortana.models import DeployGateRecord
+
+    try:
+        result = await db.execute(
+            select(DeployGateRecord)
+            .order_by(DeployGateRecord.created_at.desc())
+            .limit(limit)
+        )
+        records = result.scalars().all()
+    except SQLAlchemyError:
+        records = []
+
+    return {
+        "total": len(records),
+        "records": [
+            {
+                "id": r.id,
+                "operator_id": r.operator_id,
+                "allowed": r.allowed,
+                "checks": r.checks,
+                "blocking_failures": r.blocking_failures,
+                "warnings_count": r.warnings_count,
+                "gate_hash": r.gate_hash,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in records
+        ],
+    }
+
+
+# ---------------------------------------------------------------------------
+# V10D — Policy engine endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.post("/policy/rules/add")
+async def add_policy_rule(
+    rule_id: str = Query(...),
+    name: str = Query(...),
+    description: str = Query(default=""),
+    action: str = Query(...),
+    priority: int = Query(default=100, ge=0, le=1000),
+    enabled: bool = Query(default=True),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Add a policy rule to the engine."""
+    from src.kortana.models import PolicyRuleRecord
+    from src.kortana.services.policy_engine import (
+        PolicyRule,
+        RuleAction,
+        RulePriority,
+        get_policy_engine,
+    )
+
+    engine = get_policy_engine()
+
+    try:
+        rule_action = RuleAction(action)
+    except ValueError:
+        return JSONResponse(
+            content={"error": f"Invalid action {action!r}"},
+            status_code=400,
+        )
+
+    # Map priority to closest enum
+    for p in RulePriority:
+        if priority <= p.value:
+            rule_priority = p
+            break
+    else:
+        rule_priority = RulePriority.DEFAULT
+
+    rule = PolicyRule(
+        rule_id=rule_id,
+        name=name,
+        description=description,
+        conditions={},
+        action=rule_action,
+        priority=rule_priority,
+        enabled=enabled,
+    )
+    engine.add_rule(rule)
+
+    try:
+        db.add(PolicyRuleRecord(
+            rule_id=rule_id,
+            name=name,
+            description=description,
+            conditions={},
+            action=action,
+            priority=priority,
+            enabled=enabled,
+        ))
+        await db.commit()
+    except Exception:
+        pass
+
+    return {"added": True, "rule": rule.to_dict()}
+
+
+@router.delete("/policy/rules/{rule_id}")
+async def remove_policy_rule(rule_id: str) -> dict[str, Any]:
+    """Remove a policy rule from the engine."""
+    from src.kortana.services.policy_engine import get_policy_engine
+
+    engine = get_policy_engine()
+    if not engine.remove_rule(rule_id):
+        return JSONResponse(
+            content={"error": f"Rule {rule_id!r} not found"},
+            status_code=404,
+        )
+    return {"removed": True, "rule_id": rule_id}
+
+
+@router.get("/policy/rules")
+async def list_policy_rules() -> dict[str, Any]:
+    """List all policy rules in the engine."""
+    from src.kortana.services.policy_engine import get_policy_engine
+
+    engine = get_policy_engine()
+    return {"total": engine.count, "rules": engine.rules}
+
+
+@router.post("/policy/evaluate")
+async def evaluate_policy(
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Evaluate all policy rules against current system state facts."""
+    from src.kortana.models import PolicyEvaluationRecord
+    from src.kortana.services.drill_scheduler import get_drill_scheduler
+    from src.kortana.services.human_override import get_override_manager
+    from src.kortana.services.policy_engine import get_policy_engine
+    from src.kortana.services.quorum_override import get_quorum_manager
+
+    engine = get_policy_engine()
+    daemon = get_autonomy_daemon()
+    override_manager = get_override_manager()
+    quorum_manager = get_quorum_manager()
+    drill_scheduler = get_drill_scheduler()
+
+    slo_results = drill_scheduler.evaluate_all_slos()
+    drill_slos_met = all(r.met for r in slo_results)
+
+    facts = {
+        "current_mode": daemon.default_approval_mode,
+        "override_active": override_manager.active() is not None,
+        "quorum_pending": quorum_manager.count,
+        "drill_slos_met": drill_slos_met,
+        "in_cooldown": False,
+        "rate_limited": False,
+        "deploy_requested": False,
+        "action_type": "evaluate",
+    }
+
+    decision = engine.evaluate(facts)
+
+    try:
+        db.add(PolicyEvaluationRecord(
+            action=decision.action,
+            reason=decision.reason[:256],
+            matched_rule_count=len(decision.matched_rules),
+            total_rule_count=len(decision.all_evaluations),
+            facts_snapshot=facts,
+            decision_hash=decision.decision_hash,
+        ))
+        await db.commit()
+    except Exception:
+        pass
+
+    return decision.to_dict()
+
+
+@router.get("/policy/evaluations")
+async def list_policy_evaluations(
+    limit: int = Query(default=25, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """List policy engine evaluation history from DB."""
+    from src.kortana.models import PolicyEvaluationRecord
+
+    try:
+        result = await db.execute(
+            select(PolicyEvaluationRecord)
+            .order_by(PolicyEvaluationRecord.created_at.desc())
+            .limit(limit)
+        )
+        records = result.scalars().all()
+    except SQLAlchemyError:
+        records = []
+
+    return {
+        "total": len(records),
+        "evaluations": [
+            {
+                "id": r.id,
+                "action": r.action,
+                "reason": r.reason,
+                "matched_rule_count": r.matched_rule_count,
+                "total_rule_count": r.total_rule_count,
+                "facts_snapshot": r.facts_snapshot,
+                "decision_hash": r.decision_hash,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in records
+        ],
+    }
