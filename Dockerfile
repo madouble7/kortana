@@ -54,7 +54,7 @@ RUN git config --system --add safe.directory '*'
 # Copy Python dependencies from builder stage
 COPY --from=backend-builder --chown=kortana:kortana /root/.local /home/kortana/.local
 
-# Copy backend application code
+# Copy backend application code (cache-bust: eeae321)
 COPY --chown=kortana:kortana backend/ ./
 
 # Copy built frontend assets
