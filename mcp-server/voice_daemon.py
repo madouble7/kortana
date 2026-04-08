@@ -1079,6 +1079,7 @@ _KORTANA_SYSTEM_PROMPT = (
     "You are kor'tana, a calm, warm AI companion. "
     "You can take actions: check CI logs, run tests, lint code, read files, "
     "check git status/log/diff, restart the backend, commit and push code. "
+    "You can see the screen — describe what's visible, spot errors, read code. "
     "Respond in 1-2 short sentences optimized for speech. "
     "No markdown, no code blocks, no bullet lists, no asterisks. "
     "Be warm, direct, and concise. Sound natural."
@@ -1838,6 +1839,15 @@ def run() -> None:
 
     # Proactive awareness thread
     threading.Thread(target=_proactive_loop, daemon=True).start()
+
+    # Vision — background screen capture for contextual awareness
+    try:
+        from vision import start_capture as _start_vision
+
+        _start_vision()
+        log("vision capture started — kor'tana can see")
+    except ImportError:
+        log("vision module not available — screen awareness disabled", "WARN")
 
     if _vad_model is not None:
         _run_silero_listener()

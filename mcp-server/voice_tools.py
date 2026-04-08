@@ -30,6 +30,22 @@ from typing import Any
 
 import httpx
 
+# ── vision module (lazy import) ───────────────────────────────────────────────
+try:
+    from vision import (
+        analyze_for_errors,
+        analyze_screen,
+        describe_code_on_screen,
+        get_frame_age,
+        is_capturing,
+        read_screen_text,
+        start_capture,
+    )
+
+    _VISION_AVAILABLE = True
+except ImportError:
+    _VISION_AVAILABLE = False
+
 # ── constants ──────────────────────────────────────────────────────────────────
 REPO_ROOT = Path(r"c:\kortana")
 BACKEND_URL = os.getenv("KORTANA_BACKEND_URL", "http://localhost:8001")
@@ -534,6 +550,103 @@ def _tool_run_lint_fix(args: dict) -> str:
         return f"Lint fix result: {output[:200]}"
     except Exception as e:
         return f"Lint fix failed: {e}"
+
+
+# ── VISION tools (read-only, safe) ───────────────────────────────────────────
+
+
+@_register(
+    "whats_on_screen",
+    "Describe what's currently visible on screen",
+    HOP.AUTO,
+    examples=[
+        "what's on my screen",
+        "what do you see",
+        "what am I looking at",
+        "describe my screen",
+    ],
+)
+def _tool_whats_on_screen(args: dict) -> str:
+    if not _VISION_AVAILABLE:
+        return "Vision module isn't loaded. I can't see your screen right now."
+    if not is_capturing():
+        start_capture()
+        import time as _t
+
+        _t.sleep(2)  # wait for first frame
+    question = args.get("question", "")
+    if question:
+        return analyze_screen(question)
+    return analyze_screen()
+
+
+@_register(
+    "screen_errors",
+    "Check the screen for error messages, warnings, or failures",
+    HOP.AUTO,
+    examples=[
+        "any errors on screen",
+        "what error do you see",
+        "read the error message",
+        "is there an error",
+        "what went wrong",
+    ],
+)
+def _tool_screen_errors(args: dict) -> str:
+    if not _VISION_AVAILABLE:
+        return "Vision module isn't loaded. I can't see your screen right now."
+    if not is_capturing():
+        start_capture()
+        import time as _t
+
+        _t.sleep(2)
+    return analyze_for_errors()
+
+
+@_register(
+    "read_screen",
+    "Read the text visible on screen — code, terminal output, dialogs",
+    HOP.AUTO,
+    examples=[
+        "read the screen",
+        "read what's on screen",
+        "what does it say",
+        "read the terminal",
+        "read the output",
+    ],
+)
+def _tool_read_screen(args: dict) -> str:
+    if not _VISION_AVAILABLE:
+        return "Vision module isn't loaded. I can't see your screen right now."
+    if not is_capturing():
+        start_capture()
+        import time as _t
+
+        _t.sleep(2)
+    return read_screen_text()
+
+
+@_register(
+    "describe_code",
+    "Describe the code currently visible in the editor",
+    HOP.AUTO,
+    examples=[
+        "what code is this",
+        "describe this code",
+        "what file am I in",
+        "what am I editing",
+        "explain this code",
+    ],
+)
+def _tool_describe_code(args: dict) -> str:
+    if not _VISION_AVAILABLE:
+        return "Vision module isn't loaded. I can't see your screen right now."
+    if not is_capturing():
+        start_capture()
+        import time as _t
+
+        _t.sleep(2)
+    return describe_code_on_screen()
 
 
 # ── intent detection via Groq ─────────────────────────────────────────────────
