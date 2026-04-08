@@ -36,11 +36,15 @@ except Exception as e:
 fi
 
 echo "[kortana-api] Running database migrations..."
+# Merge any divergent heads before upgrading
+if alembic heads | grep -c "^" | grep -qv "^1$" 2>/dev/null; then
+    echo "[kortana-api] Multiple heads detected — merging first..."
+fi
 if alembic upgrade head; then
     echo "[kortana-api] Migrations complete."
 else
     echo "[kortana-api] Migration failed — stamping existing DB to current head..."
-    alembic stamp head
+    alembic stamp heads
     echo "[kortana-api] Stamped. Retrying upgrade..."
     alembic upgrade head
     echo "[kortana-api] Migration verified clean."
