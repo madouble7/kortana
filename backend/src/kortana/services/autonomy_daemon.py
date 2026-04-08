@@ -1286,6 +1286,16 @@ class AutonomyDaemon:
         except Exception as exc:
             logger.debug(f"Identity evolution failed: {exc}")
 
+        # ── self-test runner — she checks her own health ──────────
+        try:
+            from src.kortana.services.self_healer import run_self_test
+
+            test_result = await run_self_test()
+            if test_result:
+                self._emit(DaemonEvent(type="self_test", data=test_result))
+        except Exception as exc:
+            logger.debug(f"Self-test runner failed: {exc}")
+
         try:
             from dataclasses import asdict
 

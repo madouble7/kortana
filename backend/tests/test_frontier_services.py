@@ -525,3 +525,73 @@ class TestBuildDevAwarenessContext:
 
         ctx = build_dev_awareness_context()
         assert isinstance(ctx, str)
+
+
+# ---------------------------------------------------------------------------
+# self_healer
+# ---------------------------------------------------------------------------
+
+
+class TestSelfHealerParsing:
+    def test_parse_all_passed(self):
+        from src.kortana.services.self_healer import parse_test_summary
+
+        result = parse_test_summary("1402 passed, 1 skipped, 227 warnings in 137.73s")
+        assert result["passed"] == 1402
+        assert result["failed"] == 0
+        assert result["skipped"] == 1
+        assert result["success"] is True
+
+    def test_parse_with_failures(self):
+        from src.kortana.services.self_healer import parse_test_summary
+
+        result = parse_test_summary("5 failed, 1397 passed, 1 skipped in 130.00s")
+        assert result["passed"] == 1397
+        assert result["failed"] == 5
+        assert result["success"] is False
+        assert result["total"] == 1403
+
+    def test_parse_only_failures(self):
+        from src.kortana.services.self_healer import parse_test_summary
+
+        result = parse_test_summary("3 failed in 5.00s")
+        assert result["failed"] == 3
+        assert result["passed"] == 0
+        assert result["success"] is False
+
+    def test_parse_empty_output(self):
+        from src.kortana.services.self_healer import parse_test_summary
+
+        result = parse_test_summary("")
+        assert result["passed"] == 0
+        assert result["failed"] == 0
+        assert result["success"] is True  # no failures = success
+
+    def test_parse_multiline_output(self):
+        from src.kortana.services.self_healer import parse_test_summary
+
+        output = """..........F.......
+FAILED test_something.py::test_bad
+18 passed, 1 failed in 2.50s"""
+        result = parse_test_summary(output)
+        assert result["passed"] == 18
+        assert result["failed"] == 1
+        assert result["success"] is False
+
+    def test_last_test_result_initially_none(self):
+        from src.kortana.services.self_healer import get_last_test_result
+
+        # may not be None if other tests ran, but should be a dict or None
+        result = get_last_test_result()
+        assert result is None or isinstance(result, dict)
+
+    def test_run_test_subprocess_works(self):
+        from src.kortana.services.self_healer import run_test_subprocess
+
+        # Actually runs the test suite - only test a subset
+        # This just verifies the function doesn't crash
+        result = run_test_subprocess()
+        assert isinstance(result, dict)
+        assert "passed" in result
+        assert "failed" in result
+        assert "returncode" in result
