@@ -2743,3 +2743,97 @@ class DegradationRecord(Base):
     entered_at = Column(DateTime, default=func.now())
     exited_at = Column(DateTime, nullable=True)
     degradation_hash = Column(String, nullable=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# V27 — Closed Learning Loop Models
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class ExperienceRecord(Base):
+    """V27A — extracted experience from a heartbeat cycle."""
+    __tablename__ = "experience"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    experience_id = Column(String, unique=True, index=True, nullable=False)
+    source_beat_id = Column(String, nullable=True)
+    cycle_number = Column(Integer, index=True, default=0)
+    lesson_count = Column(Integer, default=0)
+    observation_count = Column(Integer, default=0)
+    decision_count = Column(Integer, default=0)
+    action_count = Column(Integer, default=0)
+    deferral_count = Column(Integer, default=0)
+    reflection_count = Column(Integer, default=0)
+    beat_duration_ms = Column(Float, default=0)
+    beat_state = Column(String, default="")
+    lessons_json = Column(Text, default="[]")
+    extracted_at = Column(DateTime, default=func.now())
+    experience_hash = Column(String, nullable=True)
+
+
+class PatternRecord(Base):
+    """V27B — recognized cross-cycle pattern."""
+    __tablename__ = "pattern"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    pattern_id = Column(String, unique=True, index=True, nullable=False)
+    pattern_type = Column(String, nullable=False)
+    strength = Column(String, default="emerging")
+    description = Column(Text, default="")
+    evidence_json = Column(Text, default="[]")
+    first_seen_cycle = Column(Integer, default=0)
+    last_seen_cycle = Column(Integer, index=True, default=0)
+    occurrence_count = Column(Integer, default=0)
+    consistency = Column(Float, default=0.0)
+    trending = Column(String, default="")
+    actionable = Column(Boolean, default=False)
+    recommended_action = Column(Text, default="")
+    addressed = Column(Boolean, default=False)
+    recognized_at = Column(DateTime, default=func.now())
+    pattern_hash = Column(String, nullable=True)
+
+
+class AdaptationRecord(Base):
+    """V27C — behavioral adaptation derived from a pattern."""
+    __tablename__ = "adaptation"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    adaptation_id = Column(String, unique=True, index=True, nullable=False)
+    adaptation_type = Column(String, nullable=False)
+    status = Column(String, default="proposed")
+    description = Column(Text, default="")
+    source_pattern_id = Column(String, nullable=True)
+    source_pattern_type = Column(String, default="")
+    parameter = Column(String, default="")
+    old_value = Column(Text, nullable=True)
+    new_value = Column(Text, nullable=True)
+    rationale = Column(Text, default="")
+    effectiveness_score = Column(Float, default=0.0)
+    cycles_active = Column(Integer, default=0)
+    max_cycles = Column(Integer, default=10)
+    proposed_at = Column(DateTime, default=func.now())
+    activated_at = Column(DateTime, nullable=True)
+    resolved_at = Column(DateTime, nullable=True)
+    adaptation_hash = Column(String, nullable=True)
+
+
+class LearningCycleReportRecord(Base):
+    """V27D — learning cycle integration report."""
+    __tablename__ = "learning_cycle_report"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    report_id = Column(String, unique=True, index=True, nullable=False)
+    cycle_number = Column(Integer, index=True, default=0)
+    experiences_extracted = Column(Integer, default=0)
+    lessons_extracted = Column(Integer, default=0)
+    patterns_recognized = Column(Integer, default=0)
+    patterns_actionable = Column(Integer, default=0)
+    adaptations_proposed = Column(Integer, default=0)
+    adaptations_activated = Column(Integer, default=0)
+    adaptations_expired = Column(Integer, default=0)
+    adaptations_rolled_back = Column(Integer, default=0)
+    learning_velocity = Column(Float, default=0.0)
+    adaptation_effectiveness = Column(Float, default=0.0)
+    context_injections_json = Column(Text, default="[]")
+    generated_at = Column(DateTime, default=func.now())
+    report_hash = Column(String, nullable=True)

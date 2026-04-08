@@ -7,10 +7,10 @@ Flow:
   2. Speech segment → faster-whisper transcribes
   3. Wake word OR recent conversation context → auto-respond
   4. Groq SSE streaming → sentence-chunked TTS with emotional prosody
-  5. TTS: Piper local (default) → edge-tts cloud → Windows SAPI fallback
+  5. TTS: Kokoro (default) → Piper → edge-tts cloud → Windows SAPI fallback
   6. Barge-in: Silero detects speech during TTS → instant interrupt
 
-Set KORTANA_TTS_ENGINE to control voice: "piper" (local), "edge" (cloud), "auto" (default).
+Set KORTANA_TTS_ENGINE to control voice: "kokoro" (local, default), "piper" (local), "edge" (cloud), "auto" (default).
 Fallback: wake word "kortana" always works, even outside conversation context.
 Run:  python c:\kortana\mcp-server\voice_daemon.py
 Auto-start: registered via Task Scheduler (kortana-voice-daemon)
@@ -85,8 +85,17 @@ _PIPER_MODEL_URL_BASE = os.getenv(
     "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/cori/high",
 )
 
-# TTS engine selection: "piper" (local), "edge" (cloud), "auto" (piper→edge)
+# TTS engine selection: "kokoro" (local), "piper" (local), "edge" (cloud),
+#                        "auto" (kokoro→piper→edge)  [default]
 _TTS_ENGINE = os.getenv("KORTANA_TTS_ENGINE", "auto")
+
+# Kokoro TTS config
+_KOKORO_VOICE = os.getenv("KORTANA_KOKORO_VOICE", "af_heart")
+_KOKORO_LANG = os.getenv("KORTANA_KOKORO_LANG", "a")  # 'a'=American, 'b'=British
+_KOKORO_SPEED = float(os.getenv("KORTANA_KOKORO_SPEED", "1.0"))
+KOKORO_SAMPLE_RATE = 24000
+_kokoro_pipeline: Any = None
+_kokoro_lock = threading.Lock()
 
 # Warm-loaded Piper voice (loaded once, reused for every utterance)
 _piper_voice: Any = None
@@ -720,6 +729,63 @@ def _speak_edge_tts(text: str) -> bool:
         return False
 
 
+def _load_kokoro_pipeline() -> bool:
+    """Lazy-load the Kokoro TTS pipeline (once). Returns True if ready."""
+    global _kokoro_pipeline
+    if _kokoro_pipeline is not None:
+        return True
+    with _kokoro_lock:
+        if _kokoro_pipeline is not None:
+            return True
+        try:
+            from kokoro import KPipeline  # type: ignore[import-untyped]
+
+            t0 = time.time()
+            _kokoro_pipeline = KPipeline(lang_code=_KOKORO_LANG)
+            log(f"Kokoro pipeline loaded in {time.time()-t0:.1f}s "
+                f"(voice={_KOKORO_VOICE}, lang={_KOKORO_LANG}, rate={KOKORO_SAMPLE_RATE})")
+            return True
+        except ImportError:
+            log("Kokoro not installed (pip install kokoro soundfile)", "WARN")
+            return False
+        except Exception as e:
+            log(f"Kokoro load error: {e}", "WARN")
+            return False
+
+
+def _speak_kokoro(text: str) -> bool:
+    """Speak via Kokoro TTS (82M param neural voice) with streaming playback."""
+    if not _load_kokoro_pipeline() or _kokoro_pipeline is None:
+        return False
+    try:
+        # Map prosody to speed adjustment
+        rate_str, _pitch = _detect_prosody(text)
+        pct = 0
+        try:
+            pct = int(rate_str.replace("%", "").replace("+", ""))
+        except ValueError:
+            pass
+        speed = _KOKORO_SPEED * max(0.7, min(1.4, 1.0 + pct / 100.0))
+
+        generator = _kokoro_pipeline(
+            text, voice=_KOKORO_VOICE, speed=speed
+        )
+
+        for _gs, _ps, audio in generator:
+            if _check_interrupt():
+                return True  # barge-in: stop gracefully
+            if audio is not None and len(audio) > 0:
+                audio_f32 = audio.astype(np.float32) if audio.dtype != np.float32 else audio
+                sd.play(audio_f32, samplerate=KOKORO_SAMPLE_RATE)
+                sd.wait()
+                if _check_interrupt():
+                    return True
+        return True
+    except Exception as e:
+        log(f"Kokoro speak error: {e}", "WARN")
+        return False
+
+
 def _load_piper_voice() -> bool:
     """Warm-load the Piper voice model (once). Returns True if ready."""
     global _piper_voice
@@ -778,9 +844,10 @@ def speak(text: str) -> None:
     """Speak text via best available TTS engine.
 
     Engine priority controlled by KORTANA_TTS_ENGINE:
-      "piper" — local only (Piper → SAPI fallback)
-      "edge"  — cloud first (edge-tts → Piper → SAPI)
-      "auto"  — sovereign first (Piper → edge-tts → SAPI)  [default]
+      "kokoro" — Kokoro only (Kokoro → SAPI fallback)
+      "piper"  — Piper only (Piper → SAPI fallback)
+      "edge"   — cloud first (edge-tts → Kokoro → Piper → SAPI)
+      "auto"   — sovereign first (Kokoro → Piper → edge-tts → SAPI)  [default]
     """
     global _is_speaking, _current_speaking_text
     if _check_interrupt():
@@ -790,19 +857,27 @@ def speak(text: str) -> None:
         _is_speaking = True
         spoken = False
         try:
-            if _TTS_ENGINE == "piper":
-                # Local sovereignty mode — no cloud at all
+            if _TTS_ENGINE == "kokoro":
+                # Kokoro sovereign mode
+                if not _check_interrupt():
+                    spoken = _speak_kokoro(text)
+            elif _TTS_ENGINE == "piper":
+                # Legacy Piper-only mode
                 if not _check_interrupt():
                     spoken = _speak_piper(text)
             elif _TTS_ENGINE == "edge":
-                # Legacy cloud-first mode
+                # Cloud-first mode with full fallback chain
                 if not _check_interrupt():
                     spoken = _speak_edge_tts(text)
                 if not spoken and not _check_interrupt():
+                    spoken = _speak_kokoro(text)
+                if not spoken and not _check_interrupt():
                     spoken = _speak_piper(text)
             else:
-                # "auto" — local first, cloud fallback
+                # "auto" — sovereign-first: Kokoro → Piper → edge-tts
                 if not _check_interrupt():
+                    spoken = _speak_kokoro(text)
+                if not spoken and not _check_interrupt():
                     spoken = _speak_piper(text)
                 if not spoken and not _check_interrupt():
                     spoken = _speak_edge_tts(text)
@@ -1995,10 +2070,12 @@ def run() -> None:
         f"[worker] stt profile={_current_stt_profile()} model={model_size} device={device} compute={compute_type}"
     )
 
-    # Download Piper model if missing (~60 MB, one-time)
-    _download_piper_model()
+    # Warm-load TTS engine (eliminates cold-start on first utterance)
+    if _TTS_ENGINE in ("kokoro", "auto"):
+        _load_kokoro_pipeline()
 
-    # Warm-load Piper voice (eliminates cold-start on first utterance)
+    # Download Piper model if missing (~60 MB, one-time) — needed as fallback
+    _download_piper_model()
     if _TTS_ENGINE in ("piper", "auto") and CORI_MODEL.exists():
         _load_piper_voice()
 

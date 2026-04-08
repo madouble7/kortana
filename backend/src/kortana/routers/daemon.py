@@ -8425,3 +8425,339 @@ async def vital_signs():
         "health": assessor.get_summary(),
         "degradation": degrade.get_summary(),
     }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# V27 — Closed Learning Loop Endpoints
+# ═══════════════════════════════════════════════════════════════════════════════
+
+from src.kortana.services.experience_extractor import get_experience_extractor  # noqa: E402
+from src.kortana.services.pattern_recognizer import get_pattern_recognizer  # noqa: E402
+from src.kortana.services.behavioral_adapter import get_behavioral_adapter  # noqa: E402
+from src.kortana.services.feedback_integrator import get_feedback_integrator  # noqa: E402
+
+
+# ── V27A: Experience Extraction ──────────────────────────────────────────────
+
+
+@router.post("/learning/extract")
+async def extract_experience(payload: dict = Body(...)):
+    """extract an experience from a completed heartbeat beat."""
+    extractor = get_experience_extractor()
+    exp = extractor.extract_from_beat(
+        beat_id=payload.get("beat_id", ""),
+        cycle_number=payload.get("cycle_number", 0),
+        state=payload.get("state", ""),
+        observations=payload.get("observations", []),
+        decisions=payload.get("decisions", []),
+        actions=payload.get("actions", []),
+        deferrals=payload.get("deferrals", []),
+        reflections=payload.get("reflections", []),
+        duration_ms=payload.get("duration_ms", 0),
+    )
+    return exp.to_dict()
+
+
+@router.get("/learning/experience/{experience_id}")
+async def get_experience(experience_id: str):
+    """get a specific extracted experience."""
+    extractor = get_experience_extractor()
+    exp = extractor.get_experience(experience_id)
+    if exp is None:
+        return {"error": "experience not found"}
+    return exp.to_dict()
+
+
+@router.get("/learning/experience/cycle/{cycle_number}")
+async def get_experience_by_cycle(cycle_number: int):
+    """get experience for a specific cycle number."""
+    extractor = get_experience_extractor()
+    exp = extractor.get_by_cycle(cycle_number)
+    if exp is None:
+        return {"error": "no experience for cycle"}
+    return exp.to_dict()
+
+
+@router.get("/learning/experiences/recent")
+async def recent_experiences(n: int = 10):
+    """get recent extracted experiences."""
+    extractor = get_experience_extractor()
+    return {"experiences": [e.to_dict() for e in extractor.get_recent(n)]}
+
+
+@router.get("/learning/lessons/{lesson_type}")
+async def lessons_by_type(lesson_type: str):
+    """get all lessons of a specific type."""
+    from src.kortana.services.experience_extractor import LessonType
+    try:
+        lt = LessonType(lesson_type)
+    except ValueError:
+        return {"error": f"unknown lesson type: {lesson_type}"}
+    extractor = get_experience_extractor()
+    return {"lessons": [l.to_dict() for l in extractor.get_lessons_by_type(lt)]}
+
+
+@router.get("/learning/lessons/actionable")
+async def actionable_lessons():
+    """get all actionable lessons."""
+    extractor = get_experience_extractor()
+    return {"lessons": [l.to_dict() for l in extractor.get_actionable_lessons()]}
+
+
+@router.get("/learning/experience/summary/stats")
+async def experience_summary():
+    """get experience extraction summary."""
+    extractor = get_experience_extractor()
+    return extractor.get_summary()
+
+
+# ── V27B: Pattern Recognition ────────────────────────────────────────────────
+
+
+@router.post("/learning/patterns/analyze")
+async def analyze_patterns(payload: dict = Body(...)):
+    """analyze experiences to recognize patterns."""
+    recognizer = get_pattern_recognizer()
+    experiences = payload.get("experiences", [])
+    cycle_range = payload.get("cycle_range")
+    if cycle_range:
+        cycle_range = tuple(cycle_range)
+    patterns = recognizer.analyze(experiences, cycle_range)
+    return {"patterns": [p.to_dict() for p in patterns]}
+
+
+@router.get("/learning/pattern/{pattern_id}")
+async def get_pattern(pattern_id: str):
+    """get a specific recognized pattern."""
+    recognizer = get_pattern_recognizer()
+    pat = recognizer.get_pattern(pattern_id)
+    if pat is None:
+        return {"error": "pattern not found"}
+    return pat.to_dict()
+
+
+@router.get("/learning/patterns/active")
+async def active_patterns():
+    """get all active (not addressed) patterns."""
+    recognizer = get_pattern_recognizer()
+    return {"patterns": [p.to_dict() for p in recognizer.get_active()]}
+
+
+@router.get("/learning/patterns/actionable")
+async def actionable_patterns():
+    """get all actionable patterns."""
+    recognizer = get_pattern_recognizer()
+    return {"patterns": [p.to_dict() for p in recognizer.get_actionable()]}
+
+
+@router.get("/learning/patterns/type/{pattern_type}")
+async def patterns_by_type(pattern_type: str):
+    """get all patterns of a specific type."""
+    recognizer = get_pattern_recognizer()
+    return {"patterns": [p.to_dict() for p in recognizer.get_by_type(pattern_type)]}
+
+
+@router.post("/learning/pattern/{pattern_id}/address")
+async def address_pattern(pattern_id: str):
+    """mark a pattern as addressed."""
+    recognizer = get_pattern_recognizer()
+    if recognizer.mark_addressed(pattern_id):
+        return {"status": "addressed"}
+    return {"error": "pattern not found"}
+
+
+@router.get("/learning/patterns/summary/stats")
+async def pattern_summary():
+    """get pattern recognition summary."""
+    recognizer = get_pattern_recognizer()
+    return recognizer.get_summary()
+
+
+# ── V27C: Behavioral Adaptation ──────────────────────────────────────────────
+
+
+@router.post("/learning/adapt/propose")
+async def propose_adaptation(payload: dict = Body(...)):
+    """propose a behavioral adaptation from a recognized pattern."""
+    adapter = get_behavioral_adapter()
+    adapt = adapter.propose_from_pattern(
+        pattern_id=payload.get("pattern_id", ""),
+        pattern_type=payload.get("pattern_type", ""),
+        pattern_description=payload.get("pattern_description", ""),
+        pattern_strength=payload.get("pattern_strength", ""),
+        recommended_action=payload.get("recommended_action", ""),
+        occurrence_count=payload.get("occurrence_count", 0),
+    )
+    if adapt is None:
+        return {"error": "adaptation not proposed (duplicate or unmapped pattern)"}
+    return adapt.to_dict()
+
+
+@router.post("/learning/adapt/{adaptation_id}/activate")
+async def activate_adaptation(adaptation_id: str):
+    """activate a proposed adaptation."""
+    adapter = get_behavioral_adapter()
+    if adapter.activate(adaptation_id):
+        return {"status": "activated"}
+    return {"error": "cannot activate (not found or not proposed)"}
+
+
+@router.post("/learning/adapt/tick")
+async def tick_adaptations():
+    """advance all active adaptations by one cycle."""
+    adapter = get_behavioral_adapter()
+    expired = adapter.tick_cycle()
+    return {
+        "expired": [a.to_dict() for a in expired],
+        "active_count": adapter.active_count,
+    }
+
+
+@router.post("/learning/adapt/{adaptation_id}/effectiveness")
+async def report_effectiveness(adaptation_id: str, payload: dict = Body(...)):
+    """report effectiveness of an adaptation."""
+    adapter = get_behavioral_adapter()
+    score = payload.get("score", 0.0)
+    if adapter.report_effectiveness(adaptation_id, score):
+        return {"status": "reported", "score": score}
+    return {"error": "adaptation not found"}
+
+
+@router.post("/learning/adapt/{adaptation_id}/rollback")
+async def rollback_adaptation(adaptation_id: str, payload: dict = Body(...)):
+    """roll back an ineffective adaptation."""
+    adapter = get_behavioral_adapter()
+    reason = payload.get("reason", "")
+    if adapter.rollback(adaptation_id, reason):
+        return {"status": "rolled_back"}
+    return {"error": "adaptation not found"}
+
+
+@router.get("/learning/adapt/{adaptation_id}")
+async def get_adaptation(adaptation_id: str):
+    """get a specific adaptation."""
+    adapter = get_behavioral_adapter()
+    adapt = adapter.get_adaptation(adaptation_id)
+    if adapt is None:
+        return {"error": "adaptation not found"}
+    return adapt.to_dict()
+
+
+@router.get("/learning/adaptations/active")
+async def active_adaptations():
+    """get all active adaptations."""
+    adapter = get_behavioral_adapter()
+    return {"adaptations": [a.to_dict() for a in adapter.get_active()]}
+
+
+@router.get("/learning/adaptations/proposed")
+async def proposed_adaptations():
+    """get all proposed adaptations."""
+    adapter = get_behavioral_adapter()
+    return {"adaptations": [a.to_dict() for a in adapter.get_proposed()]}
+
+
+@router.get("/learning/adaptations/effective")
+async def effective_adaptations():
+    """get adaptations that proved effective."""
+    adapter = get_behavioral_adapter()
+    return {"adaptations": [a.to_dict() for a in adapter.get_effective()]}
+
+
+@router.get("/learning/adaptations/recent")
+async def recent_adaptations(n: int = 10):
+    """get recent adaptations."""
+    adapter = get_behavioral_adapter()
+    return {"adaptations": [a.to_dict() for a in adapter.get_recent(n)]}
+
+
+@router.get("/learning/adapt/summary/stats")
+async def adaptation_summary():
+    """get behavioral adaptation summary."""
+    adapter = get_behavioral_adapter()
+    return adapter.get_summary()
+
+
+# ── V27D: Feedback Integration ───────────────────────────────────────────────
+
+
+@router.post("/learning/feedback/integrate")
+async def integrate_feedback(payload: dict = Body(...)):
+    """run one complete feedback integration cycle."""
+    integrator = get_feedback_integrator()
+    report = integrator.integrate(
+        cycle_number=payload.get("cycle_number", 0),
+        experience_summary=payload.get("experience_summary", {}),
+        pattern_summary=payload.get("pattern_summary", {}),
+        adaptation_summary=payload.get("adaptation_summary", {}),
+        active_adaptations=payload.get("active_adaptations"),
+        actionable_patterns=payload.get("actionable_patterns"),
+    )
+    return report.to_dict()
+
+
+@router.get("/learning/feedback/context")
+async def learning_context():
+    """get the learning context to inject into the next cycle."""
+    integrator = get_feedback_integrator()
+    return integrator.get_context_for_cycle()
+
+
+@router.post("/learning/feedback/consume")
+async def consume_injections():
+    """consume pending context injections (clears them)."""
+    integrator = get_feedback_integrator()
+    return {"injections": integrator.consume_injections()}
+
+
+@router.get("/learning/feedback/report/{report_id}")
+async def get_learning_report(report_id: str):
+    """get a specific learning cycle report."""
+    integrator = get_feedback_integrator()
+    report = integrator.get_report(report_id)
+    if report is None:
+        return {"error": "report not found"}
+    return report.to_dict()
+
+
+@router.get("/learning/feedback/recent")
+async def recent_learning_reports(n: int = 10):
+    """get recent learning cycle reports."""
+    integrator = get_feedback_integrator()
+    return {"reports": [r.to_dict() for r in integrator.get_recent(n)]}
+
+
+@router.get("/learning/feedback/velocity")
+async def learning_velocity(n: int = 10):
+    """get learning velocity trend."""
+    integrator = get_feedback_integrator()
+    return {
+        "velocity": integrator.learning_velocity,
+        "trend": integrator.get_velocity_trend(n),
+    }
+
+
+@router.get("/learning/feedback/summary/stats")
+async def feedback_summary():
+    """get feedback integration summary."""
+    integrator = get_feedback_integrator()
+    return integrator.get_summary()
+
+
+# ── V27 cross-component learning pulse ───────────────────────────────────────
+
+
+@router.get("/learning-pulse")
+async def learning_pulse():
+    """unified learning pulse across all V27 components — the learning heartbeat."""
+    extractor = get_experience_extractor()
+    recognizer = get_pattern_recognizer()
+    adapter = get_behavioral_adapter()
+    integrator = get_feedback_integrator()
+
+    return {
+        "experience": extractor.get_summary(),
+        "patterns": recognizer.get_summary(),
+        "adaptations": adapter.get_summary(),
+        "feedback": integrator.get_summary(),
+    }
