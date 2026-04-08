@@ -1965,3 +1965,99 @@ class ConvergenceSnapshotRecord(Base):
     issues_json = Column(String, nullable=False, default="[]")
     snapshot_hash = Column(String, nullable=False, default="")
     timestamp = Column(String, nullable=False, default="")
+
+
+# ── V19 — Learning Reconciliation Models ─────────────────────────────────
+
+
+class ReconciliationOutcomeRecord(Base):
+    """Recorded outcome of a reconciliation execution."""
+
+    __tablename__ = "reconciliation_outcome"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    outcome_id = Column(String, unique=True, nullable=False, index=True)
+    execution_id = Column(String, nullable=False, index=True)
+    plan_id = Column(String, nullable=False, index=True)
+    drift_type = Column(String, nullable=False, default="")
+    action_types_used = Column(String, nullable=False, default="")
+    verdict = Column(String, nullable=False, default="inconclusive")
+    time_to_resolve_sec = Column(Float, nullable=False, default=0.0)
+    retries_needed = Column(Integer, nullable=False, default=0)
+    escalated = Column(Boolean, nullable=False, default=False)
+    resolution_stable = Column(Boolean, nullable=False, default=True)
+    learning_applied = Column(Boolean, nullable=False, default=False)
+    outcome_hash = Column(String, nullable=False, default="")
+    recorded_at = Column(String, nullable=False, default="")
+
+
+class ActionEffectivenessRecord(Base):
+    """Effectiveness metrics for an action type."""
+
+    __tablename__ = "action_effectiveness"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    action_type = Column(String, nullable=False, index=True)
+    drift_type = Column(String, nullable=False, default="")
+    success_rate = Column(Float, nullable=False, default=0.0)
+    avg_retries = Column(Float, nullable=False, default=0.0)
+    avg_time_to_resolve = Column(Float, nullable=False, default=0.0)
+    sample_size = Column(Integer, nullable=False, default=0)
+    effectiveness_score = Column(Float, nullable=False, default=0.0)
+    computed_at = Column(String, nullable=False, default="")
+
+
+class StrategyRecommendationRecord(Base):
+    """Learned strategy recommendation for a drift type."""
+
+    __tablename__ = "strategy_recommendation"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    recommendation_id = Column(String, unique=True, nullable=False, index=True)
+    drift_type = Column(String, nullable=False, index=True)
+    recommended_actions = Column(String, nullable=False, default="")
+    recommended_priority = Column(String, nullable=False, default="normal")
+    recommended_max_retries = Column(Integer, nullable=False, default=3)
+    confidence_score = Column(Float, nullable=False, default=0.0)
+    reasoning = Column(String, nullable=False, default="")
+    based_on_outcomes = Column(Integer, nullable=False, default=0)
+    recommendation_hash = Column(String, nullable=False, default="")
+    created_at = Column(String, nullable=False, default="")
+
+
+class AdaptivePlanRecord(Base):
+    """Adaptive reconciliation plan with learning overrides."""
+
+    __tablename__ = "adaptive_plan"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    plan_id = Column(String, unique=True, nullable=False, index=True)
+    base_plan_id = Column(String, nullable=False, default="")
+    status = Column(String, nullable=False, default="created")
+    priority = Column(String, nullable=False, default="normal")
+    drift_signal_ids = Column(String, nullable=False, default="")
+    learning_applied = Column(Boolean, nullable=False, default=False)
+    confidence_score = Column(Float, nullable=False, default=0.0)
+    overrides_json = Column(String, nullable=False, default="[]")
+    recommendation_id = Column(String, nullable=False, default="")
+    plan_hash = Column(String, nullable=False, default="")
+    created_at = Column(String, nullable=False, default="")
+
+
+class ImprovementMetricRecord(Base):
+    """Improvement metric comparing default vs learned performance."""
+
+    __tablename__ = "improvement_metric"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    report_id = Column(String, nullable=False, index=True)
+    drift_type = Column(String, nullable=False, default="")
+    default_effectiveness_rate = Column(Float, nullable=False, default=0.0)
+    learned_effectiveness_rate = Column(Float, nullable=False, default=0.0)
+    improvement_pct = Column(Float, nullable=False, default=0.0)
+    default_avg_time = Column(Float, nullable=False, default=0.0)
+    learned_avg_time = Column(Float, nullable=False, default=0.0)
+    time_improvement_pct = Column(Float, nullable=False, default=0.0)
+    default_sample_size = Column(Integer, nullable=False, default=0)
+    learned_sample_size = Column(Integer, nullable=False, default=0)
+    metric_hash = Column(String, nullable=False, default="")

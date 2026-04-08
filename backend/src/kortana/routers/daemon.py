@@ -5830,3 +5830,231 @@ async def trigger_global_reconciliation() -> dict:
     mgr = get_convergence_manager()
     result = mgr.trigger_global_reconciliation()
     return result
+
+
+# ── V19 — Learning Reconciliation Endpoints ──────────────────────────────
+
+from src.kortana.services.outcome_tracker import get_outcome_tracker, OutcomeVerdict  # noqa: E402
+from src.kortana.services.strategy_learner import get_strategy_learner  # noqa: E402
+from src.kortana.services.adaptive_planner import get_adaptive_planner  # noqa: E402
+from src.kortana.services.improvement_tracker import get_improvement_tracker  # noqa: E402
+
+# ── Outcome Tracking ─────────────────────────────────────────────────────
+
+
+@router.post("/outcomes/record")
+async def record_outcome(
+    execution_id: str = Body(""),
+    plan_id: str = Body(""),
+    drift_type: str = Body(""),
+    action_types_used: str = Body(""),
+    verdict: str = Body("inconclusive"),
+    time_to_resolve_sec: float = Body(0.0),
+    retries_needed: int = Body(0),
+    escalated: bool = Body(False),
+    resolution_stable: bool = Body(True),
+    learning_applied: bool = Body(False),
+) -> dict:
+    """Record the outcome of a reconciliation execution."""
+    from src.kortana.services.outcome_tracker import ReconciliationOutcome  # noqa: E402
+
+    verdict_enum = OutcomeVerdict(verdict) if verdict in [v.value for v in OutcomeVerdict] else OutcomeVerdict.INCONCLUSIVE
+    outcome = ReconciliationOutcome(
+        execution_id=execution_id,
+        plan_id=plan_id,
+        drift_type=drift_type,
+        action_types_used=action_types_used.split(",") if action_types_used else [],
+        verdict=verdict_enum,
+        time_to_resolve_sec=time_to_resolve_sec,
+        retries_needed=retries_needed,
+        escalated=escalated,
+        resolution_stable=resolution_stable,
+        learning_applied=learning_applied,
+    )
+    tracker = get_outcome_tracker()
+    tracker.record_outcome(outcome)
+    return {"status": "recorded", "outcome_id": outcome.outcome_id}
+
+
+@router.get("/outcomes")
+async def get_outcomes(
+    drift_type: str = "",
+    verdict: str = "",
+    limit: int = 100,
+) -> dict:
+    """Get recorded reconciliation outcomes."""
+    tracker = get_outcome_tracker()
+    outcomes = tracker.get_outcomes(limit=limit)
+    if drift_type:
+        outcomes = [o for o in outcomes if o.drift_type == drift_type]
+    if verdict:
+        outcomes = [o for o in outcomes if o.verdict.value == verdict]
+    return {"outcomes": [o.to_dict() for o in outcomes], "count": len(outcomes)}
+
+
+@router.get("/outcomes/summary")
+async def get_outcomes_summary() -> dict:
+    """Get summary of outcome statistics."""
+    tracker = get_outcome_tracker()
+    return tracker.get_summary()
+
+
+@router.get("/outcomes/effectiveness-rate")
+async def get_effectiveness_rate(drift_type: str = "") -> dict:
+    """Get effectiveness rate, optionally by drift type."""
+    tracker = get_outcome_tracker()
+    if drift_type:
+        outcomes = tracker.get_outcomes_for_drift_type(drift_type)
+    else:
+        outcomes = tracker.get_outcomes()
+    effective = sum(
+        1 for o in outcomes
+        if o.verdict in (OutcomeVerdict.EFFECTIVE, OutcomeVerdict.PARTIALLY_EFFECTIVE)
+    )
+    rate = effective / len(outcomes) if outcomes else 0.0
+    return {"effectiveness_rate": round(rate, 3), "total": len(outcomes), "effective": effective}
+
+
+@router.get("/outcomes/escalation-rate")
+async def get_escalation_rate() -> dict:
+    """Get the escalation rate."""
+    tracker = get_outcome_tracker()
+    return {"escalation_rate": round(tracker.get_escalation_rate(), 3)}
+
+
+@router.get("/outcomes/stability-rate")
+async def get_stability_rate() -> dict:
+    """Get the stability rate."""
+    tracker = get_outcome_tracker()
+    return {"stability_rate": round(tracker.get_stability_rate(), 3)}
+
+
+# ── Strategy Learning ────────────────────────────────────────────────────
+
+
+@router.get("/strategy/effectiveness")
+async def get_action_effectiveness(drift_type: str = "") -> dict:
+    """Get action effectiveness analysis."""
+    learner = get_strategy_learner()
+    result = learner.get_action_effectiveness(drift_type=drift_type if drift_type else None)
+    return {"effectiveness": [r.__dict__ for r in result], "count": len(result)}
+
+
+@router.get("/strategy/recommendation")
+async def get_strategy_recommendation(drift_type: str = "") -> dict:
+    """Get strategy recommendation for a drift type."""
+    learner = get_strategy_learner()
+    rec = learner.recommend_for_drift_type(drift_type)
+    return rec.to_dict()
+
+
+@router.get("/strategy/priority-adjustment")
+async def get_priority_adjustment(drift_type: str = "") -> dict:
+    """Get recommended priority adjustment for a drift type."""
+    learner = get_strategy_learner()
+    return learner.get_priority_adjustment(drift_type)
+
+
+@router.get("/strategy/retry-recommendation")
+async def get_retry_recommendation(drift_type: str = "") -> dict:
+    """Get retry recommendation for a drift type."""
+    learner = get_strategy_learner()
+    return learner.get_retry_recommendation(drift_type)
+
+
+@router.get("/strategy/escalation-timing")
+async def get_escalation_timing(drift_type: str = "") -> dict:
+    """Get recommended escalation timing for a drift type."""
+    learner = get_strategy_learner()
+    return learner.get_escalation_timing(drift_type)
+
+
+# ── Adaptive Planning ────────────────────────────────────────────────────
+
+
+@router.post("/adaptive/plan")
+async def create_adaptive_plan(
+    signal_id: str = Body(""),
+    drift_type: str = Body("config_drift"),
+    severity: str = Body("medium"),
+    provider_name: str = Body("default"),
+    details: str = Body(""),
+) -> dict:
+    """Create an adaptive reconciliation plan from a drift signal."""
+    from src.kortana.services.drift_detector import DriftSignal, DriftType, DriftSeverity  # noqa: E402
+
+    dt = DriftType(drift_type) if drift_type in [d.value for d in DriftType] else DriftType.CONFIG_DRIFT
+    sv = DriftSeverity(severity) if severity in [s.value for s in DriftSeverity] else DriftSeverity.MEDIUM
+    signal = DriftSignal(
+        signal_id=signal_id or None,
+        drift_type=dt,
+        severity=sv,
+        provider_name=provider_name,
+        details=details,
+    )
+    planner = get_adaptive_planner()
+    plan = planner.plan_from_drift_adaptive(signal)
+    return plan.to_dict()
+
+
+@router.get("/adaptive/plans")
+async def get_adaptive_plans(learning_applied: str = "") -> dict:
+    """Get adaptive plans, optionally filtered by learning_applied."""
+    planner = get_adaptive_planner()
+    if learning_applied == "true":
+        plans = planner.get_adaptive_plans(learning_applied=True)
+    elif learning_applied == "false":
+        plans = planner.get_adaptive_plans(learning_applied=False)
+    else:
+        plans = planner.get_adaptive_plans()
+    return {"plans": [p.to_dict() for p in plans], "count": len(plans)}
+
+
+@router.get("/adaptive/stats")
+async def get_adaptive_stats() -> dict:
+    """Get adaptive planning statistics."""
+    planner = get_adaptive_planner()
+    return planner.get_learning_stats()
+
+
+# ── Improvement Tracking ─────────────────────────────────────────────────
+
+
+@router.post("/improvement/report")
+async def generate_improvement_report() -> dict:
+    """Generate an improvement report comparing default vs learned outcomes."""
+    tracker = get_improvement_tracker()
+    report = tracker.generate_report()
+    return report.to_dict()
+
+
+@router.get("/improvement/reports")
+async def get_improvement_reports() -> dict:
+    """Get all improvement reports."""
+    tracker = get_improvement_tracker()
+    reports = tracker.get_reports()
+    return {"reports": [r.to_dict() for r in reports], "count": len(reports)}
+
+
+@router.get("/improvement/latest")
+async def get_latest_improvement_report() -> dict:
+    """Get the latest improvement report."""
+    tracker = get_improvement_tracker()
+    report = tracker.get_latest_report()
+    return report.to_dict() if report else {"report": None}
+
+
+@router.get("/improvement/maturity")
+async def get_learning_maturity() -> dict:
+    """Get current learning maturity level."""
+    tracker = get_improvement_tracker()
+    maturity = tracker.get_learning_maturity()
+    return {"maturity": maturity.value}
+
+
+@router.get("/improvement/trend")
+async def get_improvement_trend() -> dict:
+    """Get improvement trend across reports."""
+    tracker = get_improvement_tracker()
+    trend = tracker.get_improvement_trend()
+    return {"trend": trend, "count": len(trend)}
