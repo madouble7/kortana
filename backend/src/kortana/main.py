@@ -8,7 +8,7 @@ import sys
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Any
+from typing import Any, Union
 
 from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -272,9 +272,10 @@ def create_app() -> FastAPI:
     # on every request when Redis is absent (e.g. Render free tier).
     redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     _redis_available = False
-    if RedisClient is not None and settings.ENVIRONMENT != "testing":
+    _redis_cls = RedisClient  # local non-optional binding for mypy narrowing
+    if _redis_cls is not None and settings.ENVIRONMENT != "testing":
         try:
-            _probe = RedisClient.from_url(redis_url, socket_connect_timeout=2)
+            _probe: Any = _redis_cls.from_url(redis_url, socket_connect_timeout=2)
             _probe.ping()
             _probe.close()
             _redis_available = True
@@ -284,7 +285,7 @@ def create_app() -> FastAPI:
     # Response caching middleware for optimization
     if _redis_available:
         try:
-            redis_client = RedisClient.from_url(redis_url)
+            redis_client = _redis_cls.from_url(redis_url)
             cache_strategy = CacheStrategy(
                 ttl=300,  # 5 minutes
                 key_prefix="api_cache:",
@@ -518,7 +519,7 @@ def create_app() -> FastAPI:
             }
 
         @app.get("/", tags=["system"], response_model=None)
-        async def root(request: Request):
+        async def root(request: Request) -> Union[Response, dict[str, Any]]:
             """Serve the SPA shell for browsers and JSON info for API callers."""
             accepts = request.headers.get("accept", "")
             if "text/html" in accepts:

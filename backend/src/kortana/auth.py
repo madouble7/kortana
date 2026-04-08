@@ -20,7 +20,7 @@ This module provides:
 
 import os
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional, Protocol, runtime_checkable
+from typing import Any, Optional, Protocol, runtime_checkable, cast
 
 import jwt
 from fastapi import Depends, HTTPException, status
@@ -297,7 +297,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Returns:
         True if password matches, False otherwise
     """
-    return pwd_context.verify(plain_password, hashed_password)
+    return cast(bool, pwd_context.verify(plain_password, hashed_password))
 
 
 def get_password_hash(password: str) -> str:
@@ -310,7 +310,7 @@ def get_password_hash(password: str) -> str:
     Returns:
         Secure password hash
     """
-    return pwd_context.hash(password)
+    return cast(str, pwd_context.hash(password))
 
 
 # ========================================================
