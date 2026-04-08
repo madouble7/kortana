@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -1254,7 +1255,8 @@ async def deploy_gate(
         publisher = get_alert_publisher()
         publish_result = await publisher.publish(alerts)
 
-    return {
+    # V7: Return HTTP 403 on failure so CI can read the exit code directly
+    body = {
         "pass": decision.allowed,
         "commit_sha": decision.commit_sha,
         "verdict": decision.verdict,
@@ -1272,6 +1274,28 @@ async def deploy_gate(
         ],
         "publish_result": publish_result,
     }
+
+    # Log audit trail
+    from src.kortana.services.auto_actuator import ActuationDecision, decision_to_log_dict
+    audit = ActuationDecision(
+        action="allowed" if decision.allowed else "blocked",
+        from_mode="deploy-gate",
+        to_mode="deploy" if decision.allowed else "blocked",
+        reasons=decision.reasons,
+        actor="ci",
+        decision_type="deployment",
+        commit_sha=decision.commit_sha,
+    )
+    try:
+        from src.kortana.models import PolicyDecisionLog
+        log_entry = PolicyDecisionLog(**decision_to_log_dict(audit))
+        db.add(log_entry)
+        await db.commit()
+    except Exception:
+        pass  # Audit log failure must not block deploy decision
+
+    status_code = 200 if decision.allowed else 403
+    return JSONResponse(content=body, status_code=status_code)
 
 
 @router.post("/alerts/publish")
@@ -1332,5 +1356,279 @@ async def publish_alerts_endpoint(
             for a in alerts
         ],
         "publish_result": publish_result,
+    }
+
+
+# ---------------------------------------------------------------------------
+# V7 — Automatic actuation + control room endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.post("/actuate")
+async def actuate_daemon(
+    min_consecutive: int = Query(default=3, ge=1, le=10),
+    max_mode: str = Query(default="auto"),
+    publish_alerts: bool = Query(default=True),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Evaluate and apply automatic actuation to the daemon.
+
+    Checks canary evidence and auto-escalates or de-escalates the daemon
+    based on rollout policy. Every decision is audit-logged with a
+    tamper-evident hash.
+    """
+    from src.kortana.models import CanaryRun, PolicyDecisionLog
+    from src.kortana.services.auto_actuator import (
+        apply_actuation,
+        decision_to_log_dict,
+        evaluate_actuation,
+    )
+    from src.kortana.services.alert_publisher import get_alert_publisher
+
+    daemon = get_autonomy_daemon()
+    current_mode = daemon.default_approval_mode or "self-aware"
+
+    try:
+        result = await db.execute(
+            select(CanaryRun).order_by(CanaryRun.created_at.desc()).limit(10)
+        )
+        runs = result.scalars().all()
+        run_dicts = [
+            {
+                "verdict": r.verdict,
+                "promotion_status": r.promotion_status,
+                "commit_sha": r.commit_sha,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in runs
+        ]
+    except SQLAlchemyError:
+        run_dicts = []
+
+    decision = evaluate_actuation(
+        current_mode, run_dicts,
+        min_consecutive_promoted=min_consecutive,
+        max_mode=max_mode,
+    )
+
+    applied = apply_actuation(daemon, decision)
+
+    # Persist audit log
+    try:
+        log_entry = PolicyDecisionLog(**decision_to_log_dict(decision))
+        db.add(log_entry)
+        await db.commit()
+    except Exception:
+        pass  # Audit failure must not block actuation
+
+    # Publish alerts if mode changed
+    alerts_out: list[dict[str, Any]] = []
+    publish_result: dict[str, Any] = {}
+    if applied:
+        from src.kortana.services.rollout_policy import RolloutAlert
+        mode_alert = RolloutAlert(
+            level="warning" if decision.action == "de-escalate" else "info",
+            category="actuation",
+            title=f"Daemon mode {decision.action}d: {decision.from_mode} -> {decision.to_mode}",
+            detail="; ".join(decision.reasons),
+            recommended_action="Monitor next canary cycle",
+        )
+        alerts_out = [{"level": mode_alert.level, "category": mode_alert.category,
+                       "title": mode_alert.title, "detail": mode_alert.detail}]
+        if publish_alerts:
+            publisher = get_alert_publisher()
+            publish_result = await publisher.publish([mode_alert])
+
+    return {
+        "action": decision.action,
+        "applied": applied,
+        "from_mode": decision.from_mode,
+        "to_mode": decision.to_mode,
+        "effective_mode": daemon.default_approval_mode,
+        "reasons": decision.reasons,
+        "audit_hash": decision.audit_hash,
+        "alerts": alerts_out,
+        "publish_result": publish_result,
+    }
+
+
+@router.get("/control-room")
+async def control_room(
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Control room — single-pane view of the entire autonomy system.
+
+    Combines live daemon state, canary evidence, deployment readiness,
+    escalation eligibility, trend analysis, active alerts, and recent
+    policy audit trail into one response.
+    """
+    from src.kortana.models import CanaryRun, PolicyDecisionLog
+    from src.kortana.services.rollout_policy import (
+        AutonomyLevel,
+        check_deployment,
+        check_escalation,
+        compute_trends,
+        surface_alerts,
+    )
+
+    daemon = get_autonomy_daemon()
+    daemon_status = daemon.get_status()
+    current_mode = daemon_status.get("approval_mode", "self-aware")
+
+    # Fetch canary runs
+    try:
+        result = await db.execute(
+            select(CanaryRun).order_by(CanaryRun.created_at.desc()).limit(20)
+        )
+        runs = result.scalars().all()
+        run_dicts = [
+            {
+                "verdict": r.verdict,
+                "promotion_status": r.promotion_status,
+                "commit_sha": r.commit_sha,
+                "branch": r.branch,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+                "promotion_reasons": r.promotion_reasons,
+                "score_shift_delta": r.score_shift_delta,
+                "goal_alignment_delta": r.goal_alignment_delta,
+                "outcome_growth": r.outcome_growth,
+            }
+            for r in runs
+        ]
+    except SQLAlchemyError:
+        run_dicts = []
+
+    # Fetch recent policy decisions
+    try:
+        result = await db.execute(
+            select(PolicyDecisionLog)
+            .order_by(PolicyDecisionLog.created_at.desc())
+            .limit(10)
+        )
+        decisions = result.scalars().all()
+        decision_rows = [
+            {
+                "decision_type": d.decision_type,
+                "actor": d.actor,
+                "action": d.action,
+                "from_state": d.from_state,
+                "to_state": d.to_state,
+                "reasons": d.reasons,
+                "audit_hash": d.audit_hash,
+                "commit_sha": d.commit_sha,
+                "created_at": d.created_at.isoformat() if d.created_at else None,
+            }
+            for d in decisions
+        ]
+    except SQLAlchemyError:
+        decision_rows = []
+
+    # Mode mapping
+    _mode_to_level = {
+        "manual": AutonomyLevel.SUPERVISED,
+        "self-aware": AutonomyLevel.CAUTIOUS,
+        "auto": AutonomyLevel.STANDARD,
+    }
+    cur_level = _mode_to_level.get(current_mode, AutonomyLevel.SUPERVISED)
+    next_idx = min(cur_level.rank() + 1, len(AutonomyLevel.ordered()) - 1)
+    next_level = AutonomyLevel.ordered()[next_idx]
+
+    # Policy evaluations
+    escalation = check_escalation(cur_level.value, next_level.value, run_dicts)
+    latest = run_dicts[0] if run_dicts else None
+    deployment = check_deployment(latest)
+    trends = compute_trends(run_dicts)
+    alerts = surface_alerts(escalation=escalation, deployment=deployment, trends=trends)
+
+    return {
+        "timestamp": datetime.utcnow().isoformat(),
+        "daemon": {
+            "running": daemon_status.get("running", False),
+            "mode": current_mode,
+            "level": cur_level.value,
+            "next_level": next_level.value,
+            "cycles_completed": daemon_status.get("cycles_completed", 0),
+            "uptime_seconds": daemon_status.get("uptime_seconds", 0),
+        },
+        "canary": {
+            "total_runs": len(run_dicts),
+            "latest": run_dicts[0] if run_dicts else None,
+        },
+        "deployment": {
+            "allowed": deployment.allowed,
+            "reasons": deployment.reasons,
+            "latest_commit": deployment.commit_sha,
+            "latest_verdict": deployment.verdict,
+            "latest_promotion": deployment.promotion_status,
+        },
+        "escalation": {
+            "allowed": escalation.allowed,
+            "current": cur_level.value,
+            "target": next_level.value,
+            "reasons": escalation.reasons,
+            "required_actions": escalation.required_actions,
+        },
+        "trends": {
+            "total_runs": trends.total_runs,
+            "adaptive_rate": round(trends.adaptive_rate, 3),
+            "promotion_rate": round(trends.promotion_rate, 3),
+            "trend_direction": trends.trend_direction,
+            "consecutive_promoted": trends.consecutive_promoted,
+        },
+        "alerts": [
+            {
+                "level": a.level,
+                "category": a.category,
+                "title": a.title,
+                "detail": a.detail,
+                "recommended_action": a.recommended_action,
+            }
+            for a in alerts
+        ],
+        "policy_decisions": decision_rows,
+    }
+
+
+@router.get("/audit-log")
+async def audit_log(
+    limit: int = Query(default=25, ge=1, le=100),
+    decision_type: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Query the policy decision audit log.
+
+    Returns recent policy decisions with tamper-evident audit hashes.
+    Filterable by decision type (escalation, deployment, actuation).
+    """
+    from src.kortana.models import PolicyDecisionLog
+
+    try:
+        query = select(PolicyDecisionLog).order_by(PolicyDecisionLog.created_at.desc())
+        if decision_type:
+            query = query.where(PolicyDecisionLog.decision_type == decision_type)
+        query = query.limit(limit)
+
+        result = await db.execute(query)
+        decisions = result.scalars().all()
+    except SQLAlchemyError:
+        decisions = []
+
+    return {
+        "total": len(decisions),
+        "decisions": [
+            {
+                "id": d.id,
+                "decision_type": d.decision_type,
+                "actor": d.actor,
+                "action": d.action,
+                "from_state": d.from_state,
+                "to_state": d.to_state,
+                "reasons": d.reasons,
+                "audit_hash": d.audit_hash,
+                "commit_sha": d.commit_sha,
+                "created_at": d.created_at.isoformat() if d.created_at else None,
+            }
+            for d in decisions
+        ],
     }
 

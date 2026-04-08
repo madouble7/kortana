@@ -975,3 +975,37 @@ class CanaryRun(Base):
     def __repr__(self) -> str:
         return f"<CanaryRun {self.verdict} commit={self.commit_sha} promo={self.promotion_status}>"
 
+
+class PolicyDecisionLog(Base):
+    """V7 — Audit log for every rollout policy decision.
+
+    Every escalation, deployment gate check, and alert publish is
+    persisted with a tamper-evident audit hash so the decision trail
+    is reconstructible and auditable.
+    """
+
+    __tablename__ = "policy_decision_log"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    decision_type = Column(
+        String(32), nullable=False, index=True,
+    )  # escalation | deployment | alert | actuation
+    actor = Column(
+        String(32), nullable=False, default="daemon",
+    )  # daemon | human | ci
+    action = Column(
+        String(32), nullable=False, index=True,
+    )  # allowed | blocked | escalated | de-escalated | hold
+    from_state = Column(String(64), nullable=True)
+    to_state = Column(String(64), nullable=True)
+    reasons = Column(JSON, nullable=True)  # list[str]
+    audit_hash = Column(String(64), nullable=False, index=True)
+    commit_sha = Column(String(64), nullable=True, index=True)
+    extra_metadata = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        return (
+            f"<PolicyDecisionLog {self.decision_type} {self.action} "
+            f"hash={self.audit_hash[:12]}>"
+        )
