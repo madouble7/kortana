@@ -1541,3 +1541,79 @@ class TrustEvaluationRecord(Base):
     missing_signals = Column(Text, nullable=True)
     eval_hash = Column(String(64), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+
+# ---------------------------------------------------------------------------
+# V14 — Policy Orchestration models
+# ---------------------------------------------------------------------------
+
+
+class MetadataDriftRecord(Base):
+    """V14A — Metadata drift record."""
+    __tablename__ = "metadata_drift"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    provider_url = Column(String(256), nullable=False)
+    field_name = Column(String(64), nullable=False)
+    old_value = Column(Text, nullable=True)
+    new_value = Column(Text, nullable=True)
+    severity = Column(String(32), default="low")
+    detected_at = Column(DateTime, default=datetime.utcnow)
+
+
+class SecretRotationScheduleRecord(Base):
+    """V14B — Secret rotation schedule record."""
+    __tablename__ = "secret_rotation_schedule"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    secret_id = Column(String(64), nullable=False)
+    backend = Column(String(32), default="local")
+    interval_hours = Column(Integer, default=24)
+    next_rotation_at = Column(DateTime, nullable=True)
+    last_rotated_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class SignerCertificateRecord(Base):
+    """V14C — Signer certificate record."""
+    __tablename__ = "signer_certificate"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    signer_id = Column(String(64), nullable=False)
+    certificate_hash = Column(String(64), nullable=True)
+    issued_at = Column(DateTime, nullable=True)
+    expires_at = Column(DateTime, nullable=True)
+    issuer_name = Column(String(128), nullable=True)
+    signer_status = Column(String(32), default="active")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class TrustArtifactRecord(Base):
+    """V14D — Trust artifact record."""
+    __tablename__ = "trust_artifact"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    artifact_id = Column(String(64), nullable=False)
+    artifact_type = Column(String(32), nullable=False)
+    issuer = Column(String(128), nullable=True)
+    subject = Column(String(128), nullable=True)
+    content_hash = Column(String(64), nullable=True)
+    expires_at = Column(DateTime, nullable=True)
+    artifact_hash = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class ArtifactPolicyRecord(Base):
+    """V14D — Artifact policy record."""
+    __tablename__ = "artifact_policy"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    policy_id = Column(String(64), nullable=False)
+    policy_name = Column(String(128), nullable=True)
+    required_artifacts = Column(Text, nullable=True)
+    require_all = Column(Boolean, default=True)
+    min_artifact_age_hours = Column(Float, default=0.0)
+    max_artifact_age_hours = Column(Float, default=720.0)
+    policy_hash = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)

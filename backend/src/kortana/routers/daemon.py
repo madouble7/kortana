@@ -7,8 +7,8 @@ liveness in split-service deployments.
 
 from __future__ import annotations
 
-import os
 import json
+import os
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -1006,8 +1006,8 @@ async def rollout_status(
     """
     from src.kortana.models import CanaryRun
     from src.kortana.services.rollout_policy import (
-        compute_trends,
         check_deployment,
+        compute_trends,
         surface_alerts,
     )
 
@@ -1214,8 +1214,8 @@ async def deploy_gate(
         curl -s POST .../api/daemon/deploy/gate | jq .pass
     """
     from src.kortana.models import CanaryRun
-    from src.kortana.services.rollout_policy import check_deployment, surface_alerts
     from src.kortana.services.alert_publisher import get_alert_publisher
+    from src.kortana.services.rollout_policy import check_deployment, surface_alerts
 
     try:
         if commit_sha:
@@ -1276,7 +1276,10 @@ async def deploy_gate(
     }
 
     # Log audit trail
-    from src.kortana.services.auto_actuator import ActuationDecision, decision_to_log_dict
+    from src.kortana.services.auto_actuator import (
+        ActuationDecision,
+        decision_to_log_dict,
+    )
     audit = ActuationDecision(
         action="allowed" if decision.allowed else "blocked",
         from_mode="deploy-gate",
@@ -1308,12 +1311,12 @@ async def publish_alerts_endpoint(
     to configured external sinks (Slack, Discord, generic webhooks).
     """
     from src.kortana.models import CanaryRun
+    from src.kortana.services.alert_publisher import get_alert_publisher
     from src.kortana.services.rollout_policy import (
         check_deployment,
         compute_trends,
         surface_alerts,
     )
-    from src.kortana.services.alert_publisher import get_alert_publisher
 
     try:
         result = await db.execute(
@@ -1378,12 +1381,12 @@ async def actuate_daemon(
     tamper-evident hash.
     """
     from src.kortana.models import CanaryRun, PolicyDecisionLog
+    from src.kortana.services.alert_publisher import get_alert_publisher
     from src.kortana.services.auto_actuator import (
         apply_actuation,
         decision_to_log_dict,
         evaluate_actuation,
     )
-    from src.kortana.services.alert_publisher import get_alert_publisher
 
     daemon = get_autonomy_daemon()
     current_mode = daemon.default_approval_mode or "self-aware"
@@ -1656,11 +1659,13 @@ async def actuate_daemon_gated(
     4. If applied, checks for post-actuation degradation and rolls back.
     """
     from src.kortana.models import CanaryRun, PolicyDecisionLog, RollbackEvent
+    from src.kortana.services.alert_publisher import get_alert_publisher
     from src.kortana.services.auto_actuator import (
         apply_actuation,
         decision_to_log_dict,
         evaluate_actuation,
     )
+    from src.kortana.services.policy_versioning import get_policy_registry
     from src.kortana.services.rollback_engine import (
         RollbackConfig,
         apply_rollback,
@@ -1672,8 +1677,6 @@ async def actuate_daemon_gated(
         RolloutAlert,
         check_deployment,
     )
-    from src.kortana.services.alert_publisher import get_alert_publisher
-    from src.kortana.services.policy_versioning import get_policy_registry
 
     daemon = get_autonomy_daemon()
     current_mode = daemon.default_approval_mode or "self-aware"
@@ -2726,11 +2729,11 @@ async def policy_comparison_view() -> dict[str, Any]:
     Shows current mode, proposed decision, override status, quorum
     pending, rollback likelihood, and drill SLO health — all in one view.
     """
+    from src.kortana.services.drill_scheduler import get_drill_scheduler
     from src.kortana.services.human_override import get_override_manager
     from src.kortana.services.policy_comparison import compute_policy_comparison
     from src.kortana.services.policy_versioning import get_policy_registry
     from src.kortana.services.quorum_override import get_quorum_manager
-    from src.kortana.services.drill_scheduler import get_drill_scheduler
 
     daemon = get_autonomy_daemon()
     registry = get_policy_registry()
@@ -4269,8 +4272,10 @@ async def enforce_ci_credential(
     """Enforce CI credential policy at a checkpoint."""
     from src.kortana.services.ci_credential_enforcement import (
         CICheckpoint,
-        enforce_ci_credential as _enforce,
         get_default_ci_policies,
+    )
+    from src.kortana.services.ci_credential_enforcement import (
+        enforce_ci_credential as _enforce,
     )
 
     try:
@@ -4300,8 +4305,8 @@ async def register_protected_edge(
 ) -> dict[str, Any]:
     """Register a protected runtime edge."""
     from src.kortana.services.ci_credential_enforcement import (
-        CICredentialPolicy,
         CICheckpoint,
+        CICredentialPolicy,
         get_ci_enforcer,
     )
 
@@ -4828,3 +4833,384 @@ async def get_trust_evaluations(version_id: str) -> dict[str, Any]:
         "evaluations": [e.to_dict() for e in evaluations],
         "count": len(evaluations),
     }
+
+
+
+# ---------------------------------------------------------------------------
+# V14 — Policy Orchestration endpoints
+# ---------------------------------------------------------------------------
+
+
+# V14A — IdP Metadata Sync endpoints --------------------------------------
+
+
+@router.post("/idp/metadata/register")
+async def register_idp_metadata_sync(
+    provider_url: str = Query(...),
+    sync_interval_minutes: int = Query(60),
+    auto_remediate: bool = Query(False),
+) -> dict[str, Any]:
+    """Register a provider for automated IdP metadata sync."""
+    from src.kortana.services.idp_metadata_sync import (
+        MetadataSyncPolicy,
+        get_idp_metadata_sync_scheduler,
+    )
+
+    scheduler = get_idp_metadata_sync_scheduler()
+    policy = MetadataSyncPolicy(
+        sync_interval_minutes=sync_interval_minutes,
+        auto_remediate=auto_remediate,
+    )
+    result = scheduler.register_provider(provider_url, policy)
+    return {"status": "registered", "provider_url": provider_url, "policy": result.to_dict()}
+
+
+@router.post("/idp/metadata/check-drift/{provider_url:path}")
+async def check_idp_metadata_drift(
+    provider_url: str,
+    issuer: str = Query(""),
+    jwks_uri: str = Query(""),
+    token_endpoint: str = Query(""),
+) -> dict[str, Any]:
+    """Check a provider for metadata drift."""
+    from src.kortana.services.idp_metadata_sync import get_idp_metadata_sync_scheduler
+
+    scheduler = get_idp_metadata_sync_scheduler()
+    current: dict[str, Any] = {}
+    if issuer:
+        current["issuer"] = issuer
+    if jwks_uri:
+        current["jwks_uri"] = jwks_uri
+    if token_endpoint:
+        current["token_endpoint"] = token_endpoint
+    drifts = scheduler.check_drift(provider_url, current if current else None)
+    return {"provider_url": provider_url, "drifts": [d.to_dict() for d in drifts], "count": len(drifts)}
+
+
+@router.post("/idp/metadata/reconcile/{provider_url:path}")
+async def reconcile_idp_metadata(
+    provider_url: str,
+    issuer: str = Query(""),
+    jwks_uri: str = Query(""),
+    token_endpoint: str = Query(""),
+) -> dict[str, Any]:
+    """Reconcile drifted provider metadata."""
+    from src.kortana.services.idp_metadata_sync import get_idp_metadata_sync_scheduler
+
+    scheduler = get_idp_metadata_sync_scheduler()
+    new_meta: dict[str, Any] = {}
+    if issuer:
+        new_meta["issuer"] = issuer
+    if jwks_uri:
+        new_meta["jwks_uri"] = jwks_uri
+    if token_endpoint:
+        new_meta["token_endpoint"] = token_endpoint
+    rec = scheduler.reconcile(provider_url, new_meta if new_meta else None)
+    return {"reconciliation": rec.to_dict()}
+
+
+@router.get("/idp/metadata/sync-history/{provider_url:path}")
+async def get_idp_metadata_sync_history(provider_url: str) -> dict[str, Any]:
+    """Get sync history for a provider."""
+    from src.kortana.services.idp_metadata_sync import get_idp_metadata_sync_scheduler
+
+    scheduler = get_idp_metadata_sync_scheduler()
+    history = scheduler.get_sync_history(provider_url)
+    return {"provider_url": provider_url, "history": history, "count": len(history)}
+
+
+@router.get("/idp/metadata/drift-report")
+async def get_idp_drift_report() -> dict[str, Any]:
+    """Get aggregated drift report across all providers."""
+    from src.kortana.services.idp_metadata_sync import get_idp_metadata_sync_scheduler
+
+    scheduler = get_idp_metadata_sync_scheduler()
+    return scheduler.get_drift_report()
+
+
+# V14B — External Secret Backend endpoints --------------------------------
+
+
+@router.post("/secrets/external/register")
+async def register_external_backend(
+    backend_name: str = Query(...),
+) -> dict[str, Any]:
+    """Register an external secret backend (pre-loaded adapters)."""
+    from src.kortana.services.external_secret_backend import get_external_secret_registry
+
+    registry = get_external_secret_registry()
+    backends = registry.list_backends()
+    return {"backends": backends, "count": len(backends), "requested": backend_name}
+
+
+@router.get("/secrets/external/health/{backend_name}")
+async def check_external_secret_health(backend_name: str) -> dict[str, Any]:
+    """Health-check a specific external secret backend."""
+    from src.kortana.services.external_secret_backend import (
+        SecretHealthMonitor,
+        get_external_secret_registry,
+    )
+
+    monitor = SecretHealthMonitor(get_external_secret_registry())
+    health = monitor.check_health(backend_name)
+    return {"health": health.to_dict()}
+
+
+@router.get("/secrets/external/health")
+async def check_all_external_secret_health() -> dict[str, Any]:
+    """Health-check all registered external secret backends."""
+    from src.kortana.services.external_secret_backend import (
+        SecretHealthMonitor,
+        get_external_secret_registry,
+    )
+
+    monitor = SecretHealthMonitor(get_external_secret_registry())
+    results = monitor.check_all()
+    return {"backends": [h.to_dict() for h in results], "count": len(results)}
+
+
+@router.post("/secrets/rotation/schedule")
+async def schedule_secret_rotation(
+    secret_id: str = Query(...),
+    backend: str = Query("local"),
+    interval_hours: int = Query(24),
+) -> dict[str, Any]:
+    """Schedule a recurring secret rotation."""
+    from src.kortana.services.external_secret_backend import RotationScheduler
+
+    scheduler = RotationScheduler()
+    entry = scheduler.schedule_rotation(secret_id, backend, interval_hours)
+    return {"status": "scheduled", "schedule": entry.to_dict()}
+
+
+@router.get("/secrets/rotation/due")
+async def check_due_rotations() -> dict[str, Any]:
+    """Check for due secret rotations."""
+    from src.kortana.services.external_secret_backend import RotationScheduler
+
+    scheduler = RotationScheduler()
+    due = scheduler.check_due()
+    return {"due": [e.to_dict() for e in due], "count": len(due)}
+
+
+@router.post("/secrets/rotation/execute")
+async def execute_due_rotations() -> dict[str, Any]:
+    """Execute all due secret rotations."""
+    from src.kortana.services.external_secret_backend import (
+        RotationScheduler,
+        get_external_secret_registry,
+    )
+
+    scheduler = RotationScheduler()
+    results = scheduler.execute_due_rotations(get_external_secret_registry())
+    return {"results": [{"secret_id": s, "success": ok} for s, ok in results], "count": len(results)}
+
+
+# V14C — Live Signer Inventory endpoints -----------------------------------
+
+
+@router.post("/signers/register")
+async def register_signer(
+    signer_id: str = Query(...),
+    issuer: str = Query(""),
+    expires_in_days: int = Query(365),
+) -> dict[str, Any]:
+    """Register a signer with a certificate."""
+    from src.kortana.services.live_signer_inventory import get_live_signer_registry
+
+    registry = get_live_signer_registry()
+    cert = registry.register_signer(signer_id, issuer, expires_in_days)
+    return {"status": "registered", "certificate": cert.to_dict()}
+
+
+@router.post("/signers/revoke/{signer_id}")
+async def revoke_signer(
+    signer_id: str,
+    reason: str = Query(""),
+    revoked_by: str = Query(""),
+) -> dict[str, Any]:
+    """Revoke a signer's certificate."""
+    from src.kortana.services.live_signer_inventory import get_live_signer_registry
+
+    registry = get_live_signer_registry()
+    entry = registry.revoke_signer(signer_id, reason, revoked_by)
+    if entry is None:
+        return JSONResponse(content={"error": f"Signer {signer_id!r} not found"}, status_code=404)
+    return {"status": "revoked", "revocation": entry.to_dict()}
+
+
+@router.get("/signers/{signer_id}/status")
+async def get_signer_status(signer_id: str) -> dict[str, Any]:
+    """Check a signer's current status."""
+    from src.kortana.services.live_signer_inventory import get_live_signer_registry
+
+    registry = get_live_signer_registry()
+    status = registry.check_signer_status(signer_id)
+    if status is None:
+        return JSONResponse(content={"error": f"Signer {signer_id!r} not found"}, status_code=404)
+    return {"signer_id": signer_id, "status": status.value}
+
+
+@router.post("/signers/{signer_id}/validate-chain")
+async def validate_signer_chain(signer_id: str) -> dict[str, Any]:
+    """Validate a signer's certificate chain."""
+    from src.kortana.services.live_signer_inventory import get_live_signer_registry
+
+    registry = get_live_signer_registry()
+    valid, error = registry.validate_certificate_chain(signer_id)
+    return {"signer_id": signer_id, "valid": valid, "error": error}
+
+
+@router.get("/signers/inventory")
+async def get_signer_inventory() -> dict[str, Any]:
+    """Get the full signer inventory snapshot."""
+    from src.kortana.services.live_signer_inventory import get_live_signer_registry
+
+    registry = get_live_signer_registry()
+    inventory = registry.sync_inventory()
+    return {"inventory": inventory.to_dict()}
+
+
+@router.get("/signers/revocation-list")
+async def get_signer_revocation_list() -> dict[str, Any]:
+    """Get the signer revocation list."""
+    from src.kortana.services.live_signer_inventory import get_live_signer_registry
+
+    registry = get_live_signer_registry()
+    revocations = registry.get_revocation_list()
+    return {"revocations": [r.to_dict() for r in revocations], "count": len(revocations)}
+
+
+# V14D — Trust Artifact Policy endpoints -----------------------------------
+
+
+@router.post("/artifacts/register")
+async def register_artifact(
+    artifact_type: str = Query(...),
+    issuer: str = Query(""),
+    subject: str = Query(""),
+    version_id: str = Query(""),
+) -> dict[str, Any]:
+    """Register a trust artifact."""
+    from src.kortana.services.trust_artifact_policy import (
+        ArtifactType,
+        TrustArtifact,
+        get_policy_orchestrator,
+    )
+
+    try:
+        at = ArtifactType(artifact_type)
+    except ValueError:
+        return JSONResponse(content={"error": f"Unknown artifact type: {artifact_type!r}"}, status_code=400)
+
+    orchestrator = get_policy_orchestrator()
+    artifact = orchestrator.register_artifact(
+        TrustArtifact(artifact_type=at, issuer=issuer, subject=subject, version_id=version_id)
+    )
+    return {"status": "registered", "artifact": artifact.to_dict()}
+
+
+@router.post("/artifacts/policy/define")
+async def define_artifact_policy(
+    policy_name: str = Query(...),
+    required_artifacts: str = Query(...),
+    require_all: bool = Query(True),
+    max_artifact_age_hours: float = Query(720.0),
+) -> dict[str, Any]:
+    """Define an artifact policy."""
+    from src.kortana.services.trust_artifact_policy import (
+        ArtifactType,
+        get_policy_orchestrator,
+    )
+
+    types: list[ArtifactType] = []
+    for s in required_artifacts.split(","):
+        s = s.strip()
+        if s:
+            try:
+                types.append(ArtifactType(s))
+            except ValueError:
+                return JSONResponse(content={"error": f"Unknown artifact type: {s!r}"}, status_code=400)
+
+    orchestrator = get_policy_orchestrator()
+    policy = orchestrator.define_policy(policy_name, types, require_all, max_artifact_age_hours)
+    return {"status": "defined", "policy": policy.to_dict()}
+
+
+@router.post("/artifacts/deploy/{version_id}")
+async def deploy_with_artifacts(
+    version_id: str,
+    session_id: str = Query(...),
+    policy_name: str = Query(""),
+    required_artifacts: str = Query(""),
+) -> dict[str, Any]:
+    """Deploy a version gated by artifact policy."""
+    from src.kortana.services.trust_artifact_policy import (
+        ArtifactType,
+        get_policy_orchestrator,
+    )
+
+    orchestrator = get_policy_orchestrator()
+    policies = orchestrator.get_policies()
+    policy = None
+    for p in policies:
+        if p.policy_name == policy_name:
+            policy = p
+            break
+    if policy is None and required_artifacts:
+        types = []
+        for s in required_artifacts.split(","):
+            s = s.strip()
+            if s:
+                try:
+                    types.append(ArtifactType(s))
+                except ValueError:
+                    return JSONResponse(content={"error": f"Unknown artifact type: {s!r}"}, status_code=400)
+        policy = orchestrator.define_policy(f"deploy-{version_id}", types)
+    if policy is None:
+        return JSONResponse(content={"error": "No policy specified"}, status_code=400)
+
+    result, error = orchestrator.promote_with_artifacts(version_id, session_id, policy)
+    if error:
+        return JSONResponse(content={"error": error}, status_code=400)
+    return {"status": "promoted", "version_id": version_id}
+
+
+@router.get("/artifacts")
+async def list_artifacts(artifact_type: str = Query("")) -> dict[str, Any]:
+    """List registered artifacts."""
+    from src.kortana.services.trust_artifact_policy import (
+        ArtifactType,
+        get_policy_orchestrator,
+    )
+
+    orchestrator = get_policy_orchestrator()
+    if artifact_type:
+        try:
+            at = ArtifactType(artifact_type)
+        except ValueError:
+            return JSONResponse(content={"error": f"Unknown artifact type: {artifact_type!r}"}, status_code=400)
+        artifacts = orchestrator.get_artifacts(at)
+    else:
+        artifacts = orchestrator.get_artifacts()
+    return {"artifacts": [a.to_dict() for a in artifacts], "count": len(artifacts)}
+
+
+@router.get("/artifacts/policies")
+async def list_artifact_policies() -> dict[str, Any]:
+    """List defined artifact policies."""
+    from src.kortana.services.trust_artifact_policy import get_policy_orchestrator
+
+    orchestrator = get_policy_orchestrator()
+    policies = orchestrator.get_policies()
+    return {"policies": [p.to_dict() for p in policies], "count": len(policies)}
+
+
+@router.get("/artifacts/verifications/{version_id}")
+async def get_artifact_verifications(version_id: str) -> dict[str, Any]:
+    """Get artifact verifications for a version."""
+    from src.kortana.services.trust_artifact_policy import get_policy_orchestrator
+
+    orchestrator = get_policy_orchestrator()
+    verifications = orchestrator.get_verifications(version_id)
+    return {"version_id": version_id, "verifications": [v.to_dict() for v in verifications], "count": len(verifications)}
