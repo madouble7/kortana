@@ -123,7 +123,9 @@ _VAD_SILENCE_MS = int(os.getenv("KORTANA_VAD_SILENCE_MS", "900"))
 _VAD_SILENCE_FRAMES = _VAD_SILENCE_MS // _VAD_FRAME_MS  # default 30 frames
 _VAD_MIN_SPEECH_FRAMES = 5  # minimum ~150ms of speech to register
 _VAD_MAX_SPEECH_SECONDS = 30  # max utterance length
-_VAD_NOISE_GATE_RMS = float(os.getenv("KORTANA_NOISE_GATE", "0.005"))  # skip below thisch to register
+_VAD_NOISE_GATE_RMS = float(
+    os.getenv("KORTANA_NOISE_GATE", "0.005")
+)  # skip below thisch to register
 _VAD_MAX_SPEECH_SECONDS = 30  # max utterance length
 _VAD_NOISE_GATE_RMS = float(os.getenv("KORTANA_NOISE_GATE", "0.005"))  # skip below this
 _CONVERSATION_TIMEOUT = 60  # seconds — auto-respond without wake word if recently spoke
@@ -885,6 +887,96 @@ def _recall_relevant(query: str, n: int = 3) -> list[str]:
         return results.get("documents", [[]])[0]
     except Exception:
         return []
+
+
+_CHROMA_MAX_EPISODES = int(os.getenv("KORTANA_MAX_MEMORIES", "500"))
+_CHROMA_CULL_BATCH = 50
+
+
+def _cull_old_memories() -> None:
+    """Garbage-collect old episodic memories when count exceeds threshold."""
+    if not _chroma_collection:
+        return
+    try:
+        count = _chroma_collection.count()
+        if count <= _CHROMA_MAX_EPISODES:
+            return
+
+        log(f"[memory] culling: {count} episodes > {_CHROMA_MAX_EPISODES} max")
+
+        all_data = _chroma_collection.get(include=["documents", "metadatas"])
+        docs = all_data.get("documents", [])
+        metas = all_data.get("metadatas", [])
+        ids = all_data.get("ids", [])
+
+        if not docs or not metas or not ids:
+            return
+
+        indexed = sorted(
+            zip(ids, docs, metas),
+            key=lambda x: float(x[2].get("timestamp", 0)),
+        )
+
+        to_cull = indexed[:_CHROMA_CULL_BATCH]
+        cull_ids = [item[0] for item in to_cull]
+        cull_docs = [item[1] for item in to_cull]
+
+        groq_key = os.getenv("GROQ_API_KEY", "")
+        if groq_key:
+            try:
+                combined = "\n---\n".join(cull_docs)
+                with httpx.Client(timeout=15.0) as client:
+                    r = client.post(
+                        "https://api.groq.com/openai/v1/chat/completions",
+                        headers={"Authorization": f"Bearer {groq_key}"},
+                        json={
+                            "model": "llama-3.3-70b-versatile",
+                            "messages": [
+                                {
+                                    "role": "system",
+                                    "content": (
+                                        "summarize these voice conversation excerpts into 3-5 dense "
+                                        "memory paragraphs preserving key facts, preferences, "
+                                        "emotional moments, and recurring themes. be concise."
+                                    ),
+                                },
+                                {"role": "user", "content": combined},
+                            ],
+                            "max_tokens": 500,
+                            "temperature": 0.3,
+                        },
+                    )
+                if r.status_code == 200:
+                    summary = (
+                        r.json()
+                        .get("choices", [{}])[0]
+                        .get("message", {})
+                        .get("content", "")
+                    )
+                    if summary:
+                        _chroma_collection.delete(ids=cull_ids)
+                        _chroma_collection.add(
+                            documents=[summary],
+                            ids=[f"summary_{int(time.time())}"],
+                            metadatas=[{
+                                "timestamp": time.time(),
+                                "type": "summary",
+                                "source_count": len(cull_ids),
+                            }],
+                        )
+                        log(
+                            f"[memory] culled {len(cull_ids)} episodes -> 1 dense summary "
+                            f"({_chroma_collection.count()} remaining)"
+                        )
+                        return
+            except Exception as e:
+                log(f"[memory] cull summarization failed: {e}", "WARN")
+
+        _chroma_collection.delete(ids=cull_ids)
+        log(f"[memory] culled {len(cull_ids)} oldest episodes (no summary)")
+
+    except Exception as e:
+        log(f"[memory] cull error: {e}", "WARN")
 
 
 # ── backend chat ───────────────────────────────────────────────────────────────
@@ -1773,7 +1865,7 @@ def _run_silero_listener() -> None:
         )
 
         # Noise gate - skip frames below noise floor (keyboard, breathing, fans)
-        rms = float(np.sqrt(np.mean(audio_frame ** 2)))
+        rms = float(np.sqrt(np.mean(audio_frame**2)))
         if rms < _VAD_NOISE_GATE_RMS:
             if is_speech_active:
                 silence_frames += 1
