@@ -5541,3 +5541,292 @@ async def verify_all_evidence_chains() -> dict:
     reg = get_evidence_chain_registry()
     results = reg.verify_all()
     return {"results": {cid: {"valid": ok, "reason": reason} for cid, (ok, reason) in results.items()}}
+
+
+
+# ── V18 — Autonomous Reconciliation Endpoints ───────────────────────────
+
+
+# ── V18A — Drift Detector ────────────────────────────────────────────────
+
+from src.kortana.services.drift_detector import (  # noqa: E402
+    get_drift_detector,
+    DesiredState,
+    DriftType,
+    DriftStatus,
+)
+
+
+@router.post("/drift/register-desired-state")
+async def register_desired_state(
+    provider_name: str = Body(...),
+    expected_version: str = Body(""),
+    expected_connected: bool = Body(True),
+    expected_healthy: bool = Body(True),
+) -> dict:
+    """Register desired state for a provider."""
+    detector = get_drift_detector()
+    state = DesiredState(
+        provider_name=provider_name,
+        expected_version=expected_version,
+        expected_connected=expected_connected,
+        expected_healthy=expected_healthy,
+    )
+    detector.register_desired_state(state)
+    return {"status": "registered", "desired_state": state.to_dict()}
+
+
+@router.post("/drift/detect-provider")
+async def detect_provider_drift(
+    provider_name: str = Body(...),
+    actual_version: str = Body(""),
+    actual_connected: bool = Body(True),
+    actual_healthy: bool = Body(True),
+) -> dict:
+    """Detect drift for a specific provider."""
+    detector = get_drift_detector()
+    signals = detector.detect_provider_drift(provider_name, actual_version, actual_connected, actual_healthy)
+    return {"signals": [s.to_dict() for s in signals], "drift_count": len(signals)}
+
+
+@router.post("/drift/detect-rollout-stall")
+async def detect_rollout_stall(
+    provider_name: str = Body(...),
+    rollout_id: str = Body(...),
+    progress_pct: float = Body(0.0),
+    stall_threshold_pct: float = Body(0.0),
+) -> dict:
+    """Detect stalled rollout."""
+    detector = get_drift_detector()
+    signal = detector.detect_rollout_stall(provider_name, rollout_id, progress_pct, stall_threshold_pct)
+    return {"signal": signal.to_dict() if signal else None, "stalled": signal is not None}
+
+
+@router.post("/drift/detect-evidence-gap")
+async def detect_evidence_gap(
+    chain_id: str = Body(...),
+    missing_stages: list = Body(default=[]),
+) -> dict:
+    """Detect evidence chain gap."""
+    detector = get_drift_detector()
+    signal = detector.detect_evidence_gap(chain_id, missing_stages)
+    return {"signal": signal.to_dict() if signal else None, "has_gap": signal is not None}
+
+
+@router.post("/drift/detect-config")
+async def detect_config_drift(
+    provider_name: str = Body(...),
+    config_key: str = Body(...),
+    expected: str = Body(...),
+    actual: str = Body(...),
+) -> dict:
+    """Detect configuration drift."""
+    detector = get_drift_detector()
+    signal = detector.detect_config_drift(provider_name, config_key, expected, actual)
+    return {"signal": signal.to_dict() if signal else None, "drifted": signal is not None}
+
+
+@router.post("/drift/{signal_id}/acknowledge")
+async def acknowledge_drift(signal_id: str) -> dict:
+    """Acknowledge a drift signal."""
+    detector = get_drift_detector()
+    ok = detector.acknowledge_drift(signal_id)
+    return {"status": "acknowledged" if ok else "not_found"}
+
+
+@router.post("/drift/{signal_id}/resolve")
+async def resolve_drift(signal_id: str) -> dict:
+    """Resolve a drift signal."""
+    detector = get_drift_detector()
+    ok = detector.resolve_drift(signal_id)
+    return {"status": "resolved" if ok else "not_found"}
+
+
+@router.post("/drift/{signal_id}/ignore")
+async def ignore_drift(signal_id: str) -> dict:
+    """Ignore a drift signal."""
+    detector = get_drift_detector()
+    ok = detector.ignore_drift(signal_id)
+    return {"status": "ignored" if ok else "not_found"}
+
+
+@router.get("/drift/signals")
+async def list_drift_signals(provider_name: str = "", drift_type: str = "", status: str = "") -> dict:
+    """List drift signals."""
+    detector = get_drift_detector()
+    dt = DriftType(drift_type) if drift_type else None
+    st = DriftStatus(status) if status else None
+    signals = detector.get_drift_signals(provider_name, dt, st)
+    return {"signals": [s.to_dict() for s in signals], "count": len(signals)}
+
+
+@router.get("/drift/active")
+async def get_active_drifts() -> dict:
+    """Get active drift signals."""
+    detector = get_drift_detector()
+    active = detector.get_active_drifts()
+    return {"active_drifts": [s.to_dict() for s in active], "count": len(active)}
+
+
+# ── V18B — Reconciliation Planner ────────────────────────────────────────
+
+from src.kortana.services.reconciliation_planner import (  # noqa: E402
+    get_reconciliation_planner,
+    PlanStatus,
+    PlanPriority,
+)
+
+
+@router.post("/reconciliation/plan-from-drift")
+async def plan_from_drift(signal_id: str = Body(...)) -> dict:
+    """Generate a reconciliation plan from a drift signal."""
+    detector = get_drift_detector()
+    signals = detector.get_drift_signals()
+    matched = [s for s in signals if s.signal_id == signal_id]
+    if not matched:
+        return {"error": "Signal not found"}
+    planner = get_reconciliation_planner()
+    plan = planner.plan_from_drift(matched[0])
+    return {"status": "planned", "plan": plan.to_dict()}
+
+
+@router.post("/reconciliation/plan-from-active")
+async def plan_from_active_drifts() -> dict:
+    """Generate a reconciliation plan from all active drifts."""
+    detector = get_drift_detector()
+    active = detector.get_active_drifts()
+    planner = get_reconciliation_planner()
+    plan = planner.plan_from_batch(active)
+    return {"status": "planned", "plan": plan.to_dict(), "drift_count": len(active)}
+
+
+@router.post("/reconciliation/{plan_id}/approve")
+async def approve_reconciliation_plan(plan_id: str) -> dict:
+    """Approve a reconciliation plan."""
+    planner = get_reconciliation_planner()
+    ok = planner.approve_plan(plan_id)
+    return {"status": "approved" if ok else "not_found"}
+
+
+@router.post("/reconciliation/{plan_id}/cancel")
+async def cancel_reconciliation_plan(plan_id: str) -> dict:
+    """Cancel a reconciliation plan."""
+    planner = get_reconciliation_planner()
+    ok = planner.cancel_plan(plan_id)
+    return {"status": "cancelled" if ok else "not_found"}
+
+
+@router.get("/reconciliation/plans")
+async def list_reconciliation_plans(status: str = "", priority: str = "") -> dict:
+    """List reconciliation plans."""
+    planner = get_reconciliation_planner()
+    st = PlanStatus(status) if status else None
+    pr = PlanPriority(priority) if priority else None
+    plans = planner.get_plans(st, pr)
+    return {"plans": [p.to_dict() for p in plans], "count": len(plans)}
+
+
+# ── V18C — Reconciliation Executor ───────────────────────────────────────
+
+from src.kortana.services.reconciliation_executor import (  # noqa: E402
+    get_reconciliation_executor,
+    ExecutionStatus,
+)
+
+
+@router.post("/reconciliation/{plan_id}/execute")
+async def execute_reconciliation_plan(plan_id: str) -> dict:
+    """Execute a reconciliation plan."""
+    planner = get_reconciliation_planner()
+    plan = planner.get_plan(plan_id)
+    if plan is None:
+        return {"error": "Plan not found"}
+    executor = get_reconciliation_executor()
+    execution = executor.execute_plan(plan)
+    return {"status": execution.status.value, "execution": execution.to_dict()}
+
+
+@router.post("/reconciliation/executions/{execution_id}/retry/{step_id}")
+async def retry_reconciliation_step(execution_id: str, step_id: str) -> dict:
+    """Retry a failed reconciliation step."""
+    executor = get_reconciliation_executor()
+    result = executor.retry_step(execution_id, step_id)
+    if result is None:
+        return {"error": "Step not found or not retryable"}
+    return {"status": result.outcome.value, "step": result.to_dict()}
+
+
+@router.post("/reconciliation/executions/{execution_id}/escalate/{step_id}")
+async def escalate_reconciliation_step(
+    execution_id: str,
+    step_id: str,
+    reason: str = Body(""),
+) -> dict:
+    """Escalate a failed step to human intervention."""
+    executor = get_reconciliation_executor()
+    result = executor.escalate_step(execution_id, step_id, reason)
+    if result is None:
+        return {"error": "Step not found or not escalatable"}
+    return {"status": "escalated", "step": result.to_dict()}
+
+
+@router.get("/reconciliation/executions")
+async def list_reconciliation_executions(plan_id: str = "", status: str = "") -> dict:
+    """List reconciliation executions."""
+    executor = get_reconciliation_executor()
+    st = ExecutionStatus(status) if status else None
+    executions = executor.get_executions(plan_id, st)
+    return {"executions": [e.to_dict() for e in executions], "count": len(executions)}
+
+
+# ── V18D — Convergence Manager ───────────────────────────────────────────
+
+from src.kortana.services.convergence_manager import (  # noqa: E402
+    get_convergence_manager,
+)
+
+
+@router.post("/convergence/snapshot")
+async def take_convergence_snapshot() -> dict:
+    """Take a point-in-time convergence snapshot."""
+    mgr = get_convergence_manager()
+    snapshot = mgr.take_snapshot()
+    return {"snapshot": snapshot.to_dict()}
+
+
+@router.get("/convergence/status")
+async def get_convergence_status() -> dict:
+    """Get current convergence status."""
+    mgr = get_convergence_manager()
+    status = mgr.get_status()
+    healthy = mgr.is_healthy()
+    latest = mgr.get_latest_snapshot()
+    return {
+        "status": status.value,
+        "healthy": healthy,
+        "latest_snapshot": latest.to_dict() if latest else None,
+    }
+
+
+@router.get("/convergence/history")
+async def get_convergence_history(limit: int = 50) -> dict:
+    """Get convergence history."""
+    mgr = get_convergence_manager()
+    history = mgr.get_history(limit)
+    return {"snapshots": [s.to_dict() for s in history], "count": len(history)}
+
+
+@router.get("/convergence/systemic-issues")
+async def get_systemic_issues() -> dict:
+    """Get current systemic issues."""
+    mgr = get_convergence_manager()
+    issues = mgr.get_systemic_issues()
+    return {"issues": [i.to_dict() for i in issues], "count": len(issues)}
+
+
+@router.post("/convergence/global-reconciliation")
+async def trigger_global_reconciliation() -> dict:
+    """Trigger global reconciliation for all active drifts."""
+    mgr = get_convergence_manager()
+    result = mgr.trigger_global_reconciliation()
+    return result

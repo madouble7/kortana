@@ -1874,3 +1874,94 @@ class EvidenceEntryRecord(Base):
     previous_hash = Column(String(64), default="")
     entry_hash = Column(String(64), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+# ── V18 — Autonomous Reconciliation Models ───────────────────────────────
+
+
+class DriftSignalRecord(Base):
+    """Detected drift signal."""
+
+    __tablename__ = "drift_signal"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    signal_id = Column(String, unique=True, nullable=False, index=True)
+    drift_type = Column(String, nullable=False)
+    severity = Column(String, nullable=False)
+    status = Column(String, nullable=False, default="active")
+    provider_name = Column(String, nullable=False, default="")
+    expected_value = Column(String, nullable=False, default="")
+    actual_value = Column(String, nullable=False, default="")
+    description = Column(String, nullable=False, default="")
+    signal_hash = Column(String, nullable=False, default="")
+    detected_at = Column(String, nullable=False, default="")
+    resolved_at = Column(String, nullable=False, default="")
+
+
+class ReconciliationPlanRecord(Base):
+    """Reconciliation plan generated from drift signals."""
+
+    __tablename__ = "reconciliation_plan"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    plan_id = Column(String, unique=True, nullable=False, index=True)
+    status = Column(String, nullable=False, default="created")
+    priority = Column(String, nullable=False, default="normal")
+    drift_signal_ids = Column(String, nullable=False, default="")
+    actions_json = Column(String, nullable=False, default="[]")
+    description = Column(String, nullable=False, default="")
+    plan_hash = Column(String, nullable=False, default="")
+    created_at = Column(String, nullable=False, default="")
+    completed_at = Column(String, nullable=False, default="")
+
+
+class ReconciliationStepRecord(Base):
+    """Result of executing a single reconciliation step."""
+
+    __tablename__ = "reconciliation_step"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    step_id = Column(String, unique=True, nullable=False, index=True)
+    execution_id = Column(String, nullable=False, index=True)
+    action_id = Column(String, nullable=False, default="")
+    action_type = Column(String, nullable=False, default="")
+    target_provider = Column(String, nullable=False, default="")
+    outcome = Column(String, nullable=False, default="")
+    attempts = Column(Integer, nullable=False, default=1)
+    max_attempts = Column(Integer, nullable=False, default=3)
+    error_message = Column(String, nullable=False, default="")
+    result_hash = Column(String, nullable=False, default="")
+    executed_at = Column(String, nullable=False, default="")
+
+
+class ReconciliationExecutionRecord(Base):
+    """Full execution of a reconciliation plan."""
+
+    __tablename__ = "reconciliation_execution"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    execution_id = Column(String, unique=True, nullable=False, index=True)
+    plan_id = Column(String, nullable=False, index=True)
+    status = Column(String, nullable=False, default="pending")
+    success_count = Column(Integer, nullable=False, default=0)
+    failure_count = Column(Integer, nullable=False, default=0)
+    execution_hash = Column(String, nullable=False, default="")
+    started_at = Column(String, nullable=False, default="")
+    completed_at = Column(String, nullable=False, default="")
+
+
+class ConvergenceSnapshotRecord(Base):
+    """Point-in-time convergence state."""
+
+    __tablename__ = "convergence_snapshot"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    snapshot_id = Column(String, unique=True, nullable=False, index=True)
+    status = Column(String, nullable=False, default="unknown")
+    health = Column(String, nullable=False, default="healthy")
+    overall_score = Column(Float, nullable=False, default=100.0)
+    active_drift_count = Column(Integer, nullable=False, default=0)
+    active_reconciliation_count = Column(Integer, nullable=False, default=0)
+    issues_json = Column(String, nullable=False, default="[]")
+    snapshot_hash = Column(String, nullable=False, default="")
+    timestamp = Column(String, nullable=False, default="")
