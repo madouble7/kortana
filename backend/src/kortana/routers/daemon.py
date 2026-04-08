@@ -2123,3 +2123,285 @@ async def replay_policy(
         "changed_count": replay.changed_count,
         "outcomes": replay.outcomes,
     }
+
+
+
+# ---------------------------------------------------------------------------
+# V8C — Chaos engine / incident drill endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.post("/chaos/run")
+async def run_chaos_drill(
+    scenario: str = Query(default="all"),
+    current_mode: str = Query(default="self-aware"),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Run a chaos drill scenario (or all scenarios).
+
+    Injects synthetic degraded states and verifies the control loop
+    responds correctly with cooldown, rollback, and alerts.
+    """
+    from src.kortana.models import ChaosScenarioRecord
+    from src.kortana.services.chaos_engine import (
+        SCENARIO_CATALOGUE,
+        run_all_scenarios,
+        run_scenario,
+    )
+
+    if scenario == "all":
+        results = run_all_scenarios(current_mode)
+    else:
+        results = [run_scenario(scenario, current_mode)]
+
+    # Persist drill records
+    for r in results:
+        try:
+            record = ChaosScenarioRecord(
+                scenario=r.scenario,
+                passed=r.passed,
+                checks=r.checks,
+                daemon_mode_before=r.daemon_mode_before,
+                daemon_mode_after=r.daemon_mode_after,
+                rollback_triggered=r.rollback_triggered,
+                alerts_fired=r.alerts_fired,
+                duration_ms=r.duration_ms,
+            )
+            db.add(record)
+        except Exception:
+            pass
+    try:
+        await db.commit()
+    except Exception:
+        pass
+
+    all_passed = all(r.passed for r in results)
+    return {
+        "all_passed": all_passed,
+        "total_scenarios": len(results),
+        "passed_count": sum(1 for r in results if r.passed),
+        "failed_count": sum(1 for r in results if not r.passed),
+        "available_scenarios": list(SCENARIO_CATALOGUE.keys()),
+        "results": [r.to_dict() for r in results],
+    }
+
+
+@router.get("/chaos/history")
+async def chaos_drill_history(
+    limit: int = Query(default=25, ge=1, le=100),
+    scenario: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Query chaos drill history with optional scenario filter."""
+    from src.kortana.models import ChaosScenarioRecord
+
+    try:
+        stmt = select(ChaosScenarioRecord).order_by(
+            ChaosScenarioRecord.created_at.desc()
+        )
+        if scenario:
+            stmt = stmt.where(ChaosScenarioRecord.scenario == scenario)
+        stmt = stmt.limit(limit)
+        result = await db.execute(stmt)
+        records = result.scalars().all()
+    except SQLAlchemyError:
+        records = []
+
+    return {
+        "total": len(records),
+        "records": [
+            {
+                "id": r.id,
+                "scenario": r.scenario,
+                "passed": r.passed,
+                "checks": r.checks,
+                "daemon_mode_before": r.daemon_mode_before,
+                "daemon_mode_after": r.daemon_mode_after,
+                "rollback_triggered": r.rollback_triggered,
+                "duration_ms": r.duration_ms,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in records
+        ],
+    }
+
+
+# ---------------------------------------------------------------------------
+# V8D — Human override protocol endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.post("/override")
+async def create_override(
+    mode: str = Query(...),
+    reason: str = Query(...),
+    expires_in_minutes: int = Query(default=60, ge=1, le=10080),
+    created_by: str = Query(default="matt"),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Create a human override that locks daemon mode.
+
+    The override takes precedence over automated actuation until
+    it expires or is explicitly revoked.
+    """
+    from src.kortana.models import HumanOverrideRecord, PolicyDecisionLog
+    from src.kortana.services.human_override import get_override_manager
+    from src.kortana.services.policy_versioning import get_policy_registry
+
+    manager = get_override_manager()
+    override = manager.create(
+        mode=mode,
+        reason=reason,
+        expires_in_minutes=expires_in_minutes,
+        created_by=created_by,
+    )
+
+    # Apply to daemon immediately
+    daemon = get_autonomy_daemon()
+    old_mode = daemon.default_approval_mode
+    daemon.default_approval_mode = mode
+
+    # Get policy version
+    registry = get_policy_registry()
+    policy_version = registry.current.version if registry.current else None
+
+    # Persist to DB
+    try:
+        record = HumanOverrideRecord(
+            mode=override.mode,
+            reason=override.reason,
+            expires_at=override.expires_at,
+            created_by=override.created_by,
+            audit_hash=override.audit_hash,
+            policy_version=policy_version,
+        )
+        db.add(record)
+
+        # Also add to audit log
+        log_entry = PolicyDecisionLog(
+            decision_type="human_override",
+            actor=created_by,
+            action="override",
+            from_state=old_mode,
+            to_state=mode,
+            reasons=[reason],
+            audit_hash=override.audit_hash,
+            extra_metadata={
+                "expires_at": override.expires_at.isoformat(),
+                "expires_in_minutes": expires_in_minutes,
+                "policy_version": policy_version,
+            },
+        )
+        db.add(log_entry)
+        await db.commit()
+    except Exception:
+        pass
+
+    return {
+        "created": True,
+        "override": override.to_dict(),
+        "previous_mode": old_mode,
+        "effective_mode": mode,
+        "policy_version": policy_version,
+    }
+
+
+@router.get("/override/active")
+async def get_active_overrides() -> dict[str, Any]:
+    """Return all currently active (non-expired, non-revoked) overrides."""
+    from src.kortana.services.human_override import get_override_manager
+
+    manager = get_override_manager()
+    active = manager.all_active()
+
+    return {
+        "count": len(active),
+        "overrides": [o.to_dict() for o in active],
+        "effective_override": manager.active().to_dict() if manager.active() else None,
+    }
+
+
+@router.post("/override/{override_id}/revoke")
+async def revoke_override(
+    override_id: int,
+    revoked_by: str = Query(default="matt"),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Revoke an active override by ID.
+
+    The daemon mode is NOT automatically changed back — the next
+    actuation cycle will re-evaluate the correct mode.
+    """
+    from src.kortana.models import PolicyDecisionLog
+    from src.kortana.services.human_override import get_override_manager
+
+    manager = get_override_manager()
+    revoked = manager.revoke(override_id, revoked_by=revoked_by)
+
+    if not revoked:
+        return JSONResponse(
+            content={"error": f"Override {override_id} not found or already revoked"},
+            status_code=404,
+        )
+
+    # Audit log the revocation
+    try:
+        log_entry = PolicyDecisionLog(
+            decision_type="human_override",
+            actor=revoked_by,
+            action="revoke_override",
+            from_state="",
+            to_state="",
+            reasons=[f"Override #{override_id} revoked by {revoked_by}"],
+            audit_hash="",
+        )
+        db.add(log_entry)
+        await db.commit()
+    except Exception:
+        pass
+
+    return {
+        "revoked": True,
+        "override_id": override_id,
+        "revoked_by": revoked_by,
+        "note": "Daemon mode unchanged — next actuation cycle will re-evaluate",
+    }
+
+
+@router.get("/override/history")
+async def override_history(
+    limit: int = Query(default=25, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Query override history from DB."""
+    from src.kortana.models import HumanOverrideRecord
+
+    try:
+        result = await db.execute(
+            select(HumanOverrideRecord)
+            .order_by(HumanOverrideRecord.created_at.desc())
+            .limit(limit)
+        )
+        records = result.scalars().all()
+    except SQLAlchemyError:
+        records = []
+
+    return {
+        "total": len(records),
+        "overrides": [
+            {
+                "id": r.id,
+                "mode": r.mode,
+                "reason": r.reason,
+                "expires_at": r.expires_at.isoformat() if r.expires_at else None,
+                "created_by": r.created_by,
+                "audit_hash": r.audit_hash,
+                "revoked": r.revoked,
+                "revoked_at": r.revoked_at.isoformat() if r.revoked_at else None,
+                "revoked_by": r.revoked_by,
+                "policy_version": r.policy_version,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in records
+        ],
+    }

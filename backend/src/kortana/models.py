@@ -1060,3 +1060,45 @@ class PolicyVersionRecord(Base):
 
     def __repr__(self) -> str:
         return f"<PolicyVersionRecord v{self.version} hash={self.content_hash[:12]}>"
+
+
+
+class ChaosScenarioRecord(Base):
+    """V8C — Record of a chaos drill / incident simulation run."""
+
+    __tablename__ = "chaos_scenario_record"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    scenario = Column(String(32), nullable=False, index=True)
+    passed = Column(Boolean, nullable=False)
+    checks = Column(JSON, nullable=True)
+    daemon_mode_before = Column(String(32), nullable=True)
+    daemon_mode_after = Column(String(32), nullable=True)
+    rollback_triggered = Column(Boolean, nullable=False, default=False)
+    alerts_fired = Column(Integer, nullable=False, default=0)
+    duration_ms = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        return f"<ChaosScenarioRecord {self.scenario} passed={self.passed}>"
+
+
+class HumanOverrideRecord(Base):
+    """V8D — Signed human override of daemon mode with expiry."""
+
+    __tablename__ = "human_override"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    mode = Column(String(32), nullable=False, index=True)
+    reason = Column(String(256), nullable=False)
+    expires_at = Column(DateTime, nullable=False, index=True)
+    created_by = Column(String(64), nullable=False, default="matt")
+    audit_hash = Column(String(64), nullable=False, index=True)
+    revoked = Column(Boolean, nullable=False, default=False)
+    revoked_at = Column(DateTime, nullable=True)
+    revoked_by = Column(String(64), nullable=True)
+    policy_version = Column(Integer, nullable=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        return f"<HumanOverrideRecord mode={self.mode} by={self.created_by}>"
