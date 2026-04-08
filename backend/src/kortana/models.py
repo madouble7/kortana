@@ -1617,3 +1617,85 @@ class ArtifactPolicyRecord(Base):
     max_artifact_age_hours = Column(Float, default=720.0)
     policy_hash = Column(String(64), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+# =========================================================================
+# V15 — Execution-Backed Orchestration Models
+# =========================================================================
+
+
+class FetchExecutionRecord(Base):
+    """V15A — Metadata fetch execution record."""
+    __tablename__ = "fetch_execution"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    fetch_id = Column(String(64), nullable=False)
+    provider_url = Column(String(256), nullable=False)
+    status = Column(String(32), default="success")
+    attempt_count = Column(Integer, default=1)
+    response_time_ms = Column(Float, default=0.0)
+    content_hash = Column(String(64), nullable=True)
+    error_message = Column(Text, nullable=True)
+    fetched_at = Column(DateTime, default=datetime.utcnow)
+
+
+class ClientOperationRecord(Base):
+    """V15B — Secret-manager client operation record."""
+    __tablename__ = "client_operation"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    operation_id = Column(String(64), nullable=False)
+    backend_name = Column(String(64), nullable=False)
+    operation_type = Column(String(32), default="read")
+    secret_id = Column(String(64), nullable=True)
+    success = Column(Boolean, default=True)
+    latency_ms = Column(Float, default=0.0)
+    error_message = Column(Text, nullable=True)
+    operation_hash = Column(String(64), nullable=True)
+    executed_at = Column(DateTime, default=datetime.utcnow)
+
+
+class CASourceRecord(Base):
+    """V15C — Certificate authority source record."""
+    __tablename__ = "ca_source"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    ca_id = Column(String(64), nullable=False)
+    ca_name = Column(String(128), nullable=True)
+    ca_type = Column(String(32), default="public_ca")
+    crl_endpoint = Column(String(256), nullable=True)
+    ocsp_endpoint = Column(String(256), nullable=True)
+    root_cert_hash = Column(String(64), nullable=True)
+    sync_interval_seconds = Column(Integer, default=3600)
+    enabled = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class PipelineGateRecord(Base):
+    """V15D — Pipeline gate configuration record."""
+    __tablename__ = "pipeline_gate"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    gate_id = Column(String(64), nullable=False)
+    stage = Column(String(32), nullable=False)
+    required_artifact_types = Column(Text, nullable=True)
+    require_signer_validation = Column(Boolean, default=False)
+    require_secret_health = Column(Boolean, default=False)
+    max_allowed_vulnerabilities = Column(Integer, default=0)
+    auto_rollback_on_failure = Column(Boolean, default=True)
+    enabled = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class DeploymentPipelineRecord(Base):
+    """V15D — Deployment pipeline execution record."""
+    __tablename__ = "deployment_pipeline"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    pipeline_id = Column(String(64), nullable=False)
+    version_id = Column(String(64), nullable=False)
+    status = Column(String(32), default="pending")
+    current_stage = Column(String(32), default="build")
+    pipeline_hash = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    completed_at = Column(DateTime, nullable=True)

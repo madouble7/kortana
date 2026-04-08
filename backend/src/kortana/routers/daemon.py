@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
@@ -5214,3 +5214,429 @@ async def get_artifact_verifications(version_id: str) -> dict[str, Any]:
     orchestrator = get_policy_orchestrator()
     verifications = orchestrator.get_verifications(version_id)
     return {"version_id": version_id, "verifications": [v.to_dict() for v in verifications], "count": len(verifications)}
+
+
+
+# =========================================================================
+# V15 — Execution-Backed Orchestration Endpoints
+# =========================================================================
+
+
+# -- V15A: Metadata Fetch Executor -----------------------------------------
+
+
+@router.post("/fetch/register-endpoint")
+async def register_fetch_endpoint(body: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    """Register an endpoint for periodic metadata fetching."""
+    from src.kortana.services.metadata_fetch_executor import (
+        RetryPolicy,
+        get_metadata_fetch_executor,
+    )
+
+    executor = get_metadata_fetch_executor()
+    retry = None
+    if "retry_policy" in body:
+        rp = body["retry_policy"]
+        retry = RetryPolicy(
+            max_retries=rp.get("max_retries", 3),
+            base_delay_seconds=rp.get("base_delay_seconds", 1.0),
+            max_delay_seconds=rp.get("max_delay_seconds", 60.0),
+            backoff_multiplier=rp.get("backoff_multiplier", 2.0),
+        )
+    schedule = executor.register_endpoint(
+        body["provider_url"],
+        interval_seconds=body.get("interval_seconds", 3600),
+        retry_policy=retry,
+    )
+    return {"schedule": schedule.to_dict()}
+
+
+@router.post("/fetch/execute/{provider_url:path}")
+async def execute_fetch(
+    provider_url: str,
+    body: dict[str, Any] = Body(default={}),
+) -> dict[str, Any]:
+    """Execute a metadata fetch for a provider."""
+    from src.kortana.services.metadata_fetch_executor import get_metadata_fetch_executor
+
+    executor = get_metadata_fetch_executor()
+    result = executor.execute_fetch(
+        provider_url,
+        simulated_payload=body.get("payload"),
+        simulated_failure=body.get("simulate_failure", False),
+    )
+    return {"result": result.to_dict()}
+
+
+@router.post("/fetch/execute-due")
+async def execute_due_fetches() -> dict[str, Any]:
+    """Execute all due metadata fetches."""
+    from src.kortana.services.metadata_fetch_executor import get_metadata_fetch_executor
+
+    executor = get_metadata_fetch_executor()
+    results = executor.execute_due_fetches()
+    return {"results": [r.to_dict() for r in results], "count": len(results)}
+
+
+@router.get("/fetch/circuit/{provider_url:path}")
+async def get_circuit_state(provider_url: str) -> dict[str, Any]:
+    """Get circuit-breaker state for a provider."""
+    from src.kortana.services.metadata_fetch_executor import get_metadata_fetch_executor
+
+    executor = get_metadata_fetch_executor()
+    circuit = executor.get_circuit_state(provider_url)
+    if circuit is None:
+        return JSONResponse(content={"error": "Provider not found"}, status_code=404)
+    return {"provider_url": provider_url, "circuit": circuit.to_dict()}
+
+
+@router.get("/fetch/history")
+async def get_fetch_history(provider_url: str = Query("")) -> dict[str, Any]:
+    """Get fetch execution history."""
+    from src.kortana.services.metadata_fetch_executor import get_metadata_fetch_executor
+
+    executor = get_metadata_fetch_executor()
+    history = executor.get_fetch_history(provider_url or None)
+    return {"history": [h.to_dict() for h in history], "count": len(history)}
+
+
+@router.get("/fetch/audit-log")
+async def get_fetch_audit_log(provider_url: str = Query("")) -> dict[str, Any]:
+    """Get fetch execution audit log."""
+    from src.kortana.services.metadata_fetch_executor import get_metadata_fetch_executor
+
+    executor = get_metadata_fetch_executor()
+    log = executor.get_audit_log(provider_url or None)
+    return {"audit_log": [e.to_dict() for e in log], "count": len(log)}
+
+
+@router.get("/fetch/schedules")
+async def get_fetch_schedules() -> dict[str, Any]:
+    """Get all fetch schedules."""
+    from src.kortana.services.metadata_fetch_executor import get_metadata_fetch_executor
+
+    executor = get_metadata_fetch_executor()
+    schedules = executor.get_all_schedules()
+    return {"schedules": [s.to_dict() for s in schedules], "count": len(schedules)}
+
+
+# -- V15B: Secret Manager Client Lifecycle ----------------------------------
+
+
+@router.post("/clients/register")
+async def register_client(body: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    """Register a secret-manager client."""
+    from src.kortana.services.secret_manager_client import (
+        ClientConfig,
+        get_secret_manager_client_registry,
+    )
+
+    registry = get_secret_manager_client_registry()
+    config = ClientConfig(
+        backend_name=body["backend_name"],
+        endpoint_url=body.get("endpoint_url", ""),
+        auth_method=body.get("auth_method", "token"),
+        timeout_seconds=body.get("timeout_seconds", 30.0),
+        max_retries=body.get("max_retries", 3),
+        pool_size=body.get("pool_size", 5),
+    )
+    client = registry.register_client(config)
+    return {"backend_name": config.backend_name, "state": client.state.value}
+
+
+@router.post("/clients/{backend_name}/connect")
+async def connect_client(backend_name: str) -> dict[str, Any]:
+    """Connect a registered client."""
+    from src.kortana.services.secret_manager_client import get_secret_manager_client_registry
+
+    registry = get_secret_manager_client_registry()
+    probe = registry.connect_client(backend_name)
+    if probe is None:
+        return JSONResponse(content={"error": "Client not found"}, status_code=404)
+    return {"probe": probe.to_dict()}
+
+
+@router.post("/clients/{backend_name}/disconnect")
+async def disconnect_client(backend_name: str) -> dict[str, Any]:
+    """Disconnect a registered client."""
+    from src.kortana.services.secret_manager_client import get_secret_manager_client_registry
+
+    registry = get_secret_manager_client_registry()
+    ok = registry.disconnect_client(backend_name)
+    return {"disconnected": ok, "backend_name": backend_name}
+
+
+@router.get("/clients/{backend_name}/health")
+async def client_health(backend_name: str) -> dict[str, Any]:
+    """Health check a specific client."""
+    from src.kortana.services.secret_manager_client import get_secret_manager_client_registry
+
+    registry = get_secret_manager_client_registry()
+    client = registry.get_client(backend_name)
+    if client is None:
+        return JSONResponse(content={"error": "Client not found"}, status_code=404)
+    probe = client.health_check()
+    return {"probe": probe.to_dict()}
+
+
+@router.post("/clients/{backend_name}/execute")
+async def execute_client_operation(
+    backend_name: str,
+    body: dict[str, Any] = Body(...),
+) -> dict[str, Any]:
+    """Execute an operation on a client."""
+    from src.kortana.services.secret_manager_client import (
+        OperationType,
+        get_secret_manager_client_registry,
+    )
+
+    registry = get_secret_manager_client_registry()
+    client = registry.get_client(backend_name)
+    if client is None:
+        return JSONResponse(content={"error": "Client not found"}, status_code=404)
+    try:
+        op_type = OperationType(body.get("operation_type", "read"))
+    except ValueError:
+        return JSONResponse(content={"error": "Invalid operation type"}, status_code=400)
+    rec = client.execute_operation(
+        op_type,
+        secret_id=body.get("secret_id", ""),
+        value=body.get("value", ""),
+        simulate_failure=body.get("simulate_failure", False),
+    )
+    return {"operation": rec.to_dict()}
+
+
+@router.get("/clients")
+async def list_clients() -> dict[str, Any]:
+    """List all registered clients."""
+    from src.kortana.services.secret_manager_client import get_secret_manager_client_registry
+
+    registry = get_secret_manager_client_registry()
+    return {"clients": registry.list_clients(), "count": registry.client_count}
+
+
+@router.get("/clients/health-all")
+async def health_check_all_clients() -> dict[str, Any]:
+    """Health check all clients."""
+    from src.kortana.services.secret_manager_client import get_secret_manager_client_registry
+
+    registry = get_secret_manager_client_registry()
+    probes = registry.health_check_all()
+    return {"probes": [p.to_dict() for p in probes], "count": len(probes)}
+
+
+# -- V15C: CA Signer Source --------------------------------------------------
+
+
+@router.post("/ca/register")
+async def register_ca(body: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    """Register a certificate authority source."""
+    from src.kortana.services.ca_signer_source import (
+        CASourceConfig,
+        CASourceType,
+        get_ca_signer_source,
+    )
+
+    source = get_ca_signer_source()
+    try:
+        ca_type = CASourceType(body.get("ca_type", "public_ca"))
+    except ValueError:
+        return JSONResponse(content={"error": "Invalid CA type"}, status_code=400)
+    config = CASourceConfig(
+        ca_name=body["ca_name"],
+        ca_type=ca_type,
+        crl_endpoint=body.get("crl_endpoint", ""),
+        ocsp_endpoint=body.get("ocsp_endpoint", ""),
+        root_cert_hash=body.get("root_cert_hash", ""),
+        sync_interval_seconds=body.get("sync_interval_seconds", 3600),
+    )
+    result = source.register_ca(config)
+    return {"ca": result.to_dict()}
+
+
+@router.post("/ca/{ca_id}/fetch-crl")
+async def fetch_ca_crl(ca_id: str, body: dict[str, Any] = Body(default={})) -> dict[str, Any]:
+    """Fetch CRL from a certificate authority."""
+    from src.kortana.services.ca_signer_source import CRLEntry, get_ca_signer_source
+
+    source = get_ca_signer_source()
+    entries = None
+    if "entries" in body:
+        entries = [
+            CRLEntry(serial_number=e["serial_number"], reason=e.get("reason", ""))
+            for e in body["entries"]
+        ]
+    result = source.fetch_crl(
+        ca_id,
+        simulated_entries=entries,
+        simulate_failure=body.get("simulate_failure", False),
+    )
+    return {"crl": result.to_dict()}
+
+
+@router.post("/ca/{ca_id}/check-ocsp/{serial_number}")
+async def check_ocsp(ca_id: str, serial_number: str) -> dict[str, Any]:
+    """Check certificate status via OCSP."""
+    from src.kortana.services.ca_signer_source import get_ca_signer_source
+
+    source = get_ca_signer_source()
+    result = source.check_ocsp(ca_id, serial_number)
+    return {"ocsp": result.to_dict()}
+
+
+@router.post("/ca/{ca_id}/validate-chain/{signer_id}")
+async def validate_ca_chain(
+    ca_id: str,
+    signer_id: str,
+    body: dict[str, Any] = Body(default={}),
+) -> dict[str, Any]:
+    """Validate a certificate chain against a CA."""
+    from src.kortana.services.ca_signer_source import get_ca_signer_source
+
+    source = get_ca_signer_source()
+    result = source.validate_chain(
+        signer_id, ca_id,
+        serial_number=body.get("serial_number", ""),
+        chain_depth=body.get("chain_depth", 3),
+    )
+    return {"validation": result.to_dict()}
+
+
+@router.post("/ca/{ca_id}/sync")
+async def sync_from_ca(ca_id: str) -> dict[str, Any]:
+    """Sync signer inventory from a CA source."""
+    from src.kortana.services.ca_signer_source import get_ca_signer_source
+
+    source = get_ca_signer_source()
+    snapshot = source.sync_from_ca(ca_id)
+    return {"snapshot": snapshot.to_dict()}
+
+
+@router.get("/ca/list")
+async def list_cas() -> dict[str, Any]:
+    """List registered certificate authorities."""
+    from src.kortana.services.ca_signer_source import get_ca_signer_source
+
+    source = get_ca_signer_source()
+    cas = source.list_cas()
+    return {"cas": [c.to_dict() for c in cas], "count": len(cas)}
+
+
+@router.get("/ca/revoked")
+async def get_all_revoked() -> dict[str, Any]:
+    """Get all revoked certificates across CAs."""
+    from src.kortana.services.ca_signer_source import get_ca_signer_source
+
+    source = get_ca_signer_source()
+    return {"revoked": source.get_all_revoked(), "total": source.total_revoked}
+
+
+# -- V15D: Deployment Pipeline Enforcement -----------------------------------
+
+
+@router.post("/pipeline/configure-gate")
+async def configure_pipeline_gate(body: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    """Configure a gate for a pipeline stage."""
+    from src.kortana.services.deploy_pipeline_enforcement import (
+        DeploymentStage,
+        PipelineGateConfig,
+        get_pipeline_enforcer,
+    )
+
+    enforcer = get_pipeline_enforcer()
+    try:
+        stage = DeploymentStage(body["stage"])
+    except (ValueError, KeyError):
+        return JSONResponse(content={"error": "Invalid stage"}, status_code=400)
+    config = PipelineGateConfig(
+        stage=stage,
+        required_artifact_types=body.get("required_artifact_types", []),
+        require_signer_validation=body.get("require_signer_validation", False),
+        require_secret_health=body.get("require_secret_health", False),
+        max_allowed_vulnerabilities=body.get("max_allowed_vulnerabilities", 0),
+        auto_rollback_on_failure=body.get("auto_rollback_on_failure", True),
+    )
+    result = enforcer.configure_gate(config)
+    return {"gate": result.to_dict()}
+
+
+@router.post("/pipeline/create/{version_id}")
+async def create_pipeline(version_id: str) -> dict[str, Any]:
+    """Create a new deployment pipeline."""
+    from src.kortana.services.deploy_pipeline_enforcement import get_pipeline_enforcer
+
+    enforcer = get_pipeline_enforcer()
+    pipeline = enforcer.create_pipeline(version_id)
+    return {"pipeline": pipeline.to_dict()}
+
+
+@router.post("/pipeline/{pipeline_id}/advance")
+async def advance_pipeline(
+    pipeline_id: str,
+    body: dict[str, Any] = Body(default={}),
+) -> dict[str, Any]:
+    """Advance a pipeline to its next stage."""
+    from src.kortana.services.deploy_pipeline_enforcement import get_pipeline_enforcer
+
+    enforcer = get_pipeline_enforcer()
+    execution = enforcer.advance_pipeline(
+        pipeline_id,
+        available_artifacts=body.get("available_artifacts"),
+        signer_valid=body.get("signer_valid", True),
+        secret_health_ok=body.get("secret_health_ok", True),
+        vulnerability_count=body.get("vulnerability_count", 0),
+    )
+    return {"execution": execution.to_dict()}
+
+
+@router.get("/pipeline/{pipeline_id}")
+async def get_pipeline(pipeline_id: str) -> dict[str, Any]:
+    """Get pipeline status."""
+    from src.kortana.services.deploy_pipeline_enforcement import get_pipeline_enforcer
+
+    enforcer = get_pipeline_enforcer()
+    pipeline = enforcer.get_pipeline(pipeline_id)
+    if pipeline is None:
+        return JSONResponse(content={"error": "Pipeline not found"}, status_code=404)
+    return {"pipeline": pipeline.to_dict()}
+
+
+@router.get("/pipeline/list")
+async def list_pipelines_endpoint() -> dict[str, Any]:
+    """List all pipelines."""
+    from src.kortana.services.deploy_pipeline_enforcement import get_pipeline_enforcer
+
+    enforcer = get_pipeline_enforcer()
+    pipelines = enforcer.list_pipelines()
+    return {"pipelines": [p.to_dict() for p in pipelines], "count": len(pipelines)}
+
+
+@router.get("/pipeline/gates")
+async def list_gates() -> dict[str, Any]:
+    """List configured pipeline gates."""
+    from src.kortana.services.deploy_pipeline_enforcement import get_pipeline_enforcer
+
+    enforcer = get_pipeline_enforcer()
+    gates = enforcer.list_gate_configs()
+    return {"gates": [g.to_dict() for g in gates], "count": len(gates)}
+
+
+@router.get("/pipeline/rollbacks")
+async def list_rollbacks() -> dict[str, Any]:
+    """List all rollback records."""
+    from src.kortana.services.deploy_pipeline_enforcement import get_pipeline_enforcer
+
+    enforcer = get_pipeline_enforcer()
+    rollbacks = enforcer.get_rollback_history()
+    return {"rollbacks": [r.to_dict() for r in rollbacks], "count": len(rollbacks)}
+
+
+@router.get("/pipeline/check-history")
+async def pipeline_check_history(version_id: str = Query("")) -> dict[str, Any]:
+    """Get gate check history."""
+    from src.kortana.services.deploy_pipeline_enforcement import get_pipeline_enforcer
+
+    enforcer = get_pipeline_enforcer()
+    checks = enforcer.get_check_history(version_id or None)
+    return {"checks": [c.to_dict() for c in checks], "count": len(checks)}
