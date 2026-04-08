@@ -123,6 +123,8 @@ _VAD_SILENCE_MS = int(os.getenv("KORTANA_VAD_SILENCE_MS", "900"))
 _VAD_SILENCE_FRAMES = _VAD_SILENCE_MS // _VAD_FRAME_MS  # default 30 frames
 _VAD_MIN_SPEECH_FRAMES = 5  # minimum ~150ms of speech to register
 _VAD_MAX_SPEECH_SECONDS = 30  # max utterance length
+_VAD_NOISE_GATE_RMS = float(os.getenv("KORTANA_NOISE_GATE", "0.005"))  # skip below thisch to register
+_VAD_MAX_SPEECH_SECONDS = 30  # max utterance length
 _VAD_NOISE_GATE_RMS = float(os.getenv("KORTANA_NOISE_GATE", "0.005"))  # skip below this
 _CONVERSATION_TIMEOUT = 60  # seconds — auto-respond without wake word if recently spoke
 _USE_SILERO_VAD = os.getenv("KORTANA_USE_SILERO_VAD", "1") == "1"
@@ -1770,7 +1772,7 @@ def _run_silero_listener() -> None:
             indata[:, 0].copy() if indata.ndim > 1 else indata.copy().flatten()
         )
 
-        # Noise gate — skip frames below noise floor (keyboard, breathing, fans)
+        # Noise gate - skip frames below noise floor (keyboard, breathing, fans)
         rms = float(np.sqrt(np.mean(audio_frame ** 2)))
         if rms < _VAD_NOISE_GATE_RMS:
             if is_speech_active:
