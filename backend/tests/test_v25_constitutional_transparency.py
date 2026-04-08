@@ -580,7 +580,7 @@ class TestV25Pipeline:
                               "system", "Status → in_progress")
 
         # Step 6: Decision rendered
-        decision = decisions.record_decision(
+        decisions.record_decision(
             case.case_number, "appeal", DecisionOutcome.UPHELD,
             "The security classification was found to be incorrect",
             policy_area="security",

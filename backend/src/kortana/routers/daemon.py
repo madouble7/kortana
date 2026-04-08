@@ -4842,10 +4842,10 @@ async def get_trust_evaluations(version_id: str) -> dict[str, Any]:
 # ── V16A — External Call Adapter ──────────────────────────────────────────
 
 from src.kortana.services.external_call_adapter import (  # noqa: E402
-    get_call_router,
     CallMethod,
     CallOutcome,
     EndpointConfig,
+    get_call_router,
 )
 
 
@@ -4925,8 +4925,8 @@ async def get_call_endpoints() -> dict:
 # ── V16B — Persistent Stage Store ─────────────────────────────────────────
 
 from src.kortana.services.persistent_stage_store import (  # noqa: E402
-    get_stage_persistence_store,
     SideEffectType,
+    get_stage_persistence_store,
 )
 
 
@@ -5000,9 +5000,9 @@ async def get_all_stage_transitions() -> dict:
 # ── V16C — Deployment Binding ─────────────────────────────────────────────
 
 from src.kortana.services.deployment_binding import (  # noqa: E402
-    get_deployment_binding,
-    TargetEnvironment,
     ActionType,
+    TargetEnvironment,
+    get_deployment_binding,
 )
 
 
@@ -5099,8 +5099,8 @@ async def list_deployment_actions(pipeline_id: str = "", target_id: str = "") ->
 # ── V16D — External Verification ─────────────────────────────────────────
 
 from src.kortana.services.external_verification import (  # noqa: E402
-    get_external_verifier,
     ProbeType,
+    get_external_verifier,
 )
 
 
@@ -5180,10 +5180,10 @@ async def get_campaign_probes(campaign_id: str) -> dict:
 # ── V17A — Provider Client Registry ──────────────────────────────────────
 
 from src.kortana.services.provider_client_registry import (  # noqa: E402
-    get_provider_client_registry,
-    ProviderType,
     ProviderClientConfig,
     ProviderOperationType,
+    ProviderType,
+    get_provider_client_registry,
 )
 
 
@@ -5282,9 +5282,9 @@ async def get_provider_operations(name: str = "", op_type: str = "") -> dict:
 # ── V17B — Rollout Action Executor ───────────────────────────────────────
 
 from src.kortana.services.rollout_action_executor import (  # noqa: E402
-    get_rollout_executor,
-    RolloutStrategy,
     RolloutStatus,
+    RolloutStrategy,
+    get_rollout_executor,
 )
 
 
@@ -5375,11 +5375,11 @@ async def list_rollouts(provider_name: str = "", status: str = "") -> dict:
 # ── V17C — Feedback Policy Engine ────────────────────────────────────────
 
 from src.kortana.services.feedback_policy_engine import (  # noqa: E402
-    get_feedback_policy_engine,
-    TriggerCondition,
+    EvaluationOutcome,
     FeedbackAction,
     FeedbackSignal,
-    EvaluationOutcome,
+    TriggerCondition,
+    get_feedback_policy_engine,
 )
 
 
@@ -5461,9 +5461,9 @@ async def list_feedback_evaluations(outcome: str = "") -> dict:
 # ── V17D — Evidence Chain ────────────────────────────────────────────────
 
 from src.kortana.services.evidence_chain import (  # noqa: E402
-    get_evidence_chain_registry,
-    EvidenceType,
     ChainStatus,
+    EvidenceType,
+    get_evidence_chain_registry,
 )
 
 
@@ -5550,10 +5550,10 @@ async def verify_all_evidence_chains() -> dict:
 # ── V18A — Drift Detector ────────────────────────────────────────────────
 
 from src.kortana.services.drift_detector import (  # noqa: E402
-    get_drift_detector,
     DesiredState,
-    DriftType,
     DriftStatus,
+    DriftType,
+    get_drift_detector,
 )
 
 
@@ -5671,9 +5671,9 @@ async def get_active_drifts() -> dict:
 # ── V18B — Reconciliation Planner ────────────────────────────────────────
 
 from src.kortana.services.reconciliation_planner import (  # noqa: E402
-    get_reconciliation_planner,
-    PlanStatus,
     PlanPriority,
+    PlanStatus,
+    get_reconciliation_planner,
 )
 
 
@@ -5729,8 +5729,8 @@ async def list_reconciliation_plans(status: str = "", priority: str = "") -> dic
 # ── V18C — Reconciliation Executor ───────────────────────────────────────
 
 from src.kortana.services.reconciliation_executor import (  # noqa: E402
-    get_reconciliation_executor,
     ExecutionStatus,
+    get_reconciliation_executor,
 )
 
 
@@ -5834,10 +5834,15 @@ async def trigger_global_reconciliation() -> dict:
 
 # ── V19 — Learning Reconciliation Endpoints ──────────────────────────────
 
-from src.kortana.services.outcome_tracker import get_outcome_tracker, OutcomeVerdict  # noqa: E402
-from src.kortana.services.strategy_learner import get_strategy_learner  # noqa: E402
 from src.kortana.services.adaptive_planner import get_adaptive_planner  # noqa: E402
-from src.kortana.services.improvement_tracker import get_improvement_tracker  # noqa: E402
+from src.kortana.services.improvement_tracker import (  # noqa: E402
+    get_improvement_tracker,
+)
+from src.kortana.services.outcome_tracker import (  # noqa: E402
+    OutcomeVerdict,
+    get_outcome_tracker,
+)
+from src.kortana.services.strategy_learner import get_strategy_learner  # noqa: E402
 
 # ── Outcome Tracking ─────────────────────────────────────────────────────
 
@@ -5981,7 +5986,11 @@ async def create_adaptive_plan(
     details: str = Body(""),
 ) -> dict:
     """Create an adaptive reconciliation plan from a drift signal."""
-    from src.kortana.services.drift_detector import DriftSignal, DriftType, DriftSeverity  # noqa: E402
+    from src.kortana.services.drift_detector import (  # noqa: E402
+        DriftSeverity,
+        DriftSignal,
+        DriftType,
+    )
 
     dt = DriftType(drift_type) if drift_type in [d.value for d in DriftType] else DriftType.CONFIG_DRIFT
     sv = DriftSeverity(severity) if severity in [s.value for s in DriftSeverity] else DriftSeverity.MEDIUM
@@ -6062,10 +6071,14 @@ async def get_improvement_trend() -> dict:
 
 # ── V20 — Policy-Learning Integration Endpoints ──────────────────────────
 
-from src.kortana.services.trust_calibrator import get_trust_calibrator  # noqa: E402
 from src.kortana.services.autonomy_adjuster import get_autonomy_adjuster  # noqa: E402
-from src.kortana.services.policy_feedback_loop import get_policy_feedback_loop  # noqa: E402
-from src.kortana.services.governance_evolution import get_governance_evolution  # noqa: E402
+from src.kortana.services.governance_evolution import (  # noqa: E402
+    get_governance_evolution,
+)
+from src.kortana.services.policy_feedback_loop import (  # noqa: E402
+    get_policy_feedback_loop,
+)
+from src.kortana.services.trust_calibrator import get_trust_calibrator  # noqa: E402
 
 # ── Trust Calibration ────────────────────────────────────────────────────
 
@@ -6242,13 +6255,21 @@ async def get_governance_summary() -> dict:
 
 # ── V21: Institutional Learning Controls ──
 
-from kortana.services.proposal_registry import get_proposal_registry, ProposalStatus  # noqa: E402
-from kortana.services.approval_gate import get_approval_gate, ApprovalPolicy  # noqa: E402
-from kortana.services.trust_calibrator import TrustLevel  # noqa: E402
-from kortana.services.policy_rollback import get_policy_rollback  # noqa: E402
-from kortana.services.evolution_observer import get_evolution_observer, EventType  # noqa: E402
-from kortana.services.policy_feedback_loop import PolicyArea  # noqa: E402
-
+from src.kortana.services.approval_gate import (  # noqa: E402
+    ApprovalPolicy,
+    get_approval_gate,
+)
+from src.kortana.services.evolution_observer import (  # noqa: E402
+    EventType,
+    get_evolution_observer,
+)
+from src.kortana.services.policy_feedback_loop import PolicyArea  # noqa: E402
+from src.kortana.services.policy_rollback import get_policy_rollback  # noqa: E402
+from src.kortana.services.proposal_registry import (  # noqa: E402
+    ProposalStatus,
+    get_proposal_registry,
+)
+from src.kortana.services.trust_calibrator import TrustLevel  # noqa: E402
 
 # ── V21A: Proposal Registry Endpoints ──
 
@@ -6634,11 +6655,16 @@ async def get_evolution_stats() -> dict:
 
 # ── V22: Constitutional Governance ──
 
-from kortana.services.constitution import get_constitution, Sensitivity, ViolationSeverity  # noqa: E402
-from kortana.services.quorum_policy import get_quorum_policy  # noqa: E402
-from kortana.services.boundary_enforcer import get_boundary_enforcer  # noqa: E402
-from kortana.services.constitutional_audit import get_constitutional_audit  # noqa: E402
-
+from src.kortana.services.boundary_enforcer import get_boundary_enforcer  # noqa: E402
+from src.kortana.services.constitution import (  # noqa: E402
+    Sensitivity,
+    ViolationSeverity,
+    get_constitution,
+)
+from src.kortana.services.constitutional_audit import (  # noqa: E402
+    get_constitutional_audit,
+)
+from src.kortana.services.quorum_policy import get_quorum_policy  # noqa: E402
 
 # ── V22A: Constitution Endpoints ──
 
@@ -6772,7 +6798,7 @@ async def check_proposal_boundary(proposal_id: str) -> dict:
     proof = audit.record_check(check)
 
     # Emit observer event
-    from kortana.services.evolution_observer import get_evolution_observer, EventType
+    from kortana.services.evolution_observer import EventType, get_evolution_observer
 
     observer = get_evolution_observer()
     observer.emit(
@@ -6889,25 +6915,24 @@ async def get_constitutional_stats() -> dict:
 # V23 — Constitutional Adjudication Endpoints
 # ═══════════════════════════════════════════════════════════════════════════════
 
-from kortana.services.exception_handler import (  # noqa: E402
-    WaiverScope,
-    get_exception_handler,
-)
-from kortana.services.appeals import (  # noqa: E402
+from src.kortana.services.appeals import (  # noqa: E402
     AppealGrounds,
     AppealStatus,
     get_appeals_court,
 )
-from kortana.services.emergency_powers import (  # noqa: E402
+from src.kortana.services.emergency_powers import (  # noqa: E402
     EmergencyScope,
     get_emergency_powers,
 )
-from kortana.services.precedent_tracker import (  # noqa: E402
+from src.kortana.services.exception_handler import (  # noqa: E402
+    WaiverScope,
+    get_exception_handler,
+)
+from src.kortana.services.precedent_tracker import (  # noqa: E402
     DecisionType,
     PrecedentStrength,
     get_precedent_tracker,
 )
-
 
 # ─── Exception Handler (Waivers) ─────────────────────────────────────────────
 
@@ -7313,20 +7338,19 @@ async def get_adjudication_stats() -> dict:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-from src.kortana.services.standing_rules import (  # noqa: E402
-    get_standing_rules,
-    ActorRole,
-)
 from src.kortana.services.deadline_clock import (  # noqa: E402
-    get_deadline_clock,
-    DeadlineType,
     DeadlineStatus,
+    DeadlineType,
+    get_deadline_clock,
 )
-from src.kortana.services.recusal_manager import get_recusal_manager  # noqa: E402
 from src.kortana.services.reasoning_templates import (  # noqa: E402
     get_reasoning_registry,
 )
-
+from src.kortana.services.recusal_manager import get_recusal_manager  # noqa: E402
+from src.kortana.services.standing_rules import (  # noqa: E402
+    ActorRole,
+    get_standing_rules,
+)
 
 # ─── V24A Standing Rules ─────────────────────────────────────────────────────
 
@@ -7577,7 +7601,9 @@ async def validate_reasoning(
     author: str = Body(""),
 ) -> dict:
     """Validate a reasoning document against its template without publishing."""
-    from src.kortana.services.reasoning_templates import PublishedReasoning  # noqa: E402
+    from src.kortana.services.reasoning_templates import (
+        PublishedReasoning,  # noqa: E402
+    )
 
     reasoning = PublishedReasoning(
         reasoning_id="validation-check",
@@ -7658,24 +7684,23 @@ async def get_procedure_stats() -> dict:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-from src.kortana.services.public_docket import (  # noqa: E402
-    get_public_docket,
-    CaseType,
-    CaseStatus,
+from src.kortana.services.decision_registry import (  # noqa: E402
+    DecisionOutcome,
+    get_decision_registry,
+)
+from src.kortana.services.notice_service import (  # noqa: E402
+    DeliveryStatus,
+    NoticeType,
+    get_notice_service,
 )
 from src.kortana.services.procedural_timeline import (  # noqa: E402
     get_procedural_timeline,
 )
-from src.kortana.services.notice_service import (  # noqa: E402
-    get_notice_service,
-    NoticeType,
-    DeliveryStatus,
+from src.kortana.services.public_docket import (  # noqa: E402
+    CaseStatus,
+    CaseType,
+    get_public_docket,
 )
-from src.kortana.services.decision_registry import (  # noqa: E402
-    get_decision_registry,
-    DecisionOutcome,
-)
-
 
 # ─── V25A Public Docket ──────────────────────────────────────────────────────
 
