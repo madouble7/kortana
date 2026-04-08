@@ -766,7 +766,9 @@ def detect_and_run_tool(
     if tool.hop == HOP.AUTO:
         # Execute immediately — safe, reversible
         result, _ = execute_tool(tool_name, args)
-        return result
+        # Multi-step reasoning: if the result looks like a failure,
+        # autonomously chain follow-up tools to diagnose the root cause
+        return run_tool_chain(message, tool_name, args, result)
 
     elif tool.hop == HOP.HO:
         # Needs Matt's verbal OK
@@ -803,3 +805,250 @@ def get_tool_descriptions() -> str:
     for name, tool in _tools.items():
         lines.append(f"{name} ({tool.hop.value}): {tool.description}")
     return "\n".join(lines)
+
+
+# ── multi-step agentic reasoning ──────────────────────────────────────────────
+# When a tool returns a failure or error, the chain-of-thought engine
+# autonomously decides which follow-up tools to call to diagnose
+# the root cause, then synthesizes a single coherent spoken report.
+
+_MAX_CHAIN_STEPS = 3  # hard cap on autonomous follow-up steps
+_FAILURE_INDICATORS = [
+    "failed",
+    "error",
+    "timed out",
+    "unreachable",
+    "not found",
+    "issues",
+    "exception",
+    "traceback",
+]
+
+_CHAIN_REASONING_PROMPT = """You are kor'tana's reasoning engine. A tool was just executed and returned an error or failure.
+
+Your job: decide what SINGLE follow-up tool to call next to diagnose WHY it failed.
+
+ORIGINAL REQUEST: {original_message}
+TOOL EXECUTED: {tool_name}
+TOOL RESULT: {tool_result}
+
+Available follow-up tools (AUTO only — you cannot chain HO tools):
+{auto_tools}
+
+Respond with EXACTLY this JSON (no markdown):
+{{"tool": "tool_name", "args": {{}}, "reason": "brief reason for this follow-up"}}
+
+If no follow-up would help, or you have enough info already, respond:
+{{"tool": null, "reason": "sufficient info"}}
+
+Rules:
+- Only pick ONE tool per step
+- Only pick AUTO tools (read-only, safe)
+- Pick the tool most likely to reveal the ROOT CAUSE
+- If tests failed, try read_file on the failing test or screen_errors
+- If backend is down, try system_status
+- If CI failed, try read_ci_logs
+- If lint found issues, the result already has the info — stop
+- NEVER repeat a tool already used in this chain"""
+
+
+def _get_auto_tool_list(exclude: set[str] | None = None) -> str:
+    """Build list of AUTO tools for the chain reasoning prompt."""
+    exclude = exclude or set()
+    lines = []
+    for name, tool in _tools.items():
+        if tool.hop == HOP.AUTO and name not in exclude:
+            lines.append(f"- {name}: {tool.description}")
+    return "\n".join(lines)
+
+
+def _result_looks_like_failure(result: str) -> bool:
+    """Check if a tool result contains failure indicators."""
+    lower = result.lower()
+    return any(indicator in lower for indicator in _FAILURE_INDICATORS)
+
+
+def _chain_reason_next(
+    original_message: str,
+    tool_name: str,
+    tool_result: str,
+    used_tools: set[str],
+) -> dict[str, Any] | None:
+    """Ask Groq which follow-up tool to call next.
+
+    Returns {"tool": "name", "args": {...}, "reason": "..."} or None.
+    """
+    groq_key = os.getenv("GROQ_API_KEY", "")
+    if not groq_key:
+        return None
+
+    prompt = _CHAIN_REASONING_PROMPT.format(
+        original_message=original_message,
+        tool_name=tool_name,
+        tool_result=tool_result[:400],  # truncate for prompt budget
+        auto_tools=_get_auto_tool_list(exclude=used_tools),
+    )
+
+    try:
+        with httpx.Client(timeout=5.0) as client:
+            resp = client.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {groq_key}"},
+                json={
+                    "model": "llama-3.3-70b-versatile",
+                    "messages": [
+                        {"role": "system", "content": prompt},
+                        {
+                            "role": "user",
+                            "content": "What follow-up tool should I run?",
+                        },
+                    ],
+                    "max_tokens": 100,
+                    "temperature": 0.0,
+                },
+            )
+        if resp.status_code != 200:
+            return None
+
+        content = resp.json()["choices"][0]["message"]["content"].strip()
+        content = content.strip("`").strip()
+        if content.startswith("json"):
+            content = content[4:].strip()
+
+        parsed = json.loads(content)
+        if parsed.get("tool") is None:
+            return None
+        return parsed
+    except Exception:
+        return None
+
+
+_SYNTHESIS_PROMPT = """You are kor'tana, a calm AI companion. Synthesize these diagnostic results into a single, clear spoken summary.
+
+ORIGINAL QUESTION: {original_message}
+
+DIAGNOSTIC CHAIN:
+{chain_summary}
+
+Rules:
+- 2-3 sentences max, optimized for speech
+- No markdown, no code blocks, no bullet lists
+- State what happened, why it happened, and what to do about it
+- Be specific: file names, line numbers, error messages
+- Be warm and direct"""
+
+
+def _synthesize_chain(
+    original_message: str,
+    chain: list[tuple[str, str, str]],
+) -> str:
+    """Synthesize a chain of tool results into a single spoken report.
+
+    Args:
+        original_message: The user's original request.
+        chain: List of (tool_name, reason, result) tuples.
+
+    Returns:
+        Synthesized spoken summary.
+    """
+    groq_key = os.getenv("GROQ_API_KEY", "")
+    if not groq_key:
+        # Fallback: just concatenate results
+        return " ".join(result for _, _, result in chain)
+
+    chain_text = ""
+    for i, (tool_name, reason, result) in enumerate(chain, 1):
+        chain_text += f"Step {i} — {tool_name} ({reason}):\n{result[:300]}\n\n"
+
+    try:
+        with httpx.Client(timeout=10.0) as client:
+            resp = client.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {groq_key}"},
+                json={
+                    "model": "llama-3.3-70b-versatile",
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": _SYNTHESIS_PROMPT.format(
+                                original_message=original_message,
+                                chain_summary=chain_text,
+                            ),
+                        },
+                        {
+                            "role": "user",
+                            "content": "Give me the summary.",
+                        },
+                    ],
+                    "max_tokens": 150,
+                    "temperature": 0.3,
+                },
+            )
+        if resp.status_code != 200:
+            return chain[-1][2]  # fallback: last tool result
+
+        return resp.json()["choices"][0]["message"]["content"].strip()
+    except Exception:
+        return chain[-1][2]
+
+
+def run_tool_chain(
+    message: str,
+    initial_tool: str,
+    initial_args: dict,
+    initial_result: str,
+) -> str:
+    """Run a multi-step diagnostic chain starting from a failed tool result.
+
+    1. Check if initial result looks like a failure
+    2. If so, ask Groq what follow-up tool to call
+    3. Execute follow-up, check again
+    4. Repeat up to _MAX_CHAIN_STEPS times
+    5. Synthesize all results into one spoken report
+
+    Returns the synthesized report, or the original result if no chaining needed.
+    """
+    if not _result_looks_like_failure(initial_result):
+        return initial_result
+
+    chain: list[tuple[str, str, str]] = [
+        (initial_tool, "initial request", initial_result)
+    ]
+    used_tools: set[str] = {initial_tool}
+
+    for step in range(_MAX_CHAIN_STEPS):
+        # Ask Groq what follow-up to run
+        last_tool, _, last_result = chain[-1]
+        next_action = _chain_reason_next(message, last_tool, last_result, used_tools)
+
+        if not next_action or not next_action.get("tool"):
+            break  # Groq says we have enough info
+
+        next_tool = next_action["tool"]
+        next_args = next_action.get("args", {})
+        reason = next_action.get("reason", "follow-up")
+
+        # Safety: only chain AUTO tools
+        tool_obj = _tools.get(next_tool)
+        if not tool_obj or tool_obj.hop != HOP.AUTO:
+            break
+
+        # Don't repeat tools
+        if next_tool in used_tools:
+            break
+
+        # Execute follow-up
+        result, _ = execute_tool(next_tool, next_args)
+        chain.append((next_tool, reason, result))
+        used_tools.add(next_tool)
+
+        # If this follow-up didn't fail, we probably have our answer
+        if not _result_looks_like_failure(result):
+            break
+
+    # Single-step chains don't need synthesis
+    if len(chain) <= 1:
+        return initial_result
+
+    # Synthesize multi-step results into one spoken report
+    return _synthesize_chain(message, chain)
