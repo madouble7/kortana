@@ -775,7 +775,11 @@ def _speak_kokoro(text: str) -> bool:
             if _check_interrupt():
                 return True  # barge-in: stop gracefully
             if audio is not None and len(audio) > 0:
-                audio_f32 = audio.astype(np.float32) if audio.dtype != np.float32 else audio
+                # Kokoro returns torch tensors — convert to numpy float32
+                if hasattr(audio, 'numpy'):
+                    audio_f32 = audio.cpu().numpy().astype(np.float32)
+                else:
+                    audio_f32 = np.asarray(audio, dtype=np.float32)
                 sd.play(audio_f32, samplerate=KOKORO_SAMPLE_RATE)
                 sd.wait()
                 if _check_interrupt():
