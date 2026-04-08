@@ -12,7 +12,7 @@ covers pure-function logic for each service without requiring a database:
 from __future__ import annotations
 
 import json
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 # ---------------------------------------------------------------------------
 # temporal_consciousness
@@ -334,9 +334,13 @@ class TestIntentDetection:
 
 
 class TestRunCmd:
-    def test_run_cmd_captures_output(self):
+    @patch("src.kortana.services.intent_executor.subprocess.run")
+    def test_run_cmd_captures_output(self, mock_run):
         from src.kortana.services.intent_executor import _run_cmd
 
+        mock_run.return_value = MagicMock(
+            returncode=0, stdout="git version 2.43.0", stderr=""
+        )
         result = _run_cmd(["git", "--version"])
         assert result["success"] is True
         assert "git version" in result["stdout"]
@@ -515,11 +519,23 @@ class TestAmbientAwareness:
         assert isinstance(state["uncommitted"], list)
         assert isinstance(state["recent_commits"], list)
 
-    def test_scan_git_state_detects_branch(self):
+    @patch("src.kortana.services.ambient_awareness._git_output")
+    def test_scan_git_state_detects_branch(self, mock_git):
         from src.kortana.services.ambient_awareness import scan_git_state
 
+        def _fake_git(cmd):
+            key = " ".join(cmd)
+            if "abbrev-ref" in key:
+                return "main"
+            if "--porcelain" in key:
+                return ""
+            if "--oneline" in key:
+                return "abc1234 test"
+            return None
+
+        mock_git.side_effect = _fake_git
         state = scan_git_state()
-        assert state["branch"] is not None  # we're in a git repo
+        assert state["branch"] is not None
         assert isinstance(state["branch"], str)
 
     @patch("src.kortana.services.ambient_awareness.FOCUS_FILE")
