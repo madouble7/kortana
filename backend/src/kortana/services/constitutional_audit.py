@@ -8,8 +8,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
-from kortana.services.boundary_enforcer import BoundaryCheck
-from kortana.services.constitution import ViolationSeverity
+from src.kortana.services.boundary_enforcer import BoundaryCheck
+from src.kortana.services.constitution import ViolationSeverity
 
 
 @dataclass

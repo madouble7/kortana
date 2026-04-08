@@ -9,8 +9,8 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
-from kortana.services.proposal_registry import PolicyProposal
-from kortana.services.trust_calibrator import TrustLevel
+from src.kortana.services.proposal_registry import PolicyProposal
+from src.kortana.services.trust_calibrator import TrustLevel
 
 
 class DecisionType(Enum):

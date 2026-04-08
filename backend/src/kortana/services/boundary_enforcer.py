@@ -8,14 +8,14 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
-from kortana.services.constitution import (
+from src.kortana.services.constitution import (
     Constitution,
     PolicyClassification,
     Sensitivity,
     ViolationSeverity,
     get_constitution,
 )
-from kortana.services.proposal_registry import PolicyProposal
+from src.kortana.services.proposal_registry import PolicyProposal
 
 
 @dataclass

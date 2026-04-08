@@ -9,9 +9,9 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
-from kortana.services.boundary_enforcer import BoundaryCheck
-from kortana.services.constitution import Sensitivity
-from kortana.services.policy_feedback_loop import PolicyArea
+from src.kortana.services.boundary_enforcer import BoundaryCheck
+from src.kortana.services.constitution import Sensitivity
+from src.kortana.services.policy_feedback_loop import PolicyArea
 
 
 class AppealStatus(Enum):

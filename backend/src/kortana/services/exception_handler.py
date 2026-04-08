@@ -9,12 +9,12 @@ from datetime import datetime, timezone, timedelta
 from enum import Enum
 from typing import Any
 
-from kortana.services.constitution import (
+from src.kortana.services.constitution import (
     Constitution,
     PolicyClassification,
     get_constitution,
 )
-from kortana.services.policy_feedback_loop import PolicyArea
+from src.kortana.services.policy_feedback_loop import PolicyArea
 
 
 class WaiverStatus(Enum):

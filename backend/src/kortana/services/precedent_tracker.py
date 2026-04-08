@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
-from kortana.services.policy_feedback_loop import PolicyArea
+from src.kortana.services.policy_feedback_loop import PolicyArea
 
 
 class DecisionType(Enum):

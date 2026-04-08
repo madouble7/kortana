@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
-from kortana.services.constitution import Sensitivity
+from src.kortana.services.constitution import Sensitivity
 
 
 class QuorumType(Enum):

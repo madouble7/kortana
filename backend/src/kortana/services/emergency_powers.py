@@ -9,8 +9,8 @@ from datetime import datetime, timezone, timedelta
 from enum import Enum
 from typing import Any
 
-from kortana.services.constitution import PolicyClassification
-from kortana.services.policy_feedback_loop import PolicyArea
+from src.kortana.services.constitution import PolicyClassification
+from src.kortana.services.policy_feedback_loop import PolicyArea
 
 
 class EmergencyStatus(Enum):
