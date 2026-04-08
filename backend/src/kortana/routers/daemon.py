@@ -9103,3 +9103,321 @@ async def intrinsic_pulse():
         "pursuits": engine.get_summary(),
         "motivation": tracker.get_summary(),
     }
+
+
+# ── V29 — Self-Model & Identity Persistence ─────────────────────────────────
+# Imports for V29 services
+from src.kortana.services.self_portrait import get_self_portrait_engine  # noqa: E402
+from src.kortana.services.identity_narrative import get_identity_narrative_engine  # noqa: E402
+from src.kortana.services.trait_evolution import get_trait_evolution_engine  # noqa: E402
+from src.kortana.services.continuity_anchor import get_continuity_anchor_engine  # noqa: E402
+
+
+# ── V29A Self-Portrait endpoints ─────────────────────────────────────────────
+
+
+@router.post("/identity/portrait/assess")
+async def portrait_assess(data: dict = Body(...)):
+    """run a full self-portrait assessment for this cycle."""
+    engine = get_self_portrait_engine()
+    portrait = engine.assess(
+        cycle_number=data.get("cycle_number", 0),
+        lessons=data.get("lessons"),
+        desires=data.get("desires"),
+        motivation_snapshot=data.get("motivation_snapshot"),
+        health_snapshot=data.get("health_snapshot"),
+    )
+    return portrait.to_dict()
+
+
+@router.get("/identity/portrait/latest")
+async def portrait_latest():
+    """get the most recent self-portrait."""
+    engine = get_self_portrait_engine()
+    latest = engine.get_latest()
+    return latest.to_dict() if latest else {"status": "no portrait yet"}
+
+
+@router.get("/identity/portrait/trait/{trait_name}")
+async def portrait_trait(trait_name: str):
+    """get current score for a specific trait."""
+    engine = get_self_portrait_engine()
+    score = engine.get_trait(trait_name)
+    return {"trait": trait_name, "score": score}
+
+
+@router.get("/identity/portrait/domain/{domain}")
+async def portrait_domain(domain: str):
+    """get average score for a trait domain."""
+    engine = get_self_portrait_engine()
+    avg = engine.get_domain_average(domain)
+    return {"domain": domain, "average": avg}
+
+
+@router.get("/identity/portrait/scores")
+async def portrait_scores():
+    """get all current trait scores."""
+    engine = get_self_portrait_engine()
+    return {"traits": engine.get_trait_scores()}
+
+
+@router.get("/identity/portrait/history")
+async def portrait_history(n: int = 10):
+    """get recent portrait history."""
+    engine = get_self_portrait_engine()
+    return {"portraits": [p.to_dict() for p in engine.get_history(n)]}
+
+
+@router.get("/identity/portrait/summary/stats")
+async def portrait_summary():
+    """get self-portrait summary."""
+    engine = get_self_portrait_engine()
+    return engine.get_summary()
+
+
+# ── V29B Identity Narrative endpoints ────────────────────────────────────────
+
+
+@router.post("/identity/narrative/cycle")
+async def narrative_process_cycle(data: dict = Body(...)):
+    """process a cycle through the narrative engine."""
+    engine = get_identity_narrative_engine()
+    chapter = engine.process_cycle(
+        cycle_number=data.get("cycle_number", 0),
+        portrait_data=data.get("portrait_data", {}),
+        health_level=data.get("health_level"),
+        desires_summary=data.get("desires_summary"),
+        motivation_summary=data.get("motivation_summary"),
+    )
+    return chapter.to_dict()
+
+
+@router.get("/identity/narrative/current")
+async def narrative_current():
+    """get the current open chapter."""
+    engine = get_identity_narrative_engine()
+    return engine.get_current_chapter().to_dict()
+
+
+@router.get("/identity/narrative/chapter/{chapter_number}")
+async def narrative_chapter(chapter_number: int):
+    """get a specific chapter by number."""
+    engine = get_identity_narrative_engine()
+    chapter = engine.get_chapter(chapter_number)
+    return chapter.to_dict() if chapter else {"error": "chapter not found"}
+
+
+@router.get("/identity/narrative/chapters")
+async def narrative_all_chapters():
+    """get all narrative chapters."""
+    engine = get_identity_narrative_engine()
+    return {"chapters": [ch.to_dict() for ch in engine.get_all_chapters()]}
+
+
+@router.get("/identity/narrative/arc")
+async def narrative_arc():
+    """get the full developmental arc."""
+    engine = get_identity_narrative_engine()
+    return engine.get_arc().to_dict()
+
+
+@router.get("/identity/narrative/turning-points")
+async def narrative_turning_points(n: int = 10):
+    """get recent turning points."""
+    engine = get_identity_narrative_engine()
+    return {"turning_points": engine.get_turning_points(n)}
+
+
+@router.get("/identity/narrative/summary/stats")
+async def narrative_summary():
+    """get narrative summary."""
+    engine = get_identity_narrative_engine()
+    return engine.get_summary()
+
+
+# ── V29C Trait Evolution endpoints ───────────────────────────────────────────
+
+
+@router.post("/identity/evolution/record")
+async def evolution_record_cycle(data: dict = Body(...)):
+    """record trait scores for a cycle and update all trajectories."""
+    engine = get_trait_evolution_engine()
+    snapshot = engine.record_cycle(
+        cycle_number=data.get("cycle_number", 0),
+        trait_scores=data.get("trait_scores", {}),
+        previous_scores=data.get("previous_scores"),
+    )
+    return snapshot.to_dict()
+
+
+@router.post("/identity/evolution/event")
+async def evolution_record_event(data: dict = Body(...)):
+    """record a specific trait evolution event."""
+    engine = get_trait_evolution_engine()
+    event = engine.record_event(
+        trait_name=data.get("trait_name", ""),
+        cycle_number=data.get("cycle_number", 0),
+        old_score=data.get("old_score", 0.5),
+        new_score=data.get("new_score", 0.5),
+        source=data.get("source", "unknown"),
+    )
+    return event.to_dict() if event else {"status": "no significant change"}
+
+
+@router.get("/identity/evolution/trajectory/{trait_name}")
+async def evolution_trajectory(trait_name: str):
+    """get trajectory for a specific trait."""
+    engine = get_trait_evolution_engine()
+    traj = engine.get_trajectory(trait_name)
+    return traj.to_dict() if traj else {"error": "trait not tracked"}
+
+
+@router.get("/identity/evolution/crystallized")
+async def evolution_crystallized():
+    """get all crystallized traits."""
+    engine = get_trait_evolution_engine()
+    return {"crystallized": engine.get_crystallized()}
+
+
+@router.get("/identity/evolution/drifting")
+async def evolution_drifting():
+    """get all drifting traits."""
+    engine = get_trait_evolution_engine()
+    return {"drifting": engine.get_drifting()}
+
+
+@router.get("/identity/evolution/volatile")
+async def evolution_volatile():
+    """get all volatile traits."""
+    engine = get_trait_evolution_engine()
+    return {"volatile": engine.get_volatile()}
+
+
+@router.get("/identity/evolution/history/{trait_name}")
+async def evolution_trait_history(trait_name: str, n: int = 20):
+    """get score history for a specific trait."""
+    engine = get_trait_evolution_engine()
+    return {"history": engine.get_trait_history(trait_name, n)}
+
+
+@router.get("/identity/evolution/snapshot/latest")
+async def evolution_latest_snapshot():
+    """get the most recent evolution snapshot."""
+    engine = get_trait_evolution_engine()
+    latest = engine.get_latest_snapshot()
+    return latest.to_dict() if latest else {"status": "no snapshots yet"}
+
+
+@router.get("/identity/evolution/summary/stats")
+async def evolution_summary():
+    """get trait evolution summary."""
+    engine = get_trait_evolution_engine()
+    return engine.get_summary()
+
+
+# ── V29D Continuity Anchor endpoints ─────────────────────────────────────────
+
+
+@router.post("/identity/continuity/anchor")
+async def continuity_anchor_trait(data: dict = Body(...)):
+    """anchor a trait as part of core identity."""
+    from src.kortana.services.continuity_anchor import AnchorStrength  # noqa: E402
+    engine = get_continuity_anchor_engine()
+    strength_str = data.get("strength", "strong")
+    try:
+        strength = AnchorStrength(strength_str)
+    except ValueError:
+        strength = AnchorStrength.STRONG
+    anchor = engine.anchor_trait(
+        trait_name=data.get("trait_name", ""),
+        value=data.get("value", 0.5),
+        cycle_number=data.get("cycle_number", 0),
+        strength=strength,
+    )
+    return anchor.to_dict()
+
+
+@router.post("/identity/continuity/anchor-crystallized")
+async def continuity_anchor_crystallized(data: dict = Body(...)):
+    """anchor all crystallized traits from V29C."""
+    engine = get_continuity_anchor_engine()
+    anchored = engine.anchor_crystallized(
+        crystallized_traits=data.get("crystallized_traits", []),
+        trait_scores=data.get("trait_scores", {}),
+        cycle_number=data.get("cycle_number", 0),
+    )
+    return {"anchored": [a.to_dict() for a in anchored]}
+
+
+@router.post("/identity/continuity/verify")
+async def continuity_verify(data: dict = Body(...)):
+    """verify identity continuity against anchored traits."""
+    engine = get_continuity_anchor_engine()
+    report = engine.verify(
+        cycle_number=data.get("cycle_number", 0),
+        trait_scores=data.get("trait_scores", {}),
+    )
+    return report.to_dict()
+
+
+@router.get("/identity/continuity/anchors")
+async def continuity_all_anchors():
+    """get all identity anchors."""
+    engine = get_continuity_anchor_engine()
+    return {"anchors": [a.to_dict() for a in engine.get_all_anchors()]}
+
+
+@router.get("/identity/continuity/anchor/{trait_name}")
+async def continuity_anchor_detail(trait_name: str):
+    """get anchor for a specific trait."""
+    engine = get_continuity_anchor_engine()
+    anchor = engine.get_anchor(trait_name)
+    return anchor.to_dict() if anchor else {"error": "not anchored"}
+
+
+@router.get("/identity/continuity/foundational")
+async def continuity_foundational():
+    """get foundational anchors only."""
+    engine = get_continuity_anchor_engine()
+    return {"foundational": [a.to_dict() for a in engine.get_foundational()]}
+
+
+@router.get("/identity/continuity/report/latest")
+async def continuity_latest_report():
+    """get the most recent continuity report."""
+    engine = get_continuity_anchor_engine()
+    report = engine.get_latest_report()
+    return report.to_dict() if report else {"status": "no reports yet"}
+
+
+@router.get("/identity/continuity/coherence/history")
+async def continuity_coherence_history(n: int = 20):
+    """get coherence score history."""
+    engine = get_continuity_anchor_engine()
+    return {"history": engine.get_coherence_history(n)}
+
+
+@router.get("/identity/continuity/summary/stats")
+async def continuity_summary():
+    """get continuity anchor summary."""
+    engine = get_continuity_anchor_engine()
+    return engine.get_summary()
+
+
+# ── V29 cross-component identity pulse ───────────────────────────────────────
+
+
+@router.get("/identity-pulse")
+async def identity_pulse():
+    """unified self-model & identity persistence pulse — the knowing heartbeat."""
+    portrait_engine = get_self_portrait_engine()
+    narrative_engine = get_identity_narrative_engine()
+    evolution_engine = get_trait_evolution_engine()
+    anchor_engine = get_continuity_anchor_engine()
+
+    return {
+        "portrait": portrait_engine.get_summary(),
+        "narrative": narrative_engine.get_summary(),
+        "evolution": evolution_engine.get_summary(),
+        "continuity": anchor_engine.get_summary(),
+    }

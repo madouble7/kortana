@@ -2837,3 +2837,84 @@ class LearningCycleReportRecord(Base):
     context_injections_json = Column(Text, default="[]")
     generated_at = Column(DateTime, default=func.now())
     report_hash = Column(String, nullable=True)
+
+
+# ── V29 — Self-Model & Identity Persistence ─────────────────────────────────
+
+
+class TraitProfileRecord(Base):
+    """V29A — versioned trait profile snapshot."""
+    __tablename__ = "trait_profile"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    profile_id = Column(String, unique=True, index=True, nullable=False)
+    cycle_number = Column(Integer, index=True, default=0)
+    traits_json = Column(Text, default="{}")  # Dict[trait_name, score]
+    domain_averages_json = Column(Text, default="{}")
+    dominant_domain = Column(String, default="")
+    strongest_trait = Column(String, default="")
+    weakest_trait = Column(String, default="")
+    total_delta = Column(Float, default=0.0)
+    significant_shifts_json = Column(Text, default="[]")
+    is_stable = Column(Boolean, default=True)
+    is_transforming = Column(Boolean, default=False)
+    captured_at = Column(DateTime, default=func.now())
+    profile_hash = Column(String, nullable=True)
+
+
+class NarrativeChapterRecord(Base):
+    """V29B — developmental narrative chapter."""
+    __tablename__ = "narrative_chapter"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    chapter_id = Column(String, unique=True, index=True, nullable=False)
+    chapter_number = Column(Integer, index=True, default=1)
+    title = Column(String, default="")
+    theme = Column(String, default="genesis")
+    start_cycle = Column(Integer, default=0)
+    end_cycle = Column(Integer, nullable=True)
+    events_json = Column(Text, default="[]")
+    trait_deltas_json = Column(Text, default="{}")
+    opening_summary = Column(Text, default="")
+    closing_summary = Column(Text, default="")
+    is_open = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=func.now())
+    chapter_hash = Column(String, nullable=True)
+
+
+class TraitEvolutionRecord(Base):
+    """V29C — trait evolution snapshot."""
+    __tablename__ = "trait_evolution"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    snapshot_id = Column(String, unique=True, index=True, nullable=False)
+    cycle_number = Column(Integer, index=True, default=0)
+    crystallized_traits_json = Column(Text, default="[]")
+    drifting_traits_json = Column(Text, default="[]")
+    volatile_traits_json = Column(Text, default="[]")
+    most_changed = Column(String, default="")
+    most_stable = Column(String, default="")
+    overall_stability = Column(Float, default=1.0)
+    trajectories_json = Column(Text, default="{}")
+    captured_at = Column(DateTime, default=func.now())
+    evolution_hash = Column(String, nullable=True)
+
+
+class ContinuityReportRecord(Base):
+    """V29D — identity continuity report."""
+    __tablename__ = "continuity_report"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    report_id = Column(String, unique=True, index=True, nullable=False)
+    cycle_number = Column(Integer, index=True, default=0)
+    coherence_score = Column(Float, default=1.0)
+    drift_severity = Column(String, default="none")
+    drift_magnitude = Column(Float, default=0.0)
+    identity_verified = Column(Boolean, default=True)
+    anchor_count = Column(Integer, default=0)
+    drifting_traits_json = Column(Text, default="[]")
+    stable_traits_json = Column(Text, default="[]")
+    foundational_anchors_json = Column(Text, default="[]")
+    anchors_json = Column(Text, default="[]")
+    verified_at = Column(DateTime, default=func.now())
+    report_hash = Column(String, nullable=True)
