@@ -1466,3 +1466,78 @@ class AuthenticatedPromotionRecord(Base):
     session_verification_level = Column(String(32), nullable=True)
     event_hash = Column(String(64), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+
+# ---------------------------------------------------------------------------
+# V13 — Enterprise Control Integration models
+# ---------------------------------------------------------------------------
+
+
+class IdPSyncRecord(Base):
+    """V13A — IdP discovery sync record."""
+    __tablename__ = "idp_sync"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    discovery_url = Column(String(256), nullable=False)
+    issuer_url = Column(String(256), nullable=True)
+    sync_state = Column(String(32), default="pending")
+    last_synced_at = Column(DateTime, nullable=True)
+    config_hash = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class SecretReferenceRecord(Base):
+    """V13B — Secret reference record."""
+    __tablename__ = "secret_reference"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    secret_id = Column(String(64), nullable=False)
+    backend = Column(String(32), default="local")
+    path = Column(String(256), nullable=True)
+    version = Column(Integer, default=1)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    rotated_at = Column(DateTime, nullable=True)
+    ref_hash = Column(String(64), nullable=True)
+
+
+class AttestationRecord(Base):
+    """V13C — Attestation payload record."""
+    __tablename__ = "attestation"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    attestation_id = Column(String(64), nullable=False)
+    attestation_type = Column(String(32), nullable=False)
+    subject = Column(String(128), nullable=True)
+    signature = Column(String(256), nullable=True)
+    signer_id = Column(String(64), nullable=True)
+    payload_hash = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class TrustSignalRecord(Base):
+    """V13D — Trust signal record."""
+    __tablename__ = "trust_signal"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    signal_id = Column(String(64), nullable=False)
+    signal_type = Column(String(32), nullable=False)
+    source = Column(String(128), nullable=True)
+    confidence = Column(Float, default=0.0)
+    evidence = Column(Text, nullable=True)
+    signal_hash = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class TrustEvaluationRecord(Base):
+    """V13D — Trust evaluation record."""
+    __tablename__ = "trust_evaluation"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    evaluation_id = Column(String(64), nullable=False)
+    version_id = Column(String(64), nullable=True)
+    passed = Column(Boolean, default=False)
+    score = Column(Float, default=0.0)
+    missing_signals = Column(Text, nullable=True)
+    eval_hash = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)

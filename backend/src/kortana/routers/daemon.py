@@ -4274,7 +4274,7 @@ async def enforce_ci_credential(
     )
 
     try:
-        cp = CICheckpoint(checkpoint)
+        CICheckpoint(checkpoint)
     except ValueError:
         return JSONResponse(
             content={"error": f"Unknown checkpoint: {checkpoint!r}"},
@@ -4463,4 +4463,368 @@ async def get_authenticated_promotion_events(version_id: str) -> dict[str, Any]:
         "version_id": version_id,
         "events": [e.to_dict() for e in events],
         "count": len(events),
+    }
+
+
+
+# ---------------------------------------------------------------------------
+# V13 — Enterprise Control Integration endpoints
+# ---------------------------------------------------------------------------
+
+
+# V13A — IdP Discovery endpoints -------------------------------------------
+
+
+@router.post("/idp/discover")
+async def discover_idp(
+    discovery_url: str = Query(...),
+    issuer: str = Query(""),
+    token_endpoint: str = Query(""),
+    jwks_uri: str = Query(""),
+) -> dict[str, Any]:
+    """Register an IdP via discovery payload."""
+    from src.kortana.services.idp_discovery import get_idp_discovery_manager
+
+    manager = get_idp_discovery_manager()
+    payload: dict[str, Any] = {}
+    if issuer:
+        payload["issuer"] = issuer
+    if token_endpoint:
+        payload["token_endpoint"] = token_endpoint
+    if jwks_uri:
+        payload["jwks_uri"] = jwks_uri
+    provider = manager.register_discovery_payload(discovery_url, payload)
+    return {"status": "discovered", "provider": provider.to_dict()}
+
+
+@router.get("/idp/discovered")
+async def list_discovered_idps() -> dict[str, Any]:
+    """List all discovered identity providers."""
+    from src.kortana.services.idp_discovery import get_idp_discovery_manager
+
+    manager = get_idp_discovery_manager()
+    providers = manager.list_discovered()
+    return {
+        "providers": [p.to_dict() for p in providers],
+        "count": manager.provider_count,
+    }
+
+
+@router.post("/idp/sync/{discovery_url:path}")
+async def sync_idp(discovery_url: str) -> dict[str, Any]:
+    """Force sync a discovered IdP."""
+    from src.kortana.services.idp_discovery import get_idp_discovery_manager
+
+    manager = get_idp_discovery_manager()
+    provider, error = manager.sync_provider(discovery_url)
+    if error:
+        return JSONResponse(content={"error": error}, status_code=400)
+    return {"status": "synced", "provider": provider.to_dict()}
+
+
+@router.get("/idp/sync/status/{discovery_url:path}")
+async def get_idp_sync_status(discovery_url: str) -> dict[str, Any]:
+    """Get sync status for a discovered IdP."""
+    from src.kortana.services.idp_discovery import get_idp_discovery_manager
+
+    manager = get_idp_discovery_manager()
+    status = manager.get_sync_status(discovery_url)
+    if status is None:
+        return JSONResponse(
+            content={"error": f"No sync status for {discovery_url!r}"},
+            status_code=404,
+        )
+    return {"discovery_url": discovery_url, "sync_state": status.value}
+
+
+@router.get("/idp/sync/events")
+async def list_idp_sync_events() -> dict[str, Any]:
+    """List all IdP sync events."""
+    from src.kortana.services.idp_discovery import get_idp_discovery_manager
+
+    manager = get_idp_discovery_manager()
+    events = manager.get_sync_events()
+    return {"events": [e.to_dict() for e in events], "count": manager.event_count}
+
+
+# V13B — Secret Store endpoints --------------------------------------------
+
+
+@router.post("/secrets/store")
+async def store_secret(
+    secret_id: str = Query(...),
+    value: str = Query(...),
+    backend: str = Query("local"),
+    path: str = Query(""),
+) -> dict[str, Any]:
+    """Store a secret in the named backend."""
+    from src.kortana.services.secret_store import get_secret_store_registry
+
+    registry = get_secret_store_registry()
+    ref = registry.store_secret(secret_id, value, backend, path)
+    return {"status": "stored", "reference": ref.to_dict()}
+
+
+@router.get("/secrets/fetch/{secret_id}")
+async def fetch_secret(secret_id: str, backend: str = Query("local")) -> dict[str, Any]:
+    """Fetch a secret (value is redacted)."""
+    from src.kortana.services.secret_store import get_secret_store_registry
+
+    registry = get_secret_store_registry()
+    secret = registry.fetch_secret(secret_id, backend)
+    if secret is None:
+        return JSONResponse(
+            content={"error": f"Secret {secret_id!r} not found"},
+            status_code=404,
+        )
+    return {"secret": secret.to_dict()}
+
+
+@router.post("/secrets/rotate/{secret_id}")
+async def rotate_secret(
+    secret_id: str,
+    new_value: str = Query(...),
+    backend: str = Query("local"),
+) -> dict[str, Any]:
+    """Rotate a secret to a new value."""
+    from src.kortana.services.secret_store import get_secret_store_registry
+
+    registry = get_secret_store_registry()
+    ref = registry.rotate_secret(secret_id, new_value, backend)
+    return {"status": "rotated", "reference": ref.to_dict()}
+
+
+@router.delete("/secrets/{secret_id}")
+async def delete_secret(
+    secret_id: str, backend: str = Query("local")
+) -> dict[str, Any]:
+    """Delete a secret."""
+    from src.kortana.services.secret_store import get_secret_store_registry
+
+    registry = get_secret_store_registry()
+    deleted = registry.delete_secret(secret_id, backend)
+    return {"deleted": deleted, "secret_id": secret_id}
+
+
+@router.get("/secrets")
+async def list_secrets(backend: str = Query("local")) -> dict[str, Any]:
+    """List secrets in a backend."""
+    from src.kortana.services.secret_store import get_secret_store_registry
+
+    registry = get_secret_store_registry()
+    refs = registry.list_secrets(backend)
+    return {"secrets": [r.to_dict() for r in refs], "count": len(refs)}
+
+
+@router.get("/secrets/backends")
+async def list_secret_backends() -> dict[str, Any]:
+    """List registered secret backends."""
+    from src.kortana.services.secret_store import get_secret_store_registry
+
+    registry = get_secret_store_registry()
+    return {"backends": registry.list_backends(), "count": registry.backend_count}
+
+
+# V13C — Webhook Attestation endpoints -------------------------------------
+
+
+@router.post("/attestation/sign")
+async def sign_webhook(
+    payload: str = Query(...),
+    secret: str = Query(...),
+) -> dict[str, Any]:
+    """Sign a webhook payload with HMAC-SHA256."""
+    from src.kortana.services.webhook_attestation import WebhookSigner
+
+    signature = WebhookSigner.sign(payload.encode(), secret)
+    return {"signature": signature, "algorithm": "hmac-sha256"}
+
+
+@router.post("/attestation/verify")
+async def verify_webhook(
+    payload: str = Query(...),
+    signature: str = Query(...),
+    secret: str = Query(...),
+) -> dict[str, Any]:
+    """Verify an HMAC-SHA256 webhook signature."""
+    from src.kortana.services.webhook_attestation import WebhookSigner
+
+    valid = WebhookSigner.verify(payload.encode(), signature, secret)
+    return {"valid": valid}
+
+
+@router.post("/attestation/signers/register")
+async def register_trusted_signer(
+    signer_id: str = Query(...),
+    key: str = Query(...),
+) -> dict[str, Any]:
+    """Register a trusted CI attestation signer."""
+    from src.kortana.services.webhook_attestation import get_attestation_verifier
+
+    verifier = get_attestation_verifier()
+    verifier.register_trusted_signer(signer_id, key)
+    return {
+        "status": "registered",
+        "signer_id": signer_id,
+        "signer_count": verifier.signer_count,
+    }
+
+
+@router.get("/attestation/signers")
+async def list_trusted_signers() -> dict[str, Any]:
+    """List trusted attestation signers."""
+    from src.kortana.services.webhook_attestation import get_attestation_verifier
+
+    verifier = get_attestation_verifier()
+    return {
+        "signers": verifier.list_trusted_signers(),
+        "count": verifier.signer_count,
+    }
+
+
+# V13D — Trust Signal Consumer endpoints -----------------------------------
+
+
+@router.post("/trust/signals/register")
+async def register_trust_signal(
+    signal_type: str = Query(...),
+    source: str = Query(""),
+    confidence: float = Query(1.0),
+    version_id: str = Query(""),
+) -> dict[str, Any]:
+    """Register an incoming trust signal."""
+    from src.kortana.services.trust_signal_consumer import (
+        TrustSignal,
+        TrustSignalType,
+        get_trust_signal_consumer,
+    )
+
+    try:
+        st = TrustSignalType(signal_type)
+    except ValueError:
+        return JSONResponse(
+            content={"error": f"Unknown signal type: {signal_type!r}"},
+            status_code=400,
+        )
+
+    consumer = get_trust_signal_consumer()
+    signal = consumer.register_signal(
+        TrustSignal(
+            signal_type=st,
+            source=source,
+            confidence=confidence,
+            version_id=version_id,
+        )
+    )
+    return {"status": "registered", "signal": signal.to_dict()}
+
+
+@router.get("/trust/signals")
+async def list_trust_signals(
+    signal_type: str = Query(""),
+) -> dict[str, Any]:
+    """List trust signals, optionally filtered by type."""
+    from src.kortana.services.trust_signal_consumer import (
+        TrustSignalType,
+        get_trust_signal_consumer,
+    )
+
+    consumer = get_trust_signal_consumer()
+    if signal_type:
+        try:
+            st = TrustSignalType(signal_type)
+        except ValueError:
+            return JSONResponse(
+                content={"error": f"Unknown signal type: {signal_type!r}"},
+                status_code=400,
+            )
+        signals = consumer.get_signals(st)
+    else:
+        signals = consumer.get_signals()
+    return {"signals": [s.to_dict() for s in signals], "count": len(signals)}
+
+
+@router.post("/trust/evaluate")
+async def evaluate_trust(
+    required_signals: str = Query(...),
+    min_confidence: float = Query(0.8),
+    version_id: str = Query(""),
+) -> dict[str, Any]:
+    """Evaluate trust signals against requirements."""
+    from src.kortana.services.trust_signal_consumer import (
+        TrustRequirement,
+        TrustSignalType,
+        get_trust_signal_consumer,
+    )
+
+    signal_types: list[TrustSignalType] = []
+    for s in required_signals.split(","):
+        s = s.strip()
+        if s:
+            try:
+                signal_types.append(TrustSignalType(s))
+            except ValueError:
+                return JSONResponse(
+                    content={"error": f"Unknown signal type: {s!r}"},
+                    status_code=400,
+                )
+
+    consumer = get_trust_signal_consumer()
+    req = TrustRequirement(
+        required_signals=signal_types,
+        min_confidence=min_confidence,
+    )
+    evaluation = consumer.evaluate(req, version_id=version_id)
+    return {"evaluation": evaluation.to_dict()}
+
+
+@router.post("/trust/deploy/{version_id}")
+async def deploy_with_trust(
+    version_id: str,
+    session_id: str = Query(...),
+    required_signals: str = Query(...),
+    min_confidence: float = Query(0.8),
+) -> dict[str, Any]:
+    """Deploy a rule version gated by trust signal evaluation."""
+    from src.kortana.services.trust_signal_consumer import (
+        DeployTrustGate,
+        TrustRequirement,
+        TrustSignalType,
+        get_trust_signal_consumer,
+    )
+
+    signal_types: list[TrustSignalType] = []
+    for s in required_signals.split(","):
+        s = s.strip()
+        if s:
+            try:
+                signal_types.append(TrustSignalType(s))
+            except ValueError:
+                return JSONResponse(
+                    content={"error": f"Unknown signal type: {s!r}"},
+                    status_code=400,
+                )
+
+    gate = DeployTrustGate(get_trust_signal_consumer())
+    req = TrustRequirement(
+        required_signals=signal_types,
+        min_confidence=min_confidence,
+    )
+    result, error = gate.promote_with_trust(version_id, session_id, req)
+    if error:
+        return JSONResponse(content={"error": error}, status_code=400)
+    return {"status": "promoted", "version_id": version_id}
+
+
+@router.get("/trust/evaluations/{version_id}")
+async def get_trust_evaluations(version_id: str) -> dict[str, Any]:
+    """Get trust evaluations for a version."""
+    from src.kortana.services.trust_signal_consumer import get_trust_signal_consumer
+
+    consumer = get_trust_signal_consumer()
+    evaluations = consumer.get_evaluations(version_id)
+    return {
+        "version_id": version_id,
+        "evaluations": [e.to_dict() for e in evaluations],
+        "count": len(evaluations),
     }
