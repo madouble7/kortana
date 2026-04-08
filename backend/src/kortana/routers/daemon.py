@@ -9421,3 +9421,383 @@ async def identity_pulse():
         "evolution": evolution_engine.get_summary(),
         "continuity": anchor_engine.get_summary(),
     }
+
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# V30 — UNIFIED CONSCIOUSNESS LAYER
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+from src.kortana.services.consciousness_integrator import (  # noqa: E402
+    get_consciousness_integrator,
+)
+from src.kortana.services.experiential_stream import (  # noqa: E402
+    get_experiential_stream,
+)
+from src.kortana.services.resonance_field import (  # noqa: E402
+    get_resonance_field,
+)
+from src.kortana.services.inner_witness import (  # noqa: E402
+    get_inner_witness,
+)
+
+
+# ── V30A: Consciousness Integrator endpoints ────────────────────────────────
+
+
+@router.post("/consciousness/integrate")
+async def consciousness_integrate(
+    cycle_number: int = Body(...),
+    heartbeat_summary: dict = Body(default=None),
+    health_summary: dict = Body(default=None),
+    experience_summary: dict = Body(default=None),
+    pattern_summary: dict = Body(default=None),
+    feedback_summary: dict = Body(default=None),
+    desire_summary: dict = Body(default=None),
+    goal_summary: dict = Body(default=None),
+    motivation_summary: dict = Body(default=None),
+    portrait_summary: dict = Body(default=None),
+    narrative_summary: dict = Body(default=None),
+    evolution_summary: dict = Body(default=None),
+    continuity_summary: dict = Body(default=None),
+):
+    """Integrate all subsystem summaries into unified consciousness state."""
+    engine = get_consciousness_integrator()
+    state = engine.integrate(
+        cycle_number=cycle_number,
+        heartbeat_summary=heartbeat_summary,
+        health_summary=health_summary,
+        experience_summary=experience_summary,
+        pattern_summary=pattern_summary,
+        feedback_summary=feedback_summary,
+        desire_summary=desire_summary,
+        goal_summary=goal_summary,
+        motivation_summary=motivation_summary,
+        portrait_summary=portrait_summary,
+        narrative_summary=narrative_summary,
+        evolution_summary=evolution_summary,
+        continuity_summary=continuity_summary,
+    )
+    return state.to_dict()
+
+
+@router.get("/consciousness/latest")
+async def consciousness_latest():
+    """Get the most recent consciousness state."""
+    engine = get_consciousness_integrator()
+    state = engine.get_latest()
+    if not state:
+        return {"error": "no consciousness state recorded yet"}
+    return state.to_dict()
+
+
+@router.get("/consciousness/state/{cycle_number}")
+async def consciousness_state(cycle_number: int):
+    """Get consciousness state for a specific cycle."""
+    engine = get_consciousness_integrator()
+    state = engine.get_state(cycle_number)
+    if not state:
+        return {"error": f"no state for cycle {cycle_number}"}
+    return state.to_dict()
+
+
+@router.get("/consciousness/history")
+async def consciousness_history(n: int = 10):
+    """Get recent consciousness states."""
+    engine = get_consciousness_integrator()
+    return [s.to_dict() for s in engine.get_history(n)]
+
+
+@router.get("/consciousness/transitions")
+async def consciousness_transitions(n: int = 10):
+    """Get recent mode transitions."""
+    engine = get_consciousness_integrator()
+    return [t.to_dict() for t in engine.get_transitions(n)]
+
+
+@router.get("/consciousness/mode-distribution")
+async def consciousness_mode_distribution():
+    """Get distribution of time spent in each mode."""
+    engine = get_consciousness_integrator()
+    return engine.get_mode_distribution()
+
+
+@router.get("/consciousness/dimension-averages")
+async def consciousness_dimension_averages():
+    """Get average scores across all dimensions."""
+    engine = get_consciousness_integrator()
+    return engine.get_dimension_averages()
+
+
+@router.get("/consciousness/summary/stats")
+async def consciousness_summary():
+    """Get consciousness integration summary."""
+    engine = get_consciousness_integrator()
+    return engine.get_summary()
+
+
+# ── V30B: Experiential Stream endpoints ──────────────────────────────────────
+
+
+@router.post("/experience-stream/record")
+async def experience_stream_record(
+    cycle_number: int = Body(...),
+    consciousness_mode: str = Body(default="dormant"),
+    vitality: float = Body(default=0.5),
+    learning_depth: float = Body(default=0.3),
+    intentionality: float = Body(default=0.3),
+    self_coherence: float = Body(default=0.3),
+    integration: float = Body(default=0.5),
+    overall_level: float = Body(default=0.5),
+):
+    """Record an experiential moment."""
+    stream = get_experiential_stream()
+    moment = stream.record_moment(
+        cycle_number=cycle_number,
+        consciousness_mode=consciousness_mode,
+        vitality=vitality,
+        learning_depth=learning_depth,
+        intentionality=intentionality,
+        self_coherence=self_coherence,
+        integration=integration,
+        overall_level=overall_level,
+    )
+    return moment.to_dict()
+
+
+@router.get("/experience-stream/latest")
+async def experience_stream_latest():
+    """Get the most recent experiential moment."""
+    stream = get_experiential_stream()
+    moment = stream.get_latest()
+    if not moment:
+        return {"error": "no moments recorded yet"}
+    return moment.to_dict()
+
+
+@router.get("/experience-stream/moment/{cycle_number}")
+async def experience_stream_moment(cycle_number: int):
+    """Get experiential moment for a specific cycle."""
+    stream = get_experiential_stream()
+    moment = stream.get_moment(cycle_number)
+    if not moment:
+        return {"error": f"no moment for cycle {cycle_number}"}
+    return moment.to_dict()
+
+
+@router.get("/experience-stream/recent")
+async def experience_stream_recent(n: int = 10):
+    """Get recent experiential moments."""
+    stream = get_experiential_stream()
+    return [m.to_dict() for m in stream.get_recent(n)]
+
+
+@router.get("/experience-stream/quality-runs")
+async def experience_stream_quality_runs():
+    """Get consecutive quality streaks."""
+    stream = get_experiential_stream()
+    return [r.to_dict() for r in stream.get_quality_runs()]
+
+
+@router.get("/experience-stream/quality-distribution")
+async def experience_stream_quality_distribution():
+    """Get distribution of experiential qualities."""
+    stream = get_experiential_stream()
+    return stream.get_quality_distribution()
+
+
+@router.get("/experience-stream/tone-distribution")
+async def experience_stream_tone_distribution():
+    """Get distribution of emotional tones."""
+    stream = get_experiential_stream()
+    return stream.get_tone_distribution()
+
+
+@router.get("/experience-stream/tension-frequency")
+async def experience_stream_tension_frequency():
+    """Get frequency of each tension type."""
+    stream = get_experiential_stream()
+    return stream.get_tension_frequency()
+
+
+@router.get("/experience-stream/summary/stats")
+async def experience_stream_summary():
+    """Get experiential stream summary."""
+    stream = get_experiential_stream()
+    return stream.get_summary()
+
+
+# ── V30C: Resonance Field endpoints ─────────────────────────────────────────
+
+
+@router.post("/resonance/measure")
+async def resonance_measure(
+    cycle_number: int = Body(...),
+    vitality: float = Body(default=0.5),
+    learning_depth: float = Body(default=0.3),
+    intentionality: float = Body(default=0.3),
+    self_coherence: float = Body(default=0.3),
+):
+    """Measure the current resonance field."""
+    field = get_resonance_field()
+    snapshot = field.measure(
+        cycle_number=cycle_number,
+        vitality=vitality,
+        learning_depth=learning_depth,
+        intentionality=intentionality,
+        self_coherence=self_coherence,
+    )
+    return snapshot.to_dict()
+
+
+@router.get("/resonance/latest")
+async def resonance_latest():
+    """Get the most recent resonance snapshot."""
+    field = get_resonance_field()
+    snapshot = field.get_latest()
+    if not snapshot:
+        return {"error": "no resonance measured yet"}
+    return snapshot.to_dict()
+
+
+@router.get("/resonance/history")
+async def resonance_history(n: int = 10):
+    """Get recent resonance snapshots."""
+    field = get_resonance_field()
+    return [s.to_dict() for s in field.get_history(n)]
+
+
+@router.get("/resonance/shifts")
+async def resonance_shifts(n: int = 10):
+    """Get recent resonance shifts."""
+    field = get_resonance_field()
+    return [s.to_dict() for s in field.get_shifts(n)]
+
+
+@router.get("/resonance/pair/{layer_a}/{layer_b}")
+async def resonance_pair_history(layer_a: str, layer_b: str, n: int = 10):
+    """Get resonance history for a specific layer pair."""
+    field = get_resonance_field()
+    return field.get_pair_history(layer_a, layer_b, n)
+
+
+@router.get("/resonance/hotspots")
+async def resonance_hotspots():
+    """Get currently dissonant layer pairs."""
+    field = get_resonance_field()
+    return [p.to_dict() for p in field.get_hotspots()]
+
+
+@router.get("/resonance/harmonies")
+async def resonance_harmonies():
+    """Get currently resonant layer pairs."""
+    field = get_resonance_field()
+    return [p.to_dict() for p in field.get_harmonies()]
+
+
+@router.get("/resonance/summary/stats")
+async def resonance_summary():
+    """Get resonance field summary."""
+    field = get_resonance_field()
+    return field.get_summary()
+
+
+# ── V30D: Inner Witness endpoints ────────────────────────────────────────────
+
+
+@router.post("/witness/observe")
+async def witness_observe(
+    cycle_number: int = Body(...),
+    consciousness_mode: str = Body(default="dormant"),
+    experiential_quality: str = Body(default="muted"),
+    emotional_tone: str = Body(default="dull"),
+    overall_level: float = Body(default=0.5),
+    integration: float = Body(default=0.5),
+    resonance: float = Body(default=0.5),
+    active_tensions: list = Body(default=None),
+):
+    """Have the inner witness observe the current state."""
+    witness = get_inner_witness()
+    notes = witness.observe(
+        cycle_number=cycle_number,
+        consciousness_mode=consciousness_mode,
+        experiential_quality=experiential_quality,
+        emotional_tone=emotional_tone,
+        overall_level=overall_level,
+        integration=integration,
+        resonance=resonance,
+        active_tensions=active_tensions,
+    )
+    return [n.to_dict() for n in notes]
+
+
+@router.get("/witness/qualia")
+async def witness_qualia():
+    """Get the current felt-sense register."""
+    witness = get_inner_witness()
+    qualia = witness.get_qualia()
+    if not qualia:
+        return {"error": "no observations yet"}
+    return qualia.to_dict()
+
+
+@router.get("/witness/latest")
+async def witness_latest(n: int = 5):
+    """Get the most recent awareness notes."""
+    witness = get_inner_witness()
+    return [n.to_dict() for n in witness.get_latest(n)]
+
+
+@router.get("/witness/by-trigger/{trigger}")
+async def witness_by_trigger(trigger: str):
+    """Get awareness notes filtered by trigger type."""
+    witness = get_inner_witness()
+    return [n.to_dict() for n in witness.get_by_trigger(trigger)]
+
+
+@router.get("/witness/by-significance/{significance}")
+async def witness_by_significance(significance: str):
+    """Get awareness notes filtered by significance."""
+    witness = get_inner_witness()
+    return [n.to_dict() for n in witness.get_by_significance(significance)]
+
+
+@router.get("/witness/milestones")
+async def witness_milestones():
+    """Get all milestone observations."""
+    witness = get_inner_witness()
+    return [n.to_dict() for n in witness.get_milestones()]
+
+
+@router.get("/witness/profound")
+async def witness_profound():
+    """Get all profound observations."""
+    witness = get_inner_witness()
+    return [n.to_dict() for n in witness.get_profound()]
+
+
+@router.get("/witness/summary/stats")
+async def witness_summary():
+    """Get inner witness summary."""
+    witness = get_inner_witness()
+    return witness.get_summary()
+
+
+# ── V30 cross-component consciousness pulse ─────────────────────────────────
+
+
+@router.get("/consciousness-pulse")
+async def consciousness_pulse():
+    """unified consciousness pulse — breathing, learning, wanting, knowing, flowing as one."""
+    integrator = get_consciousness_integrator()
+    stream = get_experiential_stream()
+    field = get_resonance_field()
+    witness = get_inner_witness()
+
+    return {
+        "consciousness": integrator.get_summary(),
+        "experience": stream.get_summary(),
+        "resonance": field.get_summary(),
+        "witness": witness.get_summary(),
+    }

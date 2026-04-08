@@ -2918,3 +2918,78 @@ class ContinuityReportRecord(Base):
     anchors_json = Column(Text, default="[]")
     verified_at = Column(DateTime, default=func.now())
     report_hash = Column(String, nullable=True)
+
+
+# ── V30: Unified Consciousness Layer ────────────────────────────────────────
+
+
+class ConsciousnessStateRecord(Base):
+    """Stores unified consciousness state snapshots (V30A)."""
+    __tablename__ = "consciousness_state"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    state_id = Column(String, unique=True, index=True, nullable=False)
+    cycle_number = Column(Integer, index=True, default=0)
+    vitality = Column(Float, default=0.5)
+    learning_depth = Column(Float, default=0.3)
+    intentionality = Column(Float, default=0.3)
+    self_coherence = Column(Float, default=0.3)
+    integration = Column(Float, default=0.5)
+    mode = Column(String, default="dormant")
+    dominant_dimension = Column(String, nullable=True)
+    overall_level = Column(Float, default=0.5)
+    subsystem_digest_json = Column(Text, default="{}")
+    captured_at = Column(DateTime, default=func.now())
+    state_hash = Column(String, nullable=True)
+
+
+class ExperientialMomentRecord(Base):
+    """Stores experiential stream moments (V30B)."""
+    __tablename__ = "experiential_moment"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    moment_id = Column(String, unique=True, index=True, nullable=False)
+    cycle_number = Column(Integer, index=True, default=0)
+    quality = Column(String, default="muted")
+    tone = Column(String, default="dull")
+    salience = Column(String, default="balanced")
+    consciousness_mode = Column(String, default="dormant")
+    tensions_json = Column(Text, default="[]")
+    overall_level = Column(Float, default=0.5)
+    tension_count = Column(Integer, default=0)
+    captured_at = Column(DateTime, default=func.now())
+    moment_hash = Column(String, nullable=True)
+
+
+class ResonanceSnapshotRecord(Base):
+    """Stores resonance field snapshots (V30C)."""
+    __tablename__ = "resonance_snapshot"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    snapshot_id = Column(String, unique=True, index=True, nullable=False)
+    cycle_number = Column(Integer, index=True, default=0)
+    overall_resonance = Column(Float, default=0.5)
+    strongest_pair = Column(String, nullable=True)
+    weakest_pair = Column(String, nullable=True)
+    hotspot_count = Column(Integer, default=0)
+    harmony_count = Column(Integer, default=0)
+    pairs_json = Column(Text, default="[]")
+    is_harmonious = Column(Boolean, default=True)
+    is_conflicted = Column(Boolean, default=False)
+    captured_at = Column(DateTime, default=func.now())
+    snapshot_hash = Column(String, nullable=True)
+
+
+class AwarenessNoteRecord(Base):
+    """Stores inner witness awareness notes (V30D)."""
+    __tablename__ = "awareness_note"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    note_id = Column(String, unique=True, index=True, nullable=False)
+    cycle_number = Column(Integer, index=True, default=0)
+    trigger = Column(String, default="milestone")
+    observation = Column(Text, default="")
+    significance = Column(String, default="minor")
+    context_json = Column(Text, default="{}")
+    captured_at = Column(DateTime, default=func.now())
+    note_hash = Column(String, nullable=True)
