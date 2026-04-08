@@ -957,7 +957,9 @@ class CanaryRun(Base):
     branch = Column(String(255), nullable=True, index=True)
     total_cycles = Column(Integer, nullable=False)
     task_pool_size = Column(Integer, nullable=False)
-    verdict = Column(String(32), nullable=False, index=True)  # adaptive | static | insufficient_cycles
+    verdict = Column(
+        String(32), nullable=False, index=True
+    )  # adaptive | static | insufficient_cycles
     analysis = Column(JSON, nullable=False)  # full cross-cycle analysis dict
     score_shift_delta = Column(Float, nullable=True)  # denormalised for fast queries
     goal_alignment_delta = Column(Float, nullable=True)
@@ -965,10 +967,15 @@ class CanaryRun(Base):
     top3_churn_rate = Column(Float, nullable=True)
     score_spread_delta = Column(Float, nullable=True)
     promotion_status = Column(
-        String(32), nullable=False, default="pending", index=True,
+        String(32),
+        nullable=False,
+        default="pending",
+        index=True,
     )  # pending | promoted | rejected | skipped
     promotion_reasons = Column(JSON, nullable=True)  # list[str] — why promoted/rejected
-    triggered_by = Column(String(64), nullable=False, default="manual")  # manual | ci | daemon
+    triggered_by = Column(
+        String(64), nullable=False, default="manual"
+    )  # manual | ci | daemon
     snapshot_summary = Column(JSON, nullable=True)  # first + last cycle summaries
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
@@ -988,13 +995,19 @@ class PolicyDecisionLog(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     decision_type = Column(
-        String(32), nullable=False, index=True,
+        String(32),
+        nullable=False,
+        index=True,
     )  # escalation | deployment | alert | actuation
     actor = Column(
-        String(32), nullable=False, default="daemon",
+        String(32),
+        nullable=False,
+        default="daemon",
     )  # daemon | human | ci
     action = Column(
-        String(32), nullable=False, index=True,
+        String(32),
+        nullable=False,
+        index=True,
     )  # allowed | blocked | escalated | de-escalated | hold
     from_state = Column(String(64), nullable=True)
     to_state = Column(String(64), nullable=True)
@@ -1011,7 +1024,6 @@ class PolicyDecisionLog(Base):
         )
 
 
-
 class RollbackEvent(Base):
     """V8A — Record of an automatic or manual rollback.
 
@@ -1023,7 +1035,9 @@ class RollbackEvent(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     trigger = Column(
-        String(32), nullable=False, index=True,
+        String(32),
+        nullable=False,
+        index=True,
     )  # degraded_canary | deploy_blocked | manual | rate_limit
     from_mode = Column(String(32), nullable=False)
     to_mode = Column(String(32), nullable=False)
@@ -1060,7 +1074,6 @@ class PolicyVersionRecord(Base):
 
     def __repr__(self) -> str:
         return f"<PolicyVersionRecord v{self.version} hash={self.content_hash[:12]}>"
-
 
 
 class ChaosScenarioRecord(Base):
@@ -1198,3 +1211,95 @@ class AuditBundleRecord(Base):
 
     def __repr__(self) -> str:
         return f"<AuditBundleRecord {self.bundle_id} hash={self.content_hash[:12]}>"
+
+
+class OperatorRecord(Base):
+    """V10A — Registered operator identity."""
+
+    __tablename__ = "operator_record"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    operator_id = Column(String(64), nullable=False, unique=True, index=True)
+    display_name = Column(String(128), nullable=False)
+    role = Column(String(32), nullable=False, index=True)
+    active = Column(Boolean, nullable=False, default=True)
+    identity_hash = Column(String(64), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        return f"<OperatorRecord {self.operator_id} role={self.role}>"
+
+
+class GovernanceActionRecord(Base):
+    """V10B — Signed governance action audit trail."""
+
+    __tablename__ = "governance_action"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    operator_id = Column(String(64), nullable=False, index=True)
+    display_name = Column(String(128), nullable=False)
+    role = Column(String(32), nullable=False)
+    action = Column(String(64), nullable=False, index=True)
+    resource = Column(String(128), nullable=False, index=True)
+    identity_hash = Column(String(64), nullable=False)
+    action_signature = Column(String(64), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        return f"<GovernanceActionRecord {self.operator_id} {self.action} on {self.resource}>"
+
+
+class DeployGateRecord(Base):
+    """V10C — Record of a deploy gate evaluation."""
+
+    __tablename__ = "deploy_gate_record"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    operator_id = Column(String(64), nullable=False, index=True)
+    allowed = Column(Boolean, nullable=False)
+    checks = Column(JSON, nullable=True)
+    blocking_failures = Column(Integer, nullable=False, default=0)
+    warnings_count = Column(Integer, nullable=False, default=0)
+    gate_hash = Column(String(64), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        return f"<DeployGateRecord {self.operator_id} allowed={self.allowed}>"
+
+
+class PolicyRuleRecord(Base):
+    """V10D — Persisted policy rule definition."""
+
+    __tablename__ = "policy_rule"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    rule_id = Column(String(64), nullable=False, unique=True, index=True)
+    name = Column(String(128), nullable=False)
+    description = Column(String(256), nullable=False)
+    conditions = Column(JSON, nullable=False)
+    action = Column(String(32), nullable=False)
+    priority = Column(Integer, nullable=False, default=100)
+    enabled = Column(Boolean, nullable=False, default=True)
+    extra_metadata = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        return f"<PolicyRuleRecord {self.rule_id} action={self.action}>"
+
+
+class PolicyEvaluationRecord(Base):
+    """V10D — Record of a policy engine evaluation."""
+
+    __tablename__ = "policy_evaluation"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    action = Column(String(32), nullable=False, index=True)
+    reason = Column(String(256), nullable=False)
+    matched_rule_count = Column(Integer, nullable=False, default=0)
+    total_rule_count = Column(Integer, nullable=False, default=0)
+    facts_snapshot = Column(JSON, nullable=True)
+    decision_hash = Column(String(64), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        return f"<PolicyEvaluationRecord action={self.action} hash={self.decision_hash[:12]}>"
