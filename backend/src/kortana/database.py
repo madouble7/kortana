@@ -109,6 +109,7 @@ class DatabaseManager:
             pool_timeout=self.config.pool_timeout,
             pool_pre_ping=True,
             future=True,
+            connect_args={"timeout": 10},
         )
 
     def _create_session_factory(self) -> async_sessionmaker:

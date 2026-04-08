@@ -80,5 +80,8 @@ RUN git config --global user.email "kortana@kor-tana.ai" && \
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD curl -fsS http://localhost:${PORT:-8000}/api/health || exit 1
 
-# Start the application - use $PORT so Railway's dynamic port is honoured
-CMD sh -c 'uvicorn src.kortana.main:app --host 0.0.0.0 --port ${PORT:-8000}'
+# Start the application via start_api.sh which handles:
+# 1. Waiting for PostgreSQL readiness
+# 2. Running Alembic migrations
+# 3. Starting uvicorn on $PORT
+CMD ["sh", "start_api.sh"]
