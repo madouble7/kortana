@@ -118,10 +118,12 @@ COMMAND_PHRASE_LIMIT = 15
 _VAD_SAMPLE_RATE = 16000
 _VAD_FRAME_MS = 30  # 30ms frames for Silero (supports 30, 60, 90)
 _VAD_FRAME_SAMPLES = _VAD_SAMPLE_RATE * _VAD_FRAME_MS // 1000  # 480 samples
-_VAD_SPEECH_THRESHOLD = 0.5  # probability threshold for speech detection
-_VAD_SILENCE_FRAMES = 30  # ~900ms of silence to end utterance
+_VAD_SPEECH_THRESHOLD = float(os.getenv("KORTANA_VAD_THRESHOLD", "0.5"))
+_VAD_SILENCE_MS = int(os.getenv("KORTANA_VAD_SILENCE_MS", "900"))
+_VAD_SILENCE_FRAMES = _VAD_SILENCE_MS // _VAD_FRAME_MS  # default 30 frames
 _VAD_MIN_SPEECH_FRAMES = 5  # minimum ~150ms of speech to register
 _VAD_MAX_SPEECH_SECONDS = 30  # max utterance length
+_VAD_NOISE_GATE_RMS = float(os.getenv("KORTANA_NOISE_GATE", "0.005"))  # skip below this
 _CONVERSATION_TIMEOUT = 60  # seconds — auto-respond without wake word if recently spoke
 _USE_SILERO_VAD = os.getenv("KORTANA_USE_SILERO_VAD", "1") == "1"
 _vad_model: torch.nn.Module | None = None
@@ -847,6 +849,8 @@ def _init_chroma() -> None:
         client = chromadb.PersistentClient(path=str(_CHROMA_PATH))
         _chroma_collection = client.get_or_create_collection("voice_episodes")
         log(f"[memory] ChromaDB ready — {_chroma_collection.count()} episodes")
+        # garbage-collect old memories in background
+        threading.Thread(target=_cull_old_memories, daemon=True).start()
     except Exception as e:
         log(f"[memory] ChromaDB failed: {e}", "WARN")
 
@@ -875,9 +879,7 @@ def _recall_relevant(query: str, n: int = 3) -> list[str]:
         count = _chroma_collection.count()
         if count == 0:
             return []
-        results = _chroma_collection.query(
-            query_texts=[query], n_results=min(n, count)
-        )
+        results = _chroma_collection.query(query_texts=[query], n_results=min(n, count))
         return results.get("documents", [[]])[0]
     except Exception:
         return []
@@ -887,8 +889,8 @@ def _recall_relevant(query: str, n: int = 3) -> list[str]:
 # ── Barge-in / interrupt support ──────────────────────────────────────────────
 _interrupt = threading.Event()
 _is_speaking = False
-_current_speaking_text: str = ""   # what kor'tana is currently saying
-_interrupted_text: str = ""        # what she was saying when interrupted
+_current_speaking_text: str = ""  # what kor'tana is currently saying
+_interrupted_text: str = ""  # what she was saying when interrupted
 
 
 def _check_interrupt() -> bool:
@@ -935,15 +937,13 @@ def _build_groq_messages(message: str) -> list[dict[str, str]]:
     # Barge-in awareness — tell her she was interrupted
     if _interrupted_text:
         system_parts.append(
-            f'\n[System: The user interrupted you while you were saying: '
+            f"\n[System: The user interrupted you while you were saying: "
             f'"{_interrupted_text}". You may acknowledge this naturally, '
             f'e.g. "as I was saying..." or simply pivot to their new topic.]'
         )
         _interrupted_text = ""  # clear after injecting
 
-    msgs: list[dict[str, str]] = [
-        {"role": "system", "content": " ".join(system_parts)}
-    ]
+    msgs: list[dict[str, str]] = [{"role": "system", "content": " ".join(system_parts)}]
     for h in _conversation_history[-6:]:
         msgs.append({"role": h["role"], "content": h["content"]})
     msgs.append({"role": "user", "content": message})
@@ -1769,6 +1769,25 @@ def _run_silero_listener() -> None:
         audio_frame = (
             indata[:, 0].copy() if indata.ndim > 1 else indata.copy().flatten()
         )
+
+        # Noise gate — skip frames below noise floor (keyboard, breathing, fans)
+        rms = float(np.sqrt(np.mean(audio_frame ** 2)))
+        if rms < _VAD_NOISE_GATE_RMS:
+            if is_speech_active:
+                silence_frames += 1
+                if silence_frames >= _VAD_SILENCE_FRAMES:
+                    is_speech_active = False
+                    if speech_frames >= _VAD_MIN_SPEECH_FRAMES:
+                        chunks = speech_buffer.copy()
+                        threading.Thread(
+                            target=_process_utterance,
+                            args=(chunks,),
+                            daemon=True,
+                        ).start()
+                    speech_buffer = []
+                    speech_frames = 0
+                    silence_frames = 0
+            return
 
         # Silero VAD expects torch tensor
         audio_tensor = torch.from_numpy(audio_frame).float()
