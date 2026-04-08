@@ -14,6 +14,7 @@ import json
 import logging
 import secrets
 from dataclasses import dataclass, field
+import time as _time
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import TYPE_CHECKING, Any
@@ -107,7 +108,7 @@ class OIDCTokenClaims:
 
     @property
     def is_expired(self) -> bool:
-        return datetime.utcnow().timestamp() > self.exp
+        return _time.time() > self.exp
 
     def to_dict(self) -> dict[str, Any]:
         return {

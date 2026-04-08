@@ -1107,11 +1107,11 @@ class TestChatWithGemini:
                     mock_gemini.analyze_text = AsyncMock(
                         side_effect=Exception("Gemini error")
                     )
-
-                    response = client.post(
-                        "/api/gemini/chat",
-                        json={"message": "Hello"},
-                    )
+                    with patch.dict("os.environ", {"OLLAMA_ENABLED": "false"}):
+                        response = client.post(
+                            "/api/gemini/chat",
+                            json={"message": "Hello"},
+                        )
 
         assert response.status_code == 503
 
@@ -1128,10 +1128,11 @@ class TestChatWithGemini:
                 return_value=engine,
             ):
                 with patch("src.kortana.routers.gemini.gemini_service", None):
-                    response = client.post(
-                        "/api/gemini/chat",
-                        json={"message": "Hello"},
-                    )
+                    with patch.dict("os.environ", {"OLLAMA_ENABLED": "false"}):
+                        response = client.post(
+                            "/api/gemini/chat",
+                            json={"message": "Hello"},
+                        )
 
         assert response.status_code == 503
 
