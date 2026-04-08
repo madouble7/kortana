@@ -5171,3 +5171,373 @@ async def get_campaign_probes(campaign_id: str) -> dict:
     verifier = get_external_verifier()
     probes = verifier.get_probes(campaign_id)
     return {"probes": [p.to_dict() for p in probes], "count": len(probes)}
+
+
+
+# ── V17 — Closed-Loop Real-World Enforcement Endpoints ───────────────────
+
+
+# ── V17A — Provider Client Registry ──────────────────────────────────────
+
+from src.kortana.services.provider_client_registry import (  # noqa: E402
+    get_provider_client_registry,
+    ProviderType,
+    ProviderClientConfig,
+    ProviderOperationType,
+)
+
+
+@router.post("/providers/register")
+async def register_provider(
+    name: str = Body(...),
+    provider_type: str = Body("kubernetes"),
+    endpoint: str = Body(""),
+    namespace: str = Body("default"),
+    credentials_ref: str = Body(""),
+    timeout_seconds: float = Body(30.0),
+) -> dict:
+    """Register a provider client."""
+    reg = get_provider_client_registry()
+    config = ProviderClientConfig(
+        provider_type=ProviderType(provider_type),
+        name=name,
+        endpoint=endpoint,
+        credentials_ref=credentials_ref,
+        namespace=namespace,
+        timeout_seconds=timeout_seconds,
+    )
+    reg.register(config)
+    return {"status": "registered", "provider": config.to_dict()}
+
+
+@router.post("/providers/{name}/connect")
+async def connect_provider(name: str) -> dict:
+    """Connect a provider client."""
+    reg = get_provider_client_registry()
+    record = reg.connect(name)
+    return {"status": record.outcome.value, "operation": record.to_dict()}
+
+
+@router.post("/providers/{name}/disconnect")
+async def disconnect_provider(name: str) -> dict:
+    """Disconnect a provider client."""
+    reg = get_provider_client_registry()
+    record = reg.disconnect(name)
+    return {"status": record.outcome.value, "operation": record.to_dict()}
+
+
+@router.post("/providers/{name}/deploy")
+async def deploy_to_provider(
+    name: str,
+    version_id: str = Body(...),
+) -> dict:
+    """Deploy a version through a provider."""
+    reg = get_provider_client_registry()
+    record = reg.deploy_version(name, version_id)
+    return {"status": record.outcome.value, "operation": record.to_dict()}
+
+
+@router.post("/providers/{name}/rollback")
+async def rollback_provider(
+    name: str,
+    version_id: str = Body(...),
+) -> dict:
+    """Rollback to a version through a provider."""
+    reg = get_provider_client_registry()
+    record = reg.rollback_version(name, version_id)
+    return {"status": record.outcome.value, "operation": record.to_dict()}
+
+
+@router.get("/providers/{name}/health")
+async def provider_health(name: str) -> dict:
+    """Health check for a provider."""
+    reg = get_provider_client_registry()
+    report = reg.health_check(name)
+    return {"health": report.to_dict()}
+
+
+@router.get("/providers/{name}/status")
+async def provider_status(name: str) -> dict:
+    """Get provider status."""
+    reg = get_provider_client_registry()
+    return {"provider": reg.get_status(name)}
+
+
+@router.get("/providers/list")
+async def list_providers() -> dict:
+    """List all providers."""
+    reg = get_provider_client_registry()
+    return {"providers": reg.list_providers(), "count": reg.provider_count}
+
+
+@router.get("/providers/operations")
+async def get_provider_operations(name: str = "", op_type: str = "") -> dict:
+    """Get provider operations."""
+    reg = get_provider_client_registry()
+    ot = ProviderOperationType(op_type) if op_type else None
+    ops = reg.get_operations(name, ot)
+    return {"operations": [o.to_dict() for o in ops], "count": len(ops)}
+
+
+# ── V17B — Rollout Action Executor ───────────────────────────────────────
+
+from src.kortana.services.rollout_action_executor import (  # noqa: E402
+    get_rollout_executor,
+    RolloutStrategy,
+    RolloutStatus,
+)
+
+
+@router.post("/rollouts/plan")
+async def plan_rollout(
+    provider_name: str = Body(...),
+    version_id: str = Body(...),
+    strategy: str = Body("rolling"),
+    previous_version: str = Body(""),
+    auto_rollback: bool = Body(True),
+) -> dict:
+    """Plan a rollout."""
+    executor = get_rollout_executor()
+    action = executor.plan_rollout(
+        provider_name, version_id, RolloutStrategy(strategy),
+        previous_version, auto_rollback,
+    )
+    return {"status": "planned", "rollout": action.to_dict()}
+
+
+@router.post("/rollouts/{action_id}/execute-step")
+async def execute_rollout_step(
+    action_id: str,
+    simulate_failure: bool = Body(False),
+) -> dict:
+    """Execute the next step in a rollout."""
+    executor = get_rollout_executor()
+    step = executor.execute_step(action_id, simulate_failure)
+    if step is None:
+        return {"error": "No pending steps or action not found"}
+    action = executor.get_action(action_id)
+    return {"step": step.to_dict(), "rollout_status": action.status.value if action else "unknown"}
+
+
+@router.post("/rollouts/{action_id}/observe-step")
+async def observe_rollout_step(
+    action_id: str,
+    step_id: str = Body(...),
+    error_rate: float = Body(0.0),
+    latency_p99_ms: float = Body(10.0),
+    success_rate: float = Body(100.0),
+) -> dict:
+    """Record an observation for a rollout step."""
+    executor = get_rollout_executor()
+    obs = executor.observe_step(action_id, step_id, error_rate, latency_p99_ms, success_rate)
+    return {"observation": obs.to_dict()}
+
+
+@router.post("/rollouts/{action_id}/rollback")
+async def rollback_rollout(action_id: str) -> dict:
+    """Manually rollback a rollout."""
+    executor = get_rollout_executor()
+    action = executor.rollback_action(action_id)
+    if action is None:
+        return {"error": "Action not found"}
+    return {"status": "rolled_back", "rollout": action.to_dict()}
+
+
+@router.post("/rollouts/{action_id}/cancel")
+async def cancel_rollout(action_id: str) -> dict:
+    """Cancel a rollout."""
+    executor = get_rollout_executor()
+    action = executor.cancel_action(action_id)
+    if action is None:
+        return {"error": "Action not found"}
+    return {"status": "cancelled", "rollout": action.to_dict()}
+
+
+@router.get("/rollouts/{action_id}")
+async def get_rollout(action_id: str) -> dict:
+    """Get rollout details."""
+    executor = get_rollout_executor()
+    action = executor.get_action(action_id)
+    if action is None:
+        return {"error": "Action not found"}
+    return {"rollout": action.to_dict(), "steps": [s.to_dict() for s in action.steps]}
+
+
+@router.get("/rollouts/list")
+async def list_rollouts(provider_name: str = "", status: str = "") -> dict:
+    """List rollouts."""
+    executor = get_rollout_executor()
+    st = RolloutStatus(status) if status else None
+    actions = executor.get_actions(provider_name, st)
+    return {"rollouts": [a.to_dict() for a in actions], "count": len(actions)}
+
+
+# ── V17C — Feedback Policy Engine ────────────────────────────────────────
+
+from src.kortana.services.feedback_policy_engine import (  # noqa: E402
+    get_feedback_policy_engine,
+    TriggerCondition,
+    FeedbackAction,
+    FeedbackSignal,
+    EvaluationOutcome,
+)
+
+
+@router.post("/feedback/register-trigger")
+async def register_feedback_trigger(
+    name: str = Body(...),
+    condition: str = Body("error_rate_above"),
+    threshold: float = Body(5.0),
+    action: str = Body("alert"),
+    pipeline_scope: str = Body(""),
+    provider_scope: str = Body(""),
+) -> dict:
+    """Register a feedback trigger."""
+    engine = get_feedback_policy_engine()
+    trigger = engine.register_trigger(
+        name, TriggerCondition(condition), threshold,
+        FeedbackAction(action), pipeline_scope, provider_scope,
+    )
+    return {"status": "registered", "trigger": trigger.to_dict()}
+
+
+@router.post("/feedback/{trigger_id}/disable")
+async def disable_feedback_trigger(trigger_id: str) -> dict:
+    """Disable a feedback trigger."""
+    engine = get_feedback_policy_engine()
+    ok = engine.disable_trigger(trigger_id)
+    return {"status": "disabled" if ok else "not_found"}
+
+
+@router.post("/feedback/{trigger_id}/enable")
+async def enable_feedback_trigger(trigger_id: str) -> dict:
+    """Enable a feedback trigger."""
+    engine = get_feedback_policy_engine()
+    ok = engine.enable_trigger(trigger_id)
+    return {"status": "enabled" if ok else "not_found"}
+
+
+@router.post("/feedback/evaluate-signal")
+async def evaluate_feedback_signal(
+    source: str = Body(""),
+    pipeline_id: str = Body(""),
+    provider_name: str = Body(""),
+    error_rate: float = Body(0.0),
+    success_rate: float = Body(100.0),
+    latency_ms: float = Body(0.0),
+    health_ok: bool = Body(True),
+    probe_matched: bool = Body(True),
+    consecutive_failures: int = Body(0),
+) -> dict:
+    """Evaluate a feedback signal against triggers."""
+    engine = get_feedback_policy_engine()
+    signal = FeedbackSignal(
+        source=source, pipeline_id=pipeline_id, provider_name=provider_name,
+        error_rate=error_rate, success_rate=success_rate, latency_ms=latency_ms,
+        health_ok=health_ok, probe_matched=probe_matched,
+        consecutive_failures=consecutive_failures,
+    )
+    evaluation = engine.evaluate_signal(signal)
+    return {"evaluation": evaluation.to_dict()}
+
+
+@router.get("/feedback/triggers")
+async def list_feedback_triggers(enabled_only: bool = False) -> dict:
+    """List feedback triggers."""
+    engine = get_feedback_policy_engine()
+    triggers = engine.get_triggers(enabled_only)
+    return {"triggers": [t.to_dict() for t in triggers], "count": len(triggers)}
+
+
+@router.get("/feedback/evaluations")
+async def list_feedback_evaluations(outcome: str = "") -> dict:
+    """List feedback evaluations."""
+    engine = get_feedback_policy_engine()
+    oc = EvaluationOutcome(outcome) if outcome else None
+    evals = engine.get_evaluations(oc)
+    return {"evaluations": [e.to_dict() for e in evals], "count": len(evals)}
+
+
+# ── V17D — Evidence Chain ────────────────────────────────────────────────
+
+from src.kortana.services.evidence_chain import (  # noqa: E402
+    get_evidence_chain_registry,
+    EvidenceType,
+    ChainStatus,
+)
+
+
+@router.post("/evidence/create-chain")
+async def create_evidence_chain(
+    version_id: str = Body(...),
+    description: str = Body(""),
+) -> dict:
+    """Create a new evidence chain."""
+    reg = get_evidence_chain_registry()
+    chain = reg.create_chain(version_id, description)
+    return {"status": "created", "chain": chain.to_dict()}
+
+
+@router.post("/evidence/{chain_id}/append")
+async def append_evidence_entry(
+    chain_id: str,
+    evidence_type: str = Body("decision"),
+    actor: str = Body(""),
+    description: str = Body(""),
+    payload: dict = Body(default={}),
+) -> dict:
+    """Append an entry to an evidence chain."""
+    reg = get_evidence_chain_registry()
+    chain = reg.get_chain(chain_id)
+    if chain is None:
+        return {"error": "Chain not found"}
+    try:
+        entry = chain.append_entry(EvidenceType(evidence_type), actor, description, payload)
+        return {"status": "appended", "entry": entry.to_dict()}
+    except ValueError as e:
+        return {"error": str(e)}
+
+
+@router.post("/evidence/{chain_id}/seal")
+async def seal_evidence_chain(chain_id: str) -> dict:
+    """Seal an evidence chain."""
+    reg = get_evidence_chain_registry()
+    chain = reg.seal_chain(chain_id)
+    if chain is None:
+        return {"error": "Chain not found"}
+    return {"status": chain.status.value, "chain": chain.to_dict()}
+
+
+@router.post("/evidence/{chain_id}/verify")
+async def verify_evidence_chain(chain_id: str) -> dict:
+    """Verify an evidence chain's integrity."""
+    reg = get_evidence_chain_registry()
+    ok, reason = reg.verify_chain(chain_id)
+    return {"valid": ok, "reason": reason}
+
+
+@router.get("/evidence/{chain_id}/convergence-proof")
+async def get_convergence_proof(chain_id: str) -> dict:
+    """Get convergence proof for a chain."""
+    reg = get_evidence_chain_registry()
+    proof = reg.get_convergence_proof(chain_id)
+    if proof is None:
+        return {"error": "Chain not found"}
+    return {"proof": proof.to_dict()}
+
+
+@router.get("/evidence/chains")
+async def list_evidence_chains(version_id: str = "", status: str = "") -> dict:
+    """List evidence chains."""
+    reg = get_evidence_chain_registry()
+    st = ChainStatus(status) if status else None
+    chains = reg.get_chains(version_id, st)
+    return {"chains": [c.to_dict() for c in chains], "count": len(chains)}
+
+
+@router.post("/evidence/verify-all")
+async def verify_all_evidence_chains() -> dict:
+    """Verify all evidence chains."""
+    reg = get_evidence_chain_registry()
+    results = reg.verify_all()
+    return {"results": {cid: {"valid": ok, "reason": reason} for cid, (ok, reason) in results.items()}}

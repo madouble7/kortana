@@ -1787,3 +1787,90 @@ class VerificationProbeRecord(Base):
     error = Column(Text, nullable=True)
     probe_hash = Column(String(64), nullable=True)
     probed_at = Column(DateTime, nullable=True)
+
+
+# ── V17 — Closed-Loop Real-World Enforcement ────────────────────────────
+
+
+class ProviderClientDBRecord(Base):
+    """V17A — Persisted provider client record."""
+
+    __tablename__ = "provider_client"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    provider_name = Column(String(128), nullable=False)
+    provider_type = Column(String(32), default="kubernetes")
+    endpoint = Column(String(512), default="")
+    namespace = Column(String(64), default="default")
+    connection_state = Column(String(32), default="disconnected")
+    current_version = Column(String(64), default="")
+    registered_at = Column(DateTime, default=datetime.utcnow)
+
+
+class RolloutActionRecord(Base):
+    """V17B — Persisted rollout action record."""
+
+    __tablename__ = "rollout_action"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    action_id = Column(String(64), nullable=False)
+    provider_name = Column(String(128), nullable=False)
+    version_id = Column(String(64), nullable=False)
+    strategy = Column(String(32), default="rolling")
+    status = Column(String(32), default="planned")
+    step_count = Column(Integer, default=0)
+    auto_rollback = Column(Boolean, default=True)
+    action_hash = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    completed_at = Column(DateTime, nullable=True)
+
+
+class FeedbackTriggerRecord(Base):
+    """V17C — Persisted feedback trigger record."""
+
+    __tablename__ = "feedback_trigger"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    trigger_id = Column(String(64), nullable=False)
+    name = Column(String(128), nullable=False)
+    condition = Column(String(32), nullable=False)
+    threshold = Column(Float, default=5.0)
+    action = Column(String(32), default="alert")
+    pipeline_scope = Column(String(64), default="")
+    provider_scope = Column(String(64), default="")
+    enabled = Column(Boolean, default=True)
+    trigger_hash = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class FeedbackEvaluationRecord(Base):
+    """V17C — Persisted feedback evaluation record."""
+
+    __tablename__ = "feedback_evaluation"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    evaluation_id = Column(String(64), nullable=False)
+    signal_id = Column(String(64), nullable=False)
+    outcome = Column(String(32), default="clean")
+    trigger_count = Column(Integer, default=0)
+    has_rollback = Column(Boolean, default=False)
+    has_escalation = Column(Boolean, default=False)
+    evaluation_hash = Column(String(64), nullable=True)
+    evaluated_at = Column(DateTime, default=datetime.utcnow)
+
+
+class EvidenceEntryRecord(Base):
+    """V17D — Persisted evidence entry record."""
+
+    __tablename__ = "evidence_entry"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    entry_id = Column(String(64), nullable=False)
+    chain_id = Column(String(64), nullable=False)
+    sequence = Column(Integer, default=0)
+    evidence_type = Column(String(32), default="decision")
+    actor = Column(String(128), default="")
+    description = Column(Text, nullable=True)
+    previous_hash = Column(String(64), default="")
+    entry_hash = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
