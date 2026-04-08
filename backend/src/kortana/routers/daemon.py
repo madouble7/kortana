@@ -602,3 +602,227 @@ async def run_canary_simulation(
         ],
     }
 
+
+@router.get("/canary/history")
+async def canary_history(
+    limit: int = Query(default=20, ge=1, le=100, description="Max runs to return"),
+    verdict: str | None = Query(default=None, description="Filter by verdict"),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Retrieve historical canary runs for longitudinal comparison.
+
+    Returns persisted canary runs ordered by most recent first,
+    with optional filtering by verdict (adaptive/static).
+    """
+    from src.kortana.models import CanaryRun
+
+    try:
+        query = select(CanaryRun).order_by(CanaryRun.created_at.desc()).limit(limit)
+        if verdict:
+            query = query.where(CanaryRun.verdict == verdict)
+        result = await db.execute(query)
+        runs = result.scalars().all()
+    except SQLAlchemyError:
+        runs = []
+
+    return {
+        "count": len(runs),
+        "runs": [
+            {
+                "id": r.id,
+                "commit_sha": r.commit_sha,
+                "branch": r.branch,
+                "total_cycles": r.total_cycles,
+                "verdict": r.verdict,
+                "score_shift_delta": r.score_shift_delta,
+                "goal_alignment_delta": r.goal_alignment_delta,
+                "outcome_growth": r.outcome_growth,
+                "top3_churn_rate": r.top3_churn_rate,
+                "score_spread_delta": r.score_spread_delta,
+                "promotion_status": r.promotion_status,
+                "promotion_reasons": r.promotion_reasons,
+                "triggered_by": r.triggered_by,
+                "snapshot_summary": r.snapshot_summary,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in runs
+        ],
+    }
+
+
+@router.post("/canary/evaluate")
+async def canary_evaluate(
+    cycles: int = Query(default=20, ge=4, le=200),
+    inject_signals: bool = Query(default=True),
+    approval_mode: str = Query(default="self-aware"),
+    persist: bool = Query(default=True, description="Save run to database"),
+    triggered_by: str = Query(default="manual"),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Run canary simulation, evaluate against promotion gates, detect
+    regressions versus the last run, and optionally persist.
+
+    This is the full V4 pipeline:
+    simulate → measure → compare → promote or reject.
+    """
+    from src.kortana.models import CanaryRun
+    from src.kortana.services.canary_eval import (
+        PromotionThresholds,
+        detect_regressions,
+        evaluate_promotion,
+        report_to_db_dict,
+    )
+    from src.kortana.services.canary_simulator import CanarySimulator
+
+    # 1. Simulate
+    simulator = CanarySimulator(
+        cycle_count=cycles,
+        approval_mode=approval_mode,
+        inject_signals=inject_signals,
+    )
+    report = simulator.run()
+
+    # 2. Evaluate promotion
+    promotion = evaluate_promotion(report, PromotionThresholds())
+
+    # 3. Detect regressions against last run
+    alarms: list[dict[str, Any]] = []
+    try:
+        prev_result = await db.execute(
+            select(CanaryRun)
+            .order_by(CanaryRun.created_at.desc())
+            .limit(1)
+        )
+        prev_run = prev_result.scalar_one_or_none()
+        if prev_run:
+            prev_analysis = prev_run.analysis or {}
+            regression_alarms = detect_regressions(report.analysis, prev_analysis)
+            alarms = [
+                {
+                    "severity": a.severity,
+                    "metric": a.metric,
+                    "message": a.message,
+                    "previous_value": a.previous_value,
+                    "current_value": a.current_value,
+                }
+                for a in regression_alarms
+            ]
+    except SQLAlchemyError:
+        pass
+
+    # 4. Persist
+    run_id = None
+    if persist:
+        try:
+            db_dict = report_to_db_dict(report, triggered_by, promotion)
+            canary_run = CanaryRun(**db_dict)
+            db.add(canary_run)
+            await db.commit()
+            await db.refresh(canary_run)
+            run_id = canary_run.id
+        except SQLAlchemyError:
+            await db.rollback()
+
+    return {
+        "run_id": run_id,
+        "total_cycles": report.total_cycles,
+        "verdict": report.analysis.get("verdict", "unknown"),
+        "promotion": {
+            "promoted": promotion.promoted,
+            "reasons": promotion.reasons,
+            "warnings": promotion.warnings,
+        },
+        "regressions": {
+            "alarm_count": len(alarms),
+            "alarms": alarms,
+        },
+        "analysis": report.analysis,
+        "snapshot_summary": {
+            "first_cycle": {
+                "mean_score": report.snapshots[0].mean_score,
+                "score_spread": report.snapshots[0].score_spread,
+                "goal_aligned_in_top_5": report.snapshots[0].goal_aligned_in_top_5,
+                "signals_active": report.snapshots[0].signals_active,
+            } if report.snapshots else None,
+            "last_cycle": {
+                "mean_score": report.snapshots[-1].mean_score,
+                "score_spread": report.snapshots[-1].score_spread,
+                "goal_aligned_in_top_5": report.snapshots[-1].goal_aligned_in_top_5,
+                "signals_active": report.snapshots[-1].signals_active,
+            } if report.snapshots else None,
+        },
+    }
+
+
+@router.get("/dashboard/canary")
+async def dashboard_canary_overlay(
+    limit: int = Query(default=10, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Canary overlay for the daemon dashboard.
+
+    Returns recent canary runs alongside the live daemon state so you can
+    compare simulated adaptation with production-cycle behavior.
+    """
+    from src.kortana.models import CanaryRun
+
+    daemon = get_autonomy_daemon()
+    status = daemon.get_status()
+
+    # Live daemon metrics
+    last_cycle = status.get("last_cycle") or {}
+    live_scores = [
+        s.get("total", 0)
+        for s in last_cycle.get("task_scores", [])
+        if isinstance(s, dict)
+    ]
+
+    # Canary history
+    try:
+        result = await db.execute(
+            select(CanaryRun)
+            .order_by(CanaryRun.created_at.desc())
+            .limit(limit)
+        )
+        runs = result.scalars().all()
+    except SQLAlchemyError:
+        runs = []
+
+    canary_trend = [
+        {
+            "commit_sha": r.commit_sha,
+            "verdict": r.verdict,
+            "promotion_status": r.promotion_status,
+            "score_shift_delta": r.score_shift_delta,
+            "goal_alignment_delta": r.goal_alignment_delta,
+            "outcome_growth": r.outcome_growth,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in runs
+    ]
+
+    # Comparison: live vs simulated
+    latest_canary = canary_trend[0] if canary_trend else None
+    comparison: dict[str, Any] = {"available": False}
+    if latest_canary and live_scores:
+        comparison = {
+            "available": True,
+            "live_mean_score": round(sum(live_scores) / len(live_scores), 2),
+            "live_score_spread": round(max(live_scores) - min(live_scores), 2) if live_scores else 0,
+            "canary_verdict": latest_canary["verdict"],
+            "canary_score_shift": latest_canary["score_shift_delta"],
+            "canary_promotion": latest_canary["promotion_status"],
+        }
+
+    return {
+        "timestamp": datetime.utcnow().isoformat(),
+        "live_daemon": {
+            "running": status.get("running", False),
+            "cycles_completed": status.get("cycles_completed", 0),
+            "live_task_count": len(live_scores),
+            "live_mean_score": round(sum(live_scores) / len(live_scores), 2) if live_scores else None,
+        },
+        "canary_history": canary_trend,
+        "comparison": comparison,
+    }
+

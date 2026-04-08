@@ -940,3 +940,38 @@ class OverrideAuditRecord(Base):
             f"<OverrideAuditRecord {self.action_attempted} "
             f"by {self.resolver_identity}: {self.outcome}>"
         )
+
+
+class CanaryRun(Base):
+    """Persisted canary simulation report for longitudinal comparison.
+
+    Each row captures a single canary simulation run: the verdict,
+    analysis metrics, and a trimmed snapshot summary.  Used by V4
+    promotion gates and regression alarms to compare builds over time.
+    """
+
+    __tablename__ = "canary_runs"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    commit_sha = Column(String(40), nullable=True, index=True)
+    branch = Column(String(255), nullable=True, index=True)
+    total_cycles = Column(Integer, nullable=False)
+    task_pool_size = Column(Integer, nullable=False)
+    verdict = Column(String(32), nullable=False, index=True)  # adaptive | static | insufficient_cycles
+    analysis = Column(JSON, nullable=False)  # full cross-cycle analysis dict
+    score_shift_delta = Column(Float, nullable=True)  # denormalised for fast queries
+    goal_alignment_delta = Column(Float, nullable=True)
+    outcome_growth = Column(Float, nullable=True)
+    top3_churn_rate = Column(Float, nullable=True)
+    score_spread_delta = Column(Float, nullable=True)
+    promotion_status = Column(
+        String(32), nullable=False, default="pending", index=True,
+    )  # pending | promoted | rejected | skipped
+    promotion_reasons = Column(JSON, nullable=True)  # list[str] — why promoted/rejected
+    triggered_by = Column(String(64), nullable=False, default="manual")  # manual | ci | daemon
+    snapshot_summary = Column(JSON, nullable=True)  # first + last cycle summaries
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        return f"<CanaryRun {self.verdict} commit={self.commit_sha} promo={self.promotion_status}>"
+
