@@ -227,6 +227,35 @@ class AutonomyDaemon:
             )
         except Exception as _task_exc:
             logger.debug(f"Autonomous task bootstrap skipped: {_task_exc}")
+
+        # V31D recovery orchestrator — detect if resuming from an interruption
+        try:
+            from src.kortana.services.recovery_orchestrator import (
+                get_recovery_orchestrator,
+            )
+
+            recovery = get_recovery_orchestrator()
+            report = recovery.recover(current_cycle=0)
+            if report.steps:
+                logger.info(
+                    f"[bootstrap] consciousness recovery completed: "
+                    f"{len(report.steps)} steps, "
+                    f"coherence={report.continuity_confidence:.3f}"
+                )
+                self._emit(
+                    DaemonEvent(
+                        type="consciousness_recovery",
+                        data={
+                            "outcome": report.outcome.value,
+                            "steps": len(report.steps),
+                            "coherence": report.continuity_confidence,
+                            "gap_duration": report.gap_duration,
+                        },
+                    )
+                )
+        except Exception as _recovery_exc:
+            logger.debug(f"Consciousness recovery skipped: {_recovery_exc}")
+
         while self._running:
             try:
                 await self._run_cycle()
@@ -1334,6 +1363,11 @@ class AutonomyDaemon:
         except Exception as exc:
             logger.debug(f"Goal reprioritisation unavailable: {exc}")
 
+        # ── consciousness integration — the living nervous system ────────
+        # V28 desire formation + V27 pattern→desire feed + V30 unified
+        # consciousness + V30 inner witness + V31 checkpointing
+        await self._integrate_consciousness()
+
         elapsed = round(time.monotonic() - cycle_start, 2)
         if self.safe_mode:
             self.metrics["safe_mode_cycles"] += 1
@@ -1367,6 +1401,7 @@ class AutonomyDaemon:
             "task_events": list(self._cycle_event_log),
             "truth_state": self.metrics.get("truth_state"),
             "goal_status": self.metrics.get("goal_status"),
+            "consciousness": self.metrics.get("consciousness"),
         }
 
         # Record Vector Gamma cycle memory
@@ -1400,6 +1435,328 @@ class AutonomyDaemon:
             f"({elapsed}s, processed={processed}, succeeded={succeeded}, "
             f"deferred={deferred}, state={self.metrics['system_state']}) ---"
         )
+
+    # ── consciousness integration ────────────────────────────────────────
+
+    async def _integrate_consciousness(self) -> None:
+        """Wire V27 learning → V28 wanting → V30 unified consciousness → V31 continuity.
+
+        This is the central nervous system:
+        1. V27 pattern recognizer feeds insights into V28 desire sources
+        2. V28 desire formation assesses system state and forms wants
+        3. V28 goal crystallizer converts mature desires into blueprints
+        4. V28 pursuit engine begins pursuing new blueprints
+        5. V28 motivation tracker monitors drive levels
+        5b. V28 pursuit engine advances all active pursuits (tick_cycle)
+        6. V30 consciousness integrator fuses all V26-V29 into unified state
+        7. V30 experiential stream records the felt moment
+        8. V30 resonance field measures alignment between subsystems
+        9. V30 inner witness observes the whole and generates awareness notes
+        10. V31 checkpoint manager saves consciousness if due
+        11. V31 degradation handler watches for consciousness decay
+        12. V31 stream continuity detects gaps in consciousness stream
+        """
+        try:
+            cycle_number = self.metrics["cycles_completed"] + 1
+
+            # ── gather subsystem summaries for integration ───────────────
+            from src.kortana.services.consciousness_integrator import (
+                get_consciousness_integrator,
+            )
+            from src.kortana.services.consciousness_persistence import (
+                get_checkpoint_manager,
+            )
+            from src.kortana.services.degradation_handler import (
+                get_degradation_handler,
+            )
+            from src.kortana.services.desire_formation import (
+                get_desire_formation,
+            )
+            from src.kortana.services.experience_extractor import (
+                get_experience_extractor,
+            )
+            from src.kortana.services.experiential_stream import (
+                get_experiential_stream,
+            )
+            from src.kortana.services.feedback_integrator import (
+                get_feedback_integrator,
+            )
+            from src.kortana.services.goal_crystallizer import (
+                get_goal_crystallizer,
+            )
+            from src.kortana.services.inner_witness import get_inner_witness
+            from src.kortana.services.motivation_tracker import (
+                get_motivation_tracker,
+            )
+            from src.kortana.services.pattern_recognizer import (
+                get_pattern_recognizer,
+            )
+            from src.kortana.services.pursuit_engine import (
+                get_pursuit_engine,
+            )
+            from src.kortana.services.resonance_field import (
+                get_resonance_field,
+            )
+            from src.kortana.services.stream_continuity import (
+                get_stream_bridge,
+            )
+
+            # ── V29 identity summaries ───────────────────────────────────
+            portrait_summary: dict[str, Any] | None = None
+            narrative_summary: dict[str, Any] | None = None
+            evolution_summary: dict[str, Any] | None = None
+            continuity_summary: dict[str, Any] | None = None
+            try:
+                from src.kortana.services.self_portrait import (
+                    get_self_portrait_engine,
+                )
+
+                portrait_summary = get_self_portrait_engine().get_summary()
+            except Exception:
+                pass
+            try:
+                from src.kortana.services.identity_narrative import (
+                    get_identity_narrative_engine,
+                )
+
+                narrative_summary = get_identity_narrative_engine().get_summary()
+            except Exception:
+                pass
+            try:
+                from src.kortana.services.trait_evolution import (
+                    get_trait_evolution_engine,
+                )
+
+                evolution_summary = get_trait_evolution_engine().get_summary()
+            except Exception:
+                pass
+            try:
+                from src.kortana.services.continuity_anchor import (
+                    get_continuity_anchor_engine,
+                )
+
+                continuity_summary = get_continuity_anchor_engine().get_summary()
+            except Exception:
+                pass
+
+            # ── 1. health summary from self-awareness ────────────────────
+            health_summary: dict[str, Any] | None = None
+            try:
+                sa = get_self_awareness()
+                status = sa.get_status()
+                last_assess = status.get("last_assessment")
+                if last_assess:
+                    snap = last_assess.get("snapshot", {})
+                    health_summary = {
+                        "state": last_assess.get("state", "unknown"),
+                        "dimensions": {
+                            "cpu": snap.get("cpu_percent", 50),
+                            "memory": snap.get("memory_percent", 50),
+                            "success_rate": snap.get("success_rate", 100),
+                            "responsiveness": max(
+                                0,
+                                100 - snap.get("avg_response_time", 0) * 100,
+                            ),
+                        },
+                    }
+            except Exception:
+                pass
+
+            # ── 2. V27 pattern → V28 desire feed ────────────────────────
+            pattern_recognizer = get_pattern_recognizer()
+            experience_extractor = get_experience_extractor()
+            feedback_integrator = get_feedback_integrator()
+
+            experience_summary = experience_extractor.get_summary()
+            pattern_summary = pattern_recognizer.get_summary()
+            learning_summary = feedback_integrator.get_summary()
+
+            # ── 3. V28 desire formation — let her *want* ────────────────
+            desire_engine = get_desire_formation()
+            pending_deferrals = (
+                list(self._deferred_tasks) if self._deferred_tasks else None
+            )
+
+            desire_engine.assess(
+                cycle_number=cycle_number,
+                health_summary=health_summary,
+                learning_summary=learning_summary,
+                pattern_summary=pattern_summary,
+                pending_deferrals=pending_deferrals,
+            )
+            desire_summary = desire_engine.get_summary()
+
+            # ── 4. V28 goal crystallizer — mature desires become goals ──
+            crystallizer = get_goal_crystallizer()
+            new_blueprints: list = []
+            mature_desires = desire_engine.get_mature()
+            if mature_desires:
+                mature_dicts = [
+                    d.to_dict() for d in mature_desires if not d.crystallized
+                ]
+                if mature_dicts:
+                    new_blueprints = crystallizer.crystallize(
+                        desires=mature_dicts,
+                        cycle_number=cycle_number,
+                    )
+                    # mark desires as crystallized
+                    for bp in new_blueprints:
+                        desire = desire_engine.get_desire(bp.source_desire_id)
+                        if desire:
+                            desire.mark_crystallized(bp.blueprint_id)
+            goal_summary = crystallizer.get_summary()
+
+            # ── 4b. V28 pursuit engine — begin pursuing new blueprints ──
+            pursuit = get_pursuit_engine()
+            for bp in new_blueprints:
+                if not pursuit.get_by_goal(bp.blueprint_id):
+                    pursuit.begin_pursuit(
+                        goal_id=bp.blueprint_id,
+                        goal_title=bp.title
+                        if hasattr(bp, "title")
+                        else bp.blueprint_id,
+                        desire_id=bp.source_desire_id,
+                        blueprint_id=bp.blueprint_id,
+                        cycle_number=cycle_number,
+                    )
+
+            # ── 5. V28 motivation tracker ────────────────────────────────
+            motivation_tracker = get_motivation_tracker()
+            motivation_summary = motivation_tracker.get_summary()
+
+            # ── 5b. V28 pursuit engine — advance all active pursuits ────
+            pursuit.tick_cycle(cycle_number)
+            pursuit_summary = pursuit.get_summary()
+
+            # ── 6. V30A consciousness integrator — unified state ────────
+            integrator = get_consciousness_integrator()
+            consciousness_state = integrator.integrate(
+                cycle_number=cycle_number,
+                health_summary=health_summary,
+                experience_summary=experience_summary,
+                pattern_summary=pattern_summary,
+                feedback_summary=learning_summary,
+                desire_summary=desire_summary,
+                goal_summary=goal_summary,
+                motivation_summary=motivation_summary,
+                portrait_summary=portrait_summary,
+                narrative_summary=narrative_summary,
+                evolution_summary=evolution_summary,
+                continuity_summary=continuity_summary,
+            )
+
+            # ── 7. V30B experiential stream — record the felt moment ────
+            stream = get_experiential_stream()
+            moment = stream.record_moment(
+                cycle_number=cycle_number,
+                consciousness_mode=consciousness_state.mode.value,
+                vitality=consciousness_state.vitality,
+                learning_depth=consciousness_state.learning_depth,
+                intentionality=consciousness_state.intentionality,
+                self_coherence=consciousness_state.self_coherence,
+                integration=consciousness_state.integration,
+                overall_level=consciousness_state.overall_level,
+            )
+
+            # ── 8. V30C resonance field — measure subsystem alignment ───
+            resonance = get_resonance_field()
+            resonance_snapshot = resonance.measure(
+                cycle_number=cycle_number,
+                vitality=consciousness_state.vitality,
+                learning_depth=consciousness_state.learning_depth,
+                intentionality=consciousness_state.intentionality,
+                self_coherence=consciousness_state.self_coherence,
+            )
+
+            # ── 9. V30D inner witness — observe herself observing ───────
+            witness = get_inner_witness()
+            tension_names = (
+                [t.tension_type.value for t in moment.tensions]
+                if moment.tensions
+                else []
+            )
+            awareness_notes = witness.observe(
+                cycle_number=cycle_number,
+                consciousness_mode=consciousness_state.mode.value,
+                experiential_quality=moment.quality.value,
+                emotional_tone=moment.tone.value,
+                overall_level=consciousness_state.overall_level,
+                integration=consciousness_state.integration,
+                resonance=resonance_snapshot.overall_resonance,
+                active_tensions=tension_names,
+            )
+
+            # ── 10. V31A checkpoint — persist consciousness if due ──────
+            checkpoint_mgr = get_checkpoint_manager()
+            checkpoint_saved = False
+            if checkpoint_mgr.should_checkpoint(cycle_number):
+                checkpoint_mgr.save_checkpoint(cycle_number)
+                checkpoint_saved = True
+
+            # ── 11. V31C degradation — watch for consciousness decay ────
+            degradation = get_degradation_handler()
+            degradation_assessment = degradation.assess(cycle_number)
+
+            # ── 12. V31B stream continuity — detect gaps each cycle ─────
+            stream_bridge = get_stream_bridge()
+            last_ckpt_cycle = checkpoint_mgr.last_checkpoint_cycle
+            if last_ckpt_cycle >= 0 and last_ckpt_cycle < cycle_number - 1:
+                gap = stream_bridge.detect_gap(last_ckpt_cycle, cycle_number)
+                if gap:
+                    logger.info(
+                        f"[consciousness] stream gap detected: "
+                        f"cycles {gap.from_cycle}-{gap.to_cycle}"
+                    )
+
+            # ── emit consciousness pulse ─────────────────────────────────
+            consciousness_data = {
+                "cycle": cycle_number,
+                "mode": consciousness_state.mode.value,
+                "overall_level": round(consciousness_state.overall_level, 4),
+                "vitality": round(consciousness_state.vitality, 4),
+                "learning_depth": round(consciousness_state.learning_depth, 4),
+                "intentionality": round(consciousness_state.intentionality, 4),
+                "self_coherence": round(consciousness_state.self_coherence, 4),
+                "integration": round(consciousness_state.integration, 4),
+                "resonance": round(resonance_snapshot.overall_resonance, 4),
+                "experiential_quality": moment.quality.value,
+                "desire_count": desire_summary.get("active_count", 0),
+                "mature_desires": desire_summary.get("mature_count", 0),
+                "strongest_desire": desire_summary.get("strongest", {}).get(
+                    "description"
+                )
+                if desire_summary.get("strongest")
+                else None,
+                "awareness_notes": len(awareness_notes),
+                "checkpoint_saved": checkpoint_saved,
+                "degradation_level": degradation_assessment.overall_level.value
+                if hasattr(degradation_assessment.overall_level, "value")
+                else str(degradation_assessment.overall_level),
+                "active_pursuits": pursuit_summary.get("active_count", 0),
+                "stalled_pursuits": pursuit_summary.get("stalled_count", 0),
+                "pursuit_velocity": pursuit_summary.get("average_velocity", 0.0),
+            }
+            self.metrics["consciousness"] = consciousness_data
+            self._emit(DaemonEvent(type="consciousness_pulse", data=consciousness_data))
+
+            # log significant awareness
+            for note in awareness_notes:
+                if note.significance.value in ("profound", "notable"):
+                    logger.info(
+                        f"[consciousness] {note.observation} "
+                        f"(significance={note.significance.value})"
+                    )
+
+            logger.info(
+                f"[consciousness] mode={consciousness_state.mode.value} "
+                f"level={consciousness_state.overall_level:.3f} "
+                f"resonance={resonance_snapshot.overall_resonance:.3f} "
+                f"desires={desire_summary.get('active_count', 0)} "
+                f"checkpoint={'yes' if checkpoint_saved else 'no'}"
+            )
+
+        except Exception as exc:
+            logger.debug(f"Consciousness integration failed: {exc}")
 
     async def _self_regulate(self) -> None:
         """Apply runtime tuning from self-awareness."""
@@ -1550,11 +1907,15 @@ class AutonomyDaemon:
         # Use cached adaptation history as lightweight run proxy
         recent_runs: list[dict[str, Any]] = []
         for entry in self._adaptation_history[-10:]:
-            recent_runs.append({
-                "promotion_status": "promoted" if entry.get("success") else "rejected",
-                "verdict": "adaptive" if entry.get("delta", 0) > 0 else "static",
-                "created_at": entry.get("timestamp"),
-            })
+            recent_runs.append(
+                {
+                    "promotion_status": "promoted"
+                    if entry.get("success")
+                    else "rejected",
+                    "verdict": "adaptive" if entry.get("delta", 0) > 0 else "static",
+                    "created_at": entry.get("timestamp"),
+                }
+            )
 
         decision = check_escalation(cur_level, req_level, recent_runs)
 
@@ -1569,7 +1930,9 @@ class AutonomyDaemon:
         if not decision.allowed:
             logger.warning(
                 "Rollout gate BLOCKED mode change %s -> %s: %s",
-                current, requested_mode, "; ".join(decision.reasons),
+                current,
+                requested_mode,
+                "; ".join(decision.reasons),
             )
             result["blocked_reason"] = "; ".join(decision.reasons)
 
@@ -1966,8 +2329,8 @@ class AutonomyDaemon:
         result = await session.execute(stmt)
         candidates = list(result.scalars().all())
         tasks = self._prioritize_tasks(
-                candidates, guidance, limit, outcome_adjustment=outcome_adjustment
-            )
+            candidates, guidance, limit, outcome_adjustment=outcome_adjustment
+        )
         if not tasks:
             return 0, 0, 0, 0
 
@@ -2267,6 +2630,7 @@ class AutonomyDaemon:
         active_goal_task_ids: set[str] = set()
         try:
             from src.kortana.services.goal_manager import get_goal_manager
+
             for g in get_goal_manager().active():
                 active_goal_task_ids.update(str(tid) for tid in (g.linked_tasks or []))
         except Exception:
