@@ -1699,3 +1699,91 @@ class DeploymentPipelineRecord(Base):
     pipeline_hash = Column(String(64), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)
+
+
+# ── V16 — Live Production Bindings ──────────────────────────────────────
+
+
+class ExternalCallRecord(Base):
+    """V16A — Persisted external call record."""
+
+    __tablename__ = "external_call"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    call_id = Column(String(64), nullable=False)
+    url = Column(String(512), nullable=False)
+    method = Column(String(8), default="GET")
+    status_code = Column(Integer, default=200)
+    outcome = Column(String(32), default="success")
+    latency_ms = Column(Float, default=0.0)
+    call_hash = Column(String(64), nullable=True)
+    executed_at = Column(DateTime, default=datetime.utcnow)
+
+
+class StageTransitionDBRecord(Base):
+    """V16B — Persisted stage transition record."""
+
+    __tablename__ = "stage_transition"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    transition_id = Column(String(64), nullable=False)
+    pipeline_id = Column(String(64), nullable=False)
+    version_id = Column(String(64), nullable=False)
+    from_stage = Column(String(32), default="")
+    to_stage = Column(String(32), nullable=False)
+    gate_verdict = Column(String(32), default="pass")
+    persistence_status = Column(String(32), default="committed")
+    transition_hash = Column(String(64), nullable=True)
+    persisted_at = Column(DateTime, default=datetime.utcnow)
+
+
+class RollbackSideEffectRecord(Base):
+    """V16B — Persisted rollback side-effect record."""
+
+    __tablename__ = "rollback_side_effect"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    effect_id = Column(String(64), nullable=False)
+    rollback_id = Column(String(64), nullable=False)
+    pipeline_id = Column(String(64), nullable=False)
+    version_id = Column(String(64), nullable=False)
+    effect_type = Column(String(32), default="config_reverted")
+    affected_resource = Column(String(256), default="")
+    description = Column(Text, nullable=True)
+    executed = Column(Boolean, default=True)
+    verification_hash = Column(String(64), nullable=True)
+    executed_at = Column(DateTime, default=datetime.utcnow)
+
+
+class DeploymentTargetRecord(Base):
+    """V16C — Persisted deployment target record."""
+
+    __tablename__ = "deployment_target"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    target_id = Column(String(64), nullable=False)
+    name = Column(String(128), nullable=False)
+    environment = Column(String(32), default="staging")
+    endpoint_url = Column(String(512), default="")
+    health_check_url = Column(String(512), default="")
+    active = Column(Boolean, default=True)
+    target_hash = Column(String(64), nullable=True)
+    registered_at = Column(DateTime, default=datetime.utcnow)
+
+
+class VerificationProbeRecord(Base):
+    """V16D — Persisted verification probe record."""
+
+    __tablename__ = "verification_probe"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    probe_id = Column(String(64), nullable=False)
+    campaign_id = Column(String(64), nullable=False)
+    target_system = Column(String(256), nullable=False)
+    probe_type = Column(String(32), default="version_check")
+    status = Column(String(32), default="pending")
+    matched = Column(Boolean, default=False)
+    latency_ms = Column(Float, default=0.0)
+    error = Column(Text, nullable=True)
+    probe_hash = Column(String(64), nullable=True)
+    probed_at = Column(DateTime, nullable=True)

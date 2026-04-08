@@ -4836,807 +4836,338 @@ async def get_trust_evaluations(version_id: str) -> dict[str, Any]:
 
 
 
-# ---------------------------------------------------------------------------
-# V14 — Policy Orchestration endpoints
-# ---------------------------------------------------------------------------
+# ── V16 — Live Production Bindings Endpoints ──────────────────────────────
 
 
-# V14A — IdP Metadata Sync endpoints --------------------------------------
+# ── V16A — External Call Adapter ──────────────────────────────────────────
+
+from src.kortana.services.external_call_adapter import (  # noqa: E402
+    get_call_router,
+    CallMethod,
+    CallOutcome,
+    EndpointConfig,
+)
 
 
-@router.post("/idp/metadata/register")
-async def register_idp_metadata_sync(
-    provider_url: str = Query(...),
-    sync_interval_minutes: int = Query(60),
-    auto_remediate: bool = Query(False),
-) -> dict[str, Any]:
-    """Register a provider for automated IdP metadata sync."""
-    from src.kortana.services.idp_metadata_sync import (
-        MetadataSyncPolicy,
-        get_idp_metadata_sync_scheduler,
+@router.post("/calls/register-endpoint")
+async def register_call_endpoint(
+    url: str = Body(...),
+    adapter_name: str = Body("http"),
+    default_method: str = Body("GET"),
+    timeout_seconds: float = Body(30.0),
+) -> dict:
+    """Register an endpoint for call routing."""
+    cr = get_call_router()
+    config = EndpointConfig(
+        url=url,
+        adapter_name=adapter_name,
+        default_method=CallMethod(default_method),
+        timeout_seconds=timeout_seconds,
     )
+    result = cr.register_endpoint(config)
+    return {"status": "registered", "endpoint": result.to_dict()}
 
-    scheduler = get_idp_metadata_sync_scheduler()
-    policy = MetadataSyncPolicy(
-        sync_interval_minutes=sync_interval_minutes,
-        auto_remediate=auto_remediate,
+
+@router.post("/calls/route/{url:path}")
+async def route_call(
+    url: str,
+    method: str = Body("GET"),
+    headers: dict = Body(default={}),
+    body: dict = Body(default={}),
+    timeout_seconds: float = Body(30.0),
+) -> dict:
+    """Route a call through the appropriate adapter."""
+    cr = get_call_router()
+    result = cr.route_call(url, CallMethod(method), headers, body, timeout_seconds)
+    return {"status": "routed", "result": result.to_dict()}
+
+
+@router.post("/calls/reconcile")
+async def reconcile_call(
+    call_id: str = Body(...),
+    expected_outcome: str = Body("success"),
+    expected_status: int = Body(200),
+) -> dict:
+    """Reconcile a call result against expectations."""
+    cr = get_call_router()
+    history = cr.get_call_history()
+    call_result = next((c for c in history if c.call_id == call_id), None)
+    if call_result is None:
+        return {"error": "Call not found"}
+    rec = cr.reconcile(call_result, CallOutcome(expected_outcome), expected_status)
+    return {"status": "reconciled", "result": rec.to_dict()}
+
+
+@router.get("/calls/history")
+async def get_call_history(limit: int = 0) -> dict:
+    """Get call history."""
+    cr = get_call_router()
+    history = cr.get_call_history(limit)
+    return {"calls": [c.to_dict() for c in history], "count": len(history)}
+
+
+@router.get("/calls/reconciliations")
+async def get_reconciliations() -> dict:
+    """Get reconciliation results."""
+    cr = get_call_router()
+    recs = cr.get_reconciliations()
+    return {"reconciliations": [r.to_dict() for r in recs], "count": len(recs)}
+
+
+@router.get("/calls/endpoints")
+async def get_call_endpoints() -> dict:
+    """Get registered endpoints."""
+    cr = get_call_router()
+    endpoints = cr.get_endpoints()
+    return {"endpoints": [e.to_dict() for e in endpoints], "count": len(endpoints)}
+
+
+# ── V16B — Persistent Stage Store ─────────────────────────────────────────
+
+from src.kortana.services.persistent_stage_store import (  # noqa: E402
+    get_stage_persistence_store,
+    SideEffectType,
+)
+
+
+@router.post("/stages/persist-transition")
+async def persist_stage_transition(
+    pipeline_id: str = Body(...),
+    version_id: str = Body(...),
+    from_stage: str = Body(""),
+    to_stage: str = Body(...),
+    gate_verdict: str = Body("pass"),
+    gate_check_id: str = Body(""),
+) -> dict:
+    """Persist a stage transition."""
+    store = get_stage_persistence_store()
+    record = store.persist_transition(
+        pipeline_id, version_id, from_stage, to_stage, gate_verdict, gate_check_id,
     )
-    result = scheduler.register_provider(provider_url, policy)
-    return {"status": "registered", "provider_url": provider_url, "policy": result.to_dict()}
+    return {"status": "persisted", "transition": record.to_dict()}
 
 
-@router.post("/idp/metadata/check-drift/{provider_url:path}")
-async def check_idp_metadata_drift(
-    provider_url: str,
-    issuer: str = Query(""),
-    jwks_uri: str = Query(""),
-    token_endpoint: str = Query(""),
-) -> dict[str, Any]:
-    """Check a provider for metadata drift."""
-    from src.kortana.services.idp_metadata_sync import get_idp_metadata_sync_scheduler
-
-    scheduler = get_idp_metadata_sync_scheduler()
-    current: dict[str, Any] = {}
-    if issuer:
-        current["issuer"] = issuer
-    if jwks_uri:
-        current["jwks_uri"] = jwks_uri
-    if token_endpoint:
-        current["token_endpoint"] = token_endpoint
-    drifts = scheduler.check_drift(provider_url, current if current else None)
-    return {"provider_url": provider_url, "drifts": [d.to_dict() for d in drifts], "count": len(drifts)}
+@router.get("/stages/transitions/{pipeline_id}")
+async def get_stage_transitions(pipeline_id: str) -> dict:
+    """Get transitions for a pipeline."""
+    store = get_stage_persistence_store()
+    transitions = store.get_transitions(pipeline_id)
+    return {"transitions": [t.to_dict() for t in transitions], "count": len(transitions)}
 
 
-@router.post("/idp/metadata/reconcile/{provider_url:path}")
-async def reconcile_idp_metadata(
-    provider_url: str,
-    issuer: str = Query(""),
-    jwks_uri: str = Query(""),
-    token_endpoint: str = Query(""),
-) -> dict[str, Any]:
-    """Reconcile drifted provider metadata."""
-    from src.kortana.services.idp_metadata_sync import get_idp_metadata_sync_scheduler
-
-    scheduler = get_idp_metadata_sync_scheduler()
-    new_meta: dict[str, Any] = {}
-    if issuer:
-        new_meta["issuer"] = issuer
-    if jwks_uri:
-        new_meta["jwks_uri"] = jwks_uri
-    if token_endpoint:
-        new_meta["token_endpoint"] = token_endpoint
-    rec = scheduler.reconcile(provider_url, new_meta if new_meta else None)
-    return {"reconciliation": rec.to_dict()}
-
-
-@router.get("/idp/metadata/sync-history/{provider_url:path}")
-async def get_idp_metadata_sync_history(provider_url: str) -> dict[str, Any]:
-    """Get sync history for a provider."""
-    from src.kortana.services.idp_metadata_sync import get_idp_metadata_sync_scheduler
-
-    scheduler = get_idp_metadata_sync_scheduler()
-    history = scheduler.get_sync_history(provider_url)
-    return {"provider_url": provider_url, "history": history, "count": len(history)}
-
-
-@router.get("/idp/metadata/drift-report")
-async def get_idp_drift_report() -> dict[str, Any]:
-    """Get aggregated drift report across all providers."""
-    from src.kortana.services.idp_metadata_sync import get_idp_metadata_sync_scheduler
-
-    scheduler = get_idp_metadata_sync_scheduler()
-    return scheduler.get_drift_report()
-
-
-# V14B — External Secret Backend endpoints --------------------------------
-
-
-@router.post("/secrets/external/register")
-async def register_external_backend(
-    backend_name: str = Query(...),
-) -> dict[str, Any]:
-    """Register an external secret backend (pre-loaded adapters)."""
-    from src.kortana.services.external_secret_backend import get_external_secret_registry
-
-    registry = get_external_secret_registry()
-    backends = registry.list_backends()
-    return {"backends": backends, "count": len(backends), "requested": backend_name}
-
-
-@router.get("/secrets/external/health/{backend_name}")
-async def check_external_secret_health(backend_name: str) -> dict[str, Any]:
-    """Health-check a specific external secret backend."""
-    from src.kortana.services.external_secret_backend import (
-        SecretHealthMonitor,
-        get_external_secret_registry,
+@router.post("/stages/persist-rollback-effect")
+async def persist_rollback_effect(
+    rollback_id: str = Body(...),
+    pipeline_id: str = Body(...),
+    version_id: str = Body(...),
+    effect_type: str = Body("config_reverted"),
+    affected_resource: str = Body(""),
+    description: str = Body(""),
+) -> dict:
+    """Persist a rollback side-effect."""
+    store = get_stage_persistence_store()
+    effect = store.persist_rollback_effect(
+        rollback_id, pipeline_id, version_id,
+        SideEffectType(effect_type), affected_resource, description,
     )
-
-    monitor = SecretHealthMonitor(get_external_secret_registry())
-    health = monitor.check_health(backend_name)
-    return {"health": health.to_dict()}
+    return {"status": "persisted", "effect": effect.to_dict()}
 
 
-@router.get("/secrets/external/health")
-async def check_all_external_secret_health() -> dict[str, Any]:
-    """Health-check all registered external secret backends."""
-    from src.kortana.services.external_secret_backend import (
-        SecretHealthMonitor,
-        get_external_secret_registry,
+@router.get("/stages/rollback-effects/{rollback_id}")
+async def get_rollback_effects(rollback_id: str) -> dict:
+    """Get side-effects for a rollback."""
+    store = get_stage_persistence_store()
+    effects = store.get_rollback_effects(rollback_id)
+    return {"effects": [e.to_dict() for e in effects], "count": len(effects)}
+
+
+@router.post("/stages/verify-integrity/{pipeline_id}")
+async def verify_stage_integrity(pipeline_id: str) -> dict:
+    """Verify integrity of persisted transitions."""
+    store = get_stage_persistence_store()
+    check = store.verify_persistence_integrity(pipeline_id)
+    return {"status": "checked", "integrity": check.to_dict()}
+
+
+@router.get("/stages/all-transitions")
+async def get_all_stage_transitions() -> dict:
+    """Get all transitions across all pipelines."""
+    store = get_stage_persistence_store()
+    transitions = store.get_all_transitions()
+    return {"transitions": [t.to_dict() for t in transitions], "count": len(transitions)}
+
+
+# ── V16C — Deployment Binding ─────────────────────────────────────────────
+
+from src.kortana.services.deployment_binding import (  # noqa: E402
+    get_deployment_binding,
+    TargetEnvironment,
+    ActionType,
+)
+
+
+@router.post("/deploy/register-target")
+async def register_deployment_target(
+    name: str = Body(...),
+    environment: str = Body("staging"),
+    endpoint_url: str = Body(""),
+    credentials_ref: str = Body(""),
+    health_check_url: str = Body(""),
+) -> dict:
+    """Register a deployment target."""
+    binding = get_deployment_binding()
+    target = binding.register_target(
+        name, TargetEnvironment(environment),
+        endpoint_url, credentials_ref, health_check_url,
     )
-
-    monitor = SecretHealthMonitor(get_external_secret_registry())
-    results = monitor.check_all()
-    return {"backends": [h.to_dict() for h in results], "count": len(results)}
+    return {"status": "registered", "target": target.to_dict()}
 
 
-@router.post("/secrets/rotation/schedule")
-async def schedule_secret_rotation(
-    secret_id: str = Query(...),
-    backend: str = Query("local"),
-    interval_hours: int = Query(24),
-) -> dict[str, Any]:
-    """Schedule a recurring secret rotation."""
-    from src.kortana.services.external_secret_backend import RotationScheduler
-
-    scheduler = RotationScheduler()
-    entry = scheduler.schedule_rotation(secret_id, backend, interval_hours)
-    return {"status": "scheduled", "schedule": entry.to_dict()}
-
-
-@router.get("/secrets/rotation/due")
-async def check_due_rotations() -> dict[str, Any]:
-    """Check for due secret rotations."""
-    from src.kortana.services.external_secret_backend import RotationScheduler
-
-    scheduler = RotationScheduler()
-    due = scheduler.check_due()
-    return {"due": [e.to_dict() for e in due], "count": len(due)}
+@router.post("/deploy/bind-pipeline")
+async def bind_pipeline_to_target(
+    pipeline_id: str = Body(...),
+    target_id: str = Body(...),
+    version_id: str = Body(""),
+    stage_mapping: dict = Body(default={}),
+) -> dict:
+    """Bind a pipeline to a deployment target."""
+    binding = get_deployment_binding()
+    result = binding.bind_pipeline(pipeline_id, target_id, version_id, stage_mapping)
+    if result is None:
+        return {"error": "Target not found"}
+    return {"status": "bound", "binding": result.to_dict()}
 
 
-@router.post("/secrets/rotation/execute")
-async def execute_due_rotations() -> dict[str, Any]:
-    """Execute all due secret rotations."""
-    from src.kortana.services.external_secret_backend import (
-        RotationScheduler,
-        get_external_secret_registry,
+@router.post("/deploy/execute")
+async def execute_deployment(
+    target_id: str = Body(...),
+    pipeline_id: str = Body(...),
+    version_id: str = Body(...),
+    stage: str = Body(""),
+    action_type: str = Body("deploy"),
+    simulate_failure: bool = Body(False),
+) -> dict:
+    """Execute a deployment action."""
+    binding = get_deployment_binding()
+    action = binding.execute_deployment(
+        target_id, pipeline_id, version_id, stage,
+        ActionType(action_type), simulate_failure,
     )
-
-    scheduler = RotationScheduler()
-    results = scheduler.execute_due_rotations(get_external_secret_registry())
-    return {"results": [{"secret_id": s, "success": ok} for s, ok in results], "count": len(results)}
+    return {"status": action.status.value, "action": action.to_dict()}
 
 
-# V14C — Live Signer Inventory endpoints -----------------------------------
-
-
-@router.post("/signers/register")
-async def register_signer(
-    signer_id: str = Query(...),
-    issuer: str = Query(""),
-    expires_in_days: int = Query(365),
-) -> dict[str, Any]:
-    """Register a signer with a certificate."""
-    from src.kortana.services.live_signer_inventory import get_live_signer_registry
-
-    registry = get_live_signer_registry()
-    cert = registry.register_signer(signer_id, issuer, expires_in_days)
-    return {"status": "registered", "certificate": cert.to_dict()}
-
-
-@router.post("/signers/revoke/{signer_id}")
-async def revoke_signer(
-    signer_id: str,
-    reason: str = Query(""),
-    revoked_by: str = Query(""),
-) -> dict[str, Any]:
-    """Revoke a signer's certificate."""
-    from src.kortana.services.live_signer_inventory import get_live_signer_registry
-
-    registry = get_live_signer_registry()
-    entry = registry.revoke_signer(signer_id, reason, revoked_by)
-    if entry is None:
-        return JSONResponse(content={"error": f"Signer {signer_id!r} not found"}, status_code=404)
-    return {"status": "revoked", "revocation": entry.to_dict()}
-
-
-@router.get("/signers/{signer_id}/status")
-async def get_signer_status(signer_id: str) -> dict[str, Any]:
-    """Check a signer's current status."""
-    from src.kortana.services.live_signer_inventory import get_live_signer_registry
-
-    registry = get_live_signer_registry()
-    status = registry.check_signer_status(signer_id)
-    if status is None:
-        return JSONResponse(content={"error": f"Signer {signer_id!r} not found"}, status_code=404)
-    return {"signer_id": signer_id, "status": status.value}
-
-
-@router.post("/signers/{signer_id}/validate-chain")
-async def validate_signer_chain(signer_id: str) -> dict[str, Any]:
-    """Validate a signer's certificate chain."""
-    from src.kortana.services.live_signer_inventory import get_live_signer_registry
-
-    registry = get_live_signer_registry()
-    valid, error = registry.validate_certificate_chain(signer_id)
-    return {"signer_id": signer_id, "valid": valid, "error": error}
-
-
-@router.get("/signers/inventory")
-async def get_signer_inventory() -> dict[str, Any]:
-    """Get the full signer inventory snapshot."""
-    from src.kortana.services.live_signer_inventory import get_live_signer_registry
-
-    registry = get_live_signer_registry()
-    inventory = registry.sync_inventory()
-    return {"inventory": inventory.to_dict()}
-
-
-@router.get("/signers/revocation-list")
-async def get_signer_revocation_list() -> dict[str, Any]:
-    """Get the signer revocation list."""
-    from src.kortana.services.live_signer_inventory import get_live_signer_registry
-
-    registry = get_live_signer_registry()
-    revocations = registry.get_revocation_list()
-    return {"revocations": [r.to_dict() for r in revocations], "count": len(revocations)}
-
-
-# V14D — Trust Artifact Policy endpoints -----------------------------------
-
-
-@router.post("/artifacts/register")
-async def register_artifact(
-    artifact_type: str = Query(...),
-    issuer: str = Query(""),
-    subject: str = Query(""),
-    version_id: str = Query(""),
-) -> dict[str, Any]:
-    """Register a trust artifact."""
-    from src.kortana.services.trust_artifact_policy import (
-        ArtifactType,
-        TrustArtifact,
-        get_policy_orchestrator,
+@router.post("/deploy/verify/{action_id}")
+async def verify_deployment(
+    action_id: str,
+    expected_version: str = Body(""),
+    simulate_mismatch: bool = Body(False),
+    simulate_unhealthy: bool = Body(False),
+) -> dict:
+    """Verify a deployment actually landed."""
+    binding = get_deployment_binding()
+    verification = binding.verify_deployment(
+        action_id, expected_version, simulate_mismatch, simulate_unhealthy,
     )
+    return {"status": "verified" if verification.verified else "failed", "verification": verification.to_dict()}
 
-    try:
-        at = ArtifactType(artifact_type)
-    except ValueError:
-        return JSONResponse(content={"error": f"Unknown artifact type: {artifact_type!r}"}, status_code=400)
 
-    orchestrator = get_policy_orchestrator()
-    artifact = orchestrator.register_artifact(
-        TrustArtifact(artifact_type=at, issuer=issuer, subject=subject, version_id=version_id)
+@router.get("/deploy/targets")
+async def list_deployment_targets(environment: str | None = None) -> dict:
+    """List deployment targets."""
+    binding = get_deployment_binding()
+    env = TargetEnvironment(environment) if environment else None
+    targets = binding.list_targets(env)
+    return {"targets": [t.to_dict() for t in targets], "count": len(targets)}
+
+
+@router.get("/deploy/bindings")
+async def list_pipeline_bindings(pipeline_id: str = "") -> dict:
+    """List pipeline bindings."""
+    binding = get_deployment_binding()
+    bindings = binding.get_bindings(pipeline_id)
+    return {"bindings": [b.to_dict() for b in bindings], "count": len(bindings)}
+
+
+@router.get("/deploy/actions")
+async def list_deployment_actions(pipeline_id: str = "", target_id: str = "") -> dict:
+    """List deployment actions."""
+    binding = get_deployment_binding()
+    actions = binding.get_actions(pipeline_id, target_id)
+    return {"actions": [a.to_dict() for a in actions], "count": len(actions)}
+
+
+# ── V16D — External Verification ─────────────────────────────────────────
+
+from src.kortana.services.external_verification import (  # noqa: E402
+    get_external_verifier,
+    ProbeType,
+)
+
+
+@router.post("/verify/create-campaign")
+async def create_verification_campaign(
+    version_id: str = Body(...),
+    pipeline_id: str = Body(""),
+    description: str = Body(""),
+) -> dict:
+    """Create a verification campaign."""
+    verifier = get_external_verifier()
+    campaign = verifier.create_campaign(version_id, pipeline_id, description)
+    return {"status": "created", "campaign": campaign.to_dict()}
+
+
+@router.post("/verify/add-probe/{campaign_id}")
+async def add_verification_probe(
+    campaign_id: str,
+    target_system: str = Body(...),
+    probe_type: str = Body("version_check"),
+    expected_state: dict = Body(default={}),
+) -> dict:
+    """Add a probe to a campaign."""
+    verifier = get_external_verifier()
+    probe = verifier.add_probe(
+        campaign_id, target_system, ProbeType(probe_type), expected_state,
     )
-    return {"status": "registered", "artifact": artifact.to_dict()}
-
-
-@router.post("/artifacts/policy/define")
-async def define_artifact_policy(
-    policy_name: str = Query(...),
-    required_artifacts: str = Query(...),
-    require_all: bool = Query(True),
-    max_artifact_age_hours: float = Query(720.0),
-) -> dict[str, Any]:
-    """Define an artifact policy."""
-    from src.kortana.services.trust_artifact_policy import (
-        ArtifactType,
-        get_policy_orchestrator,
-    )
-
-    types: list[ArtifactType] = []
-    for s in required_artifacts.split(","):
-        s = s.strip()
-        if s:
-            try:
-                types.append(ArtifactType(s))
-            except ValueError:
-                return JSONResponse(content={"error": f"Unknown artifact type: {s!r}"}, status_code=400)
-
-    orchestrator = get_policy_orchestrator()
-    policy = orchestrator.define_policy(policy_name, types, require_all, max_artifact_age_hours)
-    return {"status": "defined", "policy": policy.to_dict()}
-
-
-@router.post("/artifacts/deploy/{version_id}")
-async def deploy_with_artifacts(
-    version_id: str,
-    session_id: str = Query(...),
-    policy_name: str = Query(""),
-    required_artifacts: str = Query(""),
-) -> dict[str, Any]:
-    """Deploy a version gated by artifact policy."""
-    from src.kortana.services.trust_artifact_policy import (
-        ArtifactType,
-        get_policy_orchestrator,
-    )
-
-    orchestrator = get_policy_orchestrator()
-    policies = orchestrator.get_policies()
-    policy = None
-    for p in policies:
-        if p.policy_name == policy_name:
-            policy = p
-            break
-    if policy is None and required_artifacts:
-        types = []
-        for s in required_artifacts.split(","):
-            s = s.strip()
-            if s:
-                try:
-                    types.append(ArtifactType(s))
-                except ValueError:
-                    return JSONResponse(content={"error": f"Unknown artifact type: {s!r}"}, status_code=400)
-        policy = orchestrator.define_policy(f"deploy-{version_id}", types)
-    if policy is None:
-        return JSONResponse(content={"error": "No policy specified"}, status_code=400)
-
-    result, error = orchestrator.promote_with_artifacts(version_id, session_id, policy)
-    if error:
-        return JSONResponse(content={"error": error}, status_code=400)
-    return {"status": "promoted", "version_id": version_id}
-
-
-@router.get("/artifacts")
-async def list_artifacts(artifact_type: str = Query("")) -> dict[str, Any]:
-    """List registered artifacts."""
-    from src.kortana.services.trust_artifact_policy import (
-        ArtifactType,
-        get_policy_orchestrator,
-    )
-
-    orchestrator = get_policy_orchestrator()
-    if artifact_type:
-        try:
-            at = ArtifactType(artifact_type)
-        except ValueError:
-            return JSONResponse(content={"error": f"Unknown artifact type: {artifact_type!r}"}, status_code=400)
-        artifacts = orchestrator.get_artifacts(at)
-    else:
-        artifacts = orchestrator.get_artifacts()
-    return {"artifacts": [a.to_dict() for a in artifacts], "count": len(artifacts)}
-
-
-@router.get("/artifacts/policies")
-async def list_artifact_policies() -> dict[str, Any]:
-    """List defined artifact policies."""
-    from src.kortana.services.trust_artifact_policy import get_policy_orchestrator
-
-    orchestrator = get_policy_orchestrator()
-    policies = orchestrator.get_policies()
-    return {"policies": [p.to_dict() for p in policies], "count": len(policies)}
-
-
-@router.get("/artifacts/verifications/{version_id}")
-async def get_artifact_verifications(version_id: str) -> dict[str, Any]:
-    """Get artifact verifications for a version."""
-    from src.kortana.services.trust_artifact_policy import get_policy_orchestrator
-
-    orchestrator = get_policy_orchestrator()
-    verifications = orchestrator.get_verifications(version_id)
-    return {"version_id": version_id, "verifications": [v.to_dict() for v in verifications], "count": len(verifications)}
-
-
-
-# =========================================================================
-# V15 — Execution-Backed Orchestration Endpoints
-# =========================================================================
-
-
-# -- V15A: Metadata Fetch Executor -----------------------------------------
-
-
-@router.post("/fetch/register-endpoint")
-async def register_fetch_endpoint(body: dict[str, Any] = Body(...)) -> dict[str, Any]:
-    """Register an endpoint for periodic metadata fetching."""
-    from src.kortana.services.metadata_fetch_executor import (
-        RetryPolicy,
-        get_metadata_fetch_executor,
-    )
-
-    executor = get_metadata_fetch_executor()
-    retry = None
-    if "retry_policy" in body:
-        rp = body["retry_policy"]
-        retry = RetryPolicy(
-            max_retries=rp.get("max_retries", 3),
-            base_delay_seconds=rp.get("base_delay_seconds", 1.0),
-            max_delay_seconds=rp.get("max_delay_seconds", 60.0),
-            backoff_multiplier=rp.get("backoff_multiplier", 2.0),
-        )
-    schedule = executor.register_endpoint(
-        body["provider_url"],
-        interval_seconds=body.get("interval_seconds", 3600),
-        retry_policy=retry,
-    )
-    return {"schedule": schedule.to_dict()}
-
-
-@router.post("/fetch/execute/{provider_url:path}")
-async def execute_fetch(
-    provider_url: str,
-    body: dict[str, Any] = Body(default={}),
-) -> dict[str, Any]:
-    """Execute a metadata fetch for a provider."""
-    from src.kortana.services.metadata_fetch_executor import get_metadata_fetch_executor
-
-    executor = get_metadata_fetch_executor()
-    result = executor.execute_fetch(
-        provider_url,
-        simulated_payload=body.get("payload"),
-        simulated_failure=body.get("simulate_failure", False),
-    )
-    return {"result": result.to_dict()}
-
-
-@router.post("/fetch/execute-due")
-async def execute_due_fetches() -> dict[str, Any]:
-    """Execute all due metadata fetches."""
-    from src.kortana.services.metadata_fetch_executor import get_metadata_fetch_executor
-
-    executor = get_metadata_fetch_executor()
-    results = executor.execute_due_fetches()
-    return {"results": [r.to_dict() for r in results], "count": len(results)}
-
-
-@router.get("/fetch/circuit/{provider_url:path}")
-async def get_circuit_state(provider_url: str) -> dict[str, Any]:
-    """Get circuit-breaker state for a provider."""
-    from src.kortana.services.metadata_fetch_executor import get_metadata_fetch_executor
-
-    executor = get_metadata_fetch_executor()
-    circuit = executor.get_circuit_state(provider_url)
-    if circuit is None:
-        return JSONResponse(content={"error": "Provider not found"}, status_code=404)
-    return {"provider_url": provider_url, "circuit": circuit.to_dict()}
-
-
-@router.get("/fetch/history")
-async def get_fetch_history(provider_url: str = Query("")) -> dict[str, Any]:
-    """Get fetch execution history."""
-    from src.kortana.services.metadata_fetch_executor import get_metadata_fetch_executor
-
-    executor = get_metadata_fetch_executor()
-    history = executor.get_fetch_history(provider_url or None)
-    return {"history": [h.to_dict() for h in history], "count": len(history)}
-
-
-@router.get("/fetch/audit-log")
-async def get_fetch_audit_log(provider_url: str = Query("")) -> dict[str, Any]:
-    """Get fetch execution audit log."""
-    from src.kortana.services.metadata_fetch_executor import get_metadata_fetch_executor
-
-    executor = get_metadata_fetch_executor()
-    log = executor.get_audit_log(provider_url or None)
-    return {"audit_log": [e.to_dict() for e in log], "count": len(log)}
-
-
-@router.get("/fetch/schedules")
-async def get_fetch_schedules() -> dict[str, Any]:
-    """Get all fetch schedules."""
-    from src.kortana.services.metadata_fetch_executor import get_metadata_fetch_executor
-
-    executor = get_metadata_fetch_executor()
-    schedules = executor.get_all_schedules()
-    return {"schedules": [s.to_dict() for s in schedules], "count": len(schedules)}
-
-
-# -- V15B: Secret Manager Client Lifecycle ----------------------------------
-
-
-@router.post("/clients/register")
-async def register_client(body: dict[str, Any] = Body(...)) -> dict[str, Any]:
-    """Register a secret-manager client."""
-    from src.kortana.services.secret_manager_client import (
-        ClientConfig,
-        get_secret_manager_client_registry,
-    )
-
-    registry = get_secret_manager_client_registry()
-    config = ClientConfig(
-        backend_name=body["backend_name"],
-        endpoint_url=body.get("endpoint_url", ""),
-        auth_method=body.get("auth_method", "token"),
-        timeout_seconds=body.get("timeout_seconds", 30.0),
-        max_retries=body.get("max_retries", 3),
-        pool_size=body.get("pool_size", 5),
-    )
-    client = registry.register_client(config)
-    return {"backend_name": config.backend_name, "state": client.state.value}
-
-
-@router.post("/clients/{backend_name}/connect")
-async def connect_client(backend_name: str) -> dict[str, Any]:
-    """Connect a registered client."""
-    from src.kortana.services.secret_manager_client import get_secret_manager_client_registry
-
-    registry = get_secret_manager_client_registry()
-    probe = registry.connect_client(backend_name)
     if probe is None:
-        return JSONResponse(content={"error": "Client not found"}, status_code=404)
-    return {"probe": probe.to_dict()}
+        return {"error": "Campaign not found"}
+    return {"status": "added", "probe": probe.to_dict()}
 
 
-@router.post("/clients/{backend_name}/disconnect")
-async def disconnect_client(backend_name: str) -> dict[str, Any]:
-    """Disconnect a registered client."""
-    from src.kortana.services.secret_manager_client import get_secret_manager_client_registry
-
-    registry = get_secret_manager_client_registry()
-    ok = registry.disconnect_client(backend_name)
-    return {"disconnected": ok, "backend_name": backend_name}
-
-
-@router.get("/clients/{backend_name}/health")
-async def client_health(backend_name: str) -> dict[str, Any]:
-    """Health check a specific client."""
-    from src.kortana.services.secret_manager_client import get_secret_manager_client_registry
-
-    registry = get_secret_manager_client_registry()
-    client = registry.get_client(backend_name)
-    if client is None:
-        return JSONResponse(content={"error": "Client not found"}, status_code=404)
-    probe = client.health_check()
-    return {"probe": probe.to_dict()}
+@router.post("/verify/execute-campaign/{campaign_id}")
+async def execute_verification_campaign(
+    campaign_id: str,
+    observed_states: dict = Body(default={}),
+    simulate_unreachable: list = Body(default=[]),
+) -> dict:
+    """Execute all probes in a campaign."""
+    verifier = get_external_verifier()
+    campaign = verifier.execute_campaign(campaign_id, observed_states, simulate_unreachable)
+    if campaign is None:
+        return {"error": "Campaign not found"}
+    return {"status": campaign.status.value, "campaign": campaign.to_dict()}
 
 
-@router.post("/clients/{backend_name}/execute")
-async def execute_client_operation(
-    backend_name: str,
-    body: dict[str, Any] = Body(...),
-) -> dict[str, Any]:
-    """Execute an operation on a client."""
-    from src.kortana.services.secret_manager_client import (
-        OperationType,
-        get_secret_manager_client_registry,
-    )
-
-    registry = get_secret_manager_client_registry()
-    client = registry.get_client(backend_name)
-    if client is None:
-        return JSONResponse(content={"error": "Client not found"}, status_code=404)
-    try:
-        op_type = OperationType(body.get("operation_type", "read"))
-    except ValueError:
-        return JSONResponse(content={"error": "Invalid operation type"}, status_code=400)
-    rec = client.execute_operation(
-        op_type,
-        secret_id=body.get("secret_id", ""),
-        value=body.get("value", ""),
-        simulate_failure=body.get("simulate_failure", False),
-    )
-    return {"operation": rec.to_dict()}
+@router.post("/verify/check-campaign/{campaign_id}")
+async def check_verification_campaign(campaign_id: str) -> dict:
+    """Check whether a campaign fully verified."""
+    verifier = get_external_verifier()
+    verified, reason = verifier.verify_campaign(campaign_id)
+    return {"verified": verified, "reason": reason}
 
 
-@router.get("/clients")
-async def list_clients() -> dict[str, Any]:
-    """List all registered clients."""
-    from src.kortana.services.secret_manager_client import get_secret_manager_client_registry
+@router.get("/verify/campaigns")
+async def list_verification_campaigns(
+    version_id: str = "",
+) -> dict:
+    """List verification campaigns."""
+    verifier = get_external_verifier()
+    campaigns = verifier.get_campaigns(version_id)
+    return {"campaigns": [c.to_dict() for c in campaigns], "count": len(campaigns)}
 
-    registry = get_secret_manager_client_registry()
-    return {"clients": registry.list_clients(), "count": registry.client_count}
 
-
-@router.get("/clients/health-all")
-async def health_check_all_clients() -> dict[str, Any]:
-    """Health check all clients."""
-    from src.kortana.services.secret_manager_client import get_secret_manager_client_registry
-
-    registry = get_secret_manager_client_registry()
-    probes = registry.health_check_all()
+@router.get("/verify/probes/{campaign_id}")
+async def get_campaign_probes(campaign_id: str) -> dict:
+    """Get probes for a campaign."""
+    verifier = get_external_verifier()
+    probes = verifier.get_probes(campaign_id)
     return {"probes": [p.to_dict() for p in probes], "count": len(probes)}
-
-
-# -- V15C: CA Signer Source --------------------------------------------------
-
-
-@router.post("/ca/register")
-async def register_ca(body: dict[str, Any] = Body(...)) -> dict[str, Any]:
-    """Register a certificate authority source."""
-    from src.kortana.services.ca_signer_source import (
-        CASourceConfig,
-        CASourceType,
-        get_ca_signer_source,
-    )
-
-    source = get_ca_signer_source()
-    try:
-        ca_type = CASourceType(body.get("ca_type", "public_ca"))
-    except ValueError:
-        return JSONResponse(content={"error": "Invalid CA type"}, status_code=400)
-    config = CASourceConfig(
-        ca_name=body["ca_name"],
-        ca_type=ca_type,
-        crl_endpoint=body.get("crl_endpoint", ""),
-        ocsp_endpoint=body.get("ocsp_endpoint", ""),
-        root_cert_hash=body.get("root_cert_hash", ""),
-        sync_interval_seconds=body.get("sync_interval_seconds", 3600),
-    )
-    result = source.register_ca(config)
-    return {"ca": result.to_dict()}
-
-
-@router.post("/ca/{ca_id}/fetch-crl")
-async def fetch_ca_crl(ca_id: str, body: dict[str, Any] = Body(default={})) -> dict[str, Any]:
-    """Fetch CRL from a certificate authority."""
-    from src.kortana.services.ca_signer_source import CRLEntry, get_ca_signer_source
-
-    source = get_ca_signer_source()
-    entries = None
-    if "entries" in body:
-        entries = [
-            CRLEntry(serial_number=e["serial_number"], reason=e.get("reason", ""))
-            for e in body["entries"]
-        ]
-    result = source.fetch_crl(
-        ca_id,
-        simulated_entries=entries,
-        simulate_failure=body.get("simulate_failure", False),
-    )
-    return {"crl": result.to_dict()}
-
-
-@router.post("/ca/{ca_id}/check-ocsp/{serial_number}")
-async def check_ocsp(ca_id: str, serial_number: str) -> dict[str, Any]:
-    """Check certificate status via OCSP."""
-    from src.kortana.services.ca_signer_source import get_ca_signer_source
-
-    source = get_ca_signer_source()
-    result = source.check_ocsp(ca_id, serial_number)
-    return {"ocsp": result.to_dict()}
-
-
-@router.post("/ca/{ca_id}/validate-chain/{signer_id}")
-async def validate_ca_chain(
-    ca_id: str,
-    signer_id: str,
-    body: dict[str, Any] = Body(default={}),
-) -> dict[str, Any]:
-    """Validate a certificate chain against a CA."""
-    from src.kortana.services.ca_signer_source import get_ca_signer_source
-
-    source = get_ca_signer_source()
-    result = source.validate_chain(
-        signer_id, ca_id,
-        serial_number=body.get("serial_number", ""),
-        chain_depth=body.get("chain_depth", 3),
-    )
-    return {"validation": result.to_dict()}
-
-
-@router.post("/ca/{ca_id}/sync")
-async def sync_from_ca(ca_id: str) -> dict[str, Any]:
-    """Sync signer inventory from a CA source."""
-    from src.kortana.services.ca_signer_source import get_ca_signer_source
-
-    source = get_ca_signer_source()
-    snapshot = source.sync_from_ca(ca_id)
-    return {"snapshot": snapshot.to_dict()}
-
-
-@router.get("/ca/list")
-async def list_cas() -> dict[str, Any]:
-    """List registered certificate authorities."""
-    from src.kortana.services.ca_signer_source import get_ca_signer_source
-
-    source = get_ca_signer_source()
-    cas = source.list_cas()
-    return {"cas": [c.to_dict() for c in cas], "count": len(cas)}
-
-
-@router.get("/ca/revoked")
-async def get_all_revoked() -> dict[str, Any]:
-    """Get all revoked certificates across CAs."""
-    from src.kortana.services.ca_signer_source import get_ca_signer_source
-
-    source = get_ca_signer_source()
-    return {"revoked": source.get_all_revoked(), "total": source.total_revoked}
-
-
-# -- V15D: Deployment Pipeline Enforcement -----------------------------------
-
-
-@router.post("/pipeline/configure-gate")
-async def configure_pipeline_gate(body: dict[str, Any] = Body(...)) -> dict[str, Any]:
-    """Configure a gate for a pipeline stage."""
-    from src.kortana.services.deploy_pipeline_enforcement import (
-        DeploymentStage,
-        PipelineGateConfig,
-        get_pipeline_enforcer,
-    )
-
-    enforcer = get_pipeline_enforcer()
-    try:
-        stage = DeploymentStage(body["stage"])
-    except (ValueError, KeyError):
-        return JSONResponse(content={"error": "Invalid stage"}, status_code=400)
-    config = PipelineGateConfig(
-        stage=stage,
-        required_artifact_types=body.get("required_artifact_types", []),
-        require_signer_validation=body.get("require_signer_validation", False),
-        require_secret_health=body.get("require_secret_health", False),
-        max_allowed_vulnerabilities=body.get("max_allowed_vulnerabilities", 0),
-        auto_rollback_on_failure=body.get("auto_rollback_on_failure", True),
-    )
-    result = enforcer.configure_gate(config)
-    return {"gate": result.to_dict()}
-
-
-@router.post("/pipeline/create/{version_id}")
-async def create_pipeline(version_id: str) -> dict[str, Any]:
-    """Create a new deployment pipeline."""
-    from src.kortana.services.deploy_pipeline_enforcement import get_pipeline_enforcer
-
-    enforcer = get_pipeline_enforcer()
-    pipeline = enforcer.create_pipeline(version_id)
-    return {"pipeline": pipeline.to_dict()}
-
-
-@router.post("/pipeline/{pipeline_id}/advance")
-async def advance_pipeline(
-    pipeline_id: str,
-    body: dict[str, Any] = Body(default={}),
-) -> dict[str, Any]:
-    """Advance a pipeline to its next stage."""
-    from src.kortana.services.deploy_pipeline_enforcement import get_pipeline_enforcer
-
-    enforcer = get_pipeline_enforcer()
-    execution = enforcer.advance_pipeline(
-        pipeline_id,
-        available_artifacts=body.get("available_artifacts"),
-        signer_valid=body.get("signer_valid", True),
-        secret_health_ok=body.get("secret_health_ok", True),
-        vulnerability_count=body.get("vulnerability_count", 0),
-    )
-    return {"execution": execution.to_dict()}
-
-
-@router.get("/pipeline/{pipeline_id}")
-async def get_pipeline(pipeline_id: str) -> dict[str, Any]:
-    """Get pipeline status."""
-    from src.kortana.services.deploy_pipeline_enforcement import get_pipeline_enforcer
-
-    enforcer = get_pipeline_enforcer()
-    pipeline = enforcer.get_pipeline(pipeline_id)
-    if pipeline is None:
-        return JSONResponse(content={"error": "Pipeline not found"}, status_code=404)
-    return {"pipeline": pipeline.to_dict()}
-
-
-@router.get("/pipeline/list")
-async def list_pipelines_endpoint() -> dict[str, Any]:
-    """List all pipelines."""
-    from src.kortana.services.deploy_pipeline_enforcement import get_pipeline_enforcer
-
-    enforcer = get_pipeline_enforcer()
-    pipelines = enforcer.list_pipelines()
-    return {"pipelines": [p.to_dict() for p in pipelines], "count": len(pipelines)}
-
-
-@router.get("/pipeline/gates")
-async def list_gates() -> dict[str, Any]:
-    """List configured pipeline gates."""
-    from src.kortana.services.deploy_pipeline_enforcement import get_pipeline_enforcer
-
-    enforcer = get_pipeline_enforcer()
-    gates = enforcer.list_gate_configs()
-    return {"gates": [g.to_dict() for g in gates], "count": len(gates)}
-
-
-@router.get("/pipeline/rollbacks")
-async def list_rollbacks() -> dict[str, Any]:
-    """List all rollback records."""
-    from src.kortana.services.deploy_pipeline_enforcement import get_pipeline_enforcer
-
-    enforcer = get_pipeline_enforcer()
-    rollbacks = enforcer.get_rollback_history()
-    return {"rollbacks": [r.to_dict() for r in rollbacks], "count": len(rollbacks)}
-
-
-@router.get("/pipeline/check-history")
-async def pipeline_check_history(version_id: str = Query("")) -> dict[str, Any]:
-    """Get gate check history."""
-    from src.kortana.services.deploy_pipeline_enforcement import get_pipeline_enforcer
-
-    enforcer = get_pipeline_enforcer()
-    checks = enforcer.get_check_history(version_id or None)
-    return {"checks": [c.to_dict() for c in checks], "count": len(checks)}
