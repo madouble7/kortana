@@ -8761,3 +8761,345 @@ async def learning_pulse():
         "adaptations": adapter.get_summary(),
         "feedback": integrator.get_summary(),
     }
+
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# V28 — INTRINSIC GOAL ENGINE
+# desire formation, goal crystallization, pursuit tracking, motivation
+# ══════════════════════════════════════════════════════════════════════════════
+
+from src.kortana.services.desire_formation import (  # noqa: E402
+    get_desire_formation, DesireSource,
+)
+from src.kortana.services.goal_crystallizer import get_goal_crystallizer  # noqa: E402
+from src.kortana.services.pursuit_engine import get_pursuit_engine  # noqa: E402
+from src.kortana.services.motivation_tracker import get_motivation_tracker  # noqa: E402
+
+
+# ── desire endpoints ─────────────────────────────────────────────────────────
+
+
+@router.post("/intrinsic/desires/assess")
+async def assess_desires(
+    cycle_number: int = Body(...),
+    health_summary: dict | None = Body(None),
+    learning_summary: dict | None = Body(None),
+    pattern_summary: dict | None = Body(None),
+    adaptation_summary: dict | None = Body(None),
+    pending_deferrals: list[str] | None = Body(None),
+):
+    """assess system state and form/reinforce/decay desires."""
+    formation = get_desire_formation()
+    affected = formation.assess(
+        cycle_number=cycle_number,
+        health_summary=health_summary,
+        learning_summary=learning_summary,
+        pattern_summary=pattern_summary,
+        adaptation_summary=adaptation_summary,
+        pending_deferrals=pending_deferrals,
+    )
+    return {
+        "affected_count": len(affected),
+        "desires": [d.to_dict() for d in affected],
+    }
+
+
+@router.get("/intrinsic/desire/{desire_id}")
+async def get_desire(desire_id: str):
+    """get a specific desire by id."""
+    formation = get_desire_formation()
+    desire = formation.get_desire(desire_id)
+    if desire is None:
+        return {"error": "desire not found"}
+    return desire.to_dict()
+
+
+@router.get("/intrinsic/desires/active")
+async def active_desires():
+    """get all active desires."""
+    formation = get_desire_formation()
+    return {"desires": [d.to_dict() for d in formation.get_active()]}
+
+
+@router.get("/intrinsic/desires/mature")
+async def mature_desires():
+    """get all mature desires ready for crystallization."""
+    formation = get_desire_formation()
+    return {"desires": [d.to_dict() for d in formation.get_mature()]}
+
+
+@router.get("/intrinsic/desires/strongest")
+async def strongest_desires(n: int = 5):
+    """get the strongest active desires."""
+    formation = get_desire_formation()
+    return {"desires": [d.to_dict() for d in formation.get_strongest(n)]}
+
+
+@router.get("/intrinsic/desires/source/{source}")
+async def desires_by_source(source: str):
+    """get desires by source type."""
+    formation = get_desire_formation()
+    try:
+        source_enum = DesireSource(source)
+    except ValueError:
+        return {"error": f"unknown source: {source}"}
+    return {"desires": [d.to_dict() for d in formation.get_by_source(source_enum)]}
+
+
+@router.post("/intrinsic/desire/{desire_id}/satisfy")
+async def satisfy_desire(desire_id: str):
+    """mark a desire as satisfied."""
+    formation = get_desire_formation()
+    success = formation.satisfy_desire(desire_id)
+    return {"success": success}
+
+
+@router.get("/intrinsic/desires/summary/stats")
+async def desire_summary():
+    """get desire formation summary."""
+    formation = get_desire_formation()
+    return formation.get_summary()
+
+
+# ── crystallization endpoints ────────────────────────────────────────────────
+
+
+@router.post("/intrinsic/crystallize")
+async def crystallize_desires(
+    cycle_number: int = Body(...),
+    desires: list[dict] = Body(...),
+):
+    """attempt to crystallize mature desires into goal blueprints."""
+    crystallizer = get_goal_crystallizer()
+    blueprints = crystallizer.crystallize(desires, cycle_number)
+    return {
+        "crystallized_count": len(blueprints),
+        "blueprints": [bp.to_dict() for bp in blueprints],
+    }
+
+
+@router.get("/intrinsic/blueprint/{blueprint_id}")
+async def get_blueprint(blueprint_id: str):
+    """get a specific goal blueprint."""
+    crystallizer = get_goal_crystallizer()
+    bp = crystallizer.get_blueprint(blueprint_id)
+    if bp is None:
+        return {"error": "blueprint not found"}
+    return bp.to_dict()
+
+
+@router.post("/intrinsic/blueprint/{blueprint_id}/accept")
+async def accept_blueprint(blueprint_id: str, goal_id: str = Body(...)):
+    """mark a blueprint as accepted — goal was created."""
+    crystallizer = get_goal_crystallizer()
+    success = crystallizer.accept_blueprint(blueprint_id, goal_id)
+    return {"success": success}
+
+
+@router.get("/intrinsic/blueprints/pending")
+async def pending_blueprints():
+    """get all pending (unaccepted) blueprints."""
+    crystallizer = get_goal_crystallizer()
+    return {"blueprints": [bp.to_dict() for bp in crystallizer.get_pending()]}
+
+
+@router.get("/intrinsic/blueprints/accepted")
+async def accepted_blueprints():
+    """get all accepted blueprints."""
+    crystallizer = get_goal_crystallizer()
+    return {"blueprints": [bp.to_dict() for bp in crystallizer.get_accepted()]}
+
+
+@router.get("/intrinsic/blueprints/recent")
+async def recent_blueprints(n: int = 10):
+    """get recent blueprints."""
+    crystallizer = get_goal_crystallizer()
+    return {"blueprints": [bp.to_dict() for bp in crystallizer.get_recent(n)]}
+
+
+@router.get("/intrinsic/crystallize/summary/stats")
+async def crystallization_summary():
+    """get crystallization summary."""
+    crystallizer = get_goal_crystallizer()
+    return crystallizer.get_summary()
+
+
+# ── pursuit endpoints ────────────────────────────────────────────────────────
+
+
+@router.post("/intrinsic/pursuit/begin")
+async def begin_pursuit(
+    goal_id: str = Body(...),
+    goal_title: str = Body(...),
+    desire_id: str = Body(...),
+    blueprint_id: str = Body(...),
+    cycle_number: int = Body(...),
+):
+    """begin pursuing a crystallized goal."""
+    engine = get_pursuit_engine()
+    pursuit = engine.begin_pursuit(goal_id, goal_title, desire_id, blueprint_id, cycle_number)
+    return pursuit.to_dict()
+
+
+@router.post("/intrinsic/pursuit/progress")
+async def update_pursuit_progress(
+    goal_id: str = Body(...),
+    progress: float = Body(...),
+    cycle_number: int = Body(...),
+    notes: str = Body(""),
+):
+    """report progress on a goal pursuit."""
+    engine = get_pursuit_engine()
+    checkpoint = engine.update_progress(goal_id, progress, cycle_number, notes)
+    if checkpoint is None:
+        return {"error": "no active pursuit for this goal"}
+    return checkpoint.to_dict()
+
+
+@router.post("/intrinsic/pursuit/tick")
+async def tick_pursuits(cycle_number: int = Body(...)):
+    """advance all active pursuits by one cycle."""
+    engine = get_pursuit_engine()
+    changed = engine.tick_cycle(cycle_number)
+    return {
+        "changed_count": len(changed),
+        "changed": [p.to_dict() for p in changed],
+    }
+
+
+@router.post("/intrinsic/pursuit/{goal_id}/complete")
+async def complete_pursuit(goal_id: str):
+    """mark a pursuit as achieved."""
+    engine = get_pursuit_engine()
+    success = engine.complete_pursuit(goal_id)
+    return {"success": success}
+
+
+@router.post("/intrinsic/pursuit/{goal_id}/abandon")
+async def abandon_pursuit(goal_id: str, reason: str = Body("")):
+    """abandon a pursuit."""
+    engine = get_pursuit_engine()
+    success = engine.abandon_pursuit(goal_id, reason)
+    return {"success": success}
+
+
+@router.get("/intrinsic/pursuit/{pursuit_id}")
+async def get_pursuit(pursuit_id: str):
+    """get a specific pursuit."""
+    engine = get_pursuit_engine()
+    pursuit = engine.get_pursuit(pursuit_id)
+    if pursuit is None:
+        return {"error": "pursuit not found"}
+    return pursuit.to_dict()
+
+
+@router.get("/intrinsic/pursuits/active")
+async def active_pursuits():
+    """get all active pursuits."""
+    engine = get_pursuit_engine()
+    return {"pursuits": [p.to_dict() for p in engine.get_active()]}
+
+
+@router.get("/intrinsic/pursuits/stalled")
+async def stalled_pursuits():
+    """get all stalled pursuits."""
+    engine = get_pursuit_engine()
+    return {"pursuits": [p.to_dict() for p in engine.get_stalled()]}
+
+
+@router.get("/intrinsic/pursuits/achieved")
+async def achieved_pursuits():
+    """get all achieved pursuits."""
+    engine = get_pursuit_engine()
+    return {"pursuits": [p.to_dict() for p in engine.get_achieved()]}
+
+
+@router.get("/intrinsic/pursuits/recent")
+async def recent_pursuits(n: int = 10):
+    """get recent pursuits."""
+    engine = get_pursuit_engine()
+    return {"pursuits": [p.to_dict() for p in engine.get_recent(n)]}
+
+
+@router.get("/intrinsic/pursuit/summary/stats")
+async def pursuit_summary():
+    """get pursuit engine summary."""
+    engine = get_pursuit_engine()
+    return engine.get_summary()
+
+
+# ── motivation endpoints ─────────────────────────────────────────────────────
+
+
+@router.post("/intrinsic/motivation/capture")
+async def capture_motivation(
+    cycle_number: int = Body(...),
+    desires: list[dict] = Body(...),
+    pursuit_summary: dict | None = Body(None),
+    desire_summary: dict | None = Body(None),
+):
+    """capture current motivational state."""
+    tracker = get_motivation_tracker()
+    snapshot = tracker.capture(cycle_number, desires, pursuit_summary, desire_summary)
+    return snapshot.to_dict()
+
+
+@router.get("/intrinsic/motivation/latest")
+async def latest_motivation():
+    """get latest motivation snapshot."""
+    tracker = get_motivation_tracker()
+    snapshot = tracker.get_latest()
+    if snapshot is None:
+        return {"error": "no motivation snapshots yet"}
+    return snapshot.to_dict()
+
+
+@router.get("/intrinsic/motivation/cycle/{cycle_number}")
+async def motivation_by_cycle(cycle_number: int):
+    """get motivation snapshot for a specific cycle."""
+    tracker = get_motivation_tracker()
+    snapshot = tracker.get_by_cycle(cycle_number)
+    if snapshot is None:
+        return {"error": f"no snapshot for cycle {cycle_number}"}
+    return snapshot.to_dict()
+
+
+@router.get("/intrinsic/motivation/history")
+async def motivation_history(n: int = 20):
+    """get motivation drive history."""
+    tracker = get_motivation_tracker()
+    return {"history": tracker.get_drive_history(n)}
+
+
+@router.get("/intrinsic/motivation/dimension/{dimension}")
+async def dimension_history(dimension: str, n: int = 20):
+    """get score history for a specific motivation dimension."""
+    tracker = get_motivation_tracker()
+    return {"history": tracker.get_dimension_history(dimension, n)}
+
+
+@router.get("/intrinsic/motivation/summary/stats")
+async def motivation_summary():
+    """get motivation tracker summary."""
+    tracker = get_motivation_tracker()
+    return tracker.get_summary()
+
+
+# ── V28 cross-component intrinsic pulse ──────────────────────────────────────
+
+
+@router.get("/intrinsic-pulse")
+async def intrinsic_pulse():
+    """unified intrinsic goal engine pulse — the wanting heartbeat."""
+    formation = get_desire_formation()
+    crystallizer = get_goal_crystallizer()
+    engine = get_pursuit_engine()
+    tracker = get_motivation_tracker()
+
+    return {
+        "desires": formation.get_summary(),
+        "crystallization": crystallizer.get_summary(),
+        "pursuits": engine.get_summary(),
+        "motivation": tracker.get_summary(),
+    }
