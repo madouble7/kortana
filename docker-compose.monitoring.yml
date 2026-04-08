@@ -1,0 +1,116 @@
+# Monitoring Stack for Kor'tana Backend
+# Run with: docker-compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
+
+services:
+  # ==================== Prometheus ====================
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: kortana-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=15d"
+      - "--web.enable-lifecycle"
+    networks:
+      - kortana-network
+    restart: unless-stopped
+    profiles:
+      - monitoring
+
+  # ==================== Grafana ====================
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: kortana-grafana
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    networks:
+      - kortana-network
+    restart: unless-stopped
+    profiles:
+      - monitoring
+
+  # ==================== Alertmanager ====================
+  alertmanager:
+    image: prom/alertmanager:v0.26.0
+    container_name: kortana-alertmanager
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/alert-rules.yml:/etc/alertmanager/alert_rules.yml:ro
+      - alertmanager_data:/alertmanager
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+    networks:
+      - kortana-network
+    restart: unless-stopped
+    profiles:
+      - monitoring
+
+  # ==================== cAdvisor (Container Monitoring) ====================
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.0
+    container_name: kortana-cadvisor
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+    networks:
+      - kortana-network
+    restart: unless-stopped
+    profiles:
+      - monitoring
+
+  # ==================== Loki (Log Aggregation) ====================
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: kortana-loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - kortana-network
+    restart: unless-stopped
+    profiles:
+      - monitoring
+
+  # ==================== Promtail (Log Shipper) ====================
+  promtail:
+    image: grafana/promtail:2.9.0
+    container_name: kortana-promtail
+    volumes:
+      - /var/log:/var/log:ro
+      - ./monitoring/promtail.yml:/etc/promtail/promtail.yml:ro
+    command: -config.file=/etc/promtail/promtail.yml
+    networks:
+      - kortana-network
+    restart: unless-stopped
+    profiles:
+      - monitoring
+
+volumes:
+  prometheus_data:
+  grafana_data:
+  alertmanager_data:
+  loki_data:
+
+networks:
+  kortana-network:
+    driver: bridge

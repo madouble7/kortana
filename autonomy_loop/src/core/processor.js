@@ -1,0 +1,1 @@
+import { synthesizeDirective } from '../logic/coherence_engine.js'; export async function processTask(task) { const directive = await synthesizeDirective(task); console.log('Executing anticipatory guidance:', directive); return { status: 'synthesized', directive }; }

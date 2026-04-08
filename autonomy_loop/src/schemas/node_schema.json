@@ -1,0 +1,1 @@
+{"type":"object","properties":{"objective_id":{"type":"string"},"impact_vector":{"type":"string"},"evolutionary_relevance":{"type":"string"},"timestamp":{"type":"string"}},"required":["objective_id","impact_vector","evolutionary_relevance","timestamp"]}

@@ -1,0 +1,1 @@
+{"log_level": "info", "capture_metadata": true, "categorization": {"critical": ["system_failure", "security_breach"], "warning": ["latency_threshold", "deprecated_api"], "info": ["performance_metric", "execution_trace"]}, "retention_days": 30}

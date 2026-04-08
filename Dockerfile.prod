@@ -1,0 +1,70 @@
+## syntax=docker/dockerfile:1.7
+# Production Dockerfile for Kor'tana - Optimized for size and security
+
+# --- Stage 1: Frontend Build ---
+FROM node:20-slim AS frontend-builder
+WORKDIR /app/frontend
+
+COPY frontend/package*.json ./
+RUN npm ci --prefer-offline --no-audit --no-fund
+
+COPY frontend/ ./
+RUN npm run build && \
+    npm prune --omit=dev
+
+
+# --- Stage 2: Backend Dependencies ---
+FROM python:3.11-slim AS backend-builder
+WORKDIR /build
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY backend/requirements.txt ./
+RUN pip install --user --no-cache-dir --compile -r requirements.txt
+
+
+# --- Stage 3: Final Production Image ---
+FROM python:3.11-slim
+WORKDIR /app
+
+# Install only runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    libpq5 \
+    ca-certificates \
+    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN groupadd -r kortana && useradd -r -g kortana -u 1000 -m kortana && \
+    chown -R kortana:kortana /app
+
+# Copy Python dependencies
+COPY --from=backend-builder --chown=kortana:kortana /root/.local /home/kortana/.local
+
+# Copy application code
+COPY --chown=kortana:kortana backend/ ./
+
+# Copy frontend build artifacts
+COPY --from=frontend-builder --chown=kortana:kortana /app/frontend/dist ./static
+
+# Set environment
+ENV PATH=/home/kortana/.local/bin:$PATH \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app \
+    ENVIRONMENT=production \
+    PORT=8000
+
+USER kortana
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -fsS http://localhost:${PORT:-8000}/api/health || exit 1
+
+# Run application
+CMD sh -c 'uvicorn src.kortana.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 4 --log-level info'

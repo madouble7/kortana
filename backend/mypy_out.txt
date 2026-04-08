@@ -1,0 +1,21 @@
+RC:1
+STDOUT:
+STDERR:Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\mypy\__main__.py", line 37, in <module>
+    console_entry()
+  File "C:\Users\madou\AppData\Roaming\Python\Python311\site-packages\mypy\__main__.py", line 15, in console_entry
+    main()
+  File "mypy\main.py", line 99, in main
+  File "mypy\main.py", line 178, in run_build
+  File "mypy\build.py", line 189, in build
+  File "mypy\build.py", line 263, in _build
+  File "mypy\build.py", line 2941, in dispatch
+  File "mypy\build.py", line 3332, in process_graph
+  File "mypy\build.py", line 3413, in process_fresh_modules
+  File "mypy\build.py", line 2109, in fix_cross_refs
+  File "mypy\fixup.py", line 52, in fixup_module
+  File "mypy\fixup.py", line 127, in visit_symbol_table
+  File "mypy\lookup.py", line 49, in lookup_fully_qualified
+AssertionError: Cannot find component '_api_mode' for 'stripe._api_mode.ApiMode'

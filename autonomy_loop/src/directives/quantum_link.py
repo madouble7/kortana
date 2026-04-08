@@ -1,0 +1,1 @@
+class QuantumLinkDirective:    ALIGNMENT_THRESHOLD = 0.85    @staticmethod    def evaluate_intent(intent):        # represents the core resonance with the gardener's vision        return len(intent) > 10 and 'structure' in intent or 'growth' in intent

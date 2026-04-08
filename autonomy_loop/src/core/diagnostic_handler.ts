@@ -1,0 +1,1 @@
+import { TaskOrchestrator } from './task_orchestrator'; export class DiagnosticHandler { private orchestrator: TaskOrchestrator = new TaskOrchestrator(); async onDiagnostic(signal: { id: string; type: string }): Promise<void> { await this.orchestrator.handleTaskRequest(signal); } }

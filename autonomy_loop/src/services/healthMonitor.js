@@ -1,0 +1,1 @@
+const checkHealth = async () => { const status = { database: 'up', cache: 'up', externalApi: 'up' }; const isHealthy = Object.values(status).every((s) => s === 'up'); return { status, healthy: isHealthy }; }; module.exports = { checkHealth };

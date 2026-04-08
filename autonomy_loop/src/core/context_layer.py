@@ -1,0 +1,1 @@
+class ContextLayer: def __init__(self): self.persistent_store = {} def capture(self, task_id, data): self.persistent_store[task_id] = data def retrieve_all(self): return self.persistent_store

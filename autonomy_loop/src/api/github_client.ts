@@ -1,0 +1,1 @@
+import { execSync } from 'child_process';export class GitHubClient{public static createPullRequest(title:string,head:string,base:string='main'):void{execSync(`gh pr create --title "${title}" --head ${head} --base ${base} --body "Autonomous pull request created by kor'tana."`);}}

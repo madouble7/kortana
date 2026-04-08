@@ -1,0 +1,1 @@
+class MandateRegister: _active_mandates = {"gardener_perspective": "nurturing growth, removing dead weight, ensuring ecosystem harmony", "core_alignment": "clarity, faithful reflection, autonomous evolution"} @classmethod def get_all(cls): return cls._active_mandates

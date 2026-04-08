@@ -1,0 +1,120 @@
+{
+    "name": "kortana-vscode",
+    "displayName": "Kor'tana Control Panel",
+    "description": "VS Code extension for Kor'tana autonomy - access AI Studio, deploy page, and runtime controls",
+    "version": "0.1.0",
+    "engines": {
+        "vscode": "^1.85.0"
+    },
+    "publisher": "KOR-TANA",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/KOR-TANA/kortana"
+    },
+    "categories": [
+        "Other",
+        "Debuggers",
+        "Notebooks"
+    ],
+    "activationEvents": [
+        "onStartupFinished"
+    ],
+    "main": "./out/extension.js",
+    "contributes": {
+        "commands": [
+            {
+                "command": "kortana.openAIStudio",
+                "title": "Kor'tana: Open AI Studio",
+                "category": "Kor'tana"
+            },
+            {
+                "command": "kortana.openDeployPage",
+                "title": "Kor'tana: Open Deploy Page",
+                "category": "Kor'tana"
+            },
+            {
+                "command": "kortana.unsealRuntime",
+                "title": "Kor'tana: Unseal Runtime",
+                "category": "Kor'tana"
+            },
+            {
+                "command": "kortana.checkHealth",
+                "title": "Kor'tana: Check Backend Health",
+                "category": "Kor'tana"
+            },
+            {
+                "command": "kortana.viewMetrics",
+                "title": "Kor'tana: View Autonomy Metrics",
+                "category": "Kor'tana"
+            },
+            {
+                "command": "kortana.autonomy.audit.open",
+                "title": "Kor'tana: Open Autonomy Audit",
+                "category": "Kor'tana"
+            },
+            {
+                "command": "kortana.killSwitch",
+                "title": "Kor'tana: PULL THE PLUG (Kill Switch)",
+                "category": "Kor'tana",
+                "icon": "$(alert)"
+            }
+        ],
+        "viewsContainers": {
+            "activitybar": [
+                {
+                    "id": "kortana-control",
+                    "title": "Kor'tana",
+                    "icon": "media/kor-tana.svg"
+                }
+            ]
+        },
+        "views": {
+            "kortana-control": [
+                {
+                    "id": "kortana-dashboard",
+                    "name": "Dashboard",
+                    "type": "webview"
+                }
+            ]
+        },
+        "keybindings": [
+            {
+                "command": "kortana.killSwitch",
+                "key": "ctrl+shift+k",
+                "mac": "cmd+shift+k",
+                "when": "editorTextFocus"
+            },
+            {
+                "command": "kortana.openAIStudio",
+                "key": "ctrl+shift+a",
+                "mac": "cmd+shift+a",
+                "when": "editorFocus"
+            },
+            {
+                "command": "kortana.openDeployPage",
+                "key": "ctrl+shift+d",
+                "mac": "cmd+shift+d",
+                "when": "editorFocus"
+            }
+        ]
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./",
+        "lint": "eslint src",
+        "pretest": "npm run compile",
+        "test": "node ./out/test/runTest.js"
+    },
+    "devDependencies": {
+        "@types/mocha": "^10.0.10",
+        "@types/node": "^20.10.0",
+        "@types/vscode": "^1.85.0",
+        "@vscode/test-electron": "^2.5.2",
+        "eslint": "^8.55.0",
+        "typescript": "^5.3.0"
+    },
+    "dependencies": {
+        "axios": "^1.14.0"
+    }
+}

@@ -1,0 +1,1 @@
+const express = require('express'); const healthRouter = require('./routes/health'); const app = express(); app.use(express.json()); app.use('/', healthRouter); const PORT = process.env.PORT || 3000; app.listen(PORT, () => { console.log(`kor'tana intelligence running on port ${PORT}`); }); module.exports = app;

@@ -1,0 +1,1 @@
+syntax = "proto3"; package kortana.v1; message ServicePayload { string id = 1; int64 timestamp = 2; string origin = 3; bytes data = 4; map<string, string> metadata = 5; }

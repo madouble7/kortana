@@ -1,0 +1,1 @@
+import { SerializationFactory } from '../serialization/factory'; export const transportMiddleware = (req: any, res: any, next: any) => { const format = req.headers['x-serialization-format'] || 'json'; req.serialize = (data: any) => SerializationFactory.serialize(data, format); req.deserialize = (data: any) => SerializationFactory.deserialize(data, format); next(); };

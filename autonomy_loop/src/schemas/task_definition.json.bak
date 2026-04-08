@@ -1,0 +1,1 @@
+{"type": "object", "properties": {"id": {"type": "string"}, "intent": {"type": "string"}, "objective_link": {"type": "string"}, "timestamp": {"type": "string"}}, "required": ["id", "intent", "objective_link"]}

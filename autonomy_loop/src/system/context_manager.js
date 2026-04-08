@@ -1,0 +1,1 @@
+export class ContextManager { constructor() { this.memoryBuffer = { activeObjectives: [], history: [] }; } getHighLevelObjectives() { return this.memoryBuffer.activeObjectives; } updateMemory(result) { this.memoryBuffer.history.push({ ...result, recordedAt: Date.now() }); if (this.memoryBuffer.history.length > 100) { this.memoryBuffer.history.shift(); } } }

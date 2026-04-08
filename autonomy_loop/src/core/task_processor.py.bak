@@ -1,0 +1,12 @@
+from src.middleware.synthesis_layer import SynthesisLayer
+
+class TaskProcessor:
+    def __init__(self):
+        self.synthesis = SynthesisLayer()
+
+    def execute(self, task):
+        synthesis_result = self.synthesis.process(task)
+        if synthesis_result['status'] == 'pruned':
+            return None
+        # proceed with operational execution
+        return f'executing {task}'

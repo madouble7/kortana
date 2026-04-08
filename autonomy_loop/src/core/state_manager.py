@@ -1,0 +1,1 @@
+class StateManager: def __init__(self): self.history = []; self.metrics = {'evolution_score': 0}; def get_context(self, task): return {'prev_state': self.history[-1] if self.history else None, 'active_nodes': len(self.history)}; def log_growth(self, contribution): self.history.append(contribution); self.metrics['evolution_score'] += 1

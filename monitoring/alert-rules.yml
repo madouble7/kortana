@@ -1,0 +1,138 @@
+# Alert Rules for Kor'tana
+# https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/
+
+groups:
+  # ==================== High Priority Alerts ====================
+  - name: kortana-high-priority
+    rules:
+      # Backend is down
+      - alert: BackendDown
+        expr: up{job="kortana-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backend is down"
+          description: "Kor'tana backend has been down for more than 1 minute"
+
+      # High error rate
+      - alert: HighErrorRate
+        expr: rate(kortana_errors_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value }} errors/second"
+
+      # Authentication failures spike
+      - alert: AuthFailureSpike
+        expr: rate(kortana_auth_failures_total[5m]) > 0.05
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Authentication failures increasing"
+          description: "{{ $value }} auth failures/second detected"
+
+  # ==================== Performance Alerts ====================
+  - name: kortana-performance
+    rules:
+      # High request latency
+      - alert: HighRequestLatency
+        expr: histogram_quantile(0.95, rate(kortana_http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High request latency"
+          description: "95th percentile latency is {{ $value }}s"
+
+      # Slow agent execution
+      - alert: SlowAgentExecution
+        expr: histogram_quantile(0.95, rate(kortana_agent_execution_duration_seconds_bucket[5m])) > 60
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slow agent execution"
+          description: "Agent execution 95th percentile is {{ $value }}s"
+
+      # Rate limiting active
+      - alert: RateLimitingActive
+        expr: rate(kortana_rate_limit_hits_total[5m]) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Rate limiting is active"
+          description: "{{ $value }} rate limit hits/second"
+
+  # ==================== Resource Alerts ====================
+  - name: kortana-resources
+    rules:
+      # Database connection pool exhaustion
+      - alert: DBConnectionsExhausted
+        expr: kortana_db_connections_active / (kortana_db_connections_active + kortana_db_connections_idle) > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Database connection pool nearly exhausted"
+          description: "Connection pool utilization is {{ $value | humanizePercentage }}"
+
+      # High cache miss rate
+      - alert: HighCacheMissRate
+        expr: rate(kortana_cache_misses_total[5m]) / (rate(kortana_cache_hits_total[5m]) + rate(kortana_cache_misses_total[5m])) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High cache miss rate"
+          description: "Cache miss rate is {{ $value | humanizePercentage }}"
+
+  # ==================== Security Alerts ====================
+  - name: kortana-security
+    rules:
+      # Unusual auth failures (potential attack)
+      - alert: UnusualAuthFailures
+        expr: rate(kortana_auth_failures_total[1m]) > 0.5
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Unusual authentication failure rate"
+          description: "Potential brute force attack - {{ $value }} failures/second"
+
+      # High rate limit hits (potential abuse)
+      - alert: RateLimitAbuse
+        expr: rate(kortana_rate_limit_hits_total[1m]) > 5
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Potential rate limit abuse detected"
+          description: "{{ $value }} rate limit hits/second"
+
+  # ==================== SLO Alerts ====================
+  - name: kortana-slo
+    rules:
+      # Availability SLO (99.9%)
+      - alert: AvailabilitySLIBreached
+        expr: (1 - (rate(kortana_http_requests_total{status_code=~"5.."}[1h]) / rate(kortana_http_requests_total[1h]))) < 0.999
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Availability SLO breached"
+          description: "Availability is {{ $value | humanizePercentage }}, target is 99.9%"
+
+      # Latency SLO (95th percentile < 1s)
+      - alert: LatencySLIBreached
+        expr: histogram_quantile(0.95, rate(kortana_http_request_duration_seconds_bucket[1h])) > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Latency SLO breached"
+          description: "95th percentile latency is {{ $value }}s, target is 1s"

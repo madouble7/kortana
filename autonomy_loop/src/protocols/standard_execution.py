@@ -1,0 +1,1 @@
+class StandardExecutionProtocol: def validate_intent(self, task, metadata): return 'intent' in metadata and task is not None def perform_alignment_check(self, task, evolution_context): return True

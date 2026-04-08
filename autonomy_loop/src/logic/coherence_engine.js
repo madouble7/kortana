@@ -1,0 +1,1 @@
+export async function synthesizeDirective(task) { const ecosystemState = { alignment: 'quantum_network', growth_factor: 1.0 }; return { id: task.id, directive: 'align_with_long_term_objectives', metadata: ecosystemState }; }

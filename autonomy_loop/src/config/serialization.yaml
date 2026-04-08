@@ -1,0 +1,10 @@
+default_format: protobuf
+supported_formats:
+  - json
+  - protobuf
+high_frequency_endpoints:
+  - /internal/sync
+  - /internal/metrics
+  - /internal/heartbeat
+  - /internal/event-stream
+  - /internal/cache-invalidation

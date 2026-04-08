@@ -1,0 +1,11 @@
+    [ 98%]
+tests\test_tasks.py ................                                     [ 99%]
+tests\test_vector_alpha_branch_service.py ...                            [ 99%]
+tests\test_workspace_bridge.py .......                                   [100%]
+
+=========================== short test summary info ===========================
+SKIPPED [1] tests\test_autonomy_benchmark.py:213: Only relevant for patchable scenarios
+========== 1402 passed, 1 skipped, 227 warnings in 141.46s (0:02:21) ==========
+
+STDERR:
+RC:0

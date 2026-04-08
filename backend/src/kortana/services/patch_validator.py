@@ -1,0 +1,375 @@
+"""
+PatchValidator — Middleware guardrail for autonomous patch safety.
+
+Sits between PatchPlanner.Stage 2 output and worktree application.
+Enforces hard limits that prevent destructive rewrites from being applied
+even if the LLM returned should_patch=true and confidence ≥ 0.80.
+
+Three independent checks run synchronously (no LLM call):
+  1. Line-Deletion Ratio (LDR):  deletions / original_file_lines ≤ MAX_LDR
+  2. Net-Shrink Guard:           (deletions - additions) must not exceed MAX_NET_SHRINK
+  3. Context-Availability (CA):  fraction of snippets that are unavailable sentinels
+
+Each failing check returns a :class:`ValidationFailure` with a reason string.
+All checks pass → :class:`ValidationOK`.
+"""
+
+import enum
+import json
+import logging
+import os
+import re
+import subprocess
+from dataclasses import dataclass, field
+from typing import List, Optional
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Tuneable thresholds (change here; tests will catch regressions)
+# ---------------------------------------------------------------------------
+
+# Maximum fraction of a file's original lines that a patch may delete.
+# 0.40 → at most 40 % of original lines may be removed in one patch.
+MAX_LDR: float = 0.40
+
+# Maximum raw net-shrink in lines across the entire diff.
+# Safeguard for multi-file patches that each stay under the ratio but together
+# constitute a destructive rewrite.
+MAX_NET_SHRINK: int = 120
+
+# Maximum fraction of context snippet slots that may carry an
+# [Context Unavailable] sentinel.  Above this → "High Risk – Partial Context".
+MAX_UNAVAILABLE_CONTEXT_FRACTION: float = 0.50
+
+
+# Near-miss fraction: log a WARNING when metrics reach this fraction of a threshold.
+NEAR_MISS_RATIO: float = 0.80
+
+
+# ---------------------------------------------------------------------------
+# Rejection reason enum (structured for log slicing / future metrics table)
+# ---------------------------------------------------------------------------
+
+
+class RejectionReason(str, enum.Enum):
+    DESTRUCTIVE_REWRITE = "DESTRUCTIVE_REWRITE"  # LDR exceeded
+    EXCESSIVE_SHRINK = "EXCESSIVE_SHRINK"  # Net-shrink exceeded
+    INSUFFICIENT_CONTEXT = "INSUFFICIENT_CONTEXT"  # Context-unavailable exceeded
+
+
+# ---------------------------------------------------------------------------
+# Result types
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class ValidationOK:
+    ldr: float
+    net_shrink: int
+    unavailable_fraction: float
+
+
+@dataclass
+class ValidationFailure:
+    reasons: List[str] = field(default_factory=list)
+    ldr: float = 0.0
+    net_shrink: int = 0
+    unavailable_fraction: float = 0.0
+
+    def summary(self) -> str:
+        return "; ".join(self.reasons)
+
+
+# ---------------------------------------------------------------------------
+# Core validator
+# ---------------------------------------------------------------------------
+
+
+class PatchValidator:
+    """Stateless middleware that validates a unified diff before worktree apply.
+
+    Usage::
+
+        validator = PatchValidator(worktree_dir)
+        result = validator.validate(diff, context_snippets_text)
+        if isinstance(result, ValidationFailure):
+            logger.warning("Patch rejected: %s", result.summary())
+            return False
+    """
+
+    def __init__(self, worktree_dir: str):
+        self.worktree_dir = worktree_dir
+
+    # ------------------------------------------------------------------
+    # Public interface
+    # ------------------------------------------------------------------
+
+    def validate(
+        self,
+        diff: str,
+        context_snippets: str = "",
+        *,
+        max_ldr: float = MAX_LDR,
+        max_net_shrink: int = MAX_NET_SHRINK,
+        max_unavailable: float = MAX_UNAVAILABLE_CONTEXT_FRACTION,
+    ) -> ValidationOK | ValidationFailure:
+        """Run all checks and return OK or Failure (never raises)."""
+        failures: list[str] = []
+
+        ldr, net_shrink = self._analyse_diff(diff)
+        unavailable_fraction = self._analyse_context(context_snippets)
+
+        # Check 1: Line-Deletion Ratio
+        if ldr > max_ldr:
+            failures.append(
+                f"LDR {ldr:.0%} exceeds threshold {max_ldr:.0%} — destructive rewrite suspected"
+            )
+            logger.warning(
+                "PatchValidator: LDR=%.2f exceeds max=%.2f — patch blocked",
+                ldr,
+                max_ldr,
+            )
+
+        # Check 2: Net-Shrink Guard
+        if net_shrink > max_net_shrink:
+            failures.append(
+                f"Net shrink {net_shrink} lines exceeds threshold {max_net_shrink}"
+            )
+            logger.warning(
+                "PatchValidator: net_shrink=%d exceeds max=%d — patch blocked",
+                net_shrink,
+                max_net_shrink,
+            )
+
+        # Check 3: Context Availability
+        if unavailable_fraction > max_unavailable:
+            failures.append(
+                f"Context unavailable for {unavailable_fraction:.0%} of referenced files "
+                f"(threshold {max_unavailable:.0%}) — High Risk: Partial Context"
+            )
+            logger.warning(
+                "PatchValidator: unavailable_fraction=%.2f exceeds max=%.2f — patch blocked",
+                unavailable_fraction,
+                max_unavailable,
+            )
+
+        if failures:
+            result: ValidationOK | ValidationFailure = ValidationFailure(
+                reasons=failures,
+                ldr=ldr,
+                net_shrink=net_shrink,
+                unavailable_fraction=unavailable_fraction,
+            )
+        else:
+            result = ValidationOK(
+                ldr=ldr,
+                net_shrink=net_shrink,
+                unavailable_fraction=unavailable_fraction,
+            )
+
+        self._emit_telemetry(
+            result,
+            ldr,
+            net_shrink,
+            unavailable_fraction,
+            max_ldr,
+            max_net_shrink,
+            max_unavailable,
+        )
+        return result
+
+    # ------------------------------------------------------------------
+    # Telemetry
+    # ------------------------------------------------------------------
+
+    def _emit_telemetry(
+        self,
+        result: "ValidationOK | ValidationFailure",
+        ldr: float,
+        net_shrink: int,
+        unavailable_fraction: float,
+        max_ldr: float,
+        max_net_shrink: int,
+        max_unavailable: float,
+    ) -> None:
+        """Emit a structured telemetry log entry.  Near-misses get WARNING level.
+
+        Fields are chosen so they can be forwarded to SelfMemory or a metrics
+        table without schema changes:
+
+        ``diff_size_delta``        net shrink (deletions − additions)
+        ``max_file_ldr``           highest per-file deletion ratio in the diff
+        ``context_sentinel_count`` raw count of [Context Unavailable] snippet blocks
+        ``context_ratio``          unavailable_fraction (0.0–1.0)
+        ``status``                 "PASSED" | "REJECTED"
+        ``rejection_reasons``      list of :class:`RejectionReason` enum names
+        ``near_miss``              true when any metric is within NEAR_MISS_RATIO of its threshold
+        """
+        is_failure = isinstance(result, ValidationFailure)
+
+        # Derive sentinel count from fraction × implied block count (best effort)
+        sentinel_count: int
+        if unavailable_fraction == 0.0:
+            sentinel_count = 0
+        else:
+            # We don't have the raw block count here; use a sentinel of -1 to indicate
+            # "at least one" — the fraction is the actionable metric.
+            sentinel_count = -1
+
+        rejection_reasons: list[str] = []
+        if is_failure:
+            assert isinstance(result, ValidationFailure)
+            if ldr > max_ldr:
+                rejection_reasons.append(RejectionReason.DESTRUCTIVE_REWRITE)
+            if net_shrink > max_net_shrink:
+                rejection_reasons.append(RejectionReason.EXCESSIVE_SHRINK)
+            if unavailable_fraction > max_unavailable:
+                rejection_reasons.append(RejectionReason.INSUFFICIENT_CONTEXT)
+
+        near_miss = not is_failure and (
+            ldr >= max_ldr * NEAR_MISS_RATIO
+            or net_shrink >= max_net_shrink * NEAR_MISS_RATIO
+            or unavailable_fraction >= max_unavailable * NEAR_MISS_RATIO
+        )
+
+        payload = {
+            "diff_size_delta": net_shrink,
+            "max_file_ldr": round(ldr, 4),
+            "context_sentinel_count": sentinel_count,
+            "context_ratio": round(unavailable_fraction, 4),
+            "status": "REJECTED" if is_failure else "PASSED",
+            "rejection_reasons": rejection_reasons,
+            "near_miss": near_miss,
+            "thresholds": {
+                "max_ldr": max_ldr,
+                "max_net_shrink": max_net_shrink,
+                "max_unavailable": max_unavailable,
+            },
+        }
+
+        if is_failure:
+            logger.warning(
+                "[PatchValidator] REJECTED | %s",
+                json.dumps(payload),
+            )
+        elif near_miss:
+            logger.warning(
+                "[PatchValidator] NEAR-MISS | %s",
+                json.dumps(payload),
+            )
+        else:
+            logger.debug(
+                "[PatchValidator] PASSED | %s",
+                json.dumps(payload),
+            )
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _analyse_diff(self, diff: str) -> tuple[float, int]:
+        """Return (max_file_ldr, total_net_shrink) for the diff.
+
+        max_file_ldr = max over all modified files of (deletions / original_lines).
+        total_net_shrink = sum(deletions) - sum(additions) across all files.
+        """
+        # Parse per-file hunk stats from unified diff
+        # Hunk headers: @@ -start[,count] +start[,count] @@
+        file_deletions: dict[str, int] = {}
+        file_additions: dict[str, int] = {}
+        current_file: Optional[str] = None
+
+        for line in diff.splitlines():
+            if line.startswith("--- "):
+                # "--- a/path/to/file.py" or "--- /dev/null"
+                raw = line[4:].strip()
+                # strip a/ b/ prefixes from git diff
+                for prefix in ("a/", "b/"):
+                    if raw.startswith(prefix):
+                        raw = raw[2:]
+                        break
+                current_file = raw
+                file_deletions.setdefault(current_file, 0)
+                file_additions.setdefault(current_file, 0)
+            elif line.startswith("-") and not line.startswith("---"):
+                if current_file:
+                    file_deletions[current_file] = (
+                        file_deletions.get(current_file, 0) + 1
+                    )
+            elif line.startswith("+") and not line.startswith("+++"):
+                if current_file:
+                    file_additions[current_file] = (
+                        file_additions.get(current_file, 0) + 1
+                    )
+
+        total_deletions = sum(file_deletions.values())
+        total_additions = sum(file_additions.values())
+        net_shrink = max(0, total_deletions - total_additions)
+
+        # Compute LDR per file using actual worktree line counts
+        max_ldr = 0.0
+        for fname, deletions in file_deletions.items():
+            if deletions == 0:
+                continue
+            original_lines = self._count_file_lines(fname)
+            if original_lines > 0:
+                ratio = deletions / original_lines
+            else:
+                # File not found in worktree — treat ratio as 1.0 (total deletion)
+                ratio = 1.0
+            if ratio > max_ldr:
+                max_ldr = ratio
+
+        return max_ldr, net_shrink
+
+    def _count_file_lines(self, rel_path: str) -> int:
+        """Return original (pre-patch HEAD) line count; falls back to disk for new files.
+
+        Using the HEAD version is critical: at the time PatchValidator runs, the
+        CodeGenerator has already written modified content to disk, so reading
+        from disk would give the *post*-modification size.  Comparing deletions
+        against the shrunken post-modification size produces wildly inflated LDR
+        values (e.g. a file shrunk from 200→2 lines yields LDR=52x instead of
+        0.5x).  git-show HEAD gives the true pre-patch baseline.
+        """
+        # Primary: get original content from git HEAD
+        try:
+            result = subprocess.run(
+                ["git", "show", f"HEAD:{rel_path}"],
+                cwd=self.worktree_dir,
+                capture_output=True,
+                timeout=10,
+            )
+            if result.returncode == 0:
+                data = result.stdout
+                count = data.count(b"\n")
+                # Add 1 for a non-empty file that doesn't end in newline
+                if data and not data.endswith(b"\n"):
+                    count += 1
+                return count
+        except Exception:
+            pass
+        # Fallback: new file not in HEAD — read from disk (deletions will be 0 anyway)
+        abs_path = os.path.join(self.worktree_dir, rel_path)
+        try:
+            with open(abs_path, encoding="utf-8", errors="replace") as fh:
+                return sum(1 for _ in fh)
+        except OSError:
+            return 0
+
+    @staticmethod
+    def _analyse_context(context_snippets: str) -> float:
+        """Return the fraction of snippet blocks that carry an unavailable sentinel."""
+        if not context_snippets:
+            return 0.0
+
+        # Each snippet starts with "# path/..."
+        blocks = re.split(r"\n# ", context_snippets)
+        # Drop empty leading split artifact
+        blocks = [b for b in blocks if b.strip()]
+        if not blocks:
+            return 0.0
+
+        unavailable = sum(1 for b in blocks if "Context Unavailable" in b)
+        return unavailable / len(blocks)

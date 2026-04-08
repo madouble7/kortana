@@ -1,0 +1,1 @@
+import { execSync } from 'child_process';export class GitManager{public static createBranch(branchName:string):void{execSync(`git checkout -b ${branchName}`);}public static commit(message:string):void{execSync(`git add . && git commit -m "${message}"`);}public static push(branchName:string):void{execSync(`git push origin ${branchName}`);}}

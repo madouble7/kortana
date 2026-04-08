@@ -1,0 +1,1 @@
+const { asyncContext } = require('../utils/logger'); const runWithContext = (contextMap, fn) => { return asyncContext.run(contextMap, fn); }; const getCorrelationId = () => { const store = asyncContext.getStore(); return store ? store.get('correlationId') : null; }; module.exports = { runWithContext, getCorrelationId };
