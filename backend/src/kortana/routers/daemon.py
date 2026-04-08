@@ -6630,3 +6630,256 @@ async def get_evolution_stats() -> dict:
             "subscribers": observer.subscriber_count,
         },
     }
+
+
+# ── V22: Constitutional Governance ──
+
+from kortana.services.constitution import get_constitution, Sensitivity, ViolationSeverity  # noqa: E402
+from kortana.services.quorum_policy import get_quorum_policy  # noqa: E402
+from kortana.services.boundary_enforcer import get_boundary_enforcer  # noqa: E402
+from kortana.services.constitutional_audit import get_constitutional_audit  # noqa: E402
+
+
+# ── V22A: Constitution Endpoints ──
+
+
+@router.get("/constitution/articles")
+async def get_constitution_articles() -> dict:
+    """Get all constitutional articles."""
+    const = get_constitution()
+    return {"articles": [a.to_dict() for a in const.get_articles()], "count": const.article_count}
+
+
+@router.get("/constitution/articles/{article_id}")
+async def get_constitution_article(article_id: str) -> dict:
+    """Get a specific constitutional article."""
+    const = get_constitution()
+    article = const.get_article(article_id)
+    if article is None:
+        return {"error": "article not found"}
+    return article.to_dict()
+
+
+@router.get("/constitution/classification/{policy_area}")
+async def get_area_classification(policy_area: str) -> dict:
+    """Get the constitutional classification for a policy area."""
+    from kortana.services.policy_feedback_loop import PolicyArea as PA
+
+    try:
+        area = PA(policy_area)
+    except ValueError:
+        return {"error": f"invalid policy area: {policy_area}"}
+
+    const = get_constitution()
+    classification = const.get_classification(area)
+    sensitivity = const.get_sensitivity(area)
+    return {
+        "policy_area": policy_area,
+        "classification": classification.value,
+        "sensitivity": sensitivity.value,
+        "is_immutable": const.is_immutable(area),
+        "is_restricted": const.is_restricted(area),
+        "is_amendable": const.is_amendable(area),
+    }
+
+
+@router.get("/constitution/summary")
+async def get_constitution_summary() -> dict:
+    """Get a summary of the constitution."""
+    const = get_constitution()
+    return const.get_summary()
+
+
+# ── V22B: Quorum Policy Endpoints ──
+
+
+@router.post("/quorum/vote")
+async def cast_quorum_vote(
+    proposal_id: str = Body(...),
+    voter: str = Body(...),
+    approved: bool = Body(...),
+    identity_verified: bool = Body(False),
+) -> dict:
+    """Cast a vote on a proposal."""
+    qp = get_quorum_policy()
+    vote = qp.cast_vote(proposal_id, voter, approved, identity_verified)
+    return vote.to_dict()
+
+
+@router.post("/quorum/check")
+async def check_quorum(
+    proposal_id: str = Body(...),
+    sensitivity: str = Body(...),
+) -> dict:
+    """Check whether quorum is met for a proposal."""
+    try:
+        sens = Sensitivity(sensitivity)
+    except ValueError:
+        return {"error": f"invalid sensitivity: {sensitivity}"}
+
+    qp = get_quorum_policy()
+    result = qp.check_quorum(proposal_id, sens)
+    return result.to_dict()
+
+
+@router.get("/quorum/requirement/{sensitivity}")
+async def get_quorum_requirement(sensitivity: str) -> dict:
+    """Get the quorum requirement for a sensitivity level."""
+    try:
+        sens = Sensitivity(sensitivity)
+    except ValueError:
+        return {"error": f"invalid sensitivity: {sensitivity}"}
+
+    qp = get_quorum_policy()
+    req = qp.get_requirement(sens)
+    return req.to_dict()
+
+
+@router.get("/quorum/votes/{proposal_id}")
+async def get_quorum_votes(proposal_id: str) -> dict:
+    """Get all votes for a proposal."""
+    qp = get_quorum_policy()
+    votes = qp.get_votes(proposal_id)
+    return {"votes": [v.to_dict() for v in votes], "count": len(votes)}
+
+
+@router.get("/quorum/results")
+async def get_quorum_results() -> dict:
+    """Get all quorum check results."""
+    qp = get_quorum_policy()
+    results = qp.get_results()
+    return {"results": [r.to_dict() for r in results], "count": len(results)}
+
+
+# ── V22C: Boundary Enforcer Endpoints ──
+
+
+@router.post("/boundary/check/{proposal_id}")
+async def check_proposal_boundary(proposal_id: str) -> dict:
+    """Check a proposal against constitutional boundaries."""
+    from kortana.services.proposal_registry import get_proposal_registry
+
+    registry = get_proposal_registry()
+    proposal = registry.get_proposal(proposal_id)
+    if proposal is None:
+        return {"error": "proposal not found"}
+
+    enforcer = get_boundary_enforcer()
+    check = enforcer.check_proposal(proposal)
+
+    # Record in audit
+    audit = get_constitutional_audit()
+    proof = audit.record_check(check)
+
+    # Emit observer event
+    from kortana.services.evolution_observer import get_evolution_observer, EventType
+
+    observer = get_evolution_observer()
+    observer.emit(
+        EventType.POLICY_APPLIED if check.passed else EventType.PROPOSAL_REJECTED,
+        proposal_id,
+        {"boundary_check": check.check_id, "passed": check.passed, "violations": len(check.violations)},
+    )
+
+    return {
+        "check": check.to_dict(),
+        "compliance_proof": proof.to_dict(),
+    }
+
+
+@router.post("/boundary/validate-batch")
+async def validate_evolution_batch(proposal_ids: list[str] = Body(...)) -> dict:
+    """Validate multiple proposals against constitutional boundaries."""
+    from kortana.services.proposal_registry import get_proposal_registry
+
+    registry = get_proposal_registry()
+    proposals = []
+    for pid in proposal_ids:
+        p = registry.get_proposal(pid)
+        if p is not None:
+            proposals.append(p)
+
+    enforcer = get_boundary_enforcer()
+    return enforcer.validate_evolution_batch(proposals)
+
+
+@router.get("/boundary/checks")
+async def get_boundary_checks(proposal_id: str | None = None) -> dict:
+    """Get boundary check results."""
+    enforcer = get_boundary_enforcer()
+    checks = enforcer.get_checks(proposal_id)
+    return {"checks": [c.to_dict() for c in checks], "count": len(checks)}
+
+
+@router.get("/boundary/violations")
+async def get_violation_summary() -> dict:
+    """Get a summary of all boundary violations."""
+    enforcer = get_boundary_enforcer()
+    return enforcer.get_violation_summary()
+
+
+# ── V22D: Constitutional Audit Endpoints ──
+
+
+@router.get("/constitutional-audit/proofs")
+async def get_compliance_proofs(proposal_id: str | None = None) -> dict:
+    """Get compliance proofs."""
+    audit = get_constitutional_audit()
+    proofs = audit.get_proofs(proposal_id)
+    return {"proofs": [p.to_dict() for p in proofs], "count": len(proofs)}
+
+
+@router.get("/constitutional-audit/violations")
+async def get_audit_violations(
+    proposal_id: str | None = None,
+    severity: str | None = None,
+    unresolved_only: bool = False,
+) -> dict:
+    """Get violation records."""
+    audit = get_constitutional_audit()
+    sev = None
+    if severity:
+        try:
+            sev = ViolationSeverity(severity)
+        except ValueError:
+            return {"error": f"invalid severity: {severity}"}
+
+    violations = audit.get_violations(proposal_id, sev, unresolved_only)
+    return {"violations": [v.to_dict() for v in violations], "count": len(violations)}
+
+
+@router.post("/constitutional-audit/resolve/{violation_id}")
+async def resolve_violation(
+    violation_id: str,
+    notes: str = Body(""),
+) -> dict:
+    """Resolve a constitutional violation."""
+    audit = get_constitutional_audit()
+    ok = audit.resolve_violation(violation_id, notes)
+    return {"success": ok, "violation_id": violation_id}
+
+
+@router.get("/constitutional-audit/report")
+async def get_compliance_report() -> dict:
+    """Get comprehensive constitutional compliance report."""
+    audit = get_constitutional_audit()
+    return audit.get_compliance_report()
+
+
+@router.get("/constitutional-audit/stats")
+async def get_constitutional_stats() -> dict:
+    """Get statistics across all V22 components."""
+    const = get_constitution()
+    qp = get_quorum_policy()
+    enforcer = get_boundary_enforcer()
+    audit = get_constitutional_audit()
+
+    return {
+        "constitution": const.get_summary(),
+        "quorum": {
+            "total_votes": qp.total_votes,
+            "total_results": qp.result_count,
+        },
+        "boundary": enforcer.get_violation_summary(),
+        "compliance": audit.get_compliance_report(),
+    }

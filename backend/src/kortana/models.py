@@ -2224,3 +2224,75 @@ class EvolutionEventRecord(Base):
     details = Column(Text, nullable=False)
     timestamp = Column(String, nullable=False)
     event_hash = Column(String, nullable=False)
+
+
+# ── V22: Constitutional Governance ──
+
+
+class ConstitutionalArticleRecord(Base):
+    """V22A — Constitutional article."""
+
+    __tablename__ = "constitutional_article"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    article_id = Column(String, unique=True, nullable=False, index=True)
+    title = Column(String, nullable=False)
+    policy_area = Column(String, nullable=False)
+    classification = Column(String, nullable=False)
+    sensitivity = Column(String, nullable=False)
+    boundary_rule = Column(Text, nullable=False)
+    violation_severity = Column(String, nullable=False)
+    rationale = Column(Text, nullable=False)
+    created_at = Column(String, nullable=False)
+    article_hash = Column(String, nullable=False)
+
+
+class QuorumVoteRecord(Base):
+    """V22B — Quorum vote record."""
+
+    __tablename__ = "quorum_vote"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    vote_id = Column(String, unique=True, nullable=False, index=True)
+    proposal_id = Column(String, nullable=False, index=True)
+    voter = Column(String, nullable=False)
+    approved = Column(Boolean, nullable=False)
+    identity_verified = Column(Boolean, nullable=False, default=False)
+    voted_at = Column(String, nullable=False)
+    vote_hash = Column(String, nullable=False)
+
+
+class BoundaryCheckRecord(Base):
+    """V22C — Boundary check record."""
+
+    __tablename__ = "boundary_check"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    check_id = Column(String, unique=True, nullable=False, index=True)
+    proposal_id = Column(String, nullable=False, index=True)
+    passed = Column(Boolean, nullable=False)
+    violations_json = Column(Text, nullable=False)
+    warnings_json = Column(Text, nullable=False)
+    articles_checked = Column(Integer, nullable=False)
+    policy_area = Column(String, nullable=False)
+    classification = Column(String, nullable=False)
+    sensitivity = Column(String, nullable=False)
+    checked_at = Column(String, nullable=False)
+    check_hash = Column(String, nullable=False)
+
+
+class ConstitutionalComplianceRecord(Base):
+    """V22D — Compliance proof record."""
+
+    __tablename__ = "constitutional_compliance"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    proof_id = Column(String, unique=True, nullable=False, index=True)
+    proposal_id = Column(String, nullable=False, index=True)
+    all_checks_passed = Column(Boolean, nullable=False)
+    checks_performed = Column(Integer, nullable=False)
+    violations_found = Column(Integer, nullable=False)
+    warnings_found = Column(Integer, nullable=False)
+    boundary_checks_json = Column(Text, nullable=False)
+    issued_at = Column(String, nullable=False)
+    proof_hash = Column(String, nullable=False)
