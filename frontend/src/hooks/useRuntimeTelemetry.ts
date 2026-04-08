@@ -1,8 +1,8 @@
-import { useSyncExternalStore } from 'react';
-import { api, type ApiError } from '../lib/api';
-import type { DaemonStatus, HealthStatus, ModelLaneSummary } from '../types';
+import { useMemo, useSyncExternalStore } from "react";
+import { api, type ApiError } from "../lib/api";
+import type { DaemonStatus, HealthStatus, ModelLaneSummary } from "../types";
 
-type RuntimeResourceKey = 'health' | 'daemon' | 'lanes';
+type RuntimeResourceKey = "health" | "daemon" | "lanes";
 
 interface RuntimeResourceState<T> {
   value: T | null;
@@ -67,6 +67,7 @@ let pollingActive = false;
 let subscriberCount = 0;
 
 function notifyListeners() {
+  cachedSnapshot = buildSnapshot();
   listeners.forEach((listener) => listener());
 }
 
@@ -75,7 +76,7 @@ function readApiError(error: unknown): Error & Partial<ApiError> {
     return error as Error & Partial<ApiError>;
   }
 
-  return new Error('Unknown error') as Error & Partial<ApiError>;
+  return new Error("Unknown error") as Error & Partial<ApiError>;
 }
 
 function describeRuntimeError(error: unknown, fallback: string): string {
@@ -83,28 +84,33 @@ function describeRuntimeError(error: unknown, fallback: string): string {
   if (apiError.isRateLimited) {
     return apiError.retryAfterSeconds
       ? `Rate limit reached. Refreshing again in ${apiError.retryAfterSeconds}s.`
-      : 'Rate limit reached. Refreshing again shortly.';
+      : "Rate limit reached. Refreshing again shortly.";
   }
   if (apiError.isOffline) {
-    return 'Backend is unreachable right now. Retrying automatically.';
+    return "Backend is unreachable right now. Retrying automatically.";
   }
   return apiError.message || fallback;
 }
 
 function recommendedDelayMs(resources: RuntimeResourceKey[]): number {
-  const hidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+  const hidden =
+    typeof document !== "undefined" && document.visibilityState === "hidden";
   const baseDelay = hidden ? HIDDEN_POLL_MS : VISIBLE_POLL_MS;
   const retryAfterMs = resources.reduce<number | null>((longestDelay, key) => {
     const nextDelay = resourceState[key].retryAfterMs;
     if (nextDelay === null) {
       return longestDelay;
     }
-    return longestDelay === null ? nextDelay : Math.max(longestDelay, nextDelay);
+    return longestDelay === null
+      ? nextDelay
+      : Math.max(longestDelay, nextDelay);
   }, null);
   return retryAfterMs ?? baseDelay;
 }
 
-function getSnapshot(): RuntimeTelemetrySnapshot {
+let cachedSnapshot: RuntimeTelemetrySnapshot | null = null;
+
+function buildSnapshot(): RuntimeTelemetrySnapshot {
   return {
     health: resourceState.health.value,
     daemon: resourceState.daemon.value,
@@ -120,7 +126,17 @@ function getSnapshot(): RuntimeTelemetrySnapshot {
   };
 }
 
-async function loadHealth(force = false, maxAgeMs = 0): Promise<HealthStatus | null> {
+function getSnapshot(): RuntimeTelemetrySnapshot {
+  if (!cachedSnapshot) {
+    cachedSnapshot = buildSnapshot();
+  }
+  return cachedSnapshot;
+}
+
+async function loadHealth(
+  force = false,
+  maxAgeMs = 0,
+): Promise<HealthStatus | null> {
   const state = resourceState.health;
   if (!force && state.value && Date.now() - state.fetchedAt <= maxAgeMs) {
     return state.value;
@@ -129,7 +145,8 @@ async function loadHealth(force = false, maxAgeMs = 0): Promise<HealthStatus | n
     return state.inflight;
   }
 
-  state.inflight = api.health()
+  state.inflight = api
+    .health()
     .then((value) => {
       state.value = value;
       state.error = null;
@@ -140,8 +157,13 @@ async function loadHealth(force = false, maxAgeMs = 0): Promise<HealthStatus | n
     })
     .catch((error: unknown) => {
       const apiError = readApiError(error);
-      state.error = describeRuntimeError(error, 'System status refresh failed.');
-      state.retryAfterMs = apiError.retryAfterSeconds ? apiError.retryAfterSeconds * 1000 : null;
+      state.error = describeRuntimeError(
+        error,
+        "System status refresh failed.",
+      );
+      state.retryAfterMs = apiError.retryAfterSeconds
+        ? apiError.retryAfterSeconds * 1000
+        : null;
       throw error;
     })
     .finally(() => {
@@ -153,7 +175,10 @@ async function loadHealth(force = false, maxAgeMs = 0): Promise<HealthStatus | n
   return state.inflight;
 }
 
-async function loadDaemon(force = false, maxAgeMs = 0): Promise<DaemonStatus | null> {
+async function loadDaemon(
+  force = false,
+  maxAgeMs = 0,
+): Promise<DaemonStatus | null> {
   const state = resourceState.daemon;
   if (!force && state.value && Date.now() - state.fetchedAt <= maxAgeMs) {
     return state.value;
@@ -162,7 +187,8 @@ async function loadDaemon(force = false, maxAgeMs = 0): Promise<DaemonStatus | n
     return state.inflight;
   }
 
-  state.inflight = api.getDaemonStatus()
+  state.inflight = api
+    .getDaemonStatus()
     .then((value) => {
       state.value = value;
       state.error = null;
@@ -173,8 +199,13 @@ async function loadDaemon(force = false, maxAgeMs = 0): Promise<DaemonStatus | n
     })
     .catch((error: unknown) => {
       const apiError = readApiError(error);
-      state.error = describeRuntimeError(error, 'Daemon runtime refresh failed.');
-      state.retryAfterMs = apiError.retryAfterSeconds ? apiError.retryAfterSeconds * 1000 : null;
+      state.error = describeRuntimeError(
+        error,
+        "Daemon runtime refresh failed.",
+      );
+      state.retryAfterMs = apiError.retryAfterSeconds
+        ? apiError.retryAfterSeconds * 1000
+        : null;
       throw error;
     })
     .finally(() => {
@@ -186,7 +217,10 @@ async function loadDaemon(force = false, maxAgeMs = 0): Promise<DaemonStatus | n
   return state.inflight;
 }
 
-async function loadLanes(force = false, maxAgeMs = 0): Promise<ModelLaneSummary | null> {
+async function loadLanes(
+  force = false,
+  maxAgeMs = 0,
+): Promise<ModelLaneSummary | null> {
   const state = resourceState.lanes;
   if (!force && state.value && Date.now() - state.fetchedAt <= maxAgeMs) {
     return state.value;
@@ -195,7 +229,8 @@ async function loadLanes(force = false, maxAgeMs = 0): Promise<ModelLaneSummary 
     return state.inflight;
   }
 
-  state.inflight = api.getModelLaneSummary()
+  state.inflight = api
+    .getModelLaneSummary()
     .then((value) => {
       state.value = value;
       state.error = null;
@@ -206,8 +241,13 @@ async function loadLanes(force = false, maxAgeMs = 0): Promise<ModelLaneSummary 
     })
     .catch((error: unknown) => {
       const apiError = readApiError(error);
-      state.error = describeRuntimeError(error, 'Model routing summary refresh failed.');
-      state.retryAfterMs = apiError.retryAfterSeconds ? apiError.retryAfterSeconds * 1000 : null;
+      state.error = describeRuntimeError(
+        error,
+        "Model routing summary refresh failed.",
+      );
+      state.retryAfterMs = apiError.retryAfterSeconds
+        ? apiError.retryAfterSeconds * 1000
+        : null;
       throw error;
     })
     .finally(() => {
@@ -222,14 +262,14 @@ async function loadLanes(force = false, maxAgeMs = 0): Promise<ModelLaneSummary 
 async function loadResource(
   key: RuntimeResourceKey,
   force = false,
-  maxAgeMs = 0
+  maxAgeMs = 0,
 ): Promise<HealthStatus | DaemonStatus | ModelLaneSummary | null> {
   switch (key) {
-    case 'health':
+    case "health":
       return loadHealth(force, maxAgeMs);
-    case 'daemon':
+    case "daemon":
       return loadDaemon(force, maxAgeMs);
-    case 'lanes':
+    case "lanes":
       return loadLanes(force, maxAgeMs);
     default:
       return null;
@@ -250,22 +290,22 @@ function schedulePoll(resources: RuntimeResourceKey[]) {
 
   clearPollTimer();
   pollTimer = window.setTimeout(() => {
-    void refreshRuntimeTelemetry({ resources })
-      .finally(() => {
-        schedulePoll(resources);
-      });
+    void refreshRuntimeTelemetry({ resources }).finally(() => {
+      schedulePoll(resources);
+    });
   }, recommendedDelayMs(resources));
 }
 
-function startPolling(resources: RuntimeResourceKey[] = ['health', 'daemon', 'lanes']) {
+function startPolling(
+  resources: RuntimeResourceKey[] = ["health", "daemon", "lanes"],
+) {
   if (pollingActive) {
     return;
   }
   pollingActive = true;
-  void refreshRuntimeTelemetry({ resources })
-    .finally(() => {
-      schedulePoll(resources);
-    });
+  void refreshRuntimeTelemetry({ resources }).finally(() => {
+    schedulePoll(resources);
+  });
 }
 
 function stopPolling() {
@@ -273,37 +313,37 @@ function stopPolling() {
   clearPollTimer();
 }
 
-if (typeof document !== 'undefined') {
-  document.addEventListener('visibilitychange', () => {
+if (typeof document !== "undefined") {
+  document.addEventListener("visibilitychange", () => {
     if (!pollingActive) {
       return;
     }
-    schedulePoll(['health', 'daemon', 'lanes']);
+    schedulePoll(["health", "daemon", "lanes"]);
   });
 }
 
 export async function refreshRuntimeTelemetry(
-  options: RefreshRuntimeTelemetryOptions = {}
+  options: RefreshRuntimeTelemetryOptions = {},
 ): Promise<RuntimeTelemetrySnapshot> {
-  const resources = options.resources ?? ['health', 'daemon', 'lanes'];
+  const resources = options.resources ?? ["health", "daemon", "lanes"];
   const force = options.force ?? false;
 
   refreshing = true;
   notifyListeners();
 
-  await Promise.allSettled(
-    resources.map((key) => loadResource(key, force))
-  );
+  await Promise.allSettled(resources.map((key) => loadResource(key, force)));
 
   refreshing = false;
   notifyListeners();
   return getSnapshot();
 }
 
-export async function getCachedModelLaneSummary(maxAgeMs = 1500): Promise<ModelLaneSummary> {
+export async function getCachedModelLaneSummary(
+  maxAgeMs = 1500,
+): Promise<ModelLaneSummary> {
   const lanes = await loadLanes(false, maxAgeMs);
   if (!lanes) {
-    throw new Error('Model routing summary unavailable.');
+    throw new Error("Model routing summary unavailable.");
   }
   return lanes;
 }
@@ -325,11 +365,13 @@ function subscribe(listener: () => void) {
 }
 
 export function useRuntimeTelemetry(): RuntimeTelemetrySnapshot & {
-  refresh: (options?: RefreshRuntimeTelemetryOptions) => Promise<RuntimeTelemetrySnapshot>;
+  refresh: (
+    options?: RefreshRuntimeTelemetryOptions,
+  ) => Promise<RuntimeTelemetrySnapshot>;
 } {
   const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
-  return {
-    ...snapshot,
-    refresh: refreshRuntimeTelemetry,
-  };
+  return useMemo(
+    () => ({ ...snapshot, refresh: refreshRuntimeTelemetry }),
+    [snapshot],
+  );
 }

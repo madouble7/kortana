@@ -64,3 +64,6 @@ PyGithub==2.1.1
 
 # Image Processing
 Pillow==12.1.1
+
+# Voice / Text-to-Speech
+edge-tts>=6.1.0

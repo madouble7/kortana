@@ -88,5 +88,50 @@
     "local_daemon.py": "proactive_state.json"
   },
   "pieces.cloudCapabilities": "Local",
-  "github.copilot.chat.runCommand.sandbox.enabled": false
+  "github.copilot.chat.runCommand.sandbox.enabled": true,
+
+  // ─── Autonomy & Efficiency ──────────────────────────────────────────
+  "files.autoSave": "afterDelay",
+  "files.autoSaveDelay": 1000,
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit",
+    "source.organizeImports": "explicit"
+  },
+  "editor.bracketPairColorization.enabled": true,
+  "editor.guides.bracketPairs": true,
+  "editor.minimap.enabled": false,
+  "editor.stickyScroll.enabled": true,
+  "editor.inlineSuggest.enabled": true,
+  "editor.linkedEditing": true,
+  "terminal.integrated.scrollback": 10000,
+  "github.copilot.enable": {
+    "*": true
+  },
+
+  // ─── Python (ruff auto-fix on save) ─────────────────────────────────
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.codeActionsOnSave": {
+      "source.fixAll.ruff": "explicit",
+      "source.organizeImports.ruff": "explicit"
+    }
+  },
+
+  // ─── TypeScript / React (prettier on save) ──────────────────────────
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[markdown]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  }
 }
