@@ -103,7 +103,7 @@ class Experience:
             "experience_id": self.experience_id,
             "source_beat_id": self.source_beat_id,
             "cycle_number": self.cycle_number,
-            "lessons": [l.to_dict() for l in self.lessons],
+            "lessons": [lesson.to_dict() for lesson in self.lessons],
             "lesson_count": len(self.lessons),
             "observation_count": self.observation_count,
             "decision_count": self.decision_count,
@@ -347,14 +347,14 @@ class ExperienceExtractor:
         """Get all lessons of a specific type across all experiences."""
         result: list[Lesson] = []
         for exp in self._experiences:
-            result.extend(l for l in exp.lessons if l.lesson_type == lesson_type)
+            result.extend(ls for ls in exp.lessons if ls.lesson_type == lesson_type)
         return result
 
     def get_actionable_lessons(self) -> list[Lesson]:
         """Get all actionable lessons that haven't been addressed."""
         result: list[Lesson] = []
         for exp in self._experiences:
-            result.extend(l for l in exp.lessons if l.actionable)
+            result.extend(ls for ls in exp.lessons if ls.actionable)
         return result
 
     # ── properties ────────────────────────────────────────────────────────
@@ -369,7 +369,7 @@ class ExperienceExtractor:
 
     @property
     def total_actionable(self) -> int:
-        return sum(1 for e in self._experiences for l in e.lessons if l.actionable)
+        return sum(1 for e in self._experiences for ls in e.lessons if ls.actionable)
 
     @property
     def lesson_type_counts(self) -> dict[str, int]:

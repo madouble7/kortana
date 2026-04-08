@@ -8494,14 +8494,14 @@ async def lessons_by_type(lesson_type: str):
     except ValueError:
         return {"error": f"unknown lesson type: {lesson_type}"}
     extractor = get_experience_extractor()
-    return {"lessons": [l.to_dict() for l in extractor.get_lessons_by_type(lt)]}
+    return {"lessons": [lesson.to_dict() for lesson in extractor.get_lessons_by_type(lt)]}
 
 
 @router.get("/learning/lessons/actionable")
 async def actionable_lessons():
     """get all actionable lessons."""
     extractor = get_experience_extractor()
-    return {"lessons": [l.to_dict() for l in extractor.get_actionable_lessons()]}
+    return {"lessons": [lesson.to_dict() for lesson in extractor.get_actionable_lessons()]}
 
 
 @router.get("/learning/experience/summary/stats")

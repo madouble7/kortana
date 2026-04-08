@@ -230,9 +230,9 @@ class PatternRecognizer:
         # anomaly clusters
         anomaly_lessons = []
         for e in experiences:
-            for l in e.get("lessons", []):
-                if l.get("lesson_type") == "anomaly":
-                    anomaly_lessons.append((e, l))
+            for entry in e.get("lessons", []):
+                if entry.get("lesson_type") == "anomaly":
+                    anomaly_lessons.append((e, entry))
         if len(anomaly_lessons) >= 2:
             consistency = len(anomaly_lessons) / max(1, span)
             pat = self._find_or_create(
@@ -316,7 +316,7 @@ class PatternRecognizer:
         result: list[Pattern] = []
         failure_exps = []
         for e in experiences:
-            failures = [l for l in e.get("lessons", []) if l.get("lesson_type") == "failure"]
+            failures = [entry for entry in e.get("lessons", []) if entry.get("lesson_type") == "failure"]
             if failures:
                 failure_exps.append((e, failures))
         if len(failure_exps) >= 2:
