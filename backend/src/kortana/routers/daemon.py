@@ -1073,3 +1073,264 @@ async def rollout_status(
             for a in all_alerts
         ],
     }
+
+
+# ---------------------------------------------------------------------------
+# V6 — Runtime enforcement endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.get("/promotion-board")
+async def promotion_board(
+    limit: int = Query(default=10, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Single-pane promotion board for every recent canary run.
+
+    Shows commit, verdict, promotion status, escalation eligibility,
+    and deployment eligibility in one view — the autonomy release
+    dashboard that controls reality.
+    """
+    from src.kortana.models import CanaryRun
+    from src.kortana.services.rollout_policy import (
+        AutonomyLevel,
+        check_deployment,
+        check_escalation,
+        compute_trends,
+    )
+
+    try:
+        result = await db.execute(
+            select(CanaryRun).order_by(CanaryRun.created_at.desc()).limit(limit)
+        )
+        runs = result.scalars().all()
+    except SQLAlchemyError:
+        runs = []
+
+    daemon = get_autonomy_daemon()
+    daemon_status = daemon.get_status()
+    current_mode = daemon_status.get("approval_mode", "self-aware")
+
+    # Map approval-mode to AutonomyLevel for escalation checks
+    _mode_to_level = {
+        "manual": AutonomyLevel.SUPERVISED,
+        "self-aware": AutonomyLevel.CAUTIOUS,
+        "auto": AutonomyLevel.STANDARD,
+    }
+    cur_level = _mode_to_level.get(current_mode, AutonomyLevel.SUPERVISED)
+    next_level_idx = min(cur_level.rank() + 1, len(AutonomyLevel.ordered()) - 1)
+    next_level = AutonomyLevel.ordered()[next_level_idx]
+
+    # Build run dicts for policy checks
+    run_dicts = [
+        {
+            "verdict": r.verdict,
+            "promotion_status": r.promotion_status,
+            "commit_sha": r.commit_sha,
+            "branch": r.branch,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+            "promotion_reasons": r.promotion_reasons,
+            "score_shift_delta": r.score_shift_delta,
+            "goal_alignment_delta": r.goal_alignment_delta,
+            "outcome_growth": r.outcome_growth,
+            "total_cycles": r.total_cycles,
+            "task_pool_size": r.task_pool_size,
+        }
+        for r in runs
+    ]
+
+    # Escalation eligibility
+    escalation = check_escalation(cur_level.value, next_level.value, run_dicts)
+
+    # Deployment eligibility (based on latest)
+    latest = run_dicts[0] if run_dicts else None
+    deployment = check_deployment(latest)
+
+    # Trends
+    trends = compute_trends(run_dicts)
+
+    # Per-run board rows
+    board_rows = []
+    for rd in run_dicts:
+        dep = check_deployment(rd)
+        board_rows.append({
+            "commit_sha": rd.get("commit_sha"),
+            "branch": rd.get("branch"),
+            "created_at": rd.get("created_at"),
+            "verdict": rd.get("verdict"),
+            "promotion_status": rd.get("promotion_status"),
+            "deploy_eligible": dep.allowed,
+            "score_shift_delta": rd.get("score_shift_delta"),
+            "goal_alignment_delta": rd.get("goal_alignment_delta"),
+            "outcome_growth": rd.get("outcome_growth"),
+            "total_cycles": rd.get("total_cycles"),
+        })
+
+    return {
+        "timestamp": datetime.utcnow().isoformat(),
+        "current_mode": current_mode,
+        "current_level": cur_level.value,
+        "next_level": next_level.value,
+        "escalation": {
+            "allowed": escalation.allowed,
+            "reasons": escalation.reasons,
+            "required_actions": escalation.required_actions,
+        },
+        "deployment": {
+            "allowed": deployment.allowed,
+            "reasons": deployment.reasons,
+            "latest_commit": deployment.commit_sha,
+            "latest_verdict": deployment.verdict,
+            "latest_promotion": deployment.promotion_status,
+        },
+        "trends": {
+            "total_runs": trends.total_runs,
+            "adaptive_rate": round(trends.adaptive_rate, 3),
+            "promotion_rate": round(trends.promotion_rate, 3),
+            "trend_direction": trends.trend_direction,
+            "consecutive_promoted": trends.consecutive_promoted,
+        },
+        "board": board_rows,
+    }
+
+
+@router.post("/deploy/gate")
+async def deploy_gate(
+    commit_sha: str | None = Query(default=None, description="Specific commit to check"),
+    require_adaptive: bool = Query(default=True),
+    require_promoted: bool = Query(default=True),
+    max_hours: int = Query(default=12, ge=1, le=168),
+    publish_alerts: bool = Query(default=True, description="Push alerts to configured sinks"),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """CI/CD deploy gate — returns pass/fail for deployment pipelines.
+
+    Designed to be called from GitHub Actions, Cloud Build, or any CI
+    system. Returns a machine-readable verdict that CI can use as a
+    go/no-go signal. Optionally publishes alerts to webhooks.
+
+    Usage in CI:
+        curl -s POST .../api/daemon/deploy/gate | jq .pass
+    """
+    from src.kortana.models import CanaryRun
+    from src.kortana.services.rollout_policy import check_deployment, surface_alerts
+    from src.kortana.services.alert_publisher import get_alert_publisher
+
+    try:
+        if commit_sha:
+            result = await db.execute(
+                select(CanaryRun)
+                .where(CanaryRun.commit_sha == commit_sha)
+                .order_by(CanaryRun.created_at.desc())
+                .limit(1)
+            )
+        else:
+            result = await db.execute(
+                select(CanaryRun).order_by(CanaryRun.created_at.desc()).limit(1)
+            )
+        run = result.scalar_one_or_none()
+        latest = None
+        if run:
+            latest = {
+                "verdict": run.verdict,
+                "promotion_status": run.promotion_status,
+                "commit_sha": run.commit_sha,
+                "created_at": run.created_at.isoformat() if run.created_at else None,
+            }
+    except SQLAlchemyError:
+        latest = None
+
+    decision = check_deployment(
+        latest,
+        require_adaptive=require_adaptive,
+        require_promoted=require_promoted,
+        max_hours_since_run=max_hours,
+    )
+    alerts = surface_alerts(deployment=decision)
+
+    # Publish alerts to external sinks
+    publish_result: dict[str, Any] = {}
+    if publish_alerts and alerts:
+        publisher = get_alert_publisher()
+        publish_result = await publisher.publish(alerts)
+
+    return {
+        "pass": decision.allowed,
+        "commit_sha": decision.commit_sha,
+        "verdict": decision.verdict,
+        "promotion_status": decision.promotion_status,
+        "reasons": decision.reasons,
+        "alerts": [
+            {
+                "level": a.level,
+                "category": a.category,
+                "title": a.title,
+                "detail": a.detail,
+                "recommended_action": a.recommended_action,
+            }
+            for a in alerts
+        ],
+        "publish_result": publish_result,
+    }
+
+
+@router.post("/alerts/publish")
+async def publish_alerts_endpoint(
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Manually trigger alert publishing for current rollout policy state.
+
+    Evaluates deployment readiness, trends, and surfaces all alerts
+    to configured external sinks (Slack, Discord, generic webhooks).
+    """
+    from src.kortana.models import CanaryRun
+    from src.kortana.services.rollout_policy import (
+        check_deployment,
+        compute_trends,
+        surface_alerts,
+    )
+    from src.kortana.services.alert_publisher import get_alert_publisher
+
+    try:
+        result = await db.execute(
+            select(CanaryRun).order_by(CanaryRun.created_at.desc()).limit(20)
+        )
+        runs = result.scalars().all()
+        run_dicts = [
+            {
+                "verdict": r.verdict,
+                "promotion_status": r.promotion_status,
+                "score_shift_delta": r.score_shift_delta,
+                "goal_alignment_delta": r.goal_alignment_delta,
+                "outcome_growth": r.outcome_growth,
+                "commit_sha": r.commit_sha,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in runs
+        ]
+    except SQLAlchemyError:
+        run_dicts = []
+
+    latest = run_dicts[0] if run_dicts else None
+    deploy = check_deployment(latest)
+    trends = compute_trends(run_dicts)
+    alerts = surface_alerts(deployment=deploy, trends=trends)
+
+    publisher = get_alert_publisher()
+    publish_result = await publisher.publish(alerts)
+
+    return {
+        "alert_count": len(alerts),
+        "alerts": [
+            {
+                "level": a.level,
+                "category": a.category,
+                "title": a.title,
+                "detail": a.detail,
+                "recommended_action": a.recommended_action,
+            }
+            for a in alerts
+        ],
+        "publish_result": publish_result,
+    }
+

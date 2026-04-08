@@ -1528,8 +1528,61 @@ class AutonomyDaemon:
             logger.warning(f"Workspace bridge unavailable: {exc}")
             return self.metrics.get("workspace_bridge") or {}
 
+    def _check_rollout_gate(self, requested_mode: str) -> dict[str, Any]:
+        """Check whether transitioning to requested_mode is permitted by rollout policy.
+
+        Maps approval_mode strings to AutonomyLevel and delegates to
+        check_escalation(). Returns a dict with 'allowed', 'blocked_reason',
+        and 'effective_mode' (clamped to current if blocked).
+        """
+        from src.kortana.services.rollout_policy import AutonomyLevel, check_escalation
+
+        _mode_to_level = {
+            "manual": AutonomyLevel.SUPERVISED,
+            "self-aware": AutonomyLevel.CAUTIOUS,
+            "auto": AutonomyLevel.STANDARD,
+        }
+
+        current = self.default_approval_mode or "self-aware"
+        cur_level = _mode_to_level.get(current, AutonomyLevel.SUPERVISED).value
+        req_level = _mode_to_level.get(requested_mode, AutonomyLevel.SUPERVISED).value
+
+        # Use cached adaptation history as lightweight run proxy
+        recent_runs: list[dict[str, Any]] = []
+        for entry in self._adaptation_history[-10:]:
+            recent_runs.append({
+                "promotion_status": "promoted" if entry.get("success") else "rejected",
+                "verdict": "adaptive" if entry.get("delta", 0) > 0 else "static",
+                "created_at": entry.get("timestamp"),
+            })
+
+        decision = check_escalation(cur_level, req_level, recent_runs)
+
+        result: dict[str, Any] = {
+            "allowed": decision.allowed,
+            "current_mode": current,
+            "requested_mode": requested_mode,
+            "effective_mode": requested_mode if decision.allowed else current,
+            "reasons": decision.reasons,
+        }
+
+        if not decision.allowed:
+            logger.warning(
+                "Rollout gate BLOCKED mode change %s -> %s: %s",
+                current, requested_mode, "; ".join(decision.reasons),
+            )
+            result["blocked_reason"] = "; ".join(decision.reasons)
+
+        return result
+
     def _apply_operator_guidance(self, guidance: DirectiveSummary) -> None:
         approval_mode = guidance.approval_mode or self.default_approval_mode
+
+        # V6: Enforce rollout gate — block escalation if canary evidence is insufficient
+        gate = self._check_rollout_gate(approval_mode)
+        if not gate["allowed"]:
+            approval_mode = gate["effective_mode"]
+
         self.operator_guidance = {
             "protocol_version": guidance.protocol_version,
             "active_count": guidance.active_count,
