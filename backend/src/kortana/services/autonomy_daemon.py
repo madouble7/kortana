@@ -1296,6 +1296,25 @@ class AutonomyDaemon:
         except Exception as exc:
             logger.debug(f"Self-test runner failed: {exc}")
 
+        # Truth verification — reconcile git and filesystem state
+        try:
+            from src.kortana.services.ambient_awareness import scan_git_state
+
+            truth_state = scan_git_state()
+            uncommitted = truth_state.get("uncommitted", [])
+            if len(uncommitted) > 10:
+                logger.warning(
+                    "Truth check: %d uncommitted files detected", len(uncommitted)
+                )
+            self.metrics["truth_state"] = {
+                "branch": truth_state.get("branch"),
+                "clean": len(uncommitted) == 0,
+                "uncommitted_count": len(uncommitted),
+                "verified_at": datetime.utcnow().isoformat(),
+            }
+        except Exception as exc:
+            logger.debug("Truth verification unavailable: %s", exc)
+
         try:
             from dataclasses import asdict
 
@@ -1346,6 +1365,8 @@ class AutonomyDaemon:
             "approval_mode": self.default_approval_mode,
             "task_scores": self.metrics.get("last_task_scores", []),
             "task_events": list(self._cycle_event_log),
+            "truth_state": self.metrics.get("truth_state"),
+            "goal_status": self.metrics.get("goal_status"),
         }
 
         # Record Vector Gamma cycle memory
@@ -2189,6 +2210,15 @@ class AutonomyDaemon:
         if not candidates:
             return []
 
+        # Collect task IDs linked to active goals for alignment bonus
+        active_goal_task_ids: set[str] = set()
+        try:
+            from src.kortana.services.goal_manager import get_goal_manager
+            for g in get_goal_manager().active():
+                active_goal_task_ids.update(str(tid) for tid in (g.linked_tasks or []))
+        except Exception:
+            pass
+
         scored: list[tuple[float, GitHubTask]] = []
         now = datetime.utcnow()
 
@@ -2232,12 +2262,18 @@ class AutonomyDaemon:
                 "queued": 0.0,
             }.get(str(task.status or "queued"), 0.0)
 
+            # --- goal alignment bonus (tasks linked to active goals) ---
+            goal_bonus = 0.0
+            if active_goal_task_ids and str(task.id) in active_goal_task_ids:
+                goal_bonus = 12.0
+
             total = (
                 base
                 + guidance_signal
                 + outcome_signal
                 + novelty_bonus
                 + status_bonus
+                + goal_bonus
                 - risk_penalty
             )
 
@@ -2249,6 +2285,7 @@ class AutonomyDaemon:
                 "outcome": round(outcome_signal, 2),
                 "novelty": round(novelty_bonus, 2),
                 "status_bonus": status_bonus,
+                "goal_alignment": goal_bonus,
                 "risk_penalty": risk_penalty,
             }
 

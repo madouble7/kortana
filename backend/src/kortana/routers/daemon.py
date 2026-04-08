@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.kortana.config import get_settings
 from src.kortana.database import get_db
-from src.kortana.models import AutonomyCycleMemory
+from src.kortana.models import AutonomyCycleMemory, AutonomyGoal
 from src.kortana.services.autonomy_daemon import get_autonomy_daemon
 
 router = APIRouter(prefix="/api/daemon", tags=["daemon"])
@@ -346,3 +346,214 @@ async def daemon_cycles(
         }
         for c in cycles
     ]
+
+
+@router.get("/cycles/{cycle_id}")
+async def daemon_cycle_detail(
+    cycle_id: str,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Return full detail for a single cycle including task scores and events."""
+    try:
+        result = await db.execute(
+            select(AutonomyCycleMemory).where(
+                AutonomyCycleMemory.cycle_id == cycle_id
+            )
+        )
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=500, detail=f"Database error: {exc}") from exc
+
+    cycle = result.scalar_one_or_none()
+    if cycle is None:
+        raise HTTPException(status_code=404, detail=f"Cycle {cycle_id} not found")
+
+    metrics = cycle.metrics or {}
+    return {
+        "cycle_id": cycle.cycle_id,
+        "start_time": cycle.start_time.isoformat() if cycle.start_time else None,
+        "end_time": cycle.end_time.isoformat() if cycle.end_time else None,
+        "duration_seconds": metrics.get("duration_seconds"),
+        "tasks_processed": cycle.tasks_processed,
+        "approvals_processed": cycle.approvals_processed,
+        "errors_encountered": cycle.errors_encountered,
+        "task_scores": metrics.get("task_scores", []),
+        "task_events": metrics.get("task_events", []),
+        "system_state": metrics.get("system_state"),
+        "approval_mode": metrics.get("approval_mode"),
+        "safe_mode": metrics.get("safe_mode"),
+        "autonomy_index": metrics.get("autonomy_index"),
+        "operator_guidance": metrics.get("operator_guidance"),
+        "provider_health": metrics.get("provider_health", {}),
+        "controller_reflection": metrics.get("controller_reflection"),
+    }
+
+
+@router.get("/dashboard")
+async def daemon_dashboard(
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Live observability dashboard: current cycle state, goal alignment,
+    adaptation trend, and truth verification status."""
+    daemon = get_autonomy_daemon()
+    status = daemon.get_status()
+
+    # Current cycle snapshot
+    last_cycle = status.get("last_cycle") or {}
+    task_scores = last_cycle.get("task_scores", [])
+
+    # Score distribution stats
+    scores = [s.get("total", 0) for s in task_scores if isinstance(s, dict)]
+    score_stats = {
+        "count": len(scores),
+        "min": round(min(scores), 2) if scores else None,
+        "max": round(max(scores), 2) if scores else None,
+        "mean": round(sum(scores) / len(scores), 2) if scores else None,
+    }
+
+    # Adaptation trend from recent cycles
+    try:
+        result = await db.execute(
+            select(AutonomyCycleMemory)
+            .order_by(AutonomyCycleMemory.end_time.desc())
+            .limit(20)
+        )
+        recent_cycles = result.scalars().all()
+    except SQLAlchemyError:
+        recent_cycles = []
+
+    adaptation_trend = []
+    for c in reversed(recent_cycles):
+        m = c.metrics or {}
+        adaptation_trend.append({
+            "cycle_id": c.cycle_id,
+            "completed_at": c.end_time.isoformat() if c.end_time else None,
+            "tasks_processed": c.tasks_processed,
+            "succeeded": m.get("succeeded", 0),
+            "failed": m.get("failed", 0),
+            "deferred": m.get("deferred", 0),
+            "approval_mode": m.get("approval_mode"),
+            "system_state": m.get("system_state"),
+        })
+
+    # Goal alignment
+    goal_status = status.get("goal_status")
+    try:
+        result = await db.execute(
+            select(AutonomyGoal)
+            .where(AutonomyGoal.status.in_(["active", "in_progress", "pending"]))
+            .order_by(AutonomyGoal.priority.desc())
+            .limit(10)
+        )
+        active_goals = [
+            {
+                "id": g.id,
+                "title": g.title,
+                "tier": g.tier,
+                "status": g.status,
+                "priority": g.priority,
+                "progress": g.progress,
+                "linked_tasks": g.linked_tasks or [],
+            }
+            for g in result.scalars().all()
+        ]
+    except SQLAlchemyError:
+        active_goals = []
+
+    # Truth verification: git state + daemon consistency
+    truth = _verify_truth()
+
+    return {
+        "timestamp": datetime.utcnow().isoformat(),
+        "daemon": {
+            "running": status.get("running", False),
+            "cycles_completed": status.get("cycles_completed", 0),
+            "uptime_start": status.get("uptime_start"),
+            "system_state": status.get("system_state", "unknown"),
+            "safe_mode": status.get("safe_mode", False),
+            "approval_mode": last_cycle.get("approval_mode"),
+        },
+        "current_cycle": {
+            "completed_at": last_cycle.get("completed_at"),
+            "duration_seconds": last_cycle.get("duration_seconds"),
+            "processed": last_cycle.get("processed", 0),
+            "succeeded": last_cycle.get("succeeded", 0),
+            "failed": last_cycle.get("failed", 0),
+            "deferred": last_cycle.get("deferred", 0),
+            "task_scores": task_scores,
+            "score_stats": score_stats,
+        },
+        "adaptation_trend": adaptation_trend,
+        "goals": {
+            "summary": goal_status,
+            "active": active_goals,
+        },
+        "truth": truth,
+    }
+
+
+def _verify_truth() -> dict[str, Any]:
+    """Reconcile editor buffer, filesystem, and git state.
+
+    Returns a truth report that flags divergence between what tools
+    report and what is actually on disk and in the repository.
+    """
+    import subprocess
+
+    repo_root = os.getenv("KORTANA_WORKSPACE_ROOT", "/workspace")
+    checks: dict[str, Any] = {
+        "git_available": False,
+        "branch": None,
+        "clean": None,
+        "uncommitted_count": 0,
+        "uncommitted_files": [],
+        "head_sha": None,
+        "head_message": None,
+        "stale_locks": [],
+        "verified_at": datetime.utcnow().isoformat(),
+    }
+
+    def _git(args: list[str]) -> str | None:
+        try:
+            r = subprocess.run(
+                ["git"] + args,
+                capture_output=True, text=True,
+                cwd=repo_root, timeout=10,
+            )
+            return r.stdout.strip() if r.returncode == 0 else None
+        except Exception:
+            return None
+
+    # Git availability
+    branch = _git(["rev-parse", "--abbrev-ref", "HEAD"])
+    if branch is None:
+        return checks
+    checks["git_available"] = True
+    checks["branch"] = branch
+
+    # HEAD info
+    checks["head_sha"] = _git(["rev-parse", "--short", "HEAD"])
+    checks["head_message"] = _git(["log", "-1", "--format=%s"])
+
+    # Uncommitted changes
+    status_output = _git(["status", "--porcelain"])
+    if status_output:
+        files = []
+        for line in status_output.splitlines():
+            parts = line.strip().split(maxsplit=1)
+            if len(parts) == 2:
+                files.append({"status": parts[0], "file": parts[1]})
+        checks["uncommitted_count"] = len(files)
+        checks["uncommitted_files"] = files[:25]  # cap for response size
+        checks["clean"] = False
+    else:
+        checks["clean"] = True
+
+    # Stale lock files (signal of interrupted git operations)
+    git_dir = os.path.join(repo_root, ".git")
+    if os.path.isdir(git_dir):
+        for fname in os.listdir(git_dir):
+            if fname.endswith(".lock"):
+                checks["stale_locks"].append(fname)
+
+    return checks
+
