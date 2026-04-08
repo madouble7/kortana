@@ -1,14 +1,15 @@
 r"""
-kor'tana voice daemon — always-on voice interface
+kor'tana voice daemon — always-on conversational voice interface
 
-Wake phrase: say "kortana" (or a close mishear) anywhere in an utterance.
+Silero VAD neural speech detection — no wake word required.
 Flow:
-  1. Continuously listen via microphone (VAD via speech_recognition)
-  2. Wake phrase detected → Piper chime → listen for command
-  3. faster-whisper large-v3 (CUDA) transcribes the command
-  4. POST command to kor'tana backend → Piper/Cori speaks the response
-  5. Return to listening
+  1. Continuous mic stream → Silero VAD detects speech segments
+  2. Speech segment → faster-whisper transcribes
+  3. Wake word OR recent conversation context → auto-respond
+  4. Groq SSE streaming → sentence-chunked edge-tts with SSML prosody
+  5. Barge-in: Silero detects speech during TTS → instant interrupt
 
+Fallback: wake word "kortana" always works, even outside conversation context.
 Run:  python c:\kortana\mcp-server\voice_daemon.py
 Auto-start: registered via Task Scheduler (kortana-voice-daemon)
 """
@@ -17,6 +18,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -31,6 +33,7 @@ import httpx
 import numpy as np
 import sounddevice as sd
 import speech_recognition as sr
+import torch
 
 
 # ── load .env for GitHub token and other secrets ──────────────────────────────
@@ -109,6 +112,19 @@ WAKE_PHRASES = {
 
 # How long to listen for a command after wake (seconds)
 COMMAND_PHRASE_LIMIT = 15
+
+# ── Silero VAD config ──────────────────────────────────────────────────────────
+_VAD_SAMPLE_RATE = 16000
+_VAD_FRAME_MS = 30  # 30ms frames for Silero (supports 30, 60, 90)
+_VAD_FRAME_SAMPLES = _VAD_SAMPLE_RATE * _VAD_FRAME_MS // 1000  # 480 samples
+_VAD_SPEECH_THRESHOLD = 0.5  # probability threshold for speech detection
+_VAD_SILENCE_FRAMES = 30  # ~900ms of silence to end utterance
+_VAD_MIN_SPEECH_FRAMES = 5  # minimum ~150ms of speech to register
+_VAD_MAX_SPEECH_SECONDS = 30  # max utterance length
+_CONVERSATION_TIMEOUT = 60  # seconds — auto-respond without wake word if recently spoke
+_USE_SILERO_VAD = os.getenv("KORTANA_USE_SILERO_VAD", "1") == "1"
+_vad_model: torch.nn.Module | None = None
+_last_voice_exchange: float = 0.0  # timestamp of last completed voice turn
 
 LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
 
@@ -505,9 +521,75 @@ def _write_daily_diary(now: datetime, *, backend_up: bool, ci_summary: str) -> b
 _EDGE_TTS_VOICE = os.getenv("KORTANA_EDGE_TTS_VOICE", "en-GB-SoniaNeural")
 _USE_EDGE_TTS = True  # prefer edge-tts; falls back to Piper then SAPI
 
+# ── emotional prosody ─────────────────────────────────────────────────────────
+_PROSODY_QUESTION_RE = re.compile(r"\?$")
+_PROSODY_EXCLAIM_RE = re.compile(r"!$")
+_PROSODY_WARMTH_WORDS = frozenset(
+    {
+        "love",
+        "glad",
+        "happy",
+        "wonderful",
+        "beautiful",
+        "proud",
+        "grateful",
+        "blessed",
+        "joy",
+        "peace",
+        "grace",
+        "faith",
+    }
+)
+_PROSODY_CONCERN_WORDS = frozenset(
+    {
+        "sorry",
+        "unfortunately",
+        "careful",
+        "warning",
+        "worried",
+        "difficult",
+        "struggle",
+        "hard",
+        "pain",
+        "hurt",
+    }
+)
+
+
+def _detect_prosody(text: str) -> tuple[str, str]:
+    """Analyze text content and return (rate, pitch) for emotional TTS.
+
+    Returns edge-tts format: rate like '+10%', pitch like '+2Hz'.
+    """
+    lower = text.lower()
+    words = set(lower.split())
+
+    # Questions — slight rise in pitch, normal speed
+    if _PROSODY_QUESTION_RE.search(text.strip()):
+        return "+5%", "+3Hz"
+
+    # Exclamations — slightly faster, slightly higher pitch
+    if _PROSODY_EXCLAIM_RE.search(text.strip()):
+        return "+15%", "+2Hz"
+
+    # Warm/positive sentiment
+    if words & _PROSODY_WARMTH_WORDS:
+        return "+8%", "+1Hz"
+
+    # Concern/empathy — slower, lower pitch
+    if words & _PROSODY_CONCERN_WORDS:
+        return "-5%", "-2Hz"
+
+    # Short responses (< 5 words) — slightly faster (conversational)
+    if len(text.split()) < 5:
+        return "+12%", "+0Hz"
+
+    # Default — natural pace
+    return "+10%", "+0Hz"
+
 
 def _speak_edge_tts(text: str) -> bool:
-    """Speak via edge-tts (Microsoft neural voices — free, high quality)."""
+    """Speak via edge-tts with SSML emotional prosody."""
     import asyncio
     import io
     import tempfile
@@ -517,8 +599,11 @@ def _speak_edge_tts(text: str) -> bool:
     except ImportError:
         return False
 
+    # Determine prosody from content
+    rate, pitch = _detect_prosody(text)
+
     async def _generate() -> bytes | None:
-        comm = edge_tts.Communicate(text, _EDGE_TTS_VOICE, rate="+10%")
+        comm = edge_tts.Communicate(text, _EDGE_TTS_VOICE, rate=rate, pitch=pitch)
         buf = io.BytesIO()
         async for chunk in comm.stream():
             if chunk["type"] == "audio":
@@ -1135,6 +1220,7 @@ def _handle_insight_request() -> str:
 # ── main listen loop ────────────────────────────────────────────────────────────
 def _handle_wake(recognizer: sr.Recognizer, text: str) -> None:
     """Called when wake phrase detected. text = full utterance including wake."""
+    global _last_voice_exchange
     command = _strip_wake(text).strip()
     log(f"wake detected | raw='{text}' | command='{command}'")
 
@@ -1177,6 +1263,9 @@ def _handle_wake(recognizer: sr.Recognizer, text: str) -> None:
     # Stream response and speak sentence-by-sentence
     _interrupt.clear()
     response = _stream_and_speak(command)
+    _last_voice_exchange = (
+        time.time()
+    )  # mark conversation as active for Silero auto-respond
     log(f"response ({len(response)} chars): {response[:120]}")
     _record_voice_interaction()
 
@@ -1434,7 +1523,7 @@ def _startup_greeting() -> None:
 
 
 def run() -> None:
-    global _whisper
+    global _whisper, _vad_model, _last_voice_exchange
 
     _save_temporal_state(_load_temporal_state())
     model_size, device, compute_type = _current_whisper_config()
@@ -1452,42 +1541,234 @@ def run() -> None:
     )
     log("Whisper ready")
 
-    recognizer = sr.Recognizer()
-    recognizer.dynamic_energy_threshold = True
-    recognizer.pause_threshold = 0.8  # seconds of silence = end of phrase
-    recognizer.energy_threshold = 300
+    # Load Silero VAD
+    if _USE_SILERO_VAD:
+        try:
+            from silero_vad import load_silero_vad  # type: ignore[import-untyped]
 
-    mic = sr.Microphone()
+            _vad_model = load_silero_vad(onnx=True)
+            log("Silero VAD loaded (ONNX) — neural speech detection active")
+        except Exception as e:
+            log(f"Silero VAD failed to load: {e} — falling back to energy VAD", "WARN")
 
-    # Calibrate to ambient noise once at startup
-    log("calibrating to ambient noise…")
-    with mic as source:
-        recognizer.adjust_for_ambient_noise(source, duration=1.5)
-    log(f"energy threshold set to {recognizer.energy_threshold:.0f}")
-
-    # Seed foundational identity memories on first run (no-op if DB already has content)
+    # Seed foundational identity memories on first run
     threading.Thread(target=_seed_identity_memory, daemon=True).start()
 
     # Restore cross-session memory before announcing readiness
     _conversation_history.extend(_load_history_from_backend())
 
-    # Startup presence — acknowledge time passed if the gap is significant
+    # Startup greeting
     _startup_greeting()
     log("kor'tana voice daemon listening")
 
-    # Proactive awareness — watches backend health, session length, morning greeting
+    # Proactive awareness thread
     threading.Thread(target=_proactive_loop, daemon=True).start()
 
-    # Background listener — callback fires on each detected phrase
+    if _vad_model is not None:
+        _run_silero_listener()
+    else:
+        _run_legacy_listener()
+
+
+def _run_silero_listener() -> None:
+    """Continuous Silero VAD listener — no wake word required.
+
+    Architecture:
+      - sounddevice.InputStream at 16kHz mono feeds 30ms frames
+      - Silero VAD assigns speech probability to each frame
+      - When speech starts (prob > threshold), accumulate audio
+      - When silence exceeds threshold, transcribe with Whisper
+      - If wake word present → _handle_wake (explicit command)
+      - If in conversation context (< 60s since last exchange) → auto-respond
+      - If _is_speaking and speech detected → barge-in interrupt
+    """
+    global _last_voice_exchange
+    assert _vad_model is not None
+
+    speech_buffer: list[np.ndarray] = []
+    is_speech_active = False
+    silence_frames = 0
+    speech_frames = 0
+
+    recognizer = sr.Recognizer()  # kept for _handle_wake's follow-up mic
+
+    def _process_utterance(audio_chunks: list[np.ndarray]) -> None:
+        """Process a complete speech segment detected by Silero VAD."""
+        global _last_voice_exchange
+        if not audio_chunks:
+            return
+
+        # Concatenate all speech frames into one array
+        audio_np = np.concatenate(audio_chunks).astype(np.float32)
+
+        # Duration check — skip very short or very long segments
+        duration = len(audio_np) / _VAD_SAMPLE_RATE
+        if duration < 0.3:
+            return  # too short to be meaningful speech
+        if duration > _VAD_MAX_SPEECH_SECONDS:
+            log(f"[vad] utterance too long ({duration:.1f}s), skipping")
+            return
+
+        # Transcribe with Whisper
+        if _whisper is None:
+            return
+        try:
+            segments, _ = _whisper.transcribe(
+                audio_np, language="en", beam_size=5, vad_filter=False
+            )
+            text = " ".join(seg.text for seg in segments).strip().lower()
+        except Exception as e:
+            log(f"[vad] transcription error: {e}", "WARN")
+            return
+
+        if not text or len(text) < 2:
+            return
+
+        log(f"[vad] heard: '{text}'")
+
+        # Check for wake word — explicit command mode
+        if _contains_wake(text):
+            threading.Thread(
+                target=_handle_wake,
+                args=(recognizer, text),
+                daemon=True,
+            ).start()
+            return
+
+        # Contextual auto-response — if in active conversation
+        time_since_last = time.time() - _last_voice_exchange
+        if time_since_last < _CONVERSATION_TIMEOUT and _last_voice_exchange > 0:
+            log(
+                f"[vad] auto-respond (conversation active, {time_since_last:.0f}s since last)"
+            )
+            command = text.strip()
+            if command:
+                threading.Thread(
+                    target=_contextual_respond,
+                    args=(command,),
+                    daemon=True,
+                ).start()
+            return
+
+        # Not in conversation and no wake word — ignore (background speech)
+        log(f"[vad] ignored (no wake word, no active conversation): '{text[:60]}'")
+
+    def _contextual_respond(command: str) -> None:
+        """Auto-respond to speech when in active conversation context."""
+        global _last_voice_exchange
+        _interrupt.clear()
+        response = _stream_and_speak(command)
+        _last_voice_exchange = time.time()
+        log(f"[vad] contextual response ({len(response)} chars)")
+        _record_voice_interaction()
+
+    def _audio_callback(
+        indata: np.ndarray, frames: int, time_info: dict, status: sd.CallbackFlags
+    ) -> None:
+        """Called for each 30ms audio frame from sounddevice."""
+        nonlocal speech_buffer, is_speech_active, silence_frames, speech_frames
+
+        if status:
+            log(f"[vad] audio status: {status}", "WARN")
+
+        # Convert to float32 mono if needed
+        audio_frame = (
+            indata[:, 0].copy() if indata.ndim > 1 else indata.copy().flatten()
+        )
+
+        # Silero VAD expects torch tensor
+        audio_tensor = torch.from_numpy(audio_frame).float()
+
+        try:
+            speech_prob = _vad_model(audio_tensor, _VAD_SAMPLE_RATE).item()  # type: ignore[misc]
+        except Exception:
+            return
+
+        if speech_prob >= _VAD_SPEECH_THRESHOLD:
+            # Speech detected
+            if _is_speaking:
+                # Barge-in: user speaking while kor'tana is talking
+                _signal_interrupt()
+                return
+
+            if not is_speech_active:
+                is_speech_active = True
+                speech_frames = 0
+                silence_frames = 0
+                speech_buffer = []
+                log("[vad] speech start")
+
+            speech_frames += 1
+            silence_frames = 0
+            speech_buffer.append(audio_frame)
+
+        elif is_speech_active:
+            # Silence during active speech — count silence frames
+            silence_frames += 1
+            speech_buffer.append(audio_frame)  # keep some trailing context
+
+            if silence_frames >= _VAD_SILENCE_FRAMES:
+                # End of utterance
+                is_speech_active = False
+                log(
+                    f"[vad] speech end ({speech_frames} frames, {speech_frames * _VAD_FRAME_MS}ms)"
+                )
+
+                if speech_frames >= _VAD_MIN_SPEECH_FRAMES:
+                    # Process in separate thread to not block audio callback
+                    chunks = speech_buffer.copy()
+                    threading.Thread(
+                        target=_process_utterance,
+                        args=(chunks,),
+                        daemon=True,
+                    ).start()
+
+                speech_buffer = []
+                speech_frames = 0
+                silence_frames = 0
+
+    # Open continuous audio stream
+    log(
+        f"[vad] starting Silero VAD listener: {_VAD_SAMPLE_RATE}Hz, {_VAD_FRAME_MS}ms frames"
+    )
+    try:
+        with sd.InputStream(
+            samplerate=_VAD_SAMPLE_RATE,
+            channels=1,
+            dtype="float32",
+            blocksize=_VAD_FRAME_SAMPLES,
+            callback=_audio_callback,
+        ):
+            log("[vad] neural voice detection active — no wake word needed")
+            log("[vad] say 'kortana' to start, then just talk naturally")
+            while True:
+                time.sleep(0.5)
+    except KeyboardInterrupt:
+        log("shutting down voice daemon")
+        speak("going quiet now.")
+
+
+def _run_legacy_listener() -> None:
+    """Fallback listener using SpeechRecognition energy-based VAD."""
+    recognizer = sr.Recognizer()
+    recognizer.dynamic_energy_threshold = True
+    recognizer.pause_threshold = 0.8
+    recognizer.energy_threshold = 300
+
+    mic = sr.Microphone()
+
+    log("calibrating to ambient noise…")
+    with mic as source:
+        recognizer.adjust_for_ambient_noise(source, duration=1.5)
+    log(f"energy threshold set to {recognizer.energy_threshold:.0f}")
+
     def _callback(recognizer: sr.Recognizer, audio: sr.AudioData) -> None:
         text = transcribe(audio, recognizer)
         if not text:
             return
         if _contains_wake(text):
-            # Barge-in: if kor'tana is currently speaking, interrupt her first
             if _is_speaking:
                 _signal_interrupt()
-            # Spin off so background listener stays responsive
             threading.Thread(
                 target=_handle_wake,
                 args=(recognizer, text),
@@ -1498,7 +1779,7 @@ def run() -> None:
         mic, _callback, phrase_time_limit=COMMAND_PHRASE_LIMIT
     )
 
-    log("background listener active — press Ctrl+C to stop")
+    log("background listener active (legacy energy VAD) — press Ctrl+C to stop")
     try:
         while True:
             time.sleep(0.5)

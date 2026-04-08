@@ -90,6 +90,7 @@ try:
     from src.kortana.routers import daemon as daemon_router
     from src.kortana.routers import intelligence as intelligence_router
     from src.kortana.routers import voice as voice_router
+    from src.kortana.routers import voice_ws as voice_ws_router
     from src.kortana.routers.adapters import (
         autogen_adapter,
         copilotkit_adapter,
@@ -394,6 +395,9 @@ def create_app() -> FastAPI:
         app.include_router(prayer.router)
         app.include_router(gemini.router, prefix="/api/gemini", tags=["gemini"])
         app.include_router(voice_router.router, prefix="/api/voice", tags=["voice"])
+        app.include_router(
+            voice_ws_router.router, prefix="/api/voice/ws", tags=["voice-ws"]
+        )
         app.include_router(
             orchestrator.router, prefix="/api/orchestrator", tags=["ai-orchestrator"]
         )
