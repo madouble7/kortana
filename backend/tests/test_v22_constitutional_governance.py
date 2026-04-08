@@ -17,25 +17,18 @@ from kortana.services.quorum_policy import (
     QuorumPolicy,
     QuorumType,
     QuorumRequirement,
-    QuorumVote,
-    QuorumResult,
     get_quorum_policy,
 )
 from kortana.services.boundary_enforcer import (
     BoundaryEnforcer,
-    BoundaryCheck,
-    BoundaryViolation,
-    BoundaryWarning,
     get_boundary_enforcer,
 )
 from kortana.services.constitutional_audit import (
     ConstitutionalAudit,
-    ComplianceProof,
-    ViolationRecord,
     get_constitutional_audit,
 )
 from kortana.services.policy_feedback_loop import PolicyArea
-from kortana.services.proposal_registry import PolicyProposal, ProposalStatus
+from kortana.services.proposal_registry import PolicyProposal
 
 
 def _make_proposal(
