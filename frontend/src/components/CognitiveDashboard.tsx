@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
-import type { DaemonStatus } from "../types";
+import type { DaemonCycle, DaemonStatus } from "../types";
 
 interface IdentityDimension {
   [key: string]: number;
@@ -34,17 +34,19 @@ export default function CognitiveDashboard() {
   const [dreams, setDreams] = useState<DreamThought[]>([]);
   const [daemon, setDaemon] = useState<DaemonStatus | null>(null);
   const [providers, setProviders] = useState<ModelProviderStatus[]>([]);
+  const [cycles, setCycles] = useState<DaemonCycle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchAll = async () => {
     try {
-      const [identityRes, dreamsRes, daemonRes, healthRes] =
+      const [identityRes, dreamsRes, daemonRes, healthRes, cyclesRes] =
         await Promise.allSettled([
           api.getIdentityEvolution(),
           api.getVoiceDreams(),
           api.getDaemonStatus(),
           api.health(),
+          api.getDaemonCycles(10),
         ]);
 
       if (identityRes.status === "fulfilled")
@@ -55,6 +57,8 @@ export default function CognitiveDashboard() {
       }
       if (daemonRes.status === "fulfilled")
         setDaemon(daemonRes.value as DaemonStatus);
+      if (cyclesRes.status === "fulfilled")
+        setCycles(cyclesRes.value as DaemonCycle[]);
       if (healthRes.status === "fulfilled") {
         const h = healthRes.value as {
           model_providers?: ModelProviderStatus[];
@@ -223,6 +227,47 @@ export default function CognitiveDashboard() {
           <p className="text-gray-500 text-sm">daemon status unavailable</p>
         )}
       </section>
+
+      {/* Cycle Telemetry */}
+      {cycles.length > 0 && (
+        <section className="bg-gray-900 rounded-xl border border-gray-800 p-5">
+          <h2 className="text-lg font-semibold text-cyan-300 mb-4">
+            cycle history
+            <span className="ml-2 text-xs text-gray-500">
+              last {cycles.length} cycles
+            </span>
+          </h2>
+          <div className="space-y-2">
+            {cycles.map((c) => (
+              <div
+                key={c.cycle_id}
+                className="flex items-center justify-between bg-gray-800/50 rounded-lg px-4 py-2"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-gray-500 font-mono">
+                    #{c.cycle_id}
+                  </span>
+                  <span className="text-sm text-gray-300">
+                    {c.tasks_processed} task
+                    {c.tasks_processed !== 1 ? "s" : ""}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  {c.errors_encountered > 0 && (
+                    <span className="text-xs bg-red-900/30 text-red-400 px-2 py-0.5 rounded">
+                      {c.errors_encountered} error
+                      {c.errors_encountered !== 1 ? "s" : ""}
+                    </span>
+                  )}
+                  <span className="text-xs text-gray-500">
+                    {new Date(c.start_time).toLocaleTimeString()}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Model Providers */}
       {providers.length > 0 && (

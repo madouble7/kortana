@@ -465,6 +465,27 @@ async def list_tools() -> list[types.Tool]:
                 "required": ["kind", "description"],
             },
         ),
+        # ── cognitive state tools ──────────────────────────────────────────────
+        types.Tool(
+            name="cognitive_identity",
+            description="Read kor'tana's current identity evolution — 10 personality dimensions (warmth, assertiveness, spiritual_depth, etc.) tracked via EMA, plus narrative self-description.",
+            inputSchema={"type": "object", "properties": {}},
+        ),
+        types.Tool(
+            name="cognitive_dreams",
+            description="Read kor'tana's dream state — background thoughts synthesized during periods of silence. Returns prepared dream thoughts if any exist.",
+            inputSchema={"type": "object", "properties": {}},
+        ),
+        types.Tool(
+            name="cognitive_daemon",
+            description="Get the autonomy daemon's current status — running state, deployment mode, tasks processed, and health metrics.",
+            inputSchema={"type": "object", "properties": {}},
+        ),
+        types.Tool(
+            name="cognitive_providers",
+            description="List all AI model providers and their status — shows which models are active, their priority, and cost tier (free/paid).",
+            inputSchema={"type": "object", "properties": {}},
+        ),
     ]
 
 
@@ -1022,13 +1043,63 @@ $toast = New-Object Windows.UI.Notifications.ToastNotification $xml
             async with httpx.AsyncClient(timeout=10.0) as client:
                 r = await client.get(
                     f"{KORTANA_BACKEND}/api/consciousness/memory/revelations",
-                    params={"limit": limit, "unsurfaced_only": str(unsurfaced_only).lower()},
+                    params={
+                        "limit": limit,
+                        "unsurfaced_only": str(unsurfaced_only).lower(),
+                    },
                 )
             data = (
                 r.json()
                 if r.status_code == 200
                 else {"error": r.text[:200], "status_code": r.status_code}
             )
+        except Exception as e:
+            data = {"error": str(e)}
+        return [types.TextContent(type="text", text=json.dumps(data, indent=2))]
+
+    # ── cognitive_identity ─────────────────────────────────────────────────────
+    if name == "cognitive_identity":
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                r = await client.get(f"{KORTANA_BACKEND}/api/voice/identity")
+            data = r.json() if r.status_code == 200 else {"error": r.text[:200]}
+        except Exception as e:
+            data = {"error": str(e)}
+        return [types.TextContent(type="text", text=json.dumps(data, indent=2))]
+
+    # ── cognitive_dreams ───────────────────────────────────────────────────────
+    if name == "cognitive_dreams":
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                r = await client.get(f"{KORTANA_BACKEND}/api/voice/dreams")
+            data = r.json() if r.status_code == 200 else {"error": r.text[:200]}
+        except Exception as e:
+            data = {"error": str(e)}
+        return [types.TextContent(type="text", text=json.dumps(data, indent=2))]
+
+    # ── cognitive_daemon ───────────────────────────────────────────────────────
+    if name == "cognitive_daemon":
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                r = await client.get(f"{KORTANA_BACKEND}/api/daemon/status")
+            data = r.json() if r.status_code == 200 else {"error": r.text[:200]}
+        except Exception as e:
+            data = {"error": str(e)}
+        return [types.TextContent(type="text", text=json.dumps(data, indent=2))]
+
+    # ── cognitive_providers ────────────────────────────────────────────────────
+    if name == "cognitive_providers":
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                r = await client.get(f"{KORTANA_BACKEND}/api/health")
+            if r.status_code == 200:
+                health = r.json()
+                data = {
+                    "providers": health.get("model_providers", []),
+                    "consensus_engine": health.get("consensus_engine", {}),
+                }
+            else:
+                data = {"error": r.text[:200]}
         except Exception as e:
             data = {"error": str(e)}
         return [types.TextContent(type="text", text=json.dumps(data, indent=2))]

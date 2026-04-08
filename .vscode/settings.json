@@ -1,6 +1,6 @@
 {
   "python.envFile": "${workspaceFolder}/.env",
-  "python.defaultInterpreterPath": "python3",
+  "python.defaultInterpreterPath": "C:\\Program Files\\Python311\\python.exe",
   "python.testing.pytestEnabled": true,
   "python.testing.cwd": "${workspaceFolder}/backend",
   "python.testing.pytestArgs": ["tests"],
