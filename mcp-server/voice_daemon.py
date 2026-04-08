@@ -133,6 +133,7 @@ LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 # ── globals ────────────────────────────────────────────────────────────────────
 _speak_lock = threading.Lock()
+_wake_listening = threading.Event()  # set while _handle_wake is using SpeechRecognition mic
 _conversation_history: list[dict[str, str]] = []
 _whisper: faster_whisper.WhisperModel | None = None
 _last_interaction: float = time.time()  # updated on every voice exchange
@@ -1407,7 +1408,9 @@ def _handle_wake(recognizer: sr.Recognizer, text: str) -> None:
         # No command in the same utterance — listen for it now.
         # Must use a fresh Microphone() — the shared mic is held open by the
         # background listener and cannot be re-entered from another thread.
+        # Suppress Silero callback to prevent dual-listener race.
         _play_activation_sound()
+        _wake_listening.set()
         try:
             follow_mic = sr.Microphone()
             with follow_mic as source:
@@ -1423,6 +1426,8 @@ def _handle_wake(recognizer: sr.Recognizer, text: str) -> None:
         except sr.WaitTimeoutError:
             speak("I'm here.")
             return
+        finally:
+            _wake_listening.clear()
 
     if not command:
         speak("I didn't catch that — try again.")
@@ -1488,6 +1493,8 @@ def _proactive_loop() -> None:
     POLL_INTERVAL = 60  # check every 60 seconds
     _last_ci_run_id: int = 0
     _last_ci_was_failure: bool = False
+    _last_ci_alert_time: float = 0.0  # cooldown to prevent CI alert spam
+    CI_ALERT_COOLDOWN = 300  # 5 min between CI alerts
     _latest_ci_summary = "unknown"
 
     while True:
@@ -1547,9 +1554,14 @@ def _proactive_loop() -> None:
                             else f"{name} is {status} on {branch}"
                         )
                         # New failure we haven't alerted about yet
-                        if conclusion == "failure" and run_id != _last_ci_run_id:
+                        if (
+                            conclusion == "failure"
+                            and run_id != _last_ci_run_id
+                            and (time.time() - _last_ci_alert_time) > CI_ALERT_COOLDOWN
+                        ):
                             _last_ci_run_id = run_id
                             _last_ci_was_failure = True
+                            _last_ci_alert_time = time.time()
                             log(f"[proactive] CI failure: {name} on {branch}")
                             speak(
                                 f"Heads up, Matt. Your {name} pipeline just failed on {branch}. "
@@ -1860,8 +1872,12 @@ def _run_silero_listener() -> None:
             speech_frames, \
             _frame_count
 
-        if status:
+        if status and 'overflow' not in str(status):
             log(f"[vad] audio status: {status}", "WARN")
+
+        # Suppress while _handle_wake is actively listening via SpeechRecognition
+        if _wake_listening.is_set():
+            return
 
         # Convert to float32 mono if needed
         audio_frame = (
@@ -1872,7 +1888,9 @@ def _run_silero_listener() -> None:
         rms = float(np.sqrt(np.mean(audio_frame**2)))
         _frame_count += 1
         if _frame_count % 3000 == 0:
-            log(f"[vad-debug] frame={_frame_count} rms={rms:.6f} gate={_VAD_NOISE_GATE_RMS}")
+            log(
+                f"[vad-debug] frame={_frame_count} rms={rms:.6f} gate={_VAD_NOISE_GATE_RMS}"
+            )
         if rms < _VAD_NOISE_GATE_RMS:
             if is_speech_active:
                 silence_frames += 1
