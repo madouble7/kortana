@@ -14,6 +14,7 @@ class ProviderModelDefaults:
     anthropic: str = ""
     groq: str = ""
     openrouter: str = ""
+    ollama: str = ""
 
 
 ANTHROPIC_SONNET_MODEL = "claude-3-5-sonnet-20241022"
@@ -39,6 +40,9 @@ OPENAI_FAST_MODEL = OPENAI_GPT_54_NANO_MODEL
 OPENROUTER_AUTO_MODEL = "openrouter/auto"
 OPENROUTER_LLAMA2_CHAT_MODEL = "meta-llama/llama-2-70b-chat"
 OPENROUTER_LLAMA3_INSTRUCT_MODEL = "meta-llama/llama-3-70b-instruct"
+OLLAMA_QWEN3_8B_MODEL = "qwen3:8b"
+OLLAMA_LLAMA32_1B_MODEL = "llama3.2:1b"
+OLLAMA_DEFAULT_MODEL = OLLAMA_QWEN3_8B_MODEL
 LLM_ROUTER_GEMINI_MODEL = "gemini-2.5-flash"  # was 2.0 (deprecated)
 GEMINI_EMBEDDING_MODEL_PATH = "models/gemini-embedding-001"
 GEMINI_EMBEDDING_MODEL_NAME = "gemini-embedding-001"
@@ -46,17 +50,19 @@ GEMINI_EMBEDDING_FALLBACK_MODEL_PATH = "models/gemini-embedding-2-preview"
 MEMORY_ENGINE_EMBEDDING_MODEL = "text-embedding-004"
 
 GEMINI_DISCOVERY_FALLBACK_MODELS = (
-    GEMINI_DEFAULT_MODEL,         # gemini-2.5-flash-lite (cheapest stable)
-    GEMINI_FLASH_LITE_MODEL,      # gemini-3.1-flash-lite-preview
-    GEMINI_25_FLASH_MODEL,        # gemini-2.5-flash
-    LLM_ROUTER_GEMINI_MODEL,      # gemini-2.5-flash (same)
+    GEMINI_DEFAULT_MODEL,  # gemini-2.5-flash-lite (cheapest stable)
+    GEMINI_FLASH_LITE_MODEL,  # gemini-3.1-flash-lite-preview
+    GEMINI_25_FLASH_MODEL,  # gemini-2.5-flash
+    LLM_ROUTER_GEMINI_MODEL,  # gemini-2.5-flash (same)
     GEMINI_FLASH_LITE_LATEST_MODEL,
-    GEMINI_25_PRO_MODEL,          # gemini-2.5-pro (quality fallback)
+    GEMINI_25_PRO_MODEL,  # gemini-2.5-pro (quality fallback)
 )
 
 DEFAULT_CORE_MODEL_CATALOG = frozenset(
     {
         *GEMINI_DISCOVERY_FALLBACK_MODELS,
+        OLLAMA_QWEN3_8B_MODEL,
+        OLLAMA_LLAMA32_1B_MODEL,
         OPENAI_GPT_54_MODEL,
         OPENAI_GPT_54_MINI_MODEL,
         OPENAI_GPT_54_NANO_MODEL,
@@ -96,6 +102,7 @@ AI_CONSENSUS_DEFAULTS = ProviderModelDefaults(
     anthropic=ANTHROPIC_SONNET_MODEL,
     groq=GROQ_LLAMA_VERSATILE_MODEL,
     openrouter=OPENROUTER_LLAMA3_INSTRUCT_MODEL,
+    ollama=OLLAMA_DEFAULT_MODEL,
 )
 
 MULTI_MODEL_DEFAULTS = ProviderModelDefaults(
@@ -110,6 +117,7 @@ COST_ROUTER_DEFAULTS = ProviderModelDefaults(
     anthropic=ANTHROPIC_SONNET_MODEL,
     groq=GROQ_MIXTRAL_MODEL,
     openrouter=OPENROUTER_AUTO_MODEL,
+    ollama=OLLAMA_DEFAULT_MODEL,
 )
 
 API_INTEGRATION_FALLBACK_DEFAULTS = ProviderModelDefaults(

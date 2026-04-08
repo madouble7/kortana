@@ -38,6 +38,7 @@ logger = get_logger(__name__)
 class ModelProvider(Enum):
     """Available model providers"""
 
+    OLLAMA = "ollama"  # Local, free, unlimited, private
     GROQ = "groq"  # Free, fast, unlimited
     OPENROUTER = "openrouter"  # Cost-efficient routing
     GEMINI = "gemini"  # Free tier with quotas
@@ -154,9 +155,7 @@ class CostOptimizedModelRouter:
             return 0
         return remaining
 
-    def _provider_available(
-        self, provider: ModelProvider, budget_limit: float
-    ) -> bool:
+    def _provider_available(self, provider: ModelProvider, budget_limit: float) -> bool:
         """Return True when the provider is not cooling down and within budget."""
         return (
             provider in self.configs
@@ -209,6 +208,24 @@ class CostOptimizedModelRouter:
     def init_providers(self) -> None:
         """Initialize all available providers from environment"""
         import os
+
+        # Ollama: Local, free, unlimited, private (highest priority)
+        ollama_url = os.getenv("OLLAMA_API_URL", "http://localhost:11434")
+        if os.getenv("OLLAMA_ENABLED", "true").lower() == "true":
+            self._register_provider(
+                ModelConfig(
+                    provider=ModelProvider.OLLAMA,
+                    api_key="ollama",  # Ollama needs no real key
+                    model_name=COST_ROUTER_DEFAULTS.ollama,
+                    cost_per_1k_input=0.0,
+                    cost_per_1k_output=0.0,
+                    quota_limit=None,
+                    max_tokens=8192,
+                    priority=0,  # Highest priority (local, free)
+                    is_free_tier=True,
+                )
+            )
+            logger.info("✅ Ollama provider initialized (LOCAL, FREE, %s)", ollama_url)
 
         # Groq: Free tier, unlimited, fast
         if groq_key := os.getenv("GROQ_API_KEY"):
@@ -313,44 +330,52 @@ class CostOptimizedModelRouter:
         # Map task types to preferred providers (cost-first: free → cheap → premium)
         task_preferences = {
             TaskType.CODE_GENERATION: [
+                ModelProvider.OLLAMA,
                 ModelProvider.GROQ,
                 ModelProvider.GEMINI,
                 ModelProvider.OPENROUTER,
                 ModelProvider.OPENAI,
             ],
             TaskType.ANALYSIS: [
+                ModelProvider.OLLAMA,
                 ModelProvider.GROQ,
                 ModelProvider.GEMINI,
                 ModelProvider.OPENROUTER,
                 ModelProvider.OPENAI,
             ],
             TaskType.DECISION: [
+                ModelProvider.OLLAMA,
                 ModelProvider.GROQ,
                 ModelProvider.GEMINI,
                 ModelProvider.OPENROUTER,
                 ModelProvider.CLAUDE,
             ],
             TaskType.VERIFICATION: [
+                ModelProvider.OLLAMA,
                 ModelProvider.GROQ,
                 ModelProvider.GEMINI,
                 ModelProvider.CLAUDE,
             ],
             TaskType.PLANNING: [
+                ModelProvider.OLLAMA,
                 ModelProvider.GROQ,
                 ModelProvider.GEMINI,
                 ModelProvider.OPENROUTER,
             ],
             TaskType.SUMMARY: [
+                ModelProvider.OLLAMA,
                 ModelProvider.GROQ,
                 ModelProvider.GEMINI,
                 ModelProvider.OPENROUTER,
             ],
             TaskType.RETRIEVAL: [
+                ModelProvider.OLLAMA,
                 ModelProvider.GROQ,
                 ModelProvider.GEMINI,
                 ModelProvider.OPENROUTER,
             ],
             TaskType.CORRECTION: [
+                ModelProvider.OLLAMA,
                 ModelProvider.GROQ,
                 ModelProvider.GEMINI,
                 ModelProvider.CLAUDE,
@@ -358,11 +383,7 @@ class CostOptimizedModelRouter:
         }
 
         preferred = task_preferences.get(task_type, [ModelProvider.GROQ])
-        available = [
-            p
-            for p in preferred
-            if self._provider_available(p, budget_limit)
-        ]
+        available = [p for p in preferred if self._provider_available(p, budget_limit)]
 
         if not available:
             # Fallback: use any configured provider that is not cooling down.

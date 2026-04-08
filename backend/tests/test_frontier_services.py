@@ -625,3 +625,63 @@ FAILED test_something.py::test_bad
         assert "passed" in result
         assert "failed" in result
         assert "returncode" in result
+
+
+# ---- ollama integration (model router + consensus) ----
+
+
+class TestOllamaIntegration:
+    """Verify Ollama wiring in model router and consensus engine."""
+
+    def test_ollama_in_model_provider_enum(self):
+        from src.kortana.cost_optimized_model_router import ModelProvider
+
+        assert ModelProvider.OLLAMA.value == "ollama"
+
+    def test_ollama_model_defaults_present(self):
+        from src.kortana.provider_model_defaults import (
+            AI_CONSENSUS_DEFAULTS,
+            COST_ROUTER_DEFAULTS,
+            OLLAMA_DEFAULT_MODEL,
+        )
+
+        assert OLLAMA_DEFAULT_MODEL == "qwen3:8b"
+        assert COST_ROUTER_DEFAULTS.ollama == "qwen3:8b"
+        assert AI_CONSENSUS_DEFAULTS.ollama == "qwen3:8b"
+
+    def test_ollama_in_core_catalog(self):
+        from src.kortana.provider_model_defaults import (
+            DEFAULT_CORE_MODEL_CATALOG,
+            OLLAMA_LLAMA32_1B_MODEL,
+            OLLAMA_QWEN3_8B_MODEL,
+        )
+
+        assert OLLAMA_QWEN3_8B_MODEL in DEFAULT_CORE_MODEL_CATALOG
+        assert OLLAMA_LLAMA32_1B_MODEL in DEFAULT_CORE_MODEL_CATALOG
+
+    def test_ollama_first_in_task_preferences(self):
+        from src.kortana.cost_optimized_model_router import (
+            CostOptimizedModelRouter,
+            ModelProvider,
+            TaskType,
+        )
+
+        router = CostOptimizedModelRouter()
+        # Ollama should be available if OLLAMA_ENABLED defaults true
+        providers = router.select_for_task(TaskType.CODE_GENERATION)
+        if ModelProvider.OLLAMA in router.configs:
+            assert providers[0] == ModelProvider.OLLAMA
+
+    @patch.dict("os.environ", {"OLLAMA_ENABLED": "false"})
+    def test_ollama_disabled_via_env(self):
+        from src.kortana.services.ai_consensus import AIConsensusEngine
+
+        engine = AIConsensusEngine()
+        engine._init_providers()
+        assert "ollama" not in engine._providers
+
+    def test_provider_model_defaults_has_ollama_field(self):
+        from src.kortana.provider_model_defaults import ProviderModelDefaults
+
+        d = ProviderModelDefaults(ollama="test-model")
+        assert d.ollama == "test-model"

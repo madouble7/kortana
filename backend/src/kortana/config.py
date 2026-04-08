@@ -16,7 +16,10 @@ if TYPE_CHECKING:
 else:
     try:
         from dotenv import dotenv_values, load_dotenv
-    except ModuleNotFoundError:  # pragma: no cover - exercised in packaging/runtime smoke tests
+    except (
+        ModuleNotFoundError
+    ):  # pragma: no cover - exercised in packaging/runtime smoke tests
+
         def load_dotenv(
             dotenv_path: str | PathLike[str] | None = None,
             stream: IO[str] | None = None,
@@ -39,6 +42,7 @@ else:
             """Return no .env values when python-dotenv is unavailable."""
             del dotenv_path, stream, verbose, interpolate, encoding
             return {}
+
 
 _ENV_FILENAMES = (".env",)
 _PLACEHOLDER_VALUES = {
@@ -160,6 +164,7 @@ if (_get_env("KORTANA_SKIP_DOTENV") or "false").lower() != "true":
 
 class Settings:
     """Application settings loaded from environment variables"""
+
     def __init__(self) -> None:
         # Environment
         self.ENVIRONMENT: str = _get_env("ENVIRONMENT", "development") or "development"
@@ -194,6 +199,12 @@ class Settings:
         self.GOOGLE_PROJECT_ID: str = _get_env("GOOGLE_PROJECT_ID", "") or ""
         self.OPENROUTER_API_KEY: str | None = _get_env("OPENROUTER_API_KEY")
         self.GROQ_API_KEY: str | None = _get_env("GROQ_API_KEY")
+        self.OLLAMA_API_URL: str = (
+            _get_env("OLLAMA_API_URL", "http://localhost:11434")
+            or "http://localhost:11434"
+        )
+        self.OLLAMA_ENABLED: bool = _get_bool_env("OLLAMA_ENABLED", "true")
+        self.OLLAMA_MODEL: str = _get_env("OLLAMA_MODEL", "qwen3:8b") or "qwen3:8b"
         self.GEMINI_API_KEY: str = (
             _get_env("GEMINI_API_KEY") or _get_env("GOOGLE_API_KEY") or ""
         )

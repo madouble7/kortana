@@ -1119,6 +1119,57 @@ async def chat_with_gemini(payload: dict[str, Any]) -> dict[str, Any]:
                 }
             except Exception as exc:
                 logger.warning("Gemini fallback failed: %s", exc)
+
+        # Ultimate fallback: local Ollama (always available, no API key needed)
+        try:
+            import os
+
+            import httpx as _httpx
+
+            ollama_url = os.getenv("OLLAMA_API_URL", "http://localhost:11434")
+            ollama_model = os.getenv("OLLAMA_MODEL", "qwen3:8b")
+            if os.getenv("OLLAMA_ENABLED", "true").lower() == "true":
+                async with _httpx.AsyncClient(timeout=60.0) as _client:
+                    ollama_resp = await _client.post(
+                        f"{ollama_url}/api/chat",
+                        json={
+                            "model": ollama_model,
+                            "messages": [{"role": "user", "content": message}],
+                            "stream": False,
+                        },
+                    )
+                    if ollama_resp.status_code == 200:
+                        ollama_data = ollama_resp.json()
+                        ollama_text = ollama_data.get("message", {}).get("content", "")
+                        if ollama_text:
+                            answer, tasks_queued = await _extract_and_queue_tasks(
+                                ollama_text
+                            )
+                            await _reset_openai_chat_state(
+                                session_id, reason="ollama_fallback_response"
+                            )
+                            assistant_metadata = _build_assistant_turn_metadata(
+                                provider="ollama",
+                                model=ollama_model,
+                                lane="core",
+                            )
+                            await _persist_messages(
+                                session_id,
+                                message,
+                                answer,
+                                assistant_phase="final_answer",
+                                assistant_metadata=assistant_metadata,
+                            )
+                            return {
+                                "response": answer,
+                                "tasks_queued": tasks_queued,
+                                "phase": "final_answer",
+                                "voice_params": voice_params,
+                                **assistant_metadata,
+                            }
+        except Exception as exc:
+            logger.warning("Ollama fallback failed: %s", exc)
+
         raise HTTPException(status_code=503, detail="All AI providers unavailable.")
 
     answer, tasks_queued = await _extract_and_queue_tasks(result.answer)

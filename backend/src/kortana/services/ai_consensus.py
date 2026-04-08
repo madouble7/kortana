@@ -127,6 +127,7 @@ class AIConsensusEngine:
     # ----- provider init (lazy, identical pattern to multi_model_ai) -----
 
     def _init_providers(self) -> None:
+        self._try_ollama()
         self._try_gemini()
         self._try_openai()
         self._try_anthropic()
@@ -180,9 +181,7 @@ class AIConsensusEngine:
             import anthropic
 
             client = anthropic.AsyncAnthropic(api_key=key)
-            if not self._model_allowed(
-                "anthropic", AI_CONSENSUS_DEFAULTS.anthropic
-            ):
+            if not self._model_allowed("anthropic", AI_CONSENSUS_DEFAULTS.anthropic):
                 return
             self._providers["anthropic"] = {
                 "client": client,
@@ -222,9 +221,7 @@ class AIConsensusEngine:
                 base_url="https://openrouter.ai/api/v1",
                 http_client=httpx.AsyncClient(timeout=30.0),
             )
-            if not self._model_allowed(
-                "openrouter", AI_CONSENSUS_DEFAULTS.openrouter
-            ):
+            if not self._model_allowed("openrouter", AI_CONSENSUS_DEFAULTS.openrouter):
                 return
             self._providers["openrouter"] = {
                 "client": client,
@@ -233,6 +230,29 @@ class AIConsensusEngine:
             self._stats["openrouter"] = ProviderStats()
         except Exception as e:
             logger.warning(f"OpenRouter init failed: {e}")
+
+    def _try_ollama(self) -> None:
+        if os.getenv("OLLAMA_ENABLED", "true").lower() != "true":
+            return
+        try:
+            import openai as openai_mod
+
+            base_url = os.getenv("OLLAMA_API_URL", "http://localhost:11434")
+            client = openai_mod.AsyncOpenAI(
+                api_key="ollama",
+                base_url=f"{base_url}/v1",
+                http_client=httpx.AsyncClient(timeout=60.0),
+            )
+            model = AI_CONSENSUS_DEFAULTS.ollama or "qwen3:8b"
+            if not self._model_allowed("ollama", model):
+                return
+            self._providers["ollama"] = {
+                "client": client,
+                "model": model,
+            }
+            self._stats["ollama"] = ProviderStats()
+        except Exception as e:
+            logger.warning(f"Ollama init failed: {e}")
 
     # ----- provider dispatch -----
 
@@ -297,8 +317,8 @@ class AIConsensusEngine:
             )
             return text_out
 
-        # OpenAI-compatible (openai / groq / openrouter)
-        if name in ("groq", "openrouter"):
+        # OpenAI-compatible (openai / groq / openrouter / ollama)
+        if name in ("groq", "openrouter", "ollama"):
             messages: list[dict[str, str]] = []
             if system:
                 messages.append({"role": "system", "content": system})
@@ -306,9 +326,7 @@ class AIConsensusEngine:
             resp = await prov["client"].chat.completions.create(
                 model=prov["model"], messages=messages, max_tokens=max_tokens
             )
-            return (
-                str(resp.choices[0].message.content or "") if resp.choices else ""
-            )
+            return str(resp.choices[0].message.content or "") if resp.choices else ""
 
         if name == "anthropic":
             kwargs: dict[str, Any] = {
@@ -319,9 +337,7 @@ class AIConsensusEngine:
             if system:
                 kwargs["system"] = system
             resp = await prov["client"].messages.create(**kwargs)
-            return (
-                str(getattr(resp.content[0], "text", "")) if resp.content else ""
-            )
+            return str(getattr(resp.content[0], "text", "")) if resp.content else ""
 
         raise ValueError(f"Unknown provider: {name}")
 
