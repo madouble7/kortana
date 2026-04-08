@@ -333,6 +333,60 @@ async def _build_live_context(session_id: str = "default") -> str:
     except Exception:
         logger.debug("Live context: revelation engine unavailable")
 
+    # 8. Behavioral calibration — what works with matt
+    try:
+        from src.kortana.services.behavioral_adaptation import get_behavioral_guidance
+
+        guidance = get_behavioral_guidance()
+        if guidance:
+            lines.append(f"\n{guidance}")
+    except Exception:
+        logger.debug("Live context: behavioral guidance unavailable")
+
+    # 9. Dev awareness — what matt is working on right now
+    try:
+        from src.kortana.services.ambient_awareness import build_dev_awareness_context
+
+        dev_ctx = build_dev_awareness_context()
+        if dev_ctx:
+            lines.append(f"\n{dev_ctx}")
+    except Exception:
+        logger.debug("Live context: dev awareness unavailable")
+
+    # 10. Dream state — thoughts from when matt was away
+    try:
+        from src.kortana.services.dream_state import build_dream_context
+
+        dream_ctx = build_dream_context()
+        if dream_ctx:
+            lines.append(f"\n{dream_ctx}")
+    except Exception:
+        logger.debug("Live context: dream context unavailable")
+
+    # 11. Identity evolution — self-awareness of personality growth
+    try:
+        from src.kortana.services.identity_evolution import generate_identity_narrative
+
+        identity_ctx = generate_identity_narrative()
+        if identity_ctx:
+            lines.append(f"\n{identity_ctx}")
+    except Exception:
+        logger.debug("Live context: identity narrative unavailable")
+
+    # 12. Temporal awareness — current time context
+    try:
+        from src.kortana.services.temporal_consciousness import get_temporal_context
+
+        temporal = get_temporal_context()
+        lines.append("\n## temporal awareness")
+        lines.append(
+            f"- current time: {temporal['time_period']} on {temporal['day_of_week']}, {temporal['date_string']}"
+        )
+        if temporal.get("is_weekend"):
+            lines.append("- it's the weekend")
+    except Exception:
+        logger.debug("Live context: temporal context unavailable")
+
     return "\n".join(lines)
 
 
@@ -903,6 +957,58 @@ async def chat_with_gemini(payload: dict[str, Any]) -> dict[str, Any]:
         }
 
     voice_mode: bool = bool(payload.get("voice_mode"))
+
+    # evolve voice based on user message mood
+    voice_params: dict[str, str] | None = None
+    if voice_mode:
+        try:
+            from src.kortana.services.voice_evolution import evolve_voice
+
+            voice_params = evolve_voice(message)
+        except Exception:
+            pass
+
+    # adapt behavioral parameters based on user engagement signals
+    try:
+        from src.kortana.services.behavioral_adaptation import adapt_behavior
+
+        adapt_behavior(message)
+    except Exception:
+        pass
+
+    # check for voice commands (voice mode only)
+    action_result = None
+    if voice_mode:
+        try:
+            from src.kortana.services.intent_executor import process_voice_command
+
+            action_result = await process_voice_command(message)
+        except Exception:
+            pass
+
+    # if a voice command was detected and executed, return it directly
+    if action_result:
+        spoken = action_result.get("spoken", "done.")
+        await _persist_messages(
+            session_id,
+            message,
+            spoken,
+            assistant_phase="voice_action",
+            assistant_metadata=_build_assistant_turn_metadata(
+                provider="intent_executor"
+            ),
+        )
+        return {
+            "response": spoken,
+            "tasks_queued": [],
+            "phase": "voice_action",
+            "voice_params": voice_params,
+            "action_result": action_result,
+            "provider": "intent_executor",
+            "stateful": False,
+            "used_previous_response_id": False,
+        }
+
     system = await _assemble_chat_system_prompt(
         live_context,
         session_id=session_id,
@@ -1008,6 +1114,7 @@ async def chat_with_gemini(payload: dict[str, Any]) -> dict[str, Any]:
                     "response": answer,
                     "tasks_queued": tasks_queued,
                     "phase": "final_answer",
+                    "voice_params": voice_params,
                     **assistant_metadata,
                 }
             except Exception as exc:
@@ -1034,10 +1141,21 @@ async def chat_with_gemini(payload: dict[str, Any]) -> dict[str, Any]:
         assistant_phase="final_answer",
         assistant_metadata=assistant_metadata,
     )
+
+    # measure interaction for identity evolution
+    try:
+        from src.kortana.services.identity_evolution import measure_interaction
+
+        mood = voice_params.get("mood", "neutral") if voice_params else "neutral"
+        measure_interaction(message, answer, mood=mood)
+    except Exception:
+        pass
+
     return {
         "response": answer,
         "tasks_queued": tasks_queued,
         "phase": "final_answer",
+        "voice_params": voice_params,
         **assistant_metadata,
     }
 
@@ -1084,6 +1202,21 @@ async def stream_chat_with_gemini(payload: dict[str, Any]) -> StreamingResponse:
                 return
 
             _stream_voice_mode: bool = bool(payload.get("voice_mode"))
+
+            # evolve voice based on user message mood
+            _stream_voice_params: dict[str, str] | None = None
+            if _stream_voice_mode:
+                try:
+                    from src.kortana.services.voice_evolution import evolve_voice
+
+                    _stream_voice_params = evolve_voice(message)
+                except Exception:
+                    pass
+
+            # emit voice params as early SSE event so frontend can prep
+            if _stream_voice_params:
+                yield _sse_event("voice_params", _stream_voice_params)
+
             system = await _assemble_chat_system_prompt(
                 live_context,
                 session_id=session_id,

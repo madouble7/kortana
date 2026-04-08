@@ -4,9 +4,11 @@
  */
 
 import type {
+  AlwaysOnMetricsResponse,
   AutonomyStatus,
   ChatHistoryEntry,
   ChatPhase,
+  ConsciousnessStatus,
   DaemonCycle,
   DaemonStatus,
   GitHubIssue,
@@ -14,14 +16,12 @@ import type {
   IssueQueueResponse,
   Memory,
   ModelLaneSummary,
-  AlwaysOnMetricsResponse,
-  ConsciousnessStatus,
+  QueuedTaskSummary,
   RevelationListResponse,
   RevelationSynthesisResponse,
-  QueuedTaskSummary,
   Task,
-} from '../types';
-import { getApiBaseUrl } from './runtimeConfig';
+} from "../types";
+import { getApiBaseUrl } from "./runtimeConfig";
 
 const API_URL = getApiBaseUrl();
 
@@ -51,11 +51,12 @@ interface ChatStreamHandlers {
 
 interface ChatStreamOptions {
   signal?: AbortSignal;
+  voiceMode?: boolean;
 }
 
 interface ChatHistoryResponse {
   messages?: Array<{
-    role: ChatHistoryEntry['role'];
+    role: ChatHistoryEntry["role"];
     content: string;
     created_at?: string;
     phase?: ChatPhase;
@@ -81,7 +82,7 @@ interface ApiError {
 }
 
 const toIsoTimestamp = (value?: string) => value || new Date().toISOString();
-const CHAT_PHASES: ChatPhase[] = ['analysis', 'commentary', 'final_answer'];
+const CHAT_PHASES: ChatPhase[] = ["analysis", "commentary", "final_answer"];
 
 const parseRetryAfterSeconds = (value: string | null): number | undefined => {
   if (!value) {
@@ -105,27 +106,28 @@ const parseRetryAfterSeconds = (value: string | null): number | undefined => {
 const buildApiError = (
   status: number,
   errorData: unknown,
-  headers?: Headers
+  headers?: Headers,
 ): Error & ApiError => {
   const details = (errorData ?? {}) as Record<string, unknown>;
-  const retryAfterSeconds = parseRetryAfterSeconds(headers?.get('retry-after') ?? null)
-    ?? (typeof details.retry_after === 'number' && details.retry_after >= 0
+  const retryAfterSeconds =
+    parseRetryAfterSeconds(headers?.get("retry-after") ?? null) ??
+    (typeof details.retry_after === "number" && details.retry_after >= 0
       ? Math.ceil(details.retry_after)
-      : typeof details.retry_after === 'string'
+      : typeof details.retry_after === "string"
         ? parseRetryAfterSeconds(details.retry_after)
         : undefined);
   const err = new Error(
-    typeof details.message === 'string'
+    typeof details.message === "string"
       ? details.message
-      : typeof details.detail === 'string'
+      : typeof details.detail === "string"
         ? details.detail
         : status === 429
           ? retryAfterSeconds
             ? `Rate limit reached. Try again in ${retryAfterSeconds}s.`
-            : 'Rate limit reached. Please wait a moment and try again.'
+            : "Rate limit reached. Please wait a moment and try again."
           : status === 503
-            ? 'Service temporarily unavailable. Try again shortly.'
-            : 'Request failed'
+            ? "Service temporarily unavailable. Try again shortly."
+            : "Request failed",
   ) as Error & ApiError;
   err.status = status;
   err.details = errorData;
@@ -137,15 +139,16 @@ const buildApiError = (
 };
 
 const buildNetworkError = (error: unknown): Error & ApiError => {
-  const isAborted = error instanceof DOMException
-    ? error.name === 'AbortError'
-    : typeof error === 'object' && error !== null && 'name' in error
-      ? (error as { name?: string }).name === 'AbortError'
-      : false;
+  const isAborted =
+    error instanceof DOMException
+      ? error.name === "AbortError"
+      : typeof error === "object" && error !== null && "name" in error
+        ? (error as { name?: string }).name === "AbortError"
+        : false;
   const err = new Error(
     isAborted
-      ? 'Generation stopped.'
-      : 'Network error. Check that the backend is reachable.'
+      ? "Generation stopped."
+      : "Network error. Check that the backend is reachable.",
   ) as Error & ApiError;
   err.status = 0;
   err.details = error;
@@ -155,23 +158,27 @@ const buildNetworkError = (error: unknown): Error & ApiError => {
   return err;
 };
 
-const STREAM_FALLBACK_STATUSES = new Set([404, 405, 406, 426, 500, 501, 502, 503, 504]);
+const STREAM_FALLBACK_STATUSES = new Set([
+  404, 405, 406, 426, 500, 501, 502, 503, 504,
+]);
 
 const normalizeString = (value: unknown): string | undefined => {
-  return typeof value === 'string' && value.trim() ? value : undefined;
+  return typeof value === "string" && value.trim() ? value : undefined;
 };
 
 const normalizeBoolean = (value: unknown): boolean | undefined => {
-  return typeof value === 'boolean' ? value : undefined;
+  return typeof value === "boolean" ? value : undefined;
 };
 
 const normalizeChatPhase = (value: unknown): ChatPhase | undefined => {
-  return typeof value === 'string' && CHAT_PHASES.includes(value as ChatPhase)
+  return typeof value === "string" && CHAT_PHASES.includes(value as ChatPhase)
     ? (value as ChatPhase)
     : undefined;
 };
 
-const normalizeQueuedTasks = (value: unknown): QueuedTaskSummary[] | undefined => {
+const normalizeQueuedTasks = (
+  value: unknown,
+): QueuedTaskSummary[] | undefined => {
   if (!Array.isArray(value)) {
     return undefined;
   }
@@ -205,8 +212,10 @@ const normalizeChatSendResponse = (value: unknown): ChatSendResponse => {
     response_id: normalizeString(data.response_id),
     stateful: normalizeBoolean(data.stateful),
     used_previous_response_id: normalizeBoolean(data.used_previous_response_id),
-    input_tokens: typeof data.input_tokens === 'number' ? data.input_tokens : undefined,
-    output_tokens: typeof data.output_tokens === 'number' ? data.output_tokens : undefined,
+    input_tokens:
+      typeof data.input_tokens === "number" ? data.input_tokens : undefined,
+    output_tokens:
+      typeof data.output_tokens === "number" ? data.output_tokens : undefined,
     tasks_queued: normalizeQueuedTasks(data.tasks_queued),
   };
 };
@@ -214,73 +223,79 @@ const normalizeChatSendResponse = (value: unknown): ChatSendResponse => {
 const normalizeChatHistoryResponse = (value: unknown): ChatHistoryResponse => {
   const data = value as Record<string, unknown>;
   const messages = Array.isArray(data.messages)
-    ? data.messages.reduce<NonNullable<ChatHistoryResponse['messages']>>(
-      (acc, message) => {
-        const m = message as Record<string, unknown>;
-        const role: ChatHistoryEntry['role'] | null =
-          m.role === 'user' ? 'user' : m.role === 'assistant' ? 'assistant' : null;
-        const content = normalizeString(m.content);
-        if (!role || !content) {
-          return acc;
-        }
+    ? data.messages.reduce<NonNullable<ChatHistoryResponse["messages"]>>(
+        (acc, message) => {
+          const m = message as Record<string, unknown>;
+          const role: ChatHistoryEntry["role"] | null =
+            m.role === "user"
+              ? "user"
+              : m.role === "assistant"
+                ? "assistant"
+                : null;
+          const content = normalizeString(m.content);
+          if (!role || !content) {
+            return acc;
+          }
 
-        acc.push({
-          role,
-          content,
-          created_at: normalizeString(m.created_at),
-          phase: normalizeChatPhase(m.phase),
-          provider: normalizeString(m.provider),
-          model: normalizeString(m.model),
-          lane: normalizeString(m.lane),
-          response_id: normalizeString(m.response_id),
-          stateful: normalizeBoolean(m.stateful),
-          used_previous_response_id: normalizeBoolean(m.used_previous_response_id),
-        });
-        return acc;
-      },
-      []
-    )
+          acc.push({
+            role,
+            content,
+            created_at: normalizeString(m.created_at),
+            phase: normalizeChatPhase(m.phase),
+            provider: normalizeString(m.provider),
+            model: normalizeString(m.model),
+            lane: normalizeString(m.lane),
+            response_id: normalizeString(m.response_id),
+            stateful: normalizeBoolean(m.stateful),
+            used_previous_response_id: normalizeBoolean(
+              m.used_previous_response_id,
+            ),
+          });
+          return acc;
+        },
+        [],
+      )
     : undefined;
 
   return { messages };
 };
 
-const normalizeTaskStatus = (status?: string): Task['status'] => {
+const normalizeTaskStatus = (status?: string): Task["status"] => {
   switch (status) {
-    case 'in_progress':
-    case 'executing':
-    case 'running':
-      return 'running';
-    case 'completed':
-      return 'completed';
-    case 'failed':
-      return 'failed';
-    case 'waiting_for_ho':
-      return 'waiting_for_ho';
-    case 'pending':
+    case "in_progress":
+    case "executing":
+    case "running":
+      return "running";
+    case "completed":
+      return "completed";
+    case "failed":
+      return "failed";
+    case "waiting_for_ho":
+      return "waiting_for_ho";
+    case "pending":
     default:
-      return 'pending';
+      return "pending";
   }
 };
 
-const normalizePriority = (priority: unknown): Task['priority'] => {
-  if (priority === 'low' || priority === 'medium' || priority === 'high') {
+const normalizePriority = (priority: unknown): Task["priority"] => {
+  if (priority === "low" || priority === "medium" || priority === "high") {
     return priority;
   }
-  if (typeof priority === 'number') {
-    if (priority <= 3) return 'low';
-    if (priority >= 7) return 'high';
+  if (typeof priority === "number") {
+    if (priority <= 3) return "low";
+    if (priority >= 7) return "high";
   }
-  return 'medium';
+  return "medium";
 };
 
-const priorityToNumber = (priority?: Task['priority']): number => {
+const priorityToNumber = (priority?: Task["priority"]): number => {
   switch (priority) {
-    case 'low':
+    case "low":
       return 3;
-    case 'high':
+    case "high":
       return 8;
-    case 'medium':
+    case "medium":
     default:
       return 5;
   }
@@ -290,18 +305,21 @@ const normalizeTask = (task: unknown): Task => {
   const t = task as Record<string, unknown>;
   const createdAt = toIsoTimestamp(t.created_at as string | undefined);
   return {
-    id: String(t.id ?? ''),
-    title: String(t.title ?? t.name ?? 'Untitled Task'),
+    id: String(t.id ?? ""),
+    title: String(t.title ?? t.name ?? "Untitled Task"),
     description: t.description as string | undefined,
     status: normalizeTaskStatus(t.status as string | undefined),
     priority: normalizePriority(t.priority),
-    classification: (t.classification as 'auto' | 'ho' | 'approval' | undefined) ?? 'auto',
+    classification:
+      (t.classification as "auto" | "ho" | "approval" | undefined) ?? "auto",
     created_at: createdAt,
-    updated_at: toIsoTimestamp((t.updated_at as string | undefined) ?? createdAt),
+    updated_at: toIsoTimestamp(
+      (t.updated_at as string | undefined) ?? createdAt,
+    ),
     result: t.result as string | undefined,
     error: t.error as string | undefined,
     hop_capable: t.hop_capable as boolean | undefined,
-    hop_executed_by: t.hop_executed_by as 'human' | 'hop' | undefined,
+    hop_executed_by: t.hop_executed_by as "human" | "hop" | undefined,
     ho_scaffold: t.ho_scaffold as string | undefined,
   };
 };
@@ -309,8 +327,8 @@ const normalizeTask = (task: unknown): Task => {
 const normalizeMemory = (memory: unknown): Memory => {
   const m = memory as Record<string, unknown>;
   return {
-    id: String(m.id ?? ''),
-    content: (m.content ?? m.text ?? '') as string,
+    id: String(m.id ?? ""),
+    content: (m.content ?? m.text ?? "") as string,
     embedding: m.embedding as number[] | undefined,
     created_at: toIsoTimestamp(m.created_at as string | undefined),
     relevance_score: (m.relevance_score ?? m.score) as number | undefined,
@@ -321,17 +339,23 @@ const normalizeGitHubIssue = (issue: unknown): GitHubIssue => {
   const i = issue as Record<string, unknown>;
   const labels = Array.isArray(i.labels)
     ? i.labels
-      .map((label: unknown) => (typeof label === 'string' ? label : (label as Record<string, unknown>)?.name as string | undefined))
-      .filter((l): l is string => typeof l === 'string')
+        .map((label: unknown) =>
+          typeof label === "string"
+            ? label
+            : ((label as Record<string, unknown>)?.name as string | undefined),
+        )
+        .filter((l): l is string => typeof l === "string")
     : [];
 
   return {
     number: i.number as number,
-    title: (i.title ?? '') as string,
-    body: (i.body ?? '') as string,
-    state: (i.state ?? 'open') as 'open' | 'closed',
+    title: (i.title ?? "") as string,
+    body: (i.body ?? "") as string,
+    state: (i.state ?? "open") as "open" | "closed",
     created_at: toIsoTimestamp(i.created_at as string | undefined),
-    updated_at: toIsoTimestamp((i.updated_at ?? i.created_at) as string | undefined),
+    updated_at: toIsoTimestamp(
+      (i.updated_at ?? i.created_at) as string | undefined,
+    ),
     labels,
   };
 };
@@ -340,9 +364,9 @@ const parseRepo = (repo?: string): { owner: string; name: string } | null => {
   if (!repo) return null;
   const trimmed = repo.trim();
   if (!trimmed) return null;
-  const [owner, name] = trimmed.split('/');
+  const [owner, name] = trimmed.split("/");
   if (!owner || !name) {
-    throw new Error('Invalid repo format. Use owner/repo.');
+    throw new Error("Invalid repo format. Use owner/repo.");
   }
   return { owner, name };
 };
@@ -374,12 +398,12 @@ class ApiClient {
   private async request<T>(
     endpoint: string,
     options: RequestInit = {},
-    trackAvailability = false
+    trackAvailability = false,
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
 
     const headers = {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...options.headers,
     };
 
@@ -412,7 +436,7 @@ class ApiClient {
 
   // Health check
   async health(): Promise<HealthStatus> {
-    const data = await this.request<HealthStatus>('/api/health', {}, true);
+    const data = await this.request<HealthStatus>("/api/health", {}, true);
     return {
       ...data,
       timestamp: toIsoTimestamp(data?.timestamp),
@@ -424,15 +448,15 @@ class ApiClient {
     message: string,
     history?: ChatHistoryEntry[],
     conversationId?: string,
-    sessionId?: string
+    sessionId?: string,
   ): Promise<ChatSendResponse> {
-    const data = await this.request<unknown>('/api/gemini/chat', {
-      method: 'POST',
+    const data = await this.request<unknown>("/api/gemini/chat", {
+      method: "POST",
       body: JSON.stringify({
         message,
         history: history || [],
         conversation_id: conversationId,
-        session_id: sessionId || 'default',
+        session_id: sessionId || "default",
       }),
     });
     return normalizeChatSendResponse(data);
@@ -444,14 +468,14 @@ class ApiClient {
     conversationId: string | undefined,
     sessionId: string | undefined,
     handlers: ChatStreamHandlers,
-    options: ChatStreamOptions = {}
+    options: ChatStreamOptions = {},
   ): Promise<void> {
     const fallbackToStandardChat = async () => {
       const response = await this.sendChatMessage(
         message,
         history,
         conversationId,
-        sessionId
+        sessionId,
       );
       handlers.onStart?.(response);
       if (response.phase) {
@@ -465,16 +489,17 @@ class ApiClient {
 
     try {
       const response = await fetch(`${this.baseURL}/api/gemini/chat/stream`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         signal: options.signal,
         body: JSON.stringify({
           message,
           history: history || [],
           conversation_id: conversationId,
-          session_id: sessionId || 'default',
+          session_id: sessionId || "default",
+          voice_mode: options.voiceMode || false,
         }),
       });
 
@@ -494,17 +519,17 @@ class ApiClient {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let buffer = '';
+      let buffer = "";
 
       const dispatchEvent = (rawEvent: string) => {
-        const lines = rawEvent.split('\n');
-        let eventName = 'message';
+        const lines = rawEvent.split("\n");
+        let eventName = "message";
         const dataLines: string[] = [];
 
         for (const line of lines) {
-          if (line.startsWith('event:')) {
+          if (line.startsWith("event:")) {
             eventName = line.slice(6).trim();
-          } else if (line.startsWith('data:')) {
+          } else if (line.startsWith("data:")) {
             dataLines.push(line.slice(5).trimStart());
           }
         }
@@ -515,7 +540,7 @@ class ApiClient {
 
         let payload: unknown = {};
         try {
-          payload = JSON.parse(dataLines.join('\n'));
+          payload = JSON.parse(dataLines.join("\n"));
         } catch {
           return;
         }
@@ -523,27 +548,29 @@ class ApiClient {
         const data = payload as Record<string, unknown>;
         sawMeaningfulEvent = true;
         switch (eventName) {
-          case 'start':
+          case "start":
             handlers.onStart?.(normalizeChatSendResponse(data));
             break;
-          case 'phase':
+          case "phase":
             if (normalizeChatPhase(data.phase)) {
               handlers.onPhase?.(normalizeChatPhase(data.phase)!);
             }
             break;
-          case 'delta':
-            if (typeof data.delta === 'string') {
+          case "delta":
+            if (typeof data.delta === "string") {
               handlers.onDelta?.(data.delta);
             }
             break;
-          case 'final':
+          case "final":
             sawTerminalEvent = true;
             handlers.onFinal?.(normalizeChatSendResponse(data));
             break;
-          case 'error':
+          case "error":
             sawTerminalEvent = true;
             handlers.onError?.(
-              typeof data.message === 'string' ? data.message : 'Streaming failed'
+              typeof data.message === "string"
+                ? data.message
+                : "Streaming failed",
             );
             break;
           default:
@@ -560,8 +587,8 @@ class ApiClient {
         }
 
         buffer += decoder.decode(value, { stream: true });
-        const events = buffer.split('\n\n');
-        buffer = events.pop() || '';
+        const events = buffer.split("\n\n");
+        buffer = events.pop() || "";
         for (const eventChunk of events) {
           const trimmed = eventChunk.trim();
           if (trimmed) {
@@ -580,18 +607,24 @@ class ApiClient {
           await fallbackToStandardChat();
           return;
         }
-        throw new Error('Stream ended before delivering a final response');
+        throw new Error("Stream ended before delivering a final response");
       }
     } catch (error) {
-      const apiError = ((error as ApiError).status !== undefined || (error as ApiError).isAborted)
-        ? error as ApiError
-        : buildNetworkError(error);
+      const apiError =
+        (error as ApiError).status !== undefined ||
+        (error as ApiError).isAborted
+          ? (error as ApiError)
+          : buildNetworkError(error);
 
       if (apiError.isAborted) {
         throw apiError;
       }
 
-      if (!sawMeaningfulEvent && apiError.status && STREAM_FALLBACK_STATUSES.has(apiError.status)) {
+      if (
+        !sawMeaningfulEvent &&
+        apiError.status &&
+        STREAM_FALLBACK_STATUSES.has(apiError.status)
+      ) {
         await fallbackToStandardChat();
         return;
       }
@@ -600,15 +633,18 @@ class ApiClient {
     }
   }
 
-  async getChatHistory(sessionId: string = 'default', limit: number = 40): Promise<ChatHistoryResponse> {
+  async getChatHistory(
+    sessionId: string = "default",
+    limit: number = 40,
+  ): Promise<ChatHistoryResponse> {
     const data = await this.request<unknown>(
-      `/api/gemini/chat/history?session_id=${encodeURIComponent(sessionId)}&limit=${limit}`
+      `/api/gemini/chat/history?session_id=${encodeURIComponent(sessionId)}&limit=${limit}`,
     );
     return normalizeChatHistoryResponse(data);
   }
 
   async getConversations() {
-    return this.request('/api/conversations');
+    return this.request("/api/conversations");
   }
 
   async getConversation(id: string) {
@@ -616,21 +652,25 @@ class ApiClient {
   }
 
   async getModelLaneSummary(): Promise<ModelLaneSummary> {
-    return this.request<ModelLaneSummary>('/api/system/model-lanes');
+    return this.request<ModelLaneSummary>("/api/system/model-lanes");
   }
 
   // Task endpoints
   async getTasks(status?: string): Promise<Task[]> {
-    const response = await this.request<unknown>('/api/task-queue');
+    const response = await this.request<unknown>("/api/task-queue");
     const r = response as Record<string, unknown>;
-    const tasks = Array.isArray(response) ? (response as unknown[]) : ((r.tasks as unknown[]) || []);
-    return tasks.map((task: unknown) => {
-      const normalized = normalizeTask(task);
-      if (status && normalized.status !== status) {
-        return null;
-      }
-      return normalized;
-    }).filter(Boolean) as Task[];
+    const tasks = Array.isArray(response)
+      ? (response as unknown[])
+      : (r.tasks as unknown[]) || [];
+    return tasks
+      .map((task: unknown) => {
+        const normalized = normalizeTask(task);
+        if (status && normalized.status !== status) {
+          return null;
+        }
+        return normalized;
+      })
+      .filter(Boolean) as Task[];
   }
 
   async getTask(id: string): Promise<Task> {
@@ -641,15 +681,15 @@ class ApiClient {
   async createTask(task: {
     title: string;
     description?: string;
-    priority?: Task['priority'];
+    priority?: Task["priority"];
   }) {
     const payload = {
       name: task.title,
       description: task.description,
       priority: priorityToNumber(task.priority),
     };
-    const created = await this.request<unknown>('/api/task-queue', {
-      method: 'POST',
+    const created = await this.request<unknown>("/api/task-queue", {
+      method: "POST",
       body: JSON.stringify(payload),
     });
     return normalizeTask(created);
@@ -659,60 +699,76 @@ class ApiClient {
     if (!updates?.status) {
       return this.getTask(id);
     }
-    const response = await this.request<unknown>(`/api/task-queue/${id}/status`, {
-      method: 'POST',
-      body: JSON.stringify({ status: updates.status }),
-    });
+    const response = await this.request<unknown>(
+      `/api/task-queue/${id}/status`,
+      {
+        method: "POST",
+        body: JSON.stringify({ status: updates.status }),
+      },
+    );
     return response;
   }
 
   async deleteTask(id: string) {
     return this.request(`/api/task-queue/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   }
 
   async executeTask(id: string) {
     return this.request(`/api/task-queue/execute/${id}`, {
-      method: 'POST',
+      method: "POST",
     });
   }
 
   // Task Approval endpoints
   async getApprovalQueue(): Promise<Record<string, unknown>[]> {
-    const data = await this.request<Record<string, unknown>>('/api/always-on/approval-queue');
+    const data = await this.request<Record<string, unknown>>(
+      "/api/always-on/approval-queue",
+    );
     return (data.items as Record<string, unknown>[] | undefined) || [];
   }
 
-  async getAlwaysOnIssueQueue(options: {
-    limit?: number;
-    hideLocal?: boolean;
-    activeOnly?: boolean;
-  } = {}): Promise<IssueQueueResponse> {
+  async getAlwaysOnIssueQueue(
+    options: {
+      limit?: number;
+      hideLocal?: boolean;
+      activeOnly?: boolean;
+    } = {},
+  ): Promise<IssueQueueResponse> {
     const params = new URLSearchParams();
-    params.set('limit', String(options.limit ?? 100));
-    params.set('hide_local', String(options.hideLocal ?? false));
-    params.set('active_only', String(options.activeOnly ?? false));
-    return this.request<IssueQueueResponse>(`/api/always-on/issue-queue?${params.toString()}`);
+    params.set("limit", String(options.limit ?? 100));
+    params.set("hide_local", String(options.hideLocal ?? false));
+    params.set("active_only", String(options.activeOnly ?? false));
+    return this.request<IssueQueueResponse>(
+      `/api/always-on/issue-queue?${params.toString()}`,
+    );
   }
 
   async getAlwaysOnMetrics(): Promise<AlwaysOnMetricsResponse> {
-    return this.request<AlwaysOnMetricsResponse>('/api/always-on/metrics');
+    return this.request<AlwaysOnMetricsResponse>("/api/always-on/metrics");
   }
 
-  async resolveApproval(taskId: string, approved: boolean, notes?: string): Promise<unknown> {
+  async resolveApproval(
+    taskId: string,
+    approved: boolean,
+    notes?: string,
+  ): Promise<unknown> {
     const params = new URLSearchParams();
-    params.append('approved', approved.toString());
-    if (notes) params.append('notes', notes);
+    params.append("approved", approved.toString());
+    if (notes) params.append("notes", notes);
 
-    return this.request(`/api/always-on/tasks/${taskId}/approve?${params.toString()}`, {
-      method: 'POST',
-    });
+    return this.request(
+      `/api/always-on/tasks/${taskId}/approve?${params.toString()}`,
+      {
+        method: "POST",
+      },
+    );
   }
 
   // Autonomy endpoints
   async getAutonomyStatus(): Promise<AutonomyStatus> {
-    const data = await this.request<unknown>('/api/autonomy/status');
+    const data = await this.request<unknown>("/api/autonomy/status");
     const d = data as Record<string, unknown>;
     const stats = (d.stats as Record<string, unknown>) || {};
     const pending = Number(stats.pending || 0);
@@ -726,10 +782,12 @@ class ApiClient {
     const failed = Number(stats.failed || 0);
     const total =
       Number(d.total_tasks || 0) || pending + running + completed + failed;
-    const recentTasks = d.recent_tasks as Array<Record<string, unknown>> | undefined;
+    const recentTasks = d.recent_tasks as
+      | Array<Record<string, unknown>>
+      | undefined;
 
     return {
-      status: total > 0 ? 'active' : 'inactive',
+      status: total > 0 ? "active" : "inactive",
       timestamp: toIsoTimestamp(),
       statistics: {
         total_tasks: total,
@@ -752,18 +810,18 @@ class ApiClient {
   }
 
   async triggerAutonomyCycle() {
-    return this.request('/api/autonomy/task-queue', {
-      method: 'POST',
+    return this.request("/api/autonomy/task-queue", {
+      method: "POST",
     });
   }
 
   async getAutonomyLogs() {
-    return this.request('/api/autonomy/actions');
+    return this.request("/api/autonomy/actions");
   }
 
   // Daemon endpoints
   async getDaemonStatus(): Promise<DaemonStatus> {
-    return this.request<DaemonStatus>('/api/daemon/status');
+    return this.request<DaemonStatus>("/api/daemon/status");
   }
 
   async getDaemonCycles(limit = 20): Promise<DaemonCycle[]> {
@@ -771,52 +829,64 @@ class ApiClient {
   }
 
   async getConsciousnessStatus(): Promise<ConsciousnessStatus> {
-    return this.request<ConsciousnessStatus>('/api/consciousness/status');
+    return this.request<ConsciousnessStatus>("/api/consciousness/status");
   }
 
-  async getRevelations(options: {
-    limit?: number;
-    unsurfacedOnly?: boolean;
-    revelationType?: string;
-  } = {}): Promise<RevelationListResponse> {
+  async getRevelations(
+    options: {
+      limit?: number;
+      unsurfacedOnly?: boolean;
+      revelationType?: string;
+    } = {},
+  ): Promise<RevelationListResponse> {
     const params = new URLSearchParams();
-    params.set('limit', String(options.limit ?? 10));
+    params.set("limit", String(options.limit ?? 10));
     if (options.unsurfacedOnly !== undefined) {
-      params.set('unsurfaced_only', String(options.unsurfacedOnly));
+      params.set("unsurfaced_only", String(options.unsurfacedOnly));
     }
     if (options.revelationType) {
-      params.set('revelation_type', options.revelationType);
+      params.set("revelation_type", options.revelationType);
     }
     return this.request<RevelationListResponse>(
-      `/api/consciousness/memory/revelations?${params.toString()}`
+      `/api/consciousness/memory/revelations?${params.toString()}`,
     );
   }
 
-  async synthesiseRevelations(force = false): Promise<RevelationSynthesisResponse> {
-    return this.request<RevelationSynthesisResponse>('/api/consciousness/memory/revelation', {
-      method: 'POST',
-      body: JSON.stringify({ force }),
-    });
+  async synthesiseRevelations(
+    force = false,
+  ): Promise<RevelationSynthesisResponse> {
+    return this.request<RevelationSynthesisResponse>(
+      "/api/consciousness/memory/revelation",
+      {
+        method: "POST",
+        body: JSON.stringify({ force }),
+      },
+    );
   }
 
-  async acknowledgeRevelation(revelationId: string): Promise<{ id: string; surfaced: boolean }> {
+  async acknowledgeRevelation(
+    revelationId: string,
+  ): Promise<{ id: string; surfaced: boolean }> {
     return this.request<{ id: string; surfaced: boolean }>(
       `/api/consciousness/memory/revelations/${encodeURIComponent(revelationId)}/acknowledge`,
       {
-        method: 'POST',
-      }
+        method: "POST",
+      },
     );
   }
 
   async startDaemon(): Promise<DaemonStatus & { status: string }> {
-    return this.request<DaemonStatus & { status: string }>('/api/daemon/start', {
-      method: 'POST',
-    });
+    return this.request<DaemonStatus & { status: string }>(
+      "/api/daemon/start",
+      {
+        method: "POST",
+      },
+    );
   }
 
   async stopDaemon(): Promise<DaemonStatus & { status: string }> {
-    return this.request<DaemonStatus & { status: string }>('/api/daemon/stop', {
-      method: 'POST',
+    return this.request<DaemonStatus & { status: string }>("/api/daemon/stop", {
+      method: "POST",
     });
   }
 
@@ -828,7 +898,7 @@ class ApiClient {
     }
     const { owner, name } = parsed;
     const issues = await this.request<unknown[]>(
-      `/api/github/repos/${owner}/${name}/issues?state=open`
+      `/api/github/repos/${owner}/${name}/issues?state=open`,
     );
     return issues
       .filter((issue) => !(issue as Record<string, unknown>)?.pull_request)
@@ -841,30 +911,30 @@ class ApiClient {
       description: issue.body || `GitHub issue ${repo}#${issue.number}`,
       priority: 5,
     };
-    return this.request('/api/task-queue', {
-      method: 'POST',
+    return this.request("/api/task-queue", {
+      method: "POST",
       body: JSON.stringify(payload),
     });
   }
 
   // Memory endpoints
   async getMemories(): Promise<Memory[]> {
-    const response = await this.request<unknown>('/api/memory/documents');
+    const response = await this.request<unknown>("/api/memory/documents");
     const r = response as Record<string, unknown>;
     const documents = (r.documents as unknown[]) || [];
     return documents.map((doc: unknown) => {
       const d = doc as Record<string, unknown>;
       return normalizeMemory({
         id: d.id,
-        content: (d.content ?? d.title ?? '') as string,
+        content: (d.content ?? d.title ?? "") as string,
         created_at: d.created_at as string | undefined,
       });
     });
   }
 
   async searchMemory(query: string): Promise<Memory[]> {
-    const response = await this.request<unknown>('/api/memory/search', {
-      method: 'POST',
+    const response = await this.request<unknown>("/api/memory/search", {
+      method: "POST",
       body: JSON.stringify({ query }),
     });
     const r = response as Record<string, unknown>;
@@ -873,14 +943,96 @@ class ApiClient {
       const res = result as Record<string, unknown>;
       return normalizeMemory({
         id: res.id,
-        content: (res.content ?? res.title ?? '') as string,
+        content: (res.content ?? res.title ?? "") as string,
         created_at: res.created_at as string | undefined,
         relevance_score: res.relevance_score as number | undefined,
       });
     });
   }
+
+  // ─── Voice / TTS ─────────────────────────────────────────────────────
+  async speakText(text: string): Promise<Blob> {
+    const response = await fetch(`${this.baseURL}/api/voice/speak`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+    if (!response.ok) {
+      throw new Error("Voice synthesis failed");
+    }
+    return response.blob();
+  }
+
+  async getVoicePresence(): Promise<{
+    presence: {
+      type: string;
+      tier: string;
+      message: string;
+      elapsed_human: string;
+    } | null;
+  }> {
+    const response = await fetch(`${this.baseURL}/api/voice/presence`);
+    if (!response.ok) return { presence: null };
+    return response.json();
+  }
+
+  async getVoiceProfile(): Promise<{
+    mood: string;
+    rate: string;
+    pitch: string;
+    interactions: number;
+  }> {
+    const response = await fetch(`${this.baseURL}/api/voice/profile`);
+    return response.json();
+  }
+
+  async evolveVoice(
+    text: string,
+  ): Promise<{ rate: string; pitch: string; mood: string }> {
+    const response = await fetch(`${this.baseURL}/api/voice/evolve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+    return response.json();
+  }
+
+  async executeVoiceCommand(
+    text: string,
+  ): Promise<{ action_result: Record<string, unknown> | null }> {
+    const response = await fetch(`${this.baseURL}/api/voice/action`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+    return response.json();
+  }
+
+  async getVoiceDreams(): Promise<{
+    dreams: Array<{
+      type: string;
+      dream_type: string;
+      content: string;
+      timestamp: string;
+    }>;
+  }> {
+    const response = await fetch(`${this.baseURL}/api/voice/dreams`);
+    if (!response.ok) return { dreams: [] };
+    return response.json();
+  }
+
+  async getIdentityEvolution(): Promise<{
+    evolution: {
+      dimensions: Record<string, number>;
+      interactions_tracked: number;
+      checkpoints: number;
+    };
+    narrative: string;
+  }> {
+    const response = await fetch(`${this.baseURL}/api/voice/identity`);
+    return response.json();
+  }
 }
 
 export const api = new ApiClient(API_URL);
 export type { ApiError };
-

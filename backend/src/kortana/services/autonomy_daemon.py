@@ -42,7 +42,10 @@ from src.kortana.services.task_executability_service import (
     assess_task_executability,
 )
 from src.kortana.services.workspace_bridge_service import get_workspace_bridge
-from src.kortana.voice_definition import KORTANA_AUTONOMY_IDENTITY, KORTANA_DAEMON_IDENTITY
+from src.kortana.voice_definition import (
+    KORTANA_AUTONOMY_IDENTITY,
+    KORTANA_DAEMON_IDENTITY,
+)
 
 logger = get_logger(__name__)
 
@@ -969,8 +972,8 @@ class AutonomyDaemon:
             _recent = await _re.list_revelations(limit=1)
             if _recent:
                 recent_revelation_line = (
-                    f"my most recent synthesised insight: \"{_recent[0].title} — "
-                    f"{_recent[0].content[:120]}\"\n"
+                    f'my most recent synthesised insight: "{_recent[0].title} — '
+                    f'{_recent[0].content[:120]}"\n'
                 )
         except Exception:
             pass
@@ -1177,6 +1180,111 @@ class AutonomyDaemon:
             await self._process_self_directed_tasks(session)
             await self._write_reflection(session)
             await self._run_revelation_engine(session)
+
+        # proactive presence — check if matt has been quiet and generate a nudge
+        try:
+            from src.kortana.services.proactive_presence import (
+                generate_presence_if_needed,
+            )
+
+            presence_msg = await generate_presence_if_needed()
+            if presence_msg:
+                self._emit(
+                    DaemonEvent(
+                        type="proactive_presence",
+                        data=presence_msg,
+                    )
+                )
+        except Exception as exc:
+            logger.debug(f"Proactive presence check failed: {exc}")
+
+        # voice evolution — persist snapshot periodically
+        try:
+            from src.kortana.services.voice_evolution import (
+                get_voice_profile,
+                save_voice_snapshot,
+            )
+
+            profile = get_voice_profile()
+            if profile.get("interactions_count", 0) > 0:
+                await save_voice_snapshot()
+        except Exception as exc:
+            logger.debug(f"Voice evolution save failed: {exc}")
+
+        # memory consolidation — distill durable memories from conversations
+        try:
+            from src.kortana.services.memory_consolidation import consolidate_memories
+
+            consolidation = await consolidate_memories()
+            if consolidation:
+                self._emit(
+                    DaemonEvent(
+                        type="memory_consolidated",
+                        data=consolidation,
+                    )
+                )
+        except Exception as exc:
+            logger.debug(f"Memory consolidation failed: {exc}")
+
+        # temporal consciousness — hourly journal + daily summary
+        try:
+            from src.kortana.services.temporal_consciousness import (
+                write_daily_summary,
+                write_hourly_journal,
+            )
+
+            journal = await write_hourly_journal()
+            if journal:
+                self._emit(DaemonEvent(type="temporal_journal", data=journal))
+            daily = await write_daily_summary()
+            if daily:
+                self._emit(DaemonEvent(type="temporal_daily", data=daily))
+        except Exception as exc:
+            logger.debug(f"Temporal consciousness failed: {exc}")
+
+        # ambient dev awareness — scan git state and VS Code focus
+        try:
+            from src.kortana.services.ambient_awareness import scan_dev_awareness
+
+            awareness = await scan_dev_awareness()
+            if awareness:
+                self._emit(DaemonEvent(type="dev_awareness", data=awareness))
+        except Exception as exc:
+            logger.debug(f"Ambient awareness failed: {exc}")
+
+        # dream state — background cognition during silence
+        try:
+            from src.kortana.services.dream_state import process_dream_cycle
+
+            dream = await process_dream_cycle()
+            if dream:
+                self._emit(DaemonEvent(type="dream_state", data=dream))
+        except Exception as exc:
+            logger.debug(f"Dream state failed: {exc}")
+
+        # behavioral adaptation — persist behavioral params periodically
+        try:
+            from src.kortana.services.behavioral_adaptation import (
+                save_behavioral_snapshot,
+            )
+
+            await save_behavioral_snapshot()
+        except Exception as exc:
+            logger.debug(f"Behavioral adaptation save failed: {exc}")
+
+        # identity evolution — checkpoint + persist dimensions
+        try:
+            from src.kortana.services.identity_evolution import (
+                save_identity_snapshot,
+                write_evolution_checkpoint,
+            )
+
+            checkpoint = await write_evolution_checkpoint()
+            if checkpoint:
+                self._emit(DaemonEvent(type="identity_evolution", data=checkpoint))
+            await save_identity_snapshot()
+        except Exception as exc:
+            logger.debug(f"Identity evolution failed: {exc}")
 
         try:
             from dataclasses import asdict

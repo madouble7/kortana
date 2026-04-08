@@ -1,19 +1,42 @@
-import { AlertTriangle, ClipboardList, Loader2, Send, Sparkles, X } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
-import { getCachedModelLaneSummary } from '../hooks/useRuntimeTelemetry';
-import { api, type ApiError } from '../lib/api';
-import { cn, formatCompactNumber, formatCompactUsd, formatRelativeTime } from '../lib/utils';
+import {
+  AlertTriangle,
+  ClipboardList,
+  Loader2,
+  Mic,
+  MicOff,
+  Send,
+  Sparkles,
+  Volume2,
+  VolumeX,
+  X,
+} from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
+import { getCachedModelLaneSummary } from "../hooks/useRuntimeTelemetry";
+import { useVoice } from "../hooks/useVoice";
+import { api, type ApiError } from "../lib/api";
+import {
+  cn,
+  formatCompactNumber,
+  formatCompactUsd,
+  formatRelativeTime,
+} from "../lib/utils";
 import type {
   ChatHistoryEntry,
   ChatPhase,
   ChatUsageMetrics,
   Message,
   ModelLaneSummary,
-} from '../types';
+} from "../types";
 
 // Stable session ID persisted in localStorage so history survives page refreshes.
 function getSessionId(): string {
-  const key = 'kortana_session_id';
+  const key = "kortana_session_id";
   let id = localStorage.getItem(key);
   if (!id) {
     id = `sess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -24,9 +47,10 @@ function getSessionId(): string {
 
 function buildChatHistory(messages: Message[]): ChatHistoryEntry[] {
   return messages
-    .filter((message): message is Message & { role: 'user' | 'assistant' } => (
-      message.role === 'user' || message.role === 'assistant'
-    ))
+    .filter(
+      (message): message is Message & { role: "user" | "assistant" } =>
+        message.role === "user" || message.role === "assistant",
+    )
     .slice(-10)
     .map((message) => ({
       role: message.role,
@@ -36,10 +60,10 @@ function buildChatHistory(messages: Message[]): ChatHistoryEntry[] {
 }
 
 function formatChatPhase(phase: ChatPhase): string {
-  return phase.replace(/_/g, ' ');
+  return phase.replace(/_/g, " ");
 }
 
-type ChatNoticeTone = 'info' | 'warning' | 'error';
+type ChatNoticeTone = "info" | "warning" | "error";
 
 interface ChatNotice {
   message: string;
@@ -70,7 +94,7 @@ function estimateTokens(text: string): number {
 
 function getProviderRates(
   summary: ModelLaneSummary | null,
-  provider?: string
+  provider?: string,
 ): { inputCostPer1k: number; outputCostPer1k: number } | null {
   if (!summary || !provider) {
     return null;
@@ -88,8 +112,8 @@ function getProviderRates(
 }
 
 function getProviderTokenTotal(
-  usage: ModelLaneSummary['runtime_usage'] | undefined,
-  provider?: string
+  usage: ModelLaneSummary["runtime_usage"] | undefined,
+  provider?: string,
 ): number {
   if (!usage || !provider) {
     return 0;
@@ -102,7 +126,7 @@ function getProviderTokenTotal(
 function getTelemetryTokenDelta(
   baseline: ModelLaneSummary | null,
   latest: ModelLaneSummary | null,
-  provider?: string
+  provider?: string,
 ): number {
   if (!baseline || !latest || !provider) {
     return 0;
@@ -117,25 +141,27 @@ function buildUsageMetrics(
   tracker: ActiveStreamUsage,
   options: {
     live: boolean;
-    source: ChatUsageMetrics['source'];
+    source: ChatUsageMetrics["source"];
     telemetryTokens?: number;
-  }
+  },
 ): ChatUsageMetrics {
   const { live, source, telemetryTokens = 0 } = options;
   const estimatedOutputTokens = estimateTokens(tracker.responseText);
   const resolvedInputTokens = tracker.actualInputTokens ?? tracker.promptTokens;
-  const resolvedOutputTokens = tracker.actualOutputTokens ?? estimatedOutputTokens;
+  const resolvedOutputTokens =
+    tracker.actualOutputTokens ?? estimatedOutputTokens;
   const resolvedTokens = Math.max(
     resolvedInputTokens + resolvedOutputTokens,
-    telemetryTokens
+    telemetryTokens,
   );
 
   const rates = getProviderRates(tracker.latestSummary, tracker.provider);
   const inputTokensForCost = tracker.actualInputTokens ?? tracker.promptTokens;
-  const outputTokensForCost = tracker.actualOutputTokens ?? estimatedOutputTokens;
+  const outputTokensForCost =
+    tracker.actualOutputTokens ?? estimatedOutputTokens;
   const costUsd = rates
-    ? (inputTokensForCost / 1000) * rates.inputCostPer1k
-      + (outputTokensForCost / 1000) * rates.outputCostPer1k
+    ? (inputTokensForCost / 1000) * rates.inputCostPer1k +
+      (outputTokensForCost / 1000) * rates.outputCostPer1k
     : 0;
 
   return {
@@ -145,50 +171,52 @@ function buildUsageMetrics(
     costUsd,
     sessionCostUsd: tracker.sessionCostBaseUsd + costUsd,
     live,
-    estimated: tracker.actualInputTokens === undefined || tracker.actualOutputTokens === undefined,
+    estimated:
+      tracker.actualInputTokens === undefined ||
+      tracker.actualOutputTokens === undefined,
     source,
   };
 }
 
 function tokenLabel(usage: ChatUsageMetrics): string {
-  return `${usage.estimated ? '~' : ''}${formatCompactNumber(usage.tokens)} tok`;
+  return `${usage.estimated ? "~" : ""}${formatCompactNumber(usage.tokens)} tok`;
 }
 
 function costLabel(usage: ChatUsageMetrics): string {
-  return `${usage.estimated ? '~' : ''}${formatCompactUsd(usage.costUsd)}`;
+  return `${usage.estimated ? "~" : ""}${formatCompactUsd(usage.costUsd)}`;
 }
 
 function toChatNotice(error: unknown, fallback: string): ChatNotice {
   const apiError = error as Partial<ApiError> | undefined;
   if (apiError?.isAborted) {
     return {
-      tone: 'info',
-      message: 'Generation stopped.',
+      tone: "info",
+      message: "Generation stopped.",
     };
   }
   if (apiError?.isRateLimited) {
     return {
-      tone: 'warning',
+      tone: "warning",
       message: apiError.retryAfterSeconds
         ? `Rate limit reached. Try again in ${apiError.retryAfterSeconds}s.`
-        : 'Rate limit reached. Please wait a moment and try again.',
+        : "Rate limit reached. Please wait a moment and try again.",
     };
   }
   if (apiError?.isOffline) {
     return {
-      tone: 'warning',
-      message: 'Backend is unreachable right now. Check the API and try again.',
+      tone: "warning",
+      message: "Backend is unreachable right now. Check the API and try again.",
     };
   }
   if (error instanceof Error && error.message) {
-    return { tone: 'error', message: error.message };
+    return { tone: "error", message: error.message };
   }
-  return { tone: 'error', message: fallback };
+  return { tone: "error", message: fallback };
 }
 
 export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [sessionId] = useState(() => getSessionId());
@@ -197,23 +225,99 @@ export default function Chat() {
   const [sessionTokens, setSessionTokens] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const deltaBufferRef = useRef('');
+  const deltaBufferRef = useRef("");
   const deltaTargetRef = useRef<string | null>(null);
   const deltaFrameRef = useRef<number | null>(null);
   const usageFrameRef = useRef<number | null>(null);
-  const usageTargetRef = useRef<{ messageId: string; usage: ChatUsageMetrics } | null>(null);
+  const usageTargetRef = useRef<{
+    messageId: string;
+    usage: ChatUsageMetrics;
+  } | null>(null);
   const activeStreamUsageRef = useRef<ActiveStreamUsage | null>(null);
   const retryPromptRef = useRef<string | null>(null);
 
+  // Voice mode (mic input + audio playback)
+  const {
+    voiceEnabled,
+    toggleVoice,
+    isListening,
+    speechSupported,
+    startListening,
+    stopListening,
+    feedDelta: feedVoiceDelta,
+    flushSpeech,
+    transcript,
+    presenceMessage,
+    clearPresence,
+    dreamThoughts,
+    clearDreams,
+  } = useVoice();
+
+  // When mic produces a final transcript, auto-send it
+  const prevTranscriptRef = useRef("");
+  useEffect(() => {
+    if (
+      transcript &&
+      transcript !== prevTranscriptRef.current &&
+      !isListening
+    ) {
+      prevTranscriptRef.current = transcript;
+      setInput(transcript);
+      // Auto-submit after a short delay to let state settle
+      const timer = setTimeout(() => {
+        const form = document.querySelector<HTMLFormElement>("form");
+        form?.requestSubmit();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [transcript, isListening]);
+
+  // Proactive presence — inject kor'tana's reach-out as a chat message
+  useEffect(() => {
+    if (presenceMessage) {
+      const presenceId = `presence-${Date.now()}`;
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: presenceId,
+          role: "assistant" as const,
+          content: presenceMessage,
+          timestamp: new Date().toISOString(),
+        },
+      ]);
+      clearPresence();
+    }
+  }, [presenceMessage, clearPresence]);
+
+  // Dream state — inject thoughts kor'tana prepared while matt was away
+  useEffect(() => {
+    if (dreamThoughts.length > 0) {
+      const dreamContent = dreamThoughts.map((d) => d.content).join("\n\n");
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `dream-${Date.now()}`,
+          role: "assistant" as const,
+          content: `*thoughts while you were away...*\n\n${dreamContent}`,
+          timestamp: new Date().toISOString(),
+        },
+      ]);
+      clearDreams();
+    }
+  }, [dreamThoughts, clearDreams]);
+
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const updateMessage = useCallback((id: string, updater: (message: Message) => Message) => {
-    setMessages((prev) => prev.map((message) => (
-      message.id === id ? updater(message) : message
-    )));
-  }, []);
+  const updateMessage = useCallback(
+    (id: string, updater: (message: Message) => Message) => {
+      setMessages((prev) =>
+        prev.map((message) => (message.id === id ? updater(message) : message)),
+      );
+    },
+    [],
+  );
 
   const flushDeltaBuffer = () => {
     const targetId = deltaTargetRef.current;
@@ -223,7 +327,7 @@ export default function Chat() {
       return;
     }
 
-    deltaBufferRef.current = '';
+    deltaBufferRef.current = "";
     deltaFrameRef.current = null;
     updateMessage(targetId, (message) => ({
       ...message,
@@ -261,41 +365,48 @@ export default function Chat() {
     }));
   }, [updateMessage]);
 
-  const queueUsageUpdate = useCallback((messageId: string, usage: ChatUsageMetrics) => {
-    usageTargetRef.current = { messageId, usage };
-    if (usageFrameRef.current !== null) {
-      return;
-    }
-    usageFrameRef.current = window.requestAnimationFrame(flushUsageUpdate);
-  }, [flushUsageUpdate]);
+  const queueUsageUpdate = useCallback(
+    (messageId: string, usage: ChatUsageMetrics) => {
+      usageTargetRef.current = { messageId, usage };
+      if (usageFrameRef.current !== null) {
+        return;
+      }
+      usageFrameRef.current = window.requestAnimationFrame(flushUsageUpdate);
+    },
+    [flushUsageUpdate],
+  );
 
-  const refreshActiveUsage = useCallback((
-    source: ChatUsageMetrics['source'],
-    { live = true }: { live?: boolean } = {}
-  ) => {
-    const tracker = activeStreamUsageRef.current;
-    if (!tracker) {
-      return;
-    }
+  const refreshActiveUsage = useCallback(
+    (
+      source: ChatUsageMetrics["source"],
+      { live = true }: { live?: boolean } = {},
+    ) => {
+      const tracker = activeStreamUsageRef.current;
+      if (!tracker) {
+        return;
+      }
 
-    const telemetryTokens = getTelemetryTokenDelta(
-      tracker.baselineSummary,
-      tracker.latestSummary,
-      tracker.provider
-    );
-    queueUsageUpdate(
-      tracker.messageId,
-      buildUsageMetrics(tracker, {
-        live,
-        source,
-        telemetryTokens,
-      })
-    );
-  }, [queueUsageUpdate]);
+      const telemetryTokens = getTelemetryTokenDelta(
+        tracker.baselineSummary,
+        tracker.latestSummary,
+        tracker.provider,
+      );
+      queueUsageUpdate(
+        tracker.messageId,
+        buildUsageMetrics(tracker, {
+          live,
+          source,
+          telemetryTokens,
+        }),
+      );
+    },
+    [queueUsageUpdate],
+  );
 
   // Load persisted history from DB on mount
   useEffect(() => {
-    api.getChatHistory(sessionId, 40)
+    api
+      .getChatHistory(sessionId, 40)
       .then((data) => {
         if (data?.messages?.length) {
           const loaded: Message[] = data.messages.map((m, i: number) => ({
@@ -315,7 +426,9 @@ export default function Chat() {
         }
       })
       .catch((error: unknown) => {
-        setNotice(toChatNotice(error, 'Previous chat history could not be loaded.'));
+        setNotice(
+          toChatNotice(error, "Previous chat history could not be loaded."),
+        );
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -363,7 +476,7 @@ export default function Chat() {
         if (!activeTracker.baselineSummary) {
           activeTracker.baselineSummary = summary;
         }
-        refreshActiveUsage('telemetry');
+        refreshActiveUsage("telemetry");
       } catch {
         // The live badge is additive telemetry. Keep the chat path resilient if this fails.
       } finally {
@@ -392,22 +505,22 @@ export default function Chat() {
 
     const userMessage: Message = {
       id: Date.now().toString(),
-      role: 'user',
+      role: "user",
       content: promptText,
       timestamp: new Date().toISOString(),
     };
 
     setMessages((prev) => [...prev, userMessage]);
-    setInput('');
+    setInput("");
     setLoading(true);
 
     const assistantMessageId = `${Date.now() + 1}`;
     const assistantPlaceholder: Message = {
       id: assistantMessageId,
-      role: 'assistant',
-      content: '',
+      role: "assistant",
+      content: "",
       timestamp: new Date().toISOString(),
-      phase: 'commentary',
+      phase: "commentary",
       streaming: true,
     };
 
@@ -417,7 +530,7 @@ export default function Chat() {
     activeStreamUsageRef.current = {
       messageId: assistantMessageId,
       promptTokens,
-      responseText: '',
+      responseText: "",
       baselineSummary: null,
       latestSummary: null,
       sessionCostBaseUsd: sessionCostUsd,
@@ -427,8 +540,8 @@ export default function Chat() {
       assistantMessageId,
       buildUsageMetrics(activeStreamUsageRef.current, {
         live: true,
-        source: 'local',
-      })
+        source: "local",
+      }),
     );
 
     void getCachedModelLaneSummary(1200)
@@ -439,7 +552,7 @@ export default function Chat() {
         }
         tracker.baselineSummary = summary;
         tracker.latestSummary = summary;
-        refreshActiveUsage('telemetry');
+        refreshActiveUsage("telemetry");
       })
       .catch(() => {
         // Live counters can continue from local estimation if runtime telemetry is unavailable.
@@ -460,13 +573,13 @@ export default function Chat() {
             if (tracker && tracker.messageId === assistantMessageId) {
               tracker.provider = payload.provider;
               tracker.model = payload.model;
-              if (typeof payload.input_tokens === 'number') {
+              if (typeof payload.input_tokens === "number") {
                 tracker.actualInputTokens = payload.input_tokens;
               }
-              if (typeof payload.output_tokens === 'number') {
+              if (typeof payload.output_tokens === "number") {
                 tracker.actualOutputTokens = payload.output_tokens;
               }
-              refreshActiveUsage('local');
+              refreshActiveUsage("local");
             }
             updateMessage(assistantMessageId, (message) => ({
               ...message,
@@ -489,9 +602,10 @@ export default function Chat() {
             const tracker = activeStreamUsageRef.current;
             if (tracker && tracker.messageId === assistantMessageId) {
               tracker.responseText += delta;
-              refreshActiveUsage('local');
+              refreshActiveUsage("local");
             }
             queueDelta(assistantMessageId, delta);
+            feedVoiceDelta(delta);
           },
           onFinal: (response) => {
             flushDeltaIfNeeded();
@@ -504,28 +618,33 @@ export default function Chat() {
             if (tracker && tracker.messageId === assistantMessageId) {
               tracker.provider = response.provider ?? tracker.provider;
               tracker.model = response.model ?? tracker.model;
-              tracker.responseText = response.response || response.message || tracker.responseText;
-              if (typeof response.input_tokens === 'number') {
+              tracker.responseText =
+                response.response || response.message || tracker.responseText;
+              if (typeof response.input_tokens === "number") {
                 tracker.actualInputTokens = response.input_tokens;
               }
-              if (typeof response.output_tokens === 'number') {
+              if (typeof response.output_tokens === "number") {
                 tracker.actualOutputTokens = response.output_tokens;
               }
               const telemetryTokens = getTelemetryTokenDelta(
                 tracker.baselineSummary,
                 tracker.latestSummary,
-                tracker.provider
+                tracker.provider,
               );
               finalUsage = buildUsageMetrics(tracker, {
                 live: false,
-                source: tracker.actualInputTokens !== undefined || tracker.actualOutputTokens !== undefined
-                  ? 'openai'
-                  : telemetryTokens > 0
-                    ? 'telemetry'
-                    : 'local',
+                source:
+                  tracker.actualInputTokens !== undefined ||
+                  tracker.actualOutputTokens !== undefined
+                    ? "openai"
+                    : telemetryTokens > 0
+                      ? "telemetry"
+                      : "local",
                 telemetryTokens,
               });
-              setSessionCostUsd(tracker.sessionCostBaseUsd + finalUsage.costUsd);
+              setSessionCostUsd(
+                tracker.sessionCostBaseUsd + finalUsage.costUsd,
+              );
               setSessionTokens(tracker.sessionTokensBase + finalUsage.tokens);
               activeStreamUsageRef.current = null;
             }
@@ -533,7 +652,7 @@ export default function Chat() {
             updateMessage(assistantMessageId, (message) => ({
               ...message,
               content: response.response || response.message || message.content,
-              phase: response.phase ?? 'final_answer',
+              phase: response.phase ?? "final_answer",
               provider: response.provider,
               model: response.model,
               lane: response.lane,
@@ -542,24 +661,31 @@ export default function Chat() {
               used_previous_response_id: response.used_previous_response_id,
               input_tokens: response.input_tokens,
               output_tokens: response.output_tokens,
-              tasks_queued: response.tasks_queued?.length ? response.tasks_queued : undefined,
+              tasks_queued: response.tasks_queued?.length
+                ? response.tasks_queued
+                : undefined,
               streaming: false,
               usage: finalUsage ?? message.usage,
             }));
+
+            // Auto-speak when voice mode is enabled
+            if (voiceEnabled) {
+              flushSpeech();
+            }
           },
           onError: (streamError) => {
             flushDeltaIfNeeded();
             retryPromptRef.current = promptText;
-            setNotice({ tone: 'error', message: streamError });
+            setNotice({ tone: "error", message: streamError });
             const tracker = activeStreamUsageRef.current;
             if (tracker && tracker.messageId === assistantMessageId) {
-              tracker.responseText = tracker.responseText || '';
-              refreshActiveUsage('local', { live: false });
+              tracker.responseText = tracker.responseText || "";
+              refreshActiveUsage("local", { live: false });
               activeStreamUsageRef.current = null;
             }
             updateMessage(assistantMessageId, (message) => ({
               ...message,
-              role: message.content ? 'assistant' : 'system',
+              role: message.content ? "assistant" : "system",
               content: message.content
                 ? `${message.content}\n\n[stream interrupted: ${streamError}]`
                 : `Error: ${streamError}`,
@@ -568,30 +694,30 @@ export default function Chat() {
             }));
           },
         },
-        { signal: abortController.signal }
+        { signal: abortController.signal, voiceMode: voiceEnabled },
       );
     } catch (error: unknown) {
       flushDeltaIfNeeded();
       const apiError = error as Partial<ApiError> | undefined;
       retryPromptRef.current = promptText;
-      setNotice(toChatNotice(error, 'Failed to send chat message.'));
+      setNotice(toChatNotice(error, "Failed to send chat message."));
       const tracker = activeStreamUsageRef.current;
       if (tracker && tracker.messageId === assistantMessageId) {
-        refreshActiveUsage('local', { live: false });
+        refreshActiveUsage("local", { live: false });
         activeStreamUsageRef.current = null;
       }
       updateMessage(assistantMessageId, (message) => {
         if (apiError?.isAborted) {
           return {
             ...message,
-            content: message.content || 'Generation stopped.',
+            content: message.content || "Generation stopped.",
             streaming: false,
           };
         }
         return {
           ...message,
-          role: 'system',
-          content: `Error: ${error instanceof Error ? error.message : 'Failed to send message'}`,
+          role: "system",
+          content: `Error: ${error instanceof Error ? error.message : "Failed to send message"}`,
           streaming: false,
           phase: undefined,
         };
@@ -606,7 +732,7 @@ export default function Chat() {
     e.preventDefault();
     const promptText = input.trim();
     if (!promptText || loading) return;
-    setInput('');
+    setInput("");
     await sendPrompt(promptText);
   };
 
@@ -624,10 +750,12 @@ export default function Chat() {
 
   const latestAssistantUsage = [...messages]
     .reverse()
-    .find((message) => message.role === 'assistant' && message.usage)?.usage;
-  const sessionLiveCostUsd = latestAssistantUsage?.live && latestAssistantUsage.sessionCostUsd !== undefined
-    ? latestAssistantUsage.sessionCostUsd
-    : sessionCostUsd;
+    .find((message) => message.role === "assistant" && message.usage)?.usage;
+  const sessionLiveCostUsd =
+    latestAssistantUsage?.live &&
+    latestAssistantUsage.sessionCostUsd !== undefined
+      ? latestAssistantUsage.sessionCostUsd
+      : sessionCostUsd;
   const sessionLiveTokens = latestAssistantUsage?.live
     ? sessionTokens + latestAssistantUsage.tokens
     : sessionTokens;
@@ -638,7 +766,9 @@ export default function Chat() {
       <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
         <div className="flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-indigo-400" />
-          <h2 className="text-lg font-semibold text-white">Chat with Kor'tana</h2>
+          <h2 className="text-lg font-semibold text-white">
+            Chat with Kor'tana
+          </h2>
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-end">
           {sessionLiveTokens > 0 || sessionLiveCostUsd > 0 ? (
@@ -664,12 +794,12 @@ export default function Chat() {
       {notice && (
         <div
           className={cn(
-            'mx-6 mt-4 rounded-xl border px-4 py-3 text-sm flex items-start gap-3',
-            notice.tone === 'error'
-              ? 'border-red-800/80 bg-red-950/60 text-red-100'
-              : notice.tone === 'warning'
-                ? 'border-amber-700/70 bg-amber-950/50 text-amber-100'
-                : 'border-sky-800/70 bg-sky-950/50 text-sky-100'
+            "mx-6 mt-4 rounded-xl border px-4 py-3 text-sm flex items-start gap-3",
+            notice.tone === "error"
+              ? "border-red-800/80 bg-red-950/60 text-red-100"
+              : notice.tone === "warning"
+                ? "border-amber-700/70 bg-amber-950/50 text-amber-100"
+                : "border-sky-800/70 bg-sky-950/50 text-sky-100",
           )}
         >
           <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -705,8 +835,8 @@ export default function Chat() {
               Start a Conversation
             </h3>
             <p className="text-gray-400 max-w-md">
-              Ask me anything. I can help with tasks, analyze code, answer questions,
-              and coordinate autonomous operations.
+              Ask me anything. I can help with tasks, analyze code, answer
+              questions, and coordinate autonomous operations.
             </p>
           </div>
         ) : (
@@ -714,18 +844,18 @@ export default function Chat() {
             <div
               key={message.id}
               className={cn(
-                'flex',
-                message.role === 'user' ? 'justify-end' : 'justify-start'
+                "flex",
+                message.role === "user" ? "justify-end" : "justify-start",
               )}
             >
               <div
                 className={cn(
-                  'max-w-[80%] rounded-lg px-4 py-3',
-                  message.role === 'user'
-                    ? 'bg-indigo-600 text-white'
-                    : message.role === 'assistant'
-                      ? 'bg-gray-800 text-gray-100'
-                      : 'bg-red-900/20 text-red-400 border border-red-900'
+                  "max-w-[80%] rounded-lg px-4 py-3",
+                  message.role === "user"
+                    ? "bg-indigo-600 text-white"
+                    : message.role === "assistant"
+                      ? "bg-gray-800 text-gray-100"
+                      : "bg-red-900/20 text-red-400 border border-red-900",
                 )}
               >
                 <div className="flex items-start gap-2">
@@ -733,62 +863,79 @@ export default function Chat() {
                     {message.streaming && !message.content ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
-                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                      <p className="text-sm whitespace-pre-wrap">
+                        {message.content}
+                      </p>
                     )}
                     <p
                       className={cn(
-                        'text-xs mt-1',
-                        message.role === 'user'
-                          ? 'text-indigo-200'
-                          : message.role === 'assistant'
-                            ? 'text-gray-500'
-                            : 'text-red-400/70'
+                        "text-xs mt-1",
+                        message.role === "user"
+                          ? "text-indigo-200"
+                          : message.role === "assistant"
+                            ? "text-gray-500"
+                            : "text-red-400/70",
                       )}
                     >
                       {formatRelativeTime(message.timestamp)}
                     </p>
-                    {message.role === 'assistant' && message.phase && message.phase !== 'final_answer' ? (
+                    {message.role === "assistant" &&
+                    message.phase &&
+                    message.phase !== "final_answer" ? (
                       <p className="text-[10px] uppercase tracking-[0.2em] text-indigo-300/70 mt-1">
                         {formatChatPhase(message.phase)}
                       </p>
                     ) : null}
-                    {message.role === 'assistant' && (message.provider || message.model || message.stateful) ? (
+                    {message.role === "assistant" &&
+                    (message.provider || message.model || message.stateful) ? (
                       <p className="text-[10px] text-gray-400 mt-1">
                         {[
                           message.provider,
                           message.model,
-                          message.stateful ? 'threaded' : null,
-                          message.used_previous_response_id ? 'continued' : null,
-                        ].filter(Boolean).join(' · ')}
+                          message.stateful ? "threaded" : null,
+                          message.used_previous_response_id
+                            ? "continued"
+                            : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
                       </p>
                     ) : null}
-                    {message.role === 'assistant' && message.usage ? (
+                    {message.role === "assistant" && message.usage ? (
                       <div
                         className="mt-2 flex flex-wrap gap-1.5"
                         aria-label={
                           message.usage.live
-                            ? 'Live token and cost telemetry for this response'
-                            : 'Token and cost telemetry for this response'
+                            ? "Live token and cost telemetry for this response"
+                            : "Token and cost telemetry for this response"
                         }
                       >
                         <span
-                          title={message.usage.estimated ? 'Estimated total tokens for this response' : 'Total tokens for this response'}
+                          title={
+                            message.usage.estimated
+                              ? "Estimated total tokens for this response"
+                              : "Total tokens for this response"
+                          }
                           className={cn(
-                            'inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-medium tracking-[0.12em]',
+                            "inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-medium tracking-[0.12em]",
                             message.usage.live
-                              ? 'border-sky-500/20 bg-sky-500/10 text-sky-100'
-                              : 'border-gray-700 bg-gray-900/80 text-gray-200'
+                              ? "border-sky-500/20 bg-sky-500/10 text-sky-100"
+                              : "border-gray-700 bg-gray-900/80 text-gray-200",
                           )}
                         >
                           {tokenLabel(message.usage)}
                         </span>
                         <span
-                          title={message.usage.estimated ? 'Estimated cost for this response' : 'Estimated session cost based on shared provider pricing'}
+                          title={
+                            message.usage.estimated
+                              ? "Estimated cost for this response"
+                              : "Estimated session cost based on shared provider pricing"
+                          }
                           className={cn(
-                            'inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-medium tracking-[0.12em]',
+                            "inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-medium tracking-[0.12em]",
                             message.usage.live
-                              ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-100'
-                              : 'border-gray-700 bg-gray-900/80 text-gray-200'
+                              ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-100"
+                              : "border-gray-700 bg-gray-900/80 text-gray-200",
                           )}
                         >
                           {costLabel(message.usage)}
@@ -798,7 +945,8 @@ export default function Chat() {
                             title="Estimated total for this chat session"
                             className="inline-flex items-center rounded-full border border-indigo-500/20 bg-indigo-500/10 px-2.5 py-1 text-[10px] font-medium tracking-[0.12em] text-indigo-100"
                           >
-                            session {formatCompactUsd(message.usage.sessionCostUsd)}
+                            session{" "}
+                            {formatCompactUsd(message.usage.sessionCostUsd)}
                           </span>
                         ) : null}
                       </div>
@@ -834,16 +982,63 @@ export default function Chat() {
       </div>
 
       {/* Input */}
-      <form onSubmit={sendMessage} className="px-6 py-4 border-t border-gray-800">
+      <form
+        onSubmit={sendMessage}
+        className="px-6 py-4 border-t border-gray-800"
+      >
         <div className="flex gap-2">
+          {/* Voice toggle */}
+          <button
+            type="button"
+            onClick={toggleVoice}
+            className={cn(
+              "rounded-lg px-3 py-3 transition-colors",
+              voiceEnabled
+                ? "bg-indigo-600 text-white hover:bg-indigo-700"
+                : "bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white",
+            )}
+            title={voiceEnabled ? "Disable voice mode" : "Enable voice mode"}
+          >
+            {voiceEnabled ? (
+              <Volume2 className="w-5 h-5" />
+            ) : (
+              <VolumeX className="w-5 h-5" />
+            )}
+          </button>
+
           <input
             type="text"
-            value={input}
+            value={isListening ? transcript || input : input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Type a message..."
-            className="flex-1 bg-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            disabled={loading}
+            placeholder={isListening ? "listening..." : "Type a message..."}
+            className={cn(
+              "flex-1 bg-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500",
+              isListening && "ring-2 ring-red-500/50",
+            )}
+            disabled={loading || isListening}
           />
+
+          {/* Mic button — only visible when voice mode is on */}
+          {voiceEnabled && speechSupported && !loading && (
+            <button
+              type="button"
+              onClick={isListening ? stopListening : startListening}
+              className={cn(
+                "rounded-lg px-3 py-3 transition-colors",
+                isListening
+                  ? "bg-red-600 text-white hover:bg-red-700 animate-pulse"
+                  : "bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white",
+              )}
+              title={isListening ? "Stop listening" : "Start listening"}
+            >
+              {isListening ? (
+                <MicOff className="w-5 h-5" />
+              ) : (
+                <Mic className="w-5 h-5" />
+              )}
+            </button>
+          )}
+
           {loading ? (
             <button
               type="button"
@@ -855,7 +1050,7 @@ export default function Chat() {
           ) : (
             <button
               type="submit"
-              disabled={!input.trim()}
+              disabled={!input.trim() && !isListening}
               className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-lg px-6 py-3 transition-colors"
             >
               <Send className="w-5 h-5" />
