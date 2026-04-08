@@ -72,4 +72,4 @@ def test_embedding_model_constants_are_consistent() -> None:
     assert GEMINI_EMBEDDING_MODEL_PATH == "models/gemini-embedding-001"
     assert GEMINI_EMBEDDING_MODEL_NAME == "gemini-embedding-001"
     assert GEMINI_EMBEDDING_FALLBACK_MODEL_PATH.endswith("gemini-embedding-2-preview")
-    assert MEMORY_ENGINE_EMBEDDING_MODEL == "text-embedding-004"
+    assert MEMORY_ENGINE_EMBEDDING_MODEL == "gemini-embedding-001"
