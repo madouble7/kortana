@@ -6,9 +6,11 @@ Flow:
   1. Continuous mic stream → Silero VAD detects speech segments
   2. Speech segment → faster-whisper transcribes
   3. Wake word OR recent conversation context → auto-respond
-  4. Groq SSE streaming → sentence-chunked edge-tts with SSML prosody
-  5. Barge-in: Silero detects speech during TTS → instant interrupt
+  4. Groq SSE streaming → sentence-chunked TTS with emotional prosody
+  5. TTS: Piper local (default) → edge-tts cloud → Windows SAPI fallback
+  6. Barge-in: Silero detects speech during TTS → instant interrupt
 
+Set KORTANA_TTS_ENGINE to control voice: "piper" (local), "edge" (cloud), "auto" (default).
 Fallback: wake word "kortana" always works, even outside conversation context.
 Run:  python c:\kortana\mcp-server\voice_daemon.py
 Auto-start: registered via Task Scheduler (kortana-voice-daemon)
@@ -75,14 +77,6 @@ ABSENCE_ACK_THRESHOLD_SECONDS = int(
 )
 
 # Piper TTS paths
-_PIPER_EXE_FOUND = (
-    shutil.which("piper")
-    or shutil.which(
-        r"C:\Users\madou\AppData\Roaming\Python\Python311\Scripts\piper.exe"
-    )
-    or r"c:\kortana\models\piper\piper.exe"
-)
-PIPER_EXE = Path(_PIPER_EXE_FOUND)
 CORI_MODEL = Path(r"c:\kortana\models\piper\en_GB-cori-high.onnx")
 CORI_SAMPLE_RATE = 22050
 MODELS_DIR = CORI_MODEL.parent
@@ -90,6 +84,13 @@ _PIPER_MODEL_URL_BASE = os.getenv(
     "KORTANA_PIPER_MODEL_URL_BASE",
     "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/cori/high",
 )
+
+# TTS engine selection: "piper" (local), "edge" (cloud), "auto" (piper→edge)
+_TTS_ENGINE = os.getenv("KORTANA_TTS_ENGINE", "auto")
+
+# Warm-loaded Piper voice (loaded once, reused for every utterance)
+_piper_voice: Any = None
+_piper_lock = threading.Lock()
 
 # Whisper model config — large-v3 on RTX 3080
 WHISPER_MODEL_SIZE = os.getenv("KORTANA_WHISPER_MODEL", "base")
@@ -533,7 +534,6 @@ def _write_daily_diary(now: datetime, *, backend_up: bool, ci_summary: str) -> b
 
 # ── TTS ────────────────────────────────────────────────────────────────────────
 _EDGE_TTS_VOICE = os.getenv("KORTANA_EDGE_TTS_VOICE", "en-GB-SoniaNeural")
-_USE_EDGE_TTS = True  # prefer edge-tts; falls back to Piper then SAPI
 
 # ── emotional prosody ─────────────────────────────────────────────────────────
 _PROSODY_QUESTION_RE = re.compile(r"\?$")
@@ -600,6 +600,41 @@ def _detect_prosody(text: str) -> tuple[str, str]:
 
     # Default — natural pace
     return "+10%", "+0Hz"
+
+
+def _prosody_to_piper_config(rate: str, _pitch: str) -> dict[str, float]:
+    """Convert edge-tts prosody strings to Piper SynthesisConfig kwargs.
+
+    length_scale: <1 = faster, >1 = slower (inverse of rate %).
+    noise_scale: expressiveness (higher = more varied intonation).
+    noise_w_scale: phoneme duration variation.
+    """
+    # Parse rate percentage: "+10%" → 10, "-5%" → -5
+    pct = 0
+    try:
+        pct = int(rate.replace("%", "").replace("+", ""))
+    except ValueError:
+        pass
+
+    # Map rate % to length_scale: +15% → 0.87, +10% → 0.91, +5% → 0.95, -5% → 1.05
+    length_scale = max(0.7, min(1.3, 1.0 - pct / 100.0))
+
+    # Expressiveness: higher for emotional content
+    if abs(pct) > 10:
+        noise_scale = 0.7   # more expressive
+        noise_w = 0.9
+    elif abs(pct) > 5:
+        noise_scale = 0.6
+        noise_w = 0.85
+    else:
+        noise_scale = 0.5   # calm, natural
+        noise_w = 0.8
+
+    return {
+        "length_scale": length_scale,
+        "noise_scale": noise_scale,
+        "noise_w_scale": noise_w,
+    }
 
 
 def _speak_edge_tts(text: str) -> bool:
@@ -684,28 +719,68 @@ def _speak_edge_tts(text: str) -> bool:
         return False
 
 
-def _speak_piper(text: str) -> bool:
-    """Speak via Piper TTS (offline neural voice)."""
-    try:
-        proc = subprocess.Popen(
-            [str(PIPER_EXE), "--model", str(CORI_MODEL), "--output_raw"],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-        )
-        raw, _ = proc.communicate(input=text.encode("utf-8"), timeout=60)
-        if raw:
-            audio = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
-            sd.play(audio, samplerate=CORI_SAMPLE_RATE)
-            sd.wait()
+def _load_piper_voice() -> bool:
+    """Warm-load the Piper voice model (once). Returns True if ready."""
+    global _piper_voice
+    if _piper_voice is not None:
+        return True
+    if not CORI_MODEL.exists():
+        return False
+    with _piper_lock:
+        if _piper_voice is not None:
             return True
+        try:
+            from piper import PiperVoice  # type: ignore[import-untyped]
+
+            t0 = time.time()
+            _piper_voice = PiperVoice.load(str(CORI_MODEL))
+            log(f"Piper voice loaded in {time.time()-t0:.1f}s (sample_rate={CORI_SAMPLE_RATE})")
+            return True
+        except Exception as e:
+            log(f"Piper load error: {e}", "WARN")
+            return False
+
+
+def _speak_piper(text: str) -> bool:
+    """Speak via Piper TTS (offline neural voice) with streaming playback."""
+    if not _load_piper_voice() or _piper_voice is None:
+        return False
+    try:
+        from piper.config import SynthesisConfig  # type: ignore[import-untyped]
+
+        # Map emotional prosody to Piper synthesis parameters
+        rate, pitch = _detect_prosody(text)
+        piper_kwargs = _prosody_to_piper_config(rate, pitch)
+        syn_config = SynthesisConfig(**piper_kwargs)
+
+        # Stream: collect chunks, concatenate, play
+        audio_chunks: list[np.ndarray] = []
+        for chunk in _piper_voice.synthesize(text, syn_config=syn_config):
+            if _check_interrupt():
+                return True  # barge-in: stop gracefully
+            arr = np.array(chunk.audio_float_array, dtype=np.float32)
+            audio_chunks.append(arr)
+
+        if not audio_chunks:
+            return False
+
+        audio = np.concatenate(audio_chunks)
+        sd.play(audio, samplerate=CORI_SAMPLE_RATE)
+        sd.wait()
+        return True
     except Exception as e:
         log(f"Piper speak error: {e}", "WARN")
-    return False
+        return False
 
 
 def speak(text: str) -> None:
-    """Speak text via best available TTS engine (edge-tts → Piper → SAPI)."""
+    """Speak text via best available TTS engine.
+
+    Engine priority controlled by KORTANA_TTS_ENGINE:
+      "piper" — local only (Piper → SAPI fallback)
+      "edge"  — cloud first (edge-tts → Piper → SAPI)
+      "auto"  — sovereign first (Piper → edge-tts → SAPI)  [default]
+    """
     global _is_speaking, _current_speaking_text
     if _check_interrupt():
         return
@@ -714,15 +789,28 @@ def speak(text: str) -> None:
         _is_speaking = True
         spoken = False
         try:
-            if _USE_EDGE_TTS and not _check_interrupt():
-                spoken = _speak_edge_tts(text)
-            if not spoken and not _check_interrupt():
-                spoken = _speak_piper(text)
+            if _TTS_ENGINE == "piper":
+                # Local sovereignty mode — no cloud at all
+                if not _check_interrupt():
+                    spoken = _speak_piper(text)
+            elif _TTS_ENGINE == "edge":
+                # Legacy cloud-first mode
+                if not _check_interrupt():
+                    spoken = _speak_edge_tts(text)
+                if not spoken and not _check_interrupt():
+                    spoken = _speak_piper(text)
+            else:
+                # "auto" — local first, cloud fallback
+                if not _check_interrupt():
+                    spoken = _speak_piper(text)
+                if not spoken and not _check_interrupt():
+                    spoken = _speak_edge_tts(text)
+            # Ultimate fallback: Windows SAPI
             if not spoken and not _check_interrupt():
                 _speak_sapi(text)
         finally:
             _is_speaking = False
-    log(f"spoke: {text[:80]}")
+    log(f"spoke ({_TTS_ENGINE}): {text[:80]}")
 
 
 # ── STT ────────────────────────────────────────────────────────────────────────
@@ -1124,7 +1212,7 @@ def _stream_and_speak(message: str) -> str:
     response and then generating full TTS audio, we:
     1. Stream tokens from Groq (~100ms to first token)
     2. Buffer until sentence boundary (. ! ?)
-    3. Speak each sentence immediately via edge-tts
+    3. Speak each sentence immediately via TTS (Piper local / edge-tts cloud)
     4. Continue buffering the next sentence while current one plays
     5. Support barge-in: if _interrupt is set, abort everything
     """
@@ -1851,6 +1939,10 @@ def run() -> None:
 
     # Download Piper model if missing (~60 MB, one-time)
     _download_piper_model()
+
+    # Warm-load Piper voice (eliminates cold-start on first utterance)
+    if _TTS_ENGINE in ("piper", "auto") and CORI_MODEL.exists():
+        _load_piper_voice()
 
     # Load Whisper for the active profile
     log(f"loading Whisper [{model_size}] on {device}...")
