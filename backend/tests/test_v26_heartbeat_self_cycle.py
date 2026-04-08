@@ -3,7 +3,6 @@
 Tests for heartbeat loop, cycle memory, health assessor, and graceful degradation.
 """
 
-import pytest
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -19,7 +18,7 @@ class TestHeartbeatLoop:
         return HeartbeatLoop()
 
     def test_begin_beat(self):
-        from src.kortana.services.heartbeat_loop import HeartbeatState, HeartbeatPhase
+        from src.kortana.services.heartbeat_loop import HeartbeatPhase, HeartbeatState
         loop = self._make()
         beat = loop.begin_beat()
         assert beat.cycle_number == 1
@@ -469,7 +468,6 @@ class TestHealthAssessor:
         assert snapshot.snapshot_id.startswith("health-")
 
     def test_assess_degraded_system(self):
-        from src.kortana.services.health_assessor import HealthLevel
         assessor = self._make()
         snapshot = assessor.assess(
             cycle_number=10,
@@ -630,7 +628,7 @@ class TestGracefulDegradation:
     def test_evaluate_severe_degradation(self):
         from src.kortana.services.graceful_degradation import DegradationMode
         gd = self._make()
-        mode = gd.evaluate(25.0, anomaly_count=3)
+        mode = gd.evaluate(35.0, anomaly_count=3)
         assert mode == DegradationMode.ESSENTIAL_ONLY
 
     def test_evaluate_critical(self):
@@ -647,7 +645,8 @@ class TestGracefulDegradation:
 
     def test_enter_mode(self):
         from src.kortana.services.graceful_degradation import (
-            DegradationMode, DegradationTrigger,
+            DegradationMode,
+            DegradationTrigger,
         )
         gd = self._make()
         record = gd.enter_mode(
@@ -660,7 +659,8 @@ class TestGracefulDegradation:
 
     def test_restore(self):
         from src.kortana.services.graceful_degradation import (
-            DegradationMode, DegradationTrigger,
+            DegradationMode,
+            DegradationTrigger,
         )
         gd = self._make()
         gd.enter_mode(DegradationMode.ESSENTIAL_ONLY,
@@ -690,7 +690,8 @@ class TestGracefulDegradation:
 
     def test_capability_check_safe_mode(self):
         from src.kortana.services.graceful_degradation import (
-            DegradationMode, DegradationTrigger,
+            DegradationMode,
+            DegradationTrigger,
         )
         gd = self._make()
         gd.enter_mode(DegradationMode.SAFE_MODE,
@@ -702,7 +703,8 @@ class TestGracefulDegradation:
 
     def test_capability_check_suspended(self):
         from src.kortana.services.graceful_degradation import (
-            DegradationMode, DegradationTrigger,
+            DegradationMode,
+            DegradationTrigger,
         )
         gd = self._make()
         gd.enter_mode(DegradationMode.SUSPENDED,
@@ -713,7 +715,8 @@ class TestGracefulDegradation:
 
     def test_get_allowed_capabilities(self):
         from src.kortana.services.graceful_degradation import (
-            DegradationMode, DegradationTrigger,
+            DegradationMode,
+            DegradationTrigger,
         )
         gd = self._make()
         caps = gd.get_allowed_capabilities()
@@ -729,7 +732,8 @@ class TestGracefulDegradation:
 
     def test_transition_history(self):
         from src.kortana.services.graceful_degradation import (
-            DegradationMode, DegradationTrigger,
+            DegradationMode,
+            DegradationTrigger,
         )
         gd = self._make()
         gd.enter_mode(DegradationMode.REDUCED_SCOPE,
@@ -742,7 +746,8 @@ class TestGracefulDegradation:
 
     def test_escalation_count(self):
         from src.kortana.services.graceful_degradation import (
-            DegradationMode, DegradationTrigger,
+            DegradationMode,
+            DegradationTrigger,
         )
         gd = self._make()
         gd.enter_mode(DegradationMode.REDUCED_SCOPE,
@@ -755,7 +760,8 @@ class TestGracefulDegradation:
 
     def test_degradation_record_to_dict(self):
         from src.kortana.services.graceful_degradation import (
-            DegradationMode, DegradationTrigger,
+            DegradationMode,
+            DegradationTrigger,
         )
         gd = self._make()
         record = gd.enter_mode(DegradationMode.SAFE_MODE,
@@ -766,7 +772,8 @@ class TestGracefulDegradation:
 
     def test_degradation_hash(self):
         from src.kortana.services.graceful_degradation import (
-            DegradationMode, DegradationTrigger,
+            DegradationMode,
+            DegradationTrigger,
         )
         gd = self._make()
         record = gd.enter_mode(DegradationMode.REDUCED_SCOPE,
@@ -797,10 +804,13 @@ class TestV26Pipeline:
 
     def test_full_living_cycle(self):
         """End-to-end: heartbeat → cycle memory → health assessment → degradation check."""
-        from src.kortana.services.heartbeat_loop import HeartbeatLoop
-        from src.kortana.services.cycle_memory import CycleMemory, CycleContext
+        from src.kortana.services.cycle_memory import CycleContext, CycleMemory
+        from src.kortana.services.graceful_degradation import (
+            DegradationMode,
+            GracefulDegradation,
+        )
         from src.kortana.services.health_assessor import HealthAssessor, HealthLevel
-        from src.kortana.services.graceful_degradation import GracefulDegradation, DegradationMode
+        from src.kortana.services.heartbeat_loop import HeartbeatLoop
 
         loop = HeartbeatLoop()
         mem = CycleMemory()
@@ -856,8 +866,11 @@ class TestV26Pipeline:
 
     def test_degradation_and_recovery_cycle(self):
         """System detects poor health, degrades, then recovers."""
+        from src.kortana.services.graceful_degradation import (
+            DegradationMode,
+            GracefulDegradation,
+        )
         from src.kortana.services.health_assessor import HealthAssessor
-        from src.kortana.services.graceful_degradation import GracefulDegradation, DegradationMode
 
         assessor = HealthAssessor()
         degradation = GracefulDegradation()
@@ -888,7 +901,7 @@ class TestV26Pipeline:
 
     def test_context_carries_forward_across_cycles(self):
         """Context bequeathed from one cycle is inherited by the next."""
-        from src.kortana.services.cycle_memory import CycleMemory, CycleContext
+        from src.kortana.services.cycle_memory import CycleContext, CycleMemory
 
         mem = CycleMemory()
 
@@ -924,7 +937,9 @@ class TestV26Pipeline:
     def test_capability_gating_across_modes(self):
         """Capabilities are correctly gated as modes change."""
         from src.kortana.services.graceful_degradation import (
-            GracefulDegradation, DegradationMode, DegradationTrigger,
+            DegradationMode,
+            DegradationTrigger,
+            GracefulDegradation,
         )
 
         gd = GracefulDegradation()

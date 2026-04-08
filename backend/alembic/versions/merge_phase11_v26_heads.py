@@ -5,8 +5,6 @@ Revises: phase11_knowledge_graph, v26a1b2c3d4e5
 Create Date: 2026-04-08
 
 """
-from alembic import op
-import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = "merge_phase11_v26"
