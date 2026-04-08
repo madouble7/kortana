@@ -69,10 +69,12 @@ services:
       PYTHONUNBUFFERED: "1"
       KORTANA_WORKSPACE_ROOT: /workspace
       DISCORD_ENABLED: "false"
-      KORTANA_DEFAULT_APPROVAL_MODE: "auto"
+      KORTANA_DAEMON_IN_PROCESS: "true"
+      KORTANA_DEFAULT_APPROVAL_MODE: "self-aware"
       KORTANA_GITHUB_MODE: "full"
       KORTANA_LOCAL_BACKLOG_ENABLED: "true"
-      KORTANA_SELF_AWARE_APPROVAL: "false"
+      KORTANA_SELF_AWARE_APPROVAL: "true"
+      SELF_AWARE_APPROVAL_MAX_RISK: "5"
     ports:
       - "${API_PORT:-8000}:8000"
     depends_on:
