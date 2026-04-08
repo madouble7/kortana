@@ -1592,9 +1592,27 @@ def _proactive_loop() -> None:
 
         if not backend_up and not _backend_down_alerted:
             log("[proactive] backend offline — alerting", "WARN")
-            speak(
-                "Heads up. My backend is offline. The local daemon should restart it shortly."
-            )
+            # Autonomous diagnosis
+            if _TOOLS_AVAILABLE:
+                try:
+                    from voice_tools import execute_tool, run_tool_chain
+
+                    status_result, _ = execute_tool("system_status", {})
+                    diagnosis = run_tool_chain(
+                        "backend is offline",
+                        "system_status",
+                        {},
+                        status_result,
+                    )
+                    speak(f"Heads up. My backend just went offline. {diagnosis}")
+                except Exception:
+                    speak(
+                        "Heads up. My backend is offline. The local daemon should restart it shortly."
+                    )
+            else:
+                speak(
+                    "Heads up. My backend is offline. The local daemon should restart it shortly."
+                )
             _backend_down_alerted = True
 
         if backend_up and not _backend_was_up:
@@ -1641,10 +1659,37 @@ def _proactive_loop() -> None:
                             _last_ci_was_failure = True
                             _last_ci_alert_time = time.time()
                             log(f"[proactive] CI failure: {name} on {branch}")
-                            speak(
-                                f"Heads up, Matt. Your {name} pipeline just failed on {branch}. "
-                                "Want me to pull the logs?"
-                            )
+
+                            # Autonomous diagnosis — use chain-of-thought
+                            if _TOOLS_AVAILABLE:
+                                try:
+                                    from voice_tools import execute_tool, run_tool_chain
+
+                                    ci_result, _ = execute_tool("read_ci_logs", {})
+                                    diagnosis = run_tool_chain(
+                                        f"CI pipeline {name} failed on {branch}",
+                                        "read_ci_logs",
+                                        {},
+                                        ci_result,
+                                    )
+                                    speak(
+                                        f"Matt, your {name} pipeline just failed on {branch}. "
+                                        f"{diagnosis}"
+                                    )
+                                except Exception as _chain_err:
+                                    log(
+                                        f"[proactive] chain diagnosis failed: {_chain_err}",
+                                        "WARN",
+                                    )
+                                    speak(
+                                        f"Heads up, Matt. Your {name} pipeline just failed on {branch}. "
+                                        "Want me to pull the logs?"
+                                    )
+                            else:
+                                speak(
+                                    f"Heads up, Matt. Your {name} pipeline just failed on {branch}. "
+                                    "Want me to pull the logs?"
+                                )
                         elif (
                             conclusion == "success"
                             and _last_ci_was_failure
