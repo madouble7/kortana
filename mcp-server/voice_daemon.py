@@ -27,6 +27,7 @@ import time
 import traceback
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 import faster_whisper
 import httpx
@@ -692,9 +693,10 @@ def _speak_piper(text: str) -> bool:
 
 def speak(text: str) -> None:
     """Speak text via best available TTS engine (edge-tts → Piper → SAPI)."""
-    global _is_speaking
+    global _is_speaking, _current_speaking_text
     if _check_interrupt():
         return
+    _current_speaking_text = text  # track for barge-in awareness
     with _speak_lock:
         _is_speaking = True
         spoken = False
@@ -830,10 +832,63 @@ def _seed_identity_memory() -> None:
         log(f"[memory] seed failed: {e}", "WARN")
 
 
+# ── episodic vector memory (ChromaDB) ─────────────────────────────────────────
+_CHROMA_PATH = Path(os.getenv("KORTANA_MEMORY_PATH", r"c:\kortana\data\voice_memory"))
+_chroma_collection: Any = None
+
+
+def _init_chroma() -> None:
+    """Initialize persistent ChromaDB for episodic voice memory."""
+    global _chroma_collection
+    try:
+        import chromadb  # type: ignore[import-untyped]
+
+        _CHROMA_PATH.mkdir(parents=True, exist_ok=True)
+        client = chromadb.PersistentClient(path=str(_CHROMA_PATH))
+        _chroma_collection = client.get_or_create_collection("voice_episodes")
+        log(f"[memory] ChromaDB ready — {_chroma_collection.count()} episodes")
+    except Exception as e:
+        log(f"[memory] ChromaDB failed: {e}", "WARN")
+
+
+def _store_episode(user_msg: str, assistant_reply: str) -> None:
+    """Store a voice exchange as an episodic memory vector."""
+    if not _chroma_collection:
+        return
+    try:
+        doc = f"User: {user_msg}\nKor'tana: {assistant_reply}"
+        ep_id = f"ep_{int(time.time())}_{hash(user_msg) % 10000}"
+        _chroma_collection.add(
+            documents=[doc],
+            ids=[ep_id],
+            metadatas=[{"timestamp": time.time(), "user": user_msg[:100]}],
+        )
+    except Exception as e:
+        log(f"[memory] store failed: {e}", "WARN")
+
+
+def _recall_relevant(query: str, n: int = 3) -> list[str]:
+    """Retrieve the most relevant past voice interactions for context."""
+    if not _chroma_collection:
+        return []
+    try:
+        count = _chroma_collection.count()
+        if count == 0:
+            return []
+        results = _chroma_collection.query(
+            query_texts=[query], n_results=min(n, count)
+        )
+        return results.get("documents", [[]])[0]
+    except Exception:
+        return []
+
+
 # ── backend chat ───────────────────────────────────────────────────────────────
 # ── Barge-in / interrupt support ──────────────────────────────────────────────
 _interrupt = threading.Event()
 _is_speaking = False
+_current_speaking_text: str = ""   # what kor'tana is currently saying
+_interrupted_text: str = ""        # what she was saying when interrupted
 
 
 def _check_interrupt() -> bool:
@@ -843,14 +898,15 @@ def _check_interrupt() -> bool:
 
 def _signal_interrupt() -> None:
     """Called from listener thread when speech detected during TTS playback."""
-    global _is_speaking
+    global _is_speaking, _interrupted_text
+    _interrupted_text = _current_speaking_text  # remember what was interrupted
     _interrupt.set()
     _is_speaking = False
     try:
         sd.stop()
     except Exception:
         pass
-    log("[barge-in] user interrupted — stopping playback")
+    log(f"[barge-in] user interrupted — was saying: '{_interrupted_text[:60]}'")
 
 
 _KORTANA_SYSTEM_PROMPT = (
@@ -862,8 +918,32 @@ _KORTANA_SYSTEM_PROMPT = (
 
 
 def _build_groq_messages(message: str) -> list[dict[str, str]]:
-    """Build chat messages for Groq with conversation history."""
-    msgs: list[dict[str, str]] = [{"role": "system", "content": _KORTANA_SYSTEM_PROMPT}]
+    """Build chat messages for Groq with conversation history + episodic memory."""
+    global _interrupted_text
+
+    # Base system prompt
+    system_parts = [_KORTANA_SYSTEM_PROMPT]
+
+    # Episodic memory — inject relevant past interactions
+    memories = _recall_relevant(message, n=3)
+    if memories:
+        memory_text = "\n".join(f"- {m}" for m in memories)
+        system_parts.append(
+            f"\n[Relevant memories from past conversations:\n{memory_text}]"
+        )
+
+    # Barge-in awareness — tell her she was interrupted
+    if _interrupted_text:
+        system_parts.append(
+            f'\n[System: The user interrupted you while you were saying: '
+            f'"{_interrupted_text}". You may acknowledge this naturally, '
+            f'e.g. "as I was saying..." or simply pivot to their new topic.]'
+        )
+        _interrupted_text = ""  # clear after injecting
+
+    msgs: list[dict[str, str]] = [
+        {"role": "system", "content": " ".join(system_parts)}
+    ]
     for h in _conversation_history[-6:]:
         msgs.append({"role": h["role"], "content": h["content"]})
     msgs.append({"role": "user", "content": message})
@@ -981,7 +1061,7 @@ def _stream_and_speak(message: str) -> str:
     if len(_conversation_history) > 40:
         _conversation_history = _conversation_history[-40:]
 
-    # Episodic memory
+    # Episodic memory — file-based
     _memory_count += 1
     if _memory_count % _MEMORY_EVERY == 0:
         threading.Thread(
@@ -989,6 +1069,13 @@ def _stream_and_speak(message: str) -> str:
             args=(message, full_response),
             daemon=True,
         ).start()
+
+    # Episodic memory — vector store (ChromaDB)
+    threading.Thread(
+        target=_store_episode,
+        args=(message, full_response),
+        daemon=True,
+    ).start()
 
     return full_response
 
@@ -1399,9 +1486,13 @@ def _proactive_loop() -> None:
             log(f"[proactive] {hours}h silence — checking in")
             vscode_ctx = _get_vscode_context_prefix()
             if vscode_ctx:
-                # Extract the active file name for a more grounded check-in
                 _ctx_clean = vscode_ctx.strip("[] ")
-                speak(f"{hours} hours since we last spoke. Still here. {_ctx_clean}.")
+                # Use streaming for richer, contextual check-in
+                _stream_and_speak(
+                    f"[System: It's been {hours} hours since your last voice interaction. "
+                    f"The user is currently working on: {_ctx_clean}. "
+                    f"Offer a brief, warm check-in acknowledging what they're working on.]"
+                )
             else:
                 speak(
                     f"You've been quiet for {hours} hours. Still here if you need me."
@@ -1550,6 +1641,9 @@ def run() -> None:
             log("Silero VAD loaded (ONNX) — neural speech detection active")
         except Exception as e:
             log(f"Silero VAD failed to load: {e} — falling back to energy VAD", "WARN")
+
+    # Initialize episodic vector memory
+    _init_chroma()
 
     # Seed foundational identity memories on first run
     threading.Thread(target=_seed_identity_memory, daemon=True).start()
