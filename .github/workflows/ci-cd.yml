@@ -54,7 +54,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && vars.ENABLE_GCP_DEPLOY == 'true'
     steps:
       - uses: actions/checkout@v4
 
