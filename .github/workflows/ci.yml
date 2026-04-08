@@ -68,7 +68,7 @@ jobs:
     name: Deploy to Production
     runs-on: ubuntu-latest
     needs: [test-backend, test-frontend]
-    if: github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
 
@@ -85,9 +85,13 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_WEB_SERVICE_NAME: ${{ secrets.RAILWAY_WEB_SERVICE_NAME || secrets.RAILWAY_SERVICE_NAME }}
         run: |
+          if [ -z "$RAILWAY_TOKEN" ]; then
+            echo "::warning::Missing RAILWAY_TOKEN secret — skipping deploy"
+            exit 0
+          fi
           if [ -z "$RAILWAY_WEB_SERVICE_NAME" ]; then
-            echo "Missing RAILWAY_WEB_SERVICE_NAME (or legacy RAILWAY_SERVICE_NAME) secret"
-            exit 1
+            echo "::warning::Missing RAILWAY_WEB_SERVICE_NAME (or legacy RAILWAY_SERVICE_NAME) secret — skipping deploy"
+            exit 0
           fi
           railway up --service "$RAILWAY_WEB_SERVICE_NAME" --environment production --detach
         working-directory: ./backend
@@ -96,6 +100,10 @@ jobs:
         env:
           KORTANA_BACKEND_URL: ${{ secrets.KORTANA_BACKEND_URL }}
         run: |
+          if [ -z "$KORTANA_BACKEND_URL" ]; then
+            echo "::warning::Missing KORTANA_BACKEND_URL secret — skipping health check"
+            exit 0
+          fi
           echo "Waiting 30s for containers to start..."
           sleep 30
           for i in $(seq 1 10); do
@@ -115,9 +123,13 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_DAEMON_SERVICE_NAME: ${{ secrets.RAILWAY_DAEMON_SERVICE_NAME }}
         run: |
+          if [ -z "$RAILWAY_TOKEN" ]; then
+            echo "::warning::Missing RAILWAY_TOKEN secret — skipping daemon deploy"
+            exit 0
+          fi
           if [ -z "$RAILWAY_DAEMON_SERVICE_NAME" ]; then
-            echo "Missing RAILWAY_DAEMON_SERVICE_NAME secret"
-            exit 1
+            echo "::warning::Missing RAILWAY_DAEMON_SERVICE_NAME secret — skipping daemon deploy"
+            exit 0
           fi
           railway up --service "$RAILWAY_DAEMON_SERVICE_NAME" --environment production --detach
         working-directory: ./backend
@@ -126,6 +138,10 @@ jobs:
         env:
           KORTANA_BACKEND_URL: ${{ secrets.KORTANA_BACKEND_URL }}
         run: |
+          if [ -z "$KORTANA_BACKEND_URL" ]; then
+            echo "::warning::Missing KORTANA_BACKEND_URL secret — skipping heartbeat check"
+            exit 0
+          fi
           echo "Waiting 60s for the daemon worker to complete its first cycle..."
           sleep 60
           python -c "import json, os, sys, urllib.request; base=os.environ['KORTANA_BACKEND_URL'].rstrip('/'); data=json.load(urllib.request.urlopen(f'{base}/api/daemon/status', timeout=30)); external=data.get('external_daemon') or {}; print(json.dumps(data, indent=2)); sys.exit(0 if external.get('alive') else 1)"
@@ -134,6 +150,10 @@ jobs:
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::warning::Missing VERCEL_TOKEN secret — skipping frontend deploy"
+            exit 0
+          fi
           npx vercel build --prod --token $VERCEL_TOKEN
           npx vercel deploy --prebuilt --prod --token $VERCEL_TOKEN
         working-directory: ./frontend
