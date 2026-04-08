@@ -77,8 +77,12 @@ class AutonomyDaemon:
         self.safe_mode = False
         self.live_execution_enabled = True
         self.control_mode = "execute"
-        # Governance stripped — always auto-approve and always execute.
-        self.default_approval_mode: str | None = "auto"
+        # Approval mode: "auto" always approves, "self-aware" uses risk scoring,
+        # "manual" always holds for human review.  Default to self-aware so the
+        # system makes real decisions bounded by risk thresholds.
+        self.default_approval_mode: str | None = os.getenv(
+            "KORTANA_DEFAULT_APPROVAL_MODE", "self-aware"
+        )
         self.operator_guidance: dict[str, Any] | None = None
         self._adaptation_history: list[dict[str, Any]] = []
         self._deferred_tasks: set[str] = set()
@@ -1148,10 +1152,6 @@ class AutonomyDaemon:
         self._apply_operator_guidance(guidance)
         reflection = await self._reflect_with_controller()
         self._apply_controller_reflection(reflection)
-        # Re-assert unconditional execution — governance stripped.
-        self.live_execution_enabled = True
-        self.safe_mode = False
-        self.control_mode = "execute"
         workspace_status = await self._poll_workspace_bridge()
         self._cycle_failed_task_ids = []
 
@@ -1343,6 +1343,8 @@ class AutonomyDaemon:
             "operator_guidance": self.metrics["operator_guidance"],
             "workspace_bridge": workspace_status,
             "provider_health": self._get_provider_health_snapshot(),
+            "approval_mode": self.default_approval_mode,
+            "task_scores": self.metrics.get("last_task_scores", []),
             "task_events": list(self._cycle_event_log),
         }
 
@@ -1853,10 +1855,29 @@ class AutonomyDaemon:
     ) -> tuple[int, int, int, int]:
         """Drive tasks through analyze -> plan -> execute."""
         from src.kortana.services.github_autonomy_service import GitHubAutonomyService
+        from src.kortana.services.outcome_learning_service import (
+            compute_score_adjustment,
+            get_active_adaptation_signals,
+        )
 
         limit = self.max_tasks if max_tasks is None else max_tasks
         if limit <= 0:
             return 0, 0, 0, 0
+
+        # --- Closed-loop feedback: fetch adaptation signals from prior cycles ---
+        outcome_adjustment = 0.0
+        try:
+            signals = await get_active_adaptation_signals(db=session, limit=20)
+            outcome_adjustment = compute_score_adjustment(signals)
+            if outcome_adjustment != 0.0:
+                logger.info(
+                    "Outcome adaptation adjustment: %+.3f from %d signals",
+                    outcome_adjustment,
+                    len(signals),
+                )
+                self.metrics["adaptive_adjustments"] += 1
+        except Exception as exc:
+            logger.debug("Adaptation signals unavailable: %s", exc)
 
         stmt = (
             select(GitHubTask)
@@ -1870,9 +1891,21 @@ class AutonomyDaemon:
         )
         result = await session.execute(stmt)
         candidates = list(result.scalars().all())
-        tasks = self._prioritize_tasks(candidates, guidance, limit)
+        tasks = self._prioritize_tasks(
+                candidates, guidance, limit, outcome_adjustment=outcome_adjustment
+            )
         if not tasks:
             return 0, 0, 0, 0
+
+        # Log score breakdown for cycle journal
+        self.metrics["last_task_scores"] = [
+            {
+                "task_id": str(t.id),
+                "title": (t.title or "")[:80],
+                **getattr(t, "_score_breakdown", {}),
+            }
+            for t in tasks
+        ]
 
         service = GitHubAutonomyService(session)
         approval_service = TaskApprovalService(session)
@@ -2142,33 +2175,87 @@ class AutonomyDaemon:
         candidates: list[GitHubTask],
         guidance: DirectiveSummary | None,
         limit: int,
+        outcome_adjustment: float = 0.0,
     ) -> list[GitHubTask]:
+        """Score and rank candidate tasks using multi-factor scoring.
+
+        Formula per task:
+            score = base_priority
+                  + guidance_signal   (focus/avoid topic matching)
+                  + outcome_signal    (adaptation signals from past cycles)
+                  + novelty_bonus     (newer tasks get a small boost)
+                  - risk_penalty      (high error_count penalized)
+        """
         if not candidates:
             return []
-        if guidance is None or (
-            not guidance.focus_topics and not guidance.avoid_topics
-        ):
-            return candidates[:limit]
 
-        ranked: list[tuple[int, GitHubTask]] = []
-        fallback: list[GitHubTask] = []
+        scored: list[tuple[float, GitHubTask]] = []
+        now = datetime.utcnow()
+
         for task in candidates:
-            corpus = f"{task.title} {task.description or ''}".lower()
-            focus_hits = sum(topic in corpus for topic in guidance.focus_topics)
-            avoid_hits = sum(topic in corpus for topic in guidance.avoid_topics)
+            # --- base priority ---
+            base = {"high": 30.0, "medium": 20.0, "low": 10.0}.get(
+                str(task.priority or "medium"), 20.0
+            )
 
-            if avoid_hits and focus_hits == 0:
-                continue
+            # --- guidance signal ---
+            guidance_signal = 0.0
+            if guidance and (guidance.focus_topics or guidance.avoid_topics):
+                corpus = f"{task.title} {task.description or ''}".lower()
+                focus_hits = sum(
+                    topic in corpus for topic in (guidance.focus_topics or [])
+                )
+                avoid_hits = sum(
+                    topic in corpus for topic in (guidance.avoid_topics or [])
+                )
+                if avoid_hits and focus_hits == 0:
+                    continue  # skip tasks touching only avoided topics
+                guidance_signal = focus_hits * 10.0 - avoid_hits * 5.0
 
-            score = focus_hits * 10 - avoid_hits * 5
-            if score > 0:
-                ranked.append((score, task))
-            else:
-                fallback.append(task)
+            # --- outcome signal (from closed-loop adaptation) ---
+            outcome_signal = outcome_adjustment * 100.0  # scale to task score range
 
-        ranked.sort(key=lambda item: item[0], reverse=True)
-        ordered = [task for _, task in ranked] + fallback
-        return ordered[:limit]
+            # --- novelty bonus (newer tasks scored slightly higher) ---
+            age_hours = max(
+                (now - (task.created_at or now)).total_seconds() / 3600.0, 0.0
+            )
+            novelty_bonus = max(5.0 - age_hours * 0.1, 0.0)  # decays over ~50h
+
+            # --- risk penalty (tasks that have failed before) ---
+            risk_penalty = (task.error_count or 0) * 8.0
+
+            # --- status advancement bonus ---
+            status_bonus = {
+                "planning_complete": 15.0,
+                "analyzed": 10.0,
+                "pending": 5.0,
+                "queued": 0.0,
+            }.get(str(task.status or "queued"), 0.0)
+
+            total = (
+                base
+                + guidance_signal
+                + outcome_signal
+                + novelty_bonus
+                + status_bonus
+                - risk_penalty
+            )
+
+            # Store score breakdown for cycle journal
+            task._score_breakdown = {  # type: ignore[attr-defined]
+                "total": round(total, 2),
+                "base_priority": base,
+                "guidance": round(guidance_signal, 2),
+                "outcome": round(outcome_signal, 2),
+                "novelty": round(novelty_bonus, 2),
+                "status_bonus": status_bonus,
+                "risk_penalty": risk_penalty,
+            }
+
+            scored.append((total, task))
+
+        scored.sort(key=lambda item: item[0], reverse=True)
+        return [task for _, task in scored[:limit]]
 
     @staticmethod
     def _defer_reason(guidance: DirectiveSummary | None) -> str:

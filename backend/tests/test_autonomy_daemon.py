@@ -14,7 +14,9 @@ from src.kortana.services.operator_directive_service import DirectiveSummary
 def build_daemon() -> AutonomyDaemon:
     with patch("src.kortana.services.autonomy_daemon.get_db_manager") as mock_get_db:
         mock_get_db.return_value = MagicMock()
-        return AutonomyDaemon()
+        daemon = AutonomyDaemon()
+        daemon.default_approval_mode = "auto"
+        return daemon
 
 
 class TestAutonomyDaemon:

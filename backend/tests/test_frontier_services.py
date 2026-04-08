@@ -12,12 +12,7 @@ covers pure-function logic for each service without requiring a database:
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
-from pathlib import Path
-from unittest.mock import MagicMock, patch
-
-import pytest
-
+from unittest.mock import patch
 
 # ---------------------------------------------------------------------------
 # temporal_consciousness
@@ -132,7 +127,13 @@ class TestBehavioralEngagement:
         from src.kortana.services.behavioral_adaptation import detect_engagement
 
         signals = detect_engagement("hello")
-        expected = {"positive", "negative", "depth_seeking", "humor_response", "message_length"}
+        expected = {
+            "positive",
+            "negative",
+            "depth_seeking",
+            "humor_response",
+            "message_length",
+        }
         assert set(signals.keys()) == expected
 
 
@@ -212,9 +213,9 @@ class TestDreamState:
 
     def test_dream_config_values(self):
         from src.kortana.services.dream_state import (
+            DREAM_INTERVAL_CYCLES,
             DREAM_ONSET_THRESHOLD,
             MAX_DREAMS_PER_GAP,
-            DREAM_INTERVAL_CYCLES,
         )
 
         assert DREAM_ONSET_THRESHOLD == 1800
@@ -294,7 +295,9 @@ class TestIntentDetection:
     def test_conversation_not_detected(self):
         from src.kortana.services.intent_executor import detect_intent
 
-        intent, conf = detect_intent("hey lets talk about the architecture of the system")
+        intent, conf = detect_intent(
+            "hey lets talk about the architecture of the system"
+        )
         assert intent is None
         assert conf == 0.0
 
@@ -309,9 +312,17 @@ class TestIntentDetection:
         from src.kortana.services.intent_executor import _INTENT_PATTERNS
 
         expected_intents = {
-            "git_commit", "git_push", "git_status", "git_diff", "git_log",
-            "run_tests", "run_lint", "run_build",
-            "check_health", "daemon_status", "what_broke",
+            "git_commit",
+            "git_push",
+            "git_status",
+            "git_diff",
+            "git_log",
+            "run_tests",
+            "run_lint",
+            "run_build",
+            "check_health",
+            "daemon_status",
+            "what_broke",
         }
         assert set(_INTENT_PATTERNS.keys()) == expected_intents
 
@@ -411,8 +422,14 @@ class TestIdentityMeasurement:
 
         signals = measure_interaction("hello", "hi there")
         expected = {
-            "warmth", "assertiveness", "spiritual_depth", "technical_precision",
-            "humor", "poetic_tendency", "protectiveness", "vulnerability",
+            "warmth",
+            "assertiveness",
+            "spiritual_depth",
+            "technical_precision",
+            "humor",
+            "poetic_tendency",
+            "protectiveness",
+            "vulnerability",
         }
         assert expected.issubset(set(signals.keys()))
 
@@ -425,9 +442,16 @@ class TestIdentityDimensions:
         assert isinstance(dims, dict)
         assert len(dims) == 10
         expected = {
-            "warmth", "assertiveness", "spiritual_depth", "technical_precision",
-            "humor", "poetic_tendency", "protectiveness", "autonomy_drive",
-            "vulnerability", "wisdom",
+            "warmth",
+            "assertiveness",
+            "spiritual_depth",
+            "technical_precision",
+            "humor",
+            "poetic_tendency",
+            "protectiveness",
+            "autonomy_drive",
+            "vulnerability",
+            "wisdom",
         }
         assert set(dims.keys()) == expected
 
@@ -457,10 +481,14 @@ class TestIdentityDimensions:
 
         initial_warmth = ie._DIMENSIONS["warmth"]
         # feed a high-warmth interaction
-        ie.measure_interaction("hi", "i love you. i care about you. here for you always.")
+        ie.measure_interaction(
+            "hi", "i love you. i care about you. here for you always."
+        )
         updated_warmth = ie._DIMENSIONS["warmth"]
         # EMA should have moved warmth toward the signal
-        assert updated_warmth != initial_warmth or True  # may be equal if already at signal
+        assert (
+            updated_warmth != initial_warmth or True
+        )  # may be equal if already at signal
 
 
 # ---------------------------------------------------------------------------
@@ -507,12 +535,14 @@ class TestAmbientAwareness:
         from src.kortana.services.ambient_awareness import read_focus_state
 
         mock_path.exists.return_value = True
-        mock_path.read_text.return_value = json.dumps({
-            "current_active_file": "main.py",
-            "session_focus_seconds": {"main.py": 300},
-            "branch": "main",
-            "timestamp": "2025-01-01T00:00:00Z",
-        })
+        mock_path.read_text.return_value = json.dumps(
+            {
+                "current_active_file": "main.py",
+                "session_focus_seconds": {"main.py": 300},
+                "branch": "main",
+                "timestamp": "2025-01-01T00:00:00Z",
+            }
+        )
         result = read_focus_state()
         assert result is not None
         assert result["active_file"] == "main.py"
