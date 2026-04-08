@@ -1102,3 +1102,99 @@ class HumanOverrideRecord(Base):
 
     def __repr__(self) -> str:
         return f"<HumanOverrideRecord mode={self.mode} by={self.created_by}>"
+
+
+class QuorumApprovalRecord(Base):
+    """V9A — Individual approval/rejection vote for a quorum override."""
+
+    __tablename__ = "quorum_approval"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    override_id = Column(String(32), nullable=False, index=True)
+    approver = Column(String(64), nullable=False)
+    approved = Column(Boolean, nullable=False)
+    reason = Column(String(256), nullable=True)
+    audit_hash = Column(String(64), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        vote = "approved" if self.approved else "rejected"
+        return f"<QuorumApprovalRecord {self.override_id} {self.approver} {vote}>"
+
+
+class QuorumOverrideRecord(Base):
+    """V9A — Pending or resolved quorum override requiring multi-person approval."""
+
+    __tablename__ = "quorum_override"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    override_id = Column(String(32), nullable=False, unique=True, index=True)
+    mode = Column(String(32), nullable=False, index=True)
+    reason = Column(String(256), nullable=False)
+    requested_by = Column(String(64), nullable=False)
+    required_approvals = Column(Integer, nullable=False, default=2)
+    status = Column(String(16), nullable=False, default="pending", index=True)
+    expires_at = Column(DateTime, nullable=False, index=True)
+    activated_at = Column(DateTime, nullable=True)
+    rejected_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        return f"<QuorumOverrideRecord {self.override_id} status={self.status}>"
+
+
+class DrillScheduleRecord(Base):
+    """V9B — Persisted drill schedule configuration."""
+
+    __tablename__ = "drill_schedule"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    scenario = Column(String(32), nullable=False, unique=True, index=True)
+    interval_minutes = Column(Integer, nullable=False, default=60)
+    enabled = Column(Boolean, nullable=False, default=True)
+    last_run_at = Column(DateTime, nullable=True)
+    run_count = Column(Integer, nullable=False, default=0)
+    pass_count = Column(Integer, nullable=False, default=0)
+    fail_count = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        return f"<DrillScheduleRecord {self.scenario} every {self.interval_minutes}m>"
+
+
+class DrillSLORecord(Base):
+    """V9B — Persisted SLO definition for a chaos drill scenario."""
+
+    __tablename__ = "drill_slo"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    scenario = Column(String(32), nullable=False, unique=True, index=True)
+    min_pass_rate = Column(Float, nullable=False, default=0.95)
+    lookback_window_minutes = Column(Integer, nullable=False, default=1440)
+    min_runs = Column(Integer, nullable=False, default=3)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        return f"<DrillSLORecord {self.scenario} min_rate={self.min_pass_rate}>"
+
+
+class AuditBundleRecord(Base):
+    """V9D — Record of an exported audit bundle."""
+
+    __tablename__ = "audit_bundle"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    bundle_id = Column(String(64), nullable=False, unique=True, index=True)
+    from_time = Column(DateTime, nullable=False)
+    to_time = Column(DateTime, nullable=False)
+    generated_by = Column(String(64), nullable=False, default="daemon")
+    total_decisions = Column(Integer, nullable=False, default=0)
+    total_overrides = Column(Integer, nullable=False, default=0)
+    total_drills = Column(Integer, nullable=False, default=0)
+    total_rollbacks = Column(Integer, nullable=False, default=0)
+    drill_pass_rate = Column(Float, nullable=False, default=1.0)
+    content_hash = Column(String(64), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        return f"<AuditBundleRecord {self.bundle_id} hash={self.content_hash[:12]}>"

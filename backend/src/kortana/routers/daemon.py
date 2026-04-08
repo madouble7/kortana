@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import os
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -2400,6 +2400,661 @@ async def override_history(
                 "revoked_at": r.revoked_at.isoformat() if r.revoked_at else None,
                 "revoked_by": r.revoked_by,
                 "policy_version": r.policy_version,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in records
+        ],
+    }
+
+
+
+# ---------------------------------------------------------------------------
+# V9A — Quorum override endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.post("/quorum/request")
+async def request_quorum_override(
+    mode: str = Query(...),
+    reason: str = Query(...),
+    requested_by: str = Query(default="matt"),
+    required_approvals: int = Query(default=2, ge=1, le=10),
+    timeout_minutes: int = Query(default=60, ge=1, le=10080),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Request a quorum override requiring multiple approvals."""
+    from src.kortana.models import QuorumOverrideRecord
+    from src.kortana.services.quorum_override import (
+        QuorumPolicy,
+        get_quorum_manager,
+    )
+
+    manager = get_quorum_manager()
+    policy = QuorumPolicy(
+        required_approvals=required_approvals,
+        allowed_approvers=["matt", "admin", "ops", "security", "oncall"],
+        timeout_minutes=timeout_minutes,
+    )
+    pending = manager.request(
+        mode=mode,
+        reason=reason,
+        requested_by=requested_by,
+        policy=policy,
+    )
+
+    # Persist to DB
+    try:
+        record = QuorumOverrideRecord(
+            override_id=pending.override_id,
+            mode=mode,
+            reason=reason,
+            requested_by=requested_by,
+            required_approvals=required_approvals,
+            status="pending",
+            expires_at=pending.expires_at,
+        )
+        db.add(record)
+        await db.commit()
+    except Exception:
+        pass
+
+    return {
+        "created": True,
+        "quorum_override": pending.to_dict(),
+    }
+
+
+@router.post("/quorum/{override_id}/vote")
+async def vote_quorum_override(
+    override_id: str,
+    approver: str = Query(...),
+    approved: bool = Query(...),
+    reason: str = Query(default=""),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Cast a vote on a pending quorum override."""
+    from src.kortana.models import (
+        PolicyDecisionLog,
+        QuorumApprovalRecord,
+        QuorumOverrideRecord,
+    )
+    from src.kortana.services.quorum_override import get_quorum_manager
+
+    manager = get_quorum_manager()
+
+    try:
+        record, status = manager.vote(override_id, approver, approved, reason)
+    except KeyError:
+        return JSONResponse(
+            content={"error": f"Quorum override {override_id!r} not found"},
+            status_code=404,
+        )
+    except ValueError as e:
+        return JSONResponse(
+            content={"error": str(e)},
+            status_code=400,
+        )
+
+    # Persist approval
+    try:
+        db.add(QuorumApprovalRecord(
+            override_id=override_id,
+            approver=approver,
+            approved=approved,
+            reason=reason,
+            audit_hash=record.audit_hash,
+        ))
+
+        # Update status in quorum_override table
+        result = await db.execute(
+            select(QuorumOverrideRecord)
+            .where(QuorumOverrideRecord.override_id == override_id)
+        )
+        qo = result.scalar_one_or_none()
+        if qo:
+            qo.status = status
+
+        # If activated, apply the override to daemon + audit
+        if status == "activated":
+            from src.kortana.services.human_override import get_override_manager
+
+            daemon = get_autonomy_daemon()
+            old_mode = daemon.default_approval_mode
+
+            override_manager = get_override_manager()
+            override_manager.create(
+                mode=manager.get(override_id) is None
+                and qo.mode if qo else "manual",
+                reason=f"Quorum override {override_id} activated",
+                expires_in_minutes=60,
+                created_by=f"quorum:{override_id}",
+            )
+            daemon.default_approval_mode = qo.mode if qo else "manual"
+
+            if qo:
+                qo.activated_at = datetime.utcnow()
+
+            db.add(PolicyDecisionLog(
+                decision_type="quorum_override",
+                actor=f"quorum:{override_id}",
+                action="activate",
+                from_state=old_mode,
+                to_state=qo.mode if qo else "manual",
+                reasons=[f"Quorum reached: {override_id}"],
+                audit_hash=record.audit_hash,
+            ))
+
+        await db.commit()
+    except Exception:
+        pass
+
+    return {
+        "voted": True,
+        "approval": record.to_dict(),
+        "override_status": status,
+    }
+
+
+@router.get("/quorum/pending")
+async def get_pending_quorums() -> dict[str, Any]:
+    """Return all currently pending quorum overrides."""
+    from src.kortana.services.quorum_override import get_quorum_manager
+
+    manager = get_quorum_manager()
+    return {
+        "count": manager.count,
+        "pending": [p.to_dict() for p in manager.pending],
+    }
+
+
+@router.get("/quorum/history")
+async def quorum_history(
+    limit: int = Query(default=25, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Query quorum override history from DB."""
+    from src.kortana.models import QuorumOverrideRecord
+
+    try:
+        result = await db.execute(
+            select(QuorumOverrideRecord)
+            .order_by(QuorumOverrideRecord.created_at.desc())
+            .limit(limit)
+        )
+        records = result.scalars().all()
+    except SQLAlchemyError:
+        records = []
+
+    return {
+        "total": len(records),
+        "records": [
+            {
+                "id": r.id,
+                "override_id": r.override_id,
+                "mode": r.mode,
+                "reason": r.reason,
+                "requested_by": r.requested_by,
+                "required_approvals": r.required_approvals,
+                "status": r.status,
+                "expires_at": r.expires_at.isoformat() if r.expires_at else None,
+                "activated_at": r.activated_at.isoformat() if r.activated_at else None,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in records
+        ],
+    }
+
+
+# ---------------------------------------------------------------------------
+# V9B — Drill scheduler + SLO endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.post("/drills/schedule")
+async def add_drill_schedule(
+    scenario: str = Query(...),
+    interval_minutes: int = Query(default=60, ge=1, le=10080),
+    enabled: bool = Query(default=True),
+) -> dict[str, Any]:
+    """Register a recurring chaos drill schedule."""
+    from src.kortana.services.drill_scheduler import get_drill_scheduler
+
+    scheduler = get_drill_scheduler()
+    schedule = scheduler.add_schedule(scenario, interval_minutes, enabled)
+    return {"created": True, "schedule": schedule.to_dict()}
+
+
+@router.delete("/drills/schedule/{scenario}")
+async def remove_drill_schedule(scenario: str) -> dict[str, Any]:
+    """Remove a drill schedule."""
+    from src.kortana.services.drill_scheduler import get_drill_scheduler
+
+    scheduler = get_drill_scheduler()
+    removed = scheduler.remove_schedule(scenario)
+    if not removed:
+        return JSONResponse(
+            content={"error": f"Schedule for {scenario!r} not found"},
+            status_code=404,
+        )
+    return {"removed": True, "scenario": scenario}
+
+
+@router.get("/drills/schedules")
+async def list_drill_schedules() -> dict[str, Any]:
+    """List all drill schedules."""
+    from src.kortana.services.drill_scheduler import get_drill_scheduler
+
+    scheduler = get_drill_scheduler()
+    return {"schedules": scheduler.schedules}
+
+
+@router.post("/drills/run-due")
+async def run_due_drills(
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Run all drills that are currently due and record results."""
+    from src.kortana.models import ChaosScenarioRecord
+    from src.kortana.services.drill_scheduler import get_drill_scheduler
+
+    scheduler = get_drill_scheduler()
+    daemon = get_autonomy_daemon()
+    results = scheduler.run_due_drills(daemon.default_approval_mode)
+
+    # Persist results
+    for r in results:
+        try:
+            db.add(ChaosScenarioRecord(
+                scenario=r["scenario"],
+                passed=r["passed"],
+                checks=r.get("checks"),
+                daemon_mode_before=r.get("daemon_mode_before"),
+                daemon_mode_after=r.get("daemon_mode_after"),
+                rollback_triggered=r.get("rollback_triggered", False),
+                duration_ms=r.get("duration_ms", 0),
+            ))
+        except Exception:
+            pass
+
+    try:
+        await db.commit()
+    except Exception:
+        pass
+
+    return {
+        "ran": len(results),
+        "results": results,
+    }
+
+
+@router.post("/drills/slo")
+async def set_drill_slo(
+    scenario: str = Query(...),
+    min_pass_rate: float = Query(default=0.95, ge=0.0, le=1.0),
+    lookback_window_minutes: int = Query(default=1440, ge=1),
+    min_runs: int = Query(default=3, ge=1),
+) -> dict[str, Any]:
+    """Define or update the SLO for a drill scenario."""
+    from src.kortana.services.drill_scheduler import get_drill_scheduler
+
+    scheduler = get_drill_scheduler()
+    slo = scheduler.set_slo(scenario, min_pass_rate, lookback_window_minutes, min_runs)
+    return {"created": True, "slo": slo.to_dict()}
+
+
+@router.get("/drills/slos")
+async def get_drill_slos() -> dict[str, Any]:
+    """List all drill SLO definitions and their current evaluation."""
+    from src.kortana.services.drill_scheduler import get_drill_scheduler
+
+    scheduler = get_drill_scheduler()
+    evaluations = scheduler.evaluate_all_slos()
+    return {
+        "slos": scheduler.slos,
+        "evaluations": [e.to_dict() for e in evaluations],
+    }
+
+
+# ---------------------------------------------------------------------------
+# V9C — Policy comparison endpoint
+# ---------------------------------------------------------------------------
+
+
+@router.get("/control-room/comparison")
+async def policy_comparison_view() -> dict[str, Any]:
+    """Compare current daemon state with what actuation would propose.
+
+    Shows current mode, proposed decision, override status, quorum
+    pending, rollback likelihood, and drill SLO health — all in one view.
+    """
+    from src.kortana.services.human_override import get_override_manager
+    from src.kortana.services.policy_comparison import compute_policy_comparison
+    from src.kortana.services.policy_versioning import get_policy_registry
+    from src.kortana.services.quorum_override import get_quorum_manager
+    from src.kortana.services.drill_scheduler import get_drill_scheduler
+
+    daemon = get_autonomy_daemon()
+    registry = get_policy_registry()
+    override_manager = get_override_manager()
+    quorum_manager = get_quorum_manager()
+    drill_scheduler = get_drill_scheduler()
+
+    # Gather context
+    current_mode = daemon.default_approval_mode
+    active_override = override_manager.active()
+    quorum_pending = quorum_manager.pending
+    slo_results = [e.to_dict() for e in drill_scheduler.evaluate_all_slos()]
+    policy_version = registry.current.version if registry.current else None
+    policy_hash = registry.current.content_hash if registry.current else None
+
+    comparison = compute_policy_comparison(
+        current_mode=current_mode,
+        recent_runs=[],
+        override=active_override,
+        quorum_pending=quorum_pending,
+        drill_slo_results=slo_results,
+        policy_version=policy_version,
+        policy_hash=policy_hash,
+    )
+
+    return comparison.to_dict()
+
+
+# ---------------------------------------------------------------------------
+# V9D — Audit bundle endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.get("/audit/export")
+async def export_audit_bundle(
+    hours: int = Query(default=24, ge=1, le=720),
+    generated_by: str = Query(default="operator"),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Export an audit bundle for the last N hours.
+
+    Gathers all policy decisions, overrides, drills, rollbacks,
+    and policy versions into a single tamper-evident package.
+    """
+    from src.kortana.models import (
+        AuditBundleRecord,
+        ChaosScenarioRecord,
+        HumanOverrideRecord,
+        PolicyDecisionLog,
+        PolicyVersionRecord,
+        RollbackEvent,
+    )
+    from src.kortana.services.audit_bundle import build_audit_bundle
+
+    now = datetime.utcnow()
+    from_time = now - timedelta(hours=hours)
+    bundle_id = f"ab-{now.strftime('%Y%m%dT%H%M%S')}"
+
+    # Gather from DB
+    decisions: list[dict[str, Any]] = []
+    overrides: list[dict[str, Any]] = []
+    drills: list[dict[str, Any]] = []
+    rollbacks: list[dict[str, Any]] = []
+    policy_versions: list[dict[str, Any]] = []
+
+    try:
+        # Decisions
+        result = await db.execute(
+            select(PolicyDecisionLog)
+            .where(PolicyDecisionLog.created_at >= from_time)
+            .order_by(PolicyDecisionLog.created_at.asc())
+        )
+        for r in result.scalars().all():
+            decisions.append({
+                "decision_type": r.decision_type,
+                "actor": r.actor,
+                "action": r.action,
+                "from_state": r.from_state,
+                "to_state": r.to_state,
+                "reasons": r.reasons,
+                "audit_hash": r.audit_hash,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            })
+
+        # Overrides
+        result = await db.execute(
+            select(HumanOverrideRecord)
+            .where(HumanOverrideRecord.created_at >= from_time)
+            .order_by(HumanOverrideRecord.created_at.asc())
+        )
+        for r in result.scalars().all():
+            overrides.append({
+                "mode": r.mode,
+                "reason": r.reason,
+                "created_by": r.created_by,
+                "audit_hash": r.audit_hash,
+                "revoked": r.revoked,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            })
+
+        # Drills
+        result = await db.execute(
+            select(ChaosScenarioRecord)
+            .where(ChaosScenarioRecord.created_at >= from_time)
+            .order_by(ChaosScenarioRecord.created_at.asc())
+        )
+        for r in result.scalars().all():
+            drills.append({
+                "scenario": r.scenario,
+                "passed": r.passed,
+                "duration_ms": r.duration_ms,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            })
+
+        # Rollbacks
+        result = await db.execute(
+            select(RollbackEvent)
+            .where(RollbackEvent.created_at >= from_time)
+            .order_by(RollbackEvent.created_at.asc())
+        )
+        for r in result.scalars().all():
+            rollbacks.append({
+                "trigger": r.trigger,
+                "from_mode": r.from_mode,
+                "to_mode": r.to_mode,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            })
+
+        # Policy versions
+        result = await db.execute(
+            select(PolicyVersionRecord)
+            .where(PolicyVersionRecord.created_at >= from_time)
+            .order_by(PolicyVersionRecord.created_at.asc())
+        )
+        for r in result.scalars().all():
+            policy_versions.append({
+                "version": r.version,
+                "content_hash": r.content_hash,
+                "created_by": r.created_by,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            })
+
+    except SQLAlchemyError:
+        pass
+
+    bundle = build_audit_bundle(
+        bundle_id=bundle_id,
+        from_time=from_time,
+        to_time=now,
+        decisions=decisions,
+        overrides=overrides,
+        drills=drills,
+        rollbacks=rollbacks,
+        policy_versions=policy_versions,
+        generated_by=generated_by,
+    )
+
+    # Persist bundle record
+    try:
+        db.add(AuditBundleRecord(
+            bundle_id=bundle.bundle_id,
+            from_time=from_time,
+            to_time=now,
+            generated_by=generated_by,
+            total_decisions=bundle.total_decisions,
+            total_overrides=bundle.total_overrides,
+            total_drills=bundle.total_drills,
+            total_rollbacks=bundle.total_rollbacks,
+            drill_pass_rate=bundle.drill_pass_rate,
+            content_hash=bundle.content_hash,
+        ))
+        await db.commit()
+    except Exception:
+        pass
+
+    return bundle.to_dict()
+
+
+@router.get("/audit/export/markdown")
+async def export_audit_markdown(
+    hours: int = Query(default=24, ge=1, le=720),
+    generated_by: str = Query(default="operator"),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Export an audit bundle as human-readable Markdown."""
+    from src.kortana.models import (
+        ChaosScenarioRecord,
+        HumanOverrideRecord,
+        PolicyDecisionLog,
+        PolicyVersionRecord,
+        RollbackEvent,
+    )
+    from src.kortana.services.audit_bundle import (
+        build_audit_bundle,
+        render_bundle_markdown,
+    )
+
+    now = datetime.utcnow()
+    from_time = now - timedelta(hours=hours)
+    bundle_id = f"ab-md-{now.strftime('%Y%m%dT%H%M%S')}"
+
+    decisions: list[dict[str, Any]] = []
+    overrides: list[dict[str, Any]] = []
+    drills: list[dict[str, Any]] = []
+    rollbacks: list[dict[str, Any]] = []
+    policy_versions: list[dict[str, Any]] = []
+
+    try:
+        result = await db.execute(
+            select(PolicyDecisionLog)
+            .where(PolicyDecisionLog.created_at >= from_time)
+            .order_by(PolicyDecisionLog.created_at.asc())
+        )
+        for r in result.scalars().all():
+            decisions.append({
+                "decision_type": r.decision_type,
+                "actor": r.actor,
+                "action": r.action,
+                "from_state": r.from_state,
+                "to_state": r.to_state,
+                "audit_hash": r.audit_hash,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            })
+
+        result = await db.execute(
+            select(HumanOverrideRecord)
+            .where(HumanOverrideRecord.created_at >= from_time)
+        )
+        for r in result.scalars().all():
+            overrides.append({
+                "mode": r.mode,
+                "reason": r.reason,
+                "created_by": r.created_by,
+                "revoked": r.revoked,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            })
+
+        result = await db.execute(
+            select(ChaosScenarioRecord)
+            .where(ChaosScenarioRecord.created_at >= from_time)
+        )
+        for r in result.scalars().all():
+            drills.append({
+                "scenario": r.scenario,
+                "passed": r.passed,
+                "duration_ms": r.duration_ms,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            })
+
+        result = await db.execute(
+            select(RollbackEvent)
+            .where(RollbackEvent.created_at >= from_time)
+        )
+        for r in result.scalars().all():
+            rollbacks.append({
+                "trigger": r.trigger,
+                "from_mode": r.from_mode,
+                "to_mode": r.to_mode,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            })
+
+        result = await db.execute(
+            select(PolicyVersionRecord)
+            .where(PolicyVersionRecord.created_at >= from_time)
+        )
+        for r in result.scalars().all():
+            policy_versions.append({
+                "version": r.version,
+                "content_hash": r.content_hash,
+                "created_by": r.created_by,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            })
+    except SQLAlchemyError:
+        pass
+
+    bundle = build_audit_bundle(
+        bundle_id=bundle_id,
+        from_time=from_time,
+        to_time=now,
+        decisions=decisions,
+        overrides=overrides,
+        drills=drills,
+        rollbacks=rollbacks,
+        policy_versions=policy_versions,
+        generated_by=generated_by,
+    )
+
+    markdown = render_bundle_markdown(bundle)
+    return {"bundle_id": bundle_id, "markdown": markdown, "content_hash": bundle.content_hash}
+
+
+@router.get("/audit/bundles")
+async def list_audit_bundles(
+    limit: int = Query(default=25, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """List previously exported audit bundles."""
+    from src.kortana.models import AuditBundleRecord
+
+    try:
+        result = await db.execute(
+            select(AuditBundleRecord)
+            .order_by(AuditBundleRecord.created_at.desc())
+            .limit(limit)
+        )
+        records = result.scalars().all()
+    except SQLAlchemyError:
+        records = []
+
+    return {
+        "total": len(records),
+        "bundles": [
+            {
+                "id": r.id,
+                "bundle_id": r.bundle_id,
+                "from_time": r.from_time.isoformat() if r.from_time else None,
+                "to_time": r.to_time.isoformat() if r.to_time else None,
+                "generated_by": r.generated_by,
+                "total_decisions": r.total_decisions,
+                "total_overrides": r.total_overrides,
+                "total_drills": r.total_drills,
+                "total_rollbacks": r.total_rollbacks,
+                "drill_pass_rate": r.drill_pass_rate,
+                "content_hash": r.content_hash,
                 "created_at": r.created_at.isoformat() if r.created_at else None,
             }
             for r in records
