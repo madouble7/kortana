@@ -7306,3 +7306,348 @@ async def get_adjudication_stats() -> dict:
         "emergency_powers": mgr.get_summary(),
         "precedents": tracker.get_summary(),
     }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# V24: Constitutional Procedure Endpoints
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+from src.kortana.services.standing_rules import (  # noqa: E402
+    get_standing_rules,
+    ActorRole,
+)
+from src.kortana.services.deadline_clock import (  # noqa: E402
+    get_deadline_clock,
+    DeadlineType,
+    DeadlineStatus,
+)
+from src.kortana.services.recusal_manager import get_recusal_manager  # noqa: E402
+from src.kortana.services.reasoning_templates import (  # noqa: E402
+    get_reasoning_registry,
+)
+
+
+# ─── V24A Standing Rules ─────────────────────────────────────────────────────
+
+
+@router.post("/standing/register")
+async def register_actor_standing(
+    actor: str = Body(...),
+    role: str = Body(...),
+) -> dict:
+    """Register an actor with a constitutional role."""
+    checker = get_standing_rules()
+    actor_role = ActorRole(role)
+    checker.register_actor(actor, actor_role)
+    return {"status": "registered", "actor": actor, "role": role}
+
+
+@router.get("/standing/check")
+async def check_standing(
+    actor: str,
+    action: str,
+    policy_area: str | None = None,
+) -> dict:
+    """Check if an actor has standing for a procedural action."""
+    checker = get_standing_rules()
+    result = checker.check_standing(actor, ActionType(action), policy_area)
+    return result.to_dict()
+
+
+@router.get("/standing/rules")
+async def list_standing_rules() -> dict:
+    """List all standing rules."""
+    checker = get_standing_rules()
+    rules = []
+    for role in ActorRole:
+        rule = checker.get_rule(role)
+        if rule is not None:
+            rules.append(rule.to_dict())
+    return {"rules": rules}
+
+
+@router.get("/standing/summary")
+async def get_standing_summary() -> dict:
+    """Get standing rules summary statistics."""
+    checker = get_standing_rules()
+    return checker.get_summary()
+
+
+# ─── V24B Deadline Clock ─────────────────────────────────────────────────────
+
+
+@router.post("/deadlines/create")
+async def create_deadline(
+    reference_id: str = Body(...),
+    deadline_type: str = Body(...),
+    hours: int | None = Body(None),
+) -> dict:
+    """Create a new procedural deadline."""
+    clock = get_deadline_clock()
+    deadline = clock.create_deadline(reference_id, DeadlineType(deadline_type), hours)
+    return deadline.to_dict()
+
+
+@router.post("/deadlines/{deadline_id}/meet")
+async def meet_deadline(deadline_id: str) -> dict:
+    """Mark a deadline as met."""
+    clock = get_deadline_clock()
+    ok = clock.meet_deadline(deadline_id)
+    return {"met": ok, "deadline_id": deadline_id}
+
+
+@router.post("/deadlines/{deadline_id}/extend")
+async def extend_deadline(
+    deadline_id: str,
+    extra_hours: int = Body(24),
+) -> dict:
+    """Extend a pending deadline."""
+    clock = get_deadline_clock()
+    ok = clock.extend_deadline(deadline_id, extra_hours)
+    return {"extended": ok, "deadline_id": deadline_id}
+
+
+@router.post("/deadlines/{deadline_id}/cancel")
+async def cancel_deadline(deadline_id: str) -> dict:
+    """Cancel a deadline."""
+    clock = get_deadline_clock()
+    ok = clock.cancel_deadline(deadline_id)
+    return {"cancelled": ok, "deadline_id": deadline_id}
+
+
+@router.post("/deadlines/expire")
+async def expire_deadlines() -> dict:
+    """Expire all overdue deadlines."""
+    clock = get_deadline_clock()
+    count = clock.expire_deadlines()
+    return {"expired_count": count}
+
+
+@router.get("/deadlines")
+async def list_deadlines(
+    reference_id: str | None = None,
+    deadline_type: str | None = None,
+    status: str | None = None,
+    pending_only: bool = False,
+) -> dict:
+    """List deadlines with optional filters."""
+    clock = get_deadline_clock()
+    dt = DeadlineType(deadline_type) if deadline_type else None
+    ds = DeadlineStatus(status) if status else None
+    deadlines = clock.get_deadlines(reference_id, dt, ds, pending_only)
+    return {"deadlines": [d.to_dict() for d in deadlines], "count": len(deadlines)}
+
+
+@router.get("/deadlines/{deadline_id}")
+async def get_deadline(deadline_id: str) -> dict:
+    """Get a specific deadline."""
+    clock = get_deadline_clock()
+    d = clock.get_deadline(deadline_id)
+    if d is None:
+        return {"error": "not_found", "deadline_id": deadline_id}
+    return d.to_dict()
+
+
+@router.get("/deadlines/summary/stats")
+async def get_deadline_summary() -> dict:
+    """Get deadline clock statistics."""
+    clock = get_deadline_clock()
+    return clock.get_summary()
+
+
+# ─── V24C Recusal Manager ────────────────────────────────────────────────────
+
+
+@router.post("/recusal/declare-interest")
+async def declare_interest(
+    actor: str = Body(...),
+    policy_areas: list[str] = Body(...),
+    reason: str = Body(""),
+) -> dict:
+    """Declare an interest in policy areas for conflict tracking."""
+    mgr = get_recusal_manager()
+    decl = mgr.declare_interest(actor, policy_areas, reason)
+    return decl.to_dict()
+
+
+@router.post("/recusal/check")
+async def check_conflicts(
+    actor: str = Body(...),
+    reference_id: str = Body(...),
+    policy_area: str = Body(...),
+    proposer_id: str | None = Body(None),
+) -> dict:
+    """Check for conflicts of interest."""
+    mgr = get_recusal_manager()
+    conflicts = mgr.check_conflicts(actor, reference_id, policy_area, proposer_id)
+    return {
+        "actor": actor,
+        "reference_id": reference_id,
+        "conflicts": [c.value for c in conflicts],
+        "has_conflicts": len(conflicts) > 0,
+    }
+
+
+@router.post("/recusal/recuse")
+async def recuse_actor(
+    actor: str = Body(...),
+    reference_id: str = Body(...),
+    conflict_type: str = Body(...),
+    reason: str = Body(...),
+    mandatory: bool = Body(False),
+) -> dict:
+    """Record a recusal from a proceeding."""
+    from src.kortana.services.recusal_manager import ConflictType  # noqa: E402
+
+    mgr = get_recusal_manager()
+    record = mgr.recuse(actor, reference_id, ConflictType(conflict_type), reason, mandatory)
+    return record.to_dict()
+
+
+@router.get("/recusal/status/{actor}/{reference_id}")
+async def recusal_status(actor: str, reference_id: str) -> dict:
+    """Check if an actor is recused from a proceeding."""
+    mgr = get_recusal_manager()
+    return {
+        "actor": actor,
+        "reference_id": reference_id,
+        "recused": mgr.is_recused(actor, reference_id),
+    }
+
+
+@router.get("/recusal/recusals")
+async def list_recusals(
+    actor: str | None = None,
+    reference_id: str | None = None,
+) -> dict:
+    """List recusal records."""
+    mgr = get_recusal_manager()
+    recusals = mgr.get_recusals(actor, reference_id)
+    return {"recusals": [r.to_dict() for r in recusals], "count": len(recusals)}
+
+
+@router.get("/recusal/interests")
+async def list_interests(actor: str | None = None) -> dict:
+    """List declared interests."""
+    mgr = get_recusal_manager()
+    interests = mgr.get_interests(actor)
+    return {"interests": [i.to_dict() for i in interests], "count": len(interests)}
+
+
+@router.get("/recusal/summary/stats")
+async def get_recusal_summary() -> dict:
+    """Get recusal manager statistics."""
+    mgr = get_recusal_manager()
+    return mgr.get_summary()
+
+
+# ─── V24D Reasoning Templates ────────────────────────────────────────────────
+
+
+@router.post("/reasoning/publish")
+async def publish_reasoning(
+    reference_id: str = Body(...),
+    decision_type: str = Body(...),
+    sections: dict = Body(...),
+    cited_articles: list[str] = Body(default=[]),
+    cited_precedents: list[str] = Body(default=[]),
+    author: str = Body(""),
+) -> dict:
+    """Publish a reasoning document for a constitutional decision."""
+    registry = get_reasoning_registry()
+    reasoning = registry.publish(
+        reference_id, decision_type, sections,
+        cited_articles, cited_precedents, author,
+    )
+    validation = registry.validate(reasoning)
+    return {
+        "reasoning": reasoning.to_dict(),
+        "validation": validation.to_dict(),
+    }
+
+
+@router.post("/reasoning/validate")
+async def validate_reasoning(
+    reference_id: str = Body(...),
+    decision_type: str = Body(...),
+    sections: dict = Body(...),
+    cited_articles: list[str] = Body(default=[]),
+    cited_precedents: list[str] = Body(default=[]),
+    author: str = Body(""),
+) -> dict:
+    """Validate a reasoning document against its template without publishing."""
+    from src.kortana.services.reasoning_templates import PublishedReasoning  # noqa: E402
+
+    reasoning = PublishedReasoning(
+        reasoning_id="validation-check",
+        reference_id=reference_id,
+        decision_type=decision_type,
+        sections=sections,
+        cited_articles=cited_articles,
+        cited_precedents=cited_precedents,
+        author=author,
+    )
+    registry = get_reasoning_registry()
+    result = registry.validate(reasoning)
+    return result.to_dict()
+
+
+@router.get("/reasoning")
+async def list_reasoning(
+    reference_id: str | None = None,
+    decision_type: str | None = None,
+    author: str | None = None,
+) -> dict:
+    """List published reasoning documents."""
+    registry = get_reasoning_registry()
+    published = registry.get_published(reference_id, decision_type, author)
+    return {"reasoning": [r.to_dict() for r in published], "count": len(published)}
+
+
+@router.get("/reasoning/{reasoning_id}")
+async def get_reasoning(reasoning_id: str) -> dict:
+    """Get a specific published reasoning document."""
+    registry = get_reasoning_registry()
+    r = registry.get_reasoning(reasoning_id)
+    if r is None:
+        return {"error": "not_found", "reasoning_id": reasoning_id}
+    return r.to_dict()
+
+
+@router.get("/reasoning/templates")
+async def list_reasoning_templates() -> dict:
+    """List all reasoning templates."""
+    registry = get_reasoning_registry()
+    templates = []
+    for dt in ["appeal_decision", "waiver_decision", "emergency_review"]:
+        t = registry.get_template(dt)
+        if t is not None:
+            templates.append(t.to_dict())
+    return {"templates": templates}
+
+
+@router.get("/reasoning/summary/stats")
+async def get_reasoning_summary() -> dict:
+    """Get reasoning registry statistics."""
+    registry = get_reasoning_registry()
+    return registry.get_summary()
+
+
+# ─── V24 Cross-Component Stats ───────────────────────────────────────────────
+
+
+@router.get("/procedure/stats")
+async def get_procedure_stats() -> dict:
+    """Get statistics across all V24 constitutional procedure components."""
+    checker = get_standing_rules()
+    clock = get_deadline_clock()
+    recusal_mgr = get_recusal_manager()
+    registry = get_reasoning_registry()
+
+    return {
+        "standing": checker.get_summary(),
+        "deadlines": clock.get_summary(),
+        "recusals": recusal_mgr.get_summary(),
+        "reasoning": registry.get_summary(),
+    }

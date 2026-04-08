@@ -2511,3 +2511,74 @@ class PrecedentRecord(Base):
     superseded_by = Column(String, nullable=True)
     created_at = Column(DateTime, default=func.now())
     precedent_hash = Column(String, nullable=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# V24: Constitutional Procedure
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class StandingCheckRecord(Base):
+    """V24A — persistent record of a standing check."""
+
+    __tablename__ = "standing_check"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    actor = Column(String, nullable=False, index=True)
+    role = Column(String, nullable=False)
+    action = Column(String, nullable=False)
+    policy_area = Column(String, nullable=True)
+    allowed = Column(Boolean, nullable=False)
+    reason = Column(Text, nullable=False)
+    checked_at = Column(DateTime, default=func.now())
+
+
+class DeadlineRecord(Base):
+    """V24B — persistent record of a procedural deadline."""
+
+    __tablename__ = "procedural_deadline"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    deadline_id = Column(String, unique=True, nullable=False, index=True)
+    reference_id = Column(String, nullable=False, index=True)
+    deadline_type = Column(String, nullable=False)
+    status = Column(String, nullable=False, default="pending")
+    due_at = Column(DateTime, nullable=False)
+    original_due_at = Column(DateTime, nullable=False)
+    met_at = Column(DateTime, nullable=True)
+    extensions = Column(Integer, default=0)
+    created_at = Column(DateTime, default=func.now())
+    deadline_hash = Column(String, nullable=True)
+
+
+class RecusalDbRecord(Base):
+    """V24C — persistent record of a conflict-of-interest recusal."""
+
+    __tablename__ = "recusal_record"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    recusal_id = Column(String, unique=True, nullable=False, index=True)
+    actor = Column(String, nullable=False, index=True)
+    reference_id = Column(String, nullable=False, index=True)
+    conflict_type = Column(String, nullable=False)
+    reason = Column(Text, nullable=False)
+    mandatory = Column(Boolean, default=False)
+    recused_at = Column(DateTime, default=func.now())
+    recusal_hash = Column(String, nullable=True)
+
+
+class PublishedReasoningRecord(Base):
+    """V24D — persistent record of a published reasoning document."""
+
+    __tablename__ = "published_reasoning"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    reasoning_id = Column(String, unique=True, nullable=False, index=True)
+    reference_id = Column(String, nullable=False, index=True)
+    decision_type = Column(String, nullable=False, index=True)
+    sections_json = Column(Text, nullable=False, default="{}")
+    cited_articles_json = Column(Text, default="[]")
+    cited_precedents_json = Column(Text, default="[]")
+    author = Column(String, nullable=True)
+    published_at = Column(DateTime, default=func.now())
+    reasoning_hash = Column(String, nullable=True)
