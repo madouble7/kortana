@@ -3508,3 +3508,531 @@ async def list_policy_evaluations(
             for r in records
         ],
     }
+
+
+
+# ---------------------------------------------------------------------------
+# V11A — Auth provider endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.post("/auth/verify")
+async def verify_auth_token(
+    token: str = Query(...),
+    provider_type: str = Query(default=None),
+) -> dict[str, Any]:
+    """Verify a token against registered auth providers."""
+    from src.kortana.services.auth_provider import (
+        ProviderType,
+        get_auth_provider_registry,
+    )
+
+    registry = get_auth_provider_registry()
+    pt = ProviderType(provider_type) if provider_type else None
+    credential = registry.verify(token, pt)
+
+    if credential is None:
+        return JSONResponse(
+            content={"error": "Token verification failed"},
+            status_code=401,
+        )
+    return {"verified": True, "credential": credential.to_dict()}
+
+
+@router.post("/auth/api-keys/issue")
+async def issue_api_key(
+    operator_id: str = Query(...),
+    display_name: str = Query(...),
+    role_hint: str = Query(default="operator"),
+    ttl_hours: int = Query(default=720, ge=1, le=8760),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Issue a new API key for an operator."""
+    from src.kortana.models import CredentialRecord
+    from src.kortana.services.auth_provider import (
+        ProviderType,
+        get_auth_provider_registry,
+    )
+
+    registry = get_auth_provider_registry()
+    provider = registry.get_provider(ProviderType.API_KEY)
+    if provider is None:
+        return JSONResponse(content={"error": "API key provider not available"}, status_code=500)
+
+    bearer, credential = provider.issue_key(
+        operator_id=operator_id,
+        display_name=display_name,
+        role_hint=role_hint,
+        ttl_hours=ttl_hours,
+    )
+
+    try:
+        db.add(CredentialRecord(
+            operator_id=operator_id,
+            provider_type="api_key",
+            credential_id=credential.credential_id,
+            display_name=display_name,
+            role_hint=role_hint,
+            verification_hash=credential.verification_hash,
+            expires_at=credential.expires_at,
+        ))
+        await db.commit()
+    except Exception:
+        pass
+
+    return {
+        "issued": True,
+        "bearer_token": bearer,
+        "credential": credential.to_dict(),
+    }
+
+
+@router.post("/auth/api-keys/revoke")
+async def revoke_api_key(
+    credential_id: str = Query(...),
+) -> dict[str, Any]:
+    """Revoke an API key."""
+    from src.kortana.services.auth_provider import (
+        ProviderType,
+        get_auth_provider_registry,
+    )
+
+    registry = get_auth_provider_registry()
+    if registry.revoke(ProviderType.API_KEY, credential_id):
+        return {"revoked": True, "credential_id": credential_id}
+    return JSONResponse(
+        content={"error": f"Credential {credential_id!r} not found"},
+        status_code=404,
+    )
+
+
+@router.get("/auth/providers")
+async def list_auth_providers() -> dict[str, Any]:
+    """List registered auth providers."""
+    from src.kortana.services.auth_provider import get_auth_provider_registry
+
+    registry = get_auth_provider_registry()
+    return {
+        "count": registry.count,
+        "providers": registry.provider_types,
+    }
+
+
+# ---------------------------------------------------------------------------
+# V11B — Identity verification endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.post("/identity/sessions/create")
+async def create_identity_session(
+    token: str = Query(...),
+    provider_type: str = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Verify a token and create an identity session."""
+    from src.kortana.models import IdentitySessionRecord
+    from src.kortana.services.identity_verification import (
+        get_identity_verification_manager,
+    )
+
+    manager = get_identity_verification_manager()
+    session, error = manager.verify_and_create_session(token, provider_type)
+
+    if session is None:
+        return JSONResponse(content={"error": error}, status_code=401)
+
+    try:
+        db.add(IdentitySessionRecord(
+            session_id=session.session_id,
+            operator_id=session.operator_id,
+            provider_type=session.provider_type,
+            credential_id=session.credential_id,
+            verification_level=session.verification_level.value,
+            expires_at=session.expires_at,
+            session_hash=session.session_hash,
+        ))
+        await db.commit()
+    except Exception:
+        pass
+
+    return {"created": True, "session": session.to_dict()}
+
+
+@router.get("/identity/sessions/{session_id}")
+async def get_identity_session(session_id: str) -> dict[str, Any]:
+    """Get an active identity session."""
+    from src.kortana.services.identity_verification import (
+        get_identity_verification_manager,
+    )
+
+    manager = get_identity_verification_manager()
+    session = manager.get_session(session_id)
+
+    if session is None:
+        return JSONResponse(
+            content={"error": f"Session {session_id!r} not found or expired"},
+            status_code=404,
+        )
+    return {"session": session.to_dict()}
+
+
+@router.post("/identity/sessions/{session_id}/revoke")
+async def revoke_identity_session(session_id: str) -> dict[str, Any]:
+    """Revoke an identity session."""
+    from src.kortana.services.identity_verification import (
+        get_identity_verification_manager,
+    )
+
+    manager = get_identity_verification_manager()
+    if manager.revoke_session(session_id):
+        return {"revoked": True, "session_id": session_id}
+    return JSONResponse(
+        content={"error": f"Session {session_id!r} not found"},
+        status_code=404,
+    )
+
+
+@router.post("/identity/sessions/{session_id}/elevate")
+async def elevate_identity_session(
+    session_id: str,
+    level: str = Query(...),
+) -> dict[str, Any]:
+    """Elevate a session's verification level."""
+    from src.kortana.services.identity_verification import (
+        VerificationLevel,
+        get_identity_verification_manager,
+    )
+
+    manager = get_identity_verification_manager()
+    try:
+        vl = VerificationLevel(level)
+    except ValueError:
+        return JSONResponse(
+            content={"error": f"Invalid verification level {level!r}"},
+            status_code=400,
+        )
+
+    if manager.elevate_session(session_id, vl):
+        session = manager.get_session(session_id)
+        return {
+            "elevated": True,
+            "session": session.to_dict() if session else None,
+        }
+    return JSONResponse(
+        content={"error": f"Session {session_id!r} not found or inactive"},
+        status_code=404,
+    )
+
+
+@router.post("/identity/bindings/create")
+async def create_identity_binding(
+    operator_id: str = Query(...),
+    provider_type: str = Query(...),
+    external_id: str = Query(...),
+    display_name: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Bind an external identity to an operator."""
+    from src.kortana.models import IdentityBindingRecord
+    from src.kortana.services.identity_verification import (
+        get_identity_verification_manager,
+    )
+
+    manager = get_identity_verification_manager()
+    binding = manager.bind_identity(operator_id, provider_type, external_id, display_name)
+
+    try:
+        db.add(IdentityBindingRecord(
+            binding_id=binding.binding_id,
+            operator_id=operator_id,
+            provider_type=provider_type,
+            external_id=external_id,
+            display_name=display_name,
+            binding_hash=binding.binding_hash,
+        ))
+        await db.commit()
+    except Exception:
+        pass
+
+    return {"bound": True, "binding": binding.to_dict()}
+
+
+@router.get("/identity/bindings/{operator_id}")
+async def get_identity_bindings(operator_id: str) -> dict[str, Any]:
+    """Get all identity bindings for an operator."""
+    from src.kortana.services.identity_verification import (
+        get_identity_verification_manager,
+    )
+
+    manager = get_identity_verification_manager()
+    bindings = manager.get_bindings(operator_id)
+    return {
+        "operator_id": operator_id,
+        "count": len(bindings),
+        "bindings": [b.to_dict() for b in bindings],
+    }
+
+
+@router.post("/identity/bindings/{binding_id}/revoke")
+async def revoke_identity_binding(binding_id: str) -> dict[str, Any]:
+    """Revoke an identity binding."""
+    from src.kortana.services.identity_verification import (
+        get_identity_verification_manager,
+    )
+
+    manager = get_identity_verification_manager()
+    if manager.revoke_binding(binding_id):
+        return {"revoked": True, "binding_id": binding_id}
+    return JSONResponse(
+        content={"error": f"Binding {binding_id!r} not found"},
+        status_code=404,
+    )
+
+
+@router.get("/identity/sessions")
+async def list_active_sessions() -> dict[str, Any]:
+    """List all active identity sessions."""
+    from src.kortana.services.identity_verification import (
+        get_identity_verification_manager,
+    )
+
+    manager = get_identity_verification_manager()
+    return {
+        "active_count": manager.active_session_count,
+        "total_count": manager.session_count,
+        "sessions": [s.to_dict() for s in manager.active_sessions],
+    }
+
+
+# ---------------------------------------------------------------------------
+# V11C — Credential gate endpoint
+# ---------------------------------------------------------------------------
+
+
+@router.post("/credential/gate/evaluate")
+async def evaluate_credential_gate_endpoint(
+    session_id: str = Query(...),
+    requirement_profile: str = Query(default="default"),
+    target_mode: str = Query(default=None),
+    min_policy_version: int = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Evaluate the credential-enforced deploy gate.
+
+    Uses a verified session (from V11B) and checks credential
+    requirements before delegating to governance checks (V10C).
+    """
+    from src.kortana.services.credential_gate import (
+        evaluate_credential_gate,
+        get_requirement,
+    )
+    from src.kortana.services.drill_scheduler import get_drill_scheduler
+    from src.kortana.services.human_override import get_override_manager
+    from src.kortana.services.quorum_override import get_quorum_manager
+
+    requirement = get_requirement(requirement_profile)
+    if requirement is None:
+        return JSONResponse(
+            content={"error": f"Unknown requirement profile {requirement_profile!r}"},
+            status_code=400,
+        )
+
+    daemon = get_autonomy_daemon()
+    override_manager = get_override_manager()
+    quorum_manager = get_quorum_manager()
+    drill_scheduler = get_drill_scheduler()
+
+    active = override_manager.active()
+    slo_results = [e.to_dict() for e in drill_scheduler.evaluate_all_slos()]
+
+    result = evaluate_credential_gate(
+        session_id=session_id,
+        requirement=requirement,
+        target_mode=target_mode,
+        current_mode=daemon.default_approval_mode,
+        active_override_mode=getattr(active, "mode", None) if active else None,
+        quorum_pending_count=quorum_manager.count,
+        drill_slo_results=slo_results if slo_results else None,
+        min_policy_version=min_policy_version,
+    )
+
+    return result.to_dict()
+
+
+# ---------------------------------------------------------------------------
+# V11D — Rule lifecycle endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.post("/rules/draft")
+async def create_rule_draft(
+    rule_id: str = Query(...),
+    name: str = Query(...),
+    description: str = Query(default=""),
+    action: str = Query(...),
+    priority: int = Query(default=100, ge=0, le=1000),
+    author_id: str = Query(...),
+    changelog: str = Query(default=""),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Create a draft rule version."""
+    from src.kortana.models import RuleVersionRecord
+    from src.kortana.services.rule_lifecycle import get_rule_lifecycle_manager
+
+    manager = get_rule_lifecycle_manager()
+    version = manager.create_draft(
+        rule_id=rule_id,
+        name=name,
+        description=description,
+        conditions={},
+        action=action,
+        priority=priority,
+        author_id=author_id,
+        changelog=changelog,
+    )
+
+    try:
+        db.add(RuleVersionRecord(
+            version_id=version.version_id,
+            rule_id=rule_id,
+            stage="draft",
+            rule_snapshot=version.rule_snapshot,
+            author_id=author_id,
+            changelog=changelog,
+            version_hash=version.version_hash,
+        ))
+        await db.commit()
+    except Exception:
+        pass
+
+    return {"created": True, "version": version.to_dict()}
+
+
+@router.post("/rules/{version_id}/submit")
+async def submit_rule_for_review(
+    version_id: str,
+    submitter_id: str = Query(...),
+) -> dict[str, Any]:
+    """Submit a draft rule for review."""
+    from src.kortana.services.rule_lifecycle import get_rule_lifecycle_manager
+
+    manager = get_rule_lifecycle_manager()
+    version, error = manager.submit_for_review(version_id, submitter_id)
+
+    if version is None:
+        return JSONResponse(content={"error": error}, status_code=400)
+    return {"submitted": True, "version": version.to_dict()}
+
+
+@router.post("/rules/{version_id}/approve")
+async def approve_rule(
+    version_id: str,
+    reviewer_id: str = Query(...),
+) -> dict[str, Any]:
+    """Approve a rule under review. Reviewer must differ from author."""
+    from src.kortana.services.rule_lifecycle import get_rule_lifecycle_manager
+
+    manager = get_rule_lifecycle_manager()
+    version, error = manager.approve(version_id, reviewer_id)
+
+    if version is None:
+        return JSONResponse(content={"error": error}, status_code=400)
+    return {"approved": True, "version": version.to_dict()}
+
+
+@router.post("/rules/{version_id}/reject")
+async def reject_rule(
+    version_id: str,
+    reviewer_id: str = Query(...),
+    reason: str = Query(default=""),
+) -> dict[str, Any]:
+    """Reject a rule under review."""
+    from src.kortana.services.rule_lifecycle import get_rule_lifecycle_manager
+
+    manager = get_rule_lifecycle_manager()
+    version, error = manager.reject(version_id, reviewer_id, reason)
+
+    if version is None:
+        return JSONResponse(content={"error": error}, status_code=400)
+    return {"rejected": True, "version": version.to_dict()}
+
+
+@router.post("/rules/{version_id}/activate")
+async def activate_rule(
+    version_id: str,
+    operator_id: str = Query(...),
+) -> dict[str, Any]:
+    """Activate a rule, pushing it to the policy engine."""
+    from src.kortana.services.rule_lifecycle import get_rule_lifecycle_manager
+
+    manager = get_rule_lifecycle_manager()
+    version, error = manager.activate(version_id, operator_id)
+
+    if version is None:
+        return JSONResponse(content={"error": error}, status_code=400)
+    return {"activated": True, "version": version.to_dict()}
+
+
+@router.post("/rules/{version_id}/retire")
+async def retire_rule(
+    version_id: str,
+    operator_id: str = Query(...),
+    reason: str = Query(default=""),
+) -> dict[str, Any]:
+    """Retire an active rule, removing it from the policy engine."""
+    from src.kortana.services.rule_lifecycle import get_rule_lifecycle_manager
+
+    manager = get_rule_lifecycle_manager()
+    version, error = manager.retire(version_id, operator_id, reason)
+
+    if version is None:
+        return JSONResponse(content={"error": error}, status_code=400)
+    return {"retired": True, "version": version.to_dict()}
+
+
+@router.get("/rules/versions/{rule_id}")
+async def list_rule_versions(rule_id: str) -> dict[str, Any]:
+    """List all versions of a rule."""
+    from src.kortana.services.rule_lifecycle import get_rule_lifecycle_manager
+
+    manager = get_rule_lifecycle_manager()
+    versions = manager.get_versions(rule_id)
+    return {
+        "rule_id": rule_id,
+        "count": len(versions),
+        "versions": [v.to_dict() for v in versions],
+    }
+
+
+@router.get("/rules/promotions/{rule_id}")
+async def list_rule_promotions(rule_id: str) -> dict[str, Any]:
+    """List promotion history for a rule."""
+    from src.kortana.services.rule_lifecycle import get_rule_lifecycle_manager
+
+    manager = get_rule_lifecycle_manager()
+    promotions = manager.get_promotions(rule_id)
+    return {
+        "rule_id": rule_id,
+        "count": len(promotions),
+        "promotions": [p.to_dict() for p in promotions],
+    }
+
+
+@router.post("/rules/diff")
+async def diff_rule_versions(
+    version_a: str = Query(...),
+    version_b: str = Query(...),
+) -> dict[str, Any]:
+    """Compare two rule versions."""
+    from src.kortana.services.rule_lifecycle import get_rule_lifecycle_manager
+
+    manager = get_rule_lifecycle_manager()
+    diff = manager.diff_versions(version_a, version_b)
+
+    if diff is None:
+        return JSONResponse(
+            content={"error": "One or both versions not found"},
+            status_code=404,
+        )
+    return {"diff": diff}
+

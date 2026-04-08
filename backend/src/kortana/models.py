@@ -1303,3 +1303,84 @@ class PolicyEvaluationRecord(Base):
 
     def __repr__(self) -> str:
         return f"<PolicyEvaluationRecord action={self.action} hash={self.decision_hash[:12]}>"
+
+
+class CredentialRecord(Base):
+    """V11A — Persisted credential from an auth provider."""
+
+    __tablename__ = "credential_record"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    operator_id = Column(String(64), nullable=False, index=True)
+    provider_type = Column(String(32), nullable=False, index=True)
+    credential_id = Column(String(128), nullable=False, unique=True, index=True)
+    display_name = Column(String(128), nullable=False)
+    role_hint = Column(String(32), nullable=False)
+    status = Column(String(16), nullable=False, default="active", index=True)
+    issued_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    expires_at = Column(DateTime, nullable=True)
+    verification_hash = Column(String(64), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        return f"<CredentialRecord {self.credential_id} provider={self.provider_type}>"
+
+
+class IdentitySessionRecord(Base):
+    """V11B — Persisted identity session."""
+
+    __tablename__ = "identity_session"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    session_id = Column(String(64), nullable=False, unique=True, index=True)
+    operator_id = Column(String(64), nullable=False, index=True)
+    provider_type = Column(String(32), nullable=False, index=True)
+    credential_id = Column(String(128), nullable=False)
+    verification_level = Column(String(16), nullable=False, default="basic")
+    status = Column(String(16), nullable=False, default="active", index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    expires_at = Column(DateTime, nullable=False)
+    session_hash = Column(String(64), nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        return f"<IdentitySessionRecord {self.session_id} op={self.operator_id}>"
+
+
+class IdentityBindingRecord(Base):
+    """V11B — Persisted identity binding (external → operator mapping)."""
+
+    __tablename__ = "identity_binding"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    binding_id = Column(String(64), nullable=False, unique=True, index=True)
+    operator_id = Column(String(64), nullable=False, index=True)
+    provider_type = Column(String(32), nullable=False)
+    external_id = Column(String(128), nullable=False, index=True)
+    display_name = Column(String(128), nullable=False)
+    active = Column(Boolean, nullable=False, default=True)
+    bound_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    binding_hash = Column(String(64), nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        return f"<IdentityBindingRecord {self.binding_id} {self.operator_id}→{self.external_id}>"
+
+
+class RuleVersionRecord(Base):
+    """V11D — Persisted rule version with lifecycle stage."""
+
+    __tablename__ = "rule_version"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    version_id = Column(String(64), nullable=False, unique=True, index=True)
+    rule_id = Column(String(64), nullable=False, index=True)
+    stage = Column(String(16), nullable=False, default="draft", index=True)
+    rule_snapshot = Column(JSON, nullable=False)
+    author_id = Column(String(64), nullable=False, index=True)
+    reviewer_id = Column(String(64), nullable=True)
+    changelog = Column(String(512), nullable=False, default="")
+    version_hash = Column(String(64), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    promoted_at = Column(DateTime, nullable=True)
+
+    def __repr__(self) -> str:
+        return f"<RuleVersionRecord {self.version_id} stage={self.stage}>"
