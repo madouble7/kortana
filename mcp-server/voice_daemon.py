@@ -116,18 +116,14 @@ COMMAND_PHRASE_LIMIT = 15
 
 # ── Silero VAD config ──────────────────────────────────────────────────────────
 _VAD_SAMPLE_RATE = 16000
-_VAD_FRAME_MS = 30  # 30ms frames for Silero (supports 30, 60, 90)
-_VAD_FRAME_SAMPLES = _VAD_SAMPLE_RATE * _VAD_FRAME_MS // 1000  # 480 samples
-_VAD_SPEECH_THRESHOLD = float(os.getenv("KORTANA_VAD_THRESHOLD", "0.5"))
+_VAD_FRAME_MS = 32  # 32ms frames → 512 samples (Silero supports 256, 512, 768 at 16kHz)
+_VAD_FRAME_SAMPLES = 512  # fixed: Silero requires exactly 512 samples at 16kHz
+_VAD_SPEECH_THRESHOLD = float(os.getenv("KORTANA_VAD_THRESHOLD", "0.3"))
 _VAD_SILENCE_MS = int(os.getenv("KORTANA_VAD_SILENCE_MS", "900"))
 _VAD_SILENCE_FRAMES = _VAD_SILENCE_MS // _VAD_FRAME_MS  # default 30 frames
 _VAD_MIN_SPEECH_FRAMES = 5  # minimum ~150ms of speech to register
 _VAD_MAX_SPEECH_SECONDS = 30  # max utterance length
-_VAD_NOISE_GATE_RMS = float(
-    os.getenv("KORTANA_NOISE_GATE", "0.005")
-)  # skip below thisch to register
-_VAD_MAX_SPEECH_SECONDS = 30  # max utterance length
-_VAD_NOISE_GATE_RMS = float(os.getenv("KORTANA_NOISE_GATE", "0.005"))  # skip below this
+_VAD_NOISE_GATE_RMS = float(os.getenv("KORTANA_NOISE_GATE", "0.001"))  # skip below this
 _CONVERSATION_TIMEOUT = 60  # seconds — auto-respond without wake word if recently spoke
 _USE_SILERO_VAD = os.getenv("KORTANA_USE_SILERO_VAD", "1") == "1"
 _vad_model: torch.nn.Module | None = None
@@ -958,11 +954,13 @@ def _cull_old_memories() -> None:
                         _chroma_collection.add(
                             documents=[summary],
                             ids=[f"summary_{int(time.time())}"],
-                            metadatas=[{
-                                "timestamp": time.time(),
-                                "type": "summary",
-                                "source_count": len(cull_ids),
-                            }],
+                            metadatas=[
+                                {
+                                    "timestamp": time.time(),
+                                    "type": "summary",
+                                    "source_count": len(cull_ids),
+                                }
+                            ],
                         )
                         log(
                             f"[memory] culled {len(cull_ids)} episodes -> 1 dense summary "
@@ -1777,6 +1775,7 @@ def _run_silero_listener() -> None:
     is_speech_active = False
     silence_frames = 0
     speech_frames = 0
+    _frame_count = 0
 
     recognizer = sr.Recognizer()  # kept for _handle_wake's follow-up mic
 
@@ -1854,7 +1853,12 @@ def _run_silero_listener() -> None:
         indata: np.ndarray, frames: int, time_info: dict, status: sd.CallbackFlags
     ) -> None:
         """Called for each 30ms audio frame from sounddevice."""
-        nonlocal speech_buffer, is_speech_active, silence_frames, speech_frames
+        nonlocal \
+            speech_buffer, \
+            is_speech_active, \
+            silence_frames, \
+            speech_frames, \
+            _frame_count
 
         if status:
             log(f"[vad] audio status: {status}", "WARN")
@@ -1866,6 +1870,9 @@ def _run_silero_listener() -> None:
 
         # Noise gate - skip frames below noise floor (keyboard, breathing, fans)
         rms = float(np.sqrt(np.mean(audio_frame**2)))
+        _frame_count += 1
+        if _frame_count % 3000 == 0:
+            log(f"[vad-debug] frame={_frame_count} rms={rms:.6f} gate={_VAD_NOISE_GATE_RMS}")
         if rms < _VAD_NOISE_GATE_RMS:
             if is_speech_active:
                 silence_frames += 1
@@ -1888,8 +1895,15 @@ def _run_silero_listener() -> None:
 
         try:
             speech_prob = _vad_model(audio_tensor, _VAD_SAMPLE_RATE).item()  # type: ignore[misc]
-        except Exception:
+        except Exception as e:
+            if _frame_count % 500 == 0:
+                log(f"[vad-debug] MODEL ERROR: {e}", "WARN")
             return
+
+        if _frame_count % 3000 == 0:
+            log(
+                f"[vad-debug] speech_prob={speech_prob:.4f} threshold={_VAD_SPEECH_THRESHOLD}"
+            )
 
         if speech_prob >= _VAD_SPEECH_THRESHOLD:
             # Speech detected
