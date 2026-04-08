@@ -1076,6 +1076,48 @@ def _cull_old_memories() -> None:
         log(f"[memory] cull error: {e}", "WARN")
 
 
+# ── knowledge graph recall (Phase 11) ─────────────────────────────────────────
+_BACKEND_BASE = os.getenv("KORTANA_BACKEND_URL", "http://localhost:8000")
+
+
+def _recall_knowledge(topic: str) -> str:
+    """Query the backend knowledge graph for structured facts about a topic.
+
+    Returns a formatted string of entities/facts/relations, or empty string.
+    This is 'what she knows' vs ChromaDB's 'what she remembers'.
+    """
+    try:
+        with httpx.Client(timeout=5.0) as client:
+            r = client.get(
+                f"{_BACKEND_BASE}/api/consciousness/knowledge/query",
+                params={"topic": topic, "limit": 3},
+            )
+        if r.status_code == 200:
+            data = r.json()
+            knowledge = data.get("knowledge", "")
+            if knowledge:
+                return knowledge
+    except Exception as e:
+        log(f"[knowledge] recall failed: {e}", "WARN")
+    return ""
+
+
+def _store_knowledge_async(user_msg: str, assistant_reply: str) -> None:
+    """Send conversation text to the backend for knowledge extraction.
+
+    Runs in a background thread — fire-and-forget.
+    """
+    try:
+        text = f"User: {user_msg}\nKor'tana: {assistant_reply}"
+        with httpx.Client(timeout=10.0) as client:
+            client.post(
+                f"{_BACKEND_BASE}/api/consciousness/knowledge/extract",
+                json={"text": text, "source": "voice_conversation"},
+            )
+    except Exception as e:
+        log(f"[knowledge] async store failed: {e}", "WARN")
+
+
 # ── backend chat ───────────────────────────────────────────────────────────────
 # ── Barge-in / interrupt support ──────────────────────────────────────────────
 _interrupt = threading.Event()
@@ -1187,6 +1229,13 @@ def _build_groq_messages(message: str) -> list[dict[str, str]]:
         memory_text = "\n".join(f"- {m}" for m in memories)
         system_parts.append(
             f"\n[Relevant memories from past conversations:\n{memory_text}]"
+        )
+
+    # Knowledge graph — inject structured facts she knows
+    knowledge = _recall_knowledge(message)
+    if knowledge:
+        system_parts.append(
+            f"\n[Structured knowledge about this topic:\n{knowledge}]"
         )
 
     # Barge-in awareness — tell her she was interrupted
@@ -1331,6 +1380,14 @@ def _stream_and_speak(message: str) -> str:
         args=(message, full_response),
         daemon=True,
     ).start()
+
+    # Knowledge graph — extract structured facts (every 3rd exchange)
+    if _memory_count % 3 == 0:
+        threading.Thread(
+            target=_store_knowledge_async,
+            args=(message, full_response),
+            daemon=True,
+        ).start()
 
     return full_response
 

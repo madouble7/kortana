@@ -357,12 +357,35 @@ async def consolidate_memories(force: bool = False) -> dict[str, Any] | None:
         logger.warning("memory consolidation: failed to persist: %s", exc)
         return None
 
+    # ── knowledge graph extraction (Phase 11) ──
+    # run LLM-based entity/relation/fact extraction on the same message window
+    kg_counts: dict[str, int] = {"entities": 0, "relations": 0, "facts": 0}
+    try:
+        async with db.session_scope() as session:
+            from src.kortana.services.knowledge_graph import KnowledgeGraphService
+
+            kg = KnowledgeGraphService(session)
+            # feed user messages as a single block for extraction
+            user_text = "\n".join(
+                m["content"] for m in messages if m["role"] == "user"
+            )
+            if len(user_text) > 100:
+                kg_counts = await kg.extract_and_store(
+                    user_text, source="consolidation"
+                )
+                # also run fact decay and entity dedup
+                await kg.decay_stale_facts()
+                await kg.merge_duplicate_entities()
+    except Exception as exc:
+        logger.warning("knowledge graph extraction failed: %s", exc)
+
     result = {
         "explicit_memories": explicit,
         "people": people,
         "topics": topics,
         "moods": moods,
         "summary": summary,
+        "knowledge_graph": kg_counts,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
     return result

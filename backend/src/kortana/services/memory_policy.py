@@ -62,6 +62,8 @@ class MemoryPolicySpec:
     architecture_limit: int = 0
     include_related_incidents: bool = False
     related_incident_limit: int = 0
+    include_knowledge_graph: bool = False
+    knowledge_graph_limit: int = 0
 
 
 @dataclass
@@ -71,6 +73,7 @@ class MemoryPolicyContext:
     incident_lines: list[str] = field(default_factory=list)
     architecture_lines: list[str] = field(default_factory=list)
     related_incident_lines: list[str] = field(default_factory=list)
+    knowledge_graph_lines: list[str] = field(default_factory=list)
 
     def render(self) -> str:
         sections: list[str] = []
@@ -94,6 +97,10 @@ class MemoryPolicyContext:
                 "## related incident history\n"
                 + "\n".join(related_incident_lines)
             )
+        if knowledge_graph_lines := self.knowledge_graph_lines:
+            sections.append(
+                "## structured knowledge\n" + "\n".join(knowledge_graph_lines)
+            )
         return "\n\n".join(sections)
 
 
@@ -109,6 +116,8 @@ class MemoryPolicyService:
             conversation_limit=4,
             include_incidents=True,
             incident_limit=2,
+            include_knowledge_graph=True,
+            knowledge_graph_limit=3,
         ),
         MemorySurface.PATCH_ANALYSIS: MemoryPolicySpec(
             include_architecture=True,
@@ -229,6 +238,20 @@ class MemoryPolicyService:
                 cls._format_related_incident_line(entry)
                 for entry in related_incidents
             ]
+
+        # Knowledge graph — structured facts (Phase 11)
+        if spec.include_knowledge_graph and spec.knowledge_graph_limit > 0 and query:
+            try:
+                from src.kortana.services.knowledge_graph import KnowledgeGraphService
+
+                kg = KnowledgeGraphService(session)
+                kg_text = await kg.query_context(query, limit=spec.knowledge_graph_limit)
+                if kg_text:
+                    context.knowledge_graph_lines = [
+                        f"- {line}" for line in kg_text.split("\n") if line.strip()
+                    ]
+            except Exception:
+                pass  # knowledge graph is best-effort
 
         return context
 

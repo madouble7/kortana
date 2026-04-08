@@ -1311,3 +1311,70 @@ async def resolve_override_authenticated(
             "authority_tier": ctx.authority_tier,
         },
     }
+
+
+# ==================================================================
+# Phase 11: Long-Term Cognitive Memory Graph
+# ==================================================================
+
+
+class KnowledgeExtractRequest(BaseModel):
+    """Request to extract knowledge from arbitrary text."""
+
+    text: str = Field(..., min_length=10, max_length=8000)
+    source: str = Field(default="manual")
+
+
+@router.post("/knowledge/extract")
+async def extract_knowledge(
+    request: KnowledgeExtractRequest,
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """Extract entities, relations, and facts from text into the knowledge graph."""
+    from src.kortana.services.knowledge_graph import KnowledgeGraphService
+
+    kg = KnowledgeGraphService(db)
+    counts = await kg.extract_and_store(request.text, source=request.source)
+    return {"status": "ok", "extracted": counts}
+
+
+@router.get("/knowledge/query")
+async def query_knowledge(
+    topic: str = Query(..., min_length=1, max_length=500),
+    limit: int = Query(default=5, ge=1, le=20),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """Query the knowledge graph for structured context about a topic.
+
+    Used by the voice daemon to inject 'what she knows' alongside
+    'what she remembers' from ChromaDB.
+    """
+    from src.kortana.services.knowledge_graph import KnowledgeGraphService
+
+    kg = KnowledgeGraphService(db)
+    context = await kg.query_context(topic, limit=limit)
+    return {"topic": topic, "knowledge": context}
+
+
+@router.get("/knowledge/stats")
+async def knowledge_stats(
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """Return knowledge graph statistics."""
+    from src.kortana.services.knowledge_graph import KnowledgeGraphService
+
+    kg = KnowledgeGraphService(db)
+    return await kg.stats()
+
+
+@router.post("/knowledge/maintain")
+async def knowledge_maintain(
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """Run maintenance: decay stale facts and merge duplicate entities."""
+    from src.kortana.services.knowledge_graph import KnowledgeGraphService
+
+    kg = KnowledgeGraphService(db)
+    decayed = await kg.decay_stale_facts()
+    merged = await kg.merge_duplicate_entities()
+    return {"decayed_facts": decayed, "merged_entities": merged}
