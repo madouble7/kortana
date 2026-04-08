@@ -13,6 +13,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    func,
 )
 from sqlalchemy.orm import DeclarativeBase, relationship
 
@@ -1784,6 +1785,129 @@ class VerificationProbeRecord(Base):
     status = Column(String(32), default="pending")
     matched = Column(Boolean, default=False)
     latency_ms = Column(Float, default=0.0)
+
+
+# ── Long-Term Cognitive Memory Graph ──────────────────────────────────────────
+
+
+class KnowledgeEntity(Base):
+    """A node in kor'tana's knowledge graph — a person, project, tool, concept,
+    preference, place, or any other named entity she has learned about.
+
+    Entities are extracted from conversations by the knowledge graph service
+    and consolidated over time.  The embedding enables semantic entity lookup
+    (e.g. "what does Matt use for deployment?" → matches 'Railway', 'Cloud Run').
+    """
+
+    __tablename__ = "knowledge_entities"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String(256), nullable=False, index=True)
+    entity_type = Column(
+        String(64), nullable=False, index=True
+    )  # person | project | tool | concept | preference | place | event | organisation
+    summary = Column(Text, nullable=True)  # one-line description
+    attributes = Column(JSON, nullable=True)  # flexible key-value facts
+    confidence = Column(Float, nullable=False, default=0.7)
+    mention_count = Column(Integer, nullable=False, default=1)
+    embedding = Column(JSON, nullable=True)  # 768d Gemini embedding
+    first_seen = Column(DateTime, default=datetime.utcnow, nullable=False)
+    last_seen = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # relationships
+    outgoing_relations = relationship(
+        "KnowledgeRelation",
+        foreign_keys="KnowledgeRelation.source_id",
+        back_populates="source",
+        cascade="all, delete-orphan",
+    )
+    incoming_relations = relationship(
+        "KnowledgeRelation",
+        foreign_keys="KnowledgeRelation.target_id",
+        back_populates="target",
+        cascade="all, delete-orphan",
+    )
+    facts = relationship(
+        "KnowledgeFact", back_populates="entity", cascade="all, delete-orphan"
+    )
+
+    def __repr__(self) -> str:
+        return f"<KnowledgeEntity {self.name!r} type={self.entity_type!r}>"
+
+
+class KnowledgeRelation(Base):
+    """A directed edge in the knowledge graph connecting two entities.
+
+    Examples: Matt --uses--> Railway, Kor'tana --built_with--> FastAPI,
+    Matt --knows--> Python.
+    """
+
+    __tablename__ = "knowledge_relations"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    source_id = Column(
+        String(36), ForeignKey("knowledge_entities.id"), nullable=False, index=True
+    )
+    target_id = Column(
+        String(36), ForeignKey("knowledge_entities.id"), nullable=False, index=True
+    )
+    relation_type = Column(
+        String(64), nullable=False, index=True
+    )  # uses | knows | works_on | prefers | related_to | teaches | owns | part_of
+    evidence = Column(Text, nullable=True)  # supporting quote / context
+    confidence = Column(Float, nullable=False, default=0.7)
+    first_seen = Column(DateTime, default=datetime.utcnow, nullable=False)
+    last_seen = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    source = relationship(
+        "KnowledgeEntity",
+        foreign_keys=[source_id],
+        back_populates="outgoing_relations",
+    )
+    target = relationship(
+        "KnowledgeEntity",
+        foreign_keys=[target_id],
+        back_populates="incoming_relations",
+    )
+
+    def __repr__(self) -> str:
+        return f"<KnowledgeRelation {self.source_id} --{self.relation_type}--> {self.target_id}>"
+
+
+class KnowledgeFact(Base):
+    """A discrete assertion about an entity — a single thing kor'tana knows.
+
+    Facts have temporal validity: valid_from marks when she first learned it,
+    invalidated_at marks when she learned it was no longer true.
+    superseded_by links to the newer fact that replaced it (fact evolution).
+
+    Examples:
+      - entity='Matt', fact='is a teacher'
+      - entity='Railway', fact='is the primary deployment platform'
+      - entity='Kor\'tana', fact='now uses Piper for local TTS'
+    """
+
+    __tablename__ = "knowledge_facts"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    entity_id = Column(
+        String(36), ForeignKey("knowledge_entities.id"), nullable=False, index=True
+    )
+    fact_text = Column(Text, nullable=False)
+    source = Column(
+        String(64), nullable=False, default="conversation"
+    )  # conversation | consolidation | revelation | manual
+    confidence = Column(Float, nullable=False, default=0.7)
+    valid_from = Column(DateTime, default=datetime.utcnow, nullable=False)
+    invalidated_at = Column(DateTime, nullable=True)
+    superseded_by = Column(
+        String(36), ForeignKey("knowledge_facts.id"), nullable=True
+    )
+
+    entity = relationship("KnowledgeEntity", back_populates="facts")
+
+    def __repr__(self) -> str:
+        return f"<KnowledgeFact entity={self.entity_id!r} text={self.fact_text[:50]!r}>"
     error = Column(Text, nullable=True)
     probe_hash = Column(String(64), nullable=True)
     probed_at = Column(DateTime, nullable=True)
@@ -2296,3 +2420,94 @@ class ConstitutionalComplianceRecord(Base):
     boundary_checks_json = Column(Text, nullable=False)
     issued_at = Column(String, nullable=False)
     proof_hash = Column(String, nullable=False)
+
+
+# ═══ V23: Constitutional Adjudication Models ═══
+
+
+class ConstitutionalWaiverRecord(Base):
+    """V23A — persistent record of a constitutional waiver."""
+
+    __tablename__ = "constitutional_waiver"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    waiver_id = Column(String, unique=True, nullable=False, index=True)
+    article_id = Column(String, nullable=False, index=True)
+    proposal_id = Column(String, nullable=False, index=True)
+    policy_area = Column(String, nullable=False)
+    classification_overridden = Column(String, nullable=False)
+    reason = Column(Text, nullable=False)
+    granted_by = Column(String, nullable=False)
+    scope = Column(String, nullable=False)
+    conditions_json = Column(Text, default="{}")
+    duration_hours = Column(Integer, default=4)
+    status = Column(String, nullable=False, default="requested")
+    requested_at = Column(DateTime, default=func.now())
+    granted_at = Column(DateTime, nullable=True)
+    expires_at = Column(DateTime, nullable=True)
+    revoked_at = Column(DateTime, nullable=True)
+    waiver_hash = Column(String, nullable=True)
+
+
+class AppealRecord(Base):
+    """V23B — persistent record of a constitutional appeal."""
+
+    __tablename__ = "constitutional_appeal"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    appeal_id = Column(String, unique=True, nullable=False, index=True)
+    proposal_id = Column(String, nullable=False, index=True)
+    original_check_id = Column(String, nullable=False)
+    policy_area = Column(String, nullable=False)
+    appellant = Column(String, nullable=False)
+    grounds = Column(String, nullable=False)
+    argument = Column(Text, nullable=False)
+    evidence_json = Column(Text, default="[]")
+    status = Column(String, nullable=False, default="filed")
+    decision_json = Column(Text, nullable=True)
+    escalated_sensitivity = Column(String, default="high")
+    filed_at = Column(DateTime, default=func.now())
+    appeal_hash = Column(String, nullable=True)
+
+
+class EmergencyDeclarationRecord(Base):
+    """V23C — persistent record of an emergency declaration."""
+
+    __tablename__ = "emergency_declaration"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    declaration_id = Column(String, unique=True, nullable=False, index=True)
+    declared_by = Column(String, nullable=False)
+    reason = Column(Text, nullable=False)
+    scope = Column(String, nullable=False)
+    affected_areas_json = Column(Text, default="[]")
+    powers_json = Column(Text, default="[]")
+    duration_hours = Column(Integer, default=4)
+    status = Column(String, nullable=False, default="declared")
+    review_json = Column(Text, nullable=True)
+    declared_at = Column(DateTime, default=func.now())
+    activated_at = Column(DateTime, nullable=True)
+    expires_at = Column(DateTime, nullable=True)
+    revoked_at = Column(DateTime, nullable=True)
+    declaration_hash = Column(String, nullable=True)
+
+
+class PrecedentRecord(Base):
+    """V23D — persistent record of an adjudication precedent."""
+
+    __tablename__ = "adjudication_precedent"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    precedent_id = Column(String, unique=True, nullable=False, index=True)
+    decision_type = Column(String, nullable=False, index=True)
+    reference_id = Column(String, nullable=False)
+    policy_area = Column(String, nullable=False, index=True)
+    decision_summary = Column(Text, nullable=False)
+    reasoning = Column(Text, nullable=False)
+    outcome = Column(String, nullable=False)
+    strength = Column(String, nullable=False, default="persuasive")
+    cited_articles_json = Column(Text, default="[]")
+    tags_json = Column(Text, default="[]")
+    superseded_by = Column(String, nullable=True)
+    created_at = Column(DateTime, default=func.now())
+    precedent_hash = Column(String, nullable=True)

@@ -6883,3 +6883,426 @@ async def get_constitutional_stats() -> dict:
         "boundary": enforcer.get_violation_summary(),
         "compliance": audit.get_compliance_report(),
     }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# V23 — Constitutional Adjudication Endpoints
+# ═══════════════════════════════════════════════════════════════════════════════
+
+from kortana.services.exception_handler import (  # noqa: E402
+    WaiverScope,
+    get_exception_handler,
+)
+from kortana.services.appeals import (  # noqa: E402
+    AppealGrounds,
+    AppealStatus,
+    get_appeals_court,
+)
+from kortana.services.emergency_powers import (  # noqa: E402
+    EmergencyScope,
+    get_emergency_powers,
+)
+from kortana.services.precedent_tracker import (  # noqa: E402
+    DecisionType,
+    PrecedentStrength,
+    get_precedent_tracker,
+)
+
+
+# ─── Exception Handler (Waivers) ─────────────────────────────────────────────
+
+
+@router.post("/waivers/request")
+async def request_waiver(
+    article_id: str = Body(...),
+    proposal_id: str = Body(...),
+    reason: str = Body(...),
+    requested_by: str = Body(...),
+    scope: str = Body("single_proposal"),
+    duration_hours: int = Body(4),
+) -> dict:
+    """Request a constitutional waiver for a specific article."""
+    handler = get_exception_handler()
+    waiver = handler.request_waiver(
+        article_id=article_id,
+        proposal_id=proposal_id,
+        reason=reason,
+        requested_by=requested_by,
+        scope=WaiverScope(scope),
+        duration_hours=duration_hours,
+    )
+    return waiver.to_dict()
+
+
+@router.post("/waivers/{waiver_id}/grant")
+async def grant_waiver(waiver_id: str) -> dict:
+    """Grant a requested waiver — starts expiration clock."""
+    handler = get_exception_handler()
+    ok = handler.grant_waiver(waiver_id)
+    return {"success": ok, "waiver_id": waiver_id}
+
+
+@router.post("/waivers/{waiver_id}/deny")
+async def deny_waiver(waiver_id: str, reason: str = Body("")) -> dict:
+    """Deny a waiver request."""
+    handler = get_exception_handler()
+    ok = handler.deny_waiver(waiver_id, reason)
+    return {"success": ok, "waiver_id": waiver_id}
+
+
+@router.post("/waivers/{waiver_id}/revoke")
+async def revoke_waiver(waiver_id: str) -> dict:
+    """Revoke an active waiver immediately."""
+    handler = get_exception_handler()
+    ok = handler.revoke_waiver(waiver_id)
+    return {"success": ok, "waiver_id": waiver_id}
+
+
+@router.get("/waivers")
+async def list_waivers(
+    article_id: str | None = None,
+    active_only: bool = False,
+) -> dict:
+    """List waivers with optional filters."""
+    handler = get_exception_handler()
+    waivers = handler.get_waivers(article_id=article_id, active_only=active_only)
+    return {"waivers": [w.to_dict() for w in waivers], "count": len(waivers)}
+
+
+@router.get("/waivers/{waiver_id}")
+async def get_waiver_detail(waiver_id: str) -> dict:
+    """Get details of a specific waiver."""
+    handler = get_exception_handler()
+    w = handler.get_waiver(waiver_id)
+    if w is None:
+        return {"error": "not found", "waiver_id": waiver_id}
+    return w.to_dict()
+
+
+@router.get("/waivers/summary/stats")
+async def get_waiver_summary() -> dict:
+    """Get waiver statistics."""
+    handler = get_exception_handler()
+    return handler.get_summary()
+
+
+@router.post("/waivers/expire")
+async def expire_waivers() -> dict:
+    """Expire all waivers past their expiration time."""
+    handler = get_exception_handler()
+    count = handler.expire_waivers()
+    return {"expired_count": count}
+
+
+# ─── Appeals Court ────────────────────────────────────────────────────────────
+
+
+@router.post("/appeals/file")
+async def file_appeal(
+    proposal_id: str = Body(...),
+    original_check_id: str = Body(...),
+    original_policy_area: str = Body(...),
+    original_sensitivity: str = Body("standard"),
+    appellant: str = Body(...),
+    grounds: str = Body(...),
+    argument: str = Body(...),
+) -> dict:
+    """File an appeal against a boundary check decision."""
+    court = get_appeals_court()
+    # Build a minimal BoundaryCheck for filing
+    from kortana.services.boundary_enforcer import BoundaryCheck  # noqa: E402
+    check = BoundaryCheck(
+        check_id=original_check_id,
+        proposal_id=proposal_id,
+        passed=False,
+        violations=[],
+        warnings=[],
+        articles_checked=0,
+        policy_area=original_policy_area,
+        classification="immutable",
+        sensitivity=original_sensitivity,
+    )
+    appeal = court.file_appeal(
+        proposal_id=proposal_id,
+        original_check=check,
+        appellant=appellant,
+        grounds=AppealGrounds(grounds),
+        argument=argument,
+    )
+    return appeal.to_dict()
+
+
+@router.post("/appeals/{appeal_id}/review")
+async def begin_appeal_review(appeal_id: str) -> dict:
+    """Move an appeal into review."""
+    court = get_appeals_court()
+    ok = court.begin_review(appeal_id)
+    return {"success": ok, "appeal_id": appeal_id}
+
+
+@router.post("/appeals/{appeal_id}/decide")
+async def decide_appeal(
+    appeal_id: str,
+    decided_by: str = Body(...),
+    outcome: str = Body(...),
+    reasoning: str = Body(...),
+    conditions: list[str] = Body(default=[]),
+) -> dict:
+    """Issue a decision on an appeal."""
+    court = get_appeals_court()
+    ok = court.decide(
+        appeal_id=appeal_id,
+        decided_by=decided_by,
+        outcome=AppealStatus(outcome),
+        reasoning=reasoning,
+        conditions=conditions,
+    )
+    return {"success": ok, "appeal_id": appeal_id}
+
+
+@router.post("/appeals/{appeal_id}/withdraw")
+async def withdraw_appeal(appeal_id: str) -> dict:
+    """Withdraw a filed appeal."""
+    court = get_appeals_court()
+    ok = court.withdraw(appeal_id)
+    return {"success": ok, "appeal_id": appeal_id}
+
+
+@router.get("/appeals")
+async def list_appeals(
+    proposal_id: str | None = None,
+    status: str | None = None,
+    appellant: str | None = None,
+) -> dict:
+    """List appeals with optional filters."""
+    court = get_appeals_court()
+    st = AppealStatus(status) if status else None
+    appeals = court.get_appeals(proposal_id=proposal_id, status=st, appellant=appellant)
+    return {"appeals": [a.to_dict() for a in appeals], "count": len(appeals)}
+
+
+@router.get("/appeals/{appeal_id}")
+async def get_appeal_detail(appeal_id: str) -> dict:
+    """Get details of a specific appeal."""
+    court = get_appeals_court()
+    a = court.get_appeal(appeal_id)
+    if a is None:
+        return {"error": "not found", "appeal_id": appeal_id}
+    return a.to_dict()
+
+
+@router.get("/appeals/summary/stats")
+async def get_appeals_summary() -> dict:
+    """Get appeals statistics."""
+    court = get_appeals_court()
+    return court.get_summary()
+
+
+# ─── Emergency Powers ────────────────────────────────────────────────────────
+
+
+@router.post("/emergency/declare")
+async def declare_emergency(
+    declared_by: str = Body(...),
+    reason: str = Body(...),
+    affected_areas: list[str] = Body(...),
+    scope: str = Body("single_area"),
+    duration_hours: int = Body(4),
+) -> dict:
+    """Declare an emergency with temporary powers."""
+    mgr = get_emergency_powers()
+    areas = [PolicyArea(a) for a in affected_areas]
+    declaration = mgr.declare_emergency(
+        declared_by=declared_by,
+        reason=reason,
+        affected_areas=areas,
+        scope=EmergencyScope(scope),
+        duration_hours=duration_hours,
+    )
+    return declaration.to_dict()
+
+
+@router.post("/emergency/{declaration_id}/activate")
+async def activate_emergency(declaration_id: str) -> dict:
+    """Activate a declared emergency — starts expiration clock."""
+    mgr = get_emergency_powers()
+    ok = mgr.activate(declaration_id)
+    return {"success": ok, "declaration_id": declaration_id}
+
+
+@router.post("/emergency/{declaration_id}/revoke")
+async def revoke_emergency(declaration_id: str) -> dict:
+    """Revoke an active emergency immediately."""
+    mgr = get_emergency_powers()
+    ok = mgr.revoke(declaration_id)
+    return {"success": ok, "declaration_id": declaration_id}
+
+
+@router.post("/emergency/{declaration_id}/review")
+async def submit_emergency_review(
+    declaration_id: str,
+    reviewer: str = Body(...),
+    actions_taken: list[str] = Body(...),
+    justified: bool = Body(...),
+    findings: str = Body(...),
+    recommendations: list[str] = Body(default=[]),
+) -> dict:
+    """Submit a mandatory post-emergency review."""
+    mgr = get_emergency_powers()
+    ok = mgr.submit_review(
+        declaration_id=declaration_id,
+        reviewer=reviewer,
+        actions_taken=actions_taken,
+        justified=justified,
+        findings=findings,
+        recommendations=recommendations,
+    )
+    return {"success": ok, "declaration_id": declaration_id}
+
+
+@router.get("/emergency")
+async def list_emergencies(
+    active_only: bool = False,
+    needs_review: bool = False,
+) -> dict:
+    """List emergency declarations."""
+    mgr = get_emergency_powers()
+    declarations = mgr.get_declarations(active_only=active_only, needs_review=needs_review)
+    return {"declarations": [d.to_dict() for d in declarations], "count": len(declarations)}
+
+
+@router.get("/emergency/{declaration_id}")
+async def get_emergency_detail(declaration_id: str) -> dict:
+    """Get details of a specific emergency declaration."""
+    mgr = get_emergency_powers()
+    d = mgr.get_declaration(declaration_id)
+    if d is None:
+        return {"error": "not found", "declaration_id": declaration_id}
+    return d.to_dict()
+
+
+@router.get("/emergency/summary/stats")
+async def get_emergency_summary() -> dict:
+    """Get emergency powers statistics."""
+    mgr = get_emergency_powers()
+    return mgr.get_summary()
+
+
+@router.post("/emergency/expire")
+async def expire_emergencies() -> dict:
+    """Expire all emergencies past their expiration time."""
+    mgr = get_emergency_powers()
+    count = mgr.expire_declarations()
+    return {"expired_count": count}
+
+
+# ─── Precedent Tracker ────────────────────────────────────────────────────────
+
+
+@router.post("/precedents/record")
+async def record_precedent(
+    decision_type: str = Body(...),
+    reference_id: str = Body(...),
+    policy_area: str = Body(...),
+    decision_summary: str = Body(...),
+    reasoning: str = Body(...),
+    outcome: str = Body(...),
+    strength: str = Body("persuasive"),
+    tags: list[str] = Body(default=[]),
+) -> dict:
+    """Record a new adjudication precedent."""
+    tracker = get_precedent_tracker()
+    precedent = tracker.record_precedent(
+        decision_type=DecisionType(decision_type),
+        reference_id=reference_id,
+        policy_area=PolicyArea(policy_area),
+        decision_summary=decision_summary,
+        reasoning=reasoning,
+        outcome=outcome,
+        strength=PrecedentStrength(strength),
+        tags=tags,
+    )
+    return precedent.to_dict()
+
+
+@router.post("/precedents/{old_id}/supersede")
+async def supersede_precedent(old_id: str, new_id: str = Body(...)) -> dict:
+    """Mark a precedent as superseded by a newer one."""
+    tracker = get_precedent_tracker()
+    ok = tracker.supersede(old_id, new_id)
+    return {"success": ok, "old_id": old_id, "new_id": new_id}
+
+
+@router.get("/precedents")
+async def list_precedents(
+    policy_area: str | None = None,
+    decision_type: str | None = None,
+    strength: str | None = None,
+    active_only: bool = True,
+) -> dict:
+    """Search precedents with optional filters."""
+    tracker = get_precedent_tracker()
+    area = PolicyArea(policy_area) if policy_area else None
+    dt = DecisionType(decision_type) if decision_type else None
+    st = PrecedentStrength(strength) if strength else None
+    precedents = tracker.find_precedents(policy_area=area, decision_type=dt, strength=st, active_only=active_only)
+    return {"precedents": [p.to_dict() for p in precedents], "count": len(precedents)}
+
+
+@router.get("/precedents/{precedent_id}")
+async def get_precedent_detail(precedent_id: str) -> dict:
+    """Get details of a specific precedent."""
+    tracker = get_precedent_tracker()
+    p = tracker.get_precedent(precedent_id)
+    if p is None:
+        return {"error": "not found", "precedent_id": precedent_id}
+    return p.to_dict()
+
+
+@router.get("/precedents/binding/{policy_area}")
+async def get_binding_precedents(policy_area: str) -> dict:
+    """Get binding precedents for a policy area."""
+    tracker = get_precedent_tracker()
+    binding = tracker.get_binding_precedents(PolicyArea(policy_area))
+    return {"binding": [p.to_dict() for p in binding], "count": len(binding)}
+
+
+@router.post("/precedents/check-conflicts")
+async def check_precedent_conflicts(
+    policy_area: str = Body(...),
+    proposed_outcome: str = Body(...),
+) -> dict:
+    """Check if a proposed outcome conflicts with binding precedents."""
+    tracker = get_precedent_tracker()
+    conflicts = tracker.check_conflicts(PolicyArea(policy_area), proposed_outcome)
+    return {
+        "has_conflicts": len(conflicts) > 0,
+        "conflicts": [p.to_dict() for p in conflicts],
+        "count": len(conflicts),
+    }
+
+
+@router.get("/precedents/summary/stats")
+async def get_precedent_summary() -> dict:
+    """Get precedent tracker statistics."""
+    tracker = get_precedent_tracker()
+    return tracker.get_summary()
+
+
+# ─── V23 Cross-Component Stats ───────────────────────────────────────────────
+
+
+@router.get("/adjudication/stats")
+async def get_adjudication_stats() -> dict:
+    """Get statistics across all V23 constitutional adjudication components."""
+    handler = get_exception_handler()
+    court = get_appeals_court()
+    mgr = get_emergency_powers()
+    tracker = get_precedent_tracker()
+
+    return {
+        "waivers": handler.get_summary(),
+        "appeals": court.get_summary(),
+        "emergency_powers": mgr.get_summary(),
+        "precedents": tracker.get_summary(),
+    }
