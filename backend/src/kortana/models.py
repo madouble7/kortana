@@ -1384,3 +1384,85 @@ class RuleVersionRecord(Base):
 
     def __repr__(self) -> str:
         return f"<RuleVersionRecord {self.version_id} stage={self.stage}>"
+
+
+
+# ---------------------------------------------------------------------------
+# V12 — Production Federation models
+# ---------------------------------------------------------------------------
+
+
+class OIDCProviderRecord(Base):
+    """V12A — Registered OIDC provider configuration."""
+    __tablename__ = "oidc_provider"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    issuer_url = Column(String(256), nullable=False)
+    client_id = Column(String(128), nullable=False)
+    audience = Column(String(128), nullable=True)
+    supported_algorithms = Column(Text, nullable=True)
+    active = Column(Boolean, default=True)
+    registered_at = Column(DateTime, default=datetime.utcnow)
+    config_hash = Column(String(64), nullable=True)
+
+
+class KeyRotationRecord(Base):
+    """V12B — Key rotation schedule."""
+    __tablename__ = "key_rotation"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    key_id = Column(String(64), nullable=False)
+    provider_type = Column(String(32), nullable=False)
+    operator_id = Column(String(64), nullable=False)
+    rotation_interval_hours = Column(Integer, default=720)
+    grace_period_hours = Column(Integer, default=24)
+    state = Column(String(32), default="active")
+    next_rotation_at = Column(DateTime, nullable=True)
+    last_rotated_at = Column(DateTime, nullable=True)
+    schedule_hash = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class RotationEventRecord(Base):
+    """V12B — Key rotation event audit trail."""
+    __tablename__ = "rotation_event"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    event_id = Column(String(64), nullable=False)
+    key_id = Column(String(64), nullable=False)
+    event_type = Column(String(32), nullable=False)
+    old_credential_id = Column(String(64), nullable=True)
+    new_credential_id = Column(String(64), nullable=True)
+    initiated_by = Column(String(64), nullable=True)
+    event_hash = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class CICredentialCheckRecord(Base):
+    """V12C — CI/CD credential enforcement check record."""
+    __tablename__ = "ci_credential_check"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    checkpoint = Column(String(32), nullable=False)
+    session_id = Column(String(64), nullable=True)
+    operator_id = Column(String(64), nullable=True)
+    passed = Column(Boolean, default=False)
+    reason = Column(String(256), nullable=True)
+    policy_applied = Column(String(64), nullable=True)
+    check_hash = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class AuthenticatedPromotionRecord(Base):
+    """V12D — Authenticated rule promotion event."""
+    __tablename__ = "authenticated_promotion"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    event_id = Column(String(64), nullable=False)
+    version_id = Column(String(64), nullable=False)
+    action = Column(String(32), nullable=False)
+    session_id = Column(String(64), nullable=True)
+    operator_id = Column(String(64), nullable=True)
+    session_verification_level = Column(String(32), nullable=True)
+    event_hash = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)

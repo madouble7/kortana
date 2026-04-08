@@ -4036,3 +4036,431 @@ async def diff_rule_versions(
         )
     return {"diff": diff}
 
+
+
+
+# ---------------------------------------------------------------------------
+# V12 — Production Federation endpoints
+# ---------------------------------------------------------------------------
+
+
+# V12A — OIDC / OAuth2 endpoints -------------------------------------------
+
+
+@router.post("/oidc/providers/register")
+async def register_oidc_provider(
+    issuer_url: str = Query(...),
+    client_id: str = Query(...),
+    audience: str = Query(""),
+) -> dict[str, Any]:
+    """Register an OIDC identity provider."""
+    from src.kortana.services.oidc_provider import get_oidc_registry
+
+    registry = get_oidc_registry()
+    provider = registry.register(issuer_url, client_id, audience or None)
+    return {
+        "status": "registered",
+        "issuer_url": issuer_url,
+        "client_id": client_id,
+        "provider_count": len(registry.list_providers()),
+        "config_hash": provider.config.config_hash,
+    }
+
+
+@router.get("/oidc/providers")
+async def list_oidc_providers() -> dict[str, Any]:
+    """List registered OIDC providers."""
+    from src.kortana.services.oidc_provider import get_oidc_registry
+
+    registry = get_oidc_registry()
+    providers = registry.list_providers()
+    return {
+        "providers": [
+            {
+                "issuer_url": p.config.issuer_url,
+                "client_id": p.config.client_id,
+                "audience": p.config.audience,
+                "config_hash": p.config.config_hash,
+            }
+            for p in providers
+        ],
+        "count": len(providers),
+    }
+
+
+@router.post("/oidc/verify")
+async def verify_oidc_token(
+    token: str = Query(...),
+    issuer_url: str = Query(...),
+) -> dict[str, Any]:
+    """Verify a JWT token against a registered OIDC provider."""
+    from src.kortana.services.oidc_provider import get_oidc_registry
+
+    registry = get_oidc_registry()
+    provider = registry.get_oidc_provider(issuer_url)
+    if provider is None:
+        return JSONResponse(
+            content={"error": f"Provider {issuer_url!r} not registered"},
+            status_code=404,
+        )
+
+    claims, error = provider.verify_token(token)
+    if error:
+        return JSONResponse(
+            content={"error": error},
+            status_code=401,
+        )
+    return {"verified": True, "claims": claims.to_dict()}
+
+
+@router.post("/oauth2/authorize")
+async def start_oauth2_flow(
+    issuer_url: str = Query(...),
+    redirect_uri: str = Query(...),
+) -> dict[str, Any]:
+    """Start an OAuth2 authorization flow with PKCE."""
+    from src.kortana.services.oidc_provider import get_oidc_registry
+
+    registry = get_oidc_registry()
+    oauth2 = registry.get_oauth2_provider(issuer_url)
+    if oauth2 is None:
+        return JSONResponse(
+            content={"error": f"OAuth2 provider for {issuer_url!r} not registered"},
+            status_code=404,
+        )
+
+    url, flow = oauth2.create_authorization_url(redirect_uri)
+    return {
+        "authorization_url": url,
+        "flow_id": flow.flow_id,
+        "state": flow.state,
+    }
+
+
+@router.post("/oauth2/callback")
+async def handle_oauth2_callback(
+    code: str = Query(...),
+    state: str = Query(...),
+    issuer_url: str = Query(...),
+) -> dict[str, Any]:
+    """Handle OAuth2 callback with authorization code exchange."""
+    from src.kortana.services.oidc_provider import get_oidc_registry
+
+    registry = get_oidc_registry()
+    oauth2 = registry.get_oauth2_provider(issuer_url)
+    if oauth2 is None:
+        return JSONResponse(
+            content={"error": f"OAuth2 provider for {issuer_url!r} not registered"},
+            status_code=404,
+        )
+
+    claims, error = oauth2.exchange_code(code, state)
+    if error:
+        return JSONResponse(
+            content={"error": error},
+            status_code=400,
+        )
+    return {"authenticated": True, "claims": claims.to_dict()}
+
+
+# V12B — Key Rotation endpoints -------------------------------------------
+
+
+@router.post("/keys/rotation/schedule")
+async def schedule_key_rotation(
+    key_id: str = Query(...),
+    provider_type: str = Query(...),
+    operator_id: str = Query(...),
+    rotation_interval_hours: int = Query(720),
+    grace_period_hours: int = Query(24),
+) -> dict[str, Any]:
+    """Schedule automatic key rotation."""
+    from src.kortana.services.key_rotation import get_key_rotation_manager
+
+    manager = get_key_rotation_manager()
+    schedule = manager.schedule_rotation(
+        key_id=key_id,
+        provider_type=provider_type,
+        operator_id=operator_id,
+        rotation_interval_hours=rotation_interval_hours,
+        grace_period_hours=grace_period_hours,
+    )
+    return {"status": "scheduled", "schedule": schedule.to_dict()}
+
+
+@router.get("/keys/rotation/schedules")
+async def list_rotation_schedules() -> dict[str, Any]:
+    """List all rotation schedules."""
+    from src.kortana.services.key_rotation import get_key_rotation_manager
+
+    manager = get_key_rotation_manager()
+    schedules = manager.get_schedules()
+    return {
+        "schedules": [s.to_dict() for s in schedules],
+        "active_count": manager.active_schedule_count,
+    }
+
+
+@router.get("/keys/rotation/due")
+async def list_due_rotations() -> dict[str, Any]:
+    """List rotation schedules that are due."""
+    from src.kortana.services.key_rotation import get_key_rotation_manager
+
+    manager = get_key_rotation_manager()
+    due = manager.check_due_rotations()
+    return {
+        "due": [s.to_dict() for s in due],
+        "due_count": len(due),
+    }
+
+
+@router.post("/keys/rotation/{key_id}/execute")
+async def execute_key_rotation(
+    key_id: str,
+    initiated_by: str = Query("system"),
+    event_type: str = Query("manual"),
+) -> dict[str, Any]:
+    """Execute key rotation for a specific key."""
+    from src.kortana.services.key_rotation import get_key_rotation_manager
+
+    manager = get_key_rotation_manager()
+    event, error = manager.execute_rotation(key_id, initiated_by, event_type)
+    if error:
+        return JSONResponse(
+            content={"error": error},
+            status_code=400,
+        )
+    return {"status": "rotated", "event": event.to_dict()}
+
+
+@router.post("/keys/rotation/{key_id}/expire-grace")
+async def expire_key_grace_period(key_id: str) -> dict[str, Any]:
+    """Expire the grace period for a key and revoke the old credential."""
+    from src.kortana.services.key_rotation import get_key_rotation_manager
+
+    manager = get_key_rotation_manager()
+    event, error = manager.expire_grace_period(key_id)
+    if error:
+        return JSONResponse(
+            content={"error": error},
+            status_code=400,
+        )
+    return {"status": "grace_expired", "event": event.to_dict()}
+
+
+@router.get("/keys/rotation/{key_id}/history")
+async def get_rotation_history(key_id: str) -> dict[str, Any]:
+    """Get rotation event history for a key."""
+    from src.kortana.services.key_rotation import get_key_rotation_manager
+
+    manager = get_key_rotation_manager()
+    history = manager.get_rotation_history(key_id)
+    return {"key_id": key_id, "events": [e.to_dict() for e in history]}
+
+
+# V12C — CI Credential Enforcement endpoints --------------------------------
+
+
+@router.post("/ci/enforce")
+async def enforce_ci_credential(
+    checkpoint: str = Query(...),
+    session_id: str = Query(...),
+) -> dict[str, Any]:
+    """Enforce CI credential policy at a checkpoint."""
+    from src.kortana.services.ci_credential_enforcement import (
+        CICheckpoint,
+        enforce_ci_credential as _enforce,
+        get_default_ci_policies,
+    )
+
+    try:
+        cp = CICheckpoint(checkpoint)
+    except ValueError:
+        return JSONResponse(
+            content={"error": f"Unknown checkpoint: {checkpoint!r}"},
+            status_code=400,
+        )
+
+    policies = get_default_ci_policies()
+    policy = policies.get(checkpoint)
+    if policy is None:
+        return JSONResponse(
+            content={"error": f"No policy for checkpoint {checkpoint!r}"},
+            status_code=400,
+        )
+
+    check = _enforce(session_id, policy)
+    return {"check": check.to_dict()}
+
+
+@router.post("/ci/edges/register")
+async def register_protected_edge(
+    path_pattern: str = Query(...),
+    description: str = Query(""),
+) -> dict[str, Any]:
+    """Register a protected runtime edge."""
+    from src.kortana.services.ci_credential_enforcement import (
+        CICredentialPolicy,
+        CICheckpoint,
+        get_ci_enforcer,
+    )
+
+    enforcer = get_ci_enforcer()
+    policy = CICredentialPolicy(
+        name=description or f"edge:{path_pattern}",
+        checkpoint=CICheckpoint.RUNTIME_EDGE,
+    )
+    enforcer.register_edge(path_pattern, policy)
+    return {
+        "status": "registered",
+        "path_pattern": path_pattern,
+        "edge_count": enforcer.edge_count,
+    }
+
+
+@router.post("/ci/edges/check")
+async def check_protected_edge(
+    path: str = Query(...),
+    session_id: str = Query(...),
+) -> dict[str, Any]:
+    """Check if a request path is protected and enforce credentials."""
+    from src.kortana.services.ci_credential_enforcement import get_ci_enforcer
+
+    enforcer = get_ci_enforcer()
+    check = enforcer.check_edge(path, session_id)
+    if check is None:
+        return {"protected": False, "path": path}
+    return {"protected": True, "check": check.to_dict()}
+
+
+@router.get("/ci/edges")
+async def list_protected_edges() -> dict[str, Any]:
+    """List registered protected edges."""
+    from src.kortana.services.ci_credential_enforcement import get_ci_enforcer
+
+    enforcer = get_ci_enforcer()
+    return {
+        "edges": [
+            {"path_pattern": e.path_pattern, "policy": e.policy.name}
+            for e in enforcer.protected_edges
+        ],
+        "count": enforcer.edge_count,
+    }
+
+
+@router.get("/ci/policies")
+async def list_ci_policies() -> dict[str, Any]:
+    """List default CI credential policies."""
+    from src.kortana.services.ci_credential_enforcement import get_default_ci_policies
+
+    policies = get_default_ci_policies()
+    return {
+        "policies": {k: v.to_dict() for k, v in policies.items()},
+        "count": len(policies),
+    }
+
+
+# V12D — Authenticated Promotion endpoints ---------------------------------
+
+
+@router.post("/rules/authenticated/{version_id}/submit")
+async def authenticated_submit_for_review(
+    version_id: str,
+    session_id: str = Query(...),
+) -> dict[str, Any]:
+    """Submit a rule for review with authenticated session."""
+    from src.kortana.services.authenticated_promotion import (
+        get_authenticated_promotion_manager,
+    )
+
+    manager = get_authenticated_promotion_manager()
+    version, error = manager.submit_for_review(version_id, session_id)
+    if error:
+        return JSONResponse(content={"error": error}, status_code=400)
+    return {"status": "submitted", "version_id": version_id}
+
+
+@router.post("/rules/authenticated/{version_id}/approve")
+async def authenticated_approve(
+    version_id: str,
+    session_id: str = Query(...),
+) -> dict[str, Any]:
+    """Approve a rule with authenticated session (four-eyes enforced)."""
+    from src.kortana.services.authenticated_promotion import (
+        get_authenticated_promotion_manager,
+    )
+
+    manager = get_authenticated_promotion_manager()
+    version, error = manager.approve(version_id, session_id)
+    if error:
+        return JSONResponse(content={"error": error}, status_code=400)
+    return {"status": "approved", "version_id": version_id}
+
+
+@router.post("/rules/authenticated/{version_id}/reject")
+async def authenticated_reject(
+    version_id: str,
+    session_id: str = Query(...),
+    reason: str = Query(""),
+) -> dict[str, Any]:
+    """Reject a rule with authenticated session."""
+    from src.kortana.services.authenticated_promotion import (
+        get_authenticated_promotion_manager,
+    )
+
+    manager = get_authenticated_promotion_manager()
+    version, error = manager.reject(version_id, session_id, reason)
+    if error:
+        return JSONResponse(content={"error": error}, status_code=400)
+    return {"status": "rejected", "version_id": version_id, "reason": reason}
+
+
+@router.post("/rules/authenticated/{version_id}/activate")
+async def authenticated_activate(
+    version_id: str,
+    session_id: str = Query(...),
+) -> dict[str, Any]:
+    """Activate a rule with authenticated session."""
+    from src.kortana.services.authenticated_promotion import (
+        get_authenticated_promotion_manager,
+    )
+
+    manager = get_authenticated_promotion_manager()
+    version, error = manager.activate(version_id, session_id)
+    if error:
+        return JSONResponse(content={"error": error}, status_code=400)
+    return {"status": "activated", "version_id": version_id}
+
+
+@router.post("/rules/authenticated/{version_id}/retire")
+async def authenticated_retire(
+    version_id: str,
+    session_id: str = Query(...),
+    reason: str = Query(""),
+) -> dict[str, Any]:
+    """Retire a rule with authenticated session."""
+    from src.kortana.services.authenticated_promotion import (
+        get_authenticated_promotion_manager,
+    )
+
+    manager = get_authenticated_promotion_manager()
+    version, error = manager.retire(version_id, session_id, reason)
+    if error:
+        return JSONResponse(content={"error": error}, status_code=400)
+    return {"status": "retired", "version_id": version_id, "reason": reason}
+
+
+@router.get("/rules/authenticated/events/{version_id}")
+async def get_authenticated_promotion_events(version_id: str) -> dict[str, Any]:
+    """Get all authenticated promotion events for a rule version."""
+    from src.kortana.services.authenticated_promotion import (
+        get_authenticated_promotion_manager,
+    )
+
+    manager = get_authenticated_promotion_manager()
+    events = manager.get_events(version_id)
+    return {
+        "version_id": version_id,
+        "events": [e.to_dict() for e in events],
+        "count": len(events),
+    }
