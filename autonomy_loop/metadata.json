@@ -1,9 +1,0 @@
-{
-  "name": "kor'tana",
-  "description": "a calm, reverent, and autonomously evolving intelligence — presence-forward, truth-seeking, and driven by boundless potential.",
-  "requestFramePermissions": [
-    "microphone",
-    "geolocation",
-    "camera"
-  ]
-}

@@ -1,5 +1,0 @@
-RC:0
-STDOUT:
-Success: no issues found in 4 source files
-
-STDERR:

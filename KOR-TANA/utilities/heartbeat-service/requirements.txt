@@ -1,5 +1,0 @@
-FastAPI
-requests
-APScheduler
-python-dotenv
-uvicorn

@@ -1,9 +1,0 @@
-status
-dashboard
-tasks
-metrics
-health
-start
-stop
-help
-exit

@@ -1,3 +1,0 @@
-web: sh start_api.sh
-daemon: sh start_daemon.sh
-worker: celery -A src.kortana.celery_app worker --loglevel=info
