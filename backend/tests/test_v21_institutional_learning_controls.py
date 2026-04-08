@@ -5,33 +5,33 @@ from __future__ import annotations
 import sys
 sys.path.insert(0, "src")
 
-from kortana.services.proposal_registry import (
+from src.kortana.services.proposal_registry import (
     ProposalRegistry,
     ProposalStatus,
     get_proposal_registry,
 )
-from kortana.services.approval_gate import (
+from src.kortana.services.approval_gate import (
     ApprovalGate,
     ApprovalPolicy,
     DecisionType,
     get_approval_gate,
 )
-from kortana.services.policy_rollback import (
+from src.kortana.services.policy_rollback import (
     PolicyRollback,
     get_policy_rollback,
 )
-from kortana.services.evolution_observer import (
+from src.kortana.services.evolution_observer import (
     EvolutionObserver,
     EventType,
     EvolutionEvent,
     get_evolution_observer,
 )
-from kortana.services.policy_feedback_loop import (
+from src.kortana.services.policy_feedback_loop import (
     PolicyAmendment,
     AmendmentStatus,
     PolicyArea,
 )
-from kortana.services.trust_calibrator import TrustLevel
+from src.kortana.services.trust_calibrator import TrustLevel
 
 
 def _make_amendment(

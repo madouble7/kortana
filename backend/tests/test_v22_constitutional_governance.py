@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 sys.path.insert(0, "src")
 
-from kortana.services.constitution import (
+from src.kortana.services.constitution import (
     Constitution,
     ConstitutionalArticle,
     PolicyClassification,
@@ -13,22 +13,22 @@ from kortana.services.constitution import (
     ViolationSeverity,
     get_constitution,
 )
-from kortana.services.quorum_policy import (
+from src.kortana.services.quorum_policy import (
     QuorumPolicy,
     QuorumType,
     QuorumRequirement,
     get_quorum_policy,
 )
-from kortana.services.boundary_enforcer import (
+from src.kortana.services.boundary_enforcer import (
     BoundaryEnforcer,
     get_boundary_enforcer,
 )
-from kortana.services.constitutional_audit import (
+from src.kortana.services.constitutional_audit import (
     ConstitutionalAudit,
     get_constitutional_audit,
 )
-from kortana.services.policy_feedback_loop import PolicyArea
-from kortana.services.proposal_registry import PolicyProposal
+from src.kortana.services.policy_feedback_loop import PolicyArea
+from src.kortana.services.proposal_registry import PolicyProposal
 
 
 def _make_proposal(

@@ -6277,7 +6277,7 @@ from src.kortana.services.trust_calibrator import TrustLevel  # noqa: E402
 @router.post("/proposals/create")
 async def create_proposal_from_amendment(amendment_id: str = Body(...)) -> dict:
     """Create a proposal from a pending V20 amendment."""
-    from kortana.services.policy_feedback_loop import get_policy_feedback_loop
+    from src.kortana.services.policy_feedback_loop import get_policy_feedback_loop
 
     feedback = get_policy_feedback_loop()
     amendments = feedback.get_amendments()
@@ -6421,7 +6421,7 @@ async def evaluate_proposal(proposal_id: str) -> dict:
     if proposal is None:
         return {"error": "proposal not found"}
 
-    from kortana.services.trust_calibrator import get_trust_calibrator
+    from src.kortana.services.trust_calibrator import get_trust_calibrator
 
     calibrator = get_trust_calibrator()
     trust = calibrator.get_current_trust()
@@ -6497,7 +6497,7 @@ async def set_approval_policy(
     max_auto_approve_per_cycle: int = Body(5),
 ) -> dict:
     """Update the approval policy."""
-    from kortana.services.trust_calibrator import TrustLevel as TL
+    from src.kortana.services.trust_calibrator import TrustLevel as TL
 
     try:
         tl = TL(min_trust_level)
@@ -6689,7 +6689,7 @@ async def get_constitution_article(article_id: str) -> dict:
 @router.get("/constitution/classification/{policy_area}")
 async def get_area_classification(policy_area: str) -> dict:
     """Get the constitutional classification for a policy area."""
-    from kortana.services.policy_feedback_loop import PolicyArea as PA
+    from src.kortana.services.policy_feedback_loop import PolicyArea as PA
 
     try:
         area = PA(policy_area)
@@ -6783,7 +6783,7 @@ async def get_quorum_results() -> dict:
 @router.post("/boundary/check/{proposal_id}")
 async def check_proposal_boundary(proposal_id: str) -> dict:
     """Check a proposal against constitutional boundaries."""
-    from kortana.services.proposal_registry import get_proposal_registry
+    from src.kortana.services.proposal_registry import get_proposal_registry
 
     registry = get_proposal_registry()
     proposal = registry.get_proposal(proposal_id)
@@ -6798,7 +6798,7 @@ async def check_proposal_boundary(proposal_id: str) -> dict:
     proof = audit.record_check(check)
 
     # Emit observer event
-    from kortana.services.evolution_observer import EventType, get_evolution_observer
+    from src.kortana.services.evolution_observer import EventType, get_evolution_observer
 
     observer = get_evolution_observer()
     observer.emit(
@@ -6816,7 +6816,7 @@ async def check_proposal_boundary(proposal_id: str) -> dict:
 @router.post("/boundary/validate-batch")
 async def validate_evolution_batch(proposal_ids: list[str] = Body(...)) -> dict:
     """Validate multiple proposals against constitutional boundaries."""
-    from kortana.services.proposal_registry import get_proposal_registry
+    from src.kortana.services.proposal_registry import get_proposal_registry
 
     registry = get_proposal_registry()
     proposals = []
@@ -7035,7 +7035,7 @@ async def file_appeal(
     """File an appeal against a boundary check decision."""
     court = get_appeals_court()
     # Build a minimal BoundaryCheck for filing
-    from kortana.services.boundary_enforcer import BoundaryCheck  # noqa: E402
+    from src.kortana.services.boundary_enforcer import BoundaryCheck  # noqa: E402
     check = BoundaryCheck(
         check_id=original_check_id,
         proposal_id=proposal_id,
@@ -8028,4 +8028,400 @@ async def get_transparency_stats() -> dict:
         "timeline": timeline.get_summary(),
         "notices": notices.get_summary(),
         "decisions": decisions.get_summary(),
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# V26 — Heartbeat & Continuous Self-Cycle Endpoints
+# ═══════════════════════════════════════════════════════════════════════════════
+
+from src.kortana.services.heartbeat_loop import get_heartbeat_loop, HeartbeatState  # noqa: E402
+from src.kortana.services.cycle_memory import get_cycle_memory  # noqa: E402
+from src.kortana.services.health_assessor import get_health_assessor  # noqa: E402
+from src.kortana.services.graceful_degradation import get_graceful_degradation, DegradationTrigger  # noqa: E402
+
+
+# ── heartbeat endpoints ──────────────────────────────────────────────────────
+
+
+@router.post("/heartbeat/begin")
+async def heartbeat_begin():
+    """begin a new heartbeat cycle."""
+    loop = get_heartbeat_loop()
+    beat = loop.begin_beat()
+    return {"status": "beat_started", "beat": beat.to_dict()}
+
+
+@router.post("/heartbeat/{beat_id}/observe")
+async def heartbeat_observe(beat_id: str, payload: dict = Body(...)):
+    """add an observation to the current heartbeat."""
+    loop = get_heartbeat_loop()
+    obs = loop.add_observation(
+        beat_id,
+        source=payload.get("source", "unknown"),
+        description=payload.get("description", ""),
+        severity=payload.get("severity", "info"),
+        data=payload.get("data", {}),
+    )
+    if obs is None:
+        return {"error": "beat not found"}
+    return {"status": "observed", "observation": obs.to_dict()}
+
+
+@router.post("/heartbeat/{beat_id}/decide")
+async def heartbeat_decide(beat_id: str, payload: dict = Body(...)):
+    """add a decision to the current heartbeat."""
+    loop = get_heartbeat_loop()
+    dec = loop.add_decision(
+        beat_id,
+        action_type=payload.get("action_type", ""),
+        rationale=payload.get("rationale", ""),
+        priority=payload.get("priority", 0),
+    )
+    if dec is None:
+        return {"error": "beat not found"}
+    return {"status": "decided", "decision": dec.to_dict()}
+
+
+@router.post("/heartbeat/{beat_id}/defer")
+async def heartbeat_defer(beat_id: str, payload: dict = Body(...)):
+    """defer an action to a future cycle."""
+    loop = get_heartbeat_loop()
+    dec = loop.add_deferral(
+        beat_id,
+        action_type=payload.get("action_type", ""),
+        reason=payload.get("reason", ""),
+    )
+    if dec is None:
+        return {"error": "beat not found"}
+    return {"status": "deferred", "decision": dec.to_dict()}
+
+
+@router.post("/heartbeat/{beat_id}/act")
+async def heartbeat_act(beat_id: str, payload: dict = Body(...)):
+    """record an action taken during this heartbeat."""
+    loop = get_heartbeat_loop()
+    ok = loop.record_action(beat_id, payload.get("action", ""))
+    if not ok:
+        return {"error": "beat not found"}
+    return {"status": "action_recorded"}
+
+
+@router.post("/heartbeat/{beat_id}/reflect")
+async def heartbeat_reflect(beat_id: str, payload: dict = Body(...)):
+    """add a reflection to the current heartbeat."""
+    loop = get_heartbeat_loop()
+    ok = loop.add_reflection(beat_id, payload.get("reflection", ""))
+    if not ok:
+        return {"error": "beat not found"}
+    return {"status": "reflected"}
+
+
+@router.post("/heartbeat/{beat_id}/complete")
+async def heartbeat_complete(beat_id: str):
+    """complete the current heartbeat cycle."""
+    loop = get_heartbeat_loop()
+    ok = loop.complete_beat(beat_id)
+    if not ok:
+        return {"error": "beat not found"}
+    beat = loop.get_beat(beat_id)
+    return {"status": "beat_completed", "beat": beat.to_dict() if beat else {}}
+
+
+@router.post("/heartbeat/state")
+async def heartbeat_set_state(payload: dict = Body(...)):
+    """set the heartbeat state."""
+    loop = get_heartbeat_loop()
+    state_str = payload.get("state", "alive")
+    try:
+        state = HeartbeatState(state_str)
+    except ValueError:
+        return {"error": f"invalid state: {state_str}"}
+    previous = loop.set_state(state)
+    return {"status": "state_changed", "previous": previous.value, "current": state.value}
+
+
+@router.get("/heartbeat/{beat_id}")
+async def heartbeat_get(beat_id: str):
+    """get a specific heartbeat."""
+    loop = get_heartbeat_loop()
+    beat = loop.get_beat(beat_id)
+    if beat is None:
+        return {"error": "beat not found"}
+    return beat.to_dict()
+
+
+@router.get("/heartbeat/recent/beats")
+async def heartbeat_recent(n: int = 10):
+    """get the most recent heartbeats."""
+    loop = get_heartbeat_loop()
+    return {"beats": [b.to_dict() for b in loop.get_recent(n)]}
+
+
+@router.get("/heartbeat/summary/stats")
+async def heartbeat_summary():
+    """get heartbeat loop summary."""
+    loop = get_heartbeat_loop()
+    return loop.get_summary()
+
+
+# ── cycle memory endpoints ───────────────────────────────────────────────────
+
+
+@router.post("/cycles/begin")
+async def cycle_begin():
+    """begin a new cycle, inheriting context from the previous one."""
+    mem = get_cycle_memory()
+    record = mem.begin_cycle()
+    return {"status": "cycle_started", "cycle": record.to_dict()}
+
+
+@router.post("/cycles/{cycle_id}/observation")
+async def cycle_observe(cycle_id: str, payload: dict = Body(...)):
+    """record an observation in the current cycle."""
+    mem = get_cycle_memory()
+    ok = mem.record_observation(cycle_id, payload.get("observation", ""))
+    if not ok:
+        return {"error": "cycle not found or finalized"}
+    return {"status": "observation_recorded"}
+
+
+@router.post("/cycles/{cycle_id}/decision")
+async def cycle_decide(cycle_id: str, payload: dict = Body(...)):
+    """record a decision in the current cycle."""
+    mem = get_cycle_memory()
+    ok = mem.record_decision(cycle_id, payload.get("decision", ""))
+    if not ok:
+        return {"error": "cycle not found or finalized"}
+    return {"status": "decision_recorded"}
+
+
+@router.post("/cycles/{cycle_id}/action")
+async def cycle_act(cycle_id: str, payload: dict = Body(...)):
+    """record an action in the current cycle."""
+    mem = get_cycle_memory()
+    ok = mem.record_action(cycle_id, payload.get("action", ""))
+    if not ok:
+        return {"error": "cycle not found or finalized"}
+    return {"status": "action_recorded"}
+
+
+@router.post("/cycles/{cycle_id}/deferral")
+async def cycle_defer(cycle_id: str, payload: dict = Body(...)):
+    """record a deferral in the current cycle."""
+    mem = get_cycle_memory()
+    ok = mem.record_deferral(cycle_id, payload.get("deferral", ""))
+    if not ok:
+        return {"error": "cycle not found or finalized"}
+    return {"status": "deferral_recorded"}
+
+
+@router.post("/cycles/{cycle_id}/reflection")
+async def cycle_reflect(cycle_id: str, payload: dict = Body(...)):
+    """record a reflection in the current cycle."""
+    mem = get_cycle_memory()
+    ok = mem.record_reflection(cycle_id, payload.get("reflection", ""))
+    if not ok:
+        return {"error": "cycle not found or finalized"}
+    return {"status": "reflection_recorded"}
+
+
+@router.post("/cycles/{cycle_id}/end")
+async def cycle_end(cycle_id: str, payload: dict = Body(None)):
+    """finalize the current cycle and bequeath context to the next."""
+    mem = get_cycle_memory()
+    bequeathed = None
+    if payload and "context" in payload:
+        from src.kortana.services.cycle_memory import CycleContext  # noqa: E402
+        bequeathed = CycleContext.from_dict(payload["context"])
+    ok = mem.end_cycle(cycle_id, bequeathed)
+    if not ok:
+        return {"error": "cycle not found or already finalized"}
+    cycle = mem.get_cycle(cycle_id)
+    return {"status": "cycle_ended", "cycle": cycle.to_dict() if cycle else {}}
+
+
+@router.get("/cycles/{cycle_id}")
+async def cycle_get(cycle_id: str):
+    """get a specific cycle record."""
+    mem = get_cycle_memory()
+    record = mem.get_cycle(cycle_id)
+    if record is None:
+        return {"error": "cycle not found"}
+    return record.to_dict()
+
+
+@router.get("/cycles/recent/records")
+async def cycles_recent(n: int = 10):
+    """get the most recent cycle records."""
+    mem = get_cycle_memory()
+    return {"cycles": [c.to_dict() for c in mem.get_recent(n)]}
+
+
+@router.get("/cycles/context/inherited")
+async def cycles_inherited_context():
+    """get the context that would be inherited by the next cycle."""
+    mem = get_cycle_memory()
+    ctx = mem.get_inherited_context()
+    if ctx is None:
+        return {"context": None, "note": "no finalized cycles yet"}
+    return {"context": ctx.to_dict()}
+
+
+@router.get("/cycles/summary/stats")
+async def cycles_summary():
+    """get cycle memory summary."""
+    mem = get_cycle_memory()
+    return mem.get_summary()
+
+
+# ── health assessment endpoints ──────────────────────────────────────────────
+
+
+@router.post("/health/assess")
+async def health_assess():
+    """run a complete health assessment based on current heartbeat and cycle state."""
+    loop = get_heartbeat_loop()
+    mem = get_cycle_memory()
+    assessor = get_health_assessor()
+
+    loop_summary = loop.get_summary()
+    mem_summary = mem.get_summary()
+
+    snapshot = assessor.assess(
+        cycle_number=loop_summary["cycle_number"],
+        beat_count=loop_summary["beat_count"],
+        uptime_beats=loop_summary["uptime_beats"],
+        avg_duration_ms=loop_summary["avg_duration_ms"],
+        total_observations=loop_summary["total_observations"],
+        total_decisions=mem_summary["total_decisions"],
+        total_deferrals=mem_summary["total_deferrals"],
+        total_actions=loop_summary.get("total_observations", 0),
+        cycle_count=mem_summary["cycle_count"],
+        finalized_cycles=mem_summary["finalized_cycles"],
+    )
+    return {"status": "assessed", "snapshot": snapshot.to_dict()}
+
+
+@router.get("/health/{snapshot_id}")
+async def health_get(snapshot_id: str):
+    """get a specific health snapshot."""
+    assessor = get_health_assessor()
+    snapshot = assessor.get_snapshot(snapshot_id)
+    if snapshot is None:
+        return {"error": "snapshot not found"}
+    return snapshot.to_dict()
+
+
+@router.get("/health/recent/snapshots")
+async def health_recent(n: int = 10):
+    """get the most recent health snapshots."""
+    assessor = get_health_assessor()
+    return {"snapshots": [s.to_dict() for s in assessor.get_recent(n)]}
+
+
+@router.get("/health/trends/{dimension}")
+async def health_trends(dimension: str, n: int = 10):
+    """get score trends for a specific health dimension."""
+    assessor = get_health_assessor()
+    return {"trends": assessor.get_trends(dimension, n)}
+
+
+@router.get("/health/summary/stats")
+async def health_summary():
+    """get health assessment summary."""
+    assessor = get_health_assessor()
+    return assessor.get_summary()
+
+
+# ── degradation endpoints ────────────────────────────────────────────────────
+
+
+@router.post("/degradation/evaluate")
+async def degradation_evaluate():
+    """evaluate health and potentially change degradation mode."""
+    assessor = get_health_assessor()
+    degrade = get_graceful_degradation()
+
+    summary = assessor.get_summary()
+    score = summary["current_score"]
+    anomalies = summary["anomaly_count"]
+    loop = get_heartbeat_loop()
+
+    mode = degrade.evaluate(score, anomalies, loop.cycle_number)
+    return {
+        "status": "evaluated",
+        "current_mode": mode.value,
+        "is_operational": degrade.is_operational,
+        "allowed_capabilities": degrade.get_allowed_capabilities(),
+    }
+
+
+@router.post("/degradation/enter")
+async def degradation_enter(payload: dict = Body(...)):
+    """manually enter a specific degradation mode."""
+    degrade = get_graceful_degradation()
+    from src.kortana.services.graceful_degradation import DegradationMode  # noqa: E402
+
+    mode_str = payload.get("mode", "full_operation")
+    reason = payload.get("reason", "manual override")
+    try:
+        mode = DegradationMode(mode_str)
+    except ValueError:
+        return {"error": f"invalid mode: {mode_str}"}
+
+    record = degrade.enter_mode(mode, DegradationTrigger.MANUAL_OVERRIDE, reason)
+    return {"status": "mode_entered", "record": record.to_dict()}
+
+
+@router.post("/degradation/restore")
+async def degradation_restore(payload: dict = Body(None)):
+    """restore to full operation."""
+    degrade = get_graceful_degradation()
+    reason = payload.get("reason", "conditions improved") if payload else "conditions improved"
+    record = degrade.restore(reason)
+    return {"status": "restored", "record": record.to_dict()}
+
+
+@router.get("/degradation/check/{capability}")
+async def degradation_check(capability: str):
+    """check if a capability is allowed in the current degradation mode."""
+    degrade = get_graceful_degradation()
+    return {
+        "capability": capability,
+        "allowed": degrade.is_allowed(capability),
+        "current_mode": degrade.current_mode.value,
+    }
+
+
+@router.get("/degradation/history")
+async def degradation_history(n: int = 20):
+    """get degradation mode transition history."""
+    degrade = get_graceful_degradation()
+    return {"history": [r.to_dict() for r in degrade.get_history(n)]}
+
+
+@router.get("/degradation/summary/stats")
+async def degradation_summary():
+    """get degradation state summary."""
+    degrade = get_graceful_degradation()
+    return degrade.get_summary()
+
+
+# ── V26 cross-component vital signs ─────────────────────────────────────────
+
+
+@router.get("/vital-signs")
+async def vital_signs():
+    """unified vital signs across all V26 components — the living pulse of kor'tana."""
+    loop = get_heartbeat_loop()
+    mem = get_cycle_memory()
+    assessor = get_health_assessor()
+    degrade = get_graceful_degradation()
+
+    return {
+        "heartbeat": loop.get_summary(),
+        "cycle_memory": mem.get_summary(),
+        "health": assessor.get_summary(),
+        "degradation": degrade.get_summary(),
     }

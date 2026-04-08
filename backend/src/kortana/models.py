@@ -2661,3 +2661,85 @@ class DecisionRegistryRecord(Base):
     decided_at = Column(DateTime, default=func.now())
     tags_json = Column(Text, default="[]")
     decision_hash = Column(String, nullable=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# V26 — Heartbeat & Continuous Self-Cycle Models
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class HeartbeatRecord(Base):
+    """V26A — heartbeat record."""
+
+    __tablename__ = "heartbeat"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    beat_id = Column(String, unique=True, index=True, nullable=False)
+    cycle_number = Column(Integer, index=True, nullable=False)
+    state = Column(String, nullable=False, default="alive")
+    phase = Column(String, nullable=False, default="observe")
+    started_at = Column(DateTime, default=func.now())
+    ended_at = Column(DateTime, nullable=True)
+    duration_ms = Column(Float, default=0.0)
+    observations_json = Column(Text, default="[]")
+    decisions_json = Column(Text, default="[]")
+    actions_json = Column(Text, default="[]")
+    deferrals_json = Column(Text, default="[]")
+    reflections_json = Column(Text, default="[]")
+    beat_hash = Column(String, nullable=True)
+
+
+class CycleMemoryRecord(Base):
+    """V26B — cycle memory record."""
+
+    __tablename__ = "cycle_memory"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    cycle_id = Column(String, unique=True, index=True, nullable=False)
+    cycle_number = Column(Integer, index=True, nullable=False)
+    started_at = Column(DateTime, default=func.now())
+    ended_at = Column(DateTime, nullable=True)
+    duration_ms = Column(Float, default=0.0)
+    observations_json = Column(Text, default="[]")
+    decisions_json = Column(Text, default="[]")
+    actions_json = Column(Text, default="[]")
+    deferrals_json = Column(Text, default="[]")
+    reflections_json = Column(Text, default="[]")
+    context_inherited_json = Column(Text, default="{}")
+    context_bequeathed_json = Column(Text, default="{}")
+    finalized = Column(Integer, default=0)
+    cycle_hash = Column(String, nullable=True)
+
+
+class HealthSnapshotRecord(Base):
+    """V26C — health snapshot record."""
+
+    __tablename__ = "health_snapshot"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    snapshot_id = Column(String, unique=True, index=True, nullable=False)
+    cycle_number = Column(Integer, index=True, nullable=False)
+    overall_level = Column(String, nullable=False, default="healthy")
+    overall_score = Column(Float, default=0.0)
+    dimensions_json = Column(Text, default="{}")
+    anomalies_json = Column(Text, default="[]")
+    recommendations_json = Column(Text, default="[]")
+    assessed_at = Column(DateTime, default=func.now())
+    snapshot_hash = Column(String, nullable=True)
+
+
+class DegradationRecord(Base):
+    """V26D — degradation mode transition record."""
+
+    __tablename__ = "degradation_record"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    record_id = Column(String, unique=True, index=True, nullable=False)
+    mode = Column(String, nullable=False, default="full_operation")
+    trigger = Column(String, nullable=False)
+    previous_mode = Column(String, nullable=False)
+    reason = Column(Text, default="")
+    cycle_number = Column(Integer, index=True, default=0)
+    entered_at = Column(DateTime, default=func.now())
+    exited_at = Column(DateTime, nullable=True)
+    degradation_hash = Column(String, nullable=True)

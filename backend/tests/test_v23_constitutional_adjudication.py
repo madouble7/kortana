@@ -5,15 +5,15 @@ from __future__ import annotations
 import sys
 sys.path.insert(0, "src")
 
-from kortana.services.constitution import (
+from src.kortana.services.constitution import (
     Constitution,
     Sensitivity,
 )
-from kortana.services.boundary_enforcer import (
+from src.kortana.services.boundary_enforcer import (
     BoundaryEnforcer,
     BoundaryCheck,
 )
-from kortana.services.exception_handler import (
+from src.kortana.services.exception_handler import (
     ExceptionHandler,
     WaiverCondition,
     WaiverScope,
@@ -21,29 +21,29 @@ from kortana.services.exception_handler import (
     MAX_WAIVER_HOURS,
     get_exception_handler,
 )
-from kortana.services.appeals import (
+from src.kortana.services.appeals import (
     AppealsCourt,
     AppealEvidence,
     AppealGrounds,
     AppealStatus,
     get_appeals_court,
 )
-from kortana.services.emergency_powers import (
+from src.kortana.services.emergency_powers import (
     EmergencyPowersManager,
     EmergencyScope,
     EmergencyStatus,
     MAX_EMERGENCY_HOURS,
     get_emergency_powers,
 )
-from kortana.services.precedent_tracker import (
+from src.kortana.services.precedent_tracker import (
     PrecedentTracker,
     CitedArticle,
     DecisionType,
     PrecedentStrength,
     get_precedent_tracker,
 )
-from kortana.services.policy_feedback_loop import PolicyArea
-from kortana.services.proposal_registry import PolicyProposal
+from src.kortana.services.policy_feedback_loop import PolicyArea
+from src.kortana.services.proposal_registry import PolicyProposal
 
 
 def _make_proposal(
