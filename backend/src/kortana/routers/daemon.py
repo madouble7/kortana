@@ -6238,3 +6238,395 @@ async def get_governance_summary() -> dict:
     """Get governance summary."""
     gov = get_governance_evolution()
     return gov.get_governance_summary()
+
+
+# ── V21: Institutional Learning Controls ──
+
+from kortana.services.proposal_registry import get_proposal_registry, ProposalStatus  # noqa: E402
+from kortana.services.approval_gate import get_approval_gate, ApprovalPolicy  # noqa: E402
+from kortana.services.trust_calibrator import TrustLevel  # noqa: E402
+from kortana.services.policy_rollback import get_policy_rollback  # noqa: E402
+from kortana.services.evolution_observer import get_evolution_observer, EventType  # noqa: E402
+from kortana.services.policy_feedback_loop import PolicyArea  # noqa: E402
+
+
+# ── V21A: Proposal Registry Endpoints ──
+
+
+@router.post("/proposals/create")
+async def create_proposal_from_amendment(amendment_id: str = Body(...)) -> dict:
+    """Create a proposal from a pending V20 amendment."""
+    from kortana.services.policy_feedback_loop import get_policy_feedback_loop
+
+    feedback = get_policy_feedback_loop()
+    amendments = feedback.get_amendments()
+    amendment = next((a for a in amendments if a.amendment_id == amendment_id), None)
+    if amendment is None:
+        return {"error": "amendment not found"}
+
+    registry = get_proposal_registry()
+    proposal = registry.create_proposal(amendment)
+
+    observer = get_evolution_observer()
+    observer.emit(EventType.PROPOSAL_CREATED, proposal.proposal_id, {"amendment_id": amendment_id})
+    return proposal.to_dict()
+
+
+@router.post("/proposals/create-direct")
+async def create_proposal_direct(
+    policy_area: str = Body(...),
+    current_rule: str = Body(...),
+    proposed_rule: str = Body(...),
+    justification: str = Body(...),
+    confidence: float = Body(0.5),
+    evidence_count: int = Body(0),
+) -> dict:
+    """Create a proposal directly without an existing amendment."""
+    try:
+        area = PolicyArea(policy_area)
+    except ValueError:
+        return {"error": f"invalid policy_area: {policy_area}"}
+
+    registry = get_proposal_registry()
+    proposal = registry.create_proposal_direct(
+        policy_area=area,
+        current_rule=current_rule,
+        proposed_rule=proposed_rule,
+        justification=justification,
+        confidence=confidence,
+        evidence_count=evidence_count,
+    )
+
+    observer = get_evolution_observer()
+    observer.emit(EventType.PROPOSAL_CREATED, proposal.proposal_id, {"source": "direct"})
+    return proposal.to_dict()
+
+
+@router.post("/proposals/{proposal_id}/submit")
+async def submit_proposal(proposal_id: str) -> dict:
+    """Submit a draft proposal for review."""
+    registry = get_proposal_registry()
+    ok = registry.submit_proposal(proposal_id)
+    if ok:
+        observer = get_evolution_observer()
+        observer.emit(EventType.PROPOSAL_SUBMITTED, proposal_id)
+    return {"success": ok, "proposal_id": proposal_id}
+
+
+@router.post("/proposals/{proposal_id}/review")
+async def begin_proposal_review(proposal_id: str) -> dict:
+    """Begin review of a submitted proposal."""
+    registry = get_proposal_registry()
+    ok = registry.begin_review(proposal_id)
+    if ok:
+        observer = get_evolution_observer()
+        observer.emit(EventType.REVIEW_STARTED, proposal_id)
+    return {"success": ok, "proposal_id": proposal_id}
+
+
+@router.post("/proposals/{proposal_id}/promote")
+async def promote_proposal(proposal_id: str) -> dict:
+    """Promote an approved proposal (applies the policy change)."""
+    registry = get_proposal_registry()
+    proposal = registry.get_proposal(proposal_id)
+    if proposal is None:
+        return {"error": "proposal not found"}
+
+    # Create rollback point before promotion
+    rollback = get_policy_rollback()
+    prior_state = {"rule": proposal.current_rule, "area": proposal.policy_area.value}
+    applied_state = {"rule": proposal.proposed_rule, "area": proposal.policy_area.value}
+    point = rollback.create_point(proposal_id, prior_state, applied_state)
+
+    ok = registry.promote(proposal_id)
+    if ok:
+        observer = get_evolution_observer()
+        observer.emit(EventType.PROPOSAL_PROMOTED, proposal_id, {"rollback_point": point.point_id})
+        observer.emit(EventType.ROLLBACK_CREATED, point.point_id, {"proposal_id": proposal_id})
+    return {"success": ok, "proposal_id": proposal_id, "rollback_point_id": point.point_id}
+
+
+@router.post("/proposals/{proposal_id}/withdraw")
+async def withdraw_proposal(proposal_id: str) -> dict:
+    """Withdraw a proposal."""
+    registry = get_proposal_registry()
+    ok = registry.withdraw(proposal_id)
+    if ok:
+        observer = get_evolution_observer()
+        observer.emit(EventType.PROPOSAL_WITHDRAWN, proposal_id)
+    return {"success": ok, "proposal_id": proposal_id}
+
+
+@router.get("/proposals")
+async def list_proposals(status: str | None = None) -> dict:
+    """List all proposals, optionally filtered by status."""
+    registry = get_proposal_registry()
+    if status:
+        try:
+            s = ProposalStatus(status)
+        except ValueError:
+            return {"error": f"invalid status: {status}"}
+        proposals = registry.list_proposals(s)
+    else:
+        proposals = registry.list_proposals()
+    return {"proposals": [p.to_dict() for p in proposals], "count": len(proposals)}
+
+
+@router.get("/proposals/{proposal_id}")
+async def get_proposal(proposal_id: str) -> dict:
+    """Get a specific proposal by ID."""
+    registry = get_proposal_registry()
+    proposal = registry.get_proposal(proposal_id)
+    if proposal is None:
+        return {"error": "proposal not found"}
+    return proposal.to_dict()
+
+
+@router.get("/proposals/history/all")
+async def get_proposal_history() -> dict:
+    """Get full proposal lifecycle history."""
+    registry = get_proposal_registry()
+    return {"history": registry.get_history(), "total_proposals": registry.proposal_count}
+
+
+# ── V21B: Approval Gate Endpoints ──
+
+
+@router.post("/approval/evaluate/{proposal_id}")
+async def evaluate_proposal(proposal_id: str) -> dict:
+    """Evaluate a proposal against the approval policy."""
+    registry = get_proposal_registry()
+    proposal = registry.get_proposal(proposal_id)
+    if proposal is None:
+        return {"error": "proposal not found"}
+
+    from kortana.services.trust_calibrator import get_trust_calibrator
+
+    calibrator = get_trust_calibrator()
+    trust = calibrator.get_current_trust()
+    trust_level = trust.trust_level if trust else TrustLevel.UNTRUSTED
+
+    gate = get_approval_gate()
+    decision = gate.evaluate(proposal, trust_level)
+
+    observer = get_evolution_observer()
+    evt = EventType.APPROVAL_AUTO if decision.decision_type.value == "auto" else EventType.APPROVAL_HUMAN
+    observer.emit(evt, proposal_id, {"approved": decision.approved, "decided_by": decision.decided_by})
+
+    return decision.to_dict()
+
+
+@router.post("/approval/approve/{proposal_id}")
+async def approve_proposal_manual(
+    proposal_id: str,
+    decided_by: str = Body("human"),
+    reason: str = Body("manually approved"),
+    conditions: str = Body(""),
+) -> dict:
+    """Manually approve a proposal and move it to APPROVED status."""
+    registry = get_proposal_registry()
+    ok = registry.mark_approved(proposal_id, reviewer=decided_by, notes=reason)
+    if not ok:
+        return {"error": "cannot approve proposal in current state"}
+
+    gate = get_approval_gate()
+    decision = gate.approve_manual(proposal_id, decided_by=decided_by, reason=reason, conditions=conditions)
+
+    observer = get_evolution_observer()
+    observer.emit(EventType.APPROVAL_HUMAN, proposal_id, {"approved": True, "decided_by": decided_by})
+    observer.emit(EventType.PROPOSAL_APPROVED, proposal_id, {"reviewer": decided_by})
+
+    return decision.to_dict()
+
+
+@router.post("/approval/reject/{proposal_id}")
+async def reject_proposal_manual(
+    proposal_id: str,
+    decided_by: str = Body("human"),
+    reason: str = Body("manually rejected"),
+) -> dict:
+    """Manually reject a proposal."""
+    registry = get_proposal_registry()
+    ok = registry.mark_rejected(proposal_id, reviewer=decided_by, notes=reason)
+    if not ok:
+        return {"error": "cannot reject proposal in current state"}
+
+    gate = get_approval_gate()
+    decision = gate.reject_manual(proposal_id, decided_by=decided_by, reason=reason)
+
+    observer = get_evolution_observer()
+    observer.emit(EventType.APPROVAL_HUMAN, proposal_id, {"approved": False, "decided_by": decided_by})
+    observer.emit(EventType.PROPOSAL_REJECTED, proposal_id, {"reviewer": decided_by})
+
+    return decision.to_dict()
+
+
+@router.get("/approval/policy")
+async def get_approval_policy() -> dict:
+    """Get the current approval policy."""
+    gate = get_approval_gate()
+    return gate.get_policy().to_dict()
+
+
+@router.post("/approval/policy")
+async def set_approval_policy(
+    min_confidence: float = Body(0.75),
+    min_trust_level: str = Body("high_trust"),
+    require_human_below_confidence: float = Body(0.50),
+    max_auto_approve_per_cycle: int = Body(5),
+) -> dict:
+    """Update the approval policy."""
+    from kortana.services.trust_calibrator import TrustLevel as TL
+
+    try:
+        tl = TL(min_trust_level)
+    except ValueError:
+        return {"error": f"invalid trust level: {min_trust_level}"}
+
+    gate = get_approval_gate()
+    policy = ApprovalPolicy(
+        min_confidence=min_confidence,
+        min_trust_level=tl,
+        require_human_below_confidence=require_human_below_confidence,
+        max_auto_approve_per_cycle=max_auto_approve_per_cycle,
+    )
+    gate.set_policy(policy)
+    return policy.to_dict()
+
+
+@router.get("/approval/decisions")
+async def get_approval_decisions(proposal_id: str | None = None) -> dict:
+    """Get approval decisions, optionally filtered by proposal."""
+    gate = get_approval_gate()
+    decisions = gate.get_decisions(proposal_id)
+    return {"decisions": [d.to_dict() for d in decisions], "count": len(decisions)}
+
+
+# ── V21C: Policy Rollback Endpoints ──
+
+
+@router.post("/rollback/{point_id}")
+async def execute_rollback(point_id: str, reason: str = Body("")) -> dict:
+    """Execute a rollback to restore prior policy state."""
+    rollback = get_policy_rollback()
+    point = rollback.rollback(point_id, reason=reason)
+    if point is None:
+        return {"error": "rollback point not found or already rolled back"}
+
+    observer = get_evolution_observer()
+    observer.emit(EventType.ROLLBACK_EXECUTED, point_id, {
+        "proposal_id": point.proposal_id,
+        "reason": reason,
+    })
+    return point.to_dict()
+
+
+@router.get("/rollback/points")
+async def get_rollback_points() -> dict:
+    """Get all rollback points."""
+    rollback = get_policy_rollback()
+    points = [p.to_dict() for p in rollback.get_active_points()]
+    return {"points": points, "active_count": rollback.active_count, "total_count": rollback.point_count}
+
+
+@router.get("/rollback/{point_id}")
+async def get_rollback_point(point_id: str) -> dict:
+    """Get a specific rollback point."""
+    rollback = get_policy_rollback()
+    point = rollback.get_point(point_id)
+    if point is None:
+        return {"error": "rollback point not found"}
+    return point.to_dict()
+
+
+@router.get("/rollback/can/{point_id}")
+async def can_rollback(point_id: str) -> dict:
+    """Check if a rollback point can be rolled back."""
+    rollback = get_policy_rollback()
+    return {"can_rollback": rollback.can_rollback(point_id), "point_id": point_id}
+
+
+@router.get("/rollback/proposal/{proposal_id}")
+async def get_rollback_for_proposal(proposal_id: str) -> dict:
+    """Get rollback point for a specific proposal."""
+    rollback = get_policy_rollback()
+    point = rollback.get_point_for_proposal(proposal_id)
+    if point is None:
+        return {"error": "no rollback point for this proposal"}
+    return point.to_dict()
+
+
+@router.get("/rollback/history/all")
+async def get_rollback_history() -> dict:
+    """Get full rollback history."""
+    rollback = get_policy_rollback()
+    return {"history": rollback.get_history(), "total_points": rollback.point_count}
+
+
+# ── V21D: Evolution Observer Endpoints ──
+
+
+@router.get("/evolution/timeline")
+async def get_evolution_timeline(limit: int = 0) -> dict:
+    """Get the evolution event timeline."""
+    observer = get_evolution_observer()
+    events = observer.get_timeline(limit)
+    return {"events": [e.to_dict() for e in events], "count": len(events)}
+
+
+@router.get("/evolution/events/{event_type}")
+async def get_events_by_type(event_type: str) -> dict:
+    """Get events filtered by type."""
+    try:
+        et = EventType(event_type)
+    except ValueError:
+        return {"error": f"invalid event type: {event_type}"}
+    observer = get_evolution_observer()
+    events = observer.get_events_by_type(et)
+    return {"events": [e.to_dict() for e in events], "count": len(events)}
+
+
+@router.get("/evolution/subject/{subject_id}")
+async def get_events_for_subject(subject_id: str) -> dict:
+    """Get all events for a specific subject (proposal or rollback point)."""
+    observer = get_evolution_observer()
+    events = observer.get_events_for_subject(subject_id)
+    return {"events": [e.to_dict() for e in events], "count": len(events)}
+
+
+@router.get("/evolution/audit")
+async def get_evolution_audit() -> dict:
+    """Get the evolution audit trail summary."""
+    observer = get_evolution_observer()
+    return observer.get_audit_trail()
+
+
+@router.get("/evolution/stats")
+async def get_evolution_stats() -> dict:
+    """Get evolution statistics across all V21 components."""
+    registry = get_proposal_registry()
+    gate = get_approval_gate()
+    rollback = get_policy_rollback()
+    observer = get_evolution_observer()
+
+    return {
+        "proposals": {
+            "total": registry.proposal_count,
+            "by_status": {
+                s.value: len(registry.list_proposals(s))
+                for s in ProposalStatus
+            },
+        },
+        "approvals": {
+            "total_decisions": gate.decision_count,
+            "auto_approves_this_cycle": gate.get_auto_approve_count(),
+        },
+        "rollback": {
+            "total_points": rollback.point_count,
+            "active_points": rollback.active_count,
+        },
+        "evolution": {
+            "total_events": observer.event_count,
+            "subscribers": observer.subscriber_count,
+        },
+    }

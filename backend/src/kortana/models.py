@@ -2149,3 +2149,78 @@ class GovernanceEvolutionRecord(Base):
     amendments_generated = Column(Integer, nullable=False, default=0)
     evolution_hash = Column(String, nullable=False, default="")
     created_at = Column(String, nullable=False, default="")
+
+
+# ── V21: Institutional Learning Controls ──
+
+
+class PolicyProposalRecord(Base):
+    """V21A — Formal policy change proposal."""
+
+    __tablename__ = "policy_proposal"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    proposal_id = Column(String, unique=True, nullable=False, index=True)
+    source_amendment_id = Column(String, nullable=False)
+    policy_area = Column(String, nullable=False)
+    current_rule = Column(String, nullable=False)
+    proposed_rule = Column(String, nullable=False)
+    justification = Column(Text, nullable=False)
+    confidence = Column(Float, nullable=False)
+    evidence_count = Column(Integer, nullable=False)
+    status = Column(String, nullable=False, default="draft")
+    submitted_at = Column(String, default="")
+    reviewed_at = Column(String, default="")
+    promoted_at = Column(String, default="")
+    reviewer = Column(String, default="")
+    review_notes = Column(Text, default="")
+    created_at = Column(String, nullable=False)
+    proposal_hash = Column(String, nullable=False)
+
+
+class ApprovalDecisionRecord(Base):
+    """V21B — Approval or rejection decision record."""
+
+    __tablename__ = "approval_decision"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    decision_id = Column(String, unique=True, nullable=False, index=True)
+    proposal_id = Column(String, nullable=False, index=True)
+    approved = Column(Boolean, nullable=False)
+    decision_type = Column(String, nullable=False)
+    decided_by = Column(String, nullable=False)
+    reason = Column(Text, nullable=False)
+    conditions = Column(Text, default="")
+    decided_at = Column(String, nullable=False)
+    decision_hash = Column(String, nullable=False)
+
+
+class RollbackPointRecord(Base):
+    """V21C — Rollback point for reversible policy changes."""
+
+    __tablename__ = "rollback_point"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    point_id = Column(String, unique=True, nullable=False, index=True)
+    proposal_id = Column(String, nullable=False, index=True)
+    prior_state = Column(Text, nullable=False)
+    applied_state = Column(Text, nullable=False)
+    created_at = Column(String, nullable=False)
+    rolled_back = Column(Boolean, default=False)
+    rolled_back_at = Column(String, default="")
+    rollback_reason = Column(Text, default="")
+    rollback_hash = Column(String, nullable=False)
+
+
+class EvolutionEventRecord(Base):
+    """V21D — Evolution event in the observable timeline."""
+
+    __tablename__ = "evolution_event"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    event_id = Column(String, unique=True, nullable=False, index=True)
+    event_type = Column(String, nullable=False, index=True)
+    subject_id = Column(String, nullable=False, index=True)
+    details = Column(Text, nullable=False)
+    timestamp = Column(String, nullable=False)
+    event_hash = Column(String, nullable=False)
