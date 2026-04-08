@@ -935,6 +935,106 @@ async def chat_with_gemini(payload: dict[str, Any]) -> dict[str, Any]:
     history: list[dict[str, str]] = payload.get("history") or []
     session_id: str = payload.get("session_id") or "default"
 
+    voice_mode: bool = bool(payload.get("voice_mode"))
+
+    # ── VOICE FAST-PATH ──────────────────────────────────────────────────
+    # For voice interactions, skip the heavy consensus/stateful pipeline.
+    # Go straight to Groq (fastest cloud, ~200ms) or Ollama (local).
+    # This MUST run before _build_live_context() which is slow.
+    if voice_mode:
+        voice_system = (
+            "You are kor'tana, a calm AI companion. "
+            "Respond in 1-2 short sentences optimized for speech. "
+            "No markdown, no code blocks, no lists. "
+            "Be warm, direct, and concise."
+        )
+        voice_messages = [{"role": "system", "content": voice_system}]
+        for h in (history or [])[-6:]:
+            voice_messages.append(
+                {"role": h.get("role", "user"), "content": h.get("content", "")}
+            )
+        voice_messages.append({"role": "user", "content": message})
+
+        voice_answer: str | None = None
+        voice_provider = "unknown"
+
+        # 1. Try Groq first (fastest cloud API)
+        groq_key = get_settings().GROQ_API_KEY
+        if groq_key:
+            try:
+                async with httpx.AsyncClient(timeout=8.0) as _gc:
+                    gr = await _gc.post(
+                        "https://api.groq.com/openai/v1/chat/completions",
+                        headers={"Authorization": f"Bearer {groq_key}"},
+                        json={
+                            "model": "llama-3.3-70b-versatile",
+                            "messages": voice_messages,
+                            "max_tokens": 100,
+                            "temperature": 0.7,
+                        },
+                    )
+                if gr.status_code == 200:
+                    voice_answer = (
+                        gr.json()
+                        .get("choices", [{}])[0]
+                        .get("message", {})
+                        .get("content", "")
+                    )
+                    voice_provider = "groq"
+            except Exception as _ge:
+                logger.debug("Voice fast-path Groq failed: %s", _ge)
+
+        # 2. Fallback to local Ollama
+        if not voice_answer:
+            import os
+
+            ollama_url = os.getenv("OLLAMA_API_URL", "http://localhost:11434")
+            ollama_model = os.getenv("OLLAMA_MODEL", "qwen3:8b")
+            if os.getenv("OLLAMA_ENABLED", "true").lower() == "true":
+                try:
+                    async with httpx.AsyncClient(timeout=30.0) as _oc:
+                        _or = await _oc.post(
+                            f"{ollama_url}/api/chat",
+                            json={
+                                "model": ollama_model,
+                                "messages": voice_messages,
+                                "stream": False,
+                            },
+                        )
+                    if _or.status_code == 200:
+                        voice_answer = _or.json().get("message", {}).get("content", "")
+                        voice_provider = "ollama"
+                except Exception as _oe:
+                    logger.debug("Voice fast-path Ollama failed: %s", _oe)
+
+        # 3. Last resort: Gemini direct
+        if not voice_answer and gemini_service is not None:
+            try:
+                voice_answer = await gemini_service.analyze_text(message)
+                voice_provider = "gemini"
+            except Exception:
+                pass
+
+        if not voice_answer:
+            voice_answer = "I'm having trouble connecting right now."
+
+        await _persist_messages(
+            session_id,
+            message,
+            voice_answer,
+            assistant_phase="voice_fast",
+            assistant_metadata=_build_assistant_turn_metadata(provider=voice_provider),
+        )
+        return {
+            "response": voice_answer,
+            "tasks_queued": [],
+            "phase": "voice_fast",
+            "provider": voice_provider,
+            "stateful": False,
+            "used_previous_response_id": False,
+        }
+    # ── END VOICE FAST-PATH ──────────────────────────────────────────────
+
     live_context = await _build_live_context(session_id=session_id)
 
     if _is_kortana_identity_query(message):
@@ -955,8 +1055,6 @@ async def chat_with_gemini(payload: dict[str, Any]) -> dict[str, Any]:
             "stateful": False,
             "used_previous_response_id": False,
         }
-
-    voice_mode: bool = bool(payload.get("voice_mode"))
 
     # evolve voice based on user message mood
     voice_params: dict[str, str] | None = None

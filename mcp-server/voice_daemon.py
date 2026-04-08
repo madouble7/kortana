@@ -54,7 +54,7 @@ _load_env_file(r"c:\kortana\.env")
 _load_env_file(r"c:\kortana\backend\.env")
 
 # ── config ─────────────────────────────────────────────────────────────────────
-BACKEND_URL = os.getenv("KORTANA_BACKEND_URL", "http://localhost:8000")
+BACKEND_URL = os.getenv("KORTANA_BACKEND_URL", "http://localhost:8001")
 CHAT_ENDPOINT = f"{BACKEND_URL}/api/gemini/chat"
 SESSION_ID = "voice"
 LOG_FILE = Path(r"c:\kortana\logs\voice_daemon.log")
@@ -133,7 +133,9 @@ LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 # ── globals ────────────────────────────────────────────────────────────────────
 _speak_lock = threading.Lock()
-_wake_listening = threading.Event()  # set while _handle_wake is using SpeechRecognition mic
+_wake_listening = (
+    threading.Event()
+)  # set while _handle_wake is using SpeechRecognition mic
 _conversation_history: list[dict[str, str]] = []
 _whisper: faster_whisper.WhisperModel | None = None
 _last_interaction: float = time.time()  # updated on every voice exchange
@@ -1504,7 +1506,7 @@ def _proactive_loop() -> None:
         # ── 1. backend health ──────────────────────────────────────────────────
         try:
             with httpx.Client(timeout=4.0) as client:
-                resp = client.get(f"{BACKEND_URL}/health")
+                resp = client.get(f"{BACKEND_URL}/api/health")
             backend_up = resp.status_code < 500
         except Exception:
             backend_up = False
@@ -1872,7 +1874,7 @@ def _run_silero_listener() -> None:
             speech_frames, \
             _frame_count
 
-        if status and 'overflow' not in str(status):
+        if status and "overflow" not in str(status):
             log(f"[vad] audio status: {status}", "WARN")
 
         # Suppress while _handle_wake is actively listening via SpeechRecognition
