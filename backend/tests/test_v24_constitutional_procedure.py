@@ -5,7 +5,6 @@ Tests for standing rules, deadline clock, recusal manager, and reasoning templat
 
 from datetime import datetime
 
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # V24A: Standing Rules Tests
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -35,7 +34,7 @@ class TestStandingRules:
         assert s.get_actor_role("unknown") == ActorRole.OBSERVER
 
     def test_constitutional_authority_full_standing(self):
-        from src.kortana.services.standing_rules import ActorRole, ActionType
+        from src.kortana.services.standing_rules import ActionType, ActorRole
         s = self._make()
         s.register_actor("matt", ActorRole.CONSTITUTIONAL_AUTHORITY)
         for action in ActionType:
@@ -43,7 +42,7 @@ class TestStandingRules:
             assert result.allowed is True, f"CA should have standing for {action.value}"
 
     def test_operator_limited_standing(self):
-        from src.kortana.services.standing_rules import ActorRole, ActionType
+        from src.kortana.services.standing_rules import ActionType, ActorRole
         s = self._make()
         s.register_actor("bob", ActorRole.OPERATOR)
         # Operators can file appeals and cast votes
@@ -56,7 +55,7 @@ class TestStandingRules:
         assert r3.allowed is False
 
     def test_observer_no_standing(self):
-        from src.kortana.services.standing_rules import ActorRole, ActionType
+        from src.kortana.services.standing_rules import ActionType, ActorRole
         s = self._make()
         s.register_actor("viewer", ActorRole.OBSERVER)
         for action in ActionType:
@@ -64,7 +63,7 @@ class TestStandingRules:
             assert result.allowed is False, f"Observer should not have standing for {action.value}"
 
     def test_senior_operator_standing(self):
-        from src.kortana.services.standing_rules import ActorRole, ActionType
+        from src.kortana.services.standing_rules import ActionType, ActorRole
         s = self._make()
         s.register_actor("senior", ActorRole.SENIOR_OPERATOR)
         assert s.check_standing("senior", ActionType.FILE_APPEAL).allowed is True
@@ -76,7 +75,7 @@ class TestStandingRules:
         assert s.check_standing("senior", ActionType.DECLARE_EMERGENCY).allowed is False
 
     def test_system_role_standing(self):
-        from src.kortana.services.standing_rules import ActorRole, ActionType
+        from src.kortana.services.standing_rules import ActionType, ActorRole
         s = self._make()
         s.register_actor("system-agent", ActorRole.SYSTEM)
         assert s.check_standing("system-agent", ActionType.DECLARE_EMERGENCY).allowed is True
@@ -84,7 +83,7 @@ class TestStandingRules:
         assert s.check_standing("system-agent", ActionType.FILE_APPEAL).allowed is False
 
     def test_check_history_tracked(self):
-        from src.kortana.services.standing_rules import ActorRole, ActionType
+        from src.kortana.services.standing_rules import ActionType, ActorRole
         s = self._make()
         s.register_actor("alice", ActorRole.OPERATOR)
         s.check_standing("alice", ActionType.FILE_APPEAL)
@@ -94,7 +93,11 @@ class TestStandingRules:
         assert len(checks) == 2
 
     def test_standing_rule_hash(self):
-        from src.kortana.services.standing_rules import StandingRule, ActorRole, ActionType
+        from src.kortana.services.standing_rules import (
+            ActionType,
+            ActorRole,
+            StandingRule,
+        )
         rule = StandingRule(
             rule_id="test-rule",
             role=ActorRole.OPERATOR,
@@ -103,7 +106,7 @@ class TestStandingRules:
         assert len(rule.rule_hash) == 16
 
     def test_standing_result_to_dict(self):
-        from src.kortana.services.standing_rules import ActorRole, ActionType
+        from src.kortana.services.standing_rules import ActionType, ActorRole
         s = self._make()
         s.register_actor("alice", ActorRole.OPERATOR)
         result = s.check_standing("alice", ActionType.FILE_APPEAL)
@@ -114,7 +117,7 @@ class TestStandingRules:
         assert d["action"] == "file_appeal"
 
     def test_summary(self):
-        from src.kortana.services.standing_rules import ActorRole, ActionType
+        from src.kortana.services.standing_rules import ActionType, ActorRole
         s = self._make()
         s.register_actor("a", ActorRole.OPERATOR)
         s.register_actor("b", ActorRole.OBSERVER)
@@ -128,7 +131,11 @@ class TestStandingRules:
         assert summary["denied_checks"] == 1
 
     def test_add_custom_rule(self):
-        from src.kortana.services.standing_rules import StandingRule, ActorRole, ActionType
+        from src.kortana.services.standing_rules import (
+            ActionType,
+            ActorRole,
+            StandingRule,
+        )
         s = self._make()
         custom = StandingRule(
             rule_id="custom",
@@ -142,7 +149,11 @@ class TestStandingRules:
         assert result.allowed is True
 
     def test_area_restricted_rule(self):
-        from src.kortana.services.standing_rules import StandingRule, ActorRole, ActionType
+        from src.kortana.services.standing_rules import (
+            ActionType,
+            ActorRole,
+            StandingRule,
+        )
         s = self._make()
         restricted = StandingRule(
             rule_id="restricted",
@@ -179,7 +190,7 @@ class TestDeadlineClock:
         return DeadlineClock()
 
     def test_create_deadline(self):
-        from src.kortana.services.deadline_clock import DeadlineType, DeadlineStatus
+        from src.kortana.services.deadline_clock import DeadlineStatus, DeadlineType
         clock = self._make()
         d = clock.create_deadline("ref-1", DeadlineType.APPEAL_FILING)
         assert d.deadline_type == DeadlineType.APPEAL_FILING
@@ -189,7 +200,7 @@ class TestDeadlineClock:
         assert clock.deadline_count == 1
 
     def test_meet_deadline(self):
-        from src.kortana.services.deadline_clock import DeadlineType, DeadlineStatus
+        from src.kortana.services.deadline_clock import DeadlineStatus, DeadlineType
         clock = self._make()
         d = clock.create_deadline("ref-1", DeadlineType.WAIVER_REVIEW)
         assert clock.meet_deadline(d.deadline_id) is True
@@ -220,7 +231,7 @@ class TestDeadlineClock:
         assert d.extensions == 2
 
     def test_cancel_deadline(self):
-        from src.kortana.services.deadline_clock import DeadlineType, DeadlineStatus
+        from src.kortana.services.deadline_clock import DeadlineStatus, DeadlineType
         clock = self._make()
         d = clock.create_deadline("ref-1", DeadlineType.EMERGENCY_REVIEW)
         assert clock.cancel_deadline(d.deadline_id) is True
@@ -564,7 +575,10 @@ class TestReasoningTemplates:
         assert result.valid is True
 
     def test_add_custom_template(self):
-        from src.kortana.services.reasoning_templates import ReasoningTemplate, ReasoningSection
+        from src.kortana.services.reasoning_templates import (
+            ReasoningSection,
+            ReasoningTemplate,
+        )
         reg = self._make()
         custom = ReasoningTemplate(
             template_id="custom-1",
@@ -652,8 +666,12 @@ class TestV24Pipeline:
 
     def test_standing_before_appeal(self):
         """Standing must be checked before filing an appeal."""
-        from src.kortana.services.standing_rules import StandingRules, ActorRole, ActionType
         from src.kortana.services.deadline_clock import DeadlineClock, DeadlineType
+        from src.kortana.services.standing_rules import (
+            ActionType,
+            ActorRole,
+            StandingRules,
+        )
 
         standing = StandingRules(load_defaults=True)
         clock = DeadlineClock()
@@ -671,7 +689,7 @@ class TestV24Pipeline:
 
     def test_recusal_blocks_participation(self):
         """Recused actors should not participate in proceedings."""
-        from src.kortana.services.recusal_manager import RecusalManager, ConflictType
+        from src.kortana.services.recusal_manager import ConflictType, RecusalManager
 
         mgr = RecusalManager()
         mgr.declare_interest("bob", ["security"])
@@ -710,10 +728,14 @@ class TestV24Pipeline:
 
     def test_full_procedure_pipeline(self):
         """End-to-end: standing → deadline → recusal check → reasoning."""
-        from src.kortana.services.standing_rules import StandingRules, ActorRole, ActionType
         from src.kortana.services.deadline_clock import DeadlineClock, DeadlineType
-        from src.kortana.services.recusal_manager import RecusalManager
         from src.kortana.services.reasoning_templates import ReasoningRegistry
+        from src.kortana.services.recusal_manager import RecusalManager
+        from src.kortana.services.standing_rules import (
+            ActionType,
+            ActorRole,
+            StandingRules,
+        )
 
         standing = StandingRules(load_defaults=True)
         clock = DeadlineClock()
@@ -774,7 +796,11 @@ class TestV24Pipeline:
 
     def test_observer_cannot_participate(self):
         """Observers should have no standing for any procedural action."""
-        from src.kortana.services.standing_rules import StandingRules, ActorRole, ActionType
+        from src.kortana.services.standing_rules import (
+            ActionType,
+            ActorRole,
+            StandingRules,
+        )
 
         standing = StandingRules(load_defaults=True)
         standing.register_actor("viewer", ActorRole.OBSERVER)
@@ -785,8 +811,12 @@ class TestV24Pipeline:
 
     def test_proposer_must_recuse(self):
         """A proposer should be flagged for conflict and recuse."""
-        from src.kortana.services.recusal_manager import RecusalManager, ConflictType
-        from src.kortana.services.standing_rules import StandingRules, ActorRole, ActionType
+        from src.kortana.services.recusal_manager import ConflictType, RecusalManager
+        from src.kortana.services.standing_rules import (
+            ActionType,
+            ActorRole,
+            StandingRules,
+        )
 
         standing = StandingRules(load_defaults=True)
         recusal = RecusalManager()
