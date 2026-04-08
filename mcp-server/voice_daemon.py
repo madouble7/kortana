@@ -36,6 +36,14 @@ import sounddevice as sd
 import speech_recognition as sr
 import torch
 
+# Agentic tool execution
+try:
+    from voice_tools import HOP, detect_and_run_tool
+
+    _TOOLS_AVAILABLE = True
+except ImportError:
+    _TOOLS_AVAILABLE = False
+
 
 # ── load .env for GitHub token and other secrets ──────────────────────────────
 def _load_env_file(path: str) -> None:
@@ -1006,8 +1014,71 @@ def _signal_interrupt() -> None:
     log(f"[barge-in] user interrupted — was saying: '{_interrupted_text[:60]}'")
 
 
+def _try_tool_route(command: str) -> bool:
+    """Try to route a voice command to an agentic tool. Returns True if handled."""
+    global _pending_ho, _last_voice_exchange
+    if not _TOOLS_AVAILABLE:
+        return False
+
+    # Check for pending HO confirmation first
+    if _pending_ho:
+        confirm_words = {
+            "yes",
+            "yeah",
+            "yep",
+            "go ahead",
+            "do it",
+            "confirmed",
+            "sure",
+            "okay",
+        }
+        deny_words = {"no", "nope", "cancel", "never mind", "stop", "don't"}
+        cmd_lower = command.lower().strip()
+        if any(w in cmd_lower for w in confirm_words):
+            tool_name = _pending_ho["tool"]
+            args = _pending_ho["args"]
+            _pending_ho = None
+            log(f"[tools] HO confirmed: {tool_name}")
+            from voice_tools import execute_tool
+
+            result, _ = execute_tool(tool_name, args)
+            speak(result)
+            _last_voice_exchange = time.time()
+            _record_voice_interaction()
+            return True
+        elif any(w in cmd_lower for w in deny_words):
+            _pending_ho = None
+            speak("Understood, cancelled.")
+            _last_voice_exchange = time.time()
+            return True
+        # Not a confirmation — clear pending and continue to normal routing
+        _pending_ho = None
+
+    # Detect tool intent via Groq (fast, temperature=0)
+    result = detect_and_run_tool(command)
+    if result is None:
+        return False
+
+    log(f"[tools] result: {result[:100]}")
+    speak(result)
+    _last_voice_exchange = time.time()
+    _record_voice_interaction()
+
+    # If result is an HO confirmation request, save the pending state
+    if "needs your okay" in result:
+        from voice_tools import detect_tool_intent
+
+        intent = detect_tool_intent(command)
+        if intent and intent.get("tool"):
+            _pending_ho = {"tool": intent["tool"], "args": intent.get("args", {})}
+
+    return True
+
+
 _KORTANA_SYSTEM_PROMPT = (
     "You are kor'tana, a calm, warm AI companion. "
+    "You can take actions: check CI logs, run tests, lint code, read files, "
+    "check git status/log/diff, restart the backend, commit and push code. "
     "Respond in 1-2 short sentences optimized for speech. "
     "No markdown, no code blocks, no bullet lists, no asterisks. "
     "Be warm, direct, and concise. Sound natural."
@@ -1446,6 +1517,10 @@ def _handle_wake(recognizer: sr.Recognizer, text: str) -> None:
         _record_voice_interaction()
         return
 
+    # Agentic tool execution — check if this is a tool command
+    if _try_tool_route(command):
+        return
+
     # Stream response and speak sentence-by-sentence
     _interrupt.clear()
     response = _stream_and_speak(command)
@@ -1857,6 +1932,9 @@ def _run_silero_listener() -> None:
     def _contextual_respond(command: str) -> None:
         """Auto-respond to speech when in active conversation context."""
         global _last_voice_exchange
+        # Agentic tool execution — check before streaming to Groq
+        if _try_tool_route(command):
+            return
         _interrupt.clear()
         response = _stream_and_speak(command)
         _last_voice_exchange = time.time()
