@@ -1908,9 +1908,6 @@ class KnowledgeFact(Base):
 
     def __repr__(self) -> str:
         return f"<KnowledgeFact entity={self.entity_id!r} text={self.fact_text[:50]!r}>"
-    error = Column(Text, nullable=True)
-    probe_hash = Column(String(64), nullable=True)
-    probed_at = Column(DateTime, nullable=True)
 
 
 # ── V17 — Closed-Loop Real-World Enforcement ────────────────────────────

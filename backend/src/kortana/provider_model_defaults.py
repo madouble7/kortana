@@ -47,7 +47,7 @@ LLM_ROUTER_GEMINI_MODEL = "gemini-2.5-flash"  # was 2.0 (deprecated)
 GEMINI_EMBEDDING_MODEL_PATH = "models/gemini-embedding-001"
 GEMINI_EMBEDDING_MODEL_NAME = "gemini-embedding-001"
 GEMINI_EMBEDDING_FALLBACK_MODEL_PATH = "models/gemini-embedding-2-preview"
-MEMORY_ENGINE_EMBEDDING_MODEL = "text-embedding-004"
+MEMORY_ENGINE_EMBEDDING_MODEL = GEMINI_EMBEDDING_MODEL_NAME
 
 GEMINI_DISCOVERY_FALLBACK_MODELS = (
     GEMINI_DEFAULT_MODEL,  # gemini-2.5-flash-lite (cheapest stable)
