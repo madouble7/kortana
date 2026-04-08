@@ -557,3 +557,48 @@ def _verify_truth() -> dict[str, Any]:
 
     return checks
 
+
+@router.post("/canary")
+async def run_canary_simulation(
+    cycles: int = Query(default=20, ge=4, le=200, description="Number of cycles to simulate"),
+    inject_signals: bool = Query(default=True, description="Inject synthetic outcome signals"),
+    approval_mode: str = Query(default="self-aware", description="Approval mode for simulation"),
+) -> dict[str, Any]:
+    """Run a bounded canary simulation to measure behavioral adaptation.
+
+    Executes N lightweight scoring cycles against synthetic tasks,
+    accumulating outcome signals and measuring whether task rankings,
+    score distributions, and goal alignment change over time.
+
+    Returns a full report with per-cycle snapshots and cross-cycle
+    analysis proving (or disproving) adaptive behavior.
+    """
+    from src.kortana.services.canary_simulator import CanarySimulator
+
+    simulator = CanarySimulator(
+        cycle_count=cycles,
+        approval_mode=approval_mode,
+        inject_signals=inject_signals,
+    )
+    report = simulator.run()
+
+    return {
+        "total_cycles": report.total_cycles,
+        "task_pool_size": report.task_pool_size,
+        "goal_task_ids": report.goal_task_ids,
+        "analysis": report.analysis,
+        "snapshots": [
+            {
+                "cycle": s.cycle,
+                "outcome_adjustment": s.outcome_adjustment,
+                "mean_score": s.mean_score,
+                "score_spread": s.score_spread,
+                "top_3_ids": s.top_3_ids,
+                "goal_aligned_in_top_5": s.goal_aligned_in_top_5,
+                "signals_active": s.signals_active,
+                "score_distribution": s.score_distribution,
+            }
+            for s in report.snapshots
+        ],
+    }
+
