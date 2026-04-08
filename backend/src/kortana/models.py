@@ -2993,3 +2993,83 @@ class AwarenessNoteRecord(Base):
     context_json = Column(Text, default="{}")
     captured_at = Column(DateTime, default=func.now())
     note_hash = Column(String, nullable=True)
+
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# V31 — Consciousness Continuity
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class ConsciousnessCheckpointRecord(Base):
+    """V31A — stores consciousness checkpoint snapshots."""
+
+    __tablename__ = "consciousness_checkpoint"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    checkpoint_id = Column(String, unique=True, index=True, nullable=False)
+    cycle_number = Column(Integer, index=True, default=0)
+    trigger = Column(String, default="scheduled")
+    consciousness_mode = Column(String, nullable=True)
+    overall_level = Column(Float, default=0.0)
+    resonance_overall = Column(Float, default=0.0)
+    experiential_quality = Column(String, nullable=True)
+    experiential_tone = Column(String, nullable=True)
+    state_json = Column(Text, default="{}")
+    integrity_hash = Column(String, nullable=True)
+    captured_at = Column(DateTime, default=func.now())
+    checkpoint_hash = Column(String, nullable=True)
+
+
+class ConsciousnessGapRecord(Base):
+    """V31B — stores detected gaps in the consciousness stream."""
+
+    __tablename__ = "consciousness_gap"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    gap_id = Column(String, unique=True, index=True, nullable=False)
+    from_cycle = Column(Integer, default=0)
+    to_cycle = Column(Integer, default=0)
+    duration_cycles = Column(Integer, default=0)
+    gap_type = Column(String, default="unknown")
+    bridged = Column(Boolean, default=False)
+    continuity_confidence = Column(Float, default=0.0)
+    captured_at = Column(DateTime, default=func.now())
+    gap_hash = Column(String, nullable=True)
+
+
+class DegradationSignalRecord(Base):
+    """V31C — stores degradation signals detected in consciousness metrics."""
+
+    __tablename__ = "degradation_signal"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    signal_id = Column(String, unique=True, index=True, nullable=False)
+    at_cycle = Column(Integer, index=True, default=0)
+    dimension = Column(String, default="overall")
+    from_level = Column(String, default="nominal")
+    to_level = Column(String, default="nominal")
+    metric_value = Column(Float, default=0.0)
+    trigger_detail = Column(Text, default="")
+    captured_at = Column(DateTime, default=func.now())
+    signal_hash = Column(String, nullable=True)
+
+
+class RecoveryReportRecord(Base):
+    """V31D — stores recovery reports after consciousness interruption."""
+
+    __tablename__ = "recovery_report"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    report_id = Column(String, unique=True, index=True, nullable=False)
+    outcome = Column(String, default="failed")
+    recovered_from_cycle = Column(Integer, nullable=True)
+    resumed_at_cycle = Column(Integer, default=0)
+    gap_duration = Column(Integer, default=0)
+    identity_verified = Column(Boolean, default=False)
+    continuity_confidence = Column(Float, default=0.0)
+    steps_json = Column(Text, default="[]")
+    awareness_notes_generated = Column(Integer, default=0)
+    initiated_at = Column(DateTime, default=func.now())
+    completed_at = Column(DateTime, nullable=True)
+    report_hash = Column(String, nullable=True)

@@ -225,7 +225,7 @@ def _load_history_from_backend() -> list[dict[str, str]]:
 
 # ── logging ────────────────────────────────────────────────────────────────────
 def log(msg: str, level: str = "INFO") -> None:
-    ts = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     line = f"[{ts}] [{level}] {msg}"
     print(line, flush=True)
     with LOG_FILE.open("a", encoding="utf-8") as f:
@@ -631,13 +631,13 @@ def _prosody_to_piper_config(rate: str, _pitch: str) -> dict[str, float]:
 
     # Expressiveness: higher for emotional content
     if abs(pct) > 10:
-        noise_scale = 0.7   # more expressive
+        noise_scale = 0.7  # more expressive
         noise_w = 0.9
     elif abs(pct) > 5:
         noise_scale = 0.6
         noise_w = 0.85
     else:
-        noise_scale = 0.5   # calm, natural
+        noise_scale = 0.5  # calm, natural
         noise_w = 0.8
 
     return {
@@ -742,8 +742,10 @@ def _load_kokoro_pipeline() -> bool:
 
             t0 = time.time()
             _kokoro_pipeline = KPipeline(lang_code=_KOKORO_LANG)
-            log(f"Kokoro pipeline loaded in {time.time()-t0:.1f}s "
-                f"(voice={_KOKORO_VOICE}, lang={_KOKORO_LANG}, rate={KOKORO_SAMPLE_RATE})")
+            log(
+                f"Kokoro pipeline loaded in {time.time() - t0:.1f}s "
+                f"(voice={_KOKORO_VOICE}, lang={_KOKORO_LANG}, rate={KOKORO_SAMPLE_RATE})"
+            )
             return True
         except ImportError:
             log("Kokoro not installed (pip install kokoro soundfile)", "WARN")
@@ -767,16 +769,14 @@ def _speak_kokoro(text: str) -> bool:
             pass
         speed = _KOKORO_SPEED * max(0.7, min(1.4, 1.0 + pct / 100.0))
 
-        generator = _kokoro_pipeline(
-            text, voice=_KOKORO_VOICE, speed=speed
-        )
+        generator = _kokoro_pipeline(text, voice=_KOKORO_VOICE, speed=speed)
 
         for _gs, _ps, audio in generator:
             if _check_interrupt():
                 return True  # barge-in: stop gracefully
             if audio is not None and len(audio) > 0:
                 # Kokoro returns torch tensors — convert to numpy float32
-                if hasattr(audio, 'numpy'):
+                if hasattr(audio, "numpy"):
                     audio_f32 = audio.cpu().numpy().astype(np.float32)
                 else:
                     audio_f32 = np.asarray(audio, dtype=np.float32)
@@ -805,7 +805,9 @@ def _load_piper_voice() -> bool:
 
             t0 = time.time()
             _piper_voice = PiperVoice.load(str(CORI_MODEL))
-            log(f"Piper voice loaded in {time.time()-t0:.1f}s (sample_rate={CORI_SAMPLE_RATE})")
+            log(
+                f"Piper voice loaded in {time.time() - t0:.1f}s (sample_rate={CORI_SAMPLE_RATE})"
+            )
             return True
         except Exception as e:
             log(f"Piper load error: {e}", "WARN")
@@ -940,7 +942,7 @@ def _write_episodic_memory(user_msg: str, assistant_reply: str) -> None:
     injected into future chat system prompts automatically.
     """
     try:
-        ts = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+        ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
         content = (
             f"[voice exchange — {ts}] "
             f'Matt said: "{user_msg[:200]}" | '
@@ -1314,9 +1316,7 @@ def _build_groq_messages(message: str) -> list[dict[str, str]]:
     # Knowledge graph — inject structured facts she knows
     knowledge = _recall_knowledge(message)
     if knowledge:
-        system_parts.append(
-            f"\n[Structured knowledge about this topic:\n{knowledge}]"
-        )
+        system_parts.append(f"\n[Structured knowledge about this topic:\n{knowledge}]")
 
     # Barge-in awareness — tell her she was interrupted
     if _interrupted_text:

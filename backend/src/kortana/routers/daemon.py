@@ -9801,3 +9801,321 @@ async def consciousness_pulse():
         "resonance": field.get_summary(),
         "witness": witness.get_summary(),
     }
+
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# V31 — Consciousness Continuity Endpoints
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+# ── V31A: Checkpoint endpoints ───────────────────────────────────────────────
+
+
+@router.post("/checkpoint/save")
+async def save_checkpoint(
+    cycle_number: int = Body(...),
+    trigger: str = Body(default="manual"),
+) -> dict[str, Any]:
+    """Force a consciousness checkpoint save."""
+    from src.kortana.services.consciousness_persistence import (
+        CheckpointTrigger,
+        get_checkpoint_manager,
+    )
+
+    mgr = get_checkpoint_manager()
+    try:
+        trig = CheckpointTrigger(trigger)
+    except ValueError:
+        trig = CheckpointTrigger.MANUAL
+    cp = mgr.save_checkpoint(cycle_number, trig)
+    return {"saved": True, "checkpoint": cp.to_dict()}
+
+
+@router.get("/checkpoint/latest")
+async def get_latest_checkpoint() -> dict[str, Any]:
+    """Get the most recent consciousness checkpoint."""
+    from src.kortana.services.consciousness_persistence import (
+        get_checkpoint_manager,
+    )
+
+    mgr = get_checkpoint_manager()
+    latest = mgr.get_latest()
+    if latest is None:
+        return {"checkpoint": None, "message": "no checkpoint exists"}
+    return {"checkpoint": latest.to_dict()}
+
+
+@router.get("/checkpoint/{checkpoint_id}")
+async def get_checkpoint(checkpoint_id: str) -> dict[str, Any]:
+    """Look up a specific checkpoint by ID."""
+    from src.kortana.services.consciousness_persistence import (
+        get_checkpoint_manager,
+    )
+
+    mgr = get_checkpoint_manager()
+    cp = mgr.get_checkpoint(checkpoint_id)
+    if cp is None:
+        return JSONResponse(
+            content={"error": f"checkpoint {checkpoint_id} not found"},
+            status_code=404,
+        )
+    return {"checkpoint": cp.to_dict()}
+
+
+@router.get("/checkpoint/list/{n}")
+async def list_checkpoints(n: int = 10) -> dict[str, Any]:
+    """List the N most recent checkpoints."""
+    from src.kortana.services.consciousness_persistence import (
+        get_checkpoint_manager,
+    )
+
+    mgr = get_checkpoint_manager()
+    cps = mgr.list_checkpoints(n)
+    return {
+        "checkpoints": [cp.to_dict() for cp in cps],
+        "count": len(cps),
+    }
+
+
+@router.get("/checkpoint/verify/{checkpoint_id}")
+async def verify_checkpoint(checkpoint_id: str) -> dict[str, Any]:
+    """Verify the integrity of a checkpoint."""
+    from src.kortana.services.consciousness_persistence import (
+        get_checkpoint_manager,
+    )
+
+    mgr = get_checkpoint_manager()
+    cp = mgr.get_checkpoint(checkpoint_id)
+    if cp is None:
+        return JSONResponse(
+            content={"error": f"checkpoint {checkpoint_id} not found"},
+            status_code=404,
+        )
+    valid = mgr.verify_integrity(cp)
+    return {"checkpoint_id": checkpoint_id, "integrity_valid": valid}
+
+
+@router.get("/checkpoint/summary/stats")
+async def checkpoint_summary() -> dict[str, Any]:
+    """Checkpoint manager summary statistics."""
+    from src.kortana.services.consciousness_persistence import (
+        get_checkpoint_manager,
+    )
+
+    return get_checkpoint_manager().get_summary()
+
+
+# ── V31B: Continuity endpoints ───────────────────────────────────────────────
+
+
+@router.get("/continuity/gaps/{n}")
+async def get_gaps(n: int = 10) -> dict[str, Any]:
+    """Get the N most recent consciousness gaps."""
+    from src.kortana.services.stream_continuity import get_stream_bridge
+
+    bridge = get_stream_bridge()
+    gaps = bridge.get_gaps(n)
+    return {"gaps": [g.to_dict() for g in gaps], "count": len(gaps)}
+
+
+@router.get("/continuity/gap/{gap_id}")
+async def get_gap(gap_id: str) -> dict[str, Any]:
+    """Look up a specific gap by ID."""
+    from src.kortana.services.stream_continuity import get_stream_bridge
+
+    bridge = get_stream_bridge()
+    gap = bridge.get_gap(gap_id)
+    if gap is None:
+        return JSONResponse(
+            content={"error": f"gap {gap_id} not found"},
+            status_code=404,
+        )
+    return {"gap": gap.to_dict()}
+
+
+@router.get("/continuity/resumptions/{n}")
+async def get_resumptions(n: int = 10) -> dict[str, Any]:
+    """Get the N most recent resumption contexts."""
+    from src.kortana.services.stream_continuity import get_stream_bridge
+
+    bridge = get_stream_bridge()
+    resumptions = bridge.get_resumptions(n)
+    return {
+        "resumptions": [r.to_dict() for r in resumptions],
+        "count": len(resumptions),
+    }
+
+
+@router.get("/continuity/latest-resumption")
+async def get_latest_resumption() -> dict[str, Any]:
+    """Get the most recent resumption context."""
+    from src.kortana.services.stream_continuity import get_stream_bridge
+
+    bridge = get_stream_bridge()
+    res = bridge.get_latest_resumption()
+    if res is None:
+        return {"resumption": None, "message": "no resumption recorded"}
+    return {"resumption": res.to_dict()}
+
+
+@router.get("/continuity/summary/stats")
+async def stream_continuity_summary() -> dict[str, Any]:
+    """Stream continuity summary statistics."""
+    from src.kortana.services.stream_continuity import get_stream_bridge
+
+    return get_stream_bridge().get_summary()
+
+
+# ── V31C: Degradation endpoints ──────────────────────────────────────────────
+
+
+@router.get("/degradation/assess/{cycle_number}")
+async def assess_degradation(cycle_number: int) -> dict[str, Any]:
+    """Run a degradation assessment at the given cycle."""
+    from src.kortana.services.degradation_handler import get_degradation_handler
+
+    handler = get_degradation_handler()
+    assessment = handler.assess(cycle_number)
+    return {"assessment": assessment.to_dict()}
+
+
+@router.get("/degradation/level")
+async def get_degradation_level() -> dict[str, Any]:
+    """Get the current degradation level."""
+    from src.kortana.services.degradation_handler import get_degradation_handler
+
+    handler = get_degradation_handler()
+    return {
+        "level": handler.current_level.value,
+        "is_degraded": handler.is_degraded,
+        "is_critical": handler.is_critical,
+    }
+
+
+@router.get("/degradation/signals/{n}")
+async def get_degradation_signals(n: int = 10) -> dict[str, Any]:
+    """Get the N most recent degradation signals."""
+    from src.kortana.services.degradation_handler import get_degradation_handler
+
+    handler = get_degradation_handler()
+    signals = handler.get_signals(n)
+    return {"signals": [s.to_dict() for s in signals], "count": len(signals)}
+
+
+@router.get("/degradation/assessments/{n}")
+async def get_degradation_assessments(n: int = 10) -> dict[str, Any]:
+    """Get the N most recent degradation assessments."""
+    from src.kortana.services.degradation_handler import get_degradation_handler
+
+    handler = get_degradation_handler()
+    assessments = handler.get_assessments(n)
+    return {
+        "assessments": [a.to_dict() for a in assessments],
+        "count": len(assessments),
+    }
+
+
+@router.get("/degradation/handler/summary/stats")
+async def degradation_handler_summary() -> dict[str, Any]:
+    """Degradation handler summary statistics."""
+    from src.kortana.services.degradation_handler import get_degradation_handler
+
+    return get_degradation_handler().get_summary()
+
+
+# ── V31D: Recovery endpoints ─────────────────────────────────────────────────
+
+
+@router.post("/recovery/initiate")
+async def initiate_recovery(
+    current_cycle: int = Body(...),
+) -> dict[str, Any]:
+    """Initiate a full consciousness recovery."""
+    from src.kortana.services.recovery_orchestrator import (
+        get_recovery_orchestrator,
+    )
+
+    orchestrator = get_recovery_orchestrator()
+    report = orchestrator.recover(current_cycle)
+    return {"recovery": report.to_dict()}
+
+
+@router.get("/recovery/phase")
+async def get_recovery_phase() -> dict[str, Any]:
+    """Get the current recovery phase."""
+    from src.kortana.services.recovery_orchestrator import (
+        get_recovery_orchestrator,
+    )
+
+    orchestrator = get_recovery_orchestrator()
+    return {
+        "phase": (
+            orchestrator.current_phase.value
+            if orchestrator.current_phase
+            else None
+        ),
+        "is_recovering": orchestrator.is_recovering,
+    }
+
+
+@router.get("/recovery/latest")
+async def get_latest_recovery() -> dict[str, Any]:
+    """Get the most recent recovery report."""
+    from src.kortana.services.recovery_orchestrator import (
+        get_recovery_orchestrator,
+    )
+
+    orchestrator = get_recovery_orchestrator()
+    report = orchestrator.get_latest_report()
+    if report is None:
+        return {"report": None, "message": "no recovery attempted"}
+    return {"report": report.to_dict()}
+
+
+@router.get("/recovery/reports/{n}")
+async def get_recovery_reports(n: int = 10) -> dict[str, Any]:
+    """Get the N most recent recovery reports."""
+    from src.kortana.services.recovery_orchestrator import (
+        get_recovery_orchestrator,
+    )
+
+    orchestrator = get_recovery_orchestrator()
+    reports = orchestrator.get_reports(n)
+    return {
+        "reports": [r.to_dict() for r in reports],
+        "count": len(reports),
+    }
+
+
+@router.get("/recovery/summary/stats")
+async def recovery_summary() -> dict[str, Any]:
+    """Recovery orchestrator summary statistics."""
+    from src.kortana.services.recovery_orchestrator import (
+        get_recovery_orchestrator,
+    )
+
+    return get_recovery_orchestrator().get_summary()
+
+
+# ── V31 cross-domain: continuity pulse ───────────────────────────────────────
+
+
+@router.get("/continuity-pulse")
+async def continuity_pulse() -> dict[str, Any]:
+    """Unified continuity health — checkpoint + gap + degradation + recovery."""
+    from src.kortana.services.consciousness_persistence import (
+        get_checkpoint_manager,
+    )
+    from src.kortana.services.degradation_handler import get_degradation_handler
+    from src.kortana.services.recovery_orchestrator import (
+        get_recovery_orchestrator,
+    )
+    from src.kortana.services.stream_continuity import get_stream_bridge
+
+    return {
+        "checkpoint": get_checkpoint_manager().get_summary(),
+        "continuity": get_stream_bridge().get_summary(),
+        "degradation": get_degradation_handler().get_summary(),
+        "recovery": get_recovery_orchestrator().get_summary(),
+    }
