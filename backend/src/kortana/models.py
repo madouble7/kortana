@@ -2061,3 +2061,91 @@ class ImprovementMetricRecord(Base):
     default_sample_size = Column(Integer, nullable=False, default=0)
     learned_sample_size = Column(Integer, nullable=False, default=0)
     metric_hash = Column(String, nullable=False, default="")
+
+
+# ── V20 — Policy-Learning Integration Models ─────────────────────────────
+
+
+class TrustCalibrationRecord(Base):
+    """Trust calibration snapshot."""
+
+    __tablename__ = "trust_calibration"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    calibration_id = Column(String, unique=True, nullable=False, index=True)
+    trust_level = Column(String, nullable=False, default="untrusted")
+    trust_score = Column(Float, nullable=False, default=0.0)
+    factors_json = Column(String, nullable=False, default="[]")
+    evidence_summary = Column(String, nullable=False, default="")
+    calibration_hash = Column(String, nullable=False, default="")
+    calibrated_at = Column(String, nullable=False, default="")
+
+
+class AutonomyThresholdRecord(Base):
+    """Autonomy threshold for a task category."""
+
+    __tablename__ = "autonomy_threshold"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    threshold_id = Column(String, unique=True, nullable=False, index=True)
+    category = Column(String, nullable=False, index=True)
+    auto_threshold = Column(Float, nullable=False, default=0.0)
+    ho_threshold = Column(Float, nullable=False, default=0.0)
+    approval_threshold = Column(Float, nullable=False, default=0.0)
+    trust_level_required = Column(String, nullable=False, default="provisional")
+    reason = Column(String, nullable=False, default="")
+    threshold_hash = Column(String, nullable=False, default="")
+    adjusted_at = Column(String, nullable=False, default="")
+
+
+class PolicyAmendmentRecord(Base):
+    """Policy amendment record."""
+
+    __tablename__ = "policy_amendment"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    amendment_id = Column(String, unique=True, nullable=False, index=True)
+    policy_area = Column(String, nullable=False, default="governance")
+    current_rule = Column(String, nullable=False, default="")
+    proposed_rule = Column(String, nullable=False, default="")
+    justification = Column(String, nullable=False, default="")
+    confidence = Column(Float, nullable=False, default=0.0)
+    evidence_count = Column(Integer, nullable=False, default=0)
+    status = Column(String, nullable=False, default="pending")
+    amendment_hash = Column(String, nullable=False, default="")
+    created_at = Column(String, nullable=False, default="")
+    resolved_at = Column(String, nullable=False, default="")
+
+
+class GovernanceSnapshotRecord(Base):
+    """Governance evolution snapshot."""
+
+    __tablename__ = "governance_snapshot"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    snapshot_id = Column(String, unique=True, nullable=False, index=True)
+    trust_level = Column(String, nullable=False, default="untrusted")
+    trust_score = Column(Float, nullable=False, default=0.0)
+    evolution_stage = Column(String, nullable=False, default="static")
+    autonomy_categories = Column(Integer, nullable=False, default=0)
+    pending_amendments = Column(Integer, nullable=False, default=0)
+    applied_amendments = Column(Integer, nullable=False, default=0)
+    total_amendments = Column(Integer, nullable=False, default=0)
+    snapshot_hash = Column(String, nullable=False, default="")
+    created_at = Column(String, nullable=False, default="")
+
+
+class GovernanceEvolutionRecord(Base):
+    """Governance evolution history entry."""
+
+    __tablename__ = "governance_evolution"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    evolution_id = Column(String, unique=True, nullable=False, index=True)
+    evolution_stage = Column(String, nullable=False, default="static")
+    trust_level = Column(String, nullable=False, default="untrusted")
+    trust_score = Column(Float, nullable=False, default=0.0)
+    categories_adjusted = Column(Integer, nullable=False, default=0)
+    amendments_generated = Column(Integer, nullable=False, default=0)
+    evolution_hash = Column(String, nullable=False, default="")
+    created_at = Column(String, nullable=False, default="")

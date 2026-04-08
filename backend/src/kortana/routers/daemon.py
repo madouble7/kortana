@@ -6058,3 +6058,183 @@ async def get_improvement_trend() -> dict:
     tracker = get_improvement_tracker()
     trend = tracker.get_improvement_trend()
     return {"trend": trend, "count": len(trend)}
+
+
+# ── V20 — Policy-Learning Integration Endpoints ──────────────────────────
+
+from src.kortana.services.trust_calibrator import get_trust_calibrator  # noqa: E402
+from src.kortana.services.autonomy_adjuster import get_autonomy_adjuster  # noqa: E402
+from src.kortana.services.policy_feedback_loop import get_policy_feedback_loop  # noqa: E402
+from src.kortana.services.governance_evolution import get_governance_evolution  # noqa: E402
+
+# ── Trust Calibration ────────────────────────────────────────────────────
+
+
+@router.post("/trust/calibrate")
+async def calibrate_trust() -> dict:
+    """Run a trust calibration cycle."""
+    calibrator = get_trust_calibrator()
+    cal = calibrator.calibrate_trust()
+    return cal.to_dict()
+
+
+@router.get("/trust/current")
+async def get_current_trust() -> dict:
+    """Get the current trust calibration."""
+    calibrator = get_trust_calibrator()
+    cal = calibrator.get_current_trust()
+    return cal.to_dict()
+
+
+@router.get("/trust/history")
+async def get_trust_history() -> dict:
+    """Get trust calibration history."""
+    calibrator = get_trust_calibrator()
+    history = calibrator.get_trust_history()
+    return {"calibrations": [c.to_dict() for c in history], "count": len(history)}
+
+
+@router.get("/trust/factors")
+async def get_trust_factors() -> dict:
+    """Get trust factors from the most recent calibration."""
+    calibrator = get_trust_calibrator()
+    factors = calibrator.get_trust_factors()
+    return {"factors": [f.to_dict() for f in factors], "count": len(factors)}
+
+
+# ── Autonomy Adjustment ─────────────────────────────────────────────────
+
+
+@router.post("/autonomy/adjust")
+async def adjust_autonomy_thresholds() -> dict:
+    """Recalculate autonomy thresholds based on current trust."""
+    adjuster = get_autonomy_adjuster()
+    thresholds = adjuster.adjust_thresholds()
+    return {"thresholds": {k: v.to_dict() for k, v in thresholds.items()}, "count": len(thresholds)}
+
+
+@router.get("/autonomy/thresholds")
+async def get_autonomy_thresholds() -> dict:
+    """Get current autonomy thresholds."""
+    adjuster = get_autonomy_adjuster()
+    thresholds = adjuster.get_current_thresholds()
+    return {"thresholds": {k: v.to_dict() for k, v in thresholds.items()}, "count": len(thresholds)}
+
+
+@router.get("/autonomy/threshold/{category}")
+async def get_autonomy_threshold_for_category(category: str) -> dict:
+    """Get autonomy threshold for a specific category."""
+    adjuster = get_autonomy_adjuster()
+    threshold = adjuster.get_threshold_for_category(category)
+    return threshold.to_dict() if threshold else {"error": "category not found"}
+
+
+@router.get("/autonomy/should-auto")
+async def should_auto_execute(
+    category: str = "",
+    confidence: float = 0.0,
+) -> dict:
+    """Check if an action should auto-execute."""
+    adjuster = get_autonomy_adjuster()
+    return {
+        "should_auto": adjuster.should_auto_execute(category, confidence),
+        "execution_mode": adjuster.get_execution_mode(category, confidence),
+        "category": category,
+        "confidence": confidence,
+    }
+
+
+@router.get("/autonomy/history")
+async def get_autonomy_adjustment_history() -> dict:
+    """Get autonomy adjustment history."""
+    adjuster = get_autonomy_adjuster()
+    history = adjuster.get_adjustment_history()
+    return {"history": history, "count": len(history)}
+
+
+# ── Policy Feedback ──────────────────────────────────────────────────────
+
+
+@router.post("/policy/amendments/generate")
+async def generate_policy_amendments() -> dict:
+    """Generate policy amendments from performance data."""
+    loop = get_policy_feedback_loop()
+    amendments = loop.generate_amendments()
+    return {"amendments": [a.to_dict() for a in amendments], "count": len(amendments)}
+
+
+@router.get("/policy/amendments")
+async def get_policy_amendments(status: str = "") -> dict:
+    """Get policy amendments, optionally filtered by status."""
+    from src.kortana.services.policy_feedback_loop import AmendmentStatus  # noqa: E402
+    loop = get_policy_feedback_loop()
+    if status and status in [s.value for s in AmendmentStatus]:
+        amendments = loop.get_amendments(status=AmendmentStatus(status))
+    else:
+        amendments = loop.get_amendments()
+    return {"amendments": [a.to_dict() for a in amendments], "count": len(amendments)}
+
+
+@router.get("/policy/amendments/pending")
+async def get_pending_amendments() -> dict:
+    """Get pending policy amendments."""
+    loop = get_policy_feedback_loop()
+    pending = loop.get_pending_amendments()
+    return {"amendments": [a.to_dict() for a in pending], "count": len(pending)}
+
+
+@router.post("/policy/amendments/{amendment_id}/apply")
+async def apply_policy_amendment(amendment_id: str) -> dict:
+    """Apply a pending policy amendment."""
+    loop = get_policy_feedback_loop()
+    success = loop.apply_amendment(amendment_id)
+    return {"applied": success, "amendment_id": amendment_id}
+
+
+@router.post("/policy/amendments/{amendment_id}/reject")
+async def reject_policy_amendment(amendment_id: str) -> dict:
+    """Reject a pending policy amendment."""
+    loop = get_policy_feedback_loop()
+    success = loop.reject_amendment(amendment_id)
+    return {"rejected": success, "amendment_id": amendment_id}
+
+
+# ── Governance Evolution ─────────────────────────────────────────────────
+
+
+@router.post("/governance/evolve")
+async def evolve_governance() -> dict:
+    """Run one governance evolution cycle."""
+    gov = get_governance_evolution()
+    snapshot = gov.evolve()
+    return snapshot.to_dict()
+
+
+@router.get("/governance/snapshot")
+async def get_governance_snapshot() -> dict:
+    """Get current governance snapshot."""
+    gov = get_governance_evolution()
+    snapshot = gov.get_current_snapshot()
+    return snapshot.to_dict() if snapshot else {"snapshot": None}
+
+
+@router.get("/governance/history")
+async def get_governance_history() -> dict:
+    """Get governance evolution history."""
+    gov = get_governance_evolution()
+    history = gov.get_evolution_history()
+    return {"snapshots": [s.to_dict() for s in history], "count": len(history)}
+
+
+@router.get("/governance/stage")
+async def get_governance_stage() -> dict:
+    """Get current governance evolution stage."""
+    gov = get_governance_evolution()
+    return {"stage": gov.get_evolution_stage().value}
+
+
+@router.get("/governance/summary")
+async def get_governance_summary() -> dict:
+    """Get governance summary."""
+    gov = get_governance_evolution()
+    return gov.get_governance_summary()
