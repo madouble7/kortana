@@ -826,3 +826,250 @@ async def dashboard_canary_overlay(
         "comparison": comparison,
     }
 
+
+@router.post("/rollout/check-escalation")
+async def check_autonomy_escalation(
+    current_level: str = Query(description="Current autonomy level"),
+    requested_level: str = Query(description="Requested autonomy level"),
+    min_consecutive: int = Query(default=2, ge=1, le=10),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Check whether an autonomy-level escalation is permitted.
+
+    Enforces rollout policy: requires consecutive promoted canary runs,
+    recency, and no critical regressions before allowing escalation.
+    """
+    from src.kortana.models import CanaryRun
+    from src.kortana.services.rollout_policy import check_escalation, surface_alerts
+
+    # Fetch recent runs
+    try:
+        result = await db.execute(
+            select(CanaryRun).order_by(CanaryRun.created_at.desc()).limit(10)
+        )
+        runs = result.scalars().all()
+        run_dicts = [
+            {
+                "promotion_status": r.promotion_status,
+                "verdict": r.verdict,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+                "promotion_reasons": r.promotion_reasons,
+                "commit_sha": r.commit_sha,
+            }
+            for r in runs
+        ]
+    except SQLAlchemyError:
+        run_dicts = []
+
+    decision = check_escalation(
+        current_level, requested_level, run_dicts,
+        min_consecutive_promoted=min_consecutive,
+    )
+
+    alerts = surface_alerts(escalation=decision)
+
+    return {
+        "allowed": decision.allowed,
+        "current_level": decision.current_level,
+        "requested_level": decision.requested_level,
+        "reasons": decision.reasons,
+        "required_actions": decision.required_actions,
+        "alerts": [
+            {"level": a.level, "category": a.category, "title": a.title, "detail": a.detail}
+            for a in alerts
+        ],
+    }
+
+
+@router.post("/rollout/check-deployment")
+async def check_deployment_gate(
+    require_adaptive: bool = Query(default=True),
+    require_promoted: bool = Query(default=True),
+    max_hours: int = Query(default=12, ge=1, le=168),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Check whether the current build may be deployed.
+
+    Blocks deployment when canary verdict regresses, promotion is rejected,
+    or the last run is stale.
+    """
+    from src.kortana.models import CanaryRun
+    from src.kortana.services.rollout_policy import check_deployment, surface_alerts
+
+    try:
+        result = await db.execute(
+            select(CanaryRun).order_by(CanaryRun.created_at.desc()).limit(1)
+        )
+        run = result.scalar_one_or_none()
+        latest = None
+        if run:
+            latest = {
+                "verdict": run.verdict,
+                "promotion_status": run.promotion_status,
+                "commit_sha": run.commit_sha,
+                "created_at": run.created_at.isoformat() if run.created_at else None,
+            }
+    except SQLAlchemyError:
+        latest = None
+
+    decision = check_deployment(
+        latest,
+        require_adaptive=require_adaptive,
+        require_promoted=require_promoted,
+        max_hours_since_run=max_hours,
+    )
+
+    alerts = surface_alerts(deployment=decision)
+
+    return {
+        "allowed": decision.allowed,
+        "reasons": decision.reasons,
+        "commit_sha": decision.commit_sha,
+        "verdict": decision.verdict,
+        "promotion_status": decision.promotion_status,
+        "alerts": [
+            {"level": a.level, "category": a.category, "title": a.title, "detail": a.detail}
+            for a in alerts
+        ],
+    }
+
+
+@router.get("/rollout/trends")
+async def canary_trends(
+    limit: int = Query(default=20, ge=3, le=100),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Compute retention and trend analysis across canary run history.
+
+    Returns longitudinal metrics: adaptive rate, promotion rate,
+    trend direction (improving/stable/degrading), per-run metric
+    series, and current consecutive-promoted streak.
+    """
+    from src.kortana.models import CanaryRun
+    from src.kortana.services.rollout_policy import compute_trends, surface_alerts
+
+    try:
+        result = await db.execute(
+            select(CanaryRun).order_by(CanaryRun.created_at.desc()).limit(limit)
+        )
+        runs = result.scalars().all()
+        run_dicts = [
+            {
+                "verdict": r.verdict,
+                "promotion_status": r.promotion_status,
+                "score_shift_delta": r.score_shift_delta,
+                "goal_alignment_delta": r.goal_alignment_delta,
+                "outcome_growth": r.outcome_growth,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in runs
+        ]
+    except SQLAlchemyError:
+        run_dicts = []
+
+    trends = compute_trends(run_dicts)
+    alerts = surface_alerts(trends=trends)
+
+    return {
+        "total_runs": trends.total_runs,
+        "adaptive_rate": round(trends.adaptive_rate, 3),
+        "promotion_rate": round(trends.promotion_rate, 3),
+        "trend_direction": trends.trend_direction,
+        "consecutive_promoted": trends.consecutive_promoted,
+        "breakdown": {
+            "adaptive": trends.adaptive_count,
+            "static": trends.static_count,
+            "promoted": trends.promoted_count,
+            "rejected": trends.rejected_count,
+        },
+        "series": {
+            "score_shift": trends.score_shift_trend,
+            "goal_alignment": trends.goal_alignment_trend,
+            "outcome_growth": trends.outcome_growth_trend,
+        },
+        "alerts": [
+            {"level": a.level, "category": a.category, "title": a.title, "detail": a.detail}
+            for a in alerts
+        ],
+    }
+
+
+@router.get("/rollout/status")
+async def rollout_status(
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Full rollout policy status — single endpoint for dashboards.
+
+    Combines escalation readiness, deployment readiness, trends,
+    and any active alerts into one view.
+    """
+    from src.kortana.models import CanaryRun
+    from src.kortana.services.rollout_policy import (
+        compute_trends,
+        check_deployment,
+        surface_alerts,
+    )
+
+    try:
+        result = await db.execute(
+            select(CanaryRun).order_by(CanaryRun.created_at.desc()).limit(20)
+        )
+        runs = result.scalars().all()
+        run_dicts = [
+            {
+                "verdict": r.verdict,
+                "promotion_status": r.promotion_status,
+                "score_shift_delta": r.score_shift_delta,
+                "goal_alignment_delta": r.goal_alignment_delta,
+                "outcome_growth": r.outcome_growth,
+                "commit_sha": r.commit_sha,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+                "promotion_reasons": r.promotion_reasons,
+            }
+            for r in runs
+        ]
+    except SQLAlchemyError:
+        run_dicts = []
+
+    # Trends
+    trends = compute_trends(run_dicts)
+
+    # Deployment readiness
+    latest = run_dicts[0] if run_dicts else None
+    deploy = check_deployment(latest)
+
+    # Collect all alerts
+    all_alerts = surface_alerts(deployment=deploy, trends=trends)
+
+    daemon = get_autonomy_daemon()
+    daemon_status = daemon.get_status()
+
+    return {
+        "timestamp": datetime.utcnow().isoformat(),
+        "daemon_running": daemon_status.get("running", False),
+        "current_autonomy_mode": daemon_status.get("approval_mode", "unknown"),
+        "deployment_gate": {
+            "allowed": deploy.allowed,
+            "reasons": deploy.reasons,
+            "latest_verdict": deploy.verdict,
+            "latest_promotion": deploy.promotion_status,
+        },
+        "trends": {
+            "total_runs": trends.total_runs,
+            "adaptive_rate": round(trends.adaptive_rate, 3),
+            "promotion_rate": round(trends.promotion_rate, 3),
+            "trend_direction": trends.trend_direction,
+            "consecutive_promoted": trends.consecutive_promoted,
+        },
+        "alert_count": len(all_alerts),
+        "alerts": [
+            {
+                "level": a.level,
+                "category": a.category,
+                "title": a.title,
+                "detail": a.detail,
+                "recommended_action": a.recommended_action,
+            }
+            for a in all_alerts
+        ],
+    }
