@@ -1009,3 +1009,54 @@ class PolicyDecisionLog(Base):
             f"<PolicyDecisionLog {self.decision_type} {self.action} "
             f"hash={self.audit_hash[:12]}>"
         )
+
+
+
+class RollbackEvent(Base):
+    """V8A — Record of an automatic or manual rollback.
+
+    Captures when the system reversed an actuation decision,
+    what triggered it, and the before/after state.
+    """
+
+    __tablename__ = "rollback_event"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    trigger = Column(
+        String(32), nullable=False, index=True,
+    )  # degraded_canary | deploy_blocked | manual | rate_limit
+    from_mode = Column(String(32), nullable=False)
+    to_mode = Column(String(32), nullable=False)
+    reasons = Column(JSON, nullable=True)
+    original_decision_hash = Column(String(64), nullable=True, index=True)
+    policy_version = Column(Integer, nullable=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        return f"<RollbackEvent {self.trigger} {self.from_mode}->{self.to_mode}>"
+
+
+class PolicyVersionRecord(Base):
+    """V8B — Immutable snapshot of a rollout policy configuration.
+
+    Every policy change is captured as a numbered version so
+    decisions can reference which policy was in effect.
+    """
+
+    __tablename__ = "policy_version"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    version = Column(Integer, nullable=False, unique=True, index=True)
+    cooldown_seconds = Column(Integer, nullable=False, default=300)
+    max_changes_per_window = Column(Integer, nullable=False, default=3)
+    window_seconds = Column(Integer, nullable=False, default=3600)
+    min_consecutive_promoted = Column(Integer, nullable=False, default=3)
+    max_mode = Column(String(32), nullable=False, default="auto")
+    auto_rollback_enabled = Column(Boolean, nullable=False, default=True)
+    content_hash = Column(String(64), nullable=False, index=True)
+    created_by = Column(String(32), nullable=False, default="daemon")
+    commit_sha = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        return f"<PolicyVersionRecord v{self.version} hash={self.content_hash[:12]}>"

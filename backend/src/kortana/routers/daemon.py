@@ -1632,3 +1632,494 @@ async def audit_log(
         ],
     }
 
+
+
+
+# ---------------------------------------------------------------------------
+# V8 — Rollback, safety rails, and policy versioning endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.post("/actuate/gated")
+async def actuate_daemon_gated(
+    min_consecutive: int = Query(default=3, ge=1, le=10),
+    max_mode: str = Query(default="auto"),
+    publish_alerts: bool = Query(default=True),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """V8 gated actuation — cooldown + rate limit + automatic rollback.
+
+    Same as /actuate but with safety rails:
+    1. Checks cooldown since last mode change.
+    2. Checks rate limit (max changes per window).
+    3. Evaluates actuation.
+    4. If applied, checks for post-actuation degradation and rolls back.
+    """
+    from src.kortana.models import CanaryRun, PolicyDecisionLog, RollbackEvent
+    from src.kortana.services.auto_actuator import (
+        apply_actuation,
+        decision_to_log_dict,
+        evaluate_actuation,
+    )
+    from src.kortana.services.rollback_engine import (
+        RollbackConfig,
+        apply_rollback,
+        check_cooldown,
+        check_rate_limit,
+        evaluate_rollback,
+    )
+    from src.kortana.services.rollout_policy import (
+        RolloutAlert,
+        check_deployment,
+    )
+    from src.kortana.services.alert_publisher import get_alert_publisher
+    from src.kortana.services.policy_versioning import get_policy_registry
+
+    daemon = get_autonomy_daemon()
+    current_mode = daemon.default_approval_mode or "self-aware"
+
+    # Load policy config from registry
+    registry = get_policy_registry()
+    policy = registry.current
+    config = RollbackConfig(
+        cooldown_seconds=policy.cooldown_seconds if policy else 300,
+        max_changes_per_window=policy.max_changes_per_window if policy else 3,
+        window_seconds=policy.window_seconds if policy else 3600,
+    )
+
+    # --- Pre-flight: cooldown ---
+    last_change_at: datetime | None = None
+    try:
+        result = await db.execute(
+            select(PolicyDecisionLog)
+            .where(PolicyDecisionLog.action.in_(["escalate", "de-escalate"]))
+            .order_by(PolicyDecisionLog.created_at.desc())
+            .limit(1)
+        )
+        last_decision = result.scalars().first()
+        if last_decision:
+            last_change_at = last_decision.created_at
+    except SQLAlchemyError:
+        pass
+
+    cool_ok, remaining = check_cooldown(last_change_at, cooldown_seconds=config.cooldown_seconds)
+    if not cool_ok:
+        return {
+            "action": "blocked",
+            "applied": False,
+            "reason": f"Cooldown active: {remaining}s remaining",
+            "effective_mode": current_mode,
+        }
+
+    # --- Pre-flight: rate limit ---
+    recent_decisions: list[dict[str, Any]] = []
+    try:
+        result = await db.execute(
+            select(PolicyDecisionLog)
+            .order_by(PolicyDecisionLog.created_at.desc())
+            .limit(50)
+        )
+        rows = result.scalars().all()
+        recent_decisions = [
+            {
+                "action": r.action,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in rows
+        ]
+    except SQLAlchemyError:
+        pass
+
+    rate_ok, count = check_rate_limit(
+        recent_decisions,
+        max_changes=config.max_changes_per_window,
+        window_seconds=config.window_seconds,
+    )
+    if not rate_ok:
+        return {
+            "action": "blocked",
+            "applied": False,
+            "reason": f"Rate limit: {count}/{config.max_changes_per_window} changes in {config.window_seconds}s window",
+            "effective_mode": current_mode,
+        }
+
+    # --- Evaluate actuation ---
+    try:
+        result = await db.execute(
+            select(CanaryRun).order_by(CanaryRun.created_at.desc()).limit(10)
+        )
+        runs = result.scalars().all()
+        run_dicts = [
+            {
+                "verdict": r.verdict,
+                "promotion_status": r.promotion_status,
+                "commit_sha": r.commit_sha,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in runs
+        ]
+    except SQLAlchemyError:
+        run_dicts = []
+
+    min_consec = policy.min_consecutive_promoted if policy else min_consecutive
+    effective_max = policy.max_mode if policy else max_mode
+
+    decision = evaluate_actuation(
+        current_mode, run_dicts,
+        min_consecutive_promoted=min_consec,
+        max_mode=effective_max,
+    )
+
+    pre_actuation_mode = current_mode
+    applied = apply_actuation(daemon, decision)
+
+    # Persist audit log with policy version
+    policy_version = policy.version if policy else None
+    try:
+        log_dict = decision_to_log_dict(decision)
+        log_dict["extra_metadata"] = {
+            **(log_dict.get("extra_metadata") or {}),
+            "policy_version": policy_version,
+            "gated": True,
+        }
+        log_entry = PolicyDecisionLog(**log_dict)
+        db.add(log_entry)
+        await db.commit()
+    except Exception:
+        pass
+
+    # --- Post-actuation rollback check ---
+    rollback_applied = False
+    rollback_info: dict[str, Any] = {}
+    if applied and decision.action == "escalate" and config.auto_rollback_enabled:
+        latest_canary = run_dicts[0] if run_dicts else None
+        latest_deploy = check_deployment(latest_canary)
+
+        rb = evaluate_rollback(
+            current_mode=daemon.default_approval_mode,
+            pre_actuation_mode=pre_actuation_mode,
+            latest_canary=latest_canary,
+            deploy_allowed=latest_deploy.allowed,
+            config=config,
+        )
+
+        if rb.should_rollback:
+            rb.original_decision_hash = decision.audit_hash
+            rollback_applied = apply_rollback(daemon, rb)
+
+            # Persist rollback event
+            try:
+                rb_event = RollbackEvent(
+                    trigger=rb.trigger,
+                    from_mode=rb.from_mode,
+                    to_mode=rb.to_mode,
+                    reasons=rb.reasons,
+                    original_decision_hash=rb.original_decision_hash,
+                    policy_version=policy_version,
+                )
+                db.add(rb_event)
+                await db.commit()
+            except Exception:
+                pass
+
+            rollback_info = {
+                "rolled_back": True,
+                "trigger": rb.trigger,
+                "from_mode": rb.from_mode,
+                "to_mode": rb.to_mode,
+                "reasons": rb.reasons,
+            }
+
+    # Publish alerts
+    alerts_out: list[dict[str, Any]] = []
+    if applied or rollback_applied:
+        action_label = "rolled back" if rollback_applied else f"{decision.action}d"
+        eff_mode = daemon.default_approval_mode
+        alert = RolloutAlert(
+            level="critical" if rollback_applied else (
+                "warning" if decision.action == "de-escalate" else "info"),
+            category="actuation",
+            title=f"Daemon mode {action_label}: {decision.from_mode} -> {eff_mode}",
+            detail="; ".join(decision.reasons),
+            recommended_action="Investigate canary state" if rollback_applied else "Monitor next cycle",
+        )
+        alerts_out = [{"level": alert.level, "category": alert.category,
+                       "title": alert.title, "detail": alert.detail}]
+        if publish_alerts:
+            publisher = get_alert_publisher()
+            await publisher.publish([alert])
+
+    return {
+        "action": decision.action,
+        "applied": applied,
+        "from_mode": decision.from_mode,
+        "to_mode": decision.to_mode,
+        "effective_mode": daemon.default_approval_mode,
+        "reasons": decision.reasons,
+        "audit_hash": decision.audit_hash,
+        "policy_version": policy_version,
+        "gated": True,
+        "rollback": rollback_info or {"rolled_back": False},
+        "alerts": alerts_out,
+    }
+
+
+@router.post("/rollback/evaluate")
+async def evaluate_rollback_endpoint(
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Evaluate whether a rollback should be triggered right now.
+
+    Does not apply the rollback — just returns the evaluation result.
+    """
+    from src.kortana.models import CanaryRun, PolicyDecisionLog
+    from src.kortana.services.rollback_engine import evaluate_rollback
+    from src.kortana.services.rollout_policy import check_deployment
+
+    daemon = get_autonomy_daemon()
+    current_mode = daemon.default_approval_mode or "self-aware"
+
+    # Find the last escalation's from_state
+    pre_mode = "manual"
+    try:
+        result = await db.execute(
+            select(PolicyDecisionLog)
+            .where(PolicyDecisionLog.action == "escalate")
+            .order_by(PolicyDecisionLog.created_at.desc())
+            .limit(1)
+        )
+        last_esc = result.scalars().first()
+        if last_esc and last_esc.from_state:
+            pre_mode = last_esc.from_state
+    except SQLAlchemyError:
+        pass
+
+    # Latest canary
+    latest_canary: dict[str, Any] | None = None
+    try:
+        result = await db.execute(
+            select(CanaryRun).order_by(CanaryRun.created_at.desc()).limit(1)
+        )
+        run = result.scalars().first()
+        if run:
+            latest_canary = {
+                "verdict": run.verdict,
+                "promotion_status": run.promotion_status,
+                "commit_sha": run.commit_sha,
+            }
+    except SQLAlchemyError:
+        pass
+
+    deploy = check_deployment(latest_canary)
+
+    rb = evaluate_rollback(
+        current_mode=current_mode,
+        pre_actuation_mode=pre_mode,
+        latest_canary=latest_canary,
+        deploy_allowed=deploy.allowed,
+    )
+
+    return {
+        "should_rollback": rb.should_rollback,
+        "from_mode": rb.from_mode,
+        "to_mode": rb.to_mode,
+        "trigger": rb.trigger,
+        "reasons": rb.reasons,
+    }
+
+
+@router.get("/rollback/history")
+async def rollback_history(
+    limit: int = Query(default=25, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Query the rollback event history."""
+    from src.kortana.models import RollbackEvent
+
+    try:
+        result = await db.execute(
+            select(RollbackEvent)
+            .order_by(RollbackEvent.created_at.desc())
+            .limit(limit)
+        )
+        events = result.scalars().all()
+    except SQLAlchemyError:
+        events = []
+
+    return {
+        "total": len(events),
+        "events": [
+            {
+                "id": e.id,
+                "trigger": e.trigger,
+                "from_mode": e.from_mode,
+                "to_mode": e.to_mode,
+                "reasons": e.reasons,
+                "original_decision_hash": e.original_decision_hash,
+                "policy_version": e.policy_version,
+                "created_at": e.created_at.isoformat() if e.created_at else None,
+            }
+            for e in events
+        ],
+    }
+
+
+# ---------------------------------------------------------------------------
+# V8B — Policy versioning endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.post("/policy/versions")
+async def create_policy_version(
+    cooldown_seconds: int = Query(default=300, ge=10),
+    max_changes_per_window: int = Query(default=3, ge=1, le=20),
+    window_seconds: int = Query(default=3600, ge=60),
+    min_consecutive_promoted: int = Query(default=3, ge=1, le=20),
+    max_mode: str = Query(default="auto"),
+    auto_rollback_enabled: bool = Query(default=True),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Create a new policy version and make it the active policy.
+
+    The new version is immutably persisted with a content hash.
+    Previous versions remain available for diff and replay.
+    """
+    from src.kortana.models import PolicyVersionRecord
+    from src.kortana.services.policy_versioning import (
+        PolicySnapshot,
+        get_policy_registry,
+    )
+
+    registry = get_policy_registry()
+    next_v = registry.latest_version_number() + 1
+
+    snapshot = PolicySnapshot(
+        version=next_v,
+        cooldown_seconds=cooldown_seconds,
+        max_changes_per_window=max_changes_per_window,
+        window_seconds=window_seconds,
+        min_consecutive_promoted=min_consecutive_promoted,
+        max_mode=max_mode,
+        auto_rollback_enabled=auto_rollback_enabled,
+    )
+
+    # Persist to DB
+    try:
+        record = PolicyVersionRecord(
+            version=snapshot.version,
+            cooldown_seconds=snapshot.cooldown_seconds,
+            max_changes_per_window=snapshot.max_changes_per_window,
+            window_seconds=snapshot.window_seconds,
+            min_consecutive_promoted=snapshot.min_consecutive_promoted,
+            max_mode=snapshot.max_mode,
+            auto_rollback_enabled=snapshot.auto_rollback_enabled,
+            content_hash=snapshot.content_hash,
+            created_by=snapshot.created_by,
+            commit_sha=snapshot.commit_sha,
+        )
+        db.add(record)
+        await db.commit()
+    except Exception:
+        pass  # In-memory registry still works
+
+    registry.register(snapshot)
+
+    return {
+        "created": True,
+        "policy": snapshot.to_dict(),
+    }
+
+
+@router.get("/policy/versions")
+async def list_policy_versions(
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """List all policy versions, newest first."""
+    from src.kortana.services.policy_versioning import get_policy_registry
+
+    registry = get_policy_registry()
+    current = registry.current
+
+    return {
+        "current_version": current.version if current else None,
+        "total": registry.version_count,
+        "versions": registry.history(),
+    }
+
+
+@router.get("/policy/diff")
+async def diff_policy_versions(
+    from_version: int = Query(ge=1),
+    to_version: int = Query(ge=1),
+) -> dict[str, Any]:
+    """Compute the diff between two policy versions."""
+    from src.kortana.services.policy_versioning import get_policy_registry
+
+    registry = get_policy_registry()
+    result = registry.diff(from_version, to_version)
+
+    if result is None:
+        return JSONResponse(
+            content={"error": "One or both versions not found"},
+            status_code=404,
+        )
+
+    return {
+        "from_version": result.from_version,
+        "to_version": result.to_version,
+        "has_changes": result.has_changes,
+        "changes": result.changes,
+    }
+
+
+@router.post("/policy/replay")
+async def replay_policy(
+    policy_version: int = Query(ge=1),
+    run_limit: int = Query(default=20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Replay historical canary evidence under a specific policy version.
+
+    Shows what decisions the system *would* have made if that policy
+    had been active. Useful for 'what if' analysis before changing policy.
+    """
+    from src.kortana.models import CanaryRun
+    from src.kortana.services.policy_versioning import (
+        get_policy_registry,
+        replay_decisions,
+    )
+
+    registry = get_policy_registry()
+    policy = registry.get_version(policy_version)
+
+    if policy is None:
+        return JSONResponse(
+            content={"error": f"Policy version {policy_version} not found"},
+            status_code=404,
+        )
+
+    try:
+        result = await db.execute(
+            select(CanaryRun).order_by(CanaryRun.created_at.desc()).limit(run_limit)
+        )
+        runs = result.scalars().all()
+        run_dicts = [
+            {
+                "verdict": r.verdict,
+                "promotion_status": r.promotion_status,
+                "commit_sha": r.commit_sha,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in runs
+        ]
+    except SQLAlchemyError:
+        run_dicts = []
+
+    replay = replay_decisions(policy, run_dicts)
+
+    return {
+        "policy_version": replay.policy_version,
+        "total_decisions": replay.total_decisions,
+        "changed_count": replay.changed_count,
+        "outcomes": replay.outcomes,
+    }
