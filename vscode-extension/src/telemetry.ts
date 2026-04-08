@@ -1,3 +1,4 @@
+import { execSync } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
@@ -67,9 +68,26 @@ export class FocusTelemetry {
             const editor = vscode.window.activeTextEditor;
             const contextObj = Object.fromEntries(this.activeContexts);
             
+            // Get current git branch
+            let branch: string | null = null;
+            try {
+                const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+                if (workspaceRoot) {
+                    branch = execSync("git rev-parse --abbrev-ref HEAD", {
+                        cwd: workspaceRoot,
+                        timeout: 3000,
+                        encoding: "utf-8",
+                    }).trim();
+                }
+            } catch {
+                // Not in a git repo or git not available
+            }
+
             const state = {
                 timestamp: new Date().toISOString(),
                 current_active_file: editor?.document.uri.fsPath || null,
+                language: editor?.document.languageId || null,
+                branch,
                 session_focus_seconds: contextObj
             };
             
