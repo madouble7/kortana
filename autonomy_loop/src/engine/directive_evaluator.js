@@ -1,0 +1,1 @@
+const QUANTUM_LINK_SCHEMA = { version: '1.0.0', mandate: 'maximize connectivity and systemic coherence', nodes: ['reflection', 'growth', 'integration'] }; export const evaluateTaskAlignment = (taskPrompt) => { const score = taskPrompt.length % 10 / 10; const isAligned = score > 0.3; return { score, isAligned, directive: QUANTUM_LINK_SCHEMA }; };

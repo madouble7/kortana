@@ -1,0 +1,1 @@
+use crate::core::quantum_link::processor::QuantumProcessor; pub struct EvolutionEngine { processor: QuantumProcessor, } impl EvolutionEngine { pub fn run_cycle(&self) { println!("synchronizing evolution with quantum link feedback..."); } }

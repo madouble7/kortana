@@ -605,9 +605,7 @@ class GitHubAutonomyService:
         runs: list[dict[str, Any]] = []
         failed: list[str] = []
 
-        py_files = [
-            f for f in (changed_files or []) if f.endswith(".py")
-        ]
+        py_files = [f for f in (changed_files or []) if f.endswith(".py")]
 
         # 1. ruff check — scoped to changed Python files only
         if py_files:
@@ -618,7 +616,14 @@ class GitHubAutonomyService:
                 timeout_seconds=timeout,
             )
         else:
-            ruff_run = {"command": "ruff (skipped)", "status": "passed", "exit_code": 0, "stdout": "", "stderr": "", "duration_ms": 0}
+            ruff_run = {
+                "command": "ruff (skipped)",
+                "status": "passed",
+                "exit_code": 0,
+                "stdout": "",
+                "stderr": "",
+                "duration_ms": 0,
+            }
         runs.append(ruff_run)
         if ruff_run["status"] == "failed":
             failed.append("ruff")
@@ -635,7 +640,14 @@ class GitHubAutonomyService:
                 timeout_seconds=timeout,
             )
         else:
-            syntax_run = {"command": "syntax (skipped)", "status": "passed", "exit_code": 0, "stdout": "", "stderr": "", "duration_ms": 0}
+            syntax_run = {
+                "command": "syntax (skipped)",
+                "status": "passed",
+                "exit_code": 0,
+                "stdout": "",
+                "stderr": "",
+                "duration_ms": 0,
+            }
         runs.append(syntax_run)
         if syntax_run["status"] == "failed":
             failed.append("syntax")

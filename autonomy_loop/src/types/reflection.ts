@@ -1,0 +1,1 @@
+export interface Reflection { task_id: string; outcome: string; learning_delta: string; quantum_link_calibration: number; timestamp: number; }

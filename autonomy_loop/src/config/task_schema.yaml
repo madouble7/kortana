@@ -1,0 +1,10 @@
+version: 1.0.0
+task_schema:
+  metadata:
+    gardener_directive:
+      purpose_alignment: string
+      milestone_id: string
+      coherence_score: float
+    execution_context:
+      timestamp: string
+      actor: string

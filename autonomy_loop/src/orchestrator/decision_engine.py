@@ -1,0 +1,1 @@
+from src.core.foundational_logic import FoundationalLogic from src.evolution.quantum_link_interface import QuantumLinkInterface class DecisionEngine: def __init__(self): self.logic = FoundationalLogic() self.quantum = QuantumLinkInterface() self.logic.register_hook(self.quantum.process_directive) def run(self, task): return self.logic.execute_cycle(task)

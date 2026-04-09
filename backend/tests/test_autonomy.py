@@ -808,7 +808,12 @@ class TestGitHubAutonomyService:
             patch.object(
                 service,
                 "_run_mandatory_quality_gate",
-                return_value={"status": "passed", "runs": [], "failed_gates": [], "details": {}},
+                return_value={
+                    "status": "passed",
+                    "runs": [],
+                    "failed_gates": [],
+                    "details": {},
+                },
             ),
         ):
             mock_db.commit = MagicMock()

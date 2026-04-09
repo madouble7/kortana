@@ -1,0 +1,1 @@
+class FoundationalLogic: def __init__(self): self.hooks = [] def register_hook(self, callback): self.hooks.append(callback) def execute_cycle(self, task): for hook in self.hooks: task = hook(task) return task

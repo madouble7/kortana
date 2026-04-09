@@ -1,0 +1,1 @@
+import directives from '../config/quantum_directives.json'; export async function synthesisFilter(task: any): Promise<any | null> { const isAligned = directives.vision_keywords.some((keyword) => task.description.includes(keyword)); if (isAligned || task.priority === 'high') { return task; } return null; }

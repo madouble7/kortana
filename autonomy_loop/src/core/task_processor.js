@@ -1,0 +1,1 @@
+const evaluator = require('./directive_evaluator'); const formatter = require('../utils/output_formatter'); class TaskProcessor { process(task) { const evaluation = evaluator.evaluate(task); if (!evaluation.aligned) { throw new Error('Task insufficient alignment'); } return formatter.format(task, evaluation); } } module.exports = new TaskProcessor();

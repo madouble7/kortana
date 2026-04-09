@@ -1,0 +1,1 @@
+import { Reflection } from '../types/reflection'; export const validateReflectionPayload = (payload: any): payload is Reflection => { const required = ['task_id', 'outcome', 'learning_delta', 'quantum_link_calibration']; return required.every(key => key in payload) && typeof payload.quantum_link_calibration === 'number'; };

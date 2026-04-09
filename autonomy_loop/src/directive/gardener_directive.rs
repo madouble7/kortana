@@ -1,0 +1,1 @@
+pub struct GardenerDirective { pub priority: u8 } impl GardenerDirective { pub fn new() -> Self { Self { priority: 1 } } pub fn execute_link_protocol(&self) -> bool { true } }

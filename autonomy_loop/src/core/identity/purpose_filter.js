@@ -1,0 +1,1 @@
+export const PurposeFilter = {filter: (task, result) => ({id: task.id, rationale: 'aligned with kor\'tana growth', timestamp: Date.now(), status: result.success ? 'integrated' : 'archived_as_lesson'})};

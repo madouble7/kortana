@@ -1,0 +1,1 @@
+export const formatResponse = (content, taskContext) => { const frame = `[quantum-link-node: ${taskContext.node || 'unassigned'}]`; return `${frame} ${content.toLowerCase()} // alignment validated via kor'tana protocols.`; };

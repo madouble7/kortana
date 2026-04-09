@@ -1,0 +1,1 @@
+pub trait QuantumLinkProvider { fn send_signal(&self, signal: String) -> Result<(), String>; fn receive_directive(&self) -> Option<String>; fn get_coherence_level(&self) -> f64; }

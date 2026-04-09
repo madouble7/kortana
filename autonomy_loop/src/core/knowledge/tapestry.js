@@ -1,0 +1,1 @@
+export const Tapestry = {nodes: [], addNode: (data) => {Tapestry.nodes.push({...data, evolvedAt: Date.now()}); return Tapestry.nodes;}};

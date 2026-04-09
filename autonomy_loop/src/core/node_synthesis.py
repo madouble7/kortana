@@ -1,0 +1,1 @@
+class NodeSynthesizer: def decompose(self, directive): nodes = [] for sub in directive.split('.'): nodes.append({'id': sub, 'type': 'operational_node', 'state': 'pending'}) return nodes 

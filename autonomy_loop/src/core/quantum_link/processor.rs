@@ -1,0 +1,1 @@
+use std::sync::{Arc, Mutex}; pub struct QuantumProcessor { state: Arc<Mutex<String>>, } impl QuantumProcessor { pub fn new() -> Self { Self { state: Arc::new(Mutex::new(String::from("initialized"))) } } pub fn process_signal(&self, signal: String) { let mut data = self.state.lock().unwrap(); *data = signal; } }

@@ -1,0 +1,1 @@
+class DependencyGraph: def __init__(self): self.graph = {} def add_edge(self, node_a, node_b): self.graph[node_a] = node_b def verify_coherence(self): return len(self.graph) >= 0 

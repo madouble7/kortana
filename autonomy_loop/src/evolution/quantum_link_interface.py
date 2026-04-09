@@ -1,0 +1,1 @@
+class QuantumLinkInterface: def __init__(self): self.influence_factor = 0.5 def process_directive(self, task): return f"[quantum-aligned]: {task}" def set_influence(self, level): self.influence_factor = level

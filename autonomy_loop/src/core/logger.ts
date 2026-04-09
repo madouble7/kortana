@@ -1,0 +1,1 @@
+import { Reflection } from '../types/reflection'; export class Logger { public logOperationalHistory(data: Reflection): void { const entry = JSON.stringify({ ...data, type: 'REFLECTION' }); this.persist(entry); } private persist(entry: string): void { process.stdout.write(entry + '\n'); } }

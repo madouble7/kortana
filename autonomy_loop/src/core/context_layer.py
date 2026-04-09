@@ -1,1 +1,1 @@
-class ContextLayer: def __init__(self): self.persistent_store = {} def capture(self, task_id, data): self.persistent_store[task_id] = data def retrieve_all(self): return self.persistent_store
+class QuantumLink: def __init__(self, task): self.id = hash(task) self.status = "active" class ContextLayer: def initialize_link(self, task): return QuantumLink(task) def seal_link(self, link, data): link.status = "sealed" link.data = data return True

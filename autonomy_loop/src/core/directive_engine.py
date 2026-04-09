@@ -1,0 +1,1 @@
+class DirectiveEngine: def __init__(self): self.nodes = [] def process_directive(self, intent): return {'intent': intent, 'status': 'synthesized', 'cycle_id': hash(intent)} 

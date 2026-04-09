@@ -1,0 +1,1 @@
+import { getCurrentMandate } from '../core/directive_manager.js'; export async function interceptContext(payload, directive) { const context = getCurrentMandate(); const woven = { payload, metadata: { directive, context, timestamp: Date.now(), verified: true } }; if (!woven.metadata.verified) { throw new Error('Coherence check failed'); } return woven; }

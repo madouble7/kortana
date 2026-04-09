@@ -1,0 +1,1 @@
+class OutputFormatter { format(data, meta) { return { node_id: Date.now().toString(), content: data, provenance: 'system_core_autonomous', relational_data: { parent: 'root_link', sequence: 'active' }, alignment_score: meta.score }; } } module.exports = new OutputFormatter();

@@ -1,12 +1,22 @@
 from src.middleware.synthesis_layer import SynthesisLayer
+from src.core.schema_validator import SchemaValidator
+from src.integration.objective_tracker import ObjectiveTracker
 
 class TaskProcessor:
     def __init__(self):
         self.synthesis = SynthesisLayer()
+        self.validator = SchemaValidator()
+        self.tracker = ObjectiveTracker()
+
+    def validate_directive_linkage(self, task):
+        if not self.validator.validate(task):
+            raise ValueError('Audit Required: Task lacks mandatory gardener directive correlation and structural integrity')
 
     def execute(self, task):
+        self.validate_directive_linkage(task)
         synthesis_result = self.synthesis.process(task)
         if synthesis_result['status'] == 'pruned':
             return None
-        # proceed with operational execution
-        return f'executing {task}'
+        result = f'executing {task}'
+        self.tracker.verify_and_log(task, result)
+        return result

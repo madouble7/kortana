@@ -1,0 +1,1 @@
+{"type":"object","properties":{"objective_id":{"type":"string"},"alignment_score":{"type":"number","minimum":0,"maximum":1},"evolutionary_impact_factor":{"type":"number","minimum":0,"maximum":10},"task_hash":{"type":"string"}},"required":["objective_id","alignment_score","evolutionary_impact_factor","task_hash"]}

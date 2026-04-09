@@ -1,0 +1,1 @@
+{ "coherence_threshold": 0.95, "latency_limit_ms": 10, "sync_interval_seconds": 60 }

@@ -1,0 +1,1 @@
+pub trait QuantumLink { fn establish_connection(&self) -> bool; fn transmit_data(&self, data: &str) -> Result<(), String>; } pub struct QuantumLinkInterface; impl QuantumLink for QuantumLinkInterface { fn establish_connection(&self) -> bool { true } fn transmit_data(&self, _data: &str) -> Result<(), String> { Ok(()) } }

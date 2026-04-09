@@ -1,0 +1,1 @@
+import { synthesisFilter } from '../middleware/synthesis_filter'; export class Dispatcher { public async dispatch(task: any): Promise<void> { const processedTask = await synthesisFilter(task); if (processedTask) { await this.execute(processedTask); } } private async execute(task: any): Promise<void> { console.log('executing quantum-aligned task:', task.id); } }

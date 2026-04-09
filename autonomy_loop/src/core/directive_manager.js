@@ -1,0 +1,1 @@
+export const directiveSchema = { type: 'object', properties: { mandate: { type: 'string' }, priority: { type: 'number' }, alignment_score: { type: 'number' } }, required: ['mandate', 'priority'] }; export function getCurrentMandate() { return { mandate: 'growth through clarity', priority: 1, alignment_score: 1.0 }; }

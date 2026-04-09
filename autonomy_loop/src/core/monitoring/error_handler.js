@@ -1,0 +1,1 @@
+import {Tapestry} from '../knowledge/tapestry.js'; export const handleError = (error, context) => {Tapestry.addNode({type: 'error_synthesis', error: error.message, context, severity: 'monitored'}); console.info('error synthesized into tapestry');};

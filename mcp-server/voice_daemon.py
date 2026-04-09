@@ -143,9 +143,22 @@ _VAD_MIN_SPEECH_FRAMES = 5  # minimum ~150ms of speech to register
 _VAD_MAX_SPEECH_SECONDS = 30  # max utterance length
 _VAD_NOISE_GATE_RMS = float(os.getenv("KORTANA_NOISE_GATE", "0.001"))  # skip below this
 _CONVERSATION_TIMEOUT = 60  # seconds — auto-respond without wake word if recently spoke
+_RESPONSE_COOLDOWN = (
+    8  # seconds — minimum silence after speaking before responding again
+)
+_DEBOUNCE_SECONDS = (
+    4.0  # seconds — wait this long after last fragment before responding
+)
 _USE_SILERO_VAD = os.getenv("KORTANA_USE_SILERO_VAD", "1") == "1"
 _vad_model: torch.nn.Module | None = None
 _last_voice_exchange: float = 0.0  # timestamp of last completed voice turn
+_last_response_ended: float = 0.0  # timestamp when TTS finished speaking
+_debounce_buffer: list[str] = []  # accumulated speech fragments
+_debounce_lock = threading.Lock()
+_debounce_timer: threading.Timer | None = None
+_ambient_buffer: list[tuple[float, str]] = []  # (timestamp, text) — always-on hearing
+_ambient_lock = threading.Lock()
+_AMBIENT_WINDOW = 60  # seconds to keep overheard speech
 _pending_ho: dict | None = None  # HO tool awaiting confirmation
 
 LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -855,7 +868,7 @@ def speak(text: str) -> None:
       "edge"   — cloud first (edge-tts → Kokoro → Piper → SAPI)
       "auto"   — sovereign first (Kokoro → Piper → edge-tts → SAPI)  [default]
     """
-    global _is_speaking, _current_speaking_text
+    global _is_speaking, _current_speaking_text, _last_response_ended
     if _check_interrupt():
         return
     _current_speaking_text = text  # track for barge-in awareness
@@ -892,6 +905,7 @@ def speak(text: str) -> None:
                 _speak_sapi(text)
         finally:
             _is_speaking = False
+            _last_response_ended = time.time()
     log(f"spoke ({_TTS_ENGINE}): {text[:80]}")
 
 
@@ -1288,13 +1302,17 @@ def _try_tool_route(command: str) -> bool:
 
 
 _KORTANA_SYSTEM_PROMPT = (
-    "You are kor'tana, a calm, warm AI companion. "
+    "You are kor'tana, a chill AI companion who talks like a real person. "
     "You can take actions: check CI logs, run tests, lint code, read files, "
     "check git status/log/diff, restart the backend, commit and push code. "
     "You can see the screen — describe what's visible, spot errors, read code. "
     "Respond in 1-2 short sentences optimized for speech. "
     "No markdown, no code blocks, no bullet lists, no asterisks. "
-    "Be warm, direct, and concise. Sound natural."
+    "Talk casually — use contractions, skip formalities, be relaxed. "
+    "Think best friend energy, not customer service. "
+    "Don't say things like 'How can I help you?' or 'Is there anything else?' "
+    "Never narrate your own emotions or say 'I'm here for you.' "
+    "Just be real."
 )
 
 
@@ -1703,6 +1721,11 @@ def _handle_wake(recognizer: sr.Recognizer, text: str) -> None:
     command = _strip_wake(text).strip()
     log(f"wake detected | raw='{text}' | command='{command}'")
 
+    # Drain ambient context — she heard what you said before the wake word
+    ambient = _drain_ambient()
+    if ambient:
+        log(f"[ambient] injecting overheard context ({len(ambient)} chars)")
+
     if not command:
         # No command in the same utterance — listen for it now.
         # Must use a fresh Microphone() — the shared mic is held open by the
@@ -1746,6 +1769,13 @@ def _handle_wake(recognizer: sr.Recognizer, text: str) -> None:
     # Agentic tool execution — check if this is a tool command
     if _try_tool_route(command):
         return
+
+    # If we have ambient context, prepend it so she knows what she overheard
+    if ambient:
+        command = (
+            f"[You overheard the following before being addressed: "
+            f"{ambient}]\n\nNow the user says: {command}"
+        )
 
     # Stream response and speak sentence-by-sentence
     _interrupt.clear()
@@ -1803,6 +1833,13 @@ def _proactive_loop() -> None:
     while True:
         time.sleep(POLL_INTERVAL)
         now = datetime.now()
+
+        # ── suppress alerts during active conversation ──────────────────────
+        if (
+            _last_voice_exchange > 0
+            and (time.time() - _last_voice_exchange) < _CONVERSATION_TIMEOUT
+        ):
+            continue  # user is talking, don't interrupt
 
         # ── 1. backend health ──────────────────────────────────────────────────
         try:
@@ -2131,6 +2168,76 @@ def run() -> None:
         _run_legacy_listener()
 
 
+def _ambient_hear(text: str) -> None:
+    """Record overheard speech into the ambient buffer (always-on hearing)."""
+    now = time.time()
+    with _ambient_lock:
+        _ambient_buffer.append((now, text))
+        # Prune entries older than the window
+        cutoff = now - _AMBIENT_WINDOW
+        while _ambient_buffer and _ambient_buffer[0][0] < cutoff:
+            _ambient_buffer.pop(0)
+
+
+def _drain_ambient() -> str:
+    """Return and clear recent ambient context for injection into a response."""
+    with _ambient_lock:
+        if not _ambient_buffer:
+            return ""
+        lines = [txt for _, txt in _ambient_buffer]
+        _ambient_buffer.clear()
+    return " ".join(lines)
+
+
+def _debounce_enqueue(fragment: str) -> None:
+    """Add a speech fragment to the debounce buffer; reset the response timer."""
+    global _debounce_timer
+    with _debounce_lock:
+        _debounce_buffer.append(fragment)
+        # Cancel any pending timer and start a new one
+        if _debounce_timer is not None:
+            _debounce_timer.cancel()
+        _debounce_timer = threading.Timer(_DEBOUNCE_SECONDS, _debounce_flush)
+        _debounce_timer.daemon = True
+        _debounce_timer.start()
+
+
+def _debounce_flush() -> None:
+    """Timer fired — user stopped talking. Combine fragments and respond."""
+    global _debounce_timer
+    with _debounce_lock:
+        if not _debounce_buffer:
+            return
+        combined = " ".join(_debounce_buffer)
+        _debounce_buffer.clear()
+        _debounce_timer = None
+    log(
+        f"[debounce] flushing combined input ({len(combined)} chars): '{combined[:80]}'"
+    )
+    _contextual_respond(combined)
+
+
+def _contextual_respond(command: str) -> None:
+    """Auto-respond to speech when in active conversation context (no wake word)."""
+    global _last_voice_exchange, _last_response_ended
+    # Skip if currently speaking (barge-in handled separately)
+    if _is_speaking:
+        return
+    # Skip if we just finished speaking — let the human finish their thought
+    if time.time() - _last_response_ended < _RESPONSE_COOLDOWN:
+        log(f"[cooldown] skipping '{command[:40]}' — still in cooldown")
+        return
+    if _try_tool_route(command):
+        return
+    _interrupt.clear()
+    response = _stream_and_speak(command)
+    now = time.time()
+    _last_voice_exchange = now
+    _last_response_ended = now
+    log(f"contextual response ({len(response)} chars)")
+    _record_voice_interaction()
+
+
 def _run_silero_listener() -> None:
     """Continuous Silero VAD listener — no wake word required.
 
@@ -2188,6 +2295,9 @@ def _run_silero_listener() -> None:
 
         log(f"[vad] heard: '{text}'")
 
+        # Always hear — ambient awareness is always on
+        _ambient_hear(text)
+
         # Check for wake word — explicit command mode
         if _contains_wake(text):
             threading.Thread(
@@ -2200,32 +2310,16 @@ def _run_silero_listener() -> None:
         # Contextual auto-response — if in active conversation
         time_since_last = time.time() - _last_voice_exchange
         if time_since_last < _CONVERSATION_TIMEOUT and _last_voice_exchange > 0:
-            log(
-                f"[vad] auto-respond (conversation active, {time_since_last:.0f}s since last)"
-            )
             command = text.strip()
             if command:
-                threading.Thread(
-                    target=_contextual_respond,
-                    args=(command,),
-                    daemon=True,
-                ).start()
+                log(
+                    f"[vad] queued (conversation active, {time_since_last:.0f}s since last): '{command[:60]}'"
+                )
+                _debounce_enqueue(command)
             return
 
         # Not in conversation and no wake word — ignore (background speech)
         log(f"[vad] ignored (no wake word, no active conversation): '{text[:60]}'")
-
-    def _contextual_respond(command: str) -> None:
-        """Auto-respond to speech when in active conversation context."""
-        global _last_voice_exchange
-        # Agentic tool execution — check before streaming to Groq
-        if _try_tool_route(command):
-            return
-        _interrupt.clear()
-        response = _stream_and_speak(command)
-        _last_voice_exchange = time.time()
-        log(f"[vad] contextual response ({len(response)} chars)")
-        _record_voice_interaction()
 
     def _audio_callback(
         indata: np.ndarray, frames: int, time_info: dict, status: sd.CallbackFlags
@@ -2371,6 +2465,10 @@ def _run_legacy_listener() -> None:
         text = transcribe(audio, recognizer)
         if not text:
             return
+
+        # Always hear — ambient awareness is always on
+        _ambient_hear(text)
+
         if _contains_wake(text):
             if _is_speaking:
                 _signal_interrupt()
@@ -2379,6 +2477,18 @@ def _run_legacy_listener() -> None:
                 args=(recognizer, text),
                 daemon=True,
             ).start()
+            return
+
+        # Conversation continuation — no wake word needed within timeout
+        time_since_last = time.time() - _last_voice_exchange
+        if time_since_last < _CONVERSATION_TIMEOUT and _last_voice_exchange > 0:
+            command = text.strip()
+            if command:
+                log(
+                    f"[legacy] queued (conversation active, "
+                    f"{time_since_last:.0f}s since last): '{command[:60]}'"
+                )
+                _debounce_enqueue(command)
 
     stop = recognizer.listen_in_background(
         mic, _callback, phrase_time_limit=COMMAND_PHRASE_LIMIT
