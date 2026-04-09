@@ -1585,11 +1585,8 @@ class AutonomyDaemon:
         try:
             session = self._get_session()
             incident = IncidentMemory(
-                description=title,
-                error_type=category,
-                error_details=details[:2000],
-                severity="medium",
-                component="observation",
+                incident_type=category,
+                description=f"{title}\n{details[:2000]}",
             )
             session.add(incident)
             await session.commit()

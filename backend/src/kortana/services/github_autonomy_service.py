@@ -403,6 +403,44 @@ class GitHubAutonomyService:
             + "\n\n".join(file_contents)
         )
 
+    async def _build_memory_context(self) -> str:
+        """Query recent failures and incidents to inform planning."""
+        from src.kortana.models import IncidentMemory
+
+        lines: list[str] = []
+        try:
+            stmt = (
+                select(GitHubTask)
+                .where(GitHubTask.status.in_(["failed", "blocked"]))
+                .order_by(GitHubTask.updated_at.desc())
+                .limit(5)
+            )
+            result = await self._db_execute(stmt)
+            failed_tasks = list(result.scalars().all())
+            if failed_tasks:
+                lines.append("RECENT FAILURES (avoid repeating these mistakes):")
+                for t in failed_tasks:
+                    lines.append(
+                        f"- {t.title}: {(t.error_message or 'unknown')[:200]}"
+                    )
+
+            stmt2 = (
+                select(IncidentMemory)
+                .order_by(IncidentMemory.created_at.desc())
+                .limit(3)
+            )
+            result2 = await self._db_execute(stmt2)
+            incidents = list(result2.scalars().all())
+            if incidents:
+                lines.append("\nRECENT INCIDENTS:")
+                for inc in incidents:
+                    lines.append(
+                        f"- [{inc.incident_type}] {(inc.description or '')[:200]}"
+                    )
+        except Exception as exc:
+            logger.debug(f"Memory context unavailable: {exc}")
+        return "\n".join(lines) if lines else ""
+
     def _validate_file_change_against_repo(
         self, file_change: dict[str, Any], shape: dict[str, Any]
     ) -> str | None:
@@ -1670,8 +1708,10 @@ class GitHubAutonomyService:
         await self._db_commit()
         return task
 
-    async def plan_task(self, task_or_id: GitHubTask | str) -> GitHubTask:
-        """Generate implementation plan with Gemini"""
+    async def plan_task(
+        self, task_or_id: GitHubTask | str, *, retry_context: str | None = None
+    ) -> GitHubTask:
+        """Generate implementation plan with Gemini."""
         if isinstance(task_or_id, str):
             stmt = select(GitHubTask).where(GitHubTask.id == task_or_id)
             result = await self._db_execute(stmt)
@@ -1693,6 +1733,13 @@ class GitHubAutonomyService:
             file_context = self._read_relevant_files(
                 task.title or "", task.analysis or ""
             )
+            memory_context = await self._build_memory_context()
+            retry_section = (
+                f"\n\nRETRY CONTEXT — a previous attempt failed:\n{retry_context}\n"
+                f"Fix the issues described above.\n"
+                if retry_context
+                else ""
+            )
             prompt = (f"{operator_preamble}\n\n" if operator_preamble else "") + (
                 f"we are kor'tana prime, an autonomous ai entity architecting our own codebase. "
                 f"Generate a detailed file-by-file implementation plan for this issue and keep it grounded to this repository only. "
@@ -1709,7 +1756,9 @@ class GitHubAutonomyService:
                 f"}}\n"
                 f"Strict constraints:\n"
                 f"{repo_context}\n"
-                f"{file_context}\n\n"
+                f"{file_context}\n"
+                f"{memory_context}\n"
+                f"{retry_section}\n"
                 f"Title: {task.title}\nAnalysis: {task.analysis}"
             )
             raw_plan = await self._analyze_text_with_fallback(
@@ -1833,15 +1882,59 @@ class GitHubAutonomyService:
                         self._run_git(["git", "checkout", "."], cwd=workspace)
                     except Exception:
                         pass
+
+                    current_errors = task.error_count or 0
+
+                    # First failure: retry with error context
+                    if current_errors < 1:
+                        task.error_count = current_errors + 1
+                        task.status = "analyzed"
+                        retry_ctx = f"Quality gate FAILED.\n"
+                        for run in mandatory_gate.get("runs", []):
+                            if run.get("status") == "failed":
+                                retry_ctx += (
+                                    f"\n--- {run['command']} ---\n"
+                                    f"{(run.get('stdout', '') or '')[:500]}\n"
+                                    f"{(run.get('stderr', '') or '')[:500]}\n"
+                                )
+                        self._record_validation_report(
+                            task,
+                            {
+                                "stage": "quality_gate_failed_retry",
+                                "attempt": current_errors + 1,
+                                "updated_at": datetime.utcnow().isoformat(),
+                                "changed_files": normalized_files,
+                                "quality_gate": mandatory_gate,
+                            },
+                        )
+                        await self._db_commit()
+                        logger.info(
+                            "Retrying task %s with error context", task.id
+                        )
+                        await self.plan_task(task, retry_context=retry_ctx)
+                        if task.status == "planning_complete":
+                            return await self.execute_task(
+                                task, dry_run=dry_run
+                            )
+                        # Re-planning itself failed
+                        task.status = "blocked"
+                        task.error_message = (
+                            "Re-planning after quality gate failure also failed"
+                        )
+                        await self._db_commit()
+                        return task
+
+                    # Second failure: block for real
                     task.status = "blocked"
-                    task.error_count = (task.error_count or 0) + 1
+                    task.error_count = current_errors + 1
                     task.error_message = (
                         f"Quality gate failed: {mandatory_gate['details']}"
                     )
                     self._record_validation_report(
                         task,
                         {
-                            "stage": "quality_gate_failed",
+                            "stage": "quality_gate_failed_blocked",
+                            "attempt": current_errors + 1,
                             "updated_at": datetime.utcnow().isoformat(),
                             "changed_files": normalized_files,
                             "quality_gate": mandatory_gate,
@@ -1849,6 +1942,17 @@ class GitHubAutonomyService:
                     )
                     await self._db_commit()
                     return task
+                else:
+                    # Record quality gate trace on success too
+                    self._record_validation_report(
+                        task,
+                        {
+                            "stage": "quality_gate_passed",
+                            "updated_at": datetime.utcnow().isoformat(),
+                            "changed_files": normalized_files,
+                            "quality_gate": mandatory_gate,
+                        },
+                    )
 
             # Pre-commit guardrail: run PatchValidator against the pending diff
             # before any bytes hit the worktree commit.  This mirrors the same
