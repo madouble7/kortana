@@ -328,6 +328,81 @@ class GitHubAutonomyService:
             f"{sample_files}"
         )
 
+    def _read_relevant_files(self, task_title: str, task_analysis: str) -> str:
+        """Read actual file contents relevant to a task before planning."""
+        keywords = set()
+        combined = f"{task_title} {task_analysis}".lower()
+        # Extract mentioned file paths
+        mentioned_files: list[str] = []
+        for word in combined.replace("/", " / ").split():
+            cleaned = word.strip(".,;:()\"'`")
+            if "." in cleaned and any(
+                cleaned.endswith(ext)
+                for ext in (
+                    ".py",
+                    ".ts",
+                    ".tsx",
+                    ".js",
+                    ".json",
+                    ".yml",
+                    ".yaml",
+                    ".md",
+                )
+            ):
+                mentioned_files.append(cleaned)
+            elif len(cleaned) > 3 and cleaned.replace("_", "").isalnum():
+                keywords.add(cleaned)
+
+        # Also scan shape sample files for keyword matches
+        shape = self._repo_shape()
+        for sample in shape.get("sample_files", []):
+            sample_lower = sample.lower()
+            if any(kw in sample_lower for kw in keywords):
+                mentioned_files.append(sample)
+
+        # Deduplicate and resolve
+        seen: set[str] = set()
+        file_contents: list[str] = []
+        max_files = 8
+        max_chars_per_file = 3000
+        total_chars = 0
+        max_total = 15000
+
+        for rel_path in mentioned_files:
+            if rel_path in seen or len(file_contents) >= max_files:
+                continue
+            seen.add(rel_path)
+
+            # Try to find the file
+            candidates = [
+                Path(self.repo_root) / rel_path,
+                Path(self.repo_root) / "backend" / rel_path,
+                Path(self.repo_root) / "backend" / "src" / "kortana" / rel_path,
+            ]
+            for candidate in candidates:
+                if candidate.is_file() and total_chars < max_total:
+                    try:
+                        content = candidate.read_text(
+                            encoding="utf-8", errors="replace"
+                        )
+                        truncated = content[:max_chars_per_file]
+                        if len(content) > max_chars_per_file:
+                            truncated += f"\n... [{len(content) - max_chars_per_file} chars truncated]"
+                        file_contents.append(
+                            f"--- {candidate.relative_to(self.repo_root)} ---\n{truncated}"
+                        )
+                        total_chars += len(truncated)
+                    except Exception:
+                        pass
+                    break
+
+        if not file_contents:
+            return ""
+        return (
+            "\n\nACTUAL FILE CONTENTS (read from disk — use these as ground truth):\n"
+            + "\n\n".join(file_contents)
+        )
+
     def _validate_file_change_against_repo(
         self, file_change: dict[str, Any], shape: dict[str, Any]
     ) -> str | None:
@@ -480,6 +555,44 @@ class GitHubAutonomyService:
         if len(text) <= limit:
             return text
         return text[: limit - 15] + "\n...[truncated]"
+
+    def _run_mandatory_quality_gate(self, workspace: Path) -> dict[str, Any]:
+        """Always run ruff + pytest on workspace. Returns pass/fail verdict."""
+        timeout = max(
+            30,
+            int(os.getenv("KORTANA_QUALITY_GATE_TIMEOUT", "120") or "120"),
+        )
+        runs: list[dict[str, Any]] = []
+        failed: list[str] = []
+
+        # 1. ruff check (lint)
+        ruff_run = self._execute_validation_command(
+            "python -m ruff check . --select E,F --no-fix",
+            workspace,
+            timeout_seconds=timeout,
+        )
+        runs.append(ruff_run)
+        if ruff_run["status"] == "failed":
+            failed.append("ruff")
+
+        # 2. pytest (fast — fail on first error)
+        pytest_run = self._execute_validation_command(
+            "python -m pytest -x -q --tb=short --no-header 2>&1 | head -50",
+            workspace,
+            timeout_seconds=timeout,
+        )
+        runs.append(pytest_run)
+        if pytest_run["status"] == "failed":
+            failed.append("pytest")
+
+        return {
+            "status": "failed" if failed else "passed",
+            "runs": runs,
+            "failed_gates": failed,
+            "details": (
+                f"Failed: {', '.join(failed)}" if failed else "All quality gates passed"
+            ),
+        }
 
     def _execute_validation_command(
         self,
@@ -1435,7 +1548,9 @@ class GitHubAutonomyService:
             return []
         issues = response.json()
         logger.info(f"Fetched {len(issues)} issues from {owner}/{name}")
-        return [{"number": issue["number"], "title": issue["title"]} for issue in issues]
+        return [
+            {"number": issue["number"], "title": issue["title"]} for issue in issues
+        ]
 
     def _determine_priority(self, issue: dict[str, Any]) -> str:
         """Determine priority from labels"""
@@ -1575,6 +1690,9 @@ class GitHubAutonomyService:
             logger.info(f"Planning task #{task.github_issue_number}")
             operator_preamble = await self._operator_preamble()
             repo_context = self._build_repo_context()
+            file_context = self._read_relevant_files(
+                task.title or "", task.analysis or ""
+            )
             prompt = (f"{operator_preamble}\n\n" if operator_preamble else "") + (
                 f"we are kor'tana prime, an autonomous ai entity architecting our own codebase. "
                 f"Generate a detailed file-by-file implementation plan for this issue and keep it grounded to this repository only. "
@@ -1590,7 +1708,8 @@ class GitHubAutonomyService:
                 f"  ]\n"
                 f"}}\n"
                 f"Strict constraints:\n"
-                f"{repo_context}\n\n"
+                f"{repo_context}\n"
+                f"{file_context}\n\n"
                 f"Title: {task.title}\nAnalysis: {task.analysis}"
             )
             raw_plan = await self._analyze_text_with_fallback(
@@ -1699,6 +1818,37 @@ class GitHubAutonomyService:
             validation_result = self._run_task_scoped_validation(
                 task.plan or "", workspace
             )
+
+            # Mandatory quality gate: always run ruff + pytest on the workspace
+            if not dry_run and normalized_files:
+                mandatory_gate = self._run_mandatory_quality_gate(workspace)
+                if mandatory_gate["status"] == "failed":
+                    logger.warning(
+                        "Mandatory quality gate failed for task %s: %s",
+                        task.id,
+                        mandatory_gate["details"],
+                    )
+                    try:
+                        self._run_git(["git", "reset", "HEAD"], cwd=workspace)
+                        self._run_git(["git", "checkout", "."], cwd=workspace)
+                    except Exception:
+                        pass
+                    task.status = "blocked"
+                    task.error_count = (task.error_count or 0) + 1
+                    task.error_message = (
+                        f"Quality gate failed: {mandatory_gate['details']}"
+                    )
+                    self._record_validation_report(
+                        task,
+                        {
+                            "stage": "quality_gate_failed",
+                            "updated_at": datetime.utcnow().isoformat(),
+                            "changed_files": normalized_files,
+                            "quality_gate": mandatory_gate,
+                        },
+                    )
+                    await self._db_commit()
+                    return task
 
             # Pre-commit guardrail: run PatchValidator against the pending diff
             # before any bytes hit the worktree commit.  This mirrors the same

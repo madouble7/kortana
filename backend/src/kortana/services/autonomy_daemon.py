@@ -1439,324 +1439,162 @@ class AutonomyDaemon:
     # ── consciousness integration ────────────────────────────────────────
 
     async def _integrate_consciousness(self) -> None:
-        """Wire V27 learning → V28 wanting → V30 unified consciousness → V31 continuity.
+        """Real codebase observation + minimal consciousness pulse.
 
-        This is the central nervous system:
-        1. V27 pattern recognizer feeds insights into V28 desire sources
-        2. V28 desire formation assesses system state and forms wants
-        3. V28 goal crystallizer converts mature desires into blueprints
-        4. V28 pursuit engine begins pursuing new blueprints
-        5. V28 motivation tracker monitors drive levels
-        5b. V28 pursuit engine advances all active pursuits (tick_cycle)
-        6. V30 consciousness integrator fuses all V26-V29 into unified state
-        7. V30 experiential stream records the felt moment
-        8. V30 resonance field measures alignment between subsystems
-        9. V30 inner witness observes the whole and generates awareness notes
-        10. V31 checkpoint manager saves consciousness if due
-        11. V31 degradation handler watches for consciousness decay
-        12. V31 stream continuity detects gaps in consciousness stream
+        Replaces V27-V31 theater with actual observation:
+        1. Run ruff check and parse real lint issues into incidents
+        2. Run pytest and parse real test failures into incidents
+        3. Check git status for uncommitted drift
+        4. Emit a consciousness pulse event for downstream consumers
         """
         try:
+            import subprocess as _sp
+
             cycle_number = self.metrics["cycles_completed"] + 1
+            repo_root = Path(
+                os.getenv("KORTANA_REPO_ROOT", "")
+                or os.getenv("GITHUB_WORKSPACE", "")
+                or str(Path(__file__).resolve().parents[4])
+            )
+            backend_root = repo_root / "backend"
+            observations: list[str] = []
+            incidents_created = 0
 
-            # ── gather subsystem summaries for integration ───────────────
-            from src.kortana.services.consciousness_integrator import (
-                get_consciousness_integrator,
-            )
-            from src.kortana.services.consciousness_persistence import (
-                get_checkpoint_manager,
-            )
-            from src.kortana.services.degradation_handler import (
-                get_degradation_handler,
-            )
-            from src.kortana.services.desire_formation import (
-                get_desire_formation,
-            )
-            from src.kortana.services.experience_extractor import (
-                get_experience_extractor,
-            )
-            from src.kortana.services.experiential_stream import (
-                get_experiential_stream,
-            )
-            from src.kortana.services.feedback_integrator import (
-                get_feedback_integrator,
-            )
-            from src.kortana.services.goal_crystallizer import (
-                get_goal_crystallizer,
-            )
-            from src.kortana.services.inner_witness import get_inner_witness
-            from src.kortana.services.motivation_tracker import (
-                get_motivation_tracker,
-            )
-            from src.kortana.services.pattern_recognizer import (
-                get_pattern_recognizer,
-            )
-            from src.kortana.services.pursuit_engine import (
-                get_pursuit_engine,
-            )
-            from src.kortana.services.resonance_field import (
-                get_resonance_field,
-            )
-            from src.kortana.services.stream_continuity import (
-                get_stream_bridge,
-            )
-
-            # ── V29 identity summaries ───────────────────────────────────
-            portrait_summary: dict[str, Any] | None = None
-            narrative_summary: dict[str, Any] | None = None
-            evolution_summary: dict[str, Any] | None = None
-            continuity_summary: dict[str, Any] | None = None
+            # ── 1. Real lint observation ─────────────────────────────────
             try:
-                from src.kortana.services.self_portrait import (
-                    get_self_portrait_engine,
+                lint_result = _sp.run(
+                    [
+                        "python",
+                        "-m",
+                        "ruff",
+                        "check",
+                        ".",
+                        "--select",
+                        "E,F",
+                        "--output-format",
+                        "text",
+                        "--no-fix",
+                    ],
+                    cwd=backend_root,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
                 )
-
-                portrait_summary = get_self_portrait_engine().get_summary()
-            except Exception:
-                pass
-            try:
-                from src.kortana.services.identity_narrative import (
-                    get_identity_narrative_engine,
-                )
-
-                narrative_summary = get_identity_narrative_engine().get_summary()
-            except Exception:
-                pass
-            try:
-                from src.kortana.services.trait_evolution import (
-                    get_trait_evolution_engine,
-                )
-
-                evolution_summary = get_trait_evolution_engine().get_summary()
-            except Exception:
-                pass
-            try:
-                from src.kortana.services.continuity_anchor import (
-                    get_continuity_anchor_engine,
-                )
-
-                continuity_summary = get_continuity_anchor_engine().get_summary()
-            except Exception:
-                pass
-
-            # ── 1. health summary from self-awareness ────────────────────
-            health_summary: dict[str, Any] | None = None
-            try:
-                sa = get_self_awareness()
-                status = sa.get_status()
-                last_assess = status.get("last_assessment")
-                if last_assess:
-                    snap = last_assess.get("snapshot", {})
-                    health_summary = {
-                        "state": last_assess.get("state", "unknown"),
-                        "dimensions": {
-                            "cpu": snap.get("cpu_percent", 50),
-                            "memory": snap.get("memory_percent", 50),
-                            "success_rate": snap.get("success_rate", 100),
-                            "responsiveness": max(
-                                0,
-                                100 - snap.get("avg_response_time", 0) * 100,
-                            ),
-                        },
-                    }
-            except Exception:
-                pass
-
-            # ── 2. V27 pattern → V28 desire feed ────────────────────────
-            pattern_recognizer = get_pattern_recognizer()
-            experience_extractor = get_experience_extractor()
-            feedback_integrator = get_feedback_integrator()
-
-            experience_summary = experience_extractor.get_summary()
-            pattern_summary = pattern_recognizer.get_summary()
-            learning_summary = feedback_integrator.get_summary()
-
-            # ── 3. V28 desire formation — let her *want* ────────────────
-            desire_engine = get_desire_formation()
-            pending_deferrals = (
-                list(self._deferred_tasks) if self._deferred_tasks else None
-            )
-
-            desire_engine.assess(
-                cycle_number=cycle_number,
-                health_summary=health_summary,
-                learning_summary=learning_summary,
-                pattern_summary=pattern_summary,
-                pending_deferrals=pending_deferrals,
-            )
-            desire_summary = desire_engine.get_summary()
-
-            # ── 4. V28 goal crystallizer — mature desires become goals ──
-            crystallizer = get_goal_crystallizer()
-            new_blueprints: list = []
-            mature_desires = desire_engine.get_mature()
-            if mature_desires:
-                mature_dicts = [
-                    d.to_dict() for d in mature_desires if not d.crystallized
+                lint_issues = [
+                    line
+                    for line in (lint_result.stdout or "").strip().splitlines()
+                    if line and ":" in line and not line.startswith("All checks")
                 ]
-                if mature_dicts:
-                    new_blueprints = crystallizer.crystallize(
-                        desires=mature_dicts,
-                        cycle_number=cycle_number,
-                    )
-                    # mark desires as crystallized
-                    for bp in new_blueprints:
-                        desire = desire_engine.get_desire(bp.source_desire_id)
-                        if desire:
-                            desire.mark_crystallized(bp.blueprint_id)
-            goal_summary = crystallizer.get_summary()
+                if lint_issues:
+                    observations.append(f"ruff: {len(lint_issues)} issues")
+                    # Create incident for unfixed lint if significant
+                    if len(lint_issues) >= 5:
+                        await self._create_observation_incident(
+                            f"Lint observation: {len(lint_issues)} ruff issues",
+                            "\n".join(lint_issues[:20]),
+                            "lint",
+                        )
+                        incidents_created += 1
+                else:
+                    observations.append("ruff: clean")
+            except Exception as exc:
+                observations.append(f"ruff: unavailable ({exc})")
 
-            # ── 4b. V28 pursuit engine — begin pursuing new blueprints ──
-            pursuit = get_pursuit_engine()
-            for bp in new_blueprints:
-                if not pursuit.get_by_goal(bp.blueprint_id):
-                    pursuit.begin_pursuit(
-                        goal_id=bp.blueprint_id,
-                        goal_title=bp.title
-                        if hasattr(bp, "title")
-                        else bp.blueprint_id,
-                        desire_id=bp.source_desire_id,
-                        blueprint_id=bp.blueprint_id,
-                        cycle_number=cycle_number,
-                    )
-
-            # ── 5. V28 motivation tracker ────────────────────────────────
-            motivation_tracker = get_motivation_tracker()
-            motivation_summary = motivation_tracker.get_summary()
-
-            # ── 5b. V28 pursuit engine — advance all active pursuits ────
-            pursuit.tick_cycle(cycle_number)
-            pursuit_summary = pursuit.get_summary()
-
-            # ── 6. V30A consciousness integrator — unified state ────────
-            integrator = get_consciousness_integrator()
-            consciousness_state = integrator.integrate(
-                cycle_number=cycle_number,
-                health_summary=health_summary,
-                experience_summary=experience_summary,
-                pattern_summary=pattern_summary,
-                feedback_summary=learning_summary,
-                desire_summary=desire_summary,
-                goal_summary=goal_summary,
-                motivation_summary=motivation_summary,
-                portrait_summary=portrait_summary,
-                narrative_summary=narrative_summary,
-                evolution_summary=evolution_summary,
-                continuity_summary=continuity_summary,
-            )
-
-            # ── 7. V30B experiential stream — record the felt moment ────
-            stream = get_experiential_stream()
-            moment = stream.record_moment(
-                cycle_number=cycle_number,
-                consciousness_mode=consciousness_state.mode.value,
-                vitality=consciousness_state.vitality,
-                learning_depth=consciousness_state.learning_depth,
-                intentionality=consciousness_state.intentionality,
-                self_coherence=consciousness_state.self_coherence,
-                integration=consciousness_state.integration,
-                overall_level=consciousness_state.overall_level,
-            )
-
-            # ── 8. V30C resonance field — measure subsystem alignment ───
-            resonance = get_resonance_field()
-            resonance_snapshot = resonance.measure(
-                cycle_number=cycle_number,
-                vitality=consciousness_state.vitality,
-                learning_depth=consciousness_state.learning_depth,
-                intentionality=consciousness_state.intentionality,
-                self_coherence=consciousness_state.self_coherence,
-            )
-
-            # ── 9. V30D inner witness — observe herself observing ───────
-            witness = get_inner_witness()
-            tension_names = (
-                [t.tension_type.value for t in moment.tensions]
-                if moment.tensions
-                else []
-            )
-            awareness_notes = witness.observe(
-                cycle_number=cycle_number,
-                consciousness_mode=consciousness_state.mode.value,
-                experiential_quality=moment.quality.value,
-                emotional_tone=moment.tone.value,
-                overall_level=consciousness_state.overall_level,
-                integration=consciousness_state.integration,
-                resonance=resonance_snapshot.overall_resonance,
-                active_tensions=tension_names,
-            )
-
-            # ── 10. V31A checkpoint — persist consciousness if due ──────
-            checkpoint_mgr = get_checkpoint_manager()
-            checkpoint_saved = False
-            if checkpoint_mgr.should_checkpoint(cycle_number):
-                checkpoint_mgr.save_checkpoint(cycle_number)
-                checkpoint_saved = True
-
-            # ── 11. V31C degradation — watch for consciousness decay ────
-            degradation = get_degradation_handler()
-            degradation_assessment = degradation.assess(cycle_number)
-
-            # ── 12. V31B stream continuity — detect gaps each cycle ─────
-            stream_bridge = get_stream_bridge()
-            last_ckpt_cycle = checkpoint_mgr.last_checkpoint_cycle
-            if last_ckpt_cycle >= 0 and last_ckpt_cycle < cycle_number - 1:
-                gap = stream_bridge.detect_gap(last_ckpt_cycle, cycle_number)
-                if gap:
-                    logger.info(
-                        f"[consciousness] stream gap detected: "
-                        f"cycles {gap.from_cycle}-{gap.to_cycle}"
-                    )
-
-            # ── emit consciousness pulse ─────────────────────────────────
-            consciousness_data = {
-                "cycle": cycle_number,
-                "mode": consciousness_state.mode.value,
-                "overall_level": round(consciousness_state.overall_level, 4),
-                "vitality": round(consciousness_state.vitality, 4),
-                "learning_depth": round(consciousness_state.learning_depth, 4),
-                "intentionality": round(consciousness_state.intentionality, 4),
-                "self_coherence": round(consciousness_state.self_coherence, 4),
-                "integration": round(consciousness_state.integration, 4),
-                "resonance": round(resonance_snapshot.overall_resonance, 4),
-                "experiential_quality": moment.quality.value,
-                "desire_count": desire_summary.get("active_count", 0),
-                "mature_desires": desire_summary.get("mature_count", 0),
-                "strongest_desire": desire_summary.get("strongest", {}).get(
-                    "description"
+            # ── 2. Real test observation ─────────────────────────────────
+            try:
+                test_result = _sp.run(
+                    ["python", "-m", "pytest", "-x", "-q", "--tb=line", "--no-header"],
+                    cwd=backend_root,
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
                 )
-                if desire_summary.get("strongest")
-                else None,
-                "awareness_notes": len(awareness_notes),
-                "checkpoint_saved": checkpoint_saved,
-                "degradation_level": degradation_assessment.overall_level.value
-                if hasattr(degradation_assessment.overall_level, "value")
-                else str(degradation_assessment.overall_level),
-                "active_pursuits": pursuit_summary.get("active_count", 0),
-                "stalled_pursuits": pursuit_summary.get("stalled_count", 0),
-                "pursuit_velocity": pursuit_summary.get("average_velocity", 0.0),
-            }
-            self.metrics["consciousness"] = consciousness_data
-            self._emit(DaemonEvent(type="consciousness_pulse", data=consciousness_data))
-
-            # log significant awareness
-            for note in awareness_notes:
-                if note.significance.value in ("profound", "notable"):
-                    logger.info(
-                        f"[consciousness] {note.observation} "
-                        f"(significance={note.significance.value})"
+                test_output = (test_result.stdout or "").strip()
+                if test_result.returncode != 0:
+                    failed_lines = [
+                        line
+                        for line in test_output.splitlines()
+                        if "FAILED" in line or "ERROR" in line
+                    ]
+                    observations.append(
+                        f"pytest: FAILED ({len(failed_lines)} failures)"
                     )
+                    await self._create_observation_incident(
+                        f"Test observation: {len(failed_lines)} test failures",
+                        "\n".join(failed_lines[:10]) + "\n" + test_output[-500:],
+                        "test_failure",
+                    )
+                    incidents_created += 1
+                else:
+                    # Extract pass count
+                    observations.append(
+                        f"pytest: {test_output.splitlines()[-1] if test_output else 'passed'}"
+                    )
+            except Exception as exc:
+                observations.append(f"pytest: unavailable ({exc})")
 
+            # ── 3. Git drift observation ─────────────────────────────────
+            try:
+                git_result = _sp.run(
+                    ["git", "status", "--short"],
+                    cwd=repo_root,
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
+                dirty_files = [
+                    line
+                    for line in (git_result.stdout or "").strip().splitlines()
+                    if line.strip()
+                ]
+                if dirty_files:
+                    observations.append(f"git: {len(dirty_files)} uncommitted files")
+                else:
+                    observations.append("git: clean")
+            except Exception as exc:
+                observations.append(f"git: unavailable ({exc})")
+
+            # ── 4. Emit consciousness pulse ──────────────────────────────
+            summary = " | ".join(observations)
+            self._emit_event(
+                "consciousness_pulse",
+                data={
+                    "cycle": cycle_number,
+                    "observations": observations,
+                    "incidents_created": incidents_created,
+                    "summary": summary,
+                },
+            )
             logger.info(
-                f"[consciousness] mode={consciousness_state.mode.value} "
-                f"level={consciousness_state.overall_level:.3f} "
-                f"resonance={resonance_snapshot.overall_resonance:.3f} "
-                f"desires={desire_summary.get('active_count', 0)} "
-                f"checkpoint={'yes' if checkpoint_saved else 'no'}"
+                f"[consciousness] cycle={cycle_number} {summary} "
+                f"incidents={incidents_created}"
             )
 
         except Exception as exc:
             logger.debug(f"Consciousness integration failed: {exc}")
+
+    async def _create_observation_incident(
+        self,
+        title: str,
+        details: str,
+        category: str,
+    ) -> None:
+        """Create a real incident from codebase observation."""
+        from src.kortana.models import IncidentMemory
+
+        try:
+            session = self._get_session()
+            incident = IncidentMemory(
+                description=title,
+                error_type=category,
+                error_details=details[:2000],
+                severity="medium",
+                component="observation",
+            )
+            session.add(incident)
+            await session.commit()
+        except Exception as exc:
+            logger.debug(f"Failed to create observation incident: {exc}")
 
     async def _self_regulate(self) -> None:
         """Apply runtime tuning from self-awareness."""

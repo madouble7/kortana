@@ -805,6 +805,11 @@ class TestGitHubAutonomyService:
             patch.object(
                 service, "_create_pull_request_for_branch", AsyncMock(return_value=42)
             ) as mock_pr,
+            patch.object(
+                service,
+                "_run_mandatory_quality_gate",
+                return_value={"status": "passed", "runs": [], "failed_gates": [], "details": {}},
+            ),
         ):
             mock_db.commit = MagicMock()
 
