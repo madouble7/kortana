@@ -186,10 +186,7 @@ class AtomicTransaction:
                         results["created"].append(str(file_path))
 
                     elif file_change.action == "modify":
-                        if not file_path.exists():
-                            raise CodeGenerationError(
-                                f"File not found: {file_change.path}"
-                            )
+                        file_path.parent.mkdir(parents=True, exist_ok=True)
                         with open(file_path, "w") as f:
                             f.write(file_change.content)
                         results["modified"].append(str(file_path))

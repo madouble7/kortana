@@ -420,9 +420,7 @@ class GitHubAutonomyService:
             if failed_tasks:
                 lines.append("RECENT FAILURES (avoid repeating these mistakes):")
                 for t in failed_tasks:
-                    lines.append(
-                        f"- {t.title}: {(t.error_message or 'unknown')[:200]}"
-                    )
+                    lines.append(f"- {t.title}: {(t.error_message or 'unknown')[:200]}")
 
             stmt2 = (
                 select(IncidentMemory)
@@ -1850,8 +1848,10 @@ class GitHubAutonomyService:
                 task.plan, repo_path=str(workspace), dry_run=dry_run
             )
 
-            if result.get("errors"):
-                raise Exception(f"Code generation errors: {result['errors']}")
+            if result.get("errors") or result.get("error"):
+                raise Exception(
+                    f"Code generation errors: {result.get('errors') or result.get('error')}"
+                )
 
             files_changed = [
                 str(path)
@@ -1889,7 +1889,7 @@ class GitHubAutonomyService:
                     if current_errors < 1:
                         task.error_count = current_errors + 1
                         task.status = "analyzed"
-                        retry_ctx = f"Quality gate FAILED.\n"
+                        retry_ctx = "Quality gate FAILED.\n"
                         for run in mandatory_gate.get("runs", []):
                             if run.get("status") == "failed":
                                 retry_ctx += (
@@ -1908,14 +1908,10 @@ class GitHubAutonomyService:
                             },
                         )
                         await self._db_commit()
-                        logger.info(
-                            "Retrying task %s with error context", task.id
-                        )
+                        logger.info("Retrying task %s with error context", task.id)
                         await self.plan_task(task, retry_context=retry_ctx)
                         if task.status == "planning_complete":
-                            return await self.execute_task(
-                                task, dry_run=dry_run
-                            )
+                            return await self.execute_task(task, dry_run=dry_run)
                         # Re-planning itself failed
                         task.status = "blocked"
                         task.error_message = (
@@ -2128,10 +2124,21 @@ class GitHubAutonomyService:
         )
 
         origin_url = self._git_output(["git", "remote", "get-url", "origin"])
-        if origin_url:
+        if origin_url and origin_url.startswith(("https://", "git@")):
             self._run_git(
                 ["git", "remote", "set-url", "origin", origin_url],
                 cwd=workspace,
+            )
+        else:
+            # Origin is a local path — fix it to the GitHub URL
+            owner, repo = (task.github_repo or self.default_repo).split("/")
+            github_url = f"https://github.com/{owner}/{repo}.git"
+            self._run_git(
+                ["git", "remote", "set-url", "origin", github_url],
+                cwd=workspace,
+            )
+            logger.warning(
+                "Origin URL was local (%s) — reset to %s", origin_url, github_url
             )
 
         try:
@@ -2296,14 +2303,16 @@ class GitHubAutonomyService:
     async def _push_workspace_branch(self, task: GitHubTask, workspace: Path) -> bool:
         """Push the task branch from an isolated workspace without mutating origin URLs."""
         try:
-            auth_header = self._build_push_auth_header()
+            if not self.github_token:
+                raise ValueError("GitHub token not configured")
+            owner, repo = (task.github_repo or self.default_repo).split("/")
+            auth_url = f"https://x-access-token:{self.github_token}@github.com/{owner}/{repo}.git"
             self._run_git(
                 [
                     "git",
-                    f"-chttp.extraheader={auth_header}",
                     "push",
                     "-u",
-                    "origin",
+                    auth_url,
                     f"{task.branch_name}:{task.branch_name}",
                 ],
                 cwd=workspace,
